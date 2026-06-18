@@ -1,4 +1,4 @@
-# Geomacro — Onchain Geopolitical Risk Oracle on Arc
+# Geomacro Oracle: Onchain Geopolitical Risk Oracle on Arc
 
 Geomacro is an AI-driven oracle that classifies live geopolitical and macro
 news, runs multi-agent debate to produce probabilistic verdicts, and
