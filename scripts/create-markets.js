@@ -21,8 +21,8 @@ import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
 const CONTRACT_ADDRESS = "0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D";
-const SEVERITY_THRESHOLD = 70; // only create markets for meaningfully important events
-const MAX_NEW_MARKETS_PER_RUN = 3; // safety cap so one run can't spam many markets
+const SEVERITY_THRESHOLD = 50; // only create markets for meaningfully important events
+const MAX_NEW_MARKETS_PER_RUN = 10; // safety cap so one run can't spam many markets
 
 const CONTRACT_ABI = [
   "function createMarket(string marketId) external",
