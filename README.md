@@ -1,4 +1,4 @@
-# Geomacro Oracle: Onchain Geopolitical Risk Oracle on Arc
+# Geomacro — Onchain Geopolitical Risk Oracle on Arc
 
 Geomacro is an AI-driven oracle that classifies live geopolitical and macro
 news, runs multi-agent debate to produce probabilistic verdicts, and
@@ -7,8 +7,9 @@ publishes attested events onchain to the [Arc Network](https://arc.network)
 
 - **Live preview:** https://geomacrooracle.lovable.app
 - **Stack:** TanStack Start (React 19 + Vite 7) on Cloudflare Workers,
-  Tailwind v4, shadcn/ui, TanStack Query, viem for wallet/RPC, Firecrawl
-  for live news search, Lovable AI Gateway for inference.
+  Tailwind v4, shadcn/ui, TanStack Query, viem for wallet/RPC, NewsAPI
+  for live news search, Groq (llama-3.3-70b-versatile) for Live Feed
+  classification, Lovable AI Gateway for the Oracle / Arena agents.
 - **Networks:** Arc Testnet (chainId `0x4cef52` / `5042002`), with
   mainnet auto-promotion ready (`src/lib/arc.ts`).
 
@@ -16,12 +17,13 @@ publishes attested events onchain to the [Arc Network](https://arc.network)
 
 ## What it does
 
-1. **Live news ingest** — Firecrawl search pulls macro / geopolitical /
-   markets headlines on a fixed cadence. Results are sanitized
-   server-side (no internal IDs leak — enforced by
-   `src/__tests__/live-feed-no-ids.test.ts`).
-2. **AI classification** — each item is scored for severity, region,
-   asset impact and risk vector via Lovable AI Gateway.
+1. **Live news ingest** — NewsAPI live search pulls geopolitics /
+   rare-earth / macro / crypto headlines from the last 48h on a fixed
+   cadence. Results are sanitized server-side (no internal IDs leak —
+   enforced by `src/__tests__/live-feed-no-ids.test.ts`).
+2. **AI classification** — each item is scored for severity, stage,
+   confidence and 24h delta by Groq (`llama-3.3-70b-versatile`). Off-topic
+   articles are rejected and never persisted.
 3. **Agent duel** — two opposing agents argue each market; a main-agent
    judge issues a probabilistic verdict with rationale.
 4. **Onchain publish** — verdicts are written as attestation events to
@@ -49,7 +51,8 @@ src/
     autonomous-agent.functions.ts          Autonomous loop
     live-feed.functions.ts     News feed RPC + caching
     live-feed.sanitize.ts      Strips internal IDs before client return
-    firecrawl.server.ts        Firecrawl search (server-only)
+    newsapi.server.ts          NewsAPI live search (server-only)
+    groq.server.ts             Groq JSON classifier (server-only)
     ai-gateway.server.ts       Lovable AI Gateway client (server-only)
     balance.ts                 USDC-on-Arc balance formatting
     wallet-tx.ts               Session tx memory
@@ -75,7 +78,9 @@ browser; everything else is server-only.
 | Name | Scope | Purpose |
 | --- | --- | --- |
 | `LOVABLE_API_KEY` | server | Lovable AI Gateway (managed; rotate via Lovable) |
-| `FIRECRAWL_API_KEY` | server | Live news search |
+| `NEWSAPI_KEY` | server | Live Feed ingest (newsapi.org) |
+| `GROQ_API_KEY` | server | Live Feed classifier (llama-3.3-70b-versatile) |
+| `APP_SUPABASE_URL` / `APP_SUPABASE_ANON_KEY` | server | Persist classified events |
 | `VITE_ARC_NETWORK` | public | Force `mainnet` or `testnet` (default: auto) |
 
 ## Local development

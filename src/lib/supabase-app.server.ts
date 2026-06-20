@@ -14,9 +14,16 @@ let cachedClient: SupabaseClient | null = null;
 export function getAppSupabase(): SupabaseClient | null {
   if (cachedClient) return cachedClient;
   const url = process.env.APP_SUPABASE_URL;
+  // Prefer the service-role key for server-side writes so that the public
+  // anon role does NOT need INSERT/UPDATE policies on public.events
+  // (which would otherwise allow anyone with the anon key to inject
+  // fabricated AI-classified events). Fall back to anon only for read-only
+  // degradation when the service key is not configured.
+  const serviceKey = process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
   const anon = process.env.APP_SUPABASE_ANON_KEY;
-  if (!url || !anon) return null;
-  cachedClient = createClient(url, anon, {
+  const key = serviceKey ?? anon;
+  if (!url || !key) return null;
+  cachedClient = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return cachedClient;
@@ -59,9 +66,13 @@ export type StoredEvent = {
  *     created_at timestamptz not null default now()
  *   );
  *   alter table public.events enable row level security;
+ *   -- Public read is intentional: the live feed is unauthenticated.
  *   create policy "events_anon_read" on public.events for select to anon using (true);
- *   create policy "events_anon_write" on public.events for insert to anon with check (true);
- *   create policy "events_anon_update" on public.events for update to anon using (true);
+ *   -- Writes are server-only via the service-role key set as the
+ *   -- APP_SUPABASE_SERVICE_ROLE_KEY secret. Do NOT create anon insert/
+ *   -- update policies — that would let any visitor inject fake events.
+ *   drop policy if exists "events_anon_write" on public.events;
+ *   drop policy if exists "events_anon_update" on public.events;
  */
 export async function upsertEvents(events: StoredEvent[]): Promise<void> {
   if (events.length === 0) return;

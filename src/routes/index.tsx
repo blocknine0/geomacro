@@ -9,10 +9,27 @@ import { runAgentDuel } from "@/lib/agents.functions";
 import { mainAgentJudge } from "@/lib/arena-judge.functions";
 import { rememberSessionTx } from "@/lib/wallet-tx";
 import { useServerFn } from "@tanstack/react-start";
+import {
+  AGENT_ARENA_ADDRESS,
+  claimOnContract,
+  readMarket,
+  readMyStake,
+  stakeOnContract,
+  type OnchainMarket,
+  type OnchainStake,
+} from "@/lib/agent-arena";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ArrowUpRight, Activity, ShieldCheck, Radio, Wallet, Link2, Zap, Swords, Bot, Gavel, Loader2, Brain, Clock } from "lucide-react";
-import { AutonomousOracle } from "@/components/autonomous-oracle";
 import { LiveNewsFeed } from "@/components/live-news-feed";
 import { WalletTxFeed } from "@/components/wallet-tx-feed";
 import type { FeedEvent } from "@/lib/live-feed.functions";
@@ -95,6 +112,7 @@ function Index() {
   const activeNet = network ?? preferredNetwork();
   const [publishing, setPublishing] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [feedStats, setFeedStats] = useState<{ count24h: number; total: number }>({ count24h: 0, total: 0 });
   const duel = useServerFn(runAgentDuel);
   const judge = useServerFn(mainAgentJudge);
   const [duelLoading, setDuelLoading] = useState<string | null>(null);
@@ -106,6 +124,15 @@ function Index() {
   const [deadlines, setDeadlines] = useState<Record<string, number>>({});
   const [now, setNow] = useState<number>(() => Date.now());
   const autoJudgedRef = useRef<Set<string>>(new Set());
+  const [pendingStake, setPendingStake] = useState<{ market: Market; side: AgentSide } | null>(null);
+  const [stakeAmount, setStakeAmount] = useState<string>("10");
+  const [stakeSubmitting, setStakeSubmitting] = useState(false);
+  const [stakeError, setStakeError] = useState<string | null>(null);
+  const [onchainMarkets, setOnchainMarkets] = useState<Record<string, OnchainMarket>>({});
+  const [myStakes, setMyStakes] = useState<Record<string, OnchainStake>>({});
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [claimTx, setClaimTx] = useState<Record<string, string>>({});
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   // Restore persisted prediction windows + verdicts from localStorage
   useEffect(() => {
@@ -138,6 +165,31 @@ function Index() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Poll on-chain market state (totals + winner) every 20s when on Arc
+  useEffect(() => {
+    if (!onArc) return;
+    let cancelled = false;
+    async function refresh() {
+      for (const m of SAMPLE_MARKETS) {
+        try {
+          const om = await readMarket(m.id);
+          if (cancelled) return;
+          setOnchainMarkets((prev) => ({ ...prev, [m.id]: om }));
+          if (address) {
+            const s = await readMyStake(m.id, address);
+            if (cancelled) return;
+            setMyStakes((prev) => ({ ...prev, [m.id]: s }));
+          }
+        } catch {
+          /* market may not exist on-chain yet; ignore */
+        }
+      }
+    }
+    void refresh();
+    const t = setInterval(refresh, 20000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [onArc, address]);
 
   // Auto-judge whenever a market's 24h window elapses
   useEffect(() => {
@@ -215,31 +267,94 @@ function Index() {
       autoJudgedRef.current.delete(m.id);
     } catch (e) {
       console.warn("agent duel error", e);
-      setDuelError("Agent duel unavailable. Please try again in a moment.");
+      const msg = (e as Error).message || "Agent duel unavailable. Please try again.";
+      setDuelError(`[${m.id}] ${msg}`);
     } finally {
       setDuelLoading(null);
     }
   }
 
-  async function stakeOnArc(market: Market, side: AgentSide) {
-    if (!address) { await connect(); return; }
-    if (!onArc) { await switchToArc(); return; }
+  function openStakeDialog(market: Market, side: AgentSide) {
+    setStakeError(null);
+    if (!address) { void connect(); return; }
+    if (!onArc) { void switchToArc(); return; }
+    setStakeAmount("10");
+    setPendingStake({ market, side });
+  }
+
+  async function confirmStake() {
+    if (!pendingStake || !address) return;
+    const amount = Number(stakeAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setStakeError("Enter a positive USDC amount.");
+      return;
+    }
+    setStakeSubmitting(true);
+    setStakeError(null);
     try {
-      const eth = window.ethereum!;
-      const payload = `stake:${market.id}:${side}:${AGENTS[side].address}`;
-      const data = "0x" + Array.from(new TextEncoder().encode(payload))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
-      const hash = (await eth.request({
-        method: "eth_sendTransaction",
-        params: [{ from: address, to: address, value: "0x0", data }],
-      })) as string;
+      const { market, side } = pendingStake;
+      // Real on-chain stake into the AgentArena contract. Amount is in USDC
+      // (Arc native, 18 decimals) sent as msg.value alongside stake(marketId, side).
+      const hash = await stakeOnContract(market.id, side, stakeAmount);
       setStakeTx((prev) => ({ ...prev, [market.id]: { side, hash } }));
       rememberSessionTx(activeNet, address, {
-        hash, from: address, to: address, valueWei: "0",
-        timestamp: Math.floor(Date.now() / 1000), blockNumber: null, input: data,
+        hash,
+        from: address,
+        to: AGENT_ARENA_ADDRESS,
+        valueWei: String(BigInt(Math.round(amount * 1e6)) * BigInt(1e12)),
+        timestamp: Math.floor(Date.now() / 1000),
+        blockNumber: null,
+        input: `stake(${market.id},${side})`,
       });
+      setPendingStake(null);
+      // Optimistically refresh on-chain state shortly after the tx is sent
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const om = await readMarket(market.id);
+            setOnchainMarkets((prev) => ({ ...prev, [market.id]: om }));
+            if (address) {
+              const s = await readMyStake(market.id, address);
+              setMyStakes((prev) => ({ ...prev, [market.id]: s }));
+            }
+          } catch { /* ignore */ }
+        })();
+      }, 4000);
     } catch (e) {
-      console.warn("stake failed", e);
+      setStakeError((e as Error).message ?? "Transaction rejected");
+    } finally {
+      setStakeSubmitting(false);
+    }
+  }
+
+  async function claimWinnings(market: Market) {
+    if (!address) return;
+    setClaiming(market.id);
+    setClaimError(null);
+    try {
+      const hash = await claimOnContract(market.id);
+      setClaimTx((prev) => ({ ...prev, [market.id]: hash }));
+      rememberSessionTx(activeNet, address, {
+        hash,
+        from: address,
+        to: AGENT_ARENA_ADDRESS,
+        valueWei: "0",
+        timestamp: Math.floor(Date.now() / 1000),
+        blockNumber: null,
+        input: `claim(${market.id})`,
+      });
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const s = await readMyStake(market.id, address);
+            setMyStakes((prev) => ({ ...prev, [market.id]: s }));
+          } catch { /* ignore */ }
+        })();
+      }, 4000);
+    } catch (e) {
+      setClaimError(`[${market.id}] ${(e as Error).message ?? "Claim failed"}`);
+    } finally {
+      setClaiming(null);
     }
   }
 
@@ -294,7 +409,6 @@ function Index() {
           </div>
           <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
             <a href="#feed" className="hover:text-foreground transition">Live Feed</a>
-            <a href="#oracle" className="hover:text-foreground transition">Oracle</a>
             <a href="#arena" className="hover:text-foreground transition">Agent Arena</a>
             <a href="#pipeline" className="hover:text-foreground transition">Pipeline</a>
             <a href="#onchain" className="hover:text-foreground transition">Onchain</a>
@@ -349,7 +463,7 @@ function Index() {
 
             <dl className="mt-16 grid max-w-2xl grid-cols-3 gap-6 border-t border-border/60 pt-8">
               <Stat label="Global Risk Index" value={totalRisk} suffix="/100" accent />
-              <Stat label="Events / 24h" value={1284} />
+              <Stat label="Events / 24h" value={feedStats.count24h} />
               <Stat label="Sources" value={47} />
             </dl>
           </motion.div>
@@ -364,7 +478,7 @@ function Index() {
           desc="Fresh stories across geopolitics, rare earth, macro and crypto. Each card gets a stage, severity and confidence score so you can skim the day in a minute."
         />
         <div className="mt-12">
-          <LiveNewsFeed onPublish={publishLiveEvent} publishingId={publishing} />
+          <LiveNewsFeed onPublish={publishLiveEvent} publishingId={publishing} onStatsChange={setFeedStats} />
         </div>
 
         {txHash && (
@@ -392,11 +506,11 @@ function Index() {
           />
           <ol className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 md:grid-cols-3 lg:grid-cols-5">
             {[
-              ["01", "Ingest", "Firecrawl live search across 4 categories"],
+              ["01", "Ingest", "NewsAPI live search across 4 categories"],
               ["02", "Normalize", "Coerce raw ingestion shapes"],
               ["03", "Dedupe", "djb2 rolling window + URL hash"],
               ["04", "Prefilter", "Geo / commodity / macro / crypto keywords"],
-              ["05", "Classify", "Gemini via Lovable AI Gateway"],
+              ["05", "Classify", "Groq llama-3.3-70b-versatile"],
               ["06", "Score", "Severity + confidence + Risk Δ"],
               ["07", "Predict", "Falsifiable narrative w/ horizon"],
               ["08", "Reflect", "Self-grade vs onchain history"],
@@ -413,9 +527,6 @@ function Index() {
         </div>
       </section>
 
-      {/* Autonomous Oracle — self-learning agent */}
-      <AutonomousOracle />
-
       {/* Agent Arena — AI vs AI prediction market */}
       <section id="arena" className="mx-auto max-w-7xl px-6 py-24">
         <SectionHeader
@@ -423,6 +534,27 @@ function Index() {
           title="Two agents argue. One settles it on Arc."
           desc="A hawk and a dove take opposite sides of a market. The main agent reads the live news, picks a winner after 24 hours, and pays out in USDC."
         />
+
+        {/* Inline wallet prompt */}
+        {!address ? (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+            <span className="font-mono text-xs text-muted-foreground">
+              Connect wallet to participate in the Arena.
+            </span>
+            <Button size="sm" onClick={connect} className="gap-2">
+              <Wallet className="h-4 w-4" /> Connect wallet
+            </Button>
+          </div>
+        ) : !onArc ? (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3">
+            <span className="font-mono text-xs text-destructive">
+              Wrong network — staking settles on Arc Testnet.
+            </span>
+            <Button size="sm" variant="outline" onClick={() => void switchToArc()} className="gap-2">
+              <Zap className="h-3.5 w-3.5" /> Switch to Arc Testnet
+            </Button>
+          </div>
+        ) : null}
 
         <div className="mt-12 grid gap-4 md:grid-cols-2">
           {(Object.keys(AGENTS) as AgentSide[]).map((k) => {
@@ -454,10 +586,19 @@ function Index() {
         <div className="mt-10 space-y-4">
           {SAMPLE_MARKETS.map((m) => {
             const evt = SAMPLE_EVENTS.find((e) => e.id === m.eventId);
-            const total = m.pool.hawk + m.pool.dove;
-            const hawkPct = Math.round((m.pool.hawk / total) * 100);
+            const om = onchainMarkets[m.id];
+            const hawkUsd = om ? om.hawkTotalUsdc : m.pool.hawk;
+            const doveUsd = om ? om.doveTotalUsdc : m.pool.dove;
+            const total = hawkUsd + doveUsd;
+            const hawkPct = total > 0 ? Math.round((hawkUsd / total) * 100) : 50;
             const result = duels[m.id];
             const staked = stakeTx[m.id];
+            const mine = myStakes[m.id];
+            const winnerSide = om?.winner ?? null;
+            const myWinningWei = winnerSide && mine
+              ? (winnerSide === "HAWK" ? mine.hawkWei : mine.doveWei)
+              : 0n;
+            const canClaim = !!(om?.resolved && myWinningWei > 0n);
             return (
               <motion.article
                 key={m.id}
@@ -495,15 +636,46 @@ function Index() {
                   </Button>
                 </div>
 
+                {duelError && duelError.startsWith(`[${m.id}]`) && (
+                  <div className="mx-6 -mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {duelError.replace(`[${m.id}] `, "")}
+                  </div>
+                )}
+
                 {/* Pool split */}
                 <div className="px-6">
                   <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
-                    <span className="text-destructive">HAWK ${m.pool.hawk.toLocaleString()} USDC</span>
-                    <span className="text-primary">${m.pool.dove.toLocaleString()} USDC DOVE</span>
+                    <span className="text-destructive">
+                      HAWK {hawkUsd.toLocaleString(undefined, { maximumFractionDigits: 4 })} USDC
+                    </span>
+                    <span className="text-primary">
+                      {doveUsd.toLocaleString(undefined, { maximumFractionDigits: 4 })} USDC DOVE
+                    </span>
                   </div>
                   <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-muted">
                     <div className="h-full bg-destructive" style={{ width: `${hawkPct}%` }} />
                     <div className="h-full bg-primary" style={{ width: `${100 - hawkPct}%` }} />
+                  </div>
+                  <div className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+                    {om ? (
+                      <>
+                        live on-chain ·{" "}
+                        {om.resolved ? (
+                          <span className="text-primary">resolved · winner {om.winner}</span>
+                        ) : (
+                          <span>open</span>
+                        )}
+                        {mine && (mine.hawkWei > 0n || mine.doveWei > 0n) && (
+                          <>
+                            {" "}· your stake: {mine.hawkUsdc > 0 ? `${mine.hawkUsdc} HAWK` : ""}
+                            {mine.hawkUsdc > 0 && mine.doveUsdc > 0 ? " · " : ""}
+                            {mine.doveUsdc > 0 ? `${mine.doveUsdc} DOVE` : ""}
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="opacity-60">on-chain totals load when connected to Arc</span>
+                    )}
                   </div>
                 </div>
 
@@ -570,7 +742,7 @@ function Index() {
                           />
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
-                          Prediction window runs 24h. Main agent will pull live Firecrawl news + hybrid-score against hawk/dove positions and historical calibration, then declare a winner automatically.
+                          Prediction window runs 24h. Main agent will pull live NewsAPI headlines + hybrid-score against hawk/dove positions and historical calibration, then declare a winner automatically.
                         </p>
                       </div>
                     )}
@@ -586,14 +758,30 @@ function Index() {
 
                 {/* Stake actions */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 p-6">
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    gas + stake settled in USDC on Arc
-                  </span>
+                  <div className="flex flex-col gap-0.5 font-mono text-[11px] text-muted-foreground">
+                    <span>gas + stake settled in USDC on Arc</span>
+                    {address && onArc && (
+                      <span className="text-foreground/80">
+                        staking from {shortAddr(address)}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2">
+                    {canClaim && (
+                      <Button
+                        size="sm"
+                        onClick={() => void claimWinnings(m)}
+                        disabled={claiming === m.id}
+                        className="gap-1.5"
+                      >
+                        {claiming === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gavel className="h-4 w-4" />}
+                        {claiming === m.id ? "Claiming…" : "Claim Winnings"}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => stakeOnArc(m, "HAWK")}
+                      onClick={() => openStakeDialog(m, "HAWK")}
                       className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
                       Back HAWK
@@ -601,7 +789,7 @@ function Index() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => stakeOnArc(m, "DOVE")}
+                      onClick={() => openStakeDialog(m, "DOVE")}
                       className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
                     >
                       Back DOVE
@@ -620,6 +808,24 @@ function Index() {
                     >
                       {staked.hash.slice(0, 18)}…
                     </a>
+                  </div>
+                )}
+                {claimTx[m.id] && (
+                  <div className="border-t border-primary/30 bg-primary/5 px-6 py-3 font-mono text-xs">
+                    <span className="text-primary">✓ Claim submitted</span>{" "}
+                    <a
+                      href={`${activeNet.explorer}/tx/${claimTx[m.id]}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all text-muted-foreground hover:text-foreground"
+                    >
+                      {claimTx[m.id].slice(0, 18)}…
+                    </a>
+                  </div>
+                )}
+                {claimError && claimError.startsWith(`[${m.id}]`) && (
+                  <div className="border-t border-destructive/40 bg-destructive/10 px-6 py-3 text-xs text-destructive">
+                    {claimError.replace(`[${m.id}] `, "")}
                   </div>
                 )}
               </motion.article>
@@ -731,6 +937,74 @@ function Index() {
           <span className="font-mono">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>
         </div>
       </footer>
+
+      <Dialog open={pendingStake !== null} onOpenChange={(o) => { if (!o) setPendingStake(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Back {pendingStake?.side} — {pendingStake?.market.id}
+            </DialogTitle>
+            <DialogDescription>
+              Review the details below. Nothing is signed until you click Confirm Stake.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-3 text-xs">
+            <div className="font-mono font-medium text-primary">
+              Live on Arc Testnet
+            </div>
+            <p className="text-muted-foreground">
+              Confirming will send <strong>{stakeAmount || "0"} USDC</strong> as <code>msg.value</code> to the
+              AgentArena contract&apos;s <code>stake(marketId, side)</code> function. Funds are held in
+              the contract until the market resolves; winners can then claim their payout.
+            </p>
+            <div className="break-all font-mono text-[10px] text-muted-foreground">
+              contract: {AGENT_ARENA_ADDRESS}
+            </div>
+          </div>
+
+          <div className="space-y-2 font-mono text-xs">
+            <Row k="Market" v={pendingStake?.market.id ?? ""} mono />
+            <Row k="Side" v={pendingStake?.side ?? ""} mono />
+            <Row k="From" v={address ? shortAddr(address) : ""} mono />
+            <Row k="Network" v={activeNet.chainName} mono />
+            <Row k="Contract" v={`${AGENT_ARENA_ADDRESS.slice(0, 10)}…${AGENT_ARENA_ADDRESS.slice(-6)}`} mono />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="stake-amount" className="text-xs font-medium">
+              Stake amount (USDC)
+            </label>
+            <Input
+              id="stake-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              value={stakeAmount}
+              onChange={(e) => setStakeAmount(e.target.value)}
+              placeholder="10"
+              autoFocus
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Sent as msg.value to the AgentArena contract. USDC is the native gas token on Arc (18 decimals).
+            </p>
+          </div>
+
+          {stakeError && (
+            <p className="text-xs text-destructive">{stakeError}</p>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingStake(null)} disabled={stakeSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={() => void confirmStake()} disabled={stakeSubmitting} className="gap-2">
+              {stakeSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Confirm Stake
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
