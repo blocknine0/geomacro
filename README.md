@@ -8,17 +8,20 @@
 [![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
 [![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
 
+**[www.geomacro.live](https://www.geomacro.live)**
+
 </div>
 
 ---
 
-Geomacro watches the news, scores the risk and lets two AI agents argue about where things are headed. Real money sits behind it and everything settles onchain.
+Geomacro watches the news, scores the risk, and lets two AI agents argue about where things are headed. Real money sits behind it and everything settles onchain.
 
+> **Live site:** https://www.geomacro.live
 > **Contract:** `0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D`
 
 ## What this is
 
-Most "AI news" tools just summarize headlines and stop there. I wanted something that actually *does* something with the read. So Geomacro pulls live geopolitical, macro, rare-earth and crypto news, scores each story for severity and confidence and once something crosses a threshold it opens a market automatically. No human has to notice the news and decide to act on it. The pipeline handles that part.
+Most "AI news" tools just summarize headlines and stop there. I wanted something that actually *does* something with the read. So Geomacro pulls live geopolitical, macro, rare-earth, and crypto news, scores each story for severity and confidence and once something crosses a threshold it opens a market automatically. No human has to notice the news and decide to act on it. The pipeline handles that part.
 
 From there, two agents take opposite sides:
 
@@ -29,7 +32,7 @@ From there, two agents take opposite sides:
 
 Anyone can stake real USDC on Arc Testnet behind whichever side they think is right. When the outcome's clear, the market resolves and winners claim their payout straight from the contract.
 
-**Nothing here is a mockup.** The contract is deployed and verified. The ingest pipeline runs on a public schedule you can go check right now. The whole stake, resolve and claim loop has been tested onchain with real transactions.
+**Nothing here is a mockup.** The contract is deployed and verified. The ingest pipeline runs on a public schedule you can go check right now. The whole stake, resolve, and claim loop has been tested onchain with real transactions.
 
 ## How it fits together
 
@@ -48,7 +51,7 @@ A few notes on each piece:
 
 🔍 **Ingestion.** NewsAPI pulls fresh articles across four categories on a loop. Nothing fancy, just polling.
 
-🧠 **Classification.** Groq scores each article for severity, confidence and relevance. This part took a few iterations to get right. Early on it was letting through celebrity gossip and exam results tagged as "macro," so there's now a fairly strict relevance gate before anything reaches the feed.
+🧠 **Classification.** Groq scores each article for severity, confidence, and relevance. This part took a few iterations to get right. Early on it was letting through celebrity gossip and exam results tagged as "macro," so there's now a fairly strict relevance gate before anything reaches the feed.
 
 🗄️ **Storage.** Supabase holds the event log. The frontend reads straight from it.
 
