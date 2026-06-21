@@ -4,7 +4,7 @@
 
 ### Onchain geopolitical risk intelligence, settled in USDC, on Arc.
 
-[![Live App](https://img.shields.io/badge/Live-geomacrooracle.lovable.app-FF6B00?style=for-the-badge)](https://geomacrooracle.lovable.app)
+[![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
 [![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
 [![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
 
@@ -37,7 +37,7 @@ Anyone can stake real USDC on Arc Testnet behind whichever side they think is ri
 NewsAPI  →  Groq (llama-3.3-70b)  →  Supabase  →  Live Feed
                                           │
                                           ▼
-                          GitHub Actions, every 30 min
+                          GitHub Actions, every ~2 hours
                                           │
                                           ▼
                         AgentArena.sol on Arc Testnet
@@ -52,7 +52,7 @@ A few notes on each piece:
 
 🗄️ **Storage.** Supabase holds the event log. The frontend reads straight from it.
 
-⚙️ **Market automation.** A scheduled GitHub Action checks for high-severity events that don't have a market yet and opens one on Arc directly. No manual step. You can see the actual run logs in the [Actions tab](../../actions) of this repo.
+⚙️ **Market automation.** A scheduled GitHub Action checks for high-severity events that don't have a market yet and opens one on Arc directly. No manual step. It's set to run every 2 hours. GitHub doesn't guarantee exact timing on scheduled workflows, so actual runs can drift, but they're consistently landing within that window. You can see the actual run logs in the [Actions tab](../../actions) of this repo.
 
 💰 **Settlement.** `AgentArena.sol` holds staked USDC until a market resolves, then pays out proportionally to whoever backed the winning side.
 
@@ -78,7 +78,7 @@ src/                          Frontend. Live Feed, Agent Arena, wallet connectio
 scripts/create-markets.js     Checks Supabase for new high-severity events,
                                opens markets onchain automatically
 .github/workflows/
-  auto-create-markets.yml     Runs the script above every 30 minutes
+  auto-create-markets.yml     Runs the script above on a schedule (~every 2 hours)
 ```
 
 ## Running it locally
@@ -101,6 +101,7 @@ You'll need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. See 
 - [ ] Decentralized / dispute-based resolution instead of owner-attested
 - [ ] Mainnet deployment
 - [ ] Public track record. How often does Hawk vs. Dove actually call it right?
+- [ ] Full iPhone wallet support via WalletConnect for external browsers (Safari/Chrome). Wallet connection currently works through desktop browser extensions and in-app mobile wallet browsers (MetaMask Mobile, Rabby Mobile). Connecting from a regular iPhone Safari tab via WalletConnect QR is planned but not yet stable.
 
 ## Why Arc
 
