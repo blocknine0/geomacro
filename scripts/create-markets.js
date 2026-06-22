@@ -4,15 +4,12 @@
 // Runs on a schedule via GitHub Actions (see .github/workflows/auto-create-markets.yml).
 //
 // What it does:
-// 1. Reads recent high-severity events from Supabase (the same `events` table
-//    the Live Feed uses).
-// 2. For each event that doesn't already have a market, calls createMarket()
-//    on the AgentArena contract using the owner wallet.
-// 3. Stores the resolution threshold for that market (market_threshold) so
-//    the separate resolve-markets.js script can later determine a winner
-//    using the exact same number this script used, no guessing.
-// 4. Keeps a simple marker in Supabase (market_created) so the same event
-//    never gets a duplicate market.
+// 1. Reads all relevant events from Supabase that don't have a market yet.
+// 2. For each event, calls createMarket() on the AgentArena contract.
+// 3. Stores market_threshold and resolution_at in Supabase so both the
+//    frontend countdown and resolve-markets.js use the exact same values.
+//    This is the single source of truth for resolution timing.
+// 4. Keeps market_created = true so the same event never gets a duplicate market.
 //
 // Required environment variables (set as GitHub Secrets):
 //   OWNER_PRIVATE_KEY      - the wallet that deployed AgentArena (owner)
@@ -24,9 +21,10 @@ import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
 const CONTRACT_ADDRESS = "0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D";
-const SEVERITY_THRESHOLD = 50; // only create markets for meaningfully important events
+const SEVERITY_THRESHOLD = 0; // all relevant events get a market, severity is not a gate
 const MAX_NEW_MARKETS_PER_RUN = 10; // safety cap so one run can't spam many markets
 const THRESHOLD_STEP = 5; // market question is "escalate past severity (event.severity + THRESHOLD_STEP)"
+const RESOLUTION_HOURS = 48; // markets resolve 48 hours after creation
 
 const CONTRACT_ABI = [
   "function createMarket(string marketId) external",
@@ -56,11 +54,10 @@ async function main() {
   const balance = await provider.getBalance(wallet.address);
   console.log(`Wallet balance: ${ethers.formatUnits(balance, 18)} USDC`);
 
-  // 1. Fetch recent high-severity events that don't have a market yet.
+  // Fetch all relevant events that don't have a market yet.
   const { data: events, error } = await supabase
     .from("events")
     .select("id, source_title, category, severity, created_at, market_created")
-    .gte("severity", SEVERITY_THRESHOLD)
     .or("market_created.is.null,market_created.eq.false")
     .order("created_at", { ascending: false })
     .limit(MAX_NEW_MARKETS_PER_RUN);
@@ -70,7 +67,7 @@ async function main() {
   }
 
   if (!events || events.length === 0) {
-    console.log("No new high-severity events without a market. Nothing to do.");
+    console.log("No new events without a market. Nothing to do.");
     return;
   }
 
@@ -79,8 +76,13 @@ async function main() {
   for (const event of events) {
     const marketId = `mkt_${event.id}`;
     const marketThreshold = event.severity + THRESHOLD_STEP;
-    const resolutionAt = new Date(new Date(event.created_at).getTime() + 48 * 60 * 60 * 1000).toISOString();
-    
+
+    // resolution_at is the single source of truth for when this market resolves.
+    // Both the frontend countdown and resolve-markets.js read this same value.
+    const resolutionAt = new Date(
+      new Date(event.created_at).getTime() + RESOLUTION_HOURS * 60 * 60 * 1000
+    ).toISOString();
+
     try {
       // Check on-chain if this market already exists (belt-and-suspenders,
       // in case the Supabase marker got out of sync).
@@ -88,29 +90,37 @@ async function main() {
       if (existing.exists) {
         console.log(`Market ${marketId} already exists on-chain. Marking as created and skipping.`);
         await supabase
-  .from("events")
-  .update({ market_created: true, market_threshold: marketThreshold, resolution_at: resolutionAt })
-  .eq("id", event.id);
+          .from("events")
+          .update({
+            market_created: true,
+            market_threshold: marketThreshold,
+            resolution_at: resolutionAt,
+          })
+          .eq("id", event.id);
         continue;
       }
 
       console.log(
-        `Creating market ${marketId} for "${event.source_title}" (severity ${event.severity}, threshold ${marketThreshold})...`
+        `Creating market ${marketId} for "${event.source_title}" (severity ${event.severity}, threshold ${marketThreshold}, resolves at ${resolutionAt})...`
       );
       const tx = await contract.createMarket(marketId);
       console.log(`  tx sent: ${tx.hash}`);
       const receipt = await tx.wait();
       console.log(`  confirmed in block ${receipt.blockNumber}`);
 
-      // Mark this event as having a market, and store the exact threshold
-      // used so resolve-markets.js can read it back later without guessing.
+      // Store market_threshold and resolution_at so frontend and backend
+      // both use the exact same values — no independent recalculation.
       const { error: updateError } = await supabase
-  .from("events")
-  .update({ market_created: true, market_threshold: marketThreshold, resolution_at: resolutionAt })
-  .eq("id", event.id);
+        .from("events")
+        .update({
+          market_created: true,
+          market_threshold: marketThreshold,
+          resolution_at: resolutionAt,
+        })
+        .eq("id", event.id);
 
       if (updateError) {
-        console.warn(`  Warning: failed to mark event ${event.id} as market_created: ${updateError.message}`);
+        console.warn(`  Warning: failed to update event ${event.id}: ${updateError.message}`);
       }
     } catch (err) {
       console.error(`Failed to create market for event ${event.id}: ${err.message}`);
