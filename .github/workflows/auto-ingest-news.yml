@@ -1,0 +1,33 @@
+name: Auto-ingest news
+
+# Runs every 2 hours, 1 hour before the market-creation workflow,
+# so fresh events are in Supabase by the time create-markets.js runs.
+# Can also be triggered manually from the Actions tab.
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ingest-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js
+
+      - name: Run news ingestion script
+        env:
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+        run: node scripts/ingest-news.js
+        
