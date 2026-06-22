@@ -79,7 +79,8 @@ async function main() {
   for (const event of events) {
     const marketId = `mkt_${event.id}`;
     const marketThreshold = event.severity + THRESHOLD_STEP;
-
+    const resolutionAt = new Date(new Date(event.created_at).getTime() + 48 * 60 * 60 * 1000).toISOString();
+    
     try {
       // Check on-chain if this market already exists (belt-and-suspenders,
       // in case the Supabase marker got out of sync).
@@ -87,9 +88,9 @@ async function main() {
       if (existing.exists) {
         console.log(`Market ${marketId} already exists on-chain. Marking as created and skipping.`);
         await supabase
-          .from("events")
-          .update({ market_created: true, market_threshold: marketThreshold })
-          .eq("id", event.id);
+  .from("events")
+  .update({ market_created: true, market_threshold: marketThreshold, resolution_at: resolutionAt })
+  .eq("id", event.id);
         continue;
       }
 
@@ -104,9 +105,9 @@ async function main() {
       // Mark this event as having a market, and store the exact threshold
       // used so resolve-markets.js can read it back later without guessing.
       const { error: updateError } = await supabase
-        .from("events")
-        .update({ market_created: true, market_threshold: marketThreshold })
-        .eq("id", event.id);
+  .from("events")
+  .update({ market_created: true, market_threshold: marketThreshold, resolution_at: resolutionAt })
+  .eq("id", event.id);
 
       if (updateError) {
         console.warn(`  Warning: failed to mark event ${event.id} as market_created: ${updateError.message}`);
