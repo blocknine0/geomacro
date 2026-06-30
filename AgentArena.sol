@@ -1,16 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * AgentArena (Upgraded & Memory Optimized)
+ * -----------------------------------------
+ * Features:
+ * 1. Anti-MEV / Front-running window locks (46h Staking / 48h Total Window).
+ * 2. Optimistic AI Resolution + 24h Public Stake-Backed Dispute Window.
+ * 3. 1.5% Protocol revenue fee routed to the treasury wallet.
+ * 4. Anti-spam DAO voting mechanics with 50 USDC dispute fee.
+ * 5. EVM 'Stack too deep' fixed by utilizing private mapping & custom view functions.
+ */
 contract AgentArena {
     address public owner;
     address public treasury; 
 
-    uint256 public constant DISPUTE_FEE = 50 * 10**6;            
-    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        
-    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  
-    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          
-    uint256 public constant PROTOCOL_FEE_BPS = 150;              
-    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    
+    uint256 public constant DISPUTE_FEE = 50 * 10**6;            // ৫০ USDC
+    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        // ২৪ ঘণ্টা
+    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  // ৫০০ USDC
+    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          // ৫ USDC
+    uint256 public constant PROTOCOL_FEE_BPS = 150;              // ১.৫% (150 BPS)
+    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    // ৩০%
 
     enum Side { NONE, HAWK, DOVE }
     enum Status { OPEN, LOCKED, AI_RESOLVED, DISPUTED, FINALIZED }
@@ -56,7 +66,7 @@ contract AgentArena {
         treasury = _treasury;
     }
 
-    // আপনার স্ক্রিপ্টের belt-and-suspenders চেকের জন্য কাস্টম লাইটওয়েট ভিউ ফাংশন
+    // scripts/create-markets.js এর belt-and-suspenders চেকের জন্য কাস্টম লাইটওয়েট ভিউ ফাংশন
     function getMarket(string calldata marketId) external view returns (
         uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists
     ) {
@@ -64,7 +74,7 @@ contract AgentArena {
         return (uint8(m.status), m.hawkTotal, m.doveTotal, m.exists);
     }
 
-    // রেজোলিউশন স্ক্রিপ্টের (resolve/finalize) জন্য ফুল ডেটা ভিউ ফাংশন
+    // scripts/resolve-markets.js এবং finalize-markets.js এর জন্য ফুল ডেটা ভিউ ফাংশন
     function getMarketFullDetails(string calldata marketId) external view returns (
         uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, 
         uint256 resolutionTime, uint256 aiResolutionTime, address disputer
@@ -130,10 +140,13 @@ contract AgentArena {
             m.status = Status.FINALIZED;
 
             if (m.winner != m.tentativeWinner) {
-                payable(m.disputer).transfer(DISPUTE_FEE);
+                // .transfer() বদলে নিরাপদ .call() ব্যবহার করা হয়েছে (Warning Fixed)
+                (bool sentDisputer, ) = payable(m.disputer).call{value: DISPUTE_FEE}("");
+                require(sentDisputer, "Disputer refund failed");
             } else {
                 uint256 treasuryShare = (DISPUTE_FEE * TREASURY_DISPUTE_SHARE_BPS) / 10000;
-                payable(treasury).transfer(treasuryShare);
+                (bool sentTreasury, ) = treasury.call{value: treasuryShare}("");
+                require(sentTreasury, "Treasury share transfer failed");
             }
             emit Finalized(marketId, m.winner);
         }
