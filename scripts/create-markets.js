@@ -3,7 +3,8 @@ import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
 // toLowerCase() করে ethers.getAddress() এ দিলে ethers নিজেই নিখুঁত Checksum জেনারেট করে নেয়
-const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D";
+// ওল্ড অ্যাড্রেসটি কেটে সরাসরি নতুন লাইভ অ্যাড্রেস বসিয়ে দিন
+const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase()); 
 
 const MAX_NEW_MARKETS_PER_RUN = 10; 
