@@ -28,6 +28,11 @@ const GROQ_MAX_RETRIES = 4;
 const GROQ_BASE_DELAY_MS = 8000;  // 8s base — Groq free tier resets every 60s
 const GROQ_BACKOFF_FACTOR = 2;    // 8s → 16s → 32s → 64s
 
+// RPC chunking config — kept conservative to stay under QuickNode's 100 req/s limit
+const BLOCK_CHUNK_SIZE = 5000;        // was 10000; smaller = fewer calls per chunk
+const INTER_CHUNK_DELAY_MS = 1000;    // was 200ms; 1s breathing room between chunks
+const INTER_MARKET_RPC_DELAY_MS = 300; // delay after each contract.markets() call
+
 const CONTRACT_ABI = [
   "event MarketCreated(string marketId)",
   "function markets(string) view returns (string marketId, uint8 status, uint8 winner, uint256 hawkTotal, uint256 doveTotal, bool exists)",
@@ -36,27 +41,41 @@ const CONTRACT_ABI = [
 
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
 
-// ── RPC helper with retry ─────────────────────────────────────────────────────
-async function queryFilterWithRetry(contract, filter, fromBlock, toBlock, retries = 4) {
+// ── RPC helpers with retry ────────────────────────────────────────────────────
+function isRpcRateLimit(err) {
+  return (
+    err?.error?.code === -32007 ||
+    (err?.code === "UNKNOWN_ERROR" && err?.error?.code === -32007) ||
+    err?.message?.includes("rate limit") ||
+    err?.message?.includes("100/second")
+  );
+}
+
+async function rpcWithRetry(fn, label = "RPC call", retries = 5) {
   let delay = 3000;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      return await contract.queryFilter(filter, fromBlock, toBlock);
+      return await fn();
     } catch (err) {
-      const isRateLimit =
-        err?.error?.code === -32007 ||
-        err?.message?.includes("rate limit") ||
-        err?.message?.includes("100/second");
-      if (isRateLimit && attempt < retries) {
-        console.warn(`  RPC rate limit hit. Waiting ${delay / 1000}s before retry ${attempt}/${retries}...`);
+      if (isRpcRateLimit(err) && attempt < retries) {
+        console.warn(`  ${label}: RPC rate limit hit. Waiting ${delay / 1000}s before retry ${attempt}/${retries}...`);
         await new Promise((r) => setTimeout(r, delay));
-        delay *= 2;
+        delay = Math.min(delay * 2, 30000);
         continue;
       }
       throw err;
     }
   }
 }
+
+async function queryFilterWithRetry(contract, filter, fromBlock, toBlock, retries = 5) {
+  return rpcWithRetry(
+    () => contract.queryFilter(filter, fromBlock, toBlock),
+    `queryFilter(${fromBlock}-${toBlock})`,
+    retries
+  );
+}
+
 async function groqWithRetry(payload, groqKey, label = "") {
   let delay = GROQ_BASE_DELAY_MS;
 
@@ -301,19 +320,25 @@ async function main() {
   console.log(`Using wallet: ${wallet.address}`);
 
   const deployBlock = 47800000;
-  const latestBlock = await provider.getBlockNumber();
+  const latestBlock = await rpcWithRetry(
+    () => provider.getBlockNumber(),
+    "getBlockNumber"
+  );
   const filter = contract.filters.MarketCreated();
 
   const marketIds = [];
   let fromBlock = deployBlock;
-  const CHUNK = 10000;
+  let chunkCount = 0;
   while (fromBlock <= latestBlock) {
-    const toBlock = Math.min(fromBlock + CHUNK - 1, latestBlock);
+    const toBlock = Math.min(fromBlock + BLOCK_CHUNK_SIZE - 1, latestBlock);
     const events = await queryFilterWithRetry(contract, filter, fromBlock, toBlock);
     for (const e of events) marketIds.push(e.args.marketId);
     fromBlock = toBlock + 1;
-    // Small delay between chunks to avoid RPC rate limits
-    await new Promise((r) => setTimeout(r, 200));
+    chunkCount++;
+    if (chunkCount % 10 === 0) {
+      console.log(`  Scanned up to block ${toBlock} (${marketIds.length} markets found so far)...`);
+    }
+    await new Promise((r) => setTimeout(r, INTER_CHUNK_DELAY_MS));
   }
 
   console.log(`Found ${marketIds.length} total market(s) ever created.`);
@@ -328,7 +353,13 @@ async function main() {
       break;
     }
 
-    const market = await contract.markets(marketId);
+    const market = await rpcWithRetry(
+      () => contract.markets(marketId),
+      `markets(${marketId})`
+    );
+    // Small delay after each RPC read to avoid bursting
+    await new Promise((r) => setTimeout(r, INTER_MARKET_RPC_DELAY_MS));
+
     if (Number(market.status) !== 0) continue;
 
     const eventId = marketId.startsWith("mkt_") ? marketId.slice(4) : null;
