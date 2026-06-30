@@ -28,10 +28,8 @@ const GROQ_MAX_RETRIES = 4;
 const GROQ_BASE_DELAY_MS = 8000;  // 8s base — Groq free tier resets every 60s
 const GROQ_BACKOFF_FACTOR = 2;    // 8s → 16s → 32s → 64s
 
-// RPC chunking config — kept conservative to stay under QuickNode's 100 req/s limit
-const BLOCK_CHUNK_SIZE = 5000;         // smaller = fewer calls per chunk
-const INTER_CHUNK_DELAY_MS = 1000;     // 1s breathing room between chunks
-const INTER_MARKET_RPC_DELAY_MS = 300; // delay after each contract.markets() call
+// Small delay after each contract.markets() RPC call to avoid bursting
+const INTER_MARKET_RPC_DELAY_MS = 300;
 
 // Trusted news domains for geopolitical/financial events (NewsAPI `domains` filter)
 const TRUSTED_DOMAINS = [
@@ -117,14 +115,6 @@ async function rpcWithRetry(fn, label = "RPC call", retries = 5) {
       throw err;
     }
   }
-}
-
-async function queryFilterWithRetry(contract, filter, fromBlock, toBlock, retries = 5) {
-  return rpcWithRetry(
-    () => contract.queryFilter(filter, fromBlock, toBlock),
-    `queryFilter(${fromBlock}-${toBlock})`,
-    retries
-  );
 }
 
 async function groqWithRetry(payload, groqKey, label = "") {
@@ -458,33 +448,45 @@ async function main() {
 
   console.log(`Using wallet: ${wallet.address}`);
 
-  const deployBlock = 47800000;
-  const latestBlock = await rpcWithRetry(
-    () => provider.getBlockNumber(),
-    "getBlockNumber"
-  );
-  const filter = contract.filters.MarketCreated();
+  // ── Step 1: Fetch due events directly from Supabase (no blockchain scan needed)
+  // This avoids 300+ RPC calls just to find which markets are pending.
+  // We query events whose resolution window has passed and that have a market_id.
+  const now = new Date().toISOString();
 
-  const marketIds = [];
-  let fromBlock = deployBlock;
-  let chunkCount = 0;
-  while (fromBlock <= latestBlock) {
-    const toBlock = Math.min(fromBlock + BLOCK_CHUNK_SIZE - 1, latestBlock);
-    const events = await queryFilterWithRetry(contract, filter, fromBlock, toBlock);
-    for (const e of events) marketIds.push(e.args.marketId);
-    fromBlock = toBlock + 1;
-    chunkCount++;
-    if (chunkCount % 10 === 0) {
-      console.log(`  Scanned up to block ${toBlock} (${marketIds.length} markets found so far)...`);
-    }
-    await new Promise((r) => setTimeout(r, INTER_CHUNK_DELAY_MS));
+  // Case A: events with explicit resolution_at timestamp that has passed
+  const { data: explicitDue, error: err1 } = await supabase
+    .from("events")
+    .select("id, severity, created_at, source_title, category, market_threshold, resolution_at")
+    .not("resolution_at", "is", null)
+    .lte("resolution_at", now)
+    .order("resolution_at", { ascending: true });
+
+  if (err1) throw new Error(`Supabase query failed: ${err1.message}`);
+
+  // Case B: events without resolution_at but created >= MIN_RESOLUTION_HOURS ago
+  const cutoff = new Date(Date.now() - MIN_RESOLUTION_HOURS * 60 * 60 * 1000).toISOString();
+  const { data: implicitDue, error: err2 } = await supabase
+    .from("events")
+    .select("id, severity, created_at, source_title, category, market_threshold, resolution_at")
+    .is("resolution_at", null)
+    .lte("created_at", cutoff)
+    .order("created_at", { ascending: true });
+
+  if (err2) throw new Error(`Supabase query failed: ${err2.message}`);
+
+  const dueEvents = [...(explicitDue || []), ...(implicitDue || [])];
+  console.log(`Found ${dueEvents.length} event(s) past resolution time.`);
+
+  if (dueEvents.length === 0) {
+    console.log("No markets ready to resolve. Done.");
+    return;
   }
 
-  console.log(`Found ${marketIds.length} total market(s) ever created.`);
-
+  // ── Step 2: For each due event, check on-chain status (only the candidates)
   let resolvedCount = 0;
+  let skippedAlready = 0;
 
-  for (const marketId of marketIds) {
+  for (const event of dueEvents) {
     if (resolvedCount >= MAX_RESOLUTIONS_PER_RUN) {
       console.log(
         `Reached max resolutions per run (${MAX_RESOLUTIONS_PER_RUN}). Remaining markets will resolve next run.`
@@ -492,39 +494,23 @@ async function main() {
       break;
     }
 
+    const marketId = `mkt_${event.id}`;
+
+    // Check on-chain status — only for events we actually intend to resolve
     const market = await rpcWithRetry(
       () => contract.markets(marketId),
       `markets(${marketId})`
     );
     await new Promise((r) => setTimeout(r, INTER_MARKET_RPC_DELAY_MS));
 
-    if (Number(market.status) !== 0) continue;
-
-    const eventId = marketId.startsWith("mkt_") ? marketId.slice(4) : null;
-    if (!eventId) {
-      console.log(`Skipping ${marketId}: not a Supabase-linked market.`);
+    if (!market.exists) {
+      console.log(`Skipping ${marketId}: no on-chain market found.`);
       continue;
     }
 
-    const { data: event, error } = await supabase
-      .from("events")
-      .select("id, severity, created_at, source_title, category, market_threshold, resolution_at")
-      .eq("id", eventId)
-      .single();
-
-    if (error || !event) {
-      console.log(`Skipping ${marketId}: no matching Supabase event.`);
-      continue;
-    }
-
-    const resolutionAt = event.resolution_at
-      ? new Date(event.resolution_at)
-      : new Date(new Date(event.created_at).getTime() + MIN_RESOLUTION_HOURS * 60 * 60 * 1000);
-
-    if (Date.now() < resolutionAt.getTime()) {
-      const hoursLeft = (resolutionAt.getTime() - Date.now()) / (1000 * 60 * 60);
-      console.log(`Skipping ${marketId}: resolves in ${hoursLeft.toFixed(1)}h.`);
-      continue;
+    if (Number(market.status) !== 0) {
+      skippedAlready++;
+      continue; // already resolved on-chain, silent skip
     }
 
     const threshold = event.market_threshold ?? (event.severity + 5);
@@ -565,6 +551,9 @@ async function main() {
     }
   }
 
+  if (skippedAlready > 0) {
+    console.log(`Skipped ${skippedAlready} market(s) already resolved on-chain.`);
+  }
   console.log(`\nDone. Resolved ${resolvedCount} market(s) this run.`);
 }
 
