@@ -2,9 +2,9 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-// EIP-55 Checksum ফরম্যাট নিশ্চিত করার জন্য ethers.getAddress ব্যবহার
+// toLowerCase() করে ethers.getAddress() এ দিলে ethers নিজেই নিখুঁত Checksum জেনারেট করে নেয়
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D";
-const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS); 
+const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase()); 
 
 const MAX_NEW_MARKETS_PER_RUN = 10; 
 const THRESHOLD_STEP = 5; 
@@ -24,7 +24,6 @@ async function main() {
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
   const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
   
-  // নেটওয়ার্ক যাচাইয়ের জন্য লগ
   const network = await provider.getNetwork();
   console.log(`Connected to Chain ID: ${network.chainId.toString()}`);
   console.log(`Using contract address: ${CONTRACT_ADDRESS}`);
@@ -32,10 +31,10 @@ async function main() {
   const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, provider);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
 
-  // চেইনে কন্ট্রাক্টের বাইটকোড চেক
+  // চেইনে বাইটকোড ভ্যালিডেশন চেক (value="0x" এরর এড়াতে)
   const code = await provider.getCode(CONTRACT_ADDRESS);
   if (code === "0x" || code === "0x00") {
-    console.error("❌ ERROR: No contract bytecode found at this address on this network! Check ARC_RPC_URL or deployment.");
+    console.error("❌ ERROR: No contract bytecode found! Check RPC URL or contract address in GitHub Secrets.");
     process.exit(1);
   }
 
@@ -60,8 +59,7 @@ async function main() {
         const existing = await contract.getMarket(marketId);
         marketExists = existing.exists;
       } catch (decodeErr) {
-        // যদি চেইন নোড রিড করতে সাময়িক সমস্যা করে, তবে সেটিকে false ধরে নতুন মার্কেট ক্রিয়েট করতে পুশ করবে
-        console.log(`On-chain view query skipped or empty for ${marketId}. Proceeding with fresh creation request.`);
+        console.log(`On-chain view empty for ${marketId}. Proceeding with fresh creation request.`);
       }
 
       if (marketExists) {
