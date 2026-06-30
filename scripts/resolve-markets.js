@@ -191,19 +191,38 @@ async function fetchFromNewsAPI(event, newsApiKey, from) {
     return isArticleRelevant(text, event.source_title);
   });
 
-  // If trusted-domain search returned nothing relevant, retry without domain filter
+  // If trusted-domain search returned nothing relevant, do two fallback attempts:
+  // 1. Same query, no domain filter
+  // 2. Shorter (3-word) query, no domain filter, sorted by relevance
   if (relevant.length === 0 && articles.length === 0) {
     console.warn(`  NewsAPI: no results on trusted domains, retrying without domain filter...`);
     const url2 = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=10&language=en&apiKey=${newsApiKey}`;
     const res2 = await fetch(url2);
     if (res2.ok) {
       const data2 = await res2.json();
-      const all = (data2.articles || []);
-      const rel2 = all.filter((a) => {
+      const all2 = (data2.articles || []);
+      const rel2 = all2.filter((a) => {
         const text = `${a.title || ""} ${a.description || ""}`;
         return isArticleRelevant(text, event.source_title);
       });
       if (rel2.length > 0) return rel2.slice(0, 5);
+
+      // Last resort: 3-word broad query, sorted by relevance, no date filter
+      const shortQuery = query.split(" ").slice(0, 3).join(" ");
+      if (shortQuery !== query) {
+        console.warn(`  NewsAPI: retrying with shorter query "${shortQuery}" (no date filter)...`);
+        const url3 = `https://newsapi.org/v2/everything?q=${encodeURIComponent(shortQuery)}&sortBy=relevancy&pageSize=10&language=en&apiKey=${newsApiKey}`;
+        const res3 = await fetch(url3);
+        if (res3.ok) {
+          const data3 = await res3.json();
+          const all3 = (data3.articles || []);
+          const rel3 = all3.filter((a) => {
+            const text = `${a.title || ""} ${a.description || ""}`;
+            return isArticleRelevant(text, event.source_title, 1); // looser: 1 keyword match
+          });
+          if (rel3.length > 0) return rel3.slice(0, 5);
+        }
+      }
     }
     return null; // nothing useful
   }
@@ -237,6 +256,18 @@ async function fetchFromGuardian(event, guardianApiKey, fromDate) {
   });
 
   if (relevant.length === 0) {
+    // Fallback: shorter 3-word query, looser relevance (1 keyword match)
+    const shortQuery = query.split(" ").slice(0, 3).join(" ");
+    if (shortQuery !== query && articles.length > 0) {
+      const loose = articles.filter((a) => {
+        const text = `${a.webTitle || ""} ${a.fields?.trailText || ""}`;
+        return isArticleRelevant(text, event.source_title, 1);
+      });
+      if (loose.length > 0) {
+        console.warn(`  Guardian: using looser relevance match (${loose.length} articles).`);
+        return loose.slice(0, 5);
+      }
+    }
     console.warn(`  Guardian: ${articles.length} articles returned but none are relevant to this event.`);
     return null;
   }
@@ -246,8 +277,12 @@ async function fetchFromGuardian(event, guardianApiKey, fromDate) {
 
 // ── Combined news context fetch ───────────────────────────────────────────────
 async function fetchLatestNewsContext(event, newsApiKey, guardianApiKey) {
-  // Search from 24h before the event was created up to now
-  const fromTs = new Date(event.created_at).getTime() - 24 * 60 * 60 * 1000;
+  // Search from 24h before the event was created — but clamp to last 7 days max.
+  // NewsAPI free tier only covers ~30 days, and older events need *recent* news
+  // about whether the situation escalated, not just coverage from when it started.
+  const eventTs = new Date(event.created_at).getTime();
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const fromTs = Math.max(eventTs - 24 * 60 * 60 * 1000, sevenDaysAgo);
   const fromISO = new Date(fromTs).toISOString();
   const fromDate = fromISO.split("T")[0];
 
