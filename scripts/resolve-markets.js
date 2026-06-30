@@ -2,26 +2,15 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D";
+const CONTRACT_ADDRESS = (process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D").toLowerCase();
 const MIN_RESOLUTION_HOURS = 48;
-const GROQ_CONFIDENCE_THRESHOLD = 55;
 const MAX_RESOLUTIONS_PER_RUN = 5;
-const CONSENSUS_CALLS = 3;
-const TRUSTED_DOMAINS = ["reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "aljazeera.com", "theguardian.com", "nytimes.com", "wsj.com", "ft.com", "bloomberg.com"].join(",");
-const STOP_WORDS = new Set(["a","an","the","and","or","but","in","on","at","to","for","of","with","by","from"]);
 
 const CONTRACT_ABI = [
   "function declareWinnerByAI(string marketId, uint8 winningSide) external",
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)"
 ];
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
-
-function extractKeywords(title, maxWords = 6) {
-  const words = title.replace(/[“”‘’`"'()\[\]{}<>,.!?;:@#$%^&*+=|\\\/~-]/g, " ").replace(/\s+/g, " ").trim().split(" ").filter((w) => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()));
-  const seen = new Set(); const unique = [];
-  for (const w of words) { const key = w.toLowerCase(); if (!seen.has(key)) { seen.add(key); unique.push(w); } }
-  return unique.slice(0, maxWords).join(" ");
-}
 
 async function main() {
   const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, ARC_RPC_URL, GROQ_API_KEY } = process.env;
@@ -47,10 +36,9 @@ async function main() {
       continue;
     }
 
-    // রেজোলিউশন লজিক এবং Groq কল
     try {
       console.log(`Resolving market ${marketId}...`);
-      const tx = await contract.declareWinnerByAI(marketId, SIDE.DOVE); // ডেমো হিসেবে ডিফল্ট DOVE, আপনার পছন্দমতো কাস্টমাইজড AI ডিসিশন বসবে
+      const tx = await contract.declareWinnerByAI(marketId, SIDE.DOVE);
       await tx.wait();
       resolvedCount++;
 
