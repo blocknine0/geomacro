@@ -1,34 +1,22 @@
 // scripts/create-markets.js
 //
-// Automation script for Geomacro Agent Arena.
-// Runs on a schedule via GitHub Actions (see .github/workflows/auto-create-markets.yml).
-//
-// What it does:
-// 1. Reads all relevant events from Supabase that don't have a market yet.
-// 2. For each event, calls createMarket() on the AgentArena contract.
-// 3. Stores market_threshold and resolution_at in Supabase so both the
-//    frontend countdown and resolve-markets.js use the exact same values.
-//    This is the single source of truth for resolution timing.
-// 4. Keeps market_created = true so the same event never gets a duplicate market.
-//
-// Required environment variables (set as GitHub Secrets):
-//   OWNER_PRIVATE_KEY      - the wallet that deployed AgentArena (owner)
-//   APP_SUPABASE_URL       - Supabase project URL
-//   APP_SUPABASE_ANON_KEY  - Supabase anon key
-//   ARC_RPC_URL            - Arc Testnet RPC endpoint
+// Upgraded automation script for Geomacro Agent Arena (DAO & Anti-MEV Enabled).
+// Runs on a schedule via GitHub Actions.
 
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
 const CONTRACT_ADDRESS = "0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D";
-const SEVERITY_THRESHOLD = 0; // all relevant events get a market, severity is not a gate
-const MAX_NEW_MARKETS_PER_RUN = 10; // safety cap so one run can't spam many markets
-const THRESHOLD_STEP = 5; // market question is "escalate past severity (event.severity + THRESHOLD_STEP)"
-const RESOLUTION_HOURS = 48; // markets resolve 48 hours after creation
+const MAX_NEW_MARKETS_PER_RUN = 10; 
+const THRESHOLD_STEP = 5; 
+
+// ৪৬ ঘণ্টা স্ট্যাকিং উইন্ডো এবং ৪৮ ঘণ্টা টোটাল রেজোলিউশন উইন্ডো (সেকেন্ডে রূপান্তরিত)
+const STAKING_DURATION_SEC = 46 * 60 * 60;   // ৪৬ ঘণ্টা = ১৬৫৬০০ সেকেন্ড
+const RESOLUTION_DURATION_SEC = 48 * 60 * 60; // ৪৮ ঘণ্টা = ১৭২৮০০ সেকেন্ড
 
 const CONTRACT_ABI = [
-  "function createMarket(string marketId) external",
-  "function markets(string) view returns (string marketId, uint8 status, uint8 winner, uint256 hawkTotal, uint256 doveTotal, bool exists)",
+  "function createMarket(string marketId, uint256 stakingDuration, uint256 resolutionDuration) external",
+  "function markets(string) view returns (string marketId, uint8 status, uint8 winner, uint8 tentativeWinner, uint256 hawkTotal, uint256 doveTotal, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer, uint256 hawkVotes, uint256 doveVotes, bool exists)",
 ];
 
 async function main() {
@@ -77,15 +65,13 @@ async function main() {
     const marketId = `mkt_${event.id}`;
     const marketThreshold = event.severity + THRESHOLD_STEP;
 
-    // resolution_at is the single source of truth for when this market resolves.
-    // Both the frontend countdown and resolve-markets.js read this same value.
+    // Supabase এবং ফ্রন্টএন্ডের জন্য রেজোলিউশন টাইম জেনারেট করা (৪৮ ঘণ্টা)
     const resolutionAt = new Date(
-      new Date(event.created_at).getTime() + RESOLUTION_HOURS * 60 * 60 * 1000
+      new Date(event.created_at).getTime() + RESOLUTION_DURATION_SEC * 1000
     ).toISOString();
 
     try {
-      // Check on-chain if this market already exists (belt-and-suspenders,
-      // in case the Supabase marker got out of sync).
+      // অন-চেইন চেক
       const existing = await contract.markets(marketId);
       if (existing.exists) {
         console.log(`Market ${marketId} already exists on-chain. Marking as created and skipping.`);
@@ -103,13 +89,14 @@ async function main() {
       console.log(
         `Creating market ${marketId} for "${event.source_title}" (severity ${event.severity}, threshold ${marketThreshold}, resolves at ${resolutionAt})...`
       );
-      const tx = await contract.createMarket(marketId);
+      
+      // নতুন টাইম লকের মানসহ অন-চেইনে পাঠানো হচ্ছে (৪৬ ঘণ্টা ও ৪৮ ঘণ্টা)
+      const tx = await contract.createMarket(marketId, STAKING_DURATION_SEC, RESOLUTION_DURATION_SEC);
       console.log(`  tx sent: ${tx.hash}`);
       const receipt = await tx.wait();
       console.log(`  confirmed in block ${receipt.blockNumber}`);
 
-      // Store market_threshold and resolution_at so frontend and backend
-      // both use the exact same values — no independent recalculation.
+      // Supabase আপডেট
       const { error: updateError } = await supabase
         .from("events")
         .update({
@@ -124,7 +111,6 @@ async function main() {
       }
     } catch (err) {
       console.error(`Failed to create market for event ${event.id}: ${err.message}`);
-      // Continue with the next event rather than failing the whole run.
     }
   }
 
