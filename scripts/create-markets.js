@@ -6,13 +6,14 @@ import { createClient } from "@supabase/supabase-js";
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase()); 
 
-const MAX_NEW_MARKETS_PER_RUN = 10; 
+// আপনার রিকোয়েস্ট অনুযায়ী প্রতি রানে সর্বোচ্চ ৩০টি মার্কেট তৈরির লিমিট
+const MAX_NEW_MARKETS_PER_RUN = 30; 
 const THRESHOLD_STEP = 5; 
 
 const STAKING_DURATION_SEC = 46 * 60 * 60;   
 const RESOLUTION_DURATION_SEC = 48 * 60 * 60; 
 
-// আপডেটেড ABI (markets এর বদলে getMarket)
+// ABI ডিক্লেয়ারেশন
 const CONTRACT_ABI = [
   "function createMarket(string marketId, uint256 stakingDuration, uint256 resolutionDuration) external",
   "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
@@ -39,15 +40,20 @@ async function main() {
     process.exit(1);
   }
 
+  // ০ থেকে ১০০ সিভিয়ারিটির সব ইভেন্টকে কভার করার ফিল্টার লজিক
   const { data: events, error } = await supabase
     .from("events")
     .select("id, source_title, category, severity, created_at, market_created")
     .or("market_created.is.null,market_created.eq.false")
+    .gte("severity", 0)   // সর্বনিম্ন severity ০
+    .lte("severity", 100) // সর্বোচ্চ severity ১০০
     .order("created_at", { ascending: false })
     .limit(MAX_NEW_MARKETS_PER_RUN);
 
   if (error) throw new Error(`Supabase error: ${error.message}`);
-  if (!events || events.length === 0) return console.log("No new events.");
+  if (!events || events.length === 0) return console.log("No new events matching criteria found.");
+
+  console.log(`Found ${events.length} candidate event(s) for new markets.`);
 
   for (const event of events) {
     const marketId = `mkt_${event.id}`;
@@ -57,7 +63,6 @@ async function main() {
     try {
       let marketExists = false;
       try {
-        // ওল্ড ডিকোড এরর এড়াতে পারফেক্ট অন-চেইন getMarket কল
         const existing = await contract.getMarket(marketId);
         marketExists = existing.exists;
       } catch (decodeErr) {
