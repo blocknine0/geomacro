@@ -64,8 +64,10 @@ const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
 //          → "Federal Reserve Kevin Warsh interest rate"
 function extractKeywords(title, maxWords = 6) {
   const words = title
-    .replace(/['"(),]/g, "")
-    .split(/\s+/)
+    .replace(/[“”‘’`"'()\[\]{}<>,.!?;:@#$%^&*+=|\\\/~-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()));
   // Deduplicate while preserving order
   const seen = new Set();
@@ -165,7 +167,9 @@ async function groqWithRetry(payload, groqKey, label = "") {
 // ── NewsAPI fetch ─────────────────────────────────────────────────────────────
 // Uses smart keyword extraction + trusted domains + relevance filtering.
 async function fetchFromNewsAPI(event, newsApiKey, from) {
-  const query = extractKeywords(event.source_title, 6);
+  // Strip any remaining non-alphanumeric chars that break API queries
+  const rawQuery = extractKeywords(event.source_title, 6);
+  const query = rawQuery.replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
   console.log(`  NewsAPI query: "${query}"`);
 
   // First try: focused query on trusted domains
@@ -214,7 +218,9 @@ async function fetchFromNewsAPI(event, newsApiKey, from) {
 
 // ── Guardian API fetch ────────────────────────────────────────────────────────
 async function fetchFromGuardian(event, guardianApiKey, fromDate) {
-  const query = extractKeywords(event.source_title, 6);
+  // Guardian API rejects queries with special chars — extra sanitize pass
+  const rawQuery = extractKeywords(event.source_title, 6);
+  const query = rawQuery.replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
   console.log(`  Guardian query: "${query}"`);
 
   const url = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&from-date=${fromDate}&order-by=newest&page-size=10&show-fields=trailText&api-key=${guardianApiKey}`;
