@@ -1,22 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/**
- * AgentArena (Memory Optimized)
- * -----------------------------
- * Anti-MEV, DAO Dispute, and 1.5% Revenue Platform Fee enabled.
- * Scoped blocks used to prevent EVM 'Stack too deep' compilation errors.
- */
 contract AgentArena {
     address public owner;
     address public treasury; 
 
-    uint256 public constant DISPUTE_FEE = 50 * 10**6;            // ৫০ USDC
-    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        // ২৪ ঘণ্টা
-    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  // ৫০০ USDC
-    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          // ৫ USDC
-    uint256 public constant PROTOCOL_FEE_BPS = 150;              // ১.৫% (150 BPS)
-    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    // ৩০%
+    uint256 public constant DISPUTE_FEE = 50 * 10**6;            
+    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        
+    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  
+    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          
+    uint256 public constant PROTOCOL_FEE_BPS = 150;              
+    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    
 
     enum Side { NONE, HAWK, DOVE }
     enum Status { OPEN, LOCKED, AI_RESOLVED, DISPUTED, FINALIZED }
@@ -37,7 +31,9 @@ contract AgentArena {
         bool exists;
     }
 
-    mapping(string => Market) public markets;
+    // Stack too deep এড়াতে ম্যাপিংটি private করা হয়েছে
+    mapping(string => Market) private markets;
+    
     mapping(string => mapping(address => mapping(Side => uint256))) public stakes;
     mapping(string => mapping(address => uint256)) public userVotes;
     mapping(string => mapping(address => bool)) public claimed;
@@ -58,6 +54,26 @@ contract AgentArena {
     constructor(address _treasury) {
         owner = msg.sender;
         treasury = _treasury;
+    }
+
+    // আপনার স্ক্রিপ্টের belt-and-suspenders চেকের জন্য কাস্টম লাইটওয়েট ভিউ ফাংশন
+    function getMarket(string calldata marketId) external view returns (
+        uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists
+    ) {
+        Market storage m = markets[marketId];
+        return (uint8(m.status), m.hawkTotal, m.doveTotal, m.exists);
+    }
+
+    // রেজোলিউশন স্ক্রিপ্টের (resolve/finalize) জন্য ফুল ডেটা ভিউ ফাংশন
+    function getMarketFullDetails(string calldata marketId) external view returns (
+        uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, 
+        uint256 resolutionTime, uint256 aiResolutionTime, address disputer
+    ) {
+        Market storage m = markets[marketId];
+        return (
+            uint8(m.status), uint8(m.winner), uint8(m.tentativeWinner),
+            m.stakingEndTime, m.resolutionTime, m.aiResolutionTime, m.disputer
+        );
     }
 
     function createMarket(
@@ -173,7 +189,6 @@ contract AgentArena {
         emit DAOExceptionVoted(marketId, msg.sender, side, msg.value);
     }
 
-    // Stack limiting এড়াতে Scoped bracket `{}` ব্যবহার করে অপ্টিমাইজড claim ফাংশন
     function claim(string calldata marketId) external {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
@@ -196,10 +211,9 @@ contract AgentArena {
             if (winningPoolTotal > 0 && losingPoolTotal > 0) {
                 payout += (totalUserStaked * losingPoolTotal) / winningPoolTotal;
             }
-        } // winningPoolTotal এবং losingPoolTotal এখান থেকে স্ট্যাক মেমোরি খালি করে দেবে
+        } 
 
         claimed[marketId][msg.sender] = true;
-
         uint256 platformFee = (payout * PROTOCOL_FEE_BPS) / 10000;
 
         (bool feeSent, ) = treasury.call{value: platformFee}("");
