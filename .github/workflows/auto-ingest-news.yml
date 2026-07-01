@@ -20,15 +20,17 @@ jobs:
         with:
           node-version: "22"
 
+      # package.json থেকে groq-sdk, dotenv, node-fetch সহ সব ডিপেন্ডেন্সি একসাথে ইনস্টল করবে
       - name: Install dependencies
-        run: npm install @supabase/supabase-js
+        run: npm install
 
       - name: Run news ingestion script
         env:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-          APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          # স্ক্রিপ্টের ভেরিয়েবল নামের সাথে মিলিয়ে দেওয়া হলো
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
         run: node scripts/ingest-news.js
         
