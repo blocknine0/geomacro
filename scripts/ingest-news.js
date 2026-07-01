@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// ১. সুপাবেস ও গ্রোক ইনিশিয়ালাইজেশন
+// ১. সুপাবেস ও গ্রোক ইনিশিয়ালাইজেশন
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -15,7 +15,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
+// ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
 const CATEGORIES = [
   {
     name: "geopolitics",
@@ -58,7 +58,7 @@ const CATEGORIES = [
   },
 ];
 
-// ৩. টাইটেল নরমালাইজেশন ফাংশন (ডুপ্লিকেট রো ফিল্টারিংয়ের জন্য)
+// ৩. টাইটেল নরমালাইজেশন ফাংশন (ডুপ্লিকেট রো ফিল্টারিংয়ের জন্য)
 function normalizeTitle(title) {
   if (!title) return '';
   return title
@@ -71,6 +71,9 @@ function normalizeTitle(title) {
 // ৪. Groq LLM এর মাধ্যমে রিলেভেন্স ও সিভিয়ারিটি স্কোরিং মেথড
 async function checkArticleRelevance(title, description, category) {
   try {
+    // 💡 Groq ফ্রি টায়ারের রেট লিমিট (RPM) প্রটেকশনের জন্য ১ সেকেন্ডের ডিলে
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     const prompt = `You are an expert financial and geopolitical risk analyst. Analyze the following article for the category "${category}".
     
     Title: "${title}"
@@ -87,7 +90,7 @@ async function checkArticleRelevance(title, description, category) {
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: 'llama3-8b-8192', // অথবা আপনার ব্যবহৃত নির্দিষ্ট গ্রোক মডেল
+      model: 'llama-3.1-8b-instant', // ✅ সচল ও দ্রুতগতির ফ্রি-টায়ের ফ্রেন্ডলি মডেল
       response_format: { type: "json_object" }
     });
 
@@ -99,11 +102,11 @@ async function checkArticleRelevance(title, description, category) {
   }
 }
 
-// ৫. এপিআই ফেচিং হ্যান্ডলার (NewsAPI ফলব্যাক টু দ্য গার্ডিয়ান)
+// ৫. এপিআই ফেচিং হ্যান্ডলার (NewsAPI ফলব্যাক টু দ্য গার্ডিয়ান)
 async function fetchArticlesFromApis(query) {
   let articles = [];
   
-  // ক) প্রথমে NewsAPI দিয়ে ট্রাই করা হবে
+  // ক) প্রথমে NewsAPI দিয়ে ট্রাই করা হবে
   try {
     const newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${process.env.NEWSAPI_KEY}`;
     const response = await fetch(newsApiUrl);
@@ -124,7 +127,7 @@ async function fetchArticlesFromApis(query) {
   } catch (e) {
     console.log(`   NewsAPI rate limit hit for query "${query}". Trying Guardian...`);
     
-    // খ) ফলব্যাক: দ্য গার্ডিয়ান এপিআই (The Guardian API)
+    // খ) ফলব্যাক: দ্য গার্ডিয়ান এপিআই (The Guardian API)
     try {
       const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
       const response = await fetch(guardianUrl);
