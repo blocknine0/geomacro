@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// ১. সুপাবেস ও গ্রোক ইনিশিয়ালাইজেশন
+// ১. সুপাবেস ও গ্রোক ইনিশিয়ালাইজেশন (Timeout ও Max Retries সহ)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -13,6 +13,8 @@ const supabase = createClient(
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
+  timeout: 20 * 1000, // ২০ সেকেন্ড টাইমআউট লিমিট
+  maxRetries: 3       // কানেকশন ড্রপ করলে অটো ৩ বার ট্রাই করবে
 });
 
 // ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
@@ -58,7 +60,7 @@ const CATEGORIES = [
   },
 ];
 
-// ৩. টাইটেল নরমালাইজেশন ফাংশন (ডুপ্লিকেট রো ফিল্টারিংয়ের জন্য)
+// ৩. টাইটেল নরমালাইজেশন ফাংশন
 function normalizeTitle(title) {
   if (!title) return '';
   return title
@@ -68,11 +70,14 @@ function normalizeTitle(title) {
     .trim();
 }
 
+// প্রপার ডিলে ফাংশন
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // ৪. Groq LLM এর মাধ্যমে রিলেভেন্স ও সিভিয়ারিটি স্কোরিং মেথড
 async function checkArticleRelevance(title, description, category) {
   try {
-    // 💡 Groq ফ্রি টায়ারের রেট লিমিট (RPM) প্রটেকশনের জন্য ১ সেকেন্ডের ডিলে
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // 💡 ফ্রি টায়ারের রেট ও নেটওয়ার্ক স্ট্যাবিলিটির জন্য ১.৫ সেকেন্ড ডিলে
+    await delay(1500);
 
     const prompt = `You are an expert financial and geopolitical risk analyst. Analyze the following article for the category "${category}".
     
@@ -90,7 +95,7 @@ async function checkArticleRelevance(title, description, category) {
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.1-8b-instant', // ✅ সচল ও দ্রুতগতির ফ্রি-টায়ের ফ্রেন্ডলি মডেল
+      model: 'llama-3.1-8b-instant',
       response_format: { type: "json_object" }
     });
 
@@ -106,7 +111,6 @@ async function checkArticleRelevance(title, description, category) {
 async function fetchArticlesFromApis(query) {
   let articles = [];
   
-  // ক) প্রথমে NewsAPI দিয়ে ট্রাই করা হবে
   try {
     const newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${process.env.NEWSAPI_KEY}`;
     const response = await fetch(newsApiUrl);
@@ -127,7 +131,6 @@ async function fetchArticlesFromApis(query) {
   } catch (e) {
     console.log(`   NewsAPI rate limit hit for query "${query}". Trying Guardian...`);
     
-    // খ) ফলব্যাক: দ্য গার্ডিয়ান এপিআই (The Guardian API)
     try {
       const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
       const response = await fetch(guardianUrl);
@@ -149,11 +152,10 @@ async function fetchArticlesFromApis(query) {
   return articles;
 }
 
-// ৬. মেইন ইনজেকশন রানার ফাংশন
+// ৬. মেইন ইনজেকশন运行 ফাংশন
 async function ingestNews() {
   console.log("Run node scripts/ingest-news.js");
 
-  // সুপাবেস থেকে অলরেডি এক্সিস্টিং ডাটা তুলে আনা
   const { data: existingEvents, error: fetchError } = await supabase
     .from('events')
     .select('url, title');
@@ -181,18 +183,15 @@ async function ingestNews() {
       for (const article of fetched) {
         const normTitle = normalizeTitle(article.title);
         
-        // ডুপ্লিকেট চেকিং লজিক (URL, এক্সিস্টিং টাইটেল এবং কারেন্ট রান ডুপ্লিকেট প্রটেকশন)
         if (existingUrls.has(article.url) || existingTitles.has(normTitle) || seenInCurrentRun.has(normTitle)) {
           continue;
         }
 
         seenInCurrentRun.add(normTitle);
 
-        // LLM এর মাধ্যমে ফিল্টারিং এবং সিভিয়ারিটি ক্যালকুলেশন
         const assessment = await checkArticleRelevance(article.title, article.description, category.name);
 
         if (assessment.relevant) {
-          // সুপাবেসে ডাটা ইনসার্ট করা হচ্ছে
           const { error: insertError } = await supabase
             .from('events')
             .insert([{
@@ -201,7 +200,7 @@ async function ingestNews() {
               url: article.url,
               category: category.name,
               severity: assessment.severity,
-              market_created: false, // create-markets.js স্ক্রিপ্ট পরবর্তী ধাপে এটি প্রসেস করবে
+              market_created: false,
               created_at: new Date().toISOString()
             }]);
 
@@ -209,7 +208,7 @@ async function ingestNews() {
             console.log(`  ✅ Successfully Inserted: "${article.title}" (severity ${assessment.severity})`);
             categoryInserted++;
             totalInserted++;
-            existingTitles.add(normTitle); // মেমরি আপডেট যাতে পরবর্তী ক্যাটাগরি সেম টাইটেল ড্রপ করতে পারে
+            existingTitles.add(normTitle);
           } else {
             console.error(`  ❌ Database insertion failed:`, insertError.message);
           }
