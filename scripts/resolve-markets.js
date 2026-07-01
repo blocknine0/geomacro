@@ -2,6 +2,7 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
+import fetch from "node-fetch";
 
 // Checksum সুরক্ষিত করার জন্য তো লোয়ারকেস করে getAddress-এ নেওয়া হলো
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
@@ -61,7 +62,12 @@ async function main() {
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
   const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
-  const groq = new Groq({ apiKey: GROQ_API_KEY, timeout: 30 * 1000, maxRetries: 3 });
+  const groq = new Groq({
+    apiKey: GROQ_API_KEY,
+    timeout: 30 * 1000,
+    maxRetries: 3,
+    fetch: fetch // 🛠️ undici POST premature-close bug এড়াতে node-fetch পাস করা হলো
+  });
 
   const network = await provider.getNetwork();
   console.log(`Connected to Chain ID: ${network.chainId.toString()}`);
