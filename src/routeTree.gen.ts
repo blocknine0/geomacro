@@ -9,8 +9,62 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as PortfolioRouteImport } from './routes/portfolio'
+import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as OnchainRouteImport } from './routes/onchain'
+import { Route as FeedRouteImport } from './routes/feed'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as ArenaRouteImport } from './routes/arena'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortfolioRoute = PortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnchainRoute = OnchainRouteImport.update({
+  id: '/onchain',
+  path: '/onchain',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArenaRoute = ArenaRouteImport.update({
+  id: '/arena',
+  path: '/arena',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +73,158 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/arena': typeof ArenaRoute
+  '/contact': typeof ContactRoute
+  '/docs': typeof DocsRoute
+  '/feed': typeof FeedRoute
+  '/onchain': typeof OnchainRoute
+  '/pipeline': typeof PipelineRoute
+  '/portfolio': typeof PortfolioRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/arena': typeof ArenaRoute
+  '/contact': typeof ContactRoute
+  '/docs': typeof DocsRoute
+  '/feed': typeof FeedRoute
+  '/onchain': typeof OnchainRoute
+  '/pipeline': typeof PipelineRoute
+  '/portfolio': typeof PortfolioRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/arena': typeof ArenaRoute
+  '/contact': typeof ContactRoute
+  '/docs': typeof DocsRoute
+  '/feed': typeof FeedRoute
+  '/onchain': typeof OnchainRoute
+  '/pipeline': typeof PipelineRoute
+  '/portfolio': typeof PortfolioRoute
+  '/roadmap': typeof RoadmapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/arena'
+    | '/contact'
+    | '/docs'
+    | '/feed'
+    | '/onchain'
+    | '/pipeline'
+    | '/portfolio'
+    | '/roadmap'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/arena'
+    | '/contact'
+    | '/docs'
+    | '/feed'
+    | '/onchain'
+    | '/pipeline'
+    | '/portfolio'
+    | '/roadmap'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/arena'
+    | '/contact'
+    | '/docs'
+    | '/feed'
+    | '/onchain'
+    | '/pipeline'
+    | '/portfolio'
+    | '/roadmap'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  ArenaRoute: typeof ArenaRoute
+  ContactRoute: typeof ContactRoute
+  DocsRoute: typeof DocsRoute
+  FeedRoute: typeof FeedRoute
+  OnchainRoute: typeof OnchainRoute
+  PipelineRoute: typeof PipelineRoute
+  PortfolioRoute: typeof PortfolioRoute
+  RoadmapRoute: typeof RoadmapRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolio': {
+      id: '/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof PortfolioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onchain': {
+      id: '/onchain'
+      path: '/onchain'
+      fullPath: '/onchain'
+      preLoaderRoute: typeof OnchainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/arena': {
+      id: '/arena'
+      path: '/arena'
+      fullPath: '/arena'
+      preLoaderRoute: typeof ArenaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +237,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  ArenaRoute: ArenaRoute,
+  ContactRoute: ContactRoute,
+  DocsRoute: DocsRoute,
+  FeedRoute: FeedRoute,
+  OnchainRoute: OnchainRoute,
+  PipelineRoute: PipelineRoute,
+  PortfolioRoute: PortfolioRoute,
+  RoadmapRoute: RoadmapRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
