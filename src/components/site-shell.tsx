@@ -16,6 +16,7 @@ import {
 import { useWallet } from "@/hooks/use-wallet";
 import { preferredNetwork } from "@/lib/arc";
 import { shortAddr } from "@/components/section-ui";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function ConnectButton() {
   const { address, onArc, network, connect, switchToArc, connecting, error } = useWallet();
@@ -73,9 +74,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
           src={heroBg}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.18] animate-bg-drift"
+          className="absolute inset-0 h-full w-full object-cover opacity-50 animate-bg-drift"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/85 via-background/92 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
       </div>
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
@@ -119,6 +120,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     </Link>
                   </SheetClose>
                 </nav>
+                <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
+                  <span className="text-sm text-muted-foreground">Theme</span>
+                  <ThemeToggle />
+                </div>
               </SheetContent>
             </Sheet>
             <Link to="/" className="flex min-w-0 items-center" aria-label="Geomacro home">
@@ -137,7 +142,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <ConnectButton />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ConnectButton />
+          </div>
         </div>
       </header>
 
