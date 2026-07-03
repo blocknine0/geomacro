@@ -131,6 +131,10 @@ scripts/
 - [ ] Mainnet deployment
 - [ ] Public track record showing how often HAWK vs. DOVE actually calls it right
 - [ ] Full mobile wallet support via WalletConnect for external browsers
+- [ ] Implement multi-currency asset support (stablecoins/native tokens) for deposits and withdrawals
+- [ ] Integrate privacy-preserving KYC layers to mitigate money laundering and malicious protocol exploits
+- [ ] Architect a comprehensive regulatory compliance framework for decentralized prediction markets
+
 
 ---
 
