@@ -5,83 +5,89 @@ import { createClient } from "@supabase/supabase-js";
 
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
-const DEPLOY_BLOCK = Number(process.env.DEPLOY_BLOCK || 0); // contract deploy block number
+const DEPLOY_BLOCK = Number(process.env.DEPLOY_BLOCK || 0);
+const CHUNK_SIZE = 9000;
 
 const CONTRACT_ABI = [
   "event Staked(string marketId, address indexed user, uint8 side, uint256 amount)",
 ];
 
-// Side mapping: 1 = HAWK, 2 = DOVE
 const SIDE_MAP = { 1: "HAWK", 2: "DOVE" };
 
 async function main() {
   const { ARC_RPC_URL, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY } = process.env;
-  if (!ARC_RPC_URL || !APP_SUPABASE_URL || !APP_SUPABASE_SERVICE_ROLE_KEY) {
+  if (!ARC_RPC_URL || !APP_SUPABASE_URL || !APP_SUPABASE_SERVICE_ROLE_KEY)
     throw new Error("Missing env: ARC_RPC_URL, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY");
-  }
 
   const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-
-  // Service role key ব্যবহার করছি — RLS bypass করে সব wallets sync করতে পারবে
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY);
 
   const currentBlock = await provider.getBlockNumber();
-  console.log(`Current block: ${currentBlock}`);
-  console.log(`Scanning from block: ${DEPLOY_BLOCK}`);
+  console.log(`Current block: ${currentBlock}, scanning from: ${DEPLOY_BLOCK}`);
 
-  // Staked events query করো
+  // 10,000 block limit এড়াতে chunked scanning
   const filter = contract.filters.Staked();
-  const events = await contract.queryFilter(filter, DEPLOY_BLOCK, currentBlock);
-  console.log(`Found ${events.length} Staked event(s) onchain.`);
+  let events = [];
+  for (let from = DEPLOY_BLOCK; from <= currentBlock; from += CHUNK_SIZE) {
+    const to = Math.min(from + CHUNK_SIZE - 1, currentBlock);
+    process.stdout.write(`  Scanning blocks ${from} → ${to}...`);
+    const chunk = await contract.queryFilter(filter, from, to);
+    events.push(...chunk);
+    process.stdout.write(` ${chunk.length} events\n`);
+  }
+  console.log(`\nTotal: ${events.length} Staked event(s) onchain.`);
 
-  let inserted = 0;
-  let skipped = 0;
+  if (events.length === 0) {
+    console.log("No stakes found. Done.");
+    return;
+  }
+
+  let inserted = 0, skipped = 0, failed = 0;
 
   for (const ev of events) {
-    const log = ev;
-    const marketId = log.args[0]; // "mkt_uuid"
-    const userAddress = log.args[1].toLowerCase();
-    const sideCode = Number(log.args[2]);
-    const amount = log.args[3]; // wei as bigint
-
+    const marketId = ev.args[0];
+    const userAddress = ev.args[1].toLowerCase();
+    const sideCode = Number(ev.args[2]);
+    const amount = ev.args[3];
     const side = SIDE_MAP[sideCode];
+
     if (!side) {
-      console.log(`  Unknown side code ${sideCode} for ${marketId}, skipping.`);
-      continue;
-    }
-
-    // marketId থেকে events.id বের করো — "mkt_uuid" → "uuid"
-    const eventDbId = marketId.replace(/^mkt_/, "");
-
-    // events table-এ এই id আছে কিনা check করো
-    const { data: eventRow } = await supabase
-      .from("events")
-      .select("id")
-      .eq("id", eventDbId)
-      .single();
-
-    if (!eventRow) {
-      console.log(`  Event ${eventDbId} not in Supabase, skipping ${marketId}.`);
+      console.log(`  Skip: unknown side code ${sideCode} for ${marketId}`);
       skipped++;
       continue;
     }
 
-    // positions table-এ already আছে কিনা check করো
+    // "mkt_uuid" → "uuid"
+    const eventDbId = marketId.replace(/^mkt_/, "");
+
+    // events table-এ আছে কিনা check
+    const { data: eventRow } = await supabase
+      .from("events")
+      .select("id")
+      .eq("id", eventDbId)
+      .maybeSingle();
+
+    if (!eventRow) {
+      console.log(`  Skip: event ${eventDbId} not in Supabase`);
+      skipped++;
+      continue;
+    }
+
+    // already আছে কিনা check
     const { data: existing } = await supabase
       .from("positions")
       .select("market_id")
       .eq("wallet_address", userAddress)
       .eq("market_id", eventDbId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
-      console.log(`  Position already exists for ${userAddress} × ${eventDbId}, skipping.`);
+      console.log(`  Skip: ${userAddress} × ${eventDbId} already exists`);
       skipped++;
       continue;
     }
 
-    // Insert missing position
     const { error } = await supabase.from("positions").insert({
       wallet_address: userAddress,
       market_id: eventDbId,
@@ -91,14 +97,15 @@ async function main() {
     });
 
     if (error) {
-      console.error(`  ❌ Failed to insert position for ${userAddress} × ${eventDbId}: ${error.message}`);
+      console.error(`  ❌ ${userAddress} × ${eventDbId}: ${error.message}`);
+      failed++;
     } else {
-      console.log(`  ✅ Inserted: ${userAddress} staked ${side} on ${eventDbId} (${ethers.formatUnits(amount, 18)} USDC)`);
+      console.log(`  ✅ ${userAddress} → ${side} on ${eventDbId} (${ethers.formatUnits(amount, 18)} USDC)`);
       inserted++;
     }
   }
 
-  console.log(`\nDone. Inserted: ${inserted}, Skipped: ${skipped}`);
+  console.log(`\nDone. Inserted: ${inserted}, Skipped: ${skipped}, Failed: ${failed}`);
 }
 
 main().catch(console.error);
