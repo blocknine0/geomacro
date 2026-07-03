@@ -15,5 +15,5 @@ jobs:
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
