@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Link2, Minus, Radio } from "lucide-react";
-import heroBg from "@/assets/hero-bg.jpg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { preferredNetwork } from "@/lib/arc";
@@ -260,14 +259,8 @@ export function HeroSection() {
 
   return (
     <section className="relative overflow-hidden">
-      <img
-        src={heroBg}
-        alt=""
-        width={1920}
-        height={1088}
-        className="absolute inset-0 h-full w-full object-cover opacity-50"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+      {/* Background is now provided globally by SiteShell (site-shell.tsx) so it's
+          consistent across every page — no need for a page-local duplicate here. */}
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24 md:pb-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
