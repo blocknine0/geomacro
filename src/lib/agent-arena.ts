@@ -2,7 +2,7 @@ import { BrowserProvider, Contract, JsonRpcProvider, formatUnits, parseUnits } f
 import type { AgentSide } from "./agents";
 import { ARC_TESTNET } from "./arc";
 
-export const AGENT_ARENA_ADDRESS = "0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D";
+export const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 
 /** USDC on Arc is the native gas token with 18 decimals (see src/lib/arc.ts). */
 export const ARC_USDC_DECIMALS = 18;
