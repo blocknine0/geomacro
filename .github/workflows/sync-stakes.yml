@@ -11,7 +11,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - run: DEPLOY_BLOCK=0 node scripts/sync-stakes.js
+      - run: DEPLOY_BLOCK=49000000 node scripts/sync-stakes.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
