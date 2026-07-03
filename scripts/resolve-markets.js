@@ -4,13 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 import fetch from "node-fetch";
 
-// Checksum সুরক্ষিত করার জন্য তো লোয়ারকেস করে getAddress-এ নেওয়া হলো
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
-const MIN_RESOLUTION_HOURS = 48;
 const MAX_RESOLUTIONS_PER_RUN = 5;
 
-// নতুন কাস্টম ভিউ ফাংশন (getMarketFullDetails) সহ ABI
 const CONTRACT_ABI = [
   "function declareWinnerByAI(string marketId, uint8 winningSide) external",
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)"
@@ -18,33 +15,36 @@ const CONTRACT_ABI = [
 
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
 
-// 💡 পার্মানেন্ট ফিক্স: Groq দিয়ে রিয়াল রি-জাজমেন্ট।
-// HAWK = রিস্ক/সিভিয়ারিটি বেড়েছে বা এখনও এস্কেলেটিং।
-// DOVE = রিস্ক কমেছে, সমাধান হয়েছে, বা de-escalate করেছে।
 async function judgeOutcome(groq, event) {
+  // summary truncate করা হলো — request_too_large এড়াতে
+  const summary = (event.summary || "").slice(0, 300);
+  const narrative = (event.narrative || "").slice(0, 200);
+
   const prompt = `You are a geopolitical/macro risk analyst judging the outcome of a prediction market, 48 hours after the original event was reported.
 
 Original event details:
 - Category: ${event.category}
 - Headline: "${event.source_title}"
-- Narrative (the risk claim being staked on): "${event.narrative}"
-- Summary at time of publication: "${event.summary}"
+- Narrative: "${narrative}"
+- Summary: "${summary}"
 - Original severity score (0-100): ${event.severity}
 
-Task: Based on your knowledge and reasoning about how this situation has likely evolved in the 48 hours since, judge whether the risk/narrative described has:
+Task: Judge whether the risk described has:
 - ESCALATED or remained highly active/unresolved → side "HAWK"
 - DE-ESCALATED, been resolved, or proven overstated → side "DOVE"
 
-If you are genuinely uncertain or have no information suggesting a clear direction, default to "DOVE" (the conservative/no-escalation outcome).
+If genuinely uncertain, default to "DOVE".
 
-Respond STRICTLY in JSON format:
+Respond STRICTLY in JSON:
 { "side": "HAWK" | "DOVE", "reasoning": "one sentence justification" }`;
 
   try {
     const completion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "groq/compound", // built-in web-search-capable model — এটা রিসেন্ট তথ্য নিয়েও রিজন করতে পারে
+      model: "llama-3.3-70b-versatile", // compound বাদ — এটা reliable এবং fast
       response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 150,
     });
 
     const result = JSON.parse(completion.choices[0].message.content);
@@ -58,7 +58,8 @@ Respond STRICTLY in JSON format:
 
 async function main() {
   const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, ARC_RPC_URL, GROQ_API_KEY } = process.env;
-  if (!OWNER_PRIVATE_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL || !GROQ_API_KEY) throw new Error("Missing env.");
+  if (!OWNER_PRIVATE_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL || !GROQ_API_KEY)
+    throw new Error("Missing env.");
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
   const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
@@ -66,7 +67,7 @@ async function main() {
     apiKey: GROQ_API_KEY,
     timeout: 30 * 1000,
     maxRetries: 3,
-    fetch: fetch // 🛠️ undici POST premature-close bug এড়াতে node-fetch পাস করা হলো
+    fetch: fetch,
   });
 
   const network = await provider.getNetwork();
@@ -97,7 +98,6 @@ async function main() {
     try {
       let marketStatus = 0;
       try {
-        // ওল্ড ডিকোড এরর এড়াতে ট্রাই-ক্যাচ প্রোটেকশন
         const market = await contract.getMarketFullDetails(marketId);
         marketStatus = Number(market.status);
       } catch (decodeErr) {
@@ -108,8 +108,7 @@ async function main() {
       // 2 = AI_RESOLVED, 3 = DISPUTED, 4 = FINALIZED
       if (marketStatus >= 2) {
         if (marketStatus === 4) {
-          const { error: syncErr } = await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
-          if (syncErr) console.error(`  ⚠️ Failed to sync market_resolved for ${marketId}:`, syncErr.message);
+          await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         }
         continue;
       }
@@ -127,17 +126,21 @@ async function main() {
       const { error: updateErr } = await supabase.from("events").update({
         ai_processed: true,
         ai_tentative_winner: judgment.sideLabel,
-        ai_resolved_at: new Date().toISOString()
+        ai_resolved_at: new Date().toISOString(),
       }).eq("id", event.id);
 
-      if (updateErr) console.error(`  ⚠️ On-chain resolve succeeded but Supabase update failed for ${marketId}:`, updateErr.message);
+      if (updateErr)
+        console.error(`  ⚠️ On-chain resolve succeeded but Supabase update failed for ${marketId}:`, updateErr.message);
+
       console.log(`  Successfully resolved on-chain: ${marketId}`);
+
+      await new Promise((r) => setTimeout(r, 1000));
     } catch (err) {
       console.error(`❌ Resolution failed for ${marketId}: ${err.message}`);
     }
   }
 
-  console.log("Done.");
+  console.log(`Done. Resolved ${resolvedCount} market(s) this run.`);
 }
 
 main().catch(console.error);
