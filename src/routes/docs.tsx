@@ -393,37 +393,99 @@ function FeedPane() {
   );
 }
 
+type PipelineStage = {
+  id: string;
+  name: string;
+  desc: string;
+  meta: string;
+  latency: string;
+};
+
+type PipelineStageGroup = {
+  phase: string;
+  label: string;
+  signal: string;
+  stages: PipelineStage[];
+};
+
+const PIPELINE_GROUPS: PipelineStageGroup[] = [
+  {
+    phase: "P1",
+    label: "Ingestion Layer",
+    signal: "Raw wire to structured event",
+    stages: [
+      { id: "01", name: "Ingest", desc: "Pull live headlines across geopolitics, rare earth, macro and crypto.", meta: "NewsAPI · 4 buckets", latency: "~5s" },
+      { id: "02", name: "Normalize", desc: "Reshape vendor payloads into one canonical event schema.", meta: "Zod schema", latency: "<50ms" },
+      { id: "03", name: "Dedupe", desc: "Rolling djb2 hash plus URL fingerprint to suppress duplicates.", meta: "djb2 + URL", latency: "<10ms" },
+    ],
+  },
+  {
+    phase: "P2",
+    label: "Intelligence Layer",
+    signal: "LLM classification and risk scoring",
+    stages: [
+      { id: "04", name: "Prefilter", desc: "Drop anything outside the four tracked narrative classes.", meta: "Heuristic gate", latency: "<5ms" },
+      { id: "05", name: "Classify", desc: "Route survivors to llama-3.3-70b for category and stage tagging.", meta: "Groq · 70B", latency: "~1.2s" },
+      { id: "06", name: "Score", desc: "Assign severity, confidence and contribution to the Global Risk Index.", meta: "0-100 scale", latency: "<200ms" },
+    ],
+  },
+  {
+    phase: "P3",
+    label: "Forecast Layer",
+    signal: "Falsifiable calls with calibration",
+    stages: [
+      { id: "07", name: "Predict", desc: "Write a falsifiable forecast with a 48h resolution deadline.", meta: "Deadline bound", latency: "~800ms" },
+      { id: "08", name: "Reflect", desc: "Backtest prior calls onchain and adjust analyst calibration.", meta: "Track record", latency: "rolling" },
+    ],
+  },
+  {
+    phase: "P4",
+    label: "Settlement Layer",
+    signal: "Onchain attestation and market settlement",
+    stages: [
+      { id: "09", name: "Attest", desc: "SHA-256 the event payload, sign the digest, post the attestation to Arc.", meta: "Arc · SHA-256", latency: "~3s" },
+      { id: "10", name: "Resolve", desc: "Main agent referees the analyst duel and settles the event contract.", meta: "Onchain payout", latency: "at T+48h" },
+    ],
+  },
+];
+
 function PipelinePane() {
-  const steps: [string, string, string][] = [
-    ["01", "Ingest", "Pull live headlines from NewsAPI across the four buckets we care about"],
-    ["02", "Normalize", "Reshape whatever the API hands back into one consistent event"],
-    ["03", "Dedupe", "Rolling djb2 hash plus URL fingerprint so the same story doesn't run twice"],
-    ["04", "Prefilter", "Drop anything that isn't geo, commodity, macro or crypto"],
-    ["05", "Classify", "Hand the survivors to llama-3.3-70b on Groq"],
-    ["06", "Score", "Pin a severity, a confidence and how much it moves the global risk number"],
-    ["07", "Predict", "Write a falsifiable call with a deadline so we can grade ourselves later"],
-    ["08", "Reflect", "Look back at past calls onchain and adjust calibration"],
-    ["09", "Arcify", "SHA-256 the event, sign the digest, post it to Arc"],
-    ["10", "Judge", "Same main agent ends up refereeing the arena duels"],
-  ];
   return (
     <>
       <SectionLabel>Pipeline</SectionLabel>
       <PageTitle>From raw headline to a signed event on Arc</PageTitle>
       <PageSubtitle>
-        Ten stages between a story hitting the wire and an attestation landing on Arc. None of them are hidden. You can watch each one as it runs.
+        Ten deterministic stages across four layers. Every headline flows through the same path, every score is reproducible, every attestation is signed and posted to Arc.
       </PageSubtitle>
       <Divider />
-      <div className="flex flex-col gap-2">
-        {steps.map(([n, name, desc]) => (
-          <div key={n} className="flex items-start gap-4 rounded-lg border border-border/60 bg-card/40 p-4">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded border border-primary/40 bg-primary/10 font-mono text-xs font-bold text-primary">
-              {n}
+      <div className="space-y-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
+        {PIPELINE_GROUPS.map((group) => (
+          <div key={group.phase} className="bg-background">
+            <div className="flex flex-col gap-1 border-b border-border/60 bg-card/40 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:px-6">
+              <div className="flex items-baseline gap-3">
+                <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">{group.phase}</span>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">{group.label}</h3>
+              </div>
+              <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{group.signal}</div>
             </div>
-            <div>
-              <span className="font-semibold text-primary">{name}</span>{" "}
-              <span className="text-sm text-muted-foreground">= {desc}</span>
-            </div>
+            <ol className={`grid grid-cols-1 gap-px bg-border/60 sm:grid-cols-2 ${group.stages.length < 3 ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+              {group.stages.map((s) => (
+                <li key={s.id} className="group relative flex flex-col gap-3 bg-background p-5 transition-colors hover:bg-card/40 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] tracking-[0.18em] text-primary">{s.id}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{s.latency}</span>
+                  </div>
+                  <div>
+                    <div className="text-base font-medium text-foreground">{s.name}</div>
+                    <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.desc}</div>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 border-t border-border/40 pt-3">
+                    <span className="size-1 rounded-full bg-primary/70" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{s.meta}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         ))}
       </div>
