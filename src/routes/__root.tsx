@@ -10,7 +10,9 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import ogImage from "../assets/og-share.jpg";
+import { reportClientError } from "../lib/error-reporting";
+import { SiteShell } from "../components/site-shell";
 
 function NotFoundComponent() {
   return (
@@ -38,7 +40,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportClientError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -76,25 +78,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Geomacro — Onchain Geopolitical Risk Oracle on Arc" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { title: "Geomacro: Onchain Geopolitical Risk on Arc" },
       { name: "description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
       { name: "author", content: "Geomacro" },
-      { property: "og:title", content: "Geomacro — Onchain Geopolitical Risk Oracle on Arc" },
+      { property: "og:title", content: "Geomacro: Onchain Geopolitical Risk on Arc" },
       { property: "og:description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
+      { property: "og:site_name", content: "Geomacro" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Geomacro — Onchain Geopolitical Risk Oracle on Arc" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@GeomacroLive" },
+      { name: "twitter:title", content: "Geomacro: Onchain Geopolitical Risk on Arc" },
       { name: "twitter:description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/49515c57-c4e9-47a1-91dc-df51a0a3bfe6/id-preview-0beb881f--06310982-d80d-4d51-a786-7a015bd39be3.lovable.app-1781581932765.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/49515c57-c4e9-47a1-91dc-df51a0a3bfe6/id-preview-0beb881f--06310982-d80d-4d51-a786-7a015bd39be3.lovable.app-1781581932765.png" },
+      { property: "og:image", content: `https://geomacro.live${ogImage}` },
+      { name: "twitter:image", content: `https://geomacro.live${ogImage}` },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" },
+      { rel: "shortcut icon", href: "/favicon.ico" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -122,8 +129,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {/* Shared header + footer; nested routes render inside SiteShell. */}
+      <SiteShell>
+        <Outlet />
+      </SiteShell>
     </QueryClientProvider>
   );
 }
