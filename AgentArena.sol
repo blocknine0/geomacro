@@ -1,240 +1,146 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
+import type { AgentSide } from "./agents";
+
+export const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+
+/** USDC on Arc is the native gas token with 18 decimals (see src/lib/arc.ts). */
+export const ARC_USDC_DECIMALS = 18;
+
+export const AGENT_ARENA_ABI = [
+  "function stake(string marketId, uint8 side) payable",
+  "function claim(string marketId)",
+  "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
+  "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
+  "function stakes(string marketId, address user, uint8 side) view returns (uint256)",
+  "function claimed(string marketId, address user) view returns (bool)",
+] as const;
+
+export const SIDE_CODE: Record<AgentSide, 1 | 2> = { HAWK: 1, DOVE: 2 };
+export const SIDE_FROM_CODE: Record<number, AgentSide | null> = {
+  0: null,
+  1: "HAWK",
+  2: "DOVE",
+};
+
+export type OnchainMarket = {
+  status: number;
+  winner: AgentSide | null;
+  winnerCode: number;
+  hawkTotalWei: bigint;
+  doveTotalWei: bigint;
+  hawkTotalUsdc: number;
+  doveTotalUsdc: number;
+  resolved: boolean;
+};
+
+export type OnchainStake = {
+  hawkWei: bigint;
+  doveWei: bigint;
+  hawkUsdc: number;
+  doveUsdc: number;
+};
+
+function getProvider() {
+  const eth = (typeof window !== "undefined" ? window.ethereum : undefined) as
+    | { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> }
+    | undefined;
+  if (!eth) throw new Error("No EVM wallet detected");
+  return new BrowserProvider(eth as unknown as ConstructorParameters<typeof BrowserProvider>[0]);
+}
+
+function weiToUsdc(wei: bigint): number {
+  return Number(formatUnits(wei, ARC_USDC_DECIMALS));
+}
+
+export function usdcToWei(amount: string | number): bigint {
+  const s = typeof amount === "number" ? amount.toString() : amount;
+  return parseUnits(s, ARC_USDC_DECIMALS);
+}
+
+export async function readMarket(marketId: string): Promise<OnchainMarket> {
+  const provider = getProvider();
+  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, provider);
+
+  const pools = (await contract.getMarket(marketId)) as [bigint, bigint, bigint, boolean];
+  const status = Number(pools[0]);
+  const hawkTotalWei = pools[1];
+  const doveTotalWei = pools[2];
+
+  const details = (await contract.getMarketFullDetails(marketId)) as [
+    bigint, bigint, bigint, bigint, bigint, bigint, string
+  ];
+  const winnerCode = Number(details[1]); // real, final winner — only meaningful once status === FINALIZED (4)
+
+  return {
+    status,
+    winnerCode,
+    winner: SIDE_FROM_CODE[winnerCode] ?? null,
+    hawkTotalWei,
+    doveTotalWei,
+    hawkTotalUsdc: weiToUsdc(hawkTotalWei),
+    doveTotalUsdc: weiToUsdc(doveTotalWei),
+    resolved: status === 4, // FINALIZED — matches claim()'s own requirement, not just an AI tentative call
+  };
+}
+
+export async function readMyStake(marketId: string, user: string): Promise<OnchainStake> {
+  const provider = getProvider();
+  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, provider);
+  // stakes is a public mapping in AgentArena.sol — no getMyStake() function exists on-chain,
+  // so each side must be read as a separate call: stakes(marketId, user, side)
+  const [hawkWei, doveWei] = (await Promise.all([
+    contract.stakes(marketId, user, SIDE_CODE.HAWK),
+    contract.stakes(marketId, user, SIDE_CODE.DOVE),
+  ])) as [bigint, bigint];
+  return {
+    hawkWei,
+    doveWei,
+    hawkUsdc: weiToUsdc(hawkWei),
+    doveUsdc: weiToUsdc(doveWei),
+  };
+}
+
+export async function stakeOnContract(
+  marketId: string,
+  side: AgentSide,
+  amountUsdc: string | number,
+): Promise<string> {
+  const provider = getProvider();
+  const signer = await provider.getSigner();
+  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
+  const value = usdcToWei(amountUsdc);
+  const tx = await contract.stake(marketId, SIDE_CODE[side], { value });
+  await tx.wait(); // confirm on-chain before recording the position — avoid ghost rows for reverted/pending txs
+  return tx.hash as string;
+}
 
 /**
- * AgentArena (Upgraded & Memory Optimized)
- * -----------------------------------------
- * Features:
- * 1. Anti-MEV / Front-running window locks (46h Staking / 48h Total Window).
- * 2. Optimistic AI Resolution + 24h Public Stake-Backed Dispute Window.
- * 3. 1.5% Protocol revenue fee routed to the treasury wallet.
- * 4. Anti-spam DAO voting mechanics with 50 USDC dispute fee.
- * 5. EVM 'Stack too deep' fixed by utilizing private mapping & custom view functions.
+ * WIRING NOTE for whoever calls stakeOnContract() (e.g. the stake dialog in
+ * routes/index.tsx):
+ *
+ *   const txHash = await stakeOnContract(marketId, side, amountUsdc);
+ *   if (session) {
+ *     await callRecordStake({
+ *       data: {
+ *         token: session.token,
+ *         marketId: eventDbId,        // events.id (uuid) — NOT the "mkt_..." string id
+ *         side,
+ *         stakedAmountRaw: usdcToWei(amountUsdc).toString(),
+ *         txHash,
+ *       },
+ *     });
+ *   }
+ *
+ * `session` comes from useWallet()'s SIWE session — if the wallet hasn't
+ * signed in yet, prompt signIn() before allowing a stake, otherwise the
+ * position never gets recorded and Portfolio stays empty for that stake.
  */
-contract AgentArena {
-    address public owner;
-    address public treasury; 
 
-    uint256 public constant DISPUTE_FEE = 50 * 10**6;            // ৫০ USDC
-    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        // ২৪ ঘণ্টা
-    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  // ৫০০ USDC
-    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          // ৫ USDC
-    uint256 public constant PROTOCOL_FEE_BPS = 150;              // ১.৫% (150 BPS)
-    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    // ৩০%
-
-    enum Side { NONE, HAWK, DOVE }
-    enum Status { OPEN, LOCKED, AI_RESOLVED, DISPUTED, FINALIZED }
-
-    struct Market {
-        string marketId;
-        Status status;
-        Side winner;          
-        Side tentativeWinner; 
-        uint256 hawkTotal;
-        uint256 doveTotal;
-        uint256 stakingEndTime;
-        uint256 resolutionTime;
-        uint256 aiResolutionTime;
-        address disputer;
-        uint256 hawkVotes;    
-        uint256 doveVotes;    
-        bool exists;
-    }
-
-    // Stack too deep এড়াতে ম্যাপিংটি private করা হয়েছে
-    mapping(string => Market) private markets;
-    
-    mapping(string => mapping(address => mapping(Side => uint256))) public stakes;
-    mapping(string => mapping(address => uint256)) public userVotes;
-    mapping(string => mapping(address => bool)) public claimed;
-
-    event MarketCreated(string marketId, uint256 stakingEndTime, uint256 resolutionTime);
-    event Staked(string marketId, address indexed user, Side side, uint256 amount);
-    event AIResolved(string marketId, Side tentativeWinner);
-    event Disputed(string marketId, address indexed disputer);
-    event DAOExceptionVoted(string marketId, address indexed voter, Side side, uint256 amount);
-    event Finalized(string marketId, Side finalWinner);
-    event Claimed(string marketId, address indexed user, uint256 amount);
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
-
-    constructor(address _treasury) {
-        owner = msg.sender;
-        treasury = _treasury;
-    }
-
-    // scripts/create-markets.js এর belt-and-suspenders চেকের জন্য কাস্টম লাইটওয়েট ভিউ ফাংশন
-    function getMarket(string calldata marketId) external view returns (
-        uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists
-    ) {
-        Market storage m = markets[marketId];
-        return (uint8(m.status), m.hawkTotal, m.doveTotal, m.exists);
-    }
-
-    // scripts/resolve-markets.js এবং finalize-markets.js এর জন্য ফুল ডেটা ভিউ ফাংশন
-    function getMarketFullDetails(string calldata marketId) external view returns (
-        uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, 
-        uint256 resolutionTime, uint256 aiResolutionTime, address disputer
-    ) {
-        Market storage m = markets[marketId];
-        return (
-            uint8(m.status), uint8(m.winner), uint8(m.tentativeWinner),
-            m.stakingEndTime, m.resolutionTime, m.aiResolutionTime, m.disputer
-        );
-    }
-
-    function createMarket(
-        string calldata marketId, 
-        uint256 stakingDuration, 
-        uint256 resolutionDuration
-    ) external onlyOwner {
-        require(!markets[marketId].exists, "Market already exists");
-
-        markets[marketId] = Market({
-            marketId: marketId,
-            status: Status.OPEN,
-            winner: Side.NONE,
-            tentativeWinner: Side.NONE,
-            hawkTotal: 0,
-            doveTotal: 0,
-            stakingEndTime: block.timestamp + stakingDuration,     
-            resolutionTime: block.timestamp + resolutionDuration, 
-            aiResolutionTime: 0,
-            disputer: address(0),
-            hawkVotes: 0,
-            doveVotes: 0,
-            exists: true
-        });
-
-        emit MarketCreated(marketId, block.timestamp + stakingDuration, block.timestamp + resolutionDuration);
-    }
-
-    function declareWinnerByAI(string calldata marketId, Side winningSide) external onlyOwner {
-        Market storage m = markets[marketId];
-        require(m.exists, "Market does not exist");
-        require(m.status == Status.OPEN, "Invalid status");
-        require(block.timestamp >= m.resolutionTime, "Too early to resolve");
-        require(winningSide == Side.HAWK || winningSide == Side.DOVE, "Invalid side");
-
-        m.status = Status.AI_RESOLVED;
-        m.tentativeWinner = winningSide;
-        m.aiResolutionTime = block.timestamp;
-
-        emit AIResolved(marketId, winningSide);
-    }
-
-    function finalizeMarket(string calldata marketId) external {
-        Market storage m = markets[marketId];
-        require(m.exists, "Market does not exist");
-
-        if (m.status == Status.AI_RESOLVED && block.timestamp > m.aiResolutionTime + DISPUTE_WINDOW) {
-            m.winner = m.tentativeWinner;
-            m.status = Status.FINALIZED;
-            emit Finalized(marketId, m.winner);
-        } 
-        else if (m.status == Status.DISPUTED && block.timestamp > m.aiResolutionTime + DISPUTE_WINDOW + (24 * 60 * 60)) {
-            m.winner = m.hawkVotes > m.doveVotes ? Side.HAWK : Side.DOVE;
-            m.status = Status.FINALIZED;
-
-            if (m.winner != m.tentativeWinner) {
-                // .transfer() বদলে নিরাপদ .call() ব্যবহার করা হয়েছে (Warning Fixed)
-                (bool sentDisputer, ) = payable(m.disputer).call{value: DISPUTE_FEE}("");
-                require(sentDisputer, "Disputer refund failed");
-            } else {
-                uint256 treasuryShare = (DISPUTE_FEE * TREASURY_DISPUTE_SHARE_BPS) / 10000;
-                (bool sentTreasury, ) = treasury.call{value: treasuryShare}("");
-                require(sentTreasury, "Treasury share transfer failed");
-            }
-            emit Finalized(marketId, m.winner);
-        }
-    }
-
-    function stake(string calldata marketId, Side side) external payable {
-        Market storage m = markets[marketId];
-        require(m.exists, "Market does not exist");
-        require(m.status == Status.OPEN, "Market closed");
-        require(block.timestamp <= m.stakingEndTime, "Staking period has ended"); 
-        require(side == Side.HAWK || side == Side.DOVE, "Invalid side");
-        require(msg.value > 0, "Stake must be > 0");
-
-        stakes[marketId][msg.sender][side] += msg.value;
-
-        if (side == Side.HAWK) {
-            m.hawkTotal += msg.value;
-        } else {
-            m.doveTotal += msg.value;
-        }
-
-        emit Staked(marketId, msg.sender, side, msg.value);
-    }
-
-    function disputeMarket(string calldata marketId) external payable {
-        Market storage m = markets[marketId];
-        require(m.exists, "Market does not exist");
-        require(m.status == Status.AI_RESOLVED, "Not in dispute phase");
-        require(block.timestamp <= m.aiResolutionTime + DISPUTE_WINDOW, "Dispute window closed");
-        require(msg.value == DISPUTE_FEE, "Must send exactly 50 USDC");
-        require(m.hawkTotal + m.doveTotal >= MIN_VOLUME_FOR_DISPUTE, "Volume too low for disputes");
-
-        m.disputer = msg.sender;
-        m.status = Status.DISPUTED;
-
-        emit Disputed(marketId, msg.sender);
-    }
-
-    function voteOnDispute(string calldata marketId, Side side) external payable {
-        Market storage m = markets[marketId];
-        require(m.status == Status.DISPUTED, "Market is not disputed");
-        require(block.timestamp <= m.aiResolutionTime + DISPUTE_WINDOW + (24 * 60 * 60), "Voting has ended");
-        require(msg.value >= MIN_VOTE_AMOUNT, "Vote amount below minimum");
-        require(side == Side.HAWK || side == Side.DOVE, "Invalid side");
-
-        if (side == Side.HAWK) {
-            m.hawkVotes += msg.value;
-        } else {
-            m.doveVotes += msg.value;
-        }
-        userVotes[marketId][msg.sender] += msg.value;
-
-        emit DAOExceptionVoted(marketId, msg.sender, side, msg.value);
-    }
-
-    function claim(string calldata marketId) external {
-        Market storage m = markets[marketId];
-        require(m.exists, "Market does not exist");
-        require(m.status == Status.FINALIZED, "Market not finalized yet");
-        require(!claimed[marketId][msg.sender], "Already claimed");
-
-        Side winSide = m.winner;
-        uint256 totalUserStaked = stakes[marketId][msg.sender][winSide];
-        
-        if ((winSide == Side.HAWK && m.hawkVotes > m.doveVotes) || (winSide == Side.DOVE && m.doveVotes > m.hawkVotes)) {
-            totalUserStaked += userVotes[marketId][msg.sender];
-        }
-        
-        require(totalUserStaked > 0, "Nothing to claim");
-
-        uint256 payout = totalUserStaked;
-        {
-            uint256 winningPoolTotal = winSide == Side.HAWK ? m.hawkTotal : m.doveTotal;
-            uint256 losingPoolTotal = winSide == Side.HAWK ? m.doveTotal : m.hawkTotal;
-            if (winningPoolTotal > 0 && losingPoolTotal > 0) {
-                payout += (totalUserStaked * losingPoolTotal) / winningPoolTotal;
-            }
-        } 
-
-        claimed[marketId][msg.sender] = true;
-        uint256 platformFee = (payout * PROTOCOL_FEE_BPS) / 10000;
-
-        (bool feeSent, ) = treasury.call{value: platformFee}("");
-        require(feeSent, "Protocol fee transfer failed");
-
-        (bool sent, ) = msg.sender.call{value: payout - platformFee}("");
-        require(sent, "Payout transfer failed");
-
-        emit Claimed(marketId, msg.sender, payout - platformFee);
-    }
+export async function claimOnContract(marketId: string): Promise<string> {
+  const provider = getProvider();
+  const signer = await provider.getSigner();
+  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
+  const tx = await contract.claim(marketId);
+  await tx.wait();
+  return tx.hash as string;
 }
