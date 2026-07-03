@@ -6,19 +6,13 @@ import { createClient } from "@supabase/supabase-js";
 import { jwtVerify } from "jose";
 
 const RecordStakeInput = z.object({
-  token: z.string().min(1), // JWT from verifySiwe
-  marketId: z.string().uuid(), // events.id for this market
+  token: z.string().min(1),
+  marketId: z.string().uuid(),
   side: z.enum(["HAWK", "DOVE"]),
-  stakedAmountRaw: z.string().min(1), // on-chain wei amount as string (18 decimals)
+  stakedAmountRaw: z.string().min(1),
   txHash: z.string().min(1),
 });
 
-/**
- * Called right after a stake tx confirms on-chain. Verifies the SIWE JWT
- * server-side (never trusts a wallet_address sent raw from the client),
- * then inserts using a Supabase client bound to that JWT — so the same RLS
- * policies that protect direct client reads/writes apply here too.
- */
 export const recordStake = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => RecordStakeInput.parse(input))
   .handler(async ({ data }) => {
@@ -38,9 +32,6 @@ export const recordStake = createServerFn({ method: "POST" })
     }
     if (!walletAddress) throw new Error("Invalid session");
 
-    // apikey stays the public anon key (required by PostgREST); Authorization
-    // carries the user's JWT so RLS resolves auth.jwt() ->> 'wallet_address'
-    // to THIS wallet, not the anon role.
     const supabase = createClient(url, anonKey, {
       global: { headers: { Authorization: `Bearer ${data.token}` } },
     });
@@ -60,7 +51,7 @@ export const recordStake = createServerFn({ method: "POST" })
     const stakedDisplay = Number(data.stakedAmountRaw) / 1e18;
     const { error: histErr } = await supabase.from("wallet_balance_history").insert({
       wallet_address: walletAddress,
-      balance: 0, // informational row for the timeline; real balance is read live from chain, not summed here
+      balance: 0,
       event_type: "stake",
       market_id: data.marketId,
       amount_delta: -stakedDisplay,
@@ -76,12 +67,6 @@ const RecordClaimInput = z.object({
   txHash: z.string().min(1),
 });
 
-/**
- * Called right after a claim() tx confirms on-chain. Moves the position from
- * pending_claim → claimed and logs the payout as a balance-history event.
- * Reads the position's own stored payout_amount (set by finalize-markets.js
- * at resolution time) rather than trusting a client-supplied amount.
- */
 export const recordClaim = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => RecordClaimInput.parse(input))
   .handler(async ({ data }) => {
@@ -105,8 +90,6 @@ export const recordClaim = createServerFn({ method: "POST" })
       global: { headers: { Authorization: `Bearer ${data.token}` } },
     });
 
-    // pending_claim হয়ে থাকা এই wallet × market-এর position থেকেই payout_amount পড়া হচ্ছে —
-    // ক্লায়েন্ট থেকে amount পাঠানো হচ্ছে না, যাতে কেউ fake payout claim করাতে না পারে
     const { data: existing, error: fetchErr } = await supabase
       .from("positions")
       .select("payout_amount")
@@ -139,6 +122,7 @@ export const recordClaim = createServerFn({ method: "POST" })
 
 const TokenOnly = z.object({ token: z.string().min(1) });
 
+// url আর anonKey return করা হচ্ছে — events anon fetch-এর জন্য
 async function verifyTokenAndClient(token: string) {
   const jwtSecret = process.env.APP_SUPABASE_JWT_SECRET;
   const url = process.env.APP_SUPABASE_URL;
@@ -155,7 +139,7 @@ async function verifyTokenAndClient(token: string) {
   const supabase = createClient(url, anonKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
-  return { supabase, walletAddress };
+  return { supabase, walletAddress, url, anonKey };
 }
 
 export type PortfolioPosition = {
@@ -181,7 +165,8 @@ export const getMyPositions = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => TokenOnly.parse(i))
   .handler(async ({ data }) => {
     assertSameOrigin();
-    const { supabase, walletAddress } = await verifyTokenAndClient(data.token);
+    const { supabase, walletAddress, url, anonKey } = await verifyTokenAndClient(data.token);
+
     const { data: rows, error } = await supabase
       .from("positions")
       .select(
@@ -189,12 +174,18 @@ export const getMyPositions = createServerFn({ method: "POST" })
       )
       .eq("wallet_address", walletAddress)
       .order("created_at", { ascending: false });
+
     if (error) throw new Error(`Could not load positions: ${error.message}`);
+
     const positions = (rows ?? []) as Omit<PortfolioPosition, "event">[];
     const ids = Array.from(new Set(positions.map((p) => p.market_id).filter(Boolean)));
+
     let eventsById: Record<string, PortfolioPosition["event"]> = {};
     if (ids.length > 0) {
-      const { data: evs } = await supabase
+      // anon client ব্যবহার করছি — events_anon_read policy anon role-এর জন্য,
+      // authenticated JWT দিয়ে সেই policy match করে না
+      const anonSupabase = createClient(url, anonKey);
+      const { data: evs } = await anonSupabase
         .from("events")
         .select("id, source_title, narrative, category, source_url, resolution_at")
         .in("id", ids);
@@ -202,10 +193,12 @@ export const getMyPositions = createServerFn({ method: "POST" })
         eventsById[e.id as string] = e as PortfolioPosition["event"];
       }
     }
+
     const withEvents: PortfolioPosition[] = positions.map((p) => ({
       ...p,
       event: eventsById[p.market_id] ?? null,
     }));
+
     return { walletAddress, positions: withEvents };
   });
 
