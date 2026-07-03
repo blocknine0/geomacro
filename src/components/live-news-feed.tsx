@@ -92,7 +92,7 @@ export function LiveNewsFeed({
       const { data, error } = await supabaseFeed
         .from("events")
         .select("*")
-        .order("created_at", { ascending: false })
+        .order("published_at", { ascending: false, nullsFirst: false })
         .limit(50);
       if (error) throw error;
       const mapped = (data as StoredEventRow[])
@@ -124,25 +124,25 @@ export function LiveNewsFeed({
 
   const filtered = useMemo(
     () => {
-      if (active !== "all") return events.filter((e) => e.category === active);
-      // "All" view: surface highest-impact stories first
-      // (severity weighted by confidence, plus absolute risk delta).
-      return [...events].sort((a, b) => {
-        const score = (e: FeedEvent) =>
-          (e.severity * e.confidence) / 100 + Math.abs(e.delta);
-        return score(b) - score(a);
-      });
+      const list = active !== "all"
+        ? events.filter((e) => e.category === active)
+        : events;
+      // Always newest-first by published_at (DB already returns sorted,
+      // but client-side sort guarantees it after any filtering / remapping).
+      return [...list].sort((a, b) =>
+        Date.parse(b.publishedAt) - Date.parse(a.publishedAt),
+      );
     },
     [active, events],
   );
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           <button
             onClick={() => setActive("all")}
-            className={`rounded-full border px-3 py-1.5 text-xs font-mono transition ${active === "all" ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:text-foreground"}`}
+            className={`shrink-0 rounded-full border px-3 py-1.5 font-mono text-xs transition ${active === "all" ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:text-foreground"}`}
           >
             All
           </button>
@@ -150,13 +150,13 @@ export function LiveNewsFeed({
             <button
               key={c}
               onClick={() => setActive(c)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-mono transition ${active === c ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:text-foreground"}`}
+              className={`shrink-0 rounded-full border px-3 py-1.5 font-mono text-xs transition ${active === c ? "border-primary/60 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:text-foreground"}`}
             >
               {CATEGORY_LABELS[c]}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
           {lastUpdated && (
             <span className="font-mono text-[10px] text-muted-foreground">
               <Radio className="mr-1 inline h-3 w-3 text-primary" />
@@ -176,7 +176,7 @@ export function LiveNewsFeed({
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         {loading && events.length === 0 ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-44 animate-pulse rounded-2xl border border-border/40 bg-card/30" />
@@ -188,10 +188,10 @@ export function LiveNewsFeed({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: i * 0.04 }}
-              className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur transition hover:border-primary/40"
+              className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur transition hover:border-primary/40 sm:p-6"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                     <Badge variant="outline" className="text-[10px]">{CATEGORY_LABELS[e.category]}</Badge>
                     <span className="text-muted-foreground/70">

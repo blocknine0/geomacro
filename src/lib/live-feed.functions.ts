@@ -6,6 +6,7 @@ import { fetchNewsApi, type NewsHit } from "./newsapi.server";
 import { groqClassifyJson } from "./groq.server";
 import { upsertEvents, type StoredEvent } from "./supabase-app.server";
 import { stripInternalIds } from "./live-feed.sanitize";
+import { EVENT_STAGES, normalizeEventStage } from "./event-stage";
 
 export const FEED_CATEGORIES = ["geopolitics", "rare-earth", "macro", "crypto"] as const;
 export type FeedCategory = (typeof FEED_CATEGORIES)[number];
@@ -34,15 +35,6 @@ const CATEGORY_TOPIC: Record<FeedCategory, string> = {
     "cryptocurrency markets and regulation: Bitcoin, Ethereum, stablecoins, SEC / global crypto regulation, USDC, on-chain market structure",
 };
 
-const ALLOWED_STAGES = [
-  "Active Escalation",
-  "Building",
-  "Fragile Ceasefire",
-  "De-escalation",
-  "Monitoring",
-  "Stable",
-] as const;
-
 const INJECTION_RE = /(ignore (all|previous|prior)|disregard (all|previous)|system prompt|you are now|act as|jailbreak|<\|.*\|>)/i;
 
 const FeedInput = z.object({
@@ -55,7 +47,7 @@ const EventOut = z.object({
   category: z.enum(FEED_CATEGORIES),
   narrative: z.string(),
   summary: z.string(),
-  stage: z.enum(ALLOWED_STAGES),
+  stage: z.preprocess(normalizeEventStage, z.enum(EVENT_STAGES)),
   severity: z.number(),
   confidence: z.number(),
   delta: z.number(),

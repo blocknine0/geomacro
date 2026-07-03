@@ -1,5 +1,6 @@
 import process from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizeEventStage, type EventStage } from "./event-stage";
 
 /**
  * App-owned Supabase client (separate from any Lovable Cloud project).
@@ -36,7 +37,7 @@ export type StoredEvent = {
   category: string;
   narrative: string;
   summary: string;
-  stage: string;
+  stage: EventStage | string;
   severity: number;
   confidence: number;
   delta: number;
@@ -82,9 +83,15 @@ export async function upsertEvents(events: StoredEvent[]): Promise<void> {
     return;
   }
   try {
+    // Defensive: normalize every stage before it touches the DB so legacy
+    // / AI-hallucinated values (e.g. "Emerging") never reach the Arena.
+    const safeEvents = events.map((e) => ({
+      ...e,
+      stage: normalizeEventStage(e.stage),
+    }));
     const { error } = await sb
       .from("events")
-      .upsert(events, { onConflict: "source_url" });
+      .upsert(safeEvents, { onConflict: "source_url" });
     if (error) {
       console.error("[upsertEvents] supabase error", error.message, error.details, error.hint);
     } else {

@@ -13,7 +13,7 @@ function short(s: string, head = 6, tail = 4) {
 }
 
 function ts(t: number | null) {
-  if (!t) return "—";
+  if (!t) return "-";
   const d = new Date(t * 1000);
   return d.toUTCString().slice(5, 22);
 }
@@ -56,7 +56,7 @@ export function WalletTxFeed() {
       <div className="rounded-2xl border border-border/60 bg-card/40 p-8 text-center">
         <Wallet className="mx-auto h-6 w-6 text-muted-foreground" />
         <p className="mt-3 text-sm text-muted-foreground">
-          Connect a wallet to see every ARC transaction it signs — in real time.
+          Connect a wallet to see every ARC transaction it signs, in real time.
         </p>
         <Button onClick={connect} className="mt-4 gap-2">
           <Wallet className="h-4 w-4" /> Connect Wallet
@@ -107,7 +107,7 @@ export function WalletTxFeed() {
           <div className="p-8 text-center text-xs text-muted-foreground">
             {loading
               ? "Loading on-chain history…"
-              : "No transactions yet. Sign an attestation, stake, or publish — it'll appear here in 30s."}
+              : "No transactions yet. Sign an attestation, stake or publish and it will show up here within 30 seconds."}
           </div>
         ) : (
           <ul className="divide-y divide-border/40">
@@ -132,7 +132,7 @@ export function WalletTxFeed() {
                   <div className="mt-0.5 flex gap-2 font-mono text-[10px] text-muted-foreground">
                     <span>{ts(tx.timestamp)}</span>
                     <span>·</span>
-                    <span>to {short(tx.to ?? "—")}</span>
+                    <span>to {short(tx.to ?? "-")}</span>
                     {tx.blockNumber != null && <><span>·</span><span>blk {tx.blockNumber}</span></>}
                   </div>
                 </div>

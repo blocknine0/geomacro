@@ -2,12 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP } from "@tanstack/react-start/server";
 import { assertSameOrigin } from "./origin-guard";
 import { z } from "zod";
-import { groqClassifyJson } from "./groq.server";
+import { groqClassifyJson, GroqError } from "./groq.server";
 import { fetchNewsApi } from "./newsapi.server";
 
 const INJECTION_RE = /(ignore (all|previous|prior)|disregard (all|previous)|system prompt|you are now|act as|jailbreak|<\|.*\|>)/i;
 const SafeText = (max: number) =>
-  z.string().min(1).max(max).refine((v) => !INJECTION_RE.test(v), { message: "Invalid input" });
+  z
+    .string()
+    .min(1)
+    .transform((v) => v.slice(0, max))
+    .refine((v) => !INJECTION_RE.test(v), { message: "Invalid input" });
 
 const Position = z.object({
   side: z.enum(["YES", "NO"]),
@@ -124,7 +128,18 @@ Be decisive and concrete.`;
         ...parsed,
       };
     } catch (err) {
-      console.error("[mainAgentJudge] AI failed", err);
-      throw new Error("Main agent verdict failed");
+      console.error("[mainAgentJudge] failed", {
+        marketId: data.marketId,
+        name: (err as Error)?.name,
+        message: (err as Error)?.message,
+        code: (err as GroqError)?.code,
+        status: (err as GroqError)?.status,
+        snippet: (err as GroqError)?.snippet,
+      });
+      if (err instanceof GroqError) throw err;
+      if (err instanceof z.ZodError) {
+        throw new Error("VERDICT_SCHEMA_INVALID: model returned an unexpected shape");
+      }
+      throw new Error(`MAIN_AGENT_FAILED: ${(err as Error)?.message ?? "unknown"}`);
     }
   });

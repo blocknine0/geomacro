@@ -1,10 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ARC_NETWORKS,
   networkByChainId,
   preferredNetwork,
   type ArcNetwork,
 } from "@/lib/arc";
+import { buildSiweMessage, verifySiwe } from "@/lib/siwe.functions";
+
+const SESSION_KEY = (addr: string) => `geomacro.siwe-session.${addr.toLowerCase()}`;
+
+type SiweSession = { token: string; walletAddress: string; expiresAt: number };
+
+function loadSession(addr: string): SiweSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY(addr));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SiweSession;
+    if (parsed.expiresAt < Date.now()) {
+      localStorage.removeItem(SESSION_KEY(addr));
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -23,9 +45,21 @@ export function useWallet() {
   const [chainId, setChainId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [session, setSession] = useState<SiweSession | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const callVerifySiwe = useServerFn(verifySiwe);
 
   const network: ArcNetwork | null = networkByChainId(chainId);
   const onArc = network !== null;
+
+  // wallet address change হলে সেই address-এর জন্য existing session আছে কিনা দেখো
+  useEffect(() => {
+    if (!address) {
+      setSession(null);
+      return;
+    }
+    setSession(loadSession(address));
+  }, [address]);
 
   useEffect(() => {
     const eth = typeof window !== "undefined" ? window.ethereum : undefined;
@@ -105,8 +139,49 @@ export function useWallet() {
   }, []);
 
   const disconnect = useCallback(() => {
+    if (address) localStorage.removeItem(SESSION_KEY(address));
+    setSession(null);
     setAddress(null);
-  }, []);
+  }, [address]);
+
+  /**
+   * Sign-In With Ethereum: asks the wallet to sign a plain message (gasless,
+   * no tx) proving control of `address`, then exchanges that signature for a
+   * short-lived JWT the app uses for all positions/balance-history writes.
+   * Private key never leaves the wallet extension at any point.
+   */
+  const signIn = useCallback(async () => {
+    setError(null);
+    const eth = window.ethereum;
+    if (!eth || !address) {
+      setError("Connect a wallet first");
+      return null;
+    }
+    setSigningIn(true);
+    try {
+      const issuedAt = Date.now();
+      const message = buildSiweMessage(address, issuedAt);
+      const signature = (await eth.request({
+        method: "personal_sign",
+        params: [message, address],
+      })) as string;
+
+      const result = await callVerifySiwe({ data: { address, issuedAt, signature } });
+      const newSession: SiweSession = {
+        token: result.token,
+        walletAddress: result.walletAddress,
+        expiresAt: Date.now() + 23 * 60 * 60 * 1000, // JWT itself expires at 24h; refresh a bit early
+      };
+      localStorage.setItem(SESSION_KEY(address), JSON.stringify(newSession));
+      setSession(newSession);
+      return newSession;
+    } catch (e) {
+      setError((e as Error).message ?? "Sign-in failed");
+      return null;
+    } finally {
+      setSigningIn(false);
+    }
+  }, [address, callVerifySiwe]);
 
   return {
     address,
@@ -119,5 +194,10 @@ export function useWallet() {
     connect,
     switchToArc,
     disconnect,
+    // SIWE session — positions/wallet_balance_history writes require this
+    session,
+    signingIn,
+    signIn,
+    isSignedIn: session !== null,
   };
 }
