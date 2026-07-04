@@ -194,6 +194,27 @@ async function ingestNews() {
     let categoryInserted = 0;
     let seenInCurrentRun = new Set();
 
+    // ২৪-ঘণ্টার real baseline severity বার করা হচ্ছে এই category-র আগের events থেকে,
+    // যাতে delta একটা deterministic হিসাব হয়, hardcoded 0 না।
+    let baselineSeverity = null;
+    try {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: baselineRows, error: baselineError } = await supabase
+        .from('events')
+        .select('severity')
+        .eq('category', category.name)
+        .gte('published_at', since);
+      if (baselineError) {
+        console.error(`  ⚠️ Baseline query failed for ${category.name}:`, baselineError.message);
+      } else if (baselineRows && baselineRows.length > 0) {
+        const sum = baselineRows.reduce((acc, r) => acc + Number(r.severity ?? 0), 0);
+        baselineSeverity = sum / baselineRows.length;
+        console.log(`  Baseline severity for ${category.name}: ${baselineSeverity.toFixed(1)} (from ${baselineRows.length} events)`);
+      }
+    } catch (be) {
+      console.error(`  ⚠️ Baseline computation threw for ${category.name}:`, be.message);
+    }
+
     for (const query of category.queries) {
       const fetched = await fetchArticlesFromApis(query);
 
@@ -209,6 +230,12 @@ async function ingestNews() {
         const assessment = await checkArticleRelevance(article.title, article.description, category.name);
 
         if (assessment.relevant) {
+          // Cold-start fallback: এই run-এ এখনো কোনো baseline না থাকলে (নতুন category
+          // বা কোনো historical data নেই), severity নিজেই baseline ধরে delta=0 হবে সেই
+          // প্রথম event-এর জন্য, পরের event থেকে real comparison শুরু হবে।
+          if (baselineSeverity === null) baselineSeverity = assessment.severity;
+          const delta = Math.round(assessment.severity - baselineSeverity);
+
           const { error: insertError } = await supabase
             .from('events')
             .insert([{
@@ -221,14 +248,14 @@ async function ingestNews() {
               stage: 'new',
               severity: assessment.severity,
               confidence: assessment.confidence,
-              delta: 0,
+              delta,
               published_at: article.publishedAt,
               market_created: false,
               created_at: new Date().toISOString()
             }]);
 
           if (!insertError) {
-            console.log(`  ✅ Successfully Inserted: "${article.title}" (severity ${assessment.severity})`);
+            console.log(`  ✅ Successfully Inserted: "${article.title}" (severity ${assessment.severity}, delta ${delta})`);
             categoryInserted++;
             totalInserted++;
             existingTitles.add(normTitle);
