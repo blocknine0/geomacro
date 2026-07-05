@@ -650,12 +650,6 @@ export function ArenaSection() {
     const hawkUsd = Number(om ? om.hawkTotalUsdc : m.onchain.hawkTotalUsdc) || 0;
     const doveUsd = Number(om ? om.doveTotalUsdc : m.onchain.doveTotalUsdc) || 0;
     const total = hawkUsd + doveUsd;
-    // Require at least 1 cent of real liquidity before rendering an implied
-    // probability. Dust (sub-cent leftovers from prior test stakes) rounds
-    // to "0 USDC" in the display but is technically > 0, which used to slip
-    // past the guard and render a misleading 0% / 100% split.
-    const hasLiquidity = total >= 0.01;
-    const hawkPct = hasLiquidity ? Math.round((hawkUsd / total) * 100) : 0;
     const result = duels[m.id];
     const staked = stakeTx[m.id];
     const mine = myStakes[m.id];
@@ -688,7 +682,6 @@ export function ArenaSection() {
     const displayWinnerSide: AgentSide | null =
       winnerSide ?? m.fullDetails?.tentativeWinner ?? m.aiTentativeWinner ?? null;
     const canClaim = !!(isFinalized && myWinningWei > 0n && !claimedMarkets.has(m.id));
-    const spread = Math.abs(2 * hawkPct - 100);
     const velocity = m.severity >= 75 ? "High" : m.severity >= 50 ? "Medium" : "Low";
     // Deterministic per-market conviction derived from severity vs threshold
     // (plus a small per-id jitter) so each market shows a distinct, sensible
@@ -816,44 +809,19 @@ export function ArenaSection() {
 
         <div className="px-6">
           <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-            {hasLiquidity ? (
-              <>
-                <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <span>Implied Probability</span>
-                </div>
-                <div className="mt-2 flex items-end justify-between gap-4">
-                  <div>
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-destructive">
-                      Escalation
-                    </div>
-                    <div className="font-mono text-4xl tabular-nums text-destructive md:text-5xl">
-                      {hawkPct}%
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-primary">
-                      Calm
-                    </div>
-                    <div className="font-mono text-4xl tabular-nums text-primary md:text-5xl">
-                      {100 - hawkPct}%
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 flex h-1.5 overflow-hidden rounded-sm bg-muted">
-                  <div className="h-full bg-destructive" style={{ width: `${hawkPct}%` }} />
-                  <div className="h-full bg-primary" style={{ width: `${100 - hawkPct}%` }} />
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
-                  Signal Brief
-                </span>
-                <p className="text-sm leading-relaxed text-foreground/90 line-clamp-2">
-                  {buildSignalBrief(m)}
-                </p>
-              </div>
-            )}
+            {/* Implied Probability bar intentionally removed for all users,
+                permanently — showing the live odds split lets people just
+                follow the existing skew instead of forming their own view,
+                which defeats the purpose of the market. Always show a
+                neutral qualitative brief instead. */}
+            <div className="flex flex-col gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
+                Signal Brief
+              </span>
+              <p className="text-sm leading-relaxed text-foreground/90 line-clamp-2">
+                {buildSignalBrief(m)}
+              </p>
+            </div>
           </div>
 
           {/* Narrative Matrix */}
