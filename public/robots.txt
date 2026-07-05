@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://geomacrooracle.lovable.app/sitemap.xml
+Sitemap: https://geomacro.live/sitemap.xml
