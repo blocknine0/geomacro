@@ -101,7 +101,7 @@ async function main() {
         const market = await contract.getMarketFullDetails(marketId);
         marketStatus = Number(market.status);
       } catch (decodeErr) {
-        console.log(`⚠️ Warning: Could not fetch details for ${marketId}. Skipping.`);
+        console.log(`⚠️ Warning: Could not fetch details for ${marketId}. Skipping. Reason: ${decodeErr.message}`);
         continue;
       }
 
