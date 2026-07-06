@@ -148,12 +148,16 @@ async function main() {
 
       if (status === 4) {
         // ইতিমধ্যে finalized on-chain (আগের রান মিস হয়ে থাকতে পারে) — শুধু sync করে দাও
-        if (adminSupabase) {
-          const winLabel = SIDE_LABEL[Number(onChainMarket.winner)];
-          if (winLabel && winLabel !== "NONE") {
-            const pools = await contract.getMarket(marketId);
-            await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
-          }
+        // ⚠️ FIX: adminSupabase না থাকলে (বা sync fail করলে) market_resolved=true সেট করা যাবে না,
+        // নাহলে এই event চিরতরে orphaned হয়ে যাবে (পরের run আর কখনো retry করবে না)
+        if (!adminSupabase) {
+          console.log(`  ⚠️ Skipping resolved-flag update for ${marketId}: no service-role key, cannot sync positions safely.`);
+          continue;
+        }
+        const winLabel = SIDE_LABEL[Number(onChainMarket.winner)];
+        if (winLabel && winLabel !== "NONE") {
+          const pools = await contract.getMarket(marketId);
+          await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
         }
         await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         continue;
@@ -168,12 +172,17 @@ async function main() {
       const finalStatus = Number(finalized.status);
 
       if (finalStatus === 4) {
-        const winLabel = SIDE_LABEL[Number(finalized.winner)];
-        if (adminSupabase && winLabel && winLabel !== "NONE") {
-          const pools = await contract.getMarket(marketId);
-          await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
+        // ⚠️ FIX: এখানেও একই কারণে — sync guaranteed না হলে resolved flag সেট করা যাবে না
+        if (!adminSupabase) {
+          console.log(`  ⚠️ Finalized ${marketId} on-chain, but skipping resolved-flag update: no service-role key.`);
+        } else {
+          const winLabel = SIDE_LABEL[Number(finalized.winner)];
+          if (winLabel && winLabel !== "NONE") {
+            const pools = await contract.getMarket(marketId);
+            await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
+          }
+          await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         }
-        await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
       }
       // finalStatus 4 না হলে (এখনো DISPUTED phase চলছে) — market_resolved false-ই থাকবে,
       // পরের cron run-এ আবার চেষ্টা হবে যতক্ষণ না dispute window শেষ হয়।
