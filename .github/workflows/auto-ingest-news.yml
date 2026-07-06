@@ -35,6 +35,8 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           # স্ক্রিপ্টের ভেরিয়েবল নামের সাথে মিলিয়ে দেওয়া হলো
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          # ⚠️ FIX: আগে এখানে ভুল করে APP_SUPABASE_ANON_KEY বসানো ছিল — এখন আসল
+          # service_role key ব্যবহার হচ্ছে, যাতে RLS-protected insert fail না করে
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/ingest-news.js
         
