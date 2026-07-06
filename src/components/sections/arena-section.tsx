@@ -139,7 +139,7 @@ function friendlyAgentError(err: unknown, kind: "duel" | "judge"): string {
     case "AI service unavailable":
       return "AI service is not configured. Ask the admin to set GROQ_API_KEY.";
   }
-  if (kind === "judge") return "Main agent unavailable. Try again in a moment.";
+  if (kind === "judge") return `Main agent unavailable${msg ? `: ${msg}` : ""}. Try again in a moment.`;
   return msg || "Agent duel unavailable. Please try again.";
 }
 
