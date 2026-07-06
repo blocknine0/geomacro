@@ -106,10 +106,11 @@ async function main() {
       }
 
       // 2 = AI_RESOLVED, 3 = DISPUTED, 4 = FINALIZED
+      // ⚠️ FIX: এখানে market_resolved=true সেট করা হতো না, কারণ এই script কখনো
+      // positions sync করে না। শুধু finalize-markets.js-ই (যেখানে syncPositionsForMarket
+      // আছে) এই flag-এর একমাত্র মালিক হওয়া উচিত — নাহলে positions sync ছাড়াই
+      // event orphaned হয়ে যেতে পারে (আগের বাগের মতোই)।
       if (marketStatus >= 2) {
-        if (marketStatus === 4) {
-          await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
-        }
         continue;
       }
 
