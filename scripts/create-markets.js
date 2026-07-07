@@ -7,6 +7,19 @@ const MAX_NEW_MARKETS_PER_RUN = 30;
 const THRESHOLD_STEP = 5;
 const STAKING_DURATION_SEC = 46 * 60 * 60;   // ৪৬ ঘণ্টা পর স্টেকিং বন্ধ — শেষ মুহূর্তে স্টেক করে জেতা ঠেকাতে
 const RESOLUTION_DURATION_SEC = 48 * 60 * 60; // ৪৮ ঘণ্টা পর রিজলভ — কন্ট্রাক্ট নিজেই এনফোর্স করে
+
+// ⚠️ CRITICAL SAFETY INVARIANT: RESOLUTION_DURATION_SEC must always be
+// greater than STAKING_DURATION_SEC. The contract's declareWinnerByAI()
+// only checks resolutionTime, not stakingEndTime — so if this relationship
+// is ever violated, the AI's tentative verdict could be revealed WHILE
+// staking is still open, letting users see the outcome before betting.
+// This throws immediately instead of silently creating that exploit.
+if (RESOLUTION_DURATION_SEC <= STAKING_DURATION_SEC) {
+  throw new Error(
+    "FATAL: RESOLUTION_DURATION_SEC must be greater than STAKING_DURATION_SEC to prevent revealing the verdict before staking closes."
+  );
+}
+
 const CONTRACT_ABI = [
   "function createMarket(string marketId, uint256 stakingDuration, uint256 resolutionDuration) external",
   "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
