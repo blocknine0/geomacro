@@ -187,7 +187,7 @@ async function main() {
       // finalStatus 4 না হলে (এখনো DISPUTED phase চলছে) — market_resolved false-ই থাকবে,
       // পরের cron run-এ আবার চেষ্টা হবে যতক্ষণ না dispute window শেষ হয়।
     } catch (err) {
-      console.log(`Skipping ${marketId}: Phase active.`);
+      console.log(`Skipping ${marketId}: ${err.reason || err.shortMessage || err.message}`);
     }
   }
 }
