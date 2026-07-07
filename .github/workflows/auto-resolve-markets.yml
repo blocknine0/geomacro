@@ -1,4 +1,5 @@
 name: Auto-resolve Agent Arena markets
+
 # Runs every 2 hours, matching the market-creation schedule. Resolves
 # any market that's at least 24 hours old based on the latest severity
 # reading for its linked news event.
@@ -6,23 +7,28 @@ on:
   schedule:
     - cron: "30 */2 * * *"
   workflow_dispatch: {}
+
 jobs:
   resolve-markets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Install dependencies
         run: npm install ethers @supabase/supabase-js
+
       - name: Run market resolution script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
