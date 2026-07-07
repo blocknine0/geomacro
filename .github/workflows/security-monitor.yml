@@ -1,15 +1,14 @@
 name: Security Monitor
 on:
   schedule:
-    - cron: '*/5 * * * *'  # প্রতি ৫ মিনিটে
+    - cron: '*/15 * * * *'  # প্রতি ১৫ মিনিটে
   workflow_dispatch:
-
 jobs:
   monitor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - run: npm install
