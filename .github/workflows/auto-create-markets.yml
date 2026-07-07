@@ -1,27 +1,22 @@
 name: Auto-create Agent Arena markets
-
 # Runs every 30 minutes, and can also be triggered manually from the
 # Actions tab for testing.
 on:
   schedule:
     - cron: "0 */2 * * *"
   workflow_dispatch: {}
-
 jobs:
   create-markets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v6
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
-
       - name: Install dependencies
         run: npm install ethers @supabase/supabase-js
-
       - name: Run market creation script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
@@ -29,3 +24,4 @@ jobs:
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
         run: node scripts/create-markets.js
+        
