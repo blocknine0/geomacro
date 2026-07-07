@@ -159,7 +159,7 @@ async function main() {
           const pools = await contract.getMarket(marketId);
           await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
         }
-        await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
+        await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         continue;
       }
 
@@ -181,7 +181,7 @@ async function main() {
             const pools = await contract.getMarket(marketId);
             await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
           }
-          await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
+          await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         }
       }
       // finalStatus 4 না হলে (এখনো DISPUTED phase চলছে) — market_resolved false-ই থাকবে,
