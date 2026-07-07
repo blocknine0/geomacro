@@ -57,11 +57,20 @@ Respond STRICTLY in JSON:
 }
 
 async function main() {
-  const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, ARC_RPC_URL, GROQ_API_KEY } = process.env;
+  const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL, GROQ_API_KEY } = process.env;
   if (!OWNER_PRIVATE_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL || !GROQ_API_KEY)
     throw new Error("Missing env.");
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY missing — events.ai_processed/market_resolved updates will likely be silently blocked by RLS (anon has no UPDATE grant on events).");
+  }
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
+  // ⚠️ FIX: events টেবিলে anon role-এর কোনো UPDATE policy নেই (শুধু SELECT + INSERT আছে),
+  // তাই anon client দিয়ে .update() কল করলে RLS silently সব রো ব্লক করে দেয় — কোনো error
+  // থ্রো না করেই। তাই সব events.update() কল এখন থেকে adminSupabase (service-role) দিয়ে হবে।
+  const adminSupabase = SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    : supabase; // fallback — অন্তত silently সব বন্ধ হয়ে যাওয়ার চেয়ে চেষ্টা করাই ভালো
   const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
   const groq = new Groq({
     apiKey: GROQ_API_KEY,
@@ -118,12 +127,16 @@ async function main() {
             const tentative = Number(market.tentativeWinner);
             const sideLabel = tentative === SIDE.HAWK ? "HAWK" : tentative === SIDE.DOVE ? "DOVE" : null;
             if (sideLabel) {
-              await supabase.from("events").update({
+              const { error: repairUpdErr, count } = await adminSupabase.from("events").update({
                 ai_processed: true,
                 ai_tentative_winner: sideLabel,
                 ai_resolved_at: new Date().toISOString(),
-              }).eq("id", event.id);
-              console.log(`  ⚠️ Repaired orphaned ai_processed flag for ${marketId} (was already resolved on-chain as ${sideLabel}, but Supabase flag was never set).`);
+              }, { count: "exact" }).eq("id", event.id);
+              if (repairUpdErr) {
+                console.log(`  ⚠️ Repair write failed for ${marketId}: ${repairUpdErr.message}`);
+              } else {
+                console.log(`  ✅ Repaired orphaned ai_processed flag for ${marketId} (was already resolved on-chain as ${sideLabel}, but Supabase flag was never set). Rows affected: ${count}`);
+              }
             }
           } catch (repairErr) {
             console.log(`  ⚠️ Could not repair ai_processed for ${marketId}: ${repairErr.message}`);
@@ -142,7 +155,7 @@ async function main() {
       await tx.wait();
       resolvedCount++;
 
-      const { error: updateErr } = await supabase.from("events").update({
+      const { error: updateErr } = await adminSupabase.from("events").update({
         ai_processed: true,
         ai_tentative_winner: judgment.sideLabel,
         ai_resolved_at: new Date().toISOString(),
