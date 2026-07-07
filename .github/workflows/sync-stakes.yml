@@ -3,13 +3,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 */6 * * *'
-
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - run: npm install
@@ -19,3 +18,4 @@ jobs:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          
