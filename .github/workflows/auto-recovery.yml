@@ -6,17 +6,15 @@ on:
         description: 'sync-stakes / resolve-markets / create-markets'
         required: true
         default: 'sync-stakes'
-
 jobs:
   recovery:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - run: npm install
-
       - name: Sync missing stakes
         if: ${{ github.event.inputs.action == 'sync-stakes' }}
         run: DEPLOY_BLOCK=49000000 node scripts/sync-stakes.js
@@ -25,7 +23,6 @@ jobs:
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-
       - name: Resolve due markets
         if: ${{ github.event.inputs.action == 'resolve-markets' }}
         run: node scripts/resolve-markets.js
@@ -36,7 +33,6 @@ jobs:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-
       - name: Create new markets
         if: ${{ github.event.inputs.action == 'create-markets' }}
         run: node scripts/create-markets.js
@@ -46,3 +42,4 @@ jobs:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          
