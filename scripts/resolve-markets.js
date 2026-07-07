@@ -106,11 +106,29 @@ async function main() {
       }
 
       // 2 = AI_RESOLVED, 3 = DISPUTED, 4 = FINALIZED
-      // ⚠️ FIX: এখানে market_resolved=true সেট করা হতো না, কারণ এই script কখনো
-      // positions sync করে না। শুধু finalize-markets.js-ই (যেখানে syncPositionsForMarket
-      // আছে) এই flag-এর একমাত্র মালিক হওয়া উচিত — নাহলে positions sync ছাড়াই
-      // event orphaned হয়ে যেতে পারে (আগের বাগের মতোই)।
       if (marketStatus >= 2) {
+        // ⚠️ FIX: আগে এখানে শুধু `continue` করা হতো, যার ফলে যদি কোনো আগের রানে
+        // declareWinnerByAI অনচেইনে সফল হলেও Supabase-এর ai_processed আপডেট fail
+        // করে থাকে, তাহলে এই event চিরতরে "invisible" হয়ে যেত (finalize-markets.js
+        // কখনো এটা ধরতে পারত না, কারণ সেটা ai_processed=true ছাড়া খোঁজেই না)।
+        // এখন on-chain-এর tentativeWinner থেকেই retroactively ai_processed ঠিক করে দিচ্ছি।
+        if (!event.ai_processed) {
+          try {
+            const market = await contract.getMarketFullDetails(marketId);
+            const tentative = Number(market.tentativeWinner);
+            const sideLabel = tentative === SIDE.HAWK ? "HAWK" : tentative === SIDE.DOVE ? "DOVE" : null;
+            if (sideLabel) {
+              await supabase.from("events").update({
+                ai_processed: true,
+                ai_tentative_winner: sideLabel,
+                ai_resolved_at: new Date().toISOString(),
+              }).eq("id", event.id);
+              console.log(`  ⚠️ Repaired orphaned ai_processed flag for ${marketId} (was already resolved on-chain as ${sideLabel}, but Supabase flag was never set).`);
+            }
+          } catch (repairErr) {
+            console.log(`  ⚠️ Could not repair ai_processed for ${marketId}: ${repairErr.message}`);
+          }
+        }
         continue;
       }
 
