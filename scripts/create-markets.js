@@ -77,11 +77,13 @@ async function main() {
       const chainConfirmedAt = new Date(Number(confirmedBlock.timestamp) * 1000);
       const resolutionAt = new Date(chainConfirmedAt.getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
 
+      // ✅ NEW: tx hash এখন Supabase-এ সেভ হচ্ছে (market_lookup view-এ cross-check করার জন্য)
       await adminSupabase.from("events").update({
         market_created: true,
         market_threshold: marketThreshold,
         resolution_at: resolutionAt,
-        market_address: CONTRACT_ADDRESS
+        market_address: CONTRACT_ADDRESS,
+        market_created_tx_hash: tx.hash,
       }).eq("id", event.id);
     } catch (err) {
       console.error(`Failed to create market for event ${event.id}: ${err.message}`);
