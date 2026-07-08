@@ -1,0 +1,18 @@
+name: Sync Market Lifecycle
+on:
+  schedule:
+    - cron: '*/30 * * * *' # প্রতি ৩০ মিনিটে
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun scripts/sync-lifecycle.js
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          
