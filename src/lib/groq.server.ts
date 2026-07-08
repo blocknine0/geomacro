@@ -12,11 +12,43 @@ export class GroqError extends Error {
   }
 }
 
+const MAX_RATE_LIMIT_RETRIES = Number(process.env.GROQ_MAX_RETRIES ?? 4);
+const BASE_BACKOFF_MS = 1500;
+const MAX_BACKOFF_MS = 20_000; // ফ্রন্টএন্ড রিকোয়েস্ট, তাই ব্যাকফিল স্ক্রিপ্টের চেয়ে ছোট cap রাখা হলো — ইউজারকে বেশিক্ষণ আটকে রাখা যাবে না
+
 /**
  * Call Groq chat completions with JSON response_format.
  * Server-only — requires GROQ_API_KEY.
+ * 429 (rate limited) পেলে exponential backoff দিয়ে নিজে থেকেই retry করে —
+ * এই একটা জায়গায় ফিক্স করা মানে agents.functions.ts, arena-judge.functions.ts,
+ * live-feed.functions.ts — যে কেউ এই হেল্পার কল করে, সবাই সুরক্ষিত।
  */
 export async function groqClassifyJson<T>(args: {
+  system: string;
+  user: string;
+  model?: string;
+  temperature?: number;
+  timeoutMs?: number;
+}): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await groqClassifyJsonOnce<T>(args);
+    } catch (err) {
+      const isRateLimited = err instanceof GroqError && err.code === "GROQ_RATE_LIMITED";
+      if (!isRateLimited || attempt >= MAX_RATE_LIMIT_RETRIES) {
+        throw err;
+      }
+      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      const jitter = Math.random() * 400;
+      attempt++;
+      console.warn(`[groq] rate limited, retry ${attempt}/${MAX_RATE_LIMIT_RETRIES} in ${Math.round(backoff + jitter)}ms`);
+      await new Promise((resolve) => setTimeout(resolve, backoff + jitter));
+    }
+  }
+}
+
+async function groqClassifyJsonOnce<T>(args: {
   system: string;
   user: string;
   model?: string;
