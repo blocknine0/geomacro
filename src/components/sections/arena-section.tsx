@@ -1066,13 +1066,30 @@ export function ArenaSection() {
     );
   };
 
-  const openMarkets = markets.filter(
-    (m) => !(m.marketFinalized || (onchainMarkets[m.id] ?? m.onchain).resolved),
-  );
+  // Coarse lifecycle bucket per market, preferring the freshest polled
+  // on-chain status (onchainMarkets) over the snapshot taken at load time.
+  const stageOf = (m: Market): Market["lifecycleStage"] => {
+    const live = onchainMarkets[m.id];
+    if (live) {
+      switch (live.status) {
+        case 3:
+          return "disputed";
+        case 4:
+          return "completed";
+        case 2:
+          return "awaiting_dispute";
+        default:
+          return "active";
+      }
+    }
+    return m.lifecycleStage;
+  };
+
+  const activeMarkets = markets.filter((m) => stageOf(m) === "active");
+  const awaitingDisputeMarkets = markets.filter((m) => stageOf(m) === "awaiting_dispute");
+  const disputedMarkets = markets.filter((m) => stageOf(m) === "disputed");
   const resolvedMarkets = markets.filter(
-    (m) =>
-      (m.marketFinalized || !!(onchainMarkets[m.id] ?? m.onchain).resolved) &&
-      !claimedMarkets.has(m.id),
+    (m) => stageOf(m) === "completed" && !claimedMarkets.has(m.id),
   );
 
   // Forecast Track Record: derive each analyst's predictive accuracy from
@@ -1205,15 +1222,53 @@ export function ArenaSection() {
         </div>
       ) : (
         <>
-          <div className="mt-10 space-y-4">
-            {openMarkets.length > 0 ? (
-              openMarkets.map(renderMarketCard)
-            ) : !refreshing && !hadCacheAtMountRef.current && !previousSuccessfulHadMarketsRef.current && (getCachedMarkets()?.length ?? 0) === 0 ? (
-              <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
-                No live markets right now. Browse settled markets below.
+          {disputedMarkets.length > 0 && (
+            <div className="mt-10 rounded-2xl border border-destructive/50 bg-destructive/5 p-5">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-destructive">
+                <Gavel className="h-3.5 w-3.5" />
+                Disputed · {disputedMarkets.length}
               </div>
-            ) : null}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Someone staked the dispute fee on these markets. They're isolated in a
+                24h DAO-vote window — every other market keeps resolving on its normal
+                schedule.
+              </p>
+              <div className="mt-4 space-y-4">{disputedMarkets.map(renderMarketCard)}</div>
+            </div>
+          )}
+
+          {awaitingDisputeMarkets.length > 0 && (
+            <div className="mt-10">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Awaiting dispute window · {awaitingDisputeMarkets.length}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Agent verdict is in. Anyone can dispute within the window — otherwise
+                these finalize automatically once it closes.
+              </p>
+              <div className="mt-4 space-y-4">{awaitingDisputeMarkets.map(renderMarketCard)}</div>
+            </div>
+          )}
+
+          <div className="mt-10">
+            {(disputedMarkets.length > 0 || awaitingDisputeMarkets.length > 0) && (
+              <div className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                Active · {activeMarkets.length}
+              </div>
+            )}
+            <div className="space-y-4">
+              {activeMarkets.length > 0 ? (
+                activeMarkets.map(renderMarketCard)
+              ) : !refreshing && !hadCacheAtMountRef.current && !previousSuccessfulHadMarketsRef.current && (getCachedMarkets()?.length ?? 0) === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
+                  No active markets right now. Browse settled markets below.
+                </div>
+              ) : null}
+            </div>
           </div>
+
           {resolvedMarkets.length > 0 && (
             <div className="mt-12 border-t border-border/40 pt-6">
               <button
@@ -1221,7 +1276,7 @@ export function ArenaSection() {
                 onClick={() => setShowResolved((s) => !s)}
                 className="flex w-full items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-2.5 text-left font-mono text-xs text-muted-foreground transition hover:bg-muted/40"
               >
-                <span>Settled markets · {resolvedMarkets.length}</span>
+                <span>Completed markets · {resolvedMarkets.length}</span>
                 <span className="text-foreground/80">{showResolved ? "Hide" : "Show"}</span>
               </button>
               {showResolved && (
