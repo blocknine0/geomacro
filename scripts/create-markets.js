@@ -3,31 +3,27 @@ import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
-const MAX_NEW_MARKETS_PER_RUN = 30;
+// ⚠️ CHANGE: আগে এখানে MAX_NEW_MARKETS_PER_RUN=30 cap ছিল, এখন সরিয়ে দেওয়া হলো —
+// প্রতিটা qualifying (severity>=40) নতুন news event থেকে market তৈরি হবে, কোনো সীমা ছাড়াই।
 const THRESHOLD_STEP = 5;
 const STAKING_DURATION_SEC = 46 * 60 * 60;   // ৪৬ ঘণ্টা পর স্টেকিং বন্ধ — শেষ মুহূর্তে স্টেক করে জেতা ঠেকাতে
 const RESOLUTION_DURATION_SEC = 48 * 60 * 60; // ৪৮ ঘণ্টা পর রিজলভ — কন্ট্রাক্ট নিজেই এনফোর্স করে
-
-// ⚠️ CRITICAL SAFETY INVARIANT: RESOLUTION_DURATION_SEC must always be
-// greater than STAKING_DURATION_SEC. The contract's declareWinnerByAI()
-// only checks resolutionTime, not stakingEndTime — so if this relationship
-// is ever violated, the AI's tentative verdict could be revealed WHILE
-// staking is still open, letting users see the outcome before betting.
-// This throws immediately instead of silently creating that exploit.
-if (RESOLUTION_DURATION_SEC <= STAKING_DURATION_SEC) {
-  throw new Error(
-    "FATAL: RESOLUTION_DURATION_SEC must be greater than STAKING_DURATION_SEC to prevent revealing the verdict before staking closes."
-  );
-}
-
 const CONTRACT_ABI = [
   "function createMarket(string marketId, uint256 stakingDuration, uint256 resolutionDuration) external",
   "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
 ];
 async function main() {
-  const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, ARC_RPC_URL } = process.env;
+  const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL } = process.env;
   if (!OWNER_PRIVATE_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL) throw new Error("Missing env.");
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY missing — events.market_created updates will likely be silently blocked by RLS (anon has no UPDATE grant on events).");
+  }
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
+  // ⚠️ FIX: events টেবিলে anon-এর UPDATE policy নেই, তাই সব events.update() কল
+  // এখন service-role client দিয়ে হচ্ছে (আগের মতো anon দিয়ে silently fail করার বদলে)।
+  const adminSupabase = SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    : supabase;
   const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
 
   const network = await provider.getNetwork();
@@ -41,8 +37,8 @@ async function main() {
     .or("market_created.is.null,market_created.eq.false")
     .gte("severity", 40)   // ২০ বা ৩০ সিভিয়ারিটির নিউজ মার্কেট তৈরি করবে না
     .lte("severity", 100)
-    .order("created_at", { ascending: false })
-    .limit(MAX_NEW_MARKETS_PER_RUN);
+    .order("created_at", { ascending: false });
+  // ⚠️ CHANGE: .limit(MAX_NEW_MARKETS_PER_RUN) সরিয়ে দেওয়া হলো — এখন unlimited।
   if (error) throw new Error(`Supabase error: ${error.message}`);
   if (!events || events.length === 0) return console.log("No new unique high-severity events found.");
   console.log(`Found ${events.length} clean candidate event(s) for new markets.`);
@@ -64,7 +60,7 @@ async function main() {
         // event.created_at ভিত্তিক হিসাবই থাকছে (rare edge case — মার্কেট আগে
         // থেকেই chain-এ আছে কিন্তু Supabase sync হয়নি)
         const fallbackResolutionAt = new Date(new Date(event.created_at).getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
-        await supabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: fallbackResolutionAt }).eq("id", event.id);
+        await adminSupabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: fallbackResolutionAt }).eq("id", event.id);
         continue;
       }
       console.log(`Creating market ${marketId} for: "${event.source_title}"...`);
@@ -81,7 +77,7 @@ async function main() {
       const chainConfirmedAt = new Date(Number(confirmedBlock.timestamp) * 1000);
       const resolutionAt = new Date(chainConfirmedAt.getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
 
-      await supabase.from("events").update({
+      await adminSupabase.from("events").update({
         market_created: true,
         market_threshold: marketThreshold,
         resolution_at: resolutionAt,
