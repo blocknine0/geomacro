@@ -27,9 +27,11 @@ async function main() {
 
   const { data: events, error } = await adminSupabase
     .from("events")
-    .select("id, lifecycle_stage, disputer_address")
+    .select("id, lifecycle_stage, disputer_address, market_resolved")
     .eq("market_created", true)
-    .eq("market_resolved", false);
+    .neq("lifecycle_stage", "completed"); // "market_resolved=false" এর বদলে এখন এটা —
+    // নাহলে যেসব market ইতিমধ্যে market_resolved=true হয়ে গেছে কিন্তু lifecycle_stage
+    // কখনো 'completed'-এ flip হয়নি, তারা চিরতরে বাদ পড়ে যেত।
 
   if (error) throw new Error(`Could not read events: ${error.message}`);
   if (!events || events.length === 0) {
