@@ -51,7 +51,7 @@ async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawk
     if (won) {
       const staked = BigInt(position.staked_amount_raw); // ৬ ডেসিমেল রঢ ইউনিটে সংরক্ষিত মান
       const payoutRaw = computePayout(staked, winningPoolTotal, losingPoolTotal);
-      const payoutDisplay = Number(ethers.formatUnits(payoutRaw, 6));
+      const payoutDisplay = Number(ethers.formatUnits(payoutRaw, 18));
 
       const { error: updErr } = await adminSupabase
         .from("positions")
@@ -91,7 +91,7 @@ async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawk
         continue;
       }
 
-      const stakedDisplay = Number(ethers.formatUnits(position.staked_amount_raw, 6));
+      const stakedDisplay = Number(ethers.formatUnits(position.staked_amount_raw, 18));
       await adminSupabase.from("wallet_balance_history").insert({
         wallet_address: position.wallet_address,
         balance: 0,
