@@ -15,6 +15,32 @@ const CONTRACT_ABI = [
 
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
 
+const MAX_RATE_LIMIT_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 60 * 1000;
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 🛡️ rate limit (429) হলে backoff দিয়ে retry করে — অন্য যেকোনো real error হলে সাথে
+// সাথে বাইরে ছেড়ে দেয় (উপরের কলার সেটা handle করবে)। এটা জরুরি কারণ আগে rate limit-ও
+// generic catch-এ ধরা পড়ে "AI judgment failed, defaulting to DOVE" হয়ে যেত — মানে
+// শুধু rate limit হওয়ার কারণেই একটা বাস্তব মার্কেটের ফলাফল ভুলভাবে DOVE-এ ঠেলে দেওয়া হতো।
+async function callGroqWithBackoff(fn, label) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      const status = error?.status ?? error?.response?.status;
+      if (status !== 429 || attempt >= MAX_RATE_LIMIT_RETRIES) throw error;
+      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      const jitter = Math.random() * 500;
+      attempt++;
+      console.log(`  ⏳ Rate limited on ${label} (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+      await delay(backoff + jitter);
+    }
+  }
+}
+
 async function judgeOutcome(groq, event) {
   // summary truncate করা হলো — request_too_large এড়াতে
   const summary = (event.summary || "").slice(0, 300);
@@ -39,13 +65,16 @@ Respond STRICTLY in JSON:
 { "side": "HAWK" | "DOVE", "reasoning": "one sentence justification" }`;
 
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.3-70b-versatile", // compound বাদ — এটা reliable এবং fast
-      response_format: { type: "json_object" },
-      temperature: 0.1,
-      max_tokens: 150,
-    });
+    const completion = await callGroqWithBackoff(
+      () => groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile", // compound বাদ — এটা reliable এবং fast
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+        max_tokens: 150,
+      }),
+      `judgeOutcome (${event.source_title?.slice(0, 40) ?? "?"})`,
+    );
 
     const result = JSON.parse(completion.choices[0].message.content);
     const side = result.side === "HAWK" ? SIDE.HAWK : SIDE.DOVE;
