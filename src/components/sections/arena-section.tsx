@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useWallet } from "@/hooks/wallet-provider";
+import { useWallet } from "@/hooks/WalletProvider";
 import { preferredNetwork } from "@/lib/arc";
 import { AGENTS, type AgentSide } from "@/lib/agents";
 import {

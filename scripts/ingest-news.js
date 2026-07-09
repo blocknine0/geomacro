@@ -13,11 +13,18 @@ const supabase = createClient(
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
-  timeout: 20 * 1000, // ২০ সেকেন্ড টাইমআউট লিমিট
-  maxRetries: 3,       // কানেকশন ড্রপ করলে অটো ৩ বার ট্রাই করবে
+  timeout: 30 * 1000, // batch prompt বড়, তাই টাইমআউট একটু বাড়ানো হলো
+  maxRetries: 0,       // SDK-এর নিজস্ব retry বন্ধ — আমরা নিজেরাই rate-limit-aware retry করব নিচে
   fetch: fetch          // 🛠️ undici (built-in fetch)-এর POST premature-close bug
                          // এড়াতে node-fetch explicitly পাস করা হলো
 });
+
+// 💡 RATE-LIMIT কন্ট্রোল — env দিয়ে override করা যায়, নাহলে এই ডিফল্ট
+const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 5);       // প্রতি কলে কয়টা আর্টিকেল
+const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 2000); // প্রতিটা batch call-এর মাঝে delay
+const MAX_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 60 * 1000;
 
 // ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
 const CATEGORIES = [
@@ -25,9 +32,25 @@ const CATEGORIES = [
     name: "geopolitics",
     queries: [
       "global war military conflict ceasefire",
-      "NATO Russia China Taiwan Middle East sanctions",
-      "nuclear weapons diplomacy multilateral treaty UN",
+      "NATO Russia Ukraine war peace talks",
+      "China Taiwan strait military tension invasion risk",
+      "Middle East Israel Iran Gaza Lebanon Houthi conflict",
+      "nuclear weapons diplomacy multilateral treaty UN Security Council",
       "BRICS global south bilateral security pact",
+      "South Asia India Pakistan Kashmir border conflict",
+      "North Korea South Korea missile test sanctions",
+      "African Union Sahel coup Sudan Ethiopia Congo conflict",
+      "Latin America Venezuela Colombia drug cartel political crisis",
+      "Southeast Asia South China Sea territorial dispute Philippines Vietnam",
+      "Central Asia Caucasus Armenia Azerbaijan Kazakhstan geopolitics",
+      "Balkans Serbia Kosovo EU accession tension",
+      "Arctic sovereignty military buildup Russia US Canada",
+      "African coastal piracy Red Sea Suez shipping security",
+      "global terrorism extremist group insurgency attack",
+      "refugee migration crisis border policy Europe Africa Asia",
+      "cyberwarfare state-sponsored hacking critical infrastructure attack",
+      "space race military satellite anti-satellite weapon test",
+      "United Nations Security Council veto resolution crisis",
     ],
   },
   {
@@ -39,6 +62,20 @@ const CATEGORIES = [
       "currency war dollar dominance yuan yen currency devaluation",
       "supply chain shock shipping disruption energy crisis oil prices",
       "global banking crisis contagion systemic risk credit crunch",
+      "India RBI inflation growth economic reform",
+      "China property crisis local government debt stimulus",
+      "Japan yen intervention Bank of Japan policy shift",
+      "eurozone Germany France Italy fiscal crisis recession",
+      "UK Bank of England inflation gilt market crisis",
+      "Brazil Argentina Mexico Latin America inflation currency crisis",
+      "Nigeria South Africa Egypt African economy debt crisis",
+      "Gulf states Saudi Arabia UAE oil revenue diversification economy",
+      "Southeast Asia ASEAN economic growth trade currency",
+      "Turkey lira inflation central bank crisis",
+      "global trade war tariffs WTO dispute",
+      "OPEC oil production cut price war energy market",
+      "global food price crisis agriculture commodity shortage",
+      "unemployment labor market wage growth major economies",
     ],
   },
   {
@@ -49,6 +86,18 @@ const CATEGORIES = [
       "rare earth refining monopoly processing export ban China",
       "global tech war technology decoupling supply chain localization",
       "US EU Africa South America critical raw materials trade agreement",
+      "Democratic Republic Congo cobalt mining conflict minerals",
+      "Australia lithium rare earth mining export policy",
+      "Chile Argentina Bolivia lithium triangle mining deal",
+      "Indonesia nickel export ban processing investment",
+      "Africa mineral resource nationalism mining nationalization",
+      "India critical minerals strategy domestic production",
+      "Japan South Korea rare earth stockpile diversification",
+      "Russia rare earth uranium mineral export sanctions",
+      "US CHIPS Act semiconductor manufacturing subsidy",
+      "European Union critical raw materials act strategy",
+      "solar panel battery supply chain graphite manganese",
+      "deep sea mining international regulation critical minerals",
     ],
   },
   {
@@ -58,6 +107,16 @@ const CATEGORIES = [
       "Bitcoin Ethereum institutional adoption spot ETF volume",
       "stablecoin CBDC DeFi blockchain policy global financial system",
       "crypto exchange liquidity crisis hack exploit enforcement action",
+      "India crypto tax regulation digital rupee CBDC",
+      "China digital yuan crypto ban blockchain policy",
+      "El Salvador Latin America Bitcoin legal tender adoption",
+      "Nigeria Africa crypto adoption remittance regulation",
+      "European Union MiCA stablecoin licensing enforcement",
+      "United Arab Emirates Dubai crypto hub regulation license",
+      "South Korea Japan crypto exchange regulation retail trading",
+      "Russia crypto sanctions evasion mining regulation",
+      "global crypto mining energy consumption ban restriction",
+      "central bank digital currency pilot rollout country",
     ],
   },
 ];
@@ -72,53 +131,96 @@ function normalizeTitle(title) {
     .trim();
 }
 
-// প্রপার ডিলে ফাংশন
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ৪. Groq LLM এর মাধ্যমে রিলেভেন্স ও সিভিয়ারিটি স্কোরিং মেথড
-// এখন narrative + summary + stage + confidence ও রিটার্ন করে, যাতে
-// events টেবিলের NOT NULL কলামগুলো ঠিকভাবে পূরণ করা যায়।
-async function checkArticleRelevance(title, description, category) {
-  try {
-    // 💡 ফ্রি টায়ারের রেট ও নেটওয়ার্ক স্ট্যাবিলিটির জন্য ১.৫ সেকেন্ড ডিলে
-    await delay(1500);
+// 🛡️ Rate-limit-aware wrapper — যেকোনো Groq কলকে এটা দিয়ে wrap করলে
+// 429 পেলে exponential backoff দিয়ে retry করবে (Retry-After header থাকলে সেটা মেনে চলবে),
+// অন্য error হলে সাথে সাথে re-throw করবে (অকারণে retry না করার জন্য)।
+async function callGroqWithBackoff(fn, label) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      const status = error?.status ?? error?.response?.status;
+      const isRateLimit = status === 429;
 
-    const prompt = `You are an expert financial and geopolitical risk analyst. Analyze the following article for the category "${category}".
+      if (!isRateLimit || attempt >= MAX_RETRIES) {
+        throw error;
+      }
 
-    Title: "${title}"
-    Description: "${description}"
+      // Groq/OpenAI-স্টাইল ক্লায়েন্ট error object-এ headers থাকলে সেখান থেকে
+      // retry-after পড়ার চেষ্টা করো, না পেলে exponential backoff + jitter।
+      const retryAfterHeader =
+        error?.headers?.['retry-after'] ?? error?.response?.headers?.get?.('retry-after');
+      const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : null;
 
-    Determine if this article represents a significant macro/geopolitical trend or shock. Discard sports, celebrity gossip, local crimes, or casual entertainment reviews.
+      const backoff = retryAfterMs && Number.isFinite(retryAfterMs)
+        ? retryAfterMs
+        : Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      const jitter = Math.random() * 500;
 
-    Respond STRICTLY in JSON format with these keys:
-    - "relevant": boolean
-    - "severity": number (0-100, where 100 is catastrophic global impact, e.g., world war or global systemic market crash)
-    - "confidence": number (0-100, how confident you are in this assessment)
-    - "narrative": string (a short one-sentence framing of what risk/trend this event represents, e.g. "Escalating US-Iran military tension raises oil supply shock risk")
-    - "summary": string (2-3 sentence neutral summary of the article's core facts)
+      attempt++;
+      console.log(`  ⏳ Rate limited on ${label} (attempt ${attempt}/${MAX_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+      await delay(backoff + jitter);
+    }
+  }
+}
 
-    JSON format example:
-    { "relevant": true, "severity": 65, "confidence": 70, "narrative": "...", "summary": "..." }`;
+// ৪. Groq LLM দিয়ে একটা ব্যাচ (একাধিক আর্টিকেল একসাথে) রিলেভেন্স+সিভিয়ারিটি স্কোরিং —
+// আগে প্রতিটা আর্টিকেলের জন্য আলাদা কল হতো, এখন BATCH_SIZE-টা একসাথে একটা কলে যাচ্ছে,
+// যাতে মোট request সংখ্যা (আর তাই rate-limit exposure) কয়েকগুণ কমে যায়।
+async function checkArticlesBatchRelevance(articles, category) {
+  const articlesBlock = articles
+    .map((a, i) => `[${i}] Title: "${a.title}"\nDescription: "${a.description}"`)
+    .join('\n\n');
 
-    const chatCompletion = await groq.chat.completions.create({
+  const prompt = `You are an expert financial and geopolitical risk analyst. Analyze EACH of the following ${articles.length} articles for the category "${category}".
+
+${articlesBlock}
+
+For each article, determine if it represents a significant macro/geopolitical trend or shock. Discard sports, celebrity gossip, local crimes, or casual entertainment reviews.
+
+Respond STRICTLY as a JSON object with a single key "results", an array of exactly ${articles.length} objects in the SAME ORDER as the articles above, each with:
+- "relevant": boolean
+- "severity": number (0-100, where 100 is catastrophic global impact, e.g., world war or global systemic market crash)
+- "confidence": number (0-100, how confident you are in this assessment)
+- "narrative": string (a short one-sentence framing of what risk/trend this event represents)
+- "summary": string (2-3 sentence neutral summary of the article's core facts)
+
+Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 70, "narrative": "...", "summary": "..." }, ... ] }`;
+
+  const chatCompletion = await callGroqWithBackoff(
+    () => groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'llama-3.1-8b-instant',
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+    }),
+    `batch-classify (${articles.length} articles)`,
+  );
+
+  try {
+    const parsed = JSON.parse(chatCompletion.choices[0].message.content);
+    const results = Array.isArray(parsed.results) ? parsed.results : [];
+
+    // Defensive: ইনপুট আর আউটপুট length না মিললে (মডেল কিছু বাদ দিয়ে ফেলতে পারে),
+    // index-ভিত্তিক align করার চেষ্টা করো, বাকিগুলোকে safe default দাও।
+    return articles.map((a, i) => {
+      const r = results[i];
+      if (!r) {
+        return { relevant: false, severity: 0, confidence: 0, narrative: a.title, summary: a.description || a.title };
+      }
+      return {
+        relevant: !!r.relevant,
+        severity: Number.isFinite(r.severity) ? r.severity : 0,
+        confidence: Number.isFinite(r.confidence) ? r.confidence : 50,
+        narrative: r.narrative || a.title,
+        summary: r.summary || a.description || a.title,
+      };
     });
-
-    const result = JSON.parse(chatCompletion.choices[0].message.content);
-
-    // ডিফেন্সিভ ডিফল্ট, যাতে LLM কোনো কী মিস করলেও insert ফেইল না করে
-    return {
-      relevant: !!result.relevant,
-      severity: Number.isFinite(result.severity) ? result.severity : 0,
-      confidence: Number.isFinite(result.confidence) ? result.confidence : 50,
-      narrative: result.narrative || title,
-      summary: result.summary || description || title,
-    };
-  } catch (error) {
-    console.error(`❌ LLM check failed for "${title}":`, error.message);
-    return { relevant: false, severity: 0, confidence: 0, narrative: title, summary: description || title };
+  } catch (parseErr) {
+    console.error(`  ❌ Failed to parse batch response: ${parseErr.message}`);
+    return articles.map((a) => ({ relevant: false, severity: 0, confidence: 0, narrative: a.title, summary: a.description || a.title }));
   }
 }
 
@@ -169,6 +271,12 @@ async function fetchArticlesFromApis(query) {
   return articles;
 }
 
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 // ৬. মেইন ইনজেকশন রান ফাংশন
 async function ingestNews() {
   console.log("Run node scripts/ingest-news.js");
@@ -194,8 +302,6 @@ async function ingestNews() {
     let categoryInserted = 0;
     let seenInCurrentRun = new Set();
 
-    // ২৪-ঘণ্টার real baseline severity বার করা হচ্ছে এই category-র আগের events থেকে,
-    // যাতে delta একটা deterministic হিসাব হয়, hardcoded 0 না।
     let baselineSeverity = null;
     try {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -215,24 +321,34 @@ async function ingestNews() {
       console.error(`  ⚠️ Baseline computation threw for ${category.name}:`, be.message);
     }
 
+    // প্রথমে এই ক্যাটাগরির সব query থেকে unique, নতুন আর্টিকেল জড়ো করো —
+    // Groq-কে কল করার আগে, যাতে পুরো ক্যাটাগরি জুড়ে ব্যাচ করা যায়।
+    let candidateArticles = [];
     for (const query of category.queries) {
       const fetched = await fetchArticlesFromApis(query);
-
       for (const article of fetched) {
         const normTitle = normalizeTitle(article.title);
-
         if (existingUrls.has(article.url) || existingTitles.has(normTitle) || seenInCurrentRun.has(normTitle)) {
           continue;
         }
-
         seenInCurrentRun.add(normTitle);
+        candidateArticles.push(article);
+      }
+    }
 
-        const assessment = await checkArticleRelevance(article.title, article.description, category.name);
+    console.log(`  ${candidateArticles.length} new unique candidate article(s) to classify.`);
+
+    // এখন BATCH_SIZE করে গ্রুপ করে Groq-কে কল করো — মোট call সংখ্যা এখন
+    // (candidateArticles.length / BATCH_SIZE), আগে candidateArticles.length ছিল।
+    const batches = chunk(candidateArticles, BATCH_SIZE);
+    for (const [batchIndex, batch] of batches.entries()) {
+      const assessments = await checkArticlesBatchRelevance(batch, category.name);
+
+      for (let i = 0; i < batch.length; i++) {
+        const article = batch[i];
+        const assessment = assessments[i];
 
         if (assessment.relevant) {
-          // Cold-start fallback: এই run-এ এখনো কোনো baseline না থাকলে (নতুন category
-          // বা কোনো historical data নেই), severity নিজেই baseline ধরে delta=0 হবে সেই
-          // প্রথম event-এর জন্য, পরের event থেকে real comparison শুরু হবে।
           if (baselineSeverity === null) baselineSeverity = assessment.severity;
           const delta = Math.round(assessment.severity - baselineSeverity);
 
@@ -258,7 +374,7 @@ async function ingestNews() {
             console.log(`  ✅ Successfully Inserted: "${article.title}" (severity ${assessment.severity}, delta ${delta})`);
             categoryInserted++;
             totalInserted++;
-            existingTitles.add(normTitle);
+            existingTitles.add(normalizeTitle(article.title));
             existingUrls.add(article.url);
           } else {
             console.error(`  ❌ Database insertion failed:`, insertError.message);
@@ -267,7 +383,14 @@ async function ingestNews() {
           console.log(`  Rejected by LLM relevance check: "${article.title}"`);
         }
       }
+
+      // পরের batch-এর আগে সংক্ষিপ্ত delay (fixed per-article delay এর বদলে,
+      // যেহেতু এখন call সংখ্যা অনেক কম, এই delay-ও ছোট রাখা যায়)।
+      if (batchIndex < batches.length - 1) {
+        await delay(BATCH_DELAY_MS);
+      }
     }
+
     console.log(`Inserted ${categoryInserted} events for ${category.name}.`);
   }
 

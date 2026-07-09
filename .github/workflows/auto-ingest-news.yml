@@ -9,6 +9,7 @@ on:
 jobs:
   ingest-news:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # batching + rate-limit backoff worst-case কভার করার জন্য যথেষ্ট, কিন্তু hang হয়ে গেলে চিরকাল আটকে থাকবে না
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6
@@ -38,5 +39,10 @@ jobs:
           # ⚠️ FIX: আগে এখানে ভুল করে APP_SUPABASE_ANON_KEY বসানো ছিল — এখন আসল
           # service_role key ব্যবহার হচ্ছে, যাতে RLS-protected insert fail না করে
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # ঐচ্ছিক — না দিলে script-এর নিজস্ব ডিফল্ট (5 / 2000ms / 5 retries) চলবে।
+          # rate limit বেশি হলে Settings → Variables-এ এগুলো যোগ করে টিউন করা যায়, কোড না ছুঁয়েই।
+          GROQ_BATCH_SIZE: ${{ vars.GROQ_BATCH_SIZE }}
+          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
+          GROQ_MAX_RETRIES: ${{ vars.GROQ_MAX_RETRIES }}
         run: node scripts/ingest-news.js
         

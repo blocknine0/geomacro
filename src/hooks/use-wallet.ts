@@ -41,9 +41,10 @@ declare global {
 }
 
 // ---------------------------------------------------------------------------
-// Dedupe guards: multiple components can call useWallet(). Without these,
-// every mount fires its own eth_accounts/eth_chainId request at MetaMask
-// simultaneously, which trips MetaMask's own rate limiter
+// Dedupe guards: multiple components can call useWallet() (via the shared
+// WalletProvider context, or during the brief window before it's wrapped).
+// Without these, every mount fires its own eth_accounts/eth_chainId request
+// at MetaMask simultaneously, which trips MetaMask's own rate limiter
 // (-32005 "Request limit exceeded"). These module-level promises ensure only
 // ONE request is ever in flight at a time, and every caller awaits the same
 // promise.
@@ -71,7 +72,7 @@ function getChainIdOnce(eth: EthereumProvider): Promise<string> {
 
 /**
  * Internal hook — do NOT import this directly in components.
- * Use `useWallet` from "@/hooks/wallet-provider" instead, which wraps this
+ * Use `useWallet` from "@/hooks/WalletProvider" instead, which wraps this
  * in a single shared Context so wallet state (and its MetaMask requests)
  * is only ever created once per app, no matter how many components read it.
  */

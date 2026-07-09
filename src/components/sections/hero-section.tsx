@@ -5,7 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Link2, Minus, Radio } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { preferredNetwork } from "@/lib/arc";
-import { useWallet } from "@/hooks/wallet-provider";
+import { useWallet } from "@/hooks/WalletProvider";
 import { supabaseFeed } from "@/lib/supabase-feed";
 
 type Bucket = { t: number; avg: number; count: number };

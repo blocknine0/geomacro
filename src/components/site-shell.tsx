@@ -13,7 +13,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { useWallet } from "@/hooks/wallet-provider";
+import { useWallet } from "@/hooks/WalletProvider";
 import { preferredNetwork } from "@/lib/arc";
 import { shortAddr } from "@/components/section-ui";
 import { ThemeToggle } from "@/components/theme-toggle";

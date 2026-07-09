@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useWallet } from "@/hooks/wallet-provider";
+import { useWallet } from "@/hooks/WalletProvider";
 import { preferredNetwork } from "@/lib/arc";
 import {
   claimOnContract,

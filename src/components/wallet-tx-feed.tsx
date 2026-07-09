@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCcw, ExternalLink, Wallet } from "lucide-react";
-import { useWallet } from "@/hooks/wallet-provider";
+import { useWallet } from "@/hooks/WalletProvider";
 import { fetchWalletTxs, loadSessionTxs, mergeTxs, type WalletTx } from "@/lib/wallet-tx";
 import { fetchNativeBalance } from "@/lib/balance";
 import { preferredNetwork } from "@/lib/arc";

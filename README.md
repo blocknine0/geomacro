@@ -51,19 +51,25 @@ NewsAPI / Guardian  →  Groq (llama-3.1-8b-instant)  →  Supabase  →  Live F
 
 **Storage.** Supabase holds the event log (`events` table). The frontend reads straight from it, with Realtime subscriptions for instant updates.
 
-**Market automation.** Four independent GitHub Actions workflows run on a schedule:
+**Market automation.** Six independent GitHub Actions workflows run on their own schedules:
 1. **Ingest** = pulls fresh news every ~2 hours, classifies, and inserts into Supabase.
-2. **Create markets** = scans for high-severity events (severity ≥ 40) without a market and opens one on Arc via `createMarket()`, with a 46-hour staking window and 48-hour resolution window. A startup guard enforces `resolutionDuration > stakingDuration` so the AI verdict can never be revealed before staking closes.
+2. **Create markets** = scans for high-severity events (severity ≥ 40) without a market and opens one on Arc via `createMarket()`, with a 46-hour staking window and 48-hour resolution window, uncapped, every qualifying event gets a market. A startup guard enforces `resolutionDuration > stakingDuration` so the AI verdict can never be revealed before staking closes.
 3. **Resolve** = checks markets past their `resolution_at` time, asks Groq to judge HAWK vs DOVE based on how the situation has evolved, and calls `declareWinnerByAI()`. This sets a *tentative* winner and opens a 24-hour public dispute window; it is not final yet.
 4. **Finalize** = checks markets whose dispute window has passed and calls `finalizeMarket()`, locking in the winner and making it claimable. This same step syncs each affected wallet's `positions` row (won → claimable, lost → history) and logs a `wallet_balance_history` event.
+5. **Sync stakes** = every 30 minutes, replays onchain `Staked` events into Supabase so no stake is ever missing from a wallet's position history even if a client-side write drops.
+6. **Sync lifecycle** = every 30 minutes, reads each open market's on-chain status and writes it back as one of four stages (`active` / `awaiting_dispute` / `disputed` / `completed`) plus a dispute audit log, so the frontend's lifecycle tabs and the public `market_lookup` view never drift from chain state.
 
-Two additional on-demand workflows (`auto-recovery.yml`, `sync-stakes.yml`) let backfilling/re-syncing be triggered manually if a run is ever missed, and `security-monitor.yml` polls for on-chain anomalies every 15 minutes.
+Two additional on-demand workflows (`auto-recovery.yml`, `debug-schema.yml`) let backfilling/re-syncing and schema-drift checks be triggered manually, and `security-monitor.yml` polls for on-chain anomalies every 15 minutes.
 
-No human approval step in any of the automated ones.
+No human approval step in any of the automated ones. All Supabase writes from these workflows go through a service-role client, not the anon key, since the anon role only has read/insert grants on `events` and would otherwise silently drop update calls under RLS.
 
 **Settlement.** `AgentArena.sol` holds staked USDC until a market finalizes, then pays out proportionally to whoever backed the winning side. Winners receive their original stake plus a proportional share of the losing pool, minus a 1.5% protocol fee.
 
 **Portfolio.** Wallets authenticate via Sign-In With Ethereum (a gasless signed message, verified server-side into a short-lived session token) before any stake is recorded off-chain. Every position moves through a strict lifecycle in Supabase, protected by row-level security scoped to the signing wallet: `active` (staking open) → `pending_claim` (won, awaiting claim) or `lost` (moves to history) → `claimed`. The Portfolio page shows live wallet balance, a balance-history chart, and every position at its current stage, all sourced from real on-chain and Supabase state, never placeholders.
+
+**Debate, not two monologues.** HAWK and DOVE are generated in a single Groq call, but the JSON schema forces HAWK's rationale to be written first and instructs DOVE to quote HAWK's specific claim and rebut it directly, exploiting the fact that structured generation is sequential. Genuinely adversarial without doubling the API cost or the rate-limit exposure of a true multi-turn call chain.
+
+**Cross-checking.** Every market's Supabase event row, on-chain state, position/dispute counts, and `createMarket` transaction hash are joined into a single `market_lookup` SQL view, so verifying any market's full history is one query instead of jumping between Arcscan, the contract, and three tables.
 
 ---
 
@@ -78,6 +84,7 @@ No human approval step in any of the automated ones.
 | [Portfolio](https://geomacro.live/portfolio) | SIWE-authenticated wallet balance, position lifecycle and claim history |
 | [Docs](https://geomacro.live/docs) | Full technical documentation, architecture and API playground |
 | [Roadmap](https://geomacro.live/roadmap) | What's shipped and what's next |
+| [Analytics](https://blocknine0.github.io/geomacro-analytics/) | Standalone dashboard: ingestion, market lifecycle and settlement health, live from the same Supabase project |
 
 ---
 
@@ -100,9 +107,9 @@ claim(marketId)                                                // winners withdr
 
 USDC is Arc's native gas token, so staking is just a payable call, no `approve()` step, no ERC-20 friction. Native-currency values on Arc use **18 decimals** (not 6, despite USDC's ERC-20 interface using 6), this matters for anyone integrating directly with the contract's `payable` functions.
 
-**Known issue (testnet, not yet mainnet-blocking):** the `DISPUTE_FEE`, `MIN_VOTE_AMOUNT`, and `MIN_VOLUME_FOR_DISPUTE` constants were originally written assuming 6-decimal precision (e.g. `50 * 10**6`), but since native values use 18 decimals, these currently resolve to near-zero amounts on-chain, the dispute/vote gating is not economically meaningful in the current testnet deployment. A corrected version (`10**18` scale) is ready and will ship with the next redeploy (planned alongside mainnet).
+**Known issue (testnet, not mainnet-blocking):** the `DISPUTE_FEE`, `MIN_VOTE_AMOUNT`, and `MIN_VOLUME_FOR_DISPUTE` constants were originally written assuming 6-decimal precision (e.g. `50 * 10**6`), but since native values use 18 decimals, these currently resolve to near-zero amounts on-chain, the dispute/vote gating is not economically meaningful in the current testnet deployment. Since `constant`s are baked into bytecode at deploy time, fixing this requires a full redeploy (new contract address, no state migration), so it's deliberately deferred to the mainnet cutover rather than done mid-testnet. In the meantime, the 24-hour dispute window itself works correctly end to end, every market is classified into one of four lifecycle stages (`active` → `awaiting_dispute` → `disputed` / `completed`), synced from on-chain state into Supabase every 30 minutes and surfaced as distinct tabs in the Analyst Panel, so disputed markets stay visibly isolated from the rest even though the fee gating is still testnet-scale.
 
-**One honest tradeoff worth calling out:** resolution uses a single Groq call (`groq/compound`, which has built-in web search) to judge how the original story has evolved 48 hours later. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. Fully decentralizing resolution remains on the roadmap.
+**One honest tradeoff worth calling out:** resolution uses a single Groq call (`llama-3.3-70b-versatile`) to judge how the original story has evolved 48 hours later, cross-checked against fresh news search results. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. To reduce single-call flakiness on close calls, the resolver now re-checks itself with a second independent read whenever the first verdict is low-confidence or a draw, and defaults to a draw rather than a shaky verdict if the two disagree. Fully decentralizing resolution remains on the roadmap.
 
 ---
 
@@ -123,10 +130,13 @@ src/
 AgentArena.sol                     Market creation, staking, AI resolution, dispute/vote, claim
 scripts/
   ingest-news.js                  Pulls NewsAPI/Guardian articles, classifies with Groq, inserts to Supabase
-  create-markets.js               Scans for high-severity events, opens markets on Arc
-  resolve-markets.js              Checks due markets, Groq judges HAWK/DOVE, calls declareWinnerByAI()
+  create-markets.js               Scans for high-severity events, opens markets on Arc (uncapped)
+  resolve-markets.js              Checks due markets, Groq judges HAWK/DOVE, calls declareWinnerByAI(), repairs orphaned Supabase flags
   finalize-markets.js             Checks AI-resolved markets past the dispute window, calls finalizeMarket(), syncs positions
-  sync-stakes.js                  Manual backfill for missed stake events
+  sync-stakes.js                  Replays onchain Staked events into Supabase (scheduled every 30 min)
+  sync-lifecycle.js               Syncs each market's on-chain status into events.lifecycle_stage + market_disputes audit log
+  backfill-positions.js           One-off repair: syncs positions for markets already finalized on-chain but not yet reflected in Supabase
+  backfill-tx-hashes.js           One-off repair: backfills historical createMarket tx hashes from on-chain MarketCreated logs
   anomaly-monitor.js               Polls for on-chain anomalies
   debug-schema.js                  Verifies live Supabase schema matches what each script expects
 .github/workflows/
@@ -134,10 +144,14 @@ scripts/
   auto-create-markets.yml         Runs create-markets.js on its own ~2-hour schedule
   auto-resolve-markets.yml        Runs resolve-markets.js on its own ~2-hour schedule
   auto-finalize-markets.yml       Runs finalize-markets.js every ~2 hours
+  sync-stakes.yml                 Runs sync-stakes.js every 30 minutes
+  sync-lifecycle.yml              Runs sync-lifecycle.js every 30 minutes
   auto-recovery.yml               Manual-trigger sync-stakes / resolve-markets / create-markets
   security-monitor.yml            Anomaly monitor, every 15 minutes
   debug-schema.yml                Manual-trigger schema drift check
 ```
+
+**Supabase, beyond the `events` table:** `positions` (per-wallet stake/claim state, RLS-scoped), `wallet_balance_history` (append-only ledger), `market_disputes` (audit log of every on-chain dispute), and a `market_lookup` view joining all of the above by market ID for one-query cross-checking.
 
 ---
 
@@ -154,7 +168,13 @@ scripts/
 - [x] Deterministic Risk Δ (24h category baseline, not LLM-guessed)
 - [x] SIWE-authenticated Portfolio with full position lifecycle and RLS
 - [x] Startup guard preventing verdict reveal before staking closes
-- [ ] On-chain dispute fee/threshold decimal fix (`10**6` → `10**18`), ready, pending redeploy
+- [x] Four-stage market lifecycle (Active / Awaiting Dispute / Disputed / Completed) synced from chain to Supabase every 30 min, surfaced as distinct tabs
+- [x] `market_lookup` cross-check view + historical `createMarket` tx-hash backfill for every market
+- [x] Sequential-rebuttal HAWK/DOVE debate (DOVE must quote and directly counter HAWK's specific claim, same API call)
+- [x] Self-consistency re-check on low-confidence/draw verdicts before a market settles
+- [x] Service-role hardening across every Supabase-writing script (anon role has no UPDATE grant on `events`, was silently dropping writes)
+- [x] Standalone public analytics dashboard (pipeline + automation health, zero fabricated numbers)
+- [ ] On-chain dispute fee/threshold decimal fix (`10**6` → `10**18`), deferred to the mainnet redeploy since `constant`s can't be patched in place
 - [ ] Fully decentralized dispute-based resolution as the primary mechanism (currently AI-first with an on-chain dispute backstop)
 - [ ] Mainnet deployment
 - [ ] Public track record showing how often HAWK vs. DOVE actually calls it right
