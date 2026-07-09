@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { LiveNewsFeed } from "@/components/live-news-feed";
 import { SectionHeader } from "@/components/section-ui";
-import { useWallet } from "@/hooks/use-wallet";
+import { useWallet } from "@/hooks/wallet-provider";
 import { preferredNetwork } from "@/lib/arc";
 import { rememberSessionTx } from "@/lib/wallet-tx";
 import type { FeedEvent } from "@/lib/live-feed.functions";

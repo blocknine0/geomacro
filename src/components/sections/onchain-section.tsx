@@ -2,7 +2,7 @@ import { Activity, ShieldCheck, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ARC_NETWORKS } from "@/lib/arc";
-import { useWallet } from "@/hooks/use-wallet";
+import { useWallet } from "@/hooks/wallet-provider";
 import { Row, SectionHeader, shortAddr } from "@/components/section-ui";
 import { WalletTxFeed } from "@/components/wallet-tx-feed";
 

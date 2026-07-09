@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import ogImage from "../assets/og-share.jpg";
 import { reportClientError } from "../lib/error-reporting";
 import { SiteShell } from "../components/site-shell";
+import { WalletProvider } from "../hooks/wallet-provider";
 
 function NotFoundComponent() {
   return (
@@ -130,10 +131,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Shared header + footer; nested routes render inside SiteShell. */}
-      <SiteShell>
-        <Outlet />
-      </SiteShell>
+      {/* WalletProvider wraps everything ONCE here — all components share
+          a single wallet state instance, so MetaMask only ever gets one
+          eth_accounts/eth_chainId request instead of one per component. */}
+      <WalletProvider>
+        {/* Shared header + footer; nested routes render inside SiteShell. */}
+        <SiteShell>
+          <Outlet />
+        </SiteShell>
+      </WalletProvider>
     </QueryClientProvider>
   );
 }

@@ -40,7 +40,42 @@ declare global {
   }
 }
 
-export function useWallet() {
+// ---------------------------------------------------------------------------
+// Dedupe guards: multiple components can call useWallet(). Without these,
+// every mount fires its own eth_accounts/eth_chainId request at MetaMask
+// simultaneously, which trips MetaMask's own rate limiter
+// (-32005 "Request limit exceeded"). These module-level promises ensure only
+// ONE request is ever in flight at a time, and every caller awaits the same
+// promise.
+// ---------------------------------------------------------------------------
+let accountsRequestInFlight: Promise<string[]> | null = null;
+let chainIdRequestInFlight: Promise<string> | null = null;
+
+function getAccountsOnce(eth: EthereumProvider): Promise<string[]> {
+  if (!accountsRequestInFlight) {
+    accountsRequestInFlight = (eth.request({ method: "eth_accounts" }) as Promise<string[]>).finally(() => {
+      accountsRequestInFlight = null;
+    });
+  }
+  return accountsRequestInFlight;
+}
+
+function getChainIdOnce(eth: EthereumProvider): Promise<string> {
+  if (!chainIdRequestInFlight) {
+    chainIdRequestInFlight = (eth.request({ method: "eth_chainId" }) as Promise<string>).finally(() => {
+      chainIdRequestInFlight = null;
+    });
+  }
+  return chainIdRequestInFlight;
+}
+
+/**
+ * Internal hook — do NOT import this directly in components.
+ * Use `useWallet` from "@/hooks/wallet-provider" instead, which wraps this
+ * in a single shared Context so wallet state (and its MetaMask requests)
+ * is only ever created once per app, no matter how many components read it.
+ */
+export function useWalletInternal() {
   const [address, setAddress] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -64,11 +99,15 @@ export function useWallet() {
   useEffect(() => {
     const eth = typeof window !== "undefined" ? window.ethereum : undefined;
     if (!eth) return;
-    eth.request({ method: "eth_accounts" }).then((accs) => {
-      const arr = accs as string[];
-      if (arr?.[0]) setAddress(arr[0]);
-    }).catch(() => {});
-    eth.request({ method: "eth_chainId" }).then((c) => setChainId(c as string)).catch(() => {});
+    getAccountsOnce(eth)
+      .then((accs) => {
+        const arr = accs as string[];
+        if (arr?.[0]) setAddress(arr[0]);
+      })
+      .catch(() => {});
+    getChainIdOnce(eth)
+      .then((c) => setChainId(c as string))
+      .catch(() => {});
 
     const onAccounts = (...args: unknown[]) => {
       const accs = args[0] as string[];
