@@ -1,8 +1,7 @@
-import { JsonRpcProvider } from "ethers";
-import { ARC_TESTNET } from "./arc";
+import { ARC_TESTNET, getArcReadProvider } from "./arc";
 import {
-  readMarket,
-  readMarketFullDetails,
+  batchReadMarkets,
+  batchReadMarketFullDetails,
   STAKING_TO_RESOLUTION_BUFFER_MS,
   type OnchainMarket,
   type OnchainMarketFullDetails,
@@ -63,6 +62,13 @@ export type Market = {
   /** True once the market is fully settled (status FINALIZED on-chain or
    *  `events.market_resolved` in Supabase). */
   marketFinalized: boolean;
+  /** DB-authoritative lifecycle stage. Null for older rows — callers must
+   *  fall back to on-chain-derived state. */
+  lifecycleStage: "active" | "awaiting_dispute" | "disputed" | "completed" | null;
+  /** Address that opened the current dispute, when lifecycleStage === "disputed". */
+  disputerAddress: string | null;
+  /** ms epoch when the dispute window closes; used for awaiting_dispute countdown. */
+  disputeWindowEndsAt: number | null;
 };
 
 /** Supabase events.id is a bare uuid; the on-chain contract stores the
@@ -78,8 +84,6 @@ function clampThreshold(severity: number, override?: number | null): number {
   if (typeof override === "number" && override > 0) {
     return Math.min(100, Math.max(0, Math.round(override)));
   }
-  // Default duel threshold is "the news has to escalate noticeably past
-  // where it sits today". Bumps severity by ~5pts and clamps to a sane band.
   return Math.min(95, Math.max(50, Math.round(severity + 5)));
 }
 
@@ -115,8 +119,6 @@ function buildMarketEntry(
   const id = marketIdFromEventId(row.id);
   const severity = row.severity ?? 70;
   const createdAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
-  // Prefer authoritative on-chain resolutionTime; fall back to Supabase
-  // `resolution_at`; final fallback is created_at + 48h for legacy rows.
   const resolutionAt = fullDetails?.resolutionTime
     ? fullDetails.resolutionTime
     : row.resolution_at
@@ -130,6 +132,14 @@ function buildMarketEntry(
     !!row.ai_processed || fullDetails?.aiResolved === true;
   const marketFinalized =
     !!row.market_resolved || fullDetails?.finalized === true || onchain.resolved;
+  const lsRaw = typeof row.lifecycle_stage === "string" ? row.lifecycle_stage.toLowerCase() : null;
+  const lifecycleStage =
+    lsRaw === "active" || lsRaw === "awaiting_dispute" || lsRaw === "disputed" || lsRaw === "completed"
+      ? (lsRaw as Market["lifecycleStage"])
+      : null;
+  const disputeWindowEndsAt = row.dispute_window_ends_at
+    ? new Date(row.dispute_window_ends_at).getTime()
+    : null;
   return {
     id,
     eventId: row.id,
@@ -150,6 +160,9 @@ function buildMarketEntry(
     aiProcessed,
     aiTentativeWinner,
     marketFinalized,
+    lifecycleStage,
+    disputerAddress: row.disputer_address ?? null,
+    disputeWindowEndsAt,
   };
 }
 
@@ -166,7 +179,7 @@ export async function loadArenaMarkets(
   onProgress?: (partial: Market[]) => void,
 ): Promise<Market[]> {
   purgeArenaMarketCache();
-  const provider = new JsonRpcProvider(ARC_TESTNET.rpcUrl);
+  const provider = getArcReadProvider(ARC_TESTNET);
   const previousById = new Map((cachedMarkets ?? []).map((m) => [m.id, m]));
 
   // 1. Supabase-first: authoritative list of active markets.
@@ -205,31 +218,37 @@ export async function loadArenaMarkets(
     onProgress([...out]);
   };
 
-  // 3. Enrich each market's live pool totals AND extended details in
-  //    parallel. Failures leave the seeded defaults in place so a slow
-  //    RPC can never hide markets — the Supabase-derived cards still render.
+  // 3. Enrich in Multicall3-batched chunks. Each chunk is 2 eth_calls
+  //    (getMarket set + getMarketFullDetails set), streamed as it resolves so
+  //    the first cards fill in without waiting for the whole set. Failures
+  //    leave the seeded defaults in place so a slow RPC never hides markets.
+  const CHUNK_SIZE = 25;
+  const rowsById = new Map(rows.map((r) => [marketIdFromEventId(r.id), r]));
+  const chunks: string[][] = [];
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    chunks.push(rows.slice(i, i + CHUNK_SIZE).map((r) => marketIdFromEventId(r.id)));
+  }
   await Promise.all(
-    rows.map(async (row) => {
-      const id = marketIdFromEventId(row.id);
-      const [marketRes, detailsRes] = await Promise.allSettled([
-        readMarket(id, provider),
-        readMarketFullDetails(id, provider),
+    chunks.map(async (ids) => {
+      const [marketsMap, detailsMap] = await Promise.all([
+        batchReadMarkets(ids, provider).catch((e) => {
+          console.warn("[loadArenaMarkets] batchReadMarkets failed", e);
+          return {} as Record<string, OnchainMarket>;
+        }),
+        batchReadMarketFullDetails(ids, provider).catch((e) => {
+          console.warn("[loadArenaMarkets] batchReadMarketFullDetails failed", e);
+          return {} as Record<string, OnchainMarketFullDetails | null>;
+        }),
       ]);
-      const onchain =
-        marketRes.status === "fulfilled" ? marketRes.value : ZERO_ONCHAIN;
-      const fullDetails =
-        detailsRes.status === "fulfilled" ? detailsRes.value : null;
-      if (marketRes.status === "rejected") {
-        console.warn("[loadArenaMarkets] readMarket failed; keeping defaults", {
-          marketId: id,
-          error: marketRes.reason,
-        });
-      }
-      const idx = indexById.get(id);
-      if (idx != null) {
+      for (const id of ids) {
+        const row = rowsById.get(id);
+        const idx = indexById.get(id);
+        if (!row || idx == null) continue;
+        const onchain = marketsMap[id] ?? ZERO_ONCHAIN;
+        const fullDetails = detailsMap[id] ?? null;
         out[idx] = buildMarketEntry(row, onchain, fullDetails);
-        emit();
       }
+      emit();
     }),
   );
   emit(true);
@@ -249,9 +268,6 @@ export { eventIdFromMarketId };
  */
 let cachedMarkets: Market[] | null = null;
 
-// Persistent market caches caused deleted / duplicate markets to re-render
-// after the data source moved to Supabase-first. Keep this list aggressive so
-// only current database rows can define the visible market list.
 const LEGACY_LS_KEYS = ["arena:markets", "arena:markets:v1", "arena:markets:v2"];
 
 function purgeArenaMarketCache(): void {

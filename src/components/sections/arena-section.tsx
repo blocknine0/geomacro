@@ -36,6 +36,7 @@ import {
 } from "@/lib/arena-markets";
 import {
   AGENT_ARENA_ADDRESS,
+  batchReadMyStakes,
   claimOnContract,
   readMarket,
   readMyStake,
@@ -59,12 +60,6 @@ import {
 
 const LEGACY_DUEL_CACHE_KEYS = ["geomacro.judge.v1", "geomacro.judge.v2"];
 
-/**
- * Two-line news gist shown in place of the implied-probability panel while
- * a market has no liquidity. Prefers the linked event narrative, falls back
- * to the source headline, then a neutral default. Keeps output tight so it
- * fits the ~2 line clamp in the card.
- */
 function buildSignalBrief(m: Market): string {
   const clean = (s: string | null | undefined) =>
     (s ?? "").replace(/\s+/g, " ").trim();
@@ -177,7 +172,6 @@ export function ArenaSection() {
     return new Set();
   });
 
-  // Hydrate claimed-market set from localStorage whenever the wallet changes.
   useEffect(() => {
     if (typeof window === "undefined" || !claimedStorageKey) {
       setClaimedMarkets(new Set());
@@ -210,7 +204,7 @@ export function ArenaSection() {
       return next;
     });
   }
-  const [showResolved, setShowResolved] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "awaiting_dispute" | "disputed" | "completed">("active");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -226,9 +220,6 @@ export function ArenaSection() {
     if (markets.length > 0) previousSuccessfulHadMarketsRef.current = true;
   }, [markets]);
 
-  // Duel + verdict cache is session-only (in-memory). Purge any legacy
-  // localStorage payloads from previous builds so stale results don't leak
-  // across sessions.
   useEffect(() => {
     try {
       for (const k of LEGACY_DUEL_CACHE_KEYS) localStorage.removeItem(k);
@@ -237,13 +228,11 @@ export function ArenaSection() {
     }
   }, []);
 
-  // 1s ticker drives countdowns + auto-judge trigger
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Discover markets from on-chain MarketCreated logs + getMarket reads.
   useEffect(() => {
     let cancelled = false;
     async function refresh() {
@@ -269,10 +258,7 @@ export function ArenaSection() {
         const list = await loadArenaMarkets((partial) => {
           if (cancelled) return;
           if (partial.length === 0) return;
-          // Stream partial results so the first markets render immediately
-          // without waiting for the slowest RPC read.
           setMarkets((prev) => {
-            // Merge by id, prefer partial entries (they're freshest).
             const byId = new Map(prev.map((m) => [m.id, m]));
             for (const m of partial) byId.set(m.id, m);
             const merged = Array.from(byId.values());
@@ -285,13 +271,9 @@ export function ArenaSection() {
             return next;
           });
           previousSuccessfulHadMarketsRef.current = true;
-          // End the skeleton as soon as we have something to show.
           setInitialLoadDone(true);
         });
         if (cancelled) return;
-        // Supabase is now the authoritative source for visible markets. Always
-        // replace the UI with the latest database result so deleted duplicates
-        // cannot survive from memory or old cache state.
         setMarkets(list);
         marketsRef.current = list;
         setCachedMarkets(list);
@@ -330,10 +312,6 @@ export function ArenaSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Supabase Realtime: the backend ingest/create/resolve/finalize cron jobs
-  // write to `events` roughly every 2h. Subscribe so `market_created`,
-  // `ai_processed`, `ai_tentative_winner` and `market_resolved` flips reach
-  // the UI without waiting for the 30s polling tick.
   useEffect(() => {
     const channel = supabaseFeed
       .channel("arena-events")
@@ -341,8 +319,6 @@ export function ArenaSection() {
         "postgres_changes",
         { event: "*", schema: "public", table: "events" },
         () => {
-          // Kick a background refresh; the effect above already streams
-          // partial results so the UI updates incrementally.
           void loadArenaMarkets((partial) => {
             if (partial.length === 0) return;
             setMarkets((prev) => {
@@ -370,29 +346,20 @@ export function ArenaSection() {
     };
   }, []);
 
-  // Refresh per-wallet stakes whenever address / network / market set changes.
   useEffect(() => {
     if (!address || markets.length === 0) return;
     let cancelled = false;
     setStakesLoading(true);
     async function refresh() {
       if (!address) return;
-      const settled = await Promise.allSettled(
-        markets.map((m) => readMyStake(m.id, address)),
-      );
+      let stakesMap: Record<string, OnchainStake> = {};
+      try {
+        stakesMap = await batchReadMyStakes(markets.map((m) => m.id), address);
+      } catch (e) {
+        console.warn("[arena] batchReadMyStakes failed", e);
+      }
       if (cancelled) return;
-      const next: Record<string, OnchainStake> = {};
-      markets.forEach((m, i) => {
-        const r = settled[i];
-        if (r.status === "fulfilled") {
-          next[m.id] = r.value;
-          // eslint-disable-next-line no-console
-          console.log(
-            `[arena] stake loaded for ${m.id}: hawk=${r.value.hawkUsdc} dove=${r.value.doveUsdc}`,
-          );
-        }
-      });
-      setMyStakes((prev) => ({ ...prev, ...next }));
+      setMyStakes((prev) => ({ ...prev, ...stakesMap }));
       setStakesLoading(false);
     }
     void refresh();
@@ -403,7 +370,6 @@ export function ArenaSection() {
     };
   }, [address, markets]);
 
-  // Auto-judge whenever a market's resolution window elapses
   useEffect(() => {
     for (const m of markets) {
       const dl = m.resolutionAt;
@@ -419,9 +385,6 @@ export function ArenaSection() {
   }, [now, duels, verdicts, judging, markets]);
 
   async function runDuel(m: Market, force = false) {
-    // In-memory cache: if a duel result is already in state for this market,
-    // reuse it instead of calling Groq again. The user can force a refresh
-    // via the "Refresh duel" button.
     if (!force && duels[m.id]) return;
     setDuelLoading(m.id);
     setDuelError(null);
@@ -581,9 +544,6 @@ export function ArenaSection() {
           console.error("[recordClaim] failed", err);
         }
       }
-      // Optimistically zero out the stake so the claim button disappears
-      // immediately and the market drops out of the UI without waiting for
-      // the next on-chain read.
       setMyStakes((prev) => ({
         ...prev,
         [market.id]: { hawkWei: 0n, doveWei: 0n, hawkUsdc: 0, doveUsdc: 0 },
@@ -611,7 +571,6 @@ export function ArenaSection() {
     } catch (e) {
       const msg = (e as Error).message ?? "Claim failed";
       if (/already claimed/i.test(msg)) {
-        // Contract says this user already claimed. Persist that and hide the button.
         markClaimed(market.id);
         setMyStakes((prev) => ({
           ...prev,
@@ -688,31 +647,25 @@ export function ArenaSection() {
     const myWinningWei = winnerSide && mine
       ? (winnerSide === "HAWK" ? mine.hawkWei : mine.doveWei)
       : 0n;
-    // A market is only "settled" (safe to display a final winner + enable
-    // claim) once it's FINALIZED on-chain or Supabase confirms
-    // market_resolved. AI-tentative winners are labeled separately.
     const isFinalized =
       !!m.marketFinalized || !!(om ?? m.onchain).resolved;
     const isStakingOpen = now < m.stakingEndTime;
     const isAwaitingResolution =
       !isFinalized && !m.aiProcessed && now >= m.stakingEndTime;
     const isTentative = !isFinalized && m.aiProcessed;
-    // Prefer on-chain final winner, else the DB-tracked tentative winner.
     const displayWinnerSide: AgentSide | null =
       winnerSide ?? m.fullDetails?.tentativeWinner ?? m.aiTentativeWinner ?? null;
     const canClaim = !!(isFinalized && myWinningWei > 0n && !claimedMarkets.has(m.id));
+
     const velocity = m.severity >= 75 ? "High" : m.severity >= 50 ? "Medium" : "Low";
-    // Deterministic per-market conviction derived from severity vs threshold
-    // (plus a small per-id jitter) so each market shows a distinct, sensible
-    // Hawk/Dove split instead of the model's near-constant 80/70.
     let hash = 0;
     for (let i = 0; i < m.id.length; i++) hash = (hash * 31 + m.id.charCodeAt(i)) | 0;
-    const jitter = ((Math.abs(hash) % 17) - 8); // -8..+8
-    const gap = m.threshold - m.severity; // smaller gap → easier to escalate
+    const jitter = ((Math.abs(hash) % 17) - 8);
+    const gap = m.threshold - m.severity;
     const hawkConviction = Math.max(35, Math.min(95,
       Math.round(55 + (m.severity - 50) * 0.6 - gap * 0.8 + jitter)
     ));
-    const doveJitter = (((Math.abs(hash) >> 4) % 13) - 6); // -6..+6
+    const doveJitter = (((Math.abs(hash) >> 4) % 13) - 6);
     const doveConviction = Math.max(35, Math.min(95,
       Math.round(55 + gap * 0.8 - (m.severity - 50) * 0.4 + doveJitter)
     ));
@@ -828,11 +781,6 @@ export function ArenaSection() {
 
         <div className="px-6">
           <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-            {/* Implied Probability bar intentionally removed for all users,
-                permanently — showing the live odds split lets people just
-                follow the existing skew instead of forming their own view,
-                which defeats the purpose of the market. Always show a
-                neutral qualitative brief instead. */}
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
                 Signal Brief
@@ -843,7 +791,6 @@ export function ArenaSection() {
             </div>
           </div>
 
-          {/* Narrative Matrix */}
           <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/60">
             <div className="bg-card/60 p-3">
               <dt className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
@@ -1053,8 +1000,9 @@ export function ArenaSection() {
         {staked && (
           <div className="border-t border-primary/30 bg-primary/5 px-6 py-3 font-mono text-xs">
             <span className="text-primary">✓ Position opened · {staked.side === "HAWK" ? "Escalation" : "Calm"}</span>{" "}
-            <a
-              href={`${activeNet.explorer}/tx/${staked.hash}`}
+            
+              <a
+                href={`${activeNet.explorer}/tx/${staked.hash}`}
               target="_blank"
               rel="noreferrer"
               className="break-all text-muted-foreground hover:text-foreground"
@@ -1066,8 +1014,9 @@ export function ArenaSection() {
         {claimTx[m.id] && (
           <div className="border-t border-primary/30 bg-primary/5 px-6 py-3 font-mono text-xs">
             <span className="text-primary">✓ Claim submitted</span>{" "}
-            <a
-              href={`${activeNet.explorer}/tx/${claimTx[m.id]}`}
+            
+              <a
+                href={`${activeNet.explorer}/tx/${claimTx[m.id]}`}
               target="_blank"
               rel="noreferrer"
               className="break-all text-muted-foreground hover:text-foreground"
@@ -1085,35 +1034,23 @@ export function ArenaSection() {
     );
   };
 
-  // Coarse lifecycle bucket per market, preferring the freshest polled
-  // on-chain status (onchainMarkets) over the snapshot taken at load time.
-  const stageOf = (m: Market): Market["lifecycleStage"] => {
-    const live = onchainMarkets[m.id];
-    if (live) {
-      switch (live.status) {
-        case 3:
-          return "disputed";
-        case 4:
-          return "completed";
-        case 2:
-          return "awaiting_dispute";
-        default:
-          return "active";
-      }
-    }
-    return m.lifecycleStage;
+  const effectiveStage = (m: Market): "active" | "awaiting_dispute" | "disputed" | "completed" => {
+    if (m.lifecycleStage) return m.lifecycleStage;
+    const om = onchainMarkets[m.id] ?? m.onchain;
+    const finalized = !!m.marketFinalized || !!om.resolved;
+    if (finalized) return "completed";
+    if (m.aiProcessed) return "awaiting_dispute";
+    return "active";
   };
 
-  const activeMarkets = markets.filter((m) => stageOf(m) === "active");
-  const awaitingDisputeMarkets = markets.filter((m) => stageOf(m) === "awaiting_dispute");
-  const disputedMarkets = markets.filter((m) => stageOf(m) === "disputed");
+  const disputedMarkets = markets.filter((m) => effectiveStage(m) === "disputed");
+  const awaitingDisputeMarkets = markets.filter((m) => effectiveStage(m) === "awaiting_dispute");
+  const activeMarkets = markets.filter((m) => effectiveStage(m) === "active");
+  const openMarkets = [...disputedMarkets, ...awaitingDisputeMarkets, ...activeMarkets];
   const resolvedMarkets = markets.filter(
-    (m) => stageOf(m) === "completed" && !claimedMarkets.has(m.id),
+    (m) => effectiveStage(m) === "completed" && !claimedMarkets.has(m.id),
   );
 
-  // Forecast Track Record: derive each analyst's predictive accuracy from
-  // resolved on-chain markets. HAWK is right when the resolved winner is
-  // HAWK (escalation), DOVE is right when the winner is DOVE (calm).
   const trackRecord = (() => {
     let hawkWins = 0;
     let doveWins = 0;
@@ -1241,70 +1178,120 @@ export function ArenaSection() {
         </div>
       ) : (
         <>
-          {disputedMarkets.length > 0 && (
-            <div className="mt-10 rounded-2xl border border-destructive/50 bg-destructive/5 p-5">
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-destructive">
-                <Gavel className="h-3.5 w-3.5" />
-                Disputed · {disputedMarkets.length}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Someone staked the dispute fee on these markets. They're isolated in a
-                24h DAO-vote window — every other market keeps resolving on its normal
-                schedule.
-              </p>
-              <div className="mt-4 space-y-4">{disputedMarkets.map(renderMarketCard)}</div>
-            </div>
-          )}
-
-          {awaitingDisputeMarkets.length > 0 && (
-            <div className="mt-10">
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Awaiting dispute window · {awaitingDisputeMarkets.length}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Agent verdict is in. Anyone can dispute within the window — otherwise
-                these finalize automatically once it closes.
-              </p>
-              <div className="mt-4 space-y-4">{awaitingDisputeMarkets.map(renderMarketCard)}</div>
-            </div>
-          )}
-
-          <div className="mt-10">
-            {(disputedMarkets.length > 0 || awaitingDisputeMarkets.length > 0) && (
-              <div className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                <Activity className="h-3.5 w-3.5" />
-                Active · {activeMarkets.length}
-              </div>
-            )}
-            <div className="space-y-4">
-              {activeMarkets.length > 0 ? (
-                activeMarkets.map(renderMarketCard)
-              ) : !refreshing && !hadCacheAtMountRef.current && !previousSuccessfulHadMarketsRef.current && (getCachedMarkets()?.length ?? 0) === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
-                  No active markets right now. Browse settled markets below.
+          <div className="mt-10 space-y-10">
+            {(() => {
+              const tabs: Array<{
+                key: "active" | "awaiting_dispute" | "disputed" | "completed";
+                label: string;
+                count: number;
+                destructive?: boolean;
+              }> = [
+                { key: "active", label: "Active", count: activeMarkets.length },
+                { key: "awaiting_dispute", label: "Staking Closed", count: awaitingDisputeMarkets.length },
+                { key: "disputed", label: "Disputed", count: disputedMarkets.length, destructive: true },
+                { key: "completed", label: "Completed", count: resolvedMarkets.length },
+              ];
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {tabs.map((t) => {
+                    const isActive = activeTab === t.key;
+                    const base = "rounded-lg border px-3 py-1.5 font-mono text-xs transition";
+                    const cls = t.destructive
+                      ? isActive
+                        ? `${base} border-destructive bg-destructive/10 text-destructive`
+                        : `${base} border-destructive/50 text-destructive hover:bg-destructive/5`
+                      : isActive
+                        ? `${base} border-primary bg-primary/10 text-primary`
+                        : `${base} border-border/60 text-muted-foreground hover:bg-muted/40`;
+                    return (
+                      <button key={t.key} type="button" onClick={() => setActiveTab(t.key)} className={cls}>
+                        {t.label} · {t.count}
+                      </button>
+                    );
+                  })}
                 </div>
-              ) : null}
-            </div>
-          </div>
+              );
+            })()}
 
-          {resolvedMarkets.length > 0 && (
-            <div className="mt-12 border-t border-border/40 pt-6">
-              <button
-                type="button"
-                onClick={() => setShowResolved((s) => !s)}
-                className="flex w-full items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-2.5 text-left font-mono text-xs text-muted-foreground transition hover:bg-muted/40"
-              >
-                <span>Completed markets · {resolvedMarkets.length}</span>
-                <span className="text-foreground/80">{showResolved ? "Hide" : "Show"}</span>
-              </button>
-              {showResolved && (
-                <div className="mt-4 space-y-3 opacity-70">
+            {activeTab === "disputed" && (
+              disputedMarkets.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Isolated in a 24h DAO-vote window while other markets continue on schedule.
+                  </p>
+                  <div className="space-y-4 rounded-2xl border border-destructive/60 bg-destructive/5 p-3 ring-1 ring-destructive/30">
+                    {disputedMarkets.map((m) => (
+                      <div key={m.id} className="space-y-2">
+                        {m.disputerAddress && (
+                          <div className="px-2 font-mono text-[11px] text-destructive">
+                            Disputed by {shortAddr(m.disputerAddress)}
+                          </div>
+                        )}
+                        {renderMarketCard(m)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
+                  No disputed markets.
+                </div>
+              )
+            )}
+
+            {activeTab === "awaiting_dispute" && (
+              awaitingDisputeMarkets.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Anyone can dispute within this window — otherwise it finalizes automatically.
+                  </p>
+                  <div className="space-y-4">
+                    {awaitingDisputeMarkets.map((m) => {
+                      const remaining = m.disputeWindowEndsAt ? m.disputeWindowEndsAt - now : null;
+                      return (
+                        <div key={m.id} className="space-y-2">
+                          {remaining !== null && remaining > 0 && (
+                            <div className="px-2 font-mono text-[11px] text-accent">
+                              Disputes close in {formatCountdown(remaining)}
+                            </div>
+                          )}
+                          {renderMarketCard(m)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
+                  No markets awaiting the dispute window.
+                </div>
+              )
+            )}
+
+            {activeTab === "active" && (
+              activeMarkets.length > 0 ? (
+                <div className="space-y-4">
+                  {activeMarkets.map(renderMarketCard)}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
+                  No live markets right now.
+                </div>
+              )
+            )}
+
+            {activeTab === "completed" && (
+              resolvedMarkets.length > 0 ? (
+                <div className="space-y-3 opacity-70">
                   {resolvedMarkets.map(renderMarketCard)}
                 </div>
-              )}
-            </div>
-          )}
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
+                  No completed markets yet.
+                </div>
+              )
+            )}
+          </div>
         </>
       )}
 

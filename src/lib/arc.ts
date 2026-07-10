@@ -1,3 +1,5 @@
+import { JsonRpcProvider, FallbackProvider } from "ethers";
+
 export type ArcNetwork = {
   key: "testnet" | "mainnet";
   chainIdDec: number;
@@ -10,12 +12,26 @@ export type ArcNetwork = {
   live: boolean; // false until mainnet ships
 };
 
+/**
+ * Hardcoded free, no-API-key Arc Testnet RPC endpoints. Intentionally NOT
+ * read from env — a stale env value must never be able to override this
+ * list. Read-only providers use these via FallbackProvider so a
+ * rate-limited or down endpoint automatically fails over to the next.
+ */
+export const ARC_TESTNET_RPC_URLS = [
+  "https://rpc.testnet.arc.network",
+  "https://arc-testnet.drpc.org",
+];
+
 export const ARC_TESTNET: ArcNetwork = {
   key: "testnet",
   chainIdDec: 5042002,
   chainIdHex: "0x4cef52",
   chainName: "Arc Testnet",
-  rpcUrl: "https://rpc.testnet.arc.network",
+  // Primary URL exposed for wallet_addEthereumChain and simple fetch-based
+  // balance reads. Ethers read paths should use getArcReadProvider() below
+  // to benefit from automatic RPC failover.
+  rpcUrl: ARC_TESTNET_RPC_URLS[0],
   explorer: "https://testnet.arcscan.app",
   // Arc uses USDC as the native gas token with 18 decimals on-chain
   // (not the ERC-20 USDC 6-decimal convention).
@@ -38,6 +54,22 @@ export const ARC_MAINNET: ArcNetwork = {
 };
 
 export const ARC_NETWORKS: ArcNetwork[] = [ARC_MAINNET, ARC_TESTNET];
+
+/**
+ * Build a read-only ethers provider for an Arc network. For testnet this
+ * returns a FallbackProvider spanning every URL in ARC_TESTNET_RPC_URLS so
+ * one rate-limited/down endpoint transparently fails over to the next.
+ * Wallet-injected BrowserProviders (signing path) are untouched.
+ */
+export function getArcReadProvider(network: ArcNetwork): JsonRpcProvider | FallbackProvider {
+  if (network.key === "testnet") {
+    const providers = ARC_TESTNET_RPC_URLS.map((url) => new JsonRpcProvider(url));
+    return new FallbackProvider(
+      providers.map((provider, i) => ({ provider, priority: i, stallTimeout: 2000 })),
+    );
+  }
+  return new JsonRpcProvider(network.rpcUrl);
+}
 
 /** Map a wallet-reported chainId (hex or decimal) to a known Arc network. */
 export function networkByChainId(chainId: string | number | null | undefined): ArcNetwork | null {

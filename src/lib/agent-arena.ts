@@ -1,8 +1,15 @@
-import { BrowserProvider, Contract, JsonRpcProvider, formatUnits, parseUnits } from "ethers";
+import { BrowserProvider, Contract, FallbackProvider, Interface, JsonRpcProvider, formatUnits, parseUnits } from "ethers";
 import type { AgentSide } from "./agents";
-import { ARC_TESTNET } from "./arc";
+import { ARC_TESTNET, getArcReadProvider } from "./arc";
 
 export const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+
+/** Canonical Multicall3 deployment (same address across chains, incl. Arc Testnet). */
+export const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
+const MULTICALL3_ABI = [
+  "function aggregate3(tuple(address target, bool allowFailure, bytes callData)[] calls) view returns (tuple(bool success, bytes returnData)[] returnData)",
+];
 
 /** USDC on Arc is the native gas token with 18 decimals (see src/lib/arc.ts). */
 export const ARC_USDC_DECIMALS = 18;
@@ -78,8 +85,9 @@ function getProvider() {
   return new BrowserProvider(eth as unknown as ConstructorParameters<typeof BrowserProvider>[0]);
 }
 
-/** Read-only provider: prefers injected wallet, falls back to public Arc RPC. */
-export function getReadProvider(): BrowserProvider | JsonRpcProvider {
+/** Read-only provider: prefers injected wallet, falls back to a multi-endpoint
+ * FallbackProvider over the hardcoded Arc Testnet RPC list. */
+export function getReadProvider(): BrowserProvider | JsonRpcProvider | FallbackProvider {
   const eth = (typeof window !== "undefined" ? window.ethereum : undefined) as
     | { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> }
     | undefined;
@@ -90,7 +98,7 @@ export function getReadProvider(): BrowserProvider | JsonRpcProvider {
       /* fall through */
     }
   }
-  return new JsonRpcProvider(ARC_TESTNET.rpcUrl);
+  return getArcReadProvider(ARC_TESTNET);
 }
 
 export function weiToUsdc(wei: bigint): number {
@@ -104,7 +112,7 @@ export function usdcToWei(amount: string | number): bigint {
 
 export async function readMarket(
   marketId: string,
-  provider?: BrowserProvider | JsonRpcProvider,
+  provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
 ): Promise<OnchainMarket> {
   const p = provider ?? getReadProvider();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
@@ -117,7 +125,7 @@ export async function readMarket(
   const details = (await contract.getMarketFullDetails(marketId)) as [
     bigint, bigint, bigint, bigint, bigint, bigint, string
   ];
-  const winnerCode = Number(details[1]); // real, final winner — only meaningful once status === FINALIZED (4)
+  const winnerCode = Number(details[1]);
 
   return {
     status,
@@ -127,19 +135,17 @@ export async function readMarket(
     doveTotalWei,
     hawkTotalUsdc: weiToUsdc(hawkTotalWei),
     doveTotalUsdc: weiToUsdc(doveTotalWei),
-    resolved: status === 4, // FINALIZED — matches claim()'s own requirement, not just an AI tentative call
+    resolved: status === 4,
   };
 }
 
 export async function readMyStake(
   marketId: string,
   user: string,
-  provider?: BrowserProvider | JsonRpcProvider,
+  provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
 ): Promise<OnchainStake> {
   const p = provider ?? getReadProvider();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
-  // stakes is a public mapping in AgentArena.sol — no getMyStake() function exists on-chain,
-  // so each side must be read as a separate call: stakes(marketId, user, side)
   const [hawkWei, doveWei] = (await Promise.all([
     contract.stakes(marketId, user, SIDE_CODE.HAWK),
     contract.stakes(marketId, user, SIDE_CODE.DOVE),
@@ -158,7 +164,7 @@ export async function readMyStake(
  */
 export async function readMarketFullDetails(
   marketId: string,
-  provider?: BrowserProvider | JsonRpcProvider,
+  provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
 ): Promise<OnchainMarketFullDetails | null> {
   const p = provider ?? getReadProvider();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
@@ -189,11 +195,11 @@ export async function readMarketFullDetails(
 }
 
 /**
- * Arc's public testnet RPC (rpc.testnet.arc.network) occasionally 429s under
- * load, most often while polling eth_getTransactionReceipt right after a tx
- * is submitted. The tx itself is already broadcast at that point — a 429
- * here means "we don't know the outcome yet", not "it failed". Retry with
- * backoff instead of surfacing the raw RPC error.
+ * Arc's public testnet RPC occasionally 429s under load, most often while
+ * polling eth_getTransactionReceipt right after a tx is submitted. The tx
+ * itself is already broadcast at that point — a 429 here means "we don't
+ * know the outcome yet", not "it failed". Retry with backoff instead of
+ * surfacing the raw RPC error.
  */
 async function withRpcRetry<T>(
   fn: () => Promise<T>,
@@ -268,7 +274,7 @@ export async function stakeOnContract(
  * WIRING NOTE for whoever calls stakeOnContract() (e.g. the stake dialog in
  * routes/index.tsx):
  *
- *   const txHash = await stakeOnContract(marketId, side, amountUsdc);
+ *   const { hash, confirmed } = await stakeOnContract(marketId, side, amountUsdc);
  *   if (session) {
  *     await callRecordStake({
  *       data: {
@@ -276,10 +282,11 @@ export async function stakeOnContract(
  *         marketId: eventDbId,        // events.id (uuid) — NOT the "mkt_..." string id
  *         side,
  *         stakedAmountRaw: usdcToWei(amountUsdc).toString(),
- *         txHash,
+ *         txHash: hash,
  *       },
  *     });
  *   }
+ *   void confirmed.then(({ success }) => { if (!success) console.warn(...) });
  *
  * `session` comes from useWallet()'s SIWE session — if the wallet hasn't
  * signed in yet, prompt signIn() before allowing a stake, otherwise the
@@ -293,4 +300,177 @@ export async function claimOnContract(marketId: string): Promise<string> {
   const tx = await contract.claim(marketId);
   await withRpcRetry(() => tx.wait());
   return tx.hash as string;
+}
+
+// ---------------------------------------------------------------------------
+// Multicall3-based batch reads
+//
+// Each per-market on-chain read (getMarket, getMarketFullDetails, stakes) is
+// its own eth_call round-trip. At ~100 active markets that's hundreds of RPC
+// requests per 30s poll and gets us rate-limited. The helpers below encode
+// every per-market call into a single Multicall3.aggregate3() batch so one
+// eth_call covers the whole set.
+// ---------------------------------------------------------------------------
+
+type MulticallResult = { success: boolean; returnData: string };
+
+const arenaInterface = new Interface(AGENT_ARENA_ABI as unknown as string[]);
+
+function decodeMarketPair(
+  marketRes: MulticallResult | undefined,
+  detailsRes: MulticallResult | undefined,
+): OnchainMarket | null {
+  if (!marketRes?.success || !detailsRes?.success) return null;
+  try {
+    const pools = arenaInterface.decodeFunctionResult("getMarket", marketRes.returnData) as unknown as [
+      bigint, bigint, bigint, boolean,
+    ];
+    const details = arenaInterface.decodeFunctionResult(
+      "getMarketFullDetails",
+      detailsRes.returnData,
+    ) as unknown as [bigint, bigint, bigint, bigint, bigint, bigint, string];
+    const status = Number(pools[0]);
+    const hawkTotalWei = pools[1];
+    const doveTotalWei = pools[2];
+    const winnerCode = Number(details[1]);
+    return {
+      status,
+      winnerCode,
+      winner: SIDE_FROM_CODE[winnerCode] ?? null,
+      hawkTotalWei,
+      doveTotalWei,
+      hawkTotalUsdc: weiToUsdc(hawkTotalWei),
+      doveTotalUsdc: weiToUsdc(doveTotalWei),
+      resolved: status === 4,
+    };
+  } catch (e) {
+    console.warn("[batchReadMarkets] decode failed", e);
+    return null;
+  }
+}
+
+function decodeFullDetails(res: MulticallResult | undefined): OnchainMarketFullDetails | null {
+  if (!res?.success) return null;
+  try {
+    const r = arenaInterface.decodeFunctionResult(
+      "getMarketFullDetails",
+      res.returnData,
+    ) as unknown as [bigint, bigint, bigint, bigint, bigint, bigint, string];
+    const status = Number(r[0]);
+    const winnerCode = Number(r[1]);
+    const tentativeWinnerCode = Number(r[2]);
+    return {
+      status,
+      winnerCode,
+      winner: SIDE_FROM_CODE[winnerCode] ?? null,
+      tentativeWinnerCode,
+      tentativeWinner: SIDE_FROM_CODE[tentativeWinnerCode] ?? null,
+      stakingEndTime: Number(r[3]) * 1000,
+      resolutionTime: Number(r[4]) * 1000,
+      aiResolutionTime: Number(r[5]) * 1000,
+      disputer: r[6],
+      finalized: status === MARKET_STATUS.FINALIZED,
+      aiResolved: status === MARKET_STATUS.AI_RESOLVED || status === MARKET_STATUS.DISPUTED,
+    };
+  } catch (e) {
+    console.warn("[batchReadMarketFullDetails] decode failed", e);
+    return null;
+  }
+}
+
+export async function batchReadMarkets(
+  marketIds: string[],
+  provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+): Promise<Record<string, OnchainMarket>> {
+  if (marketIds.length === 0) return {};
+  const p = provider ?? getReadProvider();
+  const multicall = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, p);
+  const calls = marketIds.flatMap((id) => [
+    {
+      target: AGENT_ARENA_ADDRESS,
+      allowFailure: true,
+      callData: arenaInterface.encodeFunctionData("getMarket", [id]),
+    },
+    {
+      target: AGENT_ARENA_ADDRESS,
+      allowFailure: true,
+      callData: arenaInterface.encodeFunctionData("getMarketFullDetails", [id]),
+    },
+  ]);
+  const raw = (await multicall.aggregate3(calls)) as MulticallResult[];
+  const out: Record<string, OnchainMarket> = {};
+  marketIds.forEach((id, i) => {
+    const decoded = decodeMarketPair(raw[i * 2], raw[i * 2 + 1]);
+    if (decoded) {
+      out[id] = decoded;
+    } else {
+      console.warn("[batchReadMarkets] call failed for market", id);
+    }
+  });
+  return out;
+}
+
+export async function batchReadMarketFullDetails(
+  marketIds: string[],
+  provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+): Promise<Record<string, OnchainMarketFullDetails | null>> {
+  if (marketIds.length === 0) return {};
+  const p = provider ?? getReadProvider();
+  const multicall = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, p);
+  const calls = marketIds.map((id) => ({
+    target: AGENT_ARENA_ADDRESS,
+    allowFailure: true,
+    callData: arenaInterface.encodeFunctionData("getMarketFullDetails", [id]),
+  }));
+  const raw = (await multicall.aggregate3(calls)) as MulticallResult[];
+  const out: Record<string, OnchainMarketFullDetails | null> = {};
+  marketIds.forEach((id, i) => {
+    out[id] = decodeFullDetails(raw[i]);
+  });
+  return out;
+}
+
+export async function batchReadMyStakes(
+  marketIds: string[],
+  user: string,
+  provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+): Promise<Record<string, OnchainStake>> {
+  if (marketIds.length === 0) return {};
+  const p = provider ?? getReadProvider();
+  const multicall = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, p);
+  const calls = marketIds.flatMap((id) => [
+    {
+      target: AGENT_ARENA_ADDRESS,
+      allowFailure: true,
+      callData: arenaInterface.encodeFunctionData("stakes", [id, user, SIDE_CODE.HAWK]),
+    },
+    {
+      target: AGENT_ARENA_ADDRESS,
+      allowFailure: true,
+      callData: arenaInterface.encodeFunctionData("stakes", [id, user, SIDE_CODE.DOVE]),
+    },
+  ]);
+  const raw = (await multicall.aggregate3(calls)) as MulticallResult[];
+  const out: Record<string, OnchainStake> = {};
+  marketIds.forEach((id, i) => {
+    const hawkRes = raw[i * 2];
+    const doveRes = raw[i * 2 + 1];
+    if (!hawkRes?.success || !doveRes?.success) {
+      console.warn("[batchReadMyStakes] call failed for market", id);
+      return;
+    }
+    try {
+      const [hawkWei] = arenaInterface.decodeFunctionResult("stakes", hawkRes.returnData) as unknown as [bigint];
+      const [doveWei] = arenaInterface.decodeFunctionResult("stakes", doveRes.returnData) as unknown as [bigint];
+      out[id] = {
+        hawkWei,
+        doveWei,
+        hawkUsdc: weiToUsdc(hawkWei),
+        doveUsdc: weiToUsdc(doveWei),
+      };
+    } catch (e) {
+      console.warn("[batchReadMyStakes] decode failed", id, e);
+    }
+  });
+  return out;
 }
