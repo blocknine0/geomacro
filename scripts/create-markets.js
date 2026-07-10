@@ -41,10 +41,15 @@ async function main() {
   // events.lifecycle_stage is kept in sync with on-chain status by
   // scripts/sync-lifecycle.js (runs every 30 min), so counting "active"
   // rows here is a fast, reliable proxy for "currently OPEN on-chain".
+  // NOTE: "active" alone undercounts — a market can also be
+  // "awaiting_dispute" or "disputed" and still be occupying a slot
+  // (not yet "completed"). Match sync-lifecycle.js's definition of
+  // "open" so the cap reflects reality.
   const { count: activeCount, error: countErr } = await supabase
     .from("events")
     .select("id", { count: "exact", head: true })
-    .eq("lifecycle_stage", "active");
+    .eq("market_created", true)
+    .neq("lifecycle_stage", "completed");
   if (countErr) throw new Error(`Supabase error counting active markets: ${countErr.message}`);
 
   const room = MAX_ACTIVE_MARKETS - (activeCount ?? 0);
