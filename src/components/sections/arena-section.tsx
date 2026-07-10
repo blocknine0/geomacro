@@ -490,7 +490,16 @@ export function ArenaSection() {
     setStakeError(null);
     try {
       const { market, side } = pendingStake;
-      const hash = await stakeOnContract(market.id, side, stakeAmount);
+      // stakeOnContract() returns as soon as the wallet has broadcast the tx
+      // — it does NOT wait for on-chain confirmation. This is deliberate:
+      // Arc's public RPC intermittently 429s on receipt polling, and if
+      // recordStake() only fired after a successful wait(), an RPC hiccup
+      // would leave a real, paid-for stake missing from Supabase/Portfolio
+      // (a "ghost stake"). Recording immediately off the hash means the
+      // position always gets saved once the wallet confirms the tx was
+      // sent, regardless of RPC flakiness. scripts/sync-stakes.js is the
+      // periodic backstop that reconciles on-chain events either way.
+      const { hash, confirmed } = await stakeOnContract(market.id, side, stakeAmount);
       setStakeTx((prev) => ({ ...prev, [market.id]: { side, hash } }));
       if (market.eventId) {
         try {
@@ -507,6 +516,16 @@ export function ArenaSection() {
           console.error("[recordStake] failed", err);
         }
       }
+      // Confirmation happens in the background — we don't block the UI on
+      // it. If it turns out the tx actually reverted (rare, since the
+      // wallet already estimated gas successfully before broadcasting), log
+      // it for visibility; sync-stakes.js / anomaly-monitor.js reconcile the
+      // Supabase state independently on their own schedule.
+      void confirmed.then(({ success, error }) => {
+        if (!success) {
+          console.warn("[stake] on-chain confirmation did not complete", { marketId: market.id, error });
+        }
+      });
       rememberSessionTx(activeNet, address, {
         hash,
         from: address,

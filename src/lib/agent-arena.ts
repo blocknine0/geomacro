@@ -188,18 +188,80 @@ export async function readMarketFullDetails(
   }
 }
 
+/**
+ * Arc's public testnet RPC (rpc.testnet.arc.network) occasionally 429s under
+ * load, most often while polling eth_getTransactionReceipt right after a tx
+ * is submitted. The tx itself is already broadcast at that point — a 429
+ * here means "we don't know the outcome yet", not "it failed". Retry with
+ * backoff instead of surfacing the raw RPC error.
+ */
+async function withRpcRetry<T>(
+  fn: () => Promise<T>,
+  { retries = 6, baseDelayMs = 1500 }: { retries?: number; baseDelayMs?: number } = {},
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      const message = String((e as { message?: string })?.message ?? e);
+      const isRateLimited =
+        message.includes("429") || message.includes("rate limit") || message.includes("Too Many Requests");
+      if (!isRateLimited || attempt === retries) throw e;
+      const delay = baseDelayMs * 2 ** attempt;
+      console.warn(`[withRpcRetry] rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
+export type StakeSubmission = {
+  hash: string;
+  /** Resolves once the tx is actually confirmed on-chain (or all retries are
+   *  exhausted). Callers that just need to record the position should NOT
+   *  await this — await it only where confirmation genuinely matters. */
+  confirmed: Promise<{ success: boolean; error?: string }>;
+};
+
+/**
+ * Submits the stake and returns the tx hash as soon as the wallet has signed
+ * and broadcast it — it does NOT wait for confirmation. This is deliberate:
+ * waiting on tx.wait() here made Supabase position-recording depend on Arc's
+ * public RPC successfully returning a receipt, and that RPC intermittently
+ * 429s. When it did, stakeOnContract() threw even though the stake had
+ * already landed on-chain, so the position never got recorded in
+ * Supabase — a "ghost stake" the user paid for but Portfolio never showed.
+ *
+ * Confirmation still happens (via the returned `confirmed` promise, with
+ * retry/backoff), but callers can record the position immediately using the
+ * hash, without blocking on it. scripts/sync-stakes.js remains a periodic
+ * backstop that reconciles on-chain Staked events against Supabase
+ * regardless of what the frontend did.
+ */
 export async function stakeOnContract(
   marketId: string,
   side: AgentSide,
   amountUsdc: string | number,
-): Promise<string> {
+): Promise<StakeSubmission> {
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
   const value = usdcToWei(amountUsdc);
   const tx = await contract.stake(marketId, SIDE_CODE[side], { value });
-  await tx.wait(); // confirm on-chain before recording the position — avoid ghost rows for reverted/pending txs
-  return tx.hash as string;
+
+  const confirmed = withRpcRetry(() => tx.wait())
+    .then(() => ({ success: true }))
+    .catch((e: unknown) => {
+      console.warn("[stakeOnContract] confirmation failed after retries — tx may still be pending/mined", {
+        hash: tx.hash,
+        error: e,
+      });
+      return { success: false, error: (e as Error).message ?? String(e) };
+    });
+
+  return { hash: tx.hash as string, confirmed };
 }
 
 /**
@@ -229,6 +291,6 @@ export async function claimOnContract(marketId: string): Promise<string> {
   const signer = await provider.getSigner();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
   const tx = await contract.claim(marketId);
-  await tx.wait();
+  await withRpcRetry(() => tx.wait());
   return tx.hash as string;
 }
