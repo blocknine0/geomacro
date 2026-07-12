@@ -219,7 +219,26 @@ async function main() {
       }
 
       console.log(`Finalizing ${marketId}...`);
-      const tx = await callRpcWithBackoff(() => contract.finalizeMarket(marketId), `finalizeMarket(${marketId})`);
+      // ⚠️ একই কারণে (দেখুন resolve-markets.js) — finalizeMarket একটা transaction
+      // পাঠায়, তাই এটাও callRpcWithBackoff-এ blindly wrap করা যাবে না। শুধু
+      // NONCE_EXPIRED/REPLACEMENT_UNDERPRICED (node reject করেছে, broadcast হয়নি)
+      // এর জন্য আলাদা নিরাপদ retry।
+      let tx;
+      let sendAttempt = 0;
+      const MAX_SEND_RETRIES = 3;
+      while (true) {
+        try {
+          tx = await contract.finalizeMarket(marketId);
+          break;
+        } catch (sendErr) {
+          const isNonceRace = sendErr.code === "NONCE_EXPIRED" || sendErr.code === "REPLACEMENT_UNDERPRICED";
+          if (!isNonceRace || sendAttempt >= MAX_SEND_RETRIES) throw sendErr;
+          sendAttempt++;
+          const wait = 1500 * sendAttempt;
+          console.log(`  ⏳ Nonce/mempool race on ${marketId} (${sendErr.code}), attempt ${sendAttempt}/${MAX_SEND_RETRIES}. Waiting ${wait}ms and retrying with a fresh nonce...`);
+          await delay(wait);
+        }
+      }
       await callRpcWithBackoff(() => tx.wait(), `tx.wait(${marketId})`);
 
       // finalize এর পরে fresh state পড়ে নাও যাতে real m.winner + pool totals পাওয়া যায়
