@@ -6,7 +6,7 @@ import fetch from "node-fetch";
 
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
-const MAX_RESOLUTIONS_PER_RUN = 5;
+const MAX_RESOLUTIONS_PER_RUN = Number(process.env.MAX_RESOLUTIONS_PER_RUN || 5);
 
 const CONTRACT_ABI = [
   "function declareWinnerByAI(string marketId, uint8 winningSide) external",
