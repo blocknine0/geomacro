@@ -6,6 +6,17 @@ const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 const PROTOCOL_FEE_BPS = 150n; // 1.5% — must mirror AgentArena.sol PROTOCOL_FEE_BPS exactly
 
+// NEW: hard cap on how many markets this run will touch, so a big backlog
+// can't generate an unbounded burst of RPC calls in a single run (this is
+// what was crashing the whole process against QuickNode's 100/sec limit).
+const MAX_EVENTS_PER_RUN = Number(process.env.MAX_EVENTS_PER_RUN || 40);
+// Small fixed pause between every market we touch, regardless of outcome.
+const RPC_THROTTLE_MS = Number(process.env.RPC_THROTTLE_MS || 350);
+const MAX_RATE_LIMIT_RETRIES = Number(process.env.RPC_MAX_RETRIES || 5);
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 60 * 1000;
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const CONTRACT_ABI = [
   "function finalizeMarket(string marketId) external",
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
@@ -13,6 +24,34 @@ const CONTRACT_ABI = [
 ];
 
 const SIDE_LABEL = { 0: "NONE", 1: "HAWK", 2: "DOVE" };
+
+// 🛡️ NEW: same backoff pattern used in resolve-markets.js. QuickNode (and most
+// RPC providers) return JSON-RPC error code -32007 or HTTP 429 when you exceed
+// their per-second request limit. Previously NONE of the RPC calls in this
+// file were wrapped, so a single rate-limit hit anywhere would throw, get
+// caught by the per-market try/catch, and silently skip that market forever
+// (or, if it happened early enough and wasn't caught, crash the whole run).
+async function callRpcWithBackoff(fn, label) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      const code = error?.error?.code ?? error?.code;
+      const message = String(error?.error?.message ?? error?.message ?? "");
+      const isRateLimit =
+        code === -32007 ||
+        error?.status === 429 ||
+        /request limit|rate limit|too many requests/i.test(message);
+      if (!isRateLimit || attempt >= MAX_RATE_LIMIT_RETRIES) throw error;
+      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      const jitter = Math.random() * 500;
+      attempt++;
+      console.log(`  ⏳ RPC rate limited on ${label} (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+      await delay(backoff + jitter);
+    }
+  }
+}
 
 // claim()-এর সাথে হুবহু ম্যাচিং payout ফর্মুলা (parimutuel + protocol fee),
 // যাতে positions টেবিলে যা "claimable" দেখানো হয় আর ইউজার আসলে অনচেইন যা পাবে তা এক থাকে।
@@ -140,10 +179,23 @@ async function main() {
 
   if (!pendingMarkets || pendingMarkets.length === 0) return;
 
-  for (const event of pendingMarkets) {
+  // NEW: only take the first MAX_EVENTS_PER_RUN — the rest will be picked up
+  // by the next scheduled run. This is the main fix: previously this loop had
+  // no cap at all and would try to burn through the entire backlog (which can
+  // be hundreds of markets) in one go, each needing 2-3 RPC calls, which is
+  // exactly what triggered "100/second request limit reached" crashes.
+  const batch = pendingMarkets.slice(0, MAX_EVENTS_PER_RUN);
+  console.log(`Found ${pendingMarkets.length} market(s) pending finalization. Processing ${batch.length} this run.`);
+
+  let finalizedCount = 0;
+
+  for (const event of batch) {
     const marketId = `mkt_${event.id}`;
     try {
-      const onChainMarket = await contract.getMarketFullDetails(marketId);
+      const onChainMarket = await callRpcWithBackoff(
+        () => contract.getMarketFullDetails(marketId),
+        `getMarketFullDetails(${marketId})`,
+      );
       const status = Number(onChainMarket.status);
 
       if (status === 4) {
@@ -152,23 +204,29 @@ async function main() {
         // নাহলে এই event চিরতরে orphaned হয়ে যাবে (পরের run আর কখনো retry করবে না)
         if (!adminSupabase) {
           console.log(`  ⚠️ Skipping resolved-flag update for ${marketId}: no service-role key, cannot sync positions safely.`);
+          await delay(RPC_THROTTLE_MS);
           continue;
         }
         const winLabel = SIDE_LABEL[Number(onChainMarket.winner)];
         if (winLabel && winLabel !== "NONE") {
-          const pools = await contract.getMarket(marketId);
+          const pools = await callRpcWithBackoff(() => contract.getMarket(marketId), `getMarket(${marketId})`);
           await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
         }
         await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
+        finalizedCount++;
+        await delay(RPC_THROTTLE_MS);
         continue;
       }
 
       console.log(`Finalizing ${marketId}...`);
-      const tx = await contract.finalizeMarket(marketId);
-      await tx.wait();
+      const tx = await callRpcWithBackoff(() => contract.finalizeMarket(marketId), `finalizeMarket(${marketId})`);
+      await callRpcWithBackoff(() => tx.wait(), `tx.wait(${marketId})`);
 
       // finalize এর পরে fresh state পড়ে নাও যাতে real m.winner + pool totals পাওয়া যায়
-      const finalized = await contract.getMarketFullDetails(marketId);
+      const finalized = await callRpcWithBackoff(
+        () => contract.getMarketFullDetails(marketId),
+        `getMarketFullDetails-postfinalize(${marketId})`,
+      );
       const finalStatus = Number(finalized.status);
 
       if (finalStatus === 4) {
@@ -178,18 +236,23 @@ async function main() {
         } else {
           const winLabel = SIDE_LABEL[Number(finalized.winner)];
           if (winLabel && winLabel !== "NONE") {
-            const pools = await contract.getMarket(marketId);
+            const pools = await callRpcWithBackoff(() => contract.getMarket(marketId), `getMarket-postfinalize(${marketId})`);
             await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
           }
           await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
+          finalizedCount++;
         }
       }
       // finalStatus 4 না হলে (এখনো DISPUTED phase চলছে) — market_resolved false-ই থাকবে,
       // পরের cron run-এ আবার চেষ্টা হবে যতক্ষণ না dispute window শেষ হয়।
+      await delay(RPC_THROTTLE_MS);
     } catch (err) {
       console.log(`Skipping ${marketId}: ${err.reason || err.shortMessage || err.message}`);
+      await delay(RPC_THROTTLE_MS);
     }
   }
+
+  console.log(`Done. Finalized/synced ${finalizedCount} of ${batch.length} market(s) attempted this run. ${pendingMarkets.length - batch.length} remaining in backlog.`);
 }
 
 main().catch(console.error);
