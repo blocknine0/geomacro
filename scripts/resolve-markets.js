@@ -155,11 +155,17 @@ async function main() {
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
 
   const now = new Date().toISOString();
+  // ⚠️ FIX: আগে এখানে market_resolved = false দিয়ে খোঁজা হতো, কিন্তু এই script
+  // কখনো market_resolved সেট করে না (সেটা finalize-markets.js-এর কাজ) — তাই একই
+  // backlog বারবার ফিরে আসছিল, প্রতিটা run-এ MAX_EVENTS_PER_RUN কোটা "আগেই AI-verdict
+  // পাওয়া" market স্ক্যান করতেই খরচ হয়ে যাচ্ছিল। এই script-এর আসল কাজ AI verdict
+  // দেওয়া, তাই ai_processed = false দিয়ে খোঁজাই সঠিক — প্রতিবার সত্যিকারের নতুন/বাকি
+  // থাকা market-ই আসবে।
   const { data: dueEvents, error: fetchError } = await supabase
     .from("events")
     .select("*")
     .eq("market_created", true)
-    .eq("market_resolved", false)
+    .eq("ai_processed", false)
     .lte("resolution_at", now);
 
   if (fetchError) throw new Error(`Supabase error: ${fetchError.message}`);
