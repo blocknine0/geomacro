@@ -12,7 +12,11 @@ const CONTRACT_ABI = [
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
 ];
 
-const STAGE_BY_STATUS = { 0: "active", 1: "active", 2: "awaiting_dispute", 3: "disputed", 4: "completed" };
+// 🛠️ FIX: on-chain status 1 (staking closed, awaiting resolution) আগে ভুলভাবে
+// "active"-এ map হতো, যার ফলে frontend-এর "Active" bucket-এ staking-closed
+// market-ও গোনা হতো। এখন frontend-এর ৪-bucket ডিজাইনের (Active / Staking Closed /
+// Disputed / Completed) সাথে align করে status 1 এবং 2 দুটোই "staking_closed"-এ যাবে।
+const STAGE_BY_STATUS = { 0: "active", 1: "staking_closed", 2: "staking_closed", 3: "disputed", 4: "completed" };
 const DISPUTE_WINDOW_SECONDS = 24 * 60 * 60; // AgentArena.sol এর DISPUTE_WINDOW constant-এর সাথে মিলিয়ে
 
 async function main() {
