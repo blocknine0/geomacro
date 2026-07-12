@@ -242,13 +242,28 @@ async function main() {
       console.log(`  AI verdict: ${judgment.sideLabel} — ${judgment.reasoning}`);
 
       console.log(`Resolving market ${marketId} as ${judgment.sideLabel}...`);
-      // ⚠️ FIX: এই কলটা (declareWinnerByAI) কখনো retry-wrap করা যাবে না — এটা একটা
-      // transaction পাঠায়, আর rate-limit hit হলেও transaction আসলে mempool-এ ঢুকে
-      // যেতে পারে। retry করলে দ্বিতীয়বার একই (বা stale) nonce দিয়ে পাঠানোর চেষ্টা হয়,
-      // যা "nonce too low" / "replacement transaction underpriced" error তৈরি করে —
-      // ঠিক যেটা আগের run-এ দেখা গিয়েছিল। rate-limit হলে এখানে সরাসরি fail হয়ে
-      // এই market স্কিপ হবে (পরের run-এ আবার চেষ্টা হবে, ai_processed তখনও false)।
-      const tx = await contract.declareWinnerByAI(marketId, judgment.side);
+      // ⚠️ FIX: declareWinnerByAI নিজে callRpcWithBackoff-এ wrap করা যাবে না (see note
+      // above — retry করলে "nonce too low" এর ঝুঁকি থাকে যদি tx আসলে broadcast হয়ে
+      // গিয়ে থাকে)। কিন্তু NONCE_EXPIRED / REPLACEMENT_UNDERPRICED এর মানে হলো node
+      // transaction-টা সরাসরি reject করে দিয়েছে (broadcast-ই হয়নি) — তাই এই দুই
+      // ধরনের error-এর জন্য আলাদা, ছোট, নিরাপদ retry — প্রতিবার fresh nonce fetch হয়
+      // কারণ এটা নতুন contract call, পুরনো tx object reuse না।
+      let tx;
+      let sendAttempt = 0;
+      const MAX_SEND_RETRIES = 3;
+      while (true) {
+        try {
+          tx = await contract.declareWinnerByAI(marketId, judgment.side);
+          break;
+        } catch (sendErr) {
+          const isNonceRace = sendErr.code === "NONCE_EXPIRED" || sendErr.code === "REPLACEMENT_UNDERPRICED";
+          if (!isNonceRace || sendAttempt >= MAX_SEND_RETRIES) throw sendErr;
+          sendAttempt++;
+          const wait = 1500 * sendAttempt;
+          console.log(`  ⏳ Nonce/mempool race on ${marketId} (${sendErr.code}), attempt ${sendAttempt}/${MAX_SEND_RETRIES}. Waiting ${wait}ms and retrying with a fresh nonce...`);
+          await delay(wait);
+        }
+      }
       console.log(`  Transaction sent: ${tx.hash}`);
       // tx.wait() শুধু existing transaction-এর confirmation poll করে, নতুন কিছু
       // পাঠায় না — তাই এটা safely retry-wrap করা যায়।
