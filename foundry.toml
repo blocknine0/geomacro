@@ -1,0 +1,9 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "test"
+
+# Arc Testnet, for reference when you get to forge script / verify
+# chain_id = 5042002
+# rpc: https://rpc.testnet.arc.network

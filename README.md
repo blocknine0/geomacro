@@ -111,6 +111,26 @@ USDC is Arc's native gas token, so staking is just a payable call, no `approve()
 
 **One honest tradeoff worth calling out:** resolution uses a single Groq call (`llama-3.3-70b-versatile`) to judge how the original story has evolved 48 hours later, cross-checked against fresh news search results. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. To reduce single-call flakiness on close calls, the resolver now re-checks itself with a second independent read whenever the first verdict is low-confidence or a draw, and defaults to a draw rather than a shaky verdict if the two disagree. Fully decentralizing resolution remains on the roadmap.
 
+### Test coverage
+
+The contract has a Foundry test suite covering market creation, a set of adversarial staking/misuse attempts (non-owner market creation, zero-value stakes, staking on a nonexistent market, staking after the window closes, resolving early), and the full settlement and payout path with the exact expected numbers checked against the contract's actual fee/split math.
+
+```
+Ran 4 tests for test/AgentArena.t.sol:AgentArenaTest
+[PASS] testAdversarialStaking() (gas: 230309)
+[PASS] testMarketCreation() (gas: 123301)
+[PASS] testSettlementAndPayout() (gas: 395956)
+[PASS] test_RevertWhen_DuplicateMarketCreated() (gas: 125155)
+Suite result: ok. 4 passed; 0 failed; 0 skipped
+```
+
+Run it yourself:
+
+```bash
+forge install foundry-rs/forge-std
+forge test -vv
+```
+
 ---
 
 ## Repo layout
@@ -127,7 +147,11 @@ src/
     arena-judge.functions.ts        Main-agent settlement verdict
     agents.functions.ts             HAWK/DOVE analyst duel generation
   hooks/use-wallet.ts               Wallet connect + SIWE session state
-AgentArena.sol                     Market creation, staking, AI resolution, dispute/vote, claim
+contracts/
+  AgentArena.sol                   Market creation, staking, AI resolution, dispute/vote, claim
+test/
+  AgentArena.t.sol                 Foundry test suite: creation, adversarial staking, full settlement/payout
+foundry.toml                       Foundry config (src = contracts/, test = test/)
 scripts/
   ingest-news.js                  Pulls NewsAPI/Guardian articles, classifies with Groq, inserts to Supabase
   create-markets.js               Scans for high-severity events, opens markets on Arc (uncapped)
@@ -174,6 +198,7 @@ scripts/
 - [x] Self-consistency re-check on low-confidence/draw verdicts before a market settles
 - [x] Service-role hardening across every Supabase-writing script (anon role has no UPDATE grant on `events`, was silently dropping writes)
 - [x] Standalone public analytics dashboard (pipeline + automation health, zero fabricated numbers)
+- [x] Foundry test suite for the contract (market creation, adversarial staking attempts, full settlement/payout math)
 - [ ] On-chain dispute fee/threshold decimal fix (`10**6` → `10**18`), deferred to the mainnet redeploy since `constant`s can't be patched in place
 - [ ] Fully decentralized dispute-based resolution as the primary mechanism (currently AI-first with an on-chain dispute backstop)
 - [ ] Mainnet deployment

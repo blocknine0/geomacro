@@ -36,3 +36,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+out/
+cache/
