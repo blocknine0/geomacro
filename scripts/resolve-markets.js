@@ -242,11 +242,16 @@ async function main() {
       console.log(`  AI verdict: ${judgment.sideLabel} — ${judgment.reasoning}`);
 
       console.log(`Resolving market ${marketId} as ${judgment.sideLabel}...`);
-      const tx = await callRpcWithBackoff(
-        () => contract.declareWinnerByAI(marketId, judgment.side),
-        `declareWinnerByAI(${marketId})`,
-      );
+      // ⚠️ FIX: এই কলটা (declareWinnerByAI) কখনো retry-wrap করা যাবে না — এটা একটা
+      // transaction পাঠায়, আর rate-limit hit হলেও transaction আসলে mempool-এ ঢুকে
+      // যেতে পারে। retry করলে দ্বিতীয়বার একই (বা stale) nonce দিয়ে পাঠানোর চেষ্টা হয়,
+      // যা "nonce too low" / "replacement transaction underpriced" error তৈরি করে —
+      // ঠিক যেটা আগের run-এ দেখা গিয়েছিল। rate-limit হলে এখানে সরাসরি fail হয়ে
+      // এই market স্কিপ হবে (পরের run-এ আবার চেষ্টা হবে, ai_processed তখনও false)।
+      const tx = await contract.declareWinnerByAI(marketId, judgment.side);
       console.log(`  Transaction sent: ${tx.hash}`);
+      // tx.wait() শুধু existing transaction-এর confirmation poll করে, নতুন কিছু
+      // পাঠায় না — তাই এটা safely retry-wrap করা যায়।
       await callRpcWithBackoff(() => tx.wait(), `tx.wait(${marketId})`);
       resolvedCount++;
 
