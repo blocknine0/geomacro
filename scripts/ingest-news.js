@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// ১. সুপাবেস ও গ্রোক ইনিশিয়ালাইজেশন (Timeout ও Max Retries সহ)
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -13,22 +12,17 @@ const supabase = createClient(
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
-  timeout: 30 * 1000, // batch prompt বড়, তাই টাইমআউট একটু বাড়ানো হলো
-  maxRetries: 0,       // SDK-এর নিজস্ব retry বন্ধ — আমরা নিজেরাই rate-limit-aware retry করব নিচে
-  fetch: fetch          // 🛠️ undici (built-in fetch)-এর POST premature-close bug
-                         // এড়াতে node-fetch explicitly পাস করা হলো
+  timeout: 30 * 1000,
+  maxRetries: 0,
+  fetch: fetch
 });
 
-// 💡 RATE-LIMIT কন্ট্রোল — env দিয়ে override করা যায়, নাহলে এই ডিফল্ট
-const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 5);       // প্রতি কলে কয়টা আর্টিকেল
-const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 2000); // প্রতিটা batch call-এর মাঝে delay
+const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 5);
+const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 2000);
 const MAX_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 60 * 1000;
 
-// 🎯 প্রতিটা ক্যাটাগরির জন্য Guardian section filter — এটা করার ফলে rugby, recipe,
-// ski review, obituary, privacy policy-র মতো একদম অপ্রাসঙ্গিক content আর ফলাফলে
-// আসবে না, কারণ Guardian শুধু এই section-গুলোর মধ্যেই খুঁজবে (comma দিলে OR হিসেবে কাজ করে)।
 const GUARDIAN_SECTIONS = {
   geopolitics: "world,politics",
   macro: "business,world,money",
@@ -36,7 +30,6 @@ const GUARDIAN_SECTIONS = {
   crypto: "technology,business",
 };
 
-// ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
 const CATEGORIES = [
   {
     name: "geopolitics",
@@ -131,7 +124,6 @@ const CATEGORIES = [
   },
 ];
 
-// ৩. টাইটেল নরমালাইজেশন ফাংশন
 function normalizeTitle(title) {
   if (!title) return '';
   return title
@@ -143,9 +135,6 @@ function normalizeTitle(title) {
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 🛡️ Rate-limit-aware wrapper — যেকোনো Groq কলকে এটা দিয়ে wrap করলে
-// 429 পেলে exponential backoff দিয়ে retry করবে (Retry-After header থাকলে সেটা মেনে চলবে),
-// অন্য error হলে সাথে সাথে re-throw করবে (অকারণে retry না করার জন্য)।
 async function callGroqWithBackoff(fn, label) {
   let attempt = 0;
   while (true) {
@@ -159,8 +148,6 @@ async function callGroqWithBackoff(fn, label) {
         throw error;
       }
 
-      // Groq/OpenAI-স্টাইল ক্লায়েন্ট error object-এ headers থাকলে সেখান থেকে
-      // retry-after পড়ার চেষ্টা করো, না পেলে exponential backoff + jitter।
       const retryAfterHeader =
         error?.headers?.['retry-after'] ?? error?.response?.headers?.get?.('retry-after');
       const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : null;
@@ -177,9 +164,6 @@ async function callGroqWithBackoff(fn, label) {
   }
 }
 
-// ৪. Groq LLM দিয়ে একটা ব্যাচ (একাধিক আর্টিকেল একসাথে) রিলেভেন্স+সিভিয়ারিটি স্কোরিং —
-// আগে প্রতিটা আর্টিকেলের জন্য আলাদা কল হতো, এখন BATCH_SIZE-টা একসাথে একটা কলে যাচ্ছে,
-// যাতে মোট request সংখ্যা (আর তাই rate-limit exposure) কয়েকগুণ কমে যায়।
 async function checkArticlesBatchRelevance(articles, category) {
   const articlesBlock = articles
     .map((a, i) => `[${i}] Title: "${a.title}"\nDescription: "${a.description}"`)
@@ -213,8 +197,6 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
     const parsed = JSON.parse(chatCompletion.choices[0].message.content);
     const results = Array.isArray(parsed.results) ? parsed.results : [];
 
-    // Defensive: ইনপুট আর আউটপুট length না মিললে (মডেল কিছু বাদ দিয়ে ফেলতে পারে),
-    // index-ভিত্তিক align করার চেষ্টা করো, বাকিগুলোকে safe default দাও।
     return articles.map((a, i) => {
       const r = results[i];
       if (!r) {
@@ -234,15 +216,9 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
   }
 }
 
-// ৫. এপিআই ফেচিং হ্যান্ডলার (Guardian primary, NewsAPI শুধু fallback — quota বাঁচাতে)
-//    NewsAPI free tier দিনে মাত্র ১০০ request দেয়, যেটা এই script-এর প্রতি run-এ
-//    দরকার হওয়া ৮০+ query-র তুলনায় খুবই কম। তাই Guardian (যেখানে অনেক বেশি headroom
-//    আছে)-কে আগে কল করা হচ্ছে, আর NewsAPI শুধু তখনই কল হবে যখন Guardian fail করে
-//    বা কোনো ফলাফল না দেয় — এতে NewsAPI quota প্রায় পুরোটাই সংরক্ষিত থাকবে।
 const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
 
 async function fetchArticlesFromApis(query, categoryName) {
-  // ১. প্রথমে Guardian (primary)
   try {
     const sectionFilter = GUARDIAN_SECTIONS[categoryName];
     const sectionParam = sectionFilter ? `&section=${encodeURIComponent(sectionFilter)}` : '';
@@ -254,6 +230,15 @@ async function fetchArticlesFromApis(query, categoryName) {
     }
 
     const data = await response.json();
+
+    // 🔍 DEBUG: প্রতিটা query-তে Guardian zero results দিচ্ছিল, যেটা বাস্তবসম্মত না।
+    // raw response log করছি — ভুল/expired API key হলে Guardian সাধারণত
+    // { response: { status: "error", message: "..." } } রিটার্ন করে (কোনো HTTP
+    // exception বা non-200 status ছাড়াই), যেটা আগের কোড silently miss করছিল।
+    if (!data.response || !data.response.results || data.response.results.length === 0) {
+      console.log(`   🔍 Guardian raw response for "${query}": ${JSON.stringify(data).slice(0, 300)}`);
+    }
+
     if (data.response && data.response.results && data.response.results.length > 0) {
       return data.response.results.map(a => ({
         title: a.webTitle,
@@ -264,13 +249,11 @@ async function fetchArticlesFromApis(query, categoryName) {
       }));
     }
 
-    // Guardian কল সফল হয়েছে কিন্তু কোনো ফলাফল নেই — NewsAPI দিয়ে চেষ্টা করার মতো যথেষ্ট কারণ
     console.log(`   Guardian returned no results for query "${query}". Trying NewsAPI fallback...`);
   } catch (e) {
     console.log(`   Guardian failed for query "${query}" (${e.message}). Trying NewsAPI fallback...`);
   }
 
-  // ২. Guardian fail করলে বা খালি ফলাফল দিলে NewsAPI (fallback), যদি explicitly বন্ধ না থাকে
   if (DISABLE_NEWSAPI) {
     return [];
   }
@@ -306,7 +289,6 @@ function chunk(arr, size) {
   return out;
 }
 
-// ৬. মেইন ইনজেকশন রান ফাংশন
 async function ingestNews() {
   console.log("Run node scripts/ingest-news.js");
 
@@ -350,8 +332,6 @@ async function ingestNews() {
       console.error(`  ⚠️ Baseline computation threw for ${category.name}:`, be.message);
     }
 
-    // প্রথমে এই ক্যাটাগরির সব query থেকে unique, নতুন আর্টিকেল জড়ো করো —
-    // Groq-কে কল করার আগে, যাতে পুরো ক্যাটাগরি জুড়ে ব্যাচ করা যায়।
     let candidateArticles = [];
     for (const query of category.queries) {
       const fetched = await fetchArticlesFromApis(query, category.name);
@@ -367,8 +347,6 @@ async function ingestNews() {
 
     console.log(`  ${candidateArticles.length} new unique candidate article(s) to classify.`);
 
-    // এখন BATCH_SIZE করে গ্রুপ করে Groq-কে কল করো — মোট call সংখ্যা এখন
-    // (candidateArticles.length / BATCH_SIZE), আগে candidateArticles.length ছিল।
     const batches = chunk(candidateArticles, BATCH_SIZE);
     for (const [batchIndex, batch] of batches.entries()) {
       const assessments = await checkArticlesBatchRelevance(batch, category.name);
@@ -413,8 +391,6 @@ async function ingestNews() {
         }
       }
 
-      // পরের batch-এর আগে সংক্ষিপ্ত delay (fixed per-article delay এর বদলে,
-      // যেহেতু এখন call সংখ্যা অনেক কম, এই delay-ও ছোট রাখা যায়)।
       if (batchIndex < batches.length - 1) {
         await delay(BATCH_DELAY_MS);
       }
