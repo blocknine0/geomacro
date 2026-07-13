@@ -224,9 +224,44 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
   }
 }
 
-// ৫. এপিআই ফেচিং হ্যান্ডলার (NewsAPI ফলব্যাক টু দ্য গার্ডিয়ান)
+// ৫. এপিআই ফেচিং হ্যান্ডলার (Guardian primary, NewsAPI শুধু fallback — quota বাঁচাতে)
+//    NewsAPI free tier দিনে মাত্র ১০০ request দেয়, যেটা এই script-এর প্রতি run-এ
+//    দরকার হওয়া ৮০+ query-র তুলনায় খুবই কম। তাই Guardian (যেখানে অনেক বেশি headroom
+//    আছে)-কে আগে কল করা হচ্ছে, আর NewsAPI শুধু তখনই কল হবে যখন Guardian fail করে
+//    বা কোনো ফলাফল না দেয় — এতে NewsAPI quota প্রায় পুরোটাই সংরক্ষিত থাকবে।
+const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
+
 async function fetchArticlesFromApis(query) {
-  let articles = [];
+  // ১. প্রথমে Guardian (primary)
+  try {
+    const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
+    const response = await fetch(guardianUrl);
+
+    if (response.status === 429) {
+      throw new Error("Guardian rate limit hit");
+    }
+
+    const data = await response.json();
+    if (data.response && data.response.results && data.response.results.length > 0) {
+      return data.response.results.map(a => ({
+        title: a.webTitle,
+        description: a.fields?.trailText || "",
+        url: a.webUrl,
+        publishedAt: a.webPublicationDate || new Date().toISOString(),
+        source: 'guardian'
+      }));
+    }
+
+    // Guardian কল সফল হয়েছে কিন্তু কোনো ফলাফল নেই — NewsAPI দিয়ে চেষ্টা করার মতো যথেষ্ট কারণ
+    console.log(`   Guardian returned no results for query "${query}". Trying NewsAPI fallback...`);
+  } catch (e) {
+    console.log(`   Guardian failed for query "${query}" (${e.message}). Trying NewsAPI fallback...`);
+  }
+
+  // ২. Guardian fail করলে বা খালি ফলাফল দিলে NewsAPI (fallback), যদি explicitly বন্ধ না থাকে
+  if (DISABLE_NEWSAPI) {
+    return [];
+  }
 
   try {
     const newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${process.env.NEWSAPI_KEY}`;
@@ -246,29 +281,11 @@ async function fetchArticlesFromApis(query) {
         source: 'newsapi'
       }));
     }
-  } catch (e) {
-    console.log(`   NewsAPI rate limit hit for query "${query}". Trying Guardian...`);
-
-    try {
-      const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
-      const response = await fetch(guardianUrl);
-      const data = await response.json();
-
-      if (data.response && data.response.results) {
-        return data.response.results.map(a => ({
-          title: a.webTitle,
-          description: a.fields?.trailText || "",
-          url: a.webUrl,
-          publishedAt: a.webPublicationDate || new Date().toISOString(),
-          source: 'guardian'
-        }));
-      }
-    } catch (ge) {
-      console.error(`   Failed fetching from Guardian for query "${query}":`, ge.message);
-    }
+  } catch (ne) {
+    console.error(`   Failed fetching from NewsAPI for query "${query}":`, ne.message);
   }
 
-  return articles;
+  return [];
 }
 
 function chunk(arr, size) {
