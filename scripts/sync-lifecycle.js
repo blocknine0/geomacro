@@ -14,9 +14,12 @@ const CONTRACT_ABI = [
 
 // 🛠️ FIX: on-chain status 1 (staking closed, awaiting resolution) আগে ভুলভাবে
 // "active"-এ map হতো, যার ফলে frontend-এর "Active" bucket-এ staking-closed
-// market-ও গোনা হতো। এখন frontend-এর ৪-bucket ডিজাইনের (Active / Staking Closed /
-// Disputed / Completed) সাথে align করে status 1 এবং 2 দুটোই "staking_closed"-এ যাবে।
-const STAGE_BY_STATUS = { 0: "active", 1: "staking_closed", 2: "staking_closed", 3: "disputed", 4: "completed" };
+// market-ও গোনা হতো। এখন frontend-এর ৪-bucket ডিজাইনের (Active / Awaiting Dispute /
+// Disputed / Completed) সাথে align করে status 1 এবং 2 দুটোই "awaiting_dispute"-এ
+// যাবে — আগে "staking_closed" লেখা হতো যেটা frontend (arena-markets.ts)-এর
+// enum-এ ছিলই না, ফলে lifecycleStage silently null হয়ে fallback heuristic-এ
+// পড়ে যেত (যেটায় "disputed" state detect করার কোনো branch-ই ছিল না)।
+const STAGE_BY_STATUS = { 0: "active", 1: "awaiting_dispute", 2: "awaiting_dispute", 3: "disputed", 4: "completed" };
 const DISPUTE_WINDOW_SECONDS = 24 * 60 * 60; // AgentArena.sol এর DISPUTE_WINDOW constant-এর সাথে মিলিয়ে
 
 // 🆕 FIX: এই তিনটা constant আগে finalize-markets.js/resolve-markets.js-এ ছিল,
