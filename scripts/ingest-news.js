@@ -26,6 +26,16 @@ const MAX_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 60 * 1000;
 
+// 🎯 প্রতিটা ক্যাটাগরির জন্য Guardian section filter — এটা করার ফলে rugby, recipe,
+// ski review, obituary, privacy policy-র মতো একদম অপ্রাসঙ্গিক content আর ফলাফলে
+// আসবে না, কারণ Guardian শুধু এই section-গুলোর মধ্যেই খুঁজবে (comma দিলে OR হিসেবে কাজ করে)।
+const GUARDIAN_SECTIONS = {
+  geopolitics: "world,politics",
+  macro: "business,world,money",
+  rare_earth: "business,environment,world,technology",
+  crypto: "technology,business",
+};
+
 // ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
 const CATEGORIES = [
   {
@@ -231,10 +241,12 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
 //    বা কোনো ফলাফল না দেয় — এতে NewsAPI quota প্রায় পুরোটাই সংরক্ষিত থাকবে।
 const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
 
-async function fetchArticlesFromApis(query) {
+async function fetchArticlesFromApis(query, categoryName) {
   // ১. প্রথমে Guardian (primary)
   try {
-    const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
+    const sectionFilter = GUARDIAN_SECTIONS[categoryName];
+    const sectionParam = sectionFilter ? `&section=${encodeURIComponent(sectionFilter)}` : '';
+    const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&type=article${sectionParam}&order-by=relevance&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
     const response = await fetch(guardianUrl);
 
     if (response.status === 429) {
@@ -342,7 +354,7 @@ async function ingestNews() {
     // Groq-কে কল করার আগে, যাতে পুরো ক্যাটাগরি জুড়ে ব্যাচ করা যায়।
     let candidateArticles = [];
     for (const query of category.queries) {
-      const fetched = await fetchArticlesFromApis(query);
+      const fetched = await fetchArticlesFromApis(query, category.name);
       for (const article of fetched) {
         const normTitle = normalizeTitle(article.title);
         if (existingUrls.has(article.url) || existingTitles.has(normTitle) || seenInCurrentRun.has(normTitle)) {
