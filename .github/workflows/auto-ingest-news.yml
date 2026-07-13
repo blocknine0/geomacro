@@ -1,7 +1,8 @@
-name: Auto-ingest news
-# Runs every 2 hours, 1 hour before the market-creation workflow,
-# so fresh events are in Supabase by the time create-markets.js runs.
-# Can also be triggered manually from the Actions tab.
+name: Auto Ingest News
+# Runs at :00 every 2 hours — first step in the pipeline, so fresh events
+# are in Supabase before sync-lifecycle/create-markets run afterward.
+# Staggered against the other RPC-heavy workflows below to avoid multiple
+# GitHub Actions runners hitting the same RPC/API endpoints at once.
 on:
   schedule:
     - cron: "0 */2 * * *"
@@ -9,40 +10,21 @@ on:
 jobs:
   ingest-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # batching + rate-limit backoff worst-case কভার করার জন্য যথেষ্ট, কিন্তু hang হয়ে গেলে চিরকাল আটকে থাকবে না
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-      # package.json থেকে groq-sdk, dotenv, node-fetch সহ সব ডিপেন্ডেন্সি একসাথে ইনস্টল করবে
       - name: Install dependencies
-        run: npm install
-      - name: Debug Groq connectivity
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: |
-          echo "Key length: ${#GROQ_API_KEY}"
-          curl -s -o /tmp/groq_response.json -w "HTTP Status: %{http_code}\n" https://api.groq.com/openai/v1/models \
-            -H "Authorization: Bearer $GROQ_API_KEY"
-          echo "Response body:"
-          cat /tmp/groq_response.json
+        run: npm install ethers @supabase/supabase-js
       - name: Run news ingestion script
         env:
-          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
-          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          # স্ক্রিপ্টের ভেরিয়েবল নামের সাথে মিলিয়ে দেওয়া হলো
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-          # ⚠️ FIX: আগে এখানে ভুল করে APP_SUPABASE_ANON_KEY বসানো ছিল — এখন আসল
-          # service_role key ব্যবহার হচ্ছে, যাতে RLS-protected insert fail না করে
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          # ঐচ্ছিক — না দিলে script-এর নিজস্ব ডিফল্ট (5 / 2000ms / 5 retries) চলবে।
-          # rate limit বেশি হলে Settings → Variables-এ এগুলো যোগ করে টিউন করা যায়, কোড না ছুঁয়েই।
-          GROQ_BATCH_SIZE: ${{ vars.GROQ_BATCH_SIZE }}
-          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
-          GROQ_MAX_RETRIES: ${{ vars.GROQ_MAX_RETRIES }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: node scripts/ingest-news.js
         
