@@ -33,7 +33,7 @@ We built Geomacro because the gap between "news breaks" and "market opens" is wh
 NewsAPI / Guardian  →  Groq (llama-3.1-8b-instant)  →  Supabase  →  Live Feed
                                               │
                                               ▼
-                          GitHub Actions, on independent ~2h cron schedules
+                          GitHub Actions, on independent staggered cron schedules
               (ingest → create markets → resolve via AI → finalize)
                                               │
                                               ▼
@@ -57,7 +57,7 @@ NewsAPI / Guardian  →  Groq (llama-3.1-8b-instant)  →  Supabase  →  Live F
 3. **Resolve** = checks markets past their `resolution_at` time, asks Groq to judge HAWK vs DOVE based on how the situation has evolved, and calls `declareWinnerByAI()`. This sets a *tentative* winner and opens a 24-hour public dispute window; it is not final yet.
 4. **Finalize** = checks markets whose dispute window has passed and calls `finalizeMarket()`, locking in the winner and making it claimable. This same step syncs each affected wallet's `positions` row (won → claimable, lost → history) and logs a `wallet_balance_history` event.
 5. **Sync stakes** = every 30 minutes, replays onchain `Staked` events into Supabase so no stake is ever missing from a wallet's position history even if a client-side write drops.
-6. **Sync lifecycle** = every 30 minutes, reads each open market's on-chain status and writes it back as one of four stages (`active` / `awaiting_dispute` / `disputed` / `completed`) plus a dispute audit log, so the frontend's lifecycle tabs and the public `market_lookup` view never drift from chain state.
+6. **Sync lifecycle** = runs twice per 2-hour cycle (`:05`, right after ingest, and `:35`, right after finalize frees up completed slots) rather than a flat 30-minute interval — this staggering was deliberately introduced to stop it colliding with the other RPC-heavy workflows. Each run reads every open market's on-chain status and writes it back as one of four stages (`active` / `awaiting_dispute` / `disputed` / `completed`) plus a dispute audit log, so the frontend's lifecycle tabs and the public `market_lookup` view never drift from chain state.
 
 Two additional on-demand workflows (`auto-recovery.yml`, `debug-schema.yml`) let backfilling/re-syncing and schema-drift checks be triggered manually, and `security-monitor.yml` polls for on-chain anomalies every 15 minutes.
 
@@ -107,7 +107,7 @@ claim(marketId)                                                // winners withdr
 
 USDC is Arc's native gas token, so staking is just a payable call, no `approve()` step, no ERC-20 friction. Native-currency values on Arc use **18 decimals** (not 6, despite USDC's ERC-20 interface using 6), this matters for anyone integrating directly with the contract's `payable` functions.
 
-**Known issue (testnet, not mainnet-blocking):** the `DISPUTE_FEE`, `MIN_VOTE_AMOUNT`, and `MIN_VOLUME_FOR_DISPUTE` constants were originally written assuming 6-decimal precision (e.g. `50 * 10**6`), but since native values use 18 decimals, these currently resolve to near-zero amounts on-chain, the dispute/vote gating is not economically meaningful in the current testnet deployment. Since `constant`s are baked into bytecode at deploy time, fixing this requires a full redeploy (new contract address, no state migration), so it's deliberately deferred to the mainnet cutover rather than done mid-testnet. In the meantime, the 24-hour dispute window itself works correctly end to end, every market is classified into one of four lifecycle stages (`active` → `awaiting_dispute` → `disputed` / `completed`), synced from on-chain state into Supabase every 30 minutes and surfaced as distinct tabs in the Analyst Panel, so disputed markets stay visibly isolated from the rest even though the fee gating is still testnet-scale.
+**Known issue (testnet, not mainnet-blocking):** the `DISPUTE_FEE`, `MIN_VOTE_AMOUNT`, and `MIN_VOLUME_FOR_DISPUTE` constants were originally written assuming 6-decimal precision (e.g. `50 * 10**6`), but since native values use 18 decimals, these currently resolve to near-zero amounts on-chain, the dispute/vote gating is not economically meaningful in the current testnet deployment. Since `constant`s are baked into bytecode at deploy time, fixing this requires a full redeploy (new contract address, no state migration), so it's deliberately deferred to the mainnet cutover rather than done mid-testnet. In the meantime, the 24-hour dispute window itself works correctly end to end, every market is classified into one of four lifecycle stages (`active` → `awaiting_dispute` → `disputed` / `completed`), synced from on-chain state into Supabase on a staggered ~2-hour cycle and surfaced as distinct tabs in the Analyst Panel, so disputed markets stay visibly isolated from the rest even though the fee gating is still testnet-scale.
 
 **One honest tradeoff worth calling out:** resolution uses a single Groq call (`llama-3.3-70b-versatile`) to judge how the original story has evolved 48 hours later, cross-checked against fresh news search results. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. To reduce single-call flakiness on close calls, the resolver now re-checks itself with a second independent read whenever the first verdict is low-confidence or a draw, and defaults to a draw rather than a shaky verdict if the two disagree. Fully decentralizing resolution remains on the roadmap.
 
@@ -169,11 +169,13 @@ scripts/
   auto-resolve-markets.yml        Runs resolve-markets.js on its own ~2-hour schedule
   auto-finalize-markets.yml       Runs finalize-markets.js every ~2 hours
   sync-stakes.yml                 Runs sync-stakes.js every 30 minutes
-  sync-lifecycle.yml              Runs sync-lifecycle.js every 30 minutes
+  sync-lifecycle.yml              Runs sync-lifecycle.js twice per 2-hour cycle (:05 and :35, staggered to avoid colliding with the RPC-heavy workflows above) *
   auto-recovery.yml               Manual-trigger sync-stakes / resolve-markets / create-markets
   security-monitor.yml            Anomaly monitor, every 15 minutes
   debug-schema.yml                Manual-trigger schema drift check
 ```
+
+<sub>* On GitHub this workflow file is currently still saved as `sync lifecycle.yml` (with a literal space instead of a hyphen) — functionally harmless, but it should be renamed to `sync-lifecycle.yml` to match the rest of the naming convention and this doc.</sub>
 
 **Supabase, beyond the `events` table:** `positions` (per-wallet stake/claim state, RLS-scoped), `wallet_balance_history` (append-only ledger), `market_disputes` (audit log of every on-chain dispute), and a `market_lookup` view joining all of the above by market ID for one-query cross-checking.
 
@@ -192,7 +194,7 @@ scripts/
 - [x] Deterministic Risk Δ (24h category baseline, not LLM-guessed)
 - [x] SIWE-authenticated Portfolio with full position lifecycle and RLS
 - [x] Startup guard preventing verdict reveal before staking closes
-- [x] Four-stage market lifecycle (Active / Awaiting Dispute / Disputed / Completed) synced from chain to Supabase every 30 min, surfaced as distinct tabs
+- [x] Four-stage market lifecycle (Active / Awaiting Dispute / Disputed / Completed) synced from chain to Supabase on a staggered ~2-hour cycle, surfaced as distinct tabs
 - [x] `market_lookup` cross-check view + historical `createMarket` tx-hash backfill for every market
 - [x] Sequential-rebuttal HAWK/DOVE debate (DOVE must quote and directly counter HAWK's specific claim, same API call)
 - [x] Self-consistency re-check on low-confidence/draw verdicts before a market settles
