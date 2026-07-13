@@ -1,20 +1,31 @@
 name: Auto Finalize Markets
+# Runs at :15 every 2 hours — after create-markets (:10) so they don't
+# collide, and before resolve-markets (:30). This is the step that turns
+# 24h-old-dispute-window markets into lifecycle_stage='completed' and
+# frees up room in create-markets's MAX_ACTIVE_MARKETS cap.
 on:
   schedule:
-    - cron: '0 */2 * * *' # প্রতি ২ ঘণ্টা পর পর স্বয়ংক্রিয়ভাবে ব্যাকএন্ডে রান হবে
-  workflow_dispatch: # প্রয়োজন হলে ম্যানুয়ালি রান করার জন্য বোতাম
+    - cron: "15 */2 * * *"
+  workflow_dispatch: {}
 jobs:
-  finalize:
+  finalize-markets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun scripts/finalize-markets.js
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install ethers @supabase/supabase-js
+      - name: Run market finalization script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          
+          MAX_EVENTS_PER_RUN: "40"
+        run: node scripts/finalize-markets.js
+        
