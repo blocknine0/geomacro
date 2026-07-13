@@ -24,10 +24,10 @@ const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 60 * 1000;
 
 const GUARDIAN_SECTIONS = {
-  geopolitics: "world,politics",
-  macro: "business,world,money",
-  rare_earth: "business,environment,world,technology",
-  crypto: "technology,business",
+  geopolitics: "world|politics",
+  macro: "business|world|money",
+  rare_earth: "business|environment|world|technology",
+  crypto: "technology|business",
 };
 
 const CATEGORIES = [
