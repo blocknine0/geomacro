@@ -35,6 +35,18 @@ const SIDE_LABEL = { 0: "NONE", 1: "HAWK", 2: "DOVE" };
 // the index of the Finalized member matches this value. Update if not.
 const STATUS_FINALIZED = Number(process.env.FINALIZED_STATUS_INDEX ?? 4);
 
+// ✅ CONFIRMED via production logs (see run on markets aiResolutionTime
+// 87368s vs 70750s old): markets older than ~86400s (24h) since
+// aiResolutionTime finalize successfully; markets younger than that stay
+// stuck at status=2 no matter how many times finalizeMarket() is called.
+// This is a real on-chain dispute window, not a bug. Default 86400s (24h);
+// override with DISPUTE_WINDOW_SECONDS if the contract's actual window is
+// confirmed to be different. A small SAFETY_MARGIN_SECONDS buffer is added
+// so we don't fire a transaction that reverts due to clock/RPC skew right
+// at the boundary.
+const DISPUTE_WINDOW_SECONDS = Number(process.env.DISPUTE_WINDOW_SECONDS ?? 86400);
+const SAFETY_MARGIN_SECONDS = Number(process.env.DISPUTE_WINDOW_SAFETY_MARGIN_SECONDS ?? 60);
+
 // 🛡️ Same backoff pattern used in resolve-markets.js. QuickNode (and most
 // RPC providers) return JSON-RPC error code -32007 or HTTP 429 when you exceed
 // their per-second request limit. Previously NONE of the RPC calls in this
@@ -191,6 +203,7 @@ async function main() {
   }
 
   console.log(`  ℹ️ Treating on-chain status index ${STATUS_FINALIZED} as "Finalized" (override with FINALIZED_STATUS_INDEX if this is wrong — confirm against AgentArena.sol's MarketStatus enum).`);
+  console.log(`  ℹ️ Skipping finalize attempts for markets younger than ${DISPUTE_WINDOW_SECONDS}s (+${SAFETY_MARGIN_SECONDS}s margin) since aiResolutionTime — confirmed dispute window from prior run logs. Override with DISPUTE_WINDOW_SECONDS if the contract's actual window differs.`);
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
   // service-role client শুধু positions / wallet_balance_history-এর জন্য — events টেবিলের বাকি সব কাজ আগের মতোই anon client দিয়ে
@@ -251,6 +264,27 @@ async function main() {
         }
         await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         finalizedCount++;
+        await delay(RPC_THROTTLE_MS);
+        continue;
+      }
+
+      // NEW: preemptive dispute-window skip. Previously we sent a
+      // finalizeMarket() transaction for EVERY pending market every run,
+      // even ones we now know are guaranteed to still be inside the
+      // dispute window (confirmed via logs: nothing under ~86400s since
+      // aiResolutionTime has ever finalized). That was burning a real
+      // transaction (gas + RPC calls + nonce increment) for a call that
+      // was mathematically certain to be a no-op. This check skips those
+      // markets without touching the chain at all — they'll be retried
+      // automatically on a later run once they cross the window.
+      const aiResolutionTime = Number(onChainMarket.aiResolutionTime ?? 0);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const windowRemaining = aiResolutionTime > 0
+        ? (aiResolutionTime + DISPUTE_WINDOW_SECONDS + SAFETY_MARGIN_SECONDS) - nowSec
+        : null;
+
+      if (windowRemaining !== null && windowRemaining > 0) {
+        console.log(`  ⏭️ Skipping ${marketId}: still inside dispute window (${windowRemaining}s remaining). Not sending a transaction. Will retry once elapsed.`);
         await delay(RPC_THROTTLE_MS);
         continue;
       }
