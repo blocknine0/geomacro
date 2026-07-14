@@ -231,10 +231,6 @@ async function fetchArticlesFromApis(query, categoryName) {
 
     const data = await response.json();
 
-    // 🔍 DEBUG: প্রতিটা query-তে Guardian zero results দিচ্ছিল, যেটা বাস্তবসম্মত না।
-    // raw response log করছি — ভুল/expired API key হলে Guardian সাধারণত
-    // { response: { status: "error", message: "..." } } রিটার্ন করে (কোনো HTTP
-    // exception বা non-200 status ছাড়াই), যেটা আগের কোড silently miss করছিল।
     if (!data.response || !data.response.results || data.response.results.length === 0) {
       console.log(`   🔍 Guardian raw response for "${query}": ${JSON.stringify(data).slice(0, 300)}`);
     }
@@ -292,13 +288,30 @@ function chunk(arr, size) {
 async function ingestNews() {
   console.log("Run node scripts/ingest-news.js");
 
-  const { data: existingEvents, error: fetchError } = await supabase
-    .from('events')
-    .select('source_url, source_title');
-
-  if (fetchError) {
-    console.error("❌ Failed to fetch existing entries from Supabase:", fetchError.message);
-    return;
+  // ⚠️ FIX: Supabase (PostgREST) কোনো explicit limit/.range() না দিলে ডিফল্ট
+  // সর্বোচ্চ ১০০০টা row রিটার্ন করে। events টেবিলে ১০০০-এর বেশি row থাকায় এই
+  // fetch silently truncate হয়ে যাচ্ছিল — dedup set-এ পুরনো URL-গুলোর একটা অংশ
+  // মিসিং থাকছিল, ফলে সেগুলোকে আবার "নতুন" ভেবে insert করতে গিয়ে আসল unique
+  // constraint-এ ধাক্কা খাচ্ছিল (duplicate key error, শত শত লাইন)। এখন ১০০০-করে
+  // batch-এ পুরো টেবিল paginate করে সব URL/title নিয়ে আসা হচ্ছে।
+  let existingEvents = [];
+  {
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    while (true) {
+      const { data: page, error: pageError } = await supabase
+        .from('events')
+        .select('source_url, source_title')
+        .range(from, from + PAGE_SIZE - 1);
+      if (pageError) {
+        console.error("❌ Failed to fetch existing entries from Supabase:", pageError.message);
+        return;
+      }
+      if (!page || page.length === 0) break;
+      existingEvents = existingEvents.concat(page);
+      if (page.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
   }
 
   const existingUrls = new Set(existingEvents.map(e => e.source_url));
