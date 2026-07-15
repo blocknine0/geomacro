@@ -23,6 +23,39 @@ const THRESHOLDS = {
   SCAN_BLOCKS: 100,                   // শেষ ১০০ block scan করবে
 };
 
+// 🛡️ FIX: এই script-এ আগে কোনো RPC call-ই retry/backoff দিয়ে wrap করা ছিল না —
+// getBlockNumber(), queryFilter() (৩ বার), paused() সব plain await ছিল। security
+// monitor প্রতি ১৫ মিনিটে চলে, তাই সামান্যতম rate-limit hit-এই পুরো script crash
+// করে যাচ্ছিল আর "monitoring is DOWN" alert পাঠাচ্ছিল — যেটা নিজেই একটা false
+// alarm ছিল, আসল security issue না। অন্য script-গুলোর মতো একই backoff pattern।
+const MAX_RATE_LIMIT_RETRIES = Number(process.env.RPC_MAX_RETRIES || 5);
+const BASE_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 30 * 1000; // এই script ঘন ঘন (১৫ মিনিটে একবার) চলে বলে max backoff একটু কম রাখা হলো
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function callRpcWithBackoff(fn, label) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      const code = error?.error?.code ?? error?.code;
+      const message = String(error?.error?.message ?? error?.message ?? "");
+      const isRateLimit =
+        code === -32007 ||
+        code === -32011 || // ✅ এই run-এ ঠিক এই code-টাই এসেছিল ("request limit reached")
+        error?.status === 429 ||
+        /request limit|rate limit|too many requests/i.test(message);
+      if (!isRateLimit || attempt >= MAX_RATE_LIMIT_RETRIES) throw error;
+      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      const jitter = Math.random() * 500;
+      attempt++;
+      console.log(`  ⏳ RPC rate limited on ${label} (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+      await delay(backoff + jitter);
+    }
+  }
+}
+
 async function sendTelegramAlert(message) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -47,14 +80,33 @@ async function sendTelegramAlert(message) {
 
 async function pauseContract(wallet, contract, reason) {
   try {
-    const isPaused = await contract.paused();
+    const isPaused = await callRpcWithBackoff(() => contract.paused(), "paused()");
     if (isPaused) {
       console.log("[monitor] Contract already paused.");
       return;
     }
     console.log(`[monitor] PAUSING contract: ${reason}`);
-    const tx = await contract.pause();
-    await tx.wait();
+    // ⚠️ resolve-markets.js/finalize-markets.js-এর মতোই — এই transaction-send কলটা
+    // blindly retry-wrap করা যাবে না (rate-limit hit হলেও tx আসলে broadcast হয়ে
+    // যেতে পারে, retry করলে nonce conflict হবে)। শুধু NONCE_EXPIRED/
+    // REPLACEMENT_UNDERPRICED (node reject করেছে, broadcast হয়নি) হলে নিরাপদ retry।
+    let tx;
+    let sendAttempt = 0;
+    const MAX_SEND_RETRIES = 3;
+    while (true) {
+      try {
+        tx = await contract.pause();
+        break;
+      } catch (sendErr) {
+        const isNonceRace = sendErr.code === "NONCE_EXPIRED" || sendErr.code === "REPLACEMENT_UNDERPRICED";
+        if (!isNonceRace || sendAttempt >= MAX_SEND_RETRIES) throw sendErr;
+        sendAttempt++;
+        const wait = 1500 * sendAttempt;
+        console.log(`  ⏳ Nonce/mempool race on pause() (${sendErr.code}), attempt ${sendAttempt}/${MAX_SEND_RETRIES}. Waiting ${wait}ms...`);
+        await delay(wait);
+      }
+    }
+    await callRpcWithBackoff(() => tx.wait(), "tx.wait(pause)");
     console.log(`[monitor] Contract paused. TX: ${tx.hash}`);
     await sendTelegramAlert(
       `⛔ CONTRACT AUTO-PAUSED\n\nReason: ${reason}\nTX: ${tx.hash}\n\nManual review required before unpausing.`
@@ -73,14 +125,17 @@ async function main() {
   const guardian = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, provider);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, guardian);
 
-  const currentBlock = await provider.getBlockNumber();
+  const currentBlock = await callRpcWithBackoff(() => provider.getBlockNumber(), "getBlockNumber");
   const fromBlock = currentBlock - THRESHOLDS.SCAN_BLOCKS;
 
   console.log(`[monitor] Scanning blocks ${fromBlock} → ${currentBlock}`);
 
   // ১. Large claim check
   const claimedFilter = contract.filters.Claimed();
-  const claimedEvents = await contract.queryFilter(claimedFilter, fromBlock, currentBlock);
+  const claimedEvents = await callRpcWithBackoff(
+    () => contract.queryFilter(claimedFilter, fromBlock, currentBlock),
+    "queryFilter(Claimed)",
+  );
 
   for (const ev of claimedEvents) {
     const amountUsdc = Number(ethers.formatUnits(ev.args[2], 18));
@@ -110,7 +165,10 @@ async function main() {
 
   // ৩. Dispute spam check
   const disputeFilter = contract.filters.Disputed();
-  const disputeEvents = await contract.queryFilter(disputeFilter, fromBlock, currentBlock);
+  const disputeEvents = await callRpcWithBackoff(
+    () => contract.queryFilter(disputeFilter, fromBlock, currentBlock),
+    "queryFilter(Disputed)",
+  );
   if (disputeEvents.length > THRESHOLDS.MAX_DISPUTES_PER_HOUR) {
     await pauseContract(
       guardian, contract,
@@ -121,7 +179,10 @@ async function main() {
 
   // ৪. Stake spam from single wallet
   const stakeFilter = contract.filters.Staked();
-  const stakeEvents = await contract.queryFilter(stakeFilter, fromBlock, currentBlock);
+  const stakeEvents = await callRpcWithBackoff(
+    () => contract.queryFilter(stakeFilter, fromBlock, currentBlock),
+    "queryFilter(Staked)",
+  );
   const stakesByWallet = {};
   for (const ev of stakeEvents) {
     const wallet = ev.args[1].toLowerCase();
