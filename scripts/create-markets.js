@@ -172,20 +172,32 @@ async function main() {
       console.log(`Creating market ${marketId} for: "${event.source_title}"...`);
       // ⚠️ finalizeMarket-এর মতোই — createMarket একটা transaction পাঠায়, তাই
       // এটাকে blindly callRpcWithBackoff-এ wrap করা যাবে না (double-send
-      // ঝুঁকি)। শুধু nonce/mempool race-এর জন্য আলাদা safe retry।
+      // ঝুঁকি)। nonce/mempool race-এর পাশাপাশি এখন RPC rate-limit
+      // (-32011 "request limit reached") এর জন্যও আলাদা safe retry আছে —
+      // এই error code মানে RPC request-টা broadcast হওয়ার আগেই reject
+      // হয়েছে (tx কখনো mempool-এ ঢোকেনি), তাই retry করা নিরাপদ।
       let tx;
       let sendAttempt = 0;
-      const MAX_SEND_RETRIES = 3;
+      const MAX_SEND_RETRIES = 5;
       while (true) {
         try {
           tx = await contract.createMarket(marketId, STAKING_DURATION_SEC, RESOLUTION_DURATION_SEC);
           break;
         } catch (sendErr) {
           const isNonceRace = sendErr.code === "NONCE_EXPIRED" || sendErr.code === "REPLACEMENT_UNDERPRICED";
-          if (!isNonceRace || sendAttempt >= MAX_SEND_RETRIES) throw sendErr;
+          const sendErrCode = sendErr?.error?.code ?? sendErr?.code;
+          const sendErrMessage = String(sendErr?.error?.message ?? sendErr?.message ?? "");
+          const isRateLimit =
+            sendErrCode === -32011 ||
+            sendErr?.status === 429 ||
+            /request limit|rate limit|too many requests/i.test(sendErrMessage);
+          if ((!isNonceRace && !isRateLimit) || sendAttempt >= MAX_SEND_RETRIES) throw sendErr;
           sendAttempt++;
-          const wait = 1500 * sendAttempt;
-          console.log(`  ⏳ Nonce/mempool race on ${marketId} (${sendErr.code}), attempt ${sendAttempt}/${MAX_SEND_RETRIES}. Waiting ${wait}ms and retrying with a fresh nonce...`);
+          const wait = isRateLimit
+            ? Math.min(BASE_BACKOFF_MS * 2 ** (sendAttempt - 1), MAX_BACKOFF_MS) + Math.random() * 500
+            : 1500 * sendAttempt;
+          const reason = isRateLimit ? "RPC rate limited" : `Nonce/mempool race (${sendErr.code})`;
+          console.log(`  ⏳ ${reason} on ${marketId}, attempt ${sendAttempt}/${MAX_SEND_RETRIES}. Waiting ${Math.round(wait / 1000)}s and retrying...`);
           await delay(wait);
         }
       }
