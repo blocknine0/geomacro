@@ -1035,11 +1035,16 @@ export function ArenaSection() {
   };
 
   const effectiveStage = (m: Market): "active" | "awaiting_dispute" | "disputed" | "completed" => {
-    if (m.lifecycleStage) return m.lifecycleStage;
+    // lifecycle_stage is written by sync-lifecycle.js only twice per 2h cycle, so a
+    // stale "active" value can outlive the staking deadline. Trust it as-is for any
+    // non-"active" value (those are definitive), but for "active" (or when it hasn't
+    // synced yet) fall through to the same time-based check the card badge uses.
+    if (m.lifecycleStage && m.lifecycleStage !== "active") return m.lifecycleStage;
     const om = onchainMarkets[m.id] ?? m.onchain;
     const finalized = !!m.marketFinalized || !!om.resolved;
     if (finalized) return "completed";
     if (m.aiProcessed) return "awaiting_dispute";
+    if (now >= m.stakingEndTime) return "awaiting_dispute";
     return "active";
   };
 
