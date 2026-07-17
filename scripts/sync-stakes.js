@@ -19,34 +19,78 @@ if (!DEPLOY_BLOCK || DEPLOY_BLOCK < 1000) {
 }
 
 const CHUNK_SIZE = 9000;
+const CHUNK_DELAY_MS = 400; // consecutive chunk-er majhe chhoto pause, burst rate-limit avoid korte
 
 const CONTRACT_ABI = [
   "event Staked(string marketId, address indexed user, uint8 side, uint256 amount)",
 ];
-
 const SIDE_MAP = { 1: "HAWK", 2: "DOVE" };
 
-async function main() {
-  const { ARC_RPC_URL, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY } = process.env;
-  if (!ARC_RPC_URL || !APP_SUPABASE_URL || !APP_SUPABASE_SERVICE_ROLE_KEY)
-    throw new Error("Missing env: ARC_RPC_URL, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY");
+// src/lib/arc.ts-er ARC_TESTNET_RPC_URLS + FallbackProvider pattern-er sathe consistent —
+// ekta RPC rate-limit/down hole onnota-y transparently failover kore. Secret-e set kora
+// ARC_RPC_URL (jodi thake) priority 0, hardcoded backup priority 1.
+const RPC_URLS = [process.env.ARC_RPC_URL, "https://rpc.testnet.arc.network", "https://arc-testnet.drpc.org"]
+  .filter(Boolean)
+  .filter((url, i, arr) => arr.indexOf(url) === i); // dedupe, jodi ARC_RPC_URL already default-er shathe mile jay
 
-  const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
+function buildProvider() {
+  if (RPC_URLS.length === 1) return new ethers.JsonRpcProvider(RPC_URLS[0]);
+  const providers = RPC_URLS.map((url) => new ethers.JsonRpcProvider(url));
+  return new ethers.FallbackProvider(
+    providers.map((provider, i) => ({ provider, priority: i, stallTimeout: 2000 })),
+  );
+}
+
+// agent-arena.ts-er withRpcRetry() theke port kora — same rate-limit detection + exponential backoff
+async function withRpcRetry(fn, { retries = 6, baseDelayMs = 1500 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastError = e;
+      const message = String(e?.message ?? e);
+      const code = e?.info?.error?.code ?? e?.error?.code ?? e?.code;
+      const isRateLimited =
+        code === -32011 || code === -32005 ||
+        message.includes("429") || message.includes("rate limit") ||
+        message.includes("request limit") || message.includes("Too Many Requests");
+      if (!isRateLimited || attempt === retries) throw e;
+      const delay = baseDelayMs * 2 ** attempt;
+      console.warn(`  ⏳ rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function main() {
+  const { APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY } = process.env;
+  if (!APP_SUPABASE_URL || !APP_SUPABASE_SERVICE_ROLE_KEY)
+    throw new Error("Missing env: APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY");
+  if (RPC_URLS.length === 0)
+    throw new Error("Missing env: ARC_RPC_URL (no RPC endpoint configured at all)");
+
+  const provider = buildProvider();
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY);
 
-  const currentBlock = await provider.getBlockNumber();
+  const currentBlock = await withRpcRetry(() => provider.getBlockNumber());
   console.log(`Current block: ${currentBlock}, scanning from: ${DEPLOY_BLOCK}`);
+  console.log(`RPC endpoints in use: ${RPC_URLS.length} (failover ${RPC_URLS.length > 1 ? "enabled" : "disabled — only one URL configured"})`);
 
-  // 10,000 block limit এড়াতে chunked scanning
+  // 10,000 block limit এড়াতে chunked scanning, প্রতিটি chunk retry-protected
   const filter = contract.filters.Staked();
   let events = [];
   for (let from = DEPLOY_BLOCK; from <= currentBlock; from += CHUNK_SIZE) {
     const to = Math.min(from + CHUNK_SIZE - 1, currentBlock);
     process.stdout.write(`  Scanning blocks ${from} → ${to}...`);
-    const chunk = await contract.queryFilter(filter, from, to);
+    const chunk = await withRpcRetry(() => contract.queryFilter(filter, from, to));
     events.push(...chunk);
     process.stdout.write(` ${chunk.length} events\n`);
+    await sleep(CHUNK_DELAY_MS);
   }
   console.log(`\nTotal: ${events.length} Staked event(s) onchain.`);
 
@@ -120,4 +164,7 @@ async function main() {
   console.log(`\nDone. Inserted: ${inserted}, Skipped: ${skipped}, Failed: ${failed}`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
