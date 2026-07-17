@@ -137,11 +137,10 @@ async function sendTxWithRetry(contract, marketId, side) {
   }
 }
 
-async function judgeOutcome(groq, event) {
+function buildJudgePrompt(event) {
   const summary = (event.summary || "").slice(0, 300);
   const narrative = (event.narrative || "").slice(0, 200);
-
-  const prompt = `You are a geopolitical/macro risk analyst judging the outcome of a prediction market, 48 hours after the original event was reported.
+  return `You are a geopolitical/macro risk analyst judging the outcome of a prediction market, 48 hours after the original event was reported.
 
 Original event details:
 - Category: ${event.category}
@@ -156,31 +155,85 @@ Task: Judge whether the risk described has:
 
 If genuinely uncertain, default to "DOVE".
 
-Respond STRICTLY in JSON:
+Respond STRICTLY in JSON, no markdown fences, no extra text:
 { "side": "HAWK" | "DOVE", "reasoning": "one sentence justification" }`;
+}
 
-  const completion = await callGroqWithBackoff(
-    () => groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.1-8b-instant", // switched from 70b-versatile: free tier gives this model ~14,400 req/day vs 1,000 RPD / 100K TPD on 70b — this task is simple structured classification, doesn't need the bigger model
-      response_format: { type: "json_object" },
-      temperature: 0.1,
-      max_tokens: 150,
-    }),
-    `judgeOutcome (${event.source_title?.slice(0, 40) ?? "?"})`,
-  );
-
-  const result = JSON.parse(completion.choices[0].message.content);
+function parseJudgeResult(rawContent) {
+  // 🛡️ Cerebras doesn't guarantee response_format:json_object the way Groq does,
+  // so strip any accidental markdown fences before parsing instead of assuming
+  // a clean JSON string.
+  const cleaned = rawContent.replace(/```json|```/g, "").trim();
+  const result = JSON.parse(cleaned);
   const side = result.side === "HAWK" ? SIDE.HAWK : SIDE.DOVE;
   return { side, sideLabel: result.side === "HAWK" ? "HAWK" : "DOVE", reasoning: result.reasoning || "" };
 }
 
+// 🛡️ NEW: second free-tier provider used only when Groq's daily quota (TPD/RPD)
+// is exhausted. Cerebras has a completely separate 1M-tokens/day free quota, so
+// this effectively doubles the daily judging budget at zero cost, instead of the
+// run just giving up on remaining events until Groq resets.
+async function callCerebrasJudge(cerebrasApiKey, event) {
+  const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${cerebrasApiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama3.1-8b", // Cerebras' free-tier model name (not "llama-3.1-8b-instant" like Groq)
+      messages: [{ role: "user", content: buildJudgePrompt(event) }],
+      temperature: 0.1,
+      max_tokens: 150,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    const err = new Error(`Cerebras HTTP ${response.status}: ${body.slice(0, 200)}`);
+    err.status = response.status;
+    if (response.status === 429) err.isQuotaExhausted = true;
+    throw err;
+  }
+
+  const data = await response.json();
+  return parseJudgeResult(data.choices[0].message.content);
+}
+
+async function judgeOutcome(groq, event, cerebrasApiKey) {
+  const prompt = buildJudgePrompt(event);
+
+  try {
+    const completion = await callGroqWithBackoff(
+      () => groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.1-8b-instant", // switched from 70b-versatile: free tier gives this model ~14,400 req/day vs 1,000 RPD / 100K TPD on 70b — this task is simple structured classification, doesn't need the bigger model
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+        max_tokens: 150,
+      }),
+      `judgeOutcome (${event.source_title?.slice(0, 40) ?? "?"})`,
+    );
+    return parseJudgeResult(completion.choices[0].message.content);
+  } catch (groqErr) {
+    // Only fall through to Cerebras for genuine daily-quota exhaustion — any
+    // other error (bad prompt, malformed JSON, etc.) should surface normally
+    // rather than silently trying a second provider.
+    if (!groqErr.isQuotaExhausted || !cerebrasApiKey) throw groqErr;
+    console.log(`  ↪ Groq daily quota exhausted — falling back to Cerebras (separate free quota) for this judgment...`);
+    return await callCerebrasJudge(cerebrasApiKey, event);
+  }
+}
+
 async function main() {
-  const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL, ARC_RPC_URL_2, GROQ_API_KEY } = process.env;
+  const { OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL, ARC_RPC_URL_2, GROQ_API_KEY, CEREBRAS_API_KEY } = process.env;
   if (!OWNER_PRIVATE_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL || !GROQ_API_KEY)
     throw new Error("Missing env.");
   if (!SUPABASE_SERVICE_ROLE_KEY) {
     console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY missing — events.ai_processed/market_resolved updates will likely be silently blocked by RLS.");
+  }
+  if (!CEREBRAS_API_KEY) {
+    console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback provider if Groq's daily quota runs out (events will just wait for next run instead).");
   }
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
@@ -242,7 +295,7 @@ async function main() {
     // these events are simply picked up again by the next scheduled run
     // (every 2h), once the quota has had a chance to reset.
     if (groqQuotaExhausted) {
-      console.log(`  ⏭ Skipping remaining events this run — Groq daily token quota is exhausted. They'll be retried next run.`);
+      console.log(`  ⏭ Skipping remaining events this run — daily AI quota is exhausted. They'll be retried next run.`);
       break;
     }
     eventsLookedAt++;
@@ -295,11 +348,11 @@ async function main() {
       console.log(`Judging outcome for ${marketId}: "${event.source_title}"...`);
       let judgment;
       try {
-        judgment = await judgeOutcome(groq, event);
+        judgment = await judgeOutcome(groq, event, CEREBRAS_API_KEY);
       } catch (judgeErr) {
         if (judgeErr.isQuotaExhausted) {
           console.error(`  🛑 ${judgeErr.message}`);
-          console.error(`  🛑 Halting further Groq calls for this run — will NOT fall back to a fake DOVE verdict.`);
+          console.error(`  🛑 Halting further AI calls for this run — ${CEREBRAS_API_KEY ? "both Groq and Cerebras are" : "Groq is"} out of daily quota. Will NOT fall back to a fake DOVE verdict.`);
           groqQuotaExhausted = true;
           continue; // event stays ai_processed=false, picked up next run
         }
@@ -332,7 +385,7 @@ async function main() {
     }
   }
 
-  console.log(`Done. Looked at ${eventsLookedAt} market(s), resolved ${resolvedCount} this run.${groqQuotaExhausted ? " (stopped early: Groq daily quota exhausted)" : ""}`);
+  console.log(`Done. Looked at ${eventsLookedAt} market(s), resolved ${resolvedCount} this run.${groqQuotaExhausted ? " (stopped early: daily AI quota exhausted)" : ""}`);
 }
 
 main().catch(console.error);
