@@ -6,6 +6,18 @@ import { createClient } from "@supabase/supabase-js";
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 const DEPLOY_BLOCK = Number(process.env.DEPLOY_BLOCK || 0);
+
+// DEPLOY_BLOCK missing/0 hole silently pura chain (block 0) theke scan shuru na kore
+// loudly fail korao — noile RPC rate-limit-e giye cryptic error dey (etai age hoyechilo).
+if (!DEPLOY_BLOCK || DEPLOY_BLOCK < 1000) {
+  throw new Error(
+    `DEPLOY_BLOCK missing or suspiciously low (got: ${process.env.DEPLOY_BLOCK}). ` +
+    `Set the "DEPLOY_BLOCK" repo variable (Settings → Secrets and variables → Actions → Variables) ` +
+    `to the contract's actual deployment block (~49000000) before running this script. ` +
+    `Refusing to scan from block 0 — that will exhaust RPC rate limits.`
+  );
+}
+
 const CHUNK_SIZE = 9000;
 
 const CONTRACT_ABI = [
