@@ -6,9 +6,22 @@ on:
   schedule:
     - cron: "30 */2 * * *"
   workflow_dispatch: {}
+concurrency:
+  # Prevents a manual re-run from overlapping with a still-running scheduled
+  # run (or vice versa) — both use the same wallet/nonce, so an overlap can
+  # cause exactly the kind of nonce races / duplicate-send issues seen in
+  # the logs. Cancels the older run in favor of the newer one.
+  group: auto-resolve-markets
+  cancel-in-progress: true
 jobs:
   resolve-markets:
     runs-on: ubuntu-latest
+    # 🛡️ NEW: without this, GitHub Actions' default job timeout is 6 hours —
+    # meaning a run stuck retrying against a rate-limited RPC just burns
+    # Actions minutes for hours instead of failing fast. 10 min gives the
+    # script's own RUN_TIME_BUDGET_MS (6 min) headroom to exit gracefully
+    # before a hard timeout cancels it mid-transaction.
+    timeout-minutes: 10
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -25,8 +38,16 @@ jobs:
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          MAX_RESOLUTIONS_PER_RUN: "40"
-          MAX_EVENTS_PER_RUN: "60"
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          # Lowered from 40/60 — given the sustained (not just bursty) RPC
+          # throttle seen in practice, a run that tries for 60 events just
+          # spends its whole time budget backing off on the first several
+          # instead of actually resolving anything. Smaller batches finish
+          # more of what they start; the leftover backlog is picked up by
+          # the next run 2h later regardless.
+          MAX_RESOLUTIONS_PER_RUN: "15"
+          MAX_EVENTS_PER_RUN: "20"
+          RUN_TIME_BUDGET_MS: "360000"
         run: node scripts/resolve-markets.js
-        
