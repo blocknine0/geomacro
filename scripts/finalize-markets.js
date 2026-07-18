@@ -372,6 +372,15 @@ async function main() {
     return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
   };
   const getReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+  // 🛡️ NEW: for reads that immediately follow a successful write (post-tx
+  // status/pool checks), use the SAME provider that mined the transaction
+  // rather than the independently-rotating read provider. Different testnet
+  // RPC providers (Alchemy/QuickNode/GetBlock/dRPC/public) don't always sync
+  // to the exact same block at the exact same time — a read via a different
+  // provider right after a write can hit a node that hasn't indexed that
+  // block yet, which ethers surfaces as "missing revert data" even though
+  // the contract call itself is a simple storage read with no revert paths.
+  const getPostTxReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeRpcManager.current());
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
 
   const { data: pendingMarkets } = await supabase
@@ -460,15 +469,15 @@ async function main() {
       console.log(`Finalizing ${marketId}...`);
       let tx;
       try {
-        tx = await sendFinalizeWithRetry(getWriteContract, getReadContract, writeRpcManager, marketId);
+        tx = await sendFinalizeWithRetry(getWriteContract, getPostTxReadContract, writeRpcManager, marketId);
       } catch (sendErr) {
         if (sendErr.alreadyFinalized) {
           console.log(`  ↪ ${sendErr.message}`);
-          const finalized = await getReadContract().getMarketFullDetails(marketId);
+          const finalized = await getPostTxReadContract().getMarketFullDetails(marketId);
           if (adminSupabase) {
             const winLabel = SIDE_LABEL[Number(finalized.winner)];
             if (winLabel && winLabel !== "NONE") {
-              const pools = await getReadContract().getMarket(marketId);
+              const pools = await getPostTxReadContract().getMarket(marketId);
               await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
             }
             await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
@@ -491,10 +500,15 @@ async function main() {
       }
 
       // finalize এর পরে fresh state পড়ে নাও যাতে real m.winner + pool totals পাওয়া যায়
+      // 🛡️ NEW: uses getPostTxReadContract (bound to the SAME provider that
+      // just mined this tx) instead of the independently-rotating read
+      // provider — a different provider may not have caught up to this block
+      // yet on testnet, which previously surfaced as a spurious "missing
+      // revert data" error on a plain storage-read function.
       const finalized = await callRpcWithBackoff(
-        () => getReadContract().getMarketFullDetails(marketId),
+        () => getPostTxReadContract().getMarketFullDetails(marketId),
         `getMarketFullDetails-postfinalize(${marketId})`,
-        readRpcManager,
+        writeRpcManager,
       );
       const finalStatus = Number(finalized.status);
 
@@ -507,9 +521,9 @@ async function main() {
           const winLabel = SIDE_LABEL[Number(finalized.winner)];
           if (winLabel && winLabel !== "NONE") {
             const pools = await callRpcWithBackoff(
-              () => getReadContract().getMarket(marketId),
+              () => getPostTxReadContract().getMarket(marketId),
               `getMarket-postfinalize(${marketId})`,
-              readRpcManager,
+              writeRpcManager,
             );
             await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
           }
