@@ -15,6 +15,16 @@ const CONTRACT_ABI = [
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)"
 ];
 
+// 🛡️ NEW: canonical Multicall3 deployment address (same across most EVM
+// chains, including the one already used in the frontend's agent-arena.ts).
+// Lets us batch N getMarketFullDetails reads into a single RPC call instead
+// of N separate calls — read traffic was eating into the same rate-limit
+// budget that tx sends need, so cutting it down directly helps writes succeed.
+const MULTICALL3_ADDRESS = process.env.MULTICALL3_ADDRESS || "0xcA11bde05977b3631167028862bE2a173976CA11";
+const MULTICALL3_ABI = [
+  "function aggregate3((address target, bool allowFailure, bytes callData)[] calls) payable returns ((bool success, bytes returnData)[] returnData)"
+];
+
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
 
 const MAX_RATE_LIMIT_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
@@ -33,6 +43,18 @@ const RPC_THROTTLE_MS = Number(process.env.RPC_THROTTLE_MS || 800);
 // and worth trying harder for, since we've already paid the Groq cost for
 // this judgment and don't want to throw it away.
 const MAX_SEND_RATE_LIMIT_RETRIES = Number(process.env.RPC_SEND_MAX_RETRIES || 6);
+
+// 🛡️ NEW: stop starting new market resolutions once this much wall-clock time
+// has passed since the run started. The previous run got force-cancelled by
+// GitHub Actions mid-transaction (visible as "Error: The operation was
+// canceled" in the log) because backoff waits stacked up past the workflow's
+// timeout — a mid-await cancellation is unsafe, since we can't tell if the
+// in-flight tx was actually broadcast. Default 4 min leaves headroom under a
+// typical 5 min job timeout; override via RUN_TIME_BUDGET_MS if your workflow
+// timeout is set higher.
+const RUN_TIME_BUDGET_MS = Number(process.env.RUN_TIME_BUDGET_MS || 4 * 60 * 1000);
+const runStartedAt = Date.now();
+const timeBudgetExceeded = () => Date.now() - runStartedAt > RUN_TIME_BUDGET_MS;
 
 // 🛡️ Shared RPC rate-limit detector. FIX: previously only checked code === -32007,
 // but Arc Testnet's node actually returns -32011 ("request limit reached") — a
@@ -101,10 +123,21 @@ async function callRpcWithBackoff(fn, label) {
 // 🛡️ FIX (root cause of "resolved 0 this run"): the tx send itself
 // (contract.declareWinnerByAI) was previously only retried for nonce races,
 // never for RPC rate limits — so every single send just failed outright the
-// moment the provider returned -32011. A -32011 rejection means the node
-// bounced the request *before* it ever reached the mempool, so it is always
-// safe to retry with a fresh nonce fetch: there is no risk of double-sending.
-async function sendTxWithRetry(contract, marketId, side) {
+// moment the provider returned -32011.
+//
+// 🛡️ FIX #2 (root cause of "Invalid status" reverts): -32011 is NOT always a
+// safe "rejected before broadcast" signal in this environment. When a
+// FallbackProvider with 2+ RPC endpoints is used for sending, ethers forwards
+// the signed raw tx to *all* configured providers to maximize propagation —
+// so one endpoint can return -32011 to the caller while a different endpoint
+// silently accepted and mined the exact same tx. Retrying blindly after that
+// then sends a *second* declareWinnerByAI call against an already-resolved
+// market, which reverts with "Invalid status". To make retries safe again we
+// re-check the market's actual on-chain status before every retry attempt —
+// if it's already past the resolvable state, we know an earlier attempt
+// silently succeeded, so we stop and let the caller repair the Supabase flag
+// instead of sending again.
+async function sendTxWithRetry(contract, readContract, marketId, side) {
   let nonceAttempt = 0;
   let rateLimitAttempt = 0;
   const MAX_NONCE_RETRIES = 3;
@@ -114,6 +147,25 @@ async function sendTxWithRetry(contract, marketId, side) {
     } catch (sendErr) {
       const isNonceRace = sendErr.code === "NONCE_EXPIRED" || sendErr.code === "REPLACEMENT_UNDERPRICED";
       const isRateLimited = isRpcRateLimitError(sendErr);
+
+      if ((isNonceRace || isRateLimited) && (nonceAttempt < MAX_NONCE_RETRIES || rateLimitAttempt < MAX_SEND_RATE_LIMIT_RETRIES)) {
+        // Before waiting and retrying, confirm the market is still actually
+        // resolvable. If an earlier attempt was secretly broadcast by a
+        // different fallback RPC and already mined, retrying here would just
+        // waste the backoff wait and then revert anyway — better to bail out
+        // immediately and let the caller's repair path sync Supabase.
+        try {
+          const market = await readContract.getMarketFullDetails(marketId);
+          if (Number(market.status) >= 2) {
+            const alreadyResolvedErr = new Error(`Market ${marketId} was already resolved on-chain by an earlier (phantom) broadcast — skipping duplicate send.`);
+            alreadyResolvedErr.alreadyResolved = true;
+            throw alreadyResolvedErr;
+          }
+        } catch (checkErr) {
+          if (checkErr.alreadyResolved) throw checkErr;
+          // status-check itself failed (probably also rate limited) — fall through to normal retry logic below
+        }
+      }
 
       if (isNonceRace && nonceAttempt < MAX_NONCE_RETRIES) {
         nonceAttempt++;
@@ -135,6 +187,46 @@ async function sendTxWithRetry(contract, marketId, side) {
       throw sendErr;
     }
   }
+}
+
+// 🛡️ NEW: batch getMarketFullDetails for many markets into a single RPC call
+// via Multicall3.aggregate3, instead of one call per market. allowFailure:true
+// means a market whose call reverts (e.g. bad/legacy marketId) doesn't break
+// the whole batch — it just comes back as success:false and we treat it the
+// same as "couldn't fetch details, skip this one" further down.
+//
+// Falls back to null (caller should fall back to per-market calls) if the
+// multicall itself fails outright — most likely because Multicall3 isn't
+// actually deployed at MULTICALL3_ADDRESS on this chain. We only find that
+// out by trying, since an eth_call to an address with no code doesn't throw
+// a distinct error from a genuine RPC failure.
+async function batchGetMarketDetails(readProvider, contractInterface, marketIds) {
+  const multicall = new ethers.Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, readProvider);
+  const calls = marketIds.map((marketId) => ({
+    target: CONTRACT_ADDRESS,
+    allowFailure: true,
+    callData: contractInterface.encodeFunctionData("getMarketFullDetails", [marketId]),
+  }));
+
+  const results = await callRpcWithBackoff(
+    () => multicall.aggregate3.staticCall(calls),
+    `multicall.aggregate3 (${marketIds.length} markets)`,
+  );
+
+  const detailsByMarketId = new Map();
+  results.forEach((result, i) => {
+    const marketId = marketIds[i];
+    if (!result.success) {
+      detailsByMarketId.set(marketId, null);
+      return;
+    }
+    try {
+      detailsByMarketId.set(marketId, contractInterface.decodeFunctionResult("getMarketFullDetails", result.returnData));
+    } catch {
+      detailsByMarketId.set(marketId, null);
+    }
+  });
+  return detailsByMarketId;
 }
 
 function buildJudgePrompt(event) {
@@ -241,16 +333,21 @@ async function main() {
     ? createClient(APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : supabase;
 
-  // 🛡️ NEW: use a FallbackProvider over two RPC endpoints when a second URL is
-  // configured, same pattern already used elsewhere in the frontend (agent-arena.ts).
-  // resolve-markets.js was the one script still hammering a single RPC with no
-  // fallback — a single-provider rate limit had nowhere else to route to.
-  const provider = ARC_RPC_URL_2
+  // 🛡️ FIX: ethers' FallbackProvider forwards *sendTransaction* calls to all
+  // configured providers to maximize propagation — that's fine for read calls
+  // but dangerous for state-changing calls, because it can cause the exact
+  // same signed tx to be silently accepted/mined by one endpoint while another
+  // endpoint returns -32011 to us, triggering a duplicate retry that reverts
+  // with "Invalid status". So: reads get the resilience of a FallbackProvider
+  // when a second RPC URL is configured, but the wallet that actually signs
+  // and sends transactions always uses a single, primary provider only.
+  const readProvider = ARC_RPC_URL_2
     ? new ethers.FallbackProvider([
         { provider: new ethers.JsonRpcProvider(ARC_RPC_URL), priority: 1, weight: 1 },
         { provider: new ethers.JsonRpcProvider(ARC_RPC_URL_2), priority: 2, weight: 1 },
       ], undefined, { quorum: 1 })
     : new ethers.JsonRpcProvider(ARC_RPC_URL);
+  const writeProvider = new ethers.JsonRpcProvider(ARC_RPC_URL);
 
   const groq = new Groq({
     apiKey: GROQ_API_KEY,
@@ -259,12 +356,14 @@ async function main() {
     fetch: fetch,
   });
 
-  const network = await callRpcWithBackoff(() => provider.getNetwork(), "getNetwork");
+  const network = await callRpcWithBackoff(() => readProvider.getNetwork(), "getNetwork");
   console.log(`Connected to Chain ID: ${network.chainId.toString()}`);
   console.log(`Using contract address: ${CONTRACT_ADDRESS}`);
 
-  const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, provider);
+  const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, writeProvider);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
+  // read-only calls (getMarketFullDetails etc.) go through the resilient reader
+  const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
 
   const now = new Date().toISOString();
   const { data: dueEvents, error: fetchError } = await supabase
@@ -282,10 +381,27 @@ async function main() {
   let eventsLookedAt = 0;
   let groqQuotaExhausted = false;
 
+  // 🛡️ NEW: prefetch status for the whole batch in one Multicall3 call instead
+  // of one getMarketFullDetails RPC call per market in the loop below. This is
+  // the single biggest lever on total RPC volume per run, since read calls
+  // were competing with tx sends for the same rate-limit budget.
+  const batchMarketIds = dueEvents.slice(0, MAX_EVENTS_PER_RUN).map((e) => `mkt_${e.id}`);
+  let prefetchedDetails = new Map();
+  try {
+    prefetchedDetails = await batchGetMarketDetails(readProvider, contract.interface, batchMarketIds);
+    console.log(`  📦 Batched status check for ${batchMarketIds.length} markets via Multicall3 (1 RPC call instead of ${batchMarketIds.length}).`);
+  } catch (multicallErr) {
+    console.log(`  ⚠️ Multicall3 batch prefetch failed (${multicallErr.message}) — falling back to one getMarketFullDetails call per market. If this keeps happening, Multicall3 is likely not deployed at ${MULTICALL3_ADDRESS} on this chain — set MULTICALL3_ADDRESS if it's deployed elsewhere, or ignore if this chain doesn't have it.`);
+  }
+
   for (const event of dueEvents) {
     if (resolvedCount >= MAX_RESOLUTIONS_PER_RUN) break;
     if (eventsLookedAt >= MAX_EVENTS_PER_RUN) {
       console.log(`  ⏹ Reached MAX_EVENTS_PER_RUN (${MAX_EVENTS_PER_RUN}) for this run, stopping early. Remaining backlog will be picked up next run.`);
+      break;
+    }
+    if (timeBudgetExceeded()) {
+      console.log(`  ⏹ Reached RUN_TIME_BUDGET_MS (${RUN_TIME_BUDGET_MS}ms) for this run, stopping early to avoid a mid-transaction cancel. Remaining backlog will be picked up next run.`);
       break;
     }
     // 🛡️ NEW: once Groq's daily quota is confirmed exhausted, stop trying to
@@ -304,10 +420,16 @@ async function main() {
     try {
       let marketStatus = 0;
       try {
-        const market = await callRpcWithBackoff(
-          () => contract.getMarketFullDetails(marketId),
-          `getMarketFullDetails(${marketId})`,
-        );
+        // Use the prefetched multicall result if we have one for this market;
+        // otherwise (multicall failed, or this market wasn't in the prefetch
+        // batch) fall back to the original single-market RPC call.
+        const cached = prefetchedDetails.get(marketId);
+        const market = cached !== undefined && cached !== null
+          ? cached
+          : await callRpcWithBackoff(
+              () => readContract.getMarketFullDetails(marketId),
+              `getMarketFullDetails(${marketId})`,
+            );
         marketStatus = Number(market.status);
       } catch (decodeErr) {
         console.log(`⚠️ Warning: Could not fetch details for ${marketId}. Skipping. Reason: ${decodeErr.message}`);
@@ -320,7 +442,7 @@ async function main() {
         if (!event.ai_processed) {
           try {
             const market = await callRpcWithBackoff(
-              () => contract.getMarketFullDetails(marketId),
+              () => readContract.getMarketFullDetails(marketId),
               `getMarketFullDetails-repair(${marketId})`,
             );
             const tentative = Number(market.tentativeWinner);
@@ -362,7 +484,33 @@ async function main() {
       console.log(`  AI verdict: ${judgment.sideLabel} — ${judgment.reasoning}`);
 
       console.log(`Resolving market ${marketId} as ${judgment.sideLabel}...`);
-      const tx = await sendTxWithRetry(contract, marketId, judgment.side);
+      let tx;
+      try {
+        tx = await sendTxWithRetry(contract, readContract, marketId, judgment.side);
+      } catch (sendErr) {
+        if (sendErr.alreadyResolved) {
+          // An earlier attempt (this run or a prior one) was silently broadcast
+          // and mined via a different fallback RPC before we ever saw success.
+          // Repair the Supabase flag from the real on-chain outcome instead of
+          // treating this as a failure or re-attempting the send.
+          console.log(`  ↪ ${sendErr.message}`);
+          const market = await readContract.getMarketFullDetails(marketId);
+          const tentative = Number(market.tentativeWinner);
+          const sideLabel = tentative === SIDE.HAWK ? "HAWK" : tentative === SIDE.DOVE ? "DOVE" : null;
+          if (sideLabel) {
+            const { error: repairUpdErr } = await adminSupabase.from("events").update({
+              ai_processed: true,
+              ai_tentative_winner: sideLabel,
+              ai_resolved_at: new Date().toISOString(),
+            }).eq("id", event.id);
+            if (repairUpdErr) console.log(`  ⚠️ Repair write failed for ${marketId}: ${repairUpdErr.message}`);
+            else console.log(`  ✅ Repaired ${marketId} — was already resolved on-chain as ${sideLabel} by an earlier phantom broadcast.`);
+          }
+          await delay(RPC_THROTTLE_MS);
+          continue;
+        }
+        throw sendErr;
+      }
       console.log(`  Transaction sent: ${tx.hash}`);
       await callRpcWithBackoff(() => tx.wait(), `tx.wait(${marketId})`);
       resolvedCount++;
