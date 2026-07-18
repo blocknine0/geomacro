@@ -241,6 +241,12 @@ async function main() {
     return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
   };
   const getReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+  // 🛡️ NEW: for reads that immediately follow a write (post-create block
+  // lookup, duplicate-create repair reads), use the SAME provider that mined
+  // the transaction rather than the independently-rotating read provider —
+  // different testnet RPC providers don't always sync to the exact same
+  // block at the exact same time.
+  const getPostTxReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeRpcManager.current());
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
 
   // 🆕 PERMANENT FIX: cap total OPEN markets at MAX_ACTIVE_MARKETS, counting
@@ -347,7 +353,7 @@ async function main() {
       console.log(`Creating market ${marketId} for: "${event.source_title}"...`);
       let tx;
       try {
-        tx = await sendCreateWithRetry(getWriteContract, getReadContract, writeRpcManager, marketId);
+        tx = await sendCreateWithRetry(getWriteContract, getPostTxReadContract, writeRpcManager, marketId);
       } catch (sendErr) {
         if (sendErr.alreadyExists) {
           console.log(`  ↪ ${sendErr.message}`);
@@ -366,10 +372,13 @@ async function main() {
       // 🛠️ পার্মানেন্ট ফিক্স: resolution_at এখন actual on-chain confirmation
       // ব্লকের timestamp থেকে হিসাব হচ্ছে (event.created_at থেকে না), যাতে
       // Supabase-এর resolution_at আর কন্ট্রাক্টের resolutionTime সবসময় sync থাকে।
+      // 🛡️ NEW: reads the just-mined block via the SAME provider that mined
+      // it (writeRpcManager), not the independently-rotating read provider —
+      // a different provider may not have indexed this exact block yet.
       const confirmedBlock = await callRpcWithBackoff(
-        () => readRpcManager.current().getBlock(receipt.blockNumber),
+        () => writeRpcManager.current().getBlock(receipt.blockNumber),
         `getBlock(${receipt.blockNumber})`,
-        readRpcManager,
+        writeRpcManager,
       );
       const chainConfirmedAt = new Date(Number(confirmedBlock.timestamp) * 1000);
       const resolutionAt = new Date(chainConfirmedAt.getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
