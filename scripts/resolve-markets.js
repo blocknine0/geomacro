@@ -379,6 +379,12 @@ async function main() {
     return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
   };
   const getReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+  // 🛡️ NEW: for reads that immediately follow a write, use the SAME provider
+  // that mined the transaction rather than the independently-rotating read
+  // provider — different testnet RPC providers don't always sync to the
+  // exact same block at the exact same time, which can surface as a spurious
+  // "missing revert data" error on a plain storage-read function.
+  const getPostTxReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeRpcManager.current());
   // used only to get contractInterface for encoding/decoding multicall data — doesn't matter which provider
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
 
@@ -492,11 +498,11 @@ async function main() {
       console.log(`Resolving market ${marketId} as ${judgment.sideLabel}...`);
       let tx;
       try {
-        tx = await sendTxWithRetry(getWriteContract, getReadContract, writeRpcManager, marketId, judgment.side);
+        tx = await sendTxWithRetry(getWriteContract, getPostTxReadContract, writeRpcManager, marketId, judgment.side);
       } catch (sendErr) {
         if (sendErr.alreadyResolved) {
           console.log(`  ↪ ${sendErr.message}`);
-          const market = await getReadContract().getMarketFullDetails(marketId);
+          const market = await getPostTxReadContract().getMarketFullDetails(marketId);
           const tentative = Number(market.tentativeWinner);
           const sideLabel = tentative === SIDE.HAWK ? "HAWK" : tentative === SIDE.DOVE ? "DOVE" : null;
           if (sideLabel) {
