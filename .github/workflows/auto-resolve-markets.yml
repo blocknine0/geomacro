@@ -39,6 +39,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          # 5th fallback is optional. If this secret doesn't exist, GitHub
+          # Actions passes an empty string, and the script falls back to its
+          # own default (the public rpc.testnet.arc.network) — no secret
+          # needed unless you want to override it with something else.
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           # Lowered from 40/60 — given the sustained (not just bursty) RPC
