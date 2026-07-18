@@ -13,6 +13,10 @@ concurrency:
 jobs:
   finalize-markets:
     runs-on: ubuntu-latest
+    # 🛡️ NEW: without this, GitHub Actions' default job timeout is 6 hours.
+    # 10 min gives the script's own RUN_TIME_BUDGET_MS (6 min) headroom to
+    # exit gracefully before a hard timeout cancels it mid-transaction.
+    timeout-minutes: 10
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -29,5 +33,10 @@ jobs:
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           MAX_EVENTS_PER_RUN: "150"
+          RUN_TIME_BUDGET_MS: "360000"
         run: node scripts/finalize-markets.js
