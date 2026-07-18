@@ -431,19 +431,41 @@ async function main() {
     const marketId = `mkt_${event.id}`;
 
     try {
-      let marketStatus = 0;
+      let market;
       try {
         const cached = prefetchedDetails.get(marketId);
-        const market = cached !== undefined && cached !== null
+        market = cached !== undefined && cached !== null
           ? cached
           : await callRpcWithBackoff(
               () => getReadContract().getMarketFullDetails(marketId),
               `getMarketFullDetails(${marketId})`,
               readRpcManager,
             );
-        marketStatus = Number(market.status);
       } catch (decodeErr) {
         console.log(`⚠️ Warning: Could not fetch details for ${marketId}. Skipping. Reason: ${decodeErr.message}`);
+        await delay(RPC_THROTTLE_MS);
+        continue;
+      }
+      const marketStatus = Number(market.status);
+
+      // 🛡️ NEW: Supabase's resolution_at can be wrong for markets created
+      // before create-markets.js's on-chain-timestamp fix — it was computed
+      // from event.created_at (news ingestion time) instead of the actual
+      // on-chain market-creation timestamp, so it can say "ready" well before
+      // the contract's real resolutionTime. Sending a resolve tx in that
+      // window always reverts with "Too early to resolve" — pure wasted gas
+      // and RPC calls. We already have resolutionTime from the batch
+      // prefetch, so check it before ever attempting a send, and repair
+      // Supabase's resolution_at from the real on-chain value so future
+      // queries stop re-selecting this market until it's actually due.
+      const onChainResolutionTime = Number(market.resolutionTime ?? 0);
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (marketStatus < 2 && onChainResolutionTime > 0 && onChainResolutionTime > nowSec) {
+        const secondsRemaining = onChainResolutionTime - nowSec;
+        console.log(`  ⏭ Skipping ${marketId}: on-chain resolutionTime not reached yet (${secondsRemaining}s remaining). Repairing Supabase's resolution_at, which was stale.`);
+        const correctResolutionAt = new Date(onChainResolutionTime * 1000).toISOString();
+        const { error: repairErr } = await adminSupabase.from("events").update({ resolution_at: correctResolutionAt }).eq("id", event.id);
+        if (repairErr) console.log(`  ⚠️ Could not repair resolution_at for ${marketId}: ${repairErr.message}`);
         await delay(RPC_THROTTLE_MS);
         continue;
       }
