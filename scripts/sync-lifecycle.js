@@ -1,7 +1,14 @@
 // scripts/sync-lifecycle.js
-// প্রতি ৩০ মিনিটে চালানোর জন্য (নতুন GitHub Actions workflow দিয়ে)।
+// প্রতি ২ ঘণ্টা সাইকেলে দুইবার চালানোর জন্য (GitHub Actions workflow দিয়ে)।
 // প্রতিটা open market-এর on-chain status পড়ে events.lifecycle_stage আপডেট করে,
 // আর নতুন dispute ধরা পড়লে market_disputes টেবিলে একটা রো insert করে।
+//
+// 🛡️ এই script-ই events.lifecycle_stage-এর একমাত্র লেখক (authoritative source),
+// আর frontend + create-markets.js/resolve-markets.js/finalize-markets.js সবাই
+// এই কলামের উপর নির্ভর করে। তাই এখানে RPC ব্যর্থ হলে বা rate-limit খেলে পুরো
+// পাইপলাইন জুড়ে frontend/backend count mismatch দেখা দেয় — এই fix-এর আগে এই
+// script একাই একটা getMarketFullDetails RPC call করত প্রতিটা market-এর জন্য,
+// কোনো multicall বা multi-RPC fallback ছাড়া।
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
@@ -12,67 +19,146 @@ const CONTRACT_ABI = [
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
 ];
 
-// 🛠️ FIX: on-chain status 1 (staking closed, awaiting resolution) আগে ভুলভাবে
-// "active"-এ map হতো, যার ফলে frontend-এর "Active" bucket-এ staking-closed
-// market-ও গোনা হতো। এখন frontend-এর ৪-bucket ডিজাইনের (Active / Awaiting Dispute /
-// Disputed / Completed) সাথে align করে status 1 এবং 2 দুটোই "awaiting_dispute"-এ
-// যাবে — আগে "staking_closed" লেখা হতো যেটা frontend (arena-markets.ts)-এর
-// enum-এ ছিলই না, ফলে lifecycleStage silently null হয়ে fallback heuristic-এ
-// পড়ে যেত (যেটায় "disputed" state detect করার কোনো branch-ই ছিল না)।
+// Canonical Multicall3 deployment address — same one used in resolve-markets.js,
+// finalize-markets.js, create-markets.js, and the frontend's agent-arena.ts.
+const MULTICALL3_ADDRESS = process.env.MULTICALL3_ADDRESS || "0xcA11bde05977b3631167028862bE2a173976CA11";
+const MULTICALL3_ABI = [
+  "function aggregate3((address target, bool allowFailure, bytes callData)[] calls) payable returns ((bool success, bytes returnData)[] returnData)"
+];
+
+// status 1 (staking closed, awaiting resolution) এবং status 2 (AI resolved,
+// dispute window open) দুটোই frontend-এর ৪-bucket ডিজাইনে "awaiting_dispute"।
 const STAGE_BY_STATUS = { 0: "active", 1: "awaiting_dispute", 2: "awaiting_dispute", 3: "disputed", 4: "completed" };
 const DISPUTE_WINDOW_SECONDS = 24 * 60 * 60; // AgentArena.sol এর DISPUTE_WINDOW constant-এর সাথে মিলিয়ে
 
-// 🆕 FIX: এই তিনটা constant আগে finalize-markets.js/resolve-markets.js-এ ছিল,
-// এখানে ছিল না — অথচ এখানেও ঠিক একই সমস্যার ঝুঁকি ছিল। একবারে ২৬৮+ market-এর
-// জন্য কোনো throttle বা batch cap ছাড়া পরপর RPC call করলে QuickNode-এর
-// ~100/sec limit-এ ধাক্কা খাওয়া প্রায় নিশ্চিত। যেহেতু নিচের try/catch প্রতিটা
-// market আলাদাভাবে ধরে ফেলত, rate-limit hit হওয়া market শুধু
-// "sync error" হিসেবে log হয়ে সাইলেন্টলি skip হয়ে যেত — lifecycle_stage
-// কখনো আপডেট হতো না, আর পরের run-এও যদি একই rate-limit আবার হয় (বড়
-// backlog-এ প্রায় নিশ্চিত), সেই market চিরকাল stale থেকে যেতে পারত।
-// এটাই সবচেয়ে সম্ভাব্য কারণ কেন Supabase-এর lifecycle_stage আসল on-chain
-// অবস্থা (staking_closed/resolve উভয়ই শূন্য) থেকে পিছিয়ে ছিল।
 const MAX_EVENTS_PER_RUN = Number(process.env.SYNC_MAX_EVENTS_PER_RUN || 150);
-const RPC_THROTTLE_MS = Number(process.env.RPC_THROTTLE_MS || 350);
+const RPC_THROTTLE_MS = Number(process.env.RPC_THROTTLE_MS || 500);
 const MAX_RATE_LIMIT_RETRIES = Number(process.env.RPC_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 60 * 1000;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 🛡️ finalize-markets.js/resolve-markets.js-এর সাথে হুবহু মেলানো backoff
-// pattern। QuickNode (এবং বেশিরভাগ RPC provider) per-second request limit
-// ছাড়িয়ে গেলে JSON-RPC error code -32007 বা HTTP 429 রিটার্ন করে।
-async function callRpcWithBackoff(fn, label) {
-  let attempt = 0;
+// 🛡️ NEW: stop starting new writes once this much wall-clock time has passed
+// — same fix as the other three scripts, avoids GitHub Actions force-cancelling
+// a run mid-write.
+const RUN_TIME_BUDGET_MS = Number(process.env.RUN_TIME_BUDGET_MS || 4 * 60 * 1000);
+const runStartedAt = Date.now();
+const timeBudgetExceeded = () => Date.now() - runStartedAt > RUN_TIME_BUDGET_MS;
+
+function isRpcRateLimitError(error) {
+  const code = error?.error?.code ?? error?.code;
+  const message = String(error?.error?.message ?? error?.message ?? error?.shortMessage ?? "");
+  return (
+    code === -32007 ||
+    code === -32011 ||
+    error?.status === 429 ||
+    /request limit|rate limit|too many requests|failed to detect network/i.test(message)
+  );
+}
+
+// 🛡️ NEW: same rotating multi-RPC manager as the other three scripts.
+class RpcManager {
+  constructor(urls, label) {
+    this.urls = urls.filter(Boolean);
+    if (this.urls.length === 0) throw new Error(`No RPC URLs configured for ${label}`);
+    this.label = label;
+    this.index = 0;
+    this._provider = new ethers.JsonRpcProvider(this.urls[this.index]);
+  }
+  current() {
+    return this._provider;
+  }
+  rotate() {
+    const previous = this.index + 1;
+    this.index = (this.index + 1) % this.urls.length;
+    this._provider = new ethers.JsonRpcProvider(this.urls[this.index]);
+    console.log(`  🔄 Rotated ${this.label} RPC: endpoint #${previous} → #${this.index + 1} of ${this.urls.length}`);
+    return this._provider;
+  }
+  hasMultiple() {
+    return this.urls.length > 1;
+  }
+  count() {
+    return this.urls.length;
+  }
+}
+
+async function callRpcWithBackoff(fn, label, rpcManager) {
+  let sweepAttempt = 0;
+  let totalAttempt = 0;
   while (true) {
     try {
       return await fn();
     } catch (error) {
-      const code = error?.error?.code ?? error?.code;
-      const message = String(error?.error?.message ?? error?.message ?? "");
-      const isRateLimit =
-        code === -32007 ||
-        error?.status === 429 ||
-        /request limit|rate limit|too many requests/i.test(message);
-      if (!isRateLimit || attempt >= MAX_RATE_LIMIT_RETRIES) throw error;
-      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      if (!isRpcRateLimitError(error)) throw error;
+      totalAttempt++;
+      if (rpcManager?.hasMultiple() && sweepAttempt < rpcManager.count() - 1) {
+        sweepAttempt++;
+        rpcManager.rotate();
+        continue;
+      }
+      if (totalAttempt >= MAX_RATE_LIMIT_RETRIES * Math.max(1, rpcManager?.count() ?? 1)) throw error;
+      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** Math.floor(totalAttempt / Math.max(1, rpcManager?.count() ?? 1)), MAX_BACKOFF_MS);
       const jitter = Math.random() * 500;
-      attempt++;
-      console.log(`  ⏳ RPC rate limited on ${label} (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+      console.log(`  ⏳ RPC rate limited on ${label} (all ${rpcManager?.count() ?? 1} endpoint(s) tried). Waiting ${Math.round((backoff + jitter) / 1000)}s before next sweep...`);
       await delay(backoff + jitter);
+      sweepAttempt = 0;
+      rpcManager?.rotate();
     }
   }
 }
 
+// 🛡️ NEW: batch getMarketFullDetails for many markets into a single RPC call
+// via Multicall3.aggregate3 instead of one call per market — this is the
+// biggest single lever here, since this script previously made one RPC call
+// per open market with no batching at all.
+async function batchGetMarketDetails(readRpcManager, contractInterface, marketIds) {
+  const calls = marketIds.map((marketId) => ({
+    target: CONTRACT_ADDRESS,
+    allowFailure: true,
+    callData: contractInterface.encodeFunctionData("getMarketFullDetails", [marketId]),
+  }));
+
+  const results = await callRpcWithBackoff(
+    () => {
+      const multicall = new ethers.Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, readRpcManager.current());
+      return multicall.aggregate3.staticCall(calls);
+    },
+    `multicall.aggregate3 (${marketIds.length} markets)`,
+    readRpcManager,
+  );
+
+  const detailsByMarketId = new Map();
+  results.forEach((result, i) => {
+    const marketId = marketIds[i];
+    if (!result.success) {
+      detailsByMarketId.set(marketId, null);
+      return;
+    }
+    try {
+      detailsByMarketId.set(marketId, contractInterface.decodeFunctionResult("getMarketFullDetails", result.returnData));
+    } catch {
+      detailsByMarketId.set(marketId, null);
+    }
+  });
+  return detailsByMarketId;
+}
+
 async function main() {
-  const { APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL } = process.env;
+  const { APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, ARC_RPC_URL_5 } = process.env;
   if (!APP_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !ARC_RPC_URL) {
     throw new Error("Missing env: APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ARC_RPC_URL required.");
   }
 
   const adminSupabase = createClient(APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+  // 🛡️ NEW: same 5-endpoint rotating pool as the other three scripts.
+  const publicFallbackUrl = ARC_RPC_URL_5 || "https://rpc.testnet.arc.network";
+  const rpcUrls = [ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, publicFallbackUrl];
+  const readRpcManager = new RpcManager(rpcUrls, "read");
+  console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
+
+  const contractInterface = new ethers.Interface(CONTRACT_ABI);
 
   const { data: allEvents, error } = await adminSupabase
     .from("events")
@@ -88,21 +174,40 @@ async function main() {
     return;
   }
 
-  // 🆕 FIX: hard cap per run, same reasoning as finalize-markets.js — a big
-  // backlog can't generate an unbounded burst of RPC calls in one go. The
-  // rest gets picked up on the next scheduled run (every 30 min).
   const events = allEvents.slice(0, MAX_EVENTS_PER_RUN);
   console.log(`Syncing lifecycle_stage for ${events.length} of ${allEvents.length} open market(s) this run.`);
+
+  // 🛡️ NEW: batch-prefetch on-chain details for the entire run's worth of
+  // markets in one Multicall3 call instead of one getMarketFullDetails RPC
+  // call per market. For a typical 100-150 market backlog this turns ~150
+  // sequential RPC calls into 1.
+  const batchMarketIds = events.map((e) => `mkt_${e.id}`);
+  let prefetchedDetails = new Map();
+  try {
+    prefetchedDetails = await batchGetMarketDetails(readRpcManager, contractInterface, batchMarketIds);
+    console.log(`  📦 Batched status check for ${batchMarketIds.length} markets via Multicall3 (1 RPC call instead of ${batchMarketIds.length}).`);
+  } catch (multicallErr) {
+    console.log(`  ⚠️ Multicall3 batch prefetch failed (${multicallErr.message}) — falling back to one getMarketFullDetails call per market.`);
+  }
+
   let changed = 0;
   let rateLimitFailures = 0;
 
   for (const event of events) {
+    if (timeBudgetExceeded()) {
+      console.log(`  ⏹ Reached RUN_TIME_BUDGET_MS (${RUN_TIME_BUDGET_MS}ms) for this run, stopping early. Remaining backlog will be picked up next run.`);
+      break;
+    }
     const marketId = `mkt_${event.id}`;
     try {
-      const details = await callRpcWithBackoff(
-        () => contract.getMarketFullDetails(marketId),
-        `getMarketFullDetails(${marketId})`,
-      );
+      const cached = prefetchedDetails.get(marketId);
+      const details = cached !== undefined && cached !== null
+        ? cached
+        : await callRpcWithBackoff(
+            () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current()).getMarketFullDetails(marketId),
+            `getMarketFullDetails(${marketId})`,
+            readRpcManager,
+          );
       const status = Number(details.status);
       const newStage = STAGE_BY_STATUS[status] ?? "active";
       const disputer = details.disputer && details.disputer !== ethers.ZeroAddress ? details.disputer : null;
