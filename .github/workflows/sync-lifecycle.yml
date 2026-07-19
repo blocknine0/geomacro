@@ -1,31 +1,28 @@
 name: Sync Market Lifecycle
-# Runs twice per 2-hour cycle: at :05 (right after ingest, before
-# create-markets counts "room") and at :35 (right after finalize-markets
-# frees up completed slots, so create-markets's next run at :40 sees
-# accurate room). This replaces the old */30 schedule, which could
-# collide with the RPC-heavy workflows below.
+# 🛡️ NEW DESIGN: GitHub's native `schedule:` trigger is "best effort" and can
+# be delayed by hours during high load — this is especially bad for tight
+# intervals like */15, since every 15-minute slot across all of GitHub is
+# heavily contested. Instead of relying on the scheduler to fire reliably
+# every 15 minutes, this workflow is triggered just ONCE PER HOUR (a much
+# less contested schedule, at an off-the-hour minute to dodge the top-of-hour
+# traffic spike), and then loops INSIDE the job using plain `sleep` to run
+# the sync script every 15 minutes for the rest of that hour. Once a job has
+# actually started, `sleep` is 100% reliable — no scheduler uncertainty left.
 on:
   schedule:
-    # 🛡️ NEW: was "5,35 */2 * * *" (up to 90min gap between runs, e.g. 0:35 →
-    # 2:05). Now that this script uses Multicall3 (1 RPC call for the whole
-    # batch instead of one-per-market), a run is cheap enough to do every
-    # 15min — this is the single biggest lever on frontend/backend staleness,
-    # since lifecycle_stage/disputer_address/dispute_window_ends_at have NO
-    # on-chain fallback in the frontend (unlike ai_processed/market_resolved,
-    # which do) — if this column is stale, the frontend just shows stale data
-    # with no self-correction.
-    - cron: "*/15 * * * *"
+    - cron: "3 * * * *" # :03 past every hour — avoids the :00 congestion spike
   workflow_dispatch: {}
 concurrency:
-  # Now runs every 15 minutes — this prevents a slow run from overlapping
-  # with the next scheduled one.
+  # Each run now owns roughly an hour — this prevents an overlapping
+  # scheduled/manual trigger from colliding with a still-running loop.
   group: sync-lifecycle
   cancel-in-progress: true
 jobs:
   sync-lifecycle:
     runs-on: ubuntu-latest
-    # 🛡️ NEW: without this, GitHub Actions' default job timeout is 6 hours.
-    timeout-minutes: 10
+    # Job itself runs for up to ~58 minutes (looping internally), so give it
+    # enough headroom before the next hourly trigger would fire.
+    timeout-minutes: 58
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -35,7 +32,7 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: npm install ethers @supabase/supabase-js
-      - name: Run lifecycle sync script
+      - name: Run lifecycle sync every 15 minutes for ~55 minutes
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -46,4 +43,24 @@ jobs:
           ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           SYNC_MAX_EVENTS_PER_RUN: "150"
           RUN_TIME_BUDGET_MS: "360000"
-        run: node scripts/sync-lifecycle.js
+        run: |
+          # Runs the sync script, then sleeps 15 minutes, repeating until
+          # ~55 minutes of wall-clock time have passed since this step
+          # started — leaving a few minutes of buffer before the job's own
+          # 58-minute timeout and before the next hourly trigger fires.
+          END_TIME=$(( $(date +%s) + 55 * 60 ))
+          ITERATION=1
+          while [ "$(date +%s)" -lt "$END_TIME" ]; do
+            echo "=== Sync iteration $ITERATION (started $(date -u +%H:%M:%S) UTC) ==="
+            node scripts/sync-lifecycle.js
+            ITERATION=$((ITERATION + 1))
+            NOW=$(date +%s)
+            REMAINING=$(( END_TIME - NOW ))
+            if [ "$REMAINING" -le 0 ]; then
+              break
+            fi
+            SLEEP_FOR=$(( REMAINING < 900 ? REMAINING : 900 ))
+            echo "Sleeping ${SLEEP_FOR}s before next iteration..."
+            sleep "$SLEEP_FOR"
+          done
+          echo "=== Done: ran $((ITERATION - 1)) sync iteration(s) this hour ==="
