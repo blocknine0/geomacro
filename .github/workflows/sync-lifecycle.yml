@@ -6,11 +6,26 @@ name: Sync Market Lifecycle
 # collide with the RPC-heavy workflows below.
 on:
   schedule:
-    - cron: "5,35 */2 * * *"
+    # 🛡️ NEW: was "5,35 */2 * * *" (up to 90min gap between runs, e.g. 0:35 →
+    # 2:05). Now that this script uses Multicall3 (1 RPC call for the whole
+    # batch instead of one-per-market), a run is cheap enough to do every
+    # 15min — this is the single biggest lever on frontend/backend staleness,
+    # since lifecycle_stage/disputer_address/dispute_window_ends_at have NO
+    # on-chain fallback in the frontend (unlike ai_processed/market_resolved,
+    # which do) — if this column is stale, the frontend just shows stale data
+    # with no self-correction.
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
+concurrency:
+  # Now runs every 15 minutes — this prevents a slow run from overlapping
+  # with the next scheduled one.
+  group: sync-lifecycle
+  cancel-in-progress: true
 jobs:
   sync-lifecycle:
     runs-on: ubuntu-latest
+    # 🛡️ NEW: without this, GitHub Actions' default job timeout is 6 hours.
+    timeout-minutes: 10
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -25,6 +40,10 @@ jobs:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           SYNC_MAX_EVENTS_PER_RUN: "150"
+          RUN_TIME_BUDGET_MS: "360000"
         run: node scripts/sync-lifecycle.js
-        
