@@ -41,7 +41,7 @@ jobs:
           ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
           ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
           ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
-          SYNC_MAX_EVENTS_PER_RUN: "150"
+          SYNC_MULTICALL_CHUNK_SIZE: "150"
           RUN_TIME_BUDGET_MS: "360000"
         run: |
           # Runs the sync script, then sleeps 15 minutes, repeating until
