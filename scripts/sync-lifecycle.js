@@ -31,7 +31,10 @@ const MULTICALL3_ABI = [
 const STAGE_BY_STATUS = { 0: "active", 1: "awaiting_dispute", 2: "awaiting_dispute", 3: "disputed", 4: "completed" };
 const DISPUTE_WINDOW_SECONDS = 24 * 60 * 60; // AgentArena.sol এর DISPUTE_WINDOW constant-এর সাথে মিলিয়ে
 
-const MAX_EVENTS_PER_RUN = Number(process.env.SYNC_MAX_EVENTS_PER_RUN || 150);
+// 🛡️ NOTE: no total-market cap here anymore (see fix below) — this script
+// only reads + writes, no tx sends, so there's no rate-limit reason to cap
+// the total. SYNC_MULTICALL_CHUNK_SIZE controls the internal Multicall3
+// batch size instead.
 const RPC_THROTTLE_MS = Number(process.env.RPC_THROTTLE_MS || 500);
 const MAX_RATE_LIMIT_RETRIES = Number(process.env.RPC_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
@@ -174,30 +177,45 @@ async function main() {
     return;
   }
 
-  const events = allEvents.slice(0, MAX_EVENTS_PER_RUN);
-  console.log(`Syncing lifecycle_stage for ${events.length} of ${allEvents.length} open market(s) this run.`);
+  // 🛡️ FIX: previously capped at MAX_EVENTS_PER_RUN (150) with a plain
+  // .slice(0, N) — since Supabase returns rows in a stable order with no
+  // explicit ORDER BY/rotation, this silently processed the SAME first N
+  // markets every single run and permanently starved whatever was left over
+  // (e.g. "28 remaining" stayed exactly 28 across 4 consecutive runs in
+  // production — those markets would never have been synced, ever). Since
+  // this script only reads + writes to Supabase (no tx sends, unlike
+  // resolve/finalize/create-markets where a cap limits expensive/rate-limited
+  // sends), there's no real reason to cap the total at all — Multicall3
+  // already turns this into just a few RPC calls regardless of count. Now
+  // processes every open market every run, chunking the Multicall3 calls
+  // internally so this scales cleanly as the market count grows.
+  const events = allEvents;
+  const CHUNK_SIZE = Number(process.env.SYNC_MULTICALL_CHUNK_SIZE || 150);
+  console.log(`Syncing lifecycle_stage for all ${events.length} open market(s) this run (in chunks of ${CHUNK_SIZE}).`);
 
-  // 🛡️ NEW: batch-prefetch on-chain details for the entire run's worth of
-  // markets in one Multicall3 call instead of one getMarketFullDetails RPC
-  // call per market. For a typical 100-150 market backlog this turns ~150
-  // sequential RPC calls into 1.
   const batchMarketIds = events.map((e) => `mkt_${e.id}`);
   let prefetchedDetails = new Map();
   try {
-    prefetchedDetails = await batchGetMarketDetails(readRpcManager, contractInterface, batchMarketIds);
-    console.log(`  📦 Batched status check for ${batchMarketIds.length} markets via Multicall3 (1 RPC call instead of ${batchMarketIds.length}).`);
+    for (let i = 0; i < batchMarketIds.length; i += CHUNK_SIZE) {
+      const chunk = batchMarketIds.slice(i, i + CHUNK_SIZE);
+      const chunkDetails = await batchGetMarketDetails(readRpcManager, contractInterface, chunk);
+      for (const [marketId, details] of chunkDetails) prefetchedDetails.set(marketId, details);
+      console.log(`  📦 Batched status check for markets ${i + 1}-${Math.min(i + CHUNK_SIZE, batchMarketIds.length)} of ${batchMarketIds.length} via Multicall3 (1 RPC call per chunk).`);
+    }
   } catch (multicallErr) {
     console.log(`  ⚠️ Multicall3 batch prefetch failed (${multicallErr.message}) — falling back to one getMarketFullDetails call per market.`);
   }
 
   let changed = 0;
   let rateLimitFailures = 0;
+  let processedCount = 0;
 
   for (const event of events) {
     if (timeBudgetExceeded()) {
       console.log(`  ⏹ Reached RUN_TIME_BUDGET_MS (${RUN_TIME_BUDGET_MS}ms) for this run, stopping early. Remaining backlog will be picked up next run.`);
       break;
     }
+    processedCount++;
     const marketId = `mkt_${event.id}`;
     try {
       const cached = prefetchedDetails.get(marketId);
@@ -253,7 +271,7 @@ async function main() {
     }
   }
 
-  console.log(`Done. ${changed} market(s) updated. ${allEvents.length - events.length} remaining for next run.`);
+  console.log(`Done. ${changed} market(s) updated. ${events.length - processedCount} remaining for next run (out of a full time-budget stop, not a count cap).`);
   if (rateLimitFailures > 0) {
     console.log(`  ⚠️ ${rateLimitFailures} market(s) still failed after retries due to rate limiting — they'll be retried next run since they weren't marked updated.`);
   }
