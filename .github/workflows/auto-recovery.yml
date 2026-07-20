@@ -9,6 +9,10 @@ on:
 jobs:
   recovery:
     runs-on: ubuntu-latest
+    # 🛡️ NEW: safety net matching the other workflows — without this, a stuck
+    # manual recovery run could tie up Actions minutes for up to 6h (GitHub's
+    # default job timeout).
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -28,18 +32,35 @@ jobs:
         run: node scripts/resolve-markets.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          # 🛡️ NEW: resolve-markets.js now expects up to 5 rotating RPC
+          # endpoints — without these, a manual recovery run falls back to a
+          # single endpoint with none of the failover resilience the
+          # scheduled workflow gets.
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          # 🛡️ NEW: Cerebras fallback for when Groq's daily quota is exhausted
+          # — without this, a manual recovery run during a Groq outage just
+          # halts instead of falling back like the scheduled workflow does.
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
       - name: Create new markets
         if: ${{ github.event.inputs.action == 'create-markets' }}
         run: node scripts/create-markets.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
-          
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
