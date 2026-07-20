@@ -1,4 +1,12 @@
-import { BrowserProvider, Contract, FallbackProvider, Interface, JsonRpcProvider, formatUnits, parseUnits } from "ethers";
+import {
+  BrowserProvider,
+  Contract,
+  FallbackProvider,
+  Interface,
+  JsonRpcProvider,
+  formatUnits,
+  parseUnits,
+} from "ethers";
 import type { AgentSide } from "./agents";
 import { ARC_TESTNET, getArcReadProvider } from "./arc";
 
@@ -123,9 +131,15 @@ export async function readMarket(
   const doveTotalWei = pools[2];
 
   const details = (await contract.getMarketFullDetails(marketId)) as [
-    bigint, bigint, bigint, bigint, bigint, bigint, string
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    string,
   ];
-  const winnerCode = Number(details[1]);
+  const winnerCode = Number(details[1]); // real, final winner — only meaningful once status === FINALIZED (4)
 
   return {
     status,
@@ -135,7 +149,7 @@ export async function readMarket(
     doveTotalWei,
     hawkTotalUsdc: weiToUsdc(hawkTotalWei),
     doveTotalUsdc: weiToUsdc(doveTotalWei),
-    resolved: status === 4,
+    resolved: status === 4, // FINALIZED — matches claim()'s own requirement, not just an AI tentative call
   };
 }
 
@@ -146,6 +160,8 @@ export async function readMyStake(
 ): Promise<OnchainStake> {
   const p = provider ?? getReadProvider();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
+  // stakes is a public mapping in AgentArena.sol — no getMyStake() function exists on-chain,
+  // so each side must be read as a separate call: stakes(marketId, user, side)
   const [hawkWei, doveWei] = (await Promise.all([
     contract.stakes(marketId, user, SIDE_CODE.HAWK),
     contract.stakes(marketId, user, SIDE_CODE.DOVE),
@@ -170,7 +186,13 @@ export async function readMarketFullDetails(
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
   try {
     const r = (await contract.getMarketFullDetails(marketId)) as [
-      bigint, bigint, bigint, bigint, bigint, bigint, string,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      string,
     ];
     const status = Number(r[0]);
     const winnerCode = Number(r[1]);
@@ -194,13 +216,6 @@ export async function readMarketFullDetails(
   }
 }
 
-/**
- * Arc's public testnet RPC occasionally 429s under load, most often while
- * polling eth_getTransactionReceipt right after a tx is submitted. The tx
- * itself is already broadcast at that point — a 429 here means "we don't
- * know the outcome yet", not "it failed". Retry with backoff instead of
- * surfacing the raw RPC error.
- */
 async function withRpcRetry<T>(
   fn: () => Promise<T>,
   { retries = 6, baseDelayMs = 1500 }: { retries?: number; baseDelayMs?: number } = {},
@@ -211,9 +226,22 @@ async function withRpcRetry<T>(
       return await fn();
     } catch (e) {
       lastError = e;
-      const message = String((e as { message?: string })?.message ?? e);
+      // 🛡️ FIX: was only matching "429" / "rate limit" / "Too Many Requests" —
+      // Arc Testnet's actual RPC error is `{ code: -32011, message: "request
+      // limit reached" }`, which matches NONE of those substrings. Same gap
+      // that existed (and was fixed) in the backend scripts — broadened to
+      // match "request limit" too, and check the error code directly when
+      // present, not just the message string.
+      const err = e as { code?: number; error?: { code?: number; message?: string }; message?: string };
+      const code = err?.error?.code ?? err?.code;
+      const message = String(err?.error?.message ?? err?.message ?? e);
       const isRateLimited =
-        message.includes("429") || message.includes("rate limit") || message.includes("Too Many Requests");
+        code === -32007 ||
+        code === -32011 ||
+        message.includes("429") ||
+        message.includes("rate limit") ||
+        message.includes("request limit") ||
+        message.includes("Too Many Requests");
       if (!isRateLimited || attempt === retries) throw e;
       const delay = baseDelayMs * 2 ** attempt;
       console.warn(`[withRpcRetry] rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
@@ -223,50 +251,27 @@ async function withRpcRetry<T>(
   throw lastError;
 }
 
-export type StakeSubmission = {
-  hash: string;
-  /** Resolves once the tx is actually confirmed on-chain (or all retries are
-   *  exhausted). Callers that just need to record the position should NOT
-   *  await this — await it only where confirmation genuinely matters. */
-  confirmed: Promise<{ success: boolean; error?: string }>;
-};
-
-/**
- * Submits the stake and returns the tx hash as soon as the wallet has signed
- * and broadcast it — it does NOT wait for confirmation. This is deliberate:
- * waiting on tx.wait() here made Supabase position-recording depend on Arc's
- * public RPC successfully returning a receipt, and that RPC intermittently
- * 429s. When it did, stakeOnContract() threw even though the stake had
- * already landed on-chain, so the position never got recorded in
- * Supabase — a "ghost stake" the user paid for but Portfolio never showed.
- *
- * Confirmation still happens (via the returned `confirmed` promise, with
- * retry/backoff), but callers can record the position immediately using the
- * hash, without blocking on it. scripts/sync-stakes.js remains a periodic
- * backstop that reconciles on-chain Staked events against Supabase
- * regardless of what the frontend did.
- */
 export async function stakeOnContract(
   marketId: string,
   side: AgentSide,
   amountUsdc: string | number,
-): Promise<StakeSubmission> {
+): Promise<{ hash: string; confirmed: Promise<{ success: boolean; error?: string }> }> {
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
   const value = usdcToWei(amountUsdc);
   const tx = await contract.stake(marketId, SIDE_CODE[side], { value });
-
-  const confirmed = withRpcRetry(() => tx.wait())
+  // Return as soon as the wallet has broadcast the tx so the caller can
+  // record the position immediately, avoiding "ghost stakes" where an RPC
+  // hiccup during confirmation polling leaves a paid stake un-recorded.
+  // The `confirmed` promise resolves later with the on-chain outcome so
+  // callers can log/track confirmation in the background.
+  const confirmed: Promise<{ success: boolean; error?: string }> = withRpcRetry(() => tx.wait())
     .then(() => ({ success: true }))
-    .catch((e: unknown) => {
-      console.warn("[stakeOnContract] confirmation failed after retries — tx may still be pending/mined", {
-        hash: tx.hash,
-        error: e,
-      });
-      return { success: false, error: (e as Error).message ?? String(e) };
-    });
-
+    .catch((err: unknown) => ({
+      success: false,
+      error: (err as Error)?.message ?? String(err),
+    }));
   return { hash: tx.hash as string, confirmed };
 }
 
@@ -274,7 +279,7 @@ export async function stakeOnContract(
  * WIRING NOTE for whoever calls stakeOnContract() (e.g. the stake dialog in
  * routes/index.tsx):
  *
- *   const { hash, confirmed } = await stakeOnContract(marketId, side, amountUsdc);
+ *   const txHash = await stakeOnContract(marketId, side, amountUsdc);
  *   if (session) {
  *     await callRecordStake({
  *       data: {
@@ -282,11 +287,10 @@ export async function stakeOnContract(
  *         marketId: eventDbId,        // events.id (uuid) — NOT the "mkt_..." string id
  *         side,
  *         stakedAmountRaw: usdcToWei(amountUsdc).toString(),
- *         txHash: hash,
+ *         txHash,
  *       },
  *     });
  *   }
- *   void confirmed.then(({ success }) => { if (!success) console.warn(...) });
  *
  * `session` comes from useWallet()'s SIWE session — if the wallet hasn't
  * signed in yet, prompt signIn() before allowing a stake, otherwise the
@@ -323,12 +327,20 @@ function decodeMarketPair(
   if (!marketRes?.success || !detailsRes?.success) return null;
   try {
     const pools = arenaInterface.decodeFunctionResult("getMarket", marketRes.returnData) as unknown as [
-      bigint, bigint, bigint, boolean,
+      bigint,
+      bigint,
+      bigint,
+      boolean,
     ];
-    const details = arenaInterface.decodeFunctionResult(
-      "getMarketFullDetails",
-      detailsRes.returnData,
-    ) as unknown as [bigint, bigint, bigint, bigint, bigint, bigint, string];
+    const details = arenaInterface.decodeFunctionResult("getMarketFullDetails", detailsRes.returnData) as unknown as [
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      string,
+    ];
     const status = Number(pools[0]);
     const hawkTotalWei = pools[1];
     const doveTotalWei = pools[2];
@@ -352,10 +364,15 @@ function decodeMarketPair(
 function decodeFullDetails(res: MulticallResult | undefined): OnchainMarketFullDetails | null {
   if (!res?.success) return null;
   try {
-    const r = arenaInterface.decodeFunctionResult(
-      "getMarketFullDetails",
-      res.returnData,
-    ) as unknown as [bigint, bigint, bigint, bigint, bigint, bigint, string];
+    const r = arenaInterface.decodeFunctionResult("getMarketFullDetails", res.returnData) as unknown as [
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      string,
+    ];
     const status = Number(r[0]);
     const winnerCode = Number(r[1]);
     const tentativeWinnerCode = Number(r[2]);
@@ -378,6 +395,11 @@ function decodeFullDetails(res: MulticallResult | undefined): OnchainMarketFullD
   }
 }
 
+/**
+ * Batch-read `getMarket` + `getMarketFullDetails` for every marketId in one
+ * Multicall3 aggregate3() call. Individual per-market failures are logged and
+ * skipped (allowFailure: true) rather than throwing.
+ */
 export async function batchReadMarkets(
   marketIds: string[],
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
@@ -410,6 +432,11 @@ export async function batchReadMarkets(
   return out;
 }
 
+/**
+ * Batch-read `getMarketFullDetails` for every marketId in one Multicall3 call.
+ * Companion to batchReadMarkets — returns the extended lifecycle/timing view
+ * the arena loader needs alongside the OnchainMarket totals.
+ */
 export async function batchReadMarketFullDetails(
   marketIds: string[],
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
@@ -430,6 +457,10 @@ export async function batchReadMarketFullDetails(
   return out;
 }
 
+/**
+ * Batch-read the caller's HAWK + DOVE stakes for every marketId in one
+ * Multicall3 call. Empty input skips the RPC entirely.
+ */
 export async function batchReadMyStakes(
   marketIds: string[],
   user: string,
