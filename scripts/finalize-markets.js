@@ -46,6 +46,17 @@ const SIDE_LABEL = { 0: "NONE", 1: "HAWK", 2: "DOVE" };
 // TODO: open AgentArena.sol, find `enum MarketStatus { ... }`, and confirm
 // the index of the Finalized member matches this value. Update if not.
 const STATUS_FINALIZED = Number(process.env.FINALIZED_STATUS_INDEX ?? 4);
+// ✅ CONFIRMED against contracts/AgentArena.sol's `enum Status { OPEN,
+// LOCKED, AI_RESOLVED, DISPUTED, FINALIZED }` — DISPUTED is index 3.
+const STATUS_DISPUTED = Number(process.env.DISPUTED_STATUS_INDEX ?? 3);
+// ✅ CONFIRMED against contracts/AgentArena.sol finalizeMarket(): a DISPUTED
+// market needs aiResolutionTime + DISPUTE_WINDOW + 24h (not just
+// DISPUTE_WINDOW like an undisputed AI_RESOLVED market) before it's eligible
+// to finalize. Calling finalizeMarket() before that doesn't revert (the
+// function just silently no-ops if neither time condition is met) — so this
+// wasn't causing incorrect state, just wasted transactions/gas on doomed
+// early attempts for disputed markets specifically.
+const DISPUTE_EXTRA_VOTING_WINDOW_SECONDS = Number(process.env.DISPUTE_EXTRA_VOTING_WINDOW_SECONDS ?? 86400);
 
 // ✅ CONFIRMED via production logs (see run on markets aiResolutionTime
 // 87368s vs 70750s old): markets older than ~86400s (24h) since
@@ -454,14 +465,21 @@ async function main() {
       }
 
       // NEW: preemptive dispute-window skip — see comment on DISPUTE_WINDOW_SECONDS.
+      // 🛡️ FIX: a DISPUTED market needs the extra 24h voting window on top of
+      // the base DISPUTE_WINDOW before finalizeMarket() will actually do
+      // anything — using the flat window for both statuses meant we tried
+      // (and wasted gas on a no-op) a full 24h too early for disputed markets.
       const aiResolutionTime = Number(onChainMarket.aiResolutionTime ?? 0);
       const nowSec = Math.floor(Date.now() / 1000);
+      const requiredWindowSeconds = status === STATUS_DISPUTED
+        ? DISPUTE_WINDOW_SECONDS + DISPUTE_EXTRA_VOTING_WINDOW_SECONDS
+        : DISPUTE_WINDOW_SECONDS;
       const windowRemaining = aiResolutionTime > 0
-        ? (aiResolutionTime + DISPUTE_WINDOW_SECONDS + SAFETY_MARGIN_SECONDS) - nowSec
+        ? (aiResolutionTime + requiredWindowSeconds + SAFETY_MARGIN_SECONDS) - nowSec
         : null;
 
       if (windowRemaining !== null && windowRemaining > 0) {
-        console.log(`  ⏭️ Skipping ${marketId}: still inside dispute window (${windowRemaining}s remaining). Not sending a transaction. Will retry once elapsed.`);
+        console.log(`  ⏭️ Skipping ${marketId}: still inside ${status === STATUS_DISPUTED ? "dispute voting" : "dispute"} window (${windowRemaining}s remaining). Not sending a transaction. Will retry once elapsed.`);
         await delay(RPC_THROTTLE_MS);
         continue;
       }
