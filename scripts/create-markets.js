@@ -208,6 +208,11 @@ async function batchGetMarketExists(readRpcManager, contractInterface, marketIds
   return existsByMarketId;
 }
 
+// Mirrors STAGE_BY_STATUS in sync-lifecycle.js — status 1 (staking closed,
+// awaiting resolution) and status 2 (AI resolved, dispute window open) both
+// map to "awaiting_dispute" in the frontend's 4-bucket design.
+const STAGE_BY_STATUS = { 0: "active", 1: "awaiting_dispute", 2: "awaiting_dispute", 3: "disputed", 4: "completed" };
+
 async function main() {
   const {
     OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
@@ -249,20 +254,82 @@ async function main() {
   const getPostTxReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeRpcManager.current());
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
 
-  // 🆕 PERMANENT FIX: cap total OPEN markets at MAX_ACTIVE_MARKETS, counting
-  // only lifecycle_stage='active' (genuinely staking-open). staking_closed/
-  // disputed markets are backend-only work items handled by
-  // finalize-markets.js and don't occupy a user-facing "Active" slot.
-  const { count: activeCount, error: countErr } = await supabase
+  // 🆕 PERMANENT FIX: don't blindly trust Supabase's lifecycle_stage column for
+  // room-counting — it's written by sync-lifecycle.js only twice per 2h cycle,
+  // so it can be up to ~1h stale (staking already closed on-chain, but the
+  // column still says "active"). This was the root cause of frontend/backend
+  // count mismatches: the frontend does a live on-chain-derived correction,
+  // but this script was trusting the raw, possibly-stale column. Now we
+  // batch-verify every "active"-flagged row's real on-chain status via
+  // Multicall3 (cheap — 1 RPC call for the whole batch) and only count ones
+  // that are genuinely still staking-open, self-repairing any stale rows we
+  // find along the way so the column converges to truth immediately instead
+  // of waiting for the next sync-lifecycle.js run.
+  const { data: flaggedActiveEvents, error: countErr } = await supabase
     .from("events")
-    .select("id", { count: "exact", head: true })
+    .select("id")
     .eq("market_created", true)
     .eq("lifecycle_stage", "active");
   if (countErr) throw new Error(`Supabase error counting active markets: ${countErr.message}`);
 
-  const rawRoom = MAX_ACTIVE_MARKETS - (activeCount ?? 0);
+  let activeCount = flaggedActiveEvents?.length ?? 0;
+  if (flaggedActiveEvents && flaggedActiveEvents.length > 0) {
+    const flaggedMarketIds = flaggedActiveEvents.map((e) => `mkt_${e.id}`);
+    try {
+      const calls = flaggedMarketIds.map((marketId) => ({
+        target: CONTRACT_ADDRESS,
+        allowFailure: true,
+        callData: contractInterface.encodeFunctionData("getMarketFullDetails", [marketId]),
+      }));
+      const verifiedDetails = await callRpcWithBackoff(
+        () => {
+          const multicall = new ethers.Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, readRpcManager.current());
+          return multicall.aggregate3.staticCall(calls);
+        },
+        `multicall.aggregate3-active-verify (${flaggedMarketIds.length} markets)`,
+        readRpcManager,
+      );
+
+      let genuinelyActive = 0;
+      const staleRepairs = [];
+      verifiedDetails.forEach((result, i) => {
+        const event = flaggedActiveEvents[i];
+        if (!result.success) {
+          // couldn't verify — count it as active (conservative: don't shrink
+          // room based on a read we couldn't confirm)
+          genuinelyActive++;
+          return;
+        }
+        try {
+          const decoded = contractInterface.decodeFunctionResult("getMarketFullDetails", result.returnData);
+          const status = Number(decoded.status);
+          const stage = status === 0 ? "active" : (STAGE_BY_STATUS[status] ?? "active");
+          if (stage === "active") {
+            genuinelyActive++;
+          } else {
+            staleRepairs.push({ id: event.id, newStage: stage });
+          }
+        } catch {
+          genuinelyActive++;
+        }
+      });
+
+      if (staleRepairs.length > 0) {
+        console.log(`  🔧 Found ${staleRepairs.length} market(s) flagged "active" in Supabase but no longer active on-chain — repairing lifecycle_stage now instead of waiting for sync-lifecycle.js.`);
+        for (const repair of staleRepairs) {
+          await adminSupabase.from("events").update({ lifecycle_stage: repair.newStage }).eq("id", repair.id);
+        }
+      }
+      activeCount = genuinelyActive;
+      console.log(`  📦 Verified ${flaggedMarketIds.length} "active"-flagged market(s) via Multicall3 (1 RPC call) — ${genuinelyActive} genuinely still active, ${staleRepairs.length} repaired.`);
+    } catch (multicallErr) {
+      console.log(`  ⚠️ On-chain active-verification failed (${multicallErr.message}) — falling back to Supabase's raw lifecycle_stage count (may be stale).`);
+    }
+  }
+
+  const rawRoom = MAX_ACTIVE_MARKETS - activeCount;
   const room = Math.min(Math.max(rawRoom, 0), MAX_NEW_MARKETS_PER_RUN);
-  console.log(`Active markets: ${activeCount ?? 0} / ${MAX_ACTIVE_MARKETS}. Raw room: ${Math.max(rawRoom, 0)}. Creating up to ${room} this run (MAX_NEW_MARKETS_PER_RUN=${MAX_NEW_MARKETS_PER_RUN}).`);
+  console.log(`Active markets (on-chain verified): ${activeCount} / ${MAX_ACTIVE_MARKETS}. Raw room: ${Math.max(rawRoom, 0)}. Creating up to ${room} this run (MAX_NEW_MARKETS_PER_RUN=${MAX_NEW_MARKETS_PER_RUN}).`);
   if (room <= 0) {
     console.log("At capacity — skipping market creation this run. News ingestion is unaffected and keeps queuing fresh events for when room frees up.");
     return;
