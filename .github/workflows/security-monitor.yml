@@ -1,11 +1,17 @@
 name: Security Monitor
 on:
   schedule:
-    - cron: '*/15 * * * *'  # প্রতি ১৫ মিনিটে
-  workflow_dispatch:
+    - cron: "*/15 * * * *" 
+  workflow_dispatch: {}
+concurrency:
+  # guardian wallet দিয়ে pause() পাঠানোর মতো state-changing action এখানে আছে,
+  # তাই একসাথে দুইটা রান চলা risky — আগের scan শেষ হতে দাও।
+  group: security-monitor
+  cancel-in-progress: false
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -16,10 +22,13 @@ jobs:
         run: node scripts/anomaly-monitor.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           GUARDIAN_PRIVATE_KEY: ${{ secrets.GUARDIAN_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          
