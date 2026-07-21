@@ -1,5 +1,6 @@
 // scripts/anomaly-monitor.js
-// প্রতি ৫ মিনিটে চলে — অস্বাভাবিক activity দেখলে contract pause + Telegram alert পাঠায়
+// প্রতি ১৫ মিনিটে চলে (security-monitor.yml দেখুন) — অস্বাভাবিক activity দেখলে
+// contract pause + Telegram alert পাঠায়
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
@@ -14,17 +15,14 @@ const CONTRACT_ABI = [
   "event Disputed(string marketId, address indexed disputer)",
 ];
 
-// 🛡️ FIX: প্রতিটা threshold এখন দুই ধাপে ভাগ করা — WARN (Telegram alert পাঠায়,
-// contract pause করে না) আর CRITICAL (alert + auto-pause, শুধু সত্যিকারের
-// exploit-level spike-এর জন্য)। আগে একটামাত্র fixed threshold ছিল যেটা ছাড়ালেই
-// সরাসরি pause হয়ে যেত — কিন্তু organic ব্যবহারকারীর সংখ্যা বাড়লে (গ্রান্ট ডেমো,
-// viral মুহূর্ত, বা resolve-markets.js/finalize-markets.js ব্যাচে অনেক market
-// resolve করার পরে অনেকে একসাথে claim করলে) legitimate traffic-ই এই সংখ্যা
-// ছাড়িয়ে যেতে পারত, আর পুরো contract-টা সব ব্যবহারকারীর জন্য বন্ধ হয়ে যেত —
-// একটা false-positive pause, যেটা আসল exploit-এর চেয়ে বেশি ক্ষতিকর।
+// 🛡️ two-tier থ্রেশহোল্ড — WARN (Telegram alert, pause না) আর CRITICAL
+// (alert + auto-pause, শুধু সত্যিকারের exploit-level spike-এর জন্য)। দেখুন
+// আগের সেশনের নোট: organic ট্রাফিক (গ্রান্ট ডেমো, viral মুহূর্ত, batch
+// resolve-এর পরে অনেকে একসাথে claim) legitimate-ই একটা fixed low threshold
+// ছাড়িয়ে যেতে পারত, যেটা পুরো contract-কে সবার জন্য বন্ধ করে দিত।
 const THRESHOLDS = {
   MAX_SINGLE_CLAIM_USDC: { warn: 5000, critical: 25000 },
-  MAX_CLAIMS_PER_BLOCK: { warn: 15, critical: 60 },       // ছিল শুধু 10 (pause সরাসরি)
+  MAX_CLAIMS_PER_BLOCK: { warn: 15, critical: 60 },
   MAX_DISPUTES_PER_HOUR: { warn: 5, critical: 15 },
   MAX_STAKES_FROM_ONE_WALLET: { warn: 20, critical: 60 }, // per-wallet — 100 জন আলাদা ইউজার stake করলে এটা এমনিতেই trigger হয় না
   SCAN_BLOCKS: 100,
@@ -32,28 +30,71 @@ const THRESHOLDS = {
 
 const MAX_RATE_LIMIT_RETRIES = Number(process.env.RPC_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
-const MAX_BACKOFF_MS = 30 * 1000;
+const MAX_BACKOFF_MS = 30 * 1000; // এই script ঘন ঘন (১৫ মিনিটে একবার) চলে বলে max backoff একটু কম রাখা হলো
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function callRpcWithBackoff(fn, label) {
-  let attempt = 0;
+function isRpcRateLimitError(error) {
+  const code = error?.error?.code ?? error?.code;
+  const message = String(error?.error?.message ?? error?.message ?? error?.shortMessage ?? "");
+  return (
+    code === -32007 ||
+    code === -32011 ||
+    error?.status === 429 ||
+    /request limit|rate limit|too many requests|failed to detect network/i.test(message)
+  );
+}
+
+// 🛡️ NEW: বাকি স্ক্রিপ্টগুলোর মতোই rotating multi-RPC manager। rate-limit hit
+// করলে সাথে সাথে অন্য configured endpoint-এ switch করে, একই endpoint-এ wait
+// করে বসে থাকার বদলে — এই স্ক্রিপ্ট প্রতি ১৫ মিনিটে চলে বলে একটা rate-limit hit-এই
+// পুরো scan crash করে "monitoring is DOWN" false alarm পাঠাচ্ছিল আগে।
+class RpcManager {
+  constructor(urls, label) {
+    this.urls = urls.filter(Boolean);
+    if (this.urls.length === 0) throw new Error(`No RPC URLs configured for ${label}`);
+    this.label = label;
+    this.index = 0;
+    this._provider = new ethers.JsonRpcProvider(this.urls[this.index]);
+  }
+  current() {
+    return this._provider;
+  }
+  rotate() {
+    const previous = this.index + 1;
+    this.index = (this.index + 1) % this.urls.length;
+    this._provider = new ethers.JsonRpcProvider(this.urls[this.index]);
+    console.log(`  🔄 Rotated ${this.label} RPC: endpoint #${previous} → #${this.index + 1} of ${this.urls.length}`);
+    return this._provider;
+  }
+  hasMultiple() {
+    return this.urls.length > 1;
+  }
+  count() {
+    return this.urls.length;
+  }
+}
+
+async function callRpcWithBackoff(fn, label, rpcManager) {
+  let sweepAttempt = 0;
+  let totalAttempt = 0;
   while (true) {
     try {
       return await fn();
     } catch (error) {
-      const code = error?.error?.code ?? error?.code;
-      const message = String(error?.error?.message ?? error?.message ?? "");
-      const isRateLimit =
-        code === -32007 ||
-        code === -32011 ||
-        error?.status === 429 ||
-        /request limit|rate limit|too many requests/i.test(message);
-      if (!isRateLimit || attempt >= MAX_RATE_LIMIT_RETRIES) throw error;
-      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+      if (!isRpcRateLimitError(error)) throw error;
+      totalAttempt++;
+      if (rpcManager?.hasMultiple() && sweepAttempt < rpcManager.count() - 1) {
+        sweepAttempt++;
+        rpcManager.rotate();
+        continue;
+      }
+      if (totalAttempt >= MAX_RATE_LIMIT_RETRIES * Math.max(1, rpcManager?.count() ?? 1)) throw error;
+      const backoff = Math.min(BASE_BACKOFF_MS * 2 ** Math.floor(totalAttempt / Math.max(1, rpcManager?.count() ?? 1)), MAX_BACKOFF_MS);
       const jitter = Math.random() * 500;
-      attempt++;
-      console.log(`  ⏳ RPC rate limited on ${label} (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+      console.log(`  ⏳ RPC rate limited on ${label} (all ${rpcManager?.count() ?? 1} endpoint(s) tried). Waiting ${Math.round((backoff + jitter) / 1000)}s before next sweep...`);
       await delay(backoff + jitter);
+      sweepAttempt = 0;
+      rpcManager?.rotate();
     }
   }
 }
@@ -82,31 +123,76 @@ async function sendTelegramAlert(message, { severity = "critical" } = {}) {
   }
 }
 
-async function pauseContract(wallet, contract, reason) {
+// 🛡️ pause() send — সেন্ডটা rate-limit-এর জন্য rotate করে (একবারে একটাই
+// endpoint active, তাই duplicate-broadcast risk নেই), আর retry-র আগে
+// contract আগে থেকেই paused কিনা রিচেক করে, যাতে আগের attempt phantom-broadcast
+// হয়ে থাকলে duplicate pause() call পাঠানো না হয়।
+async function pauseContract(getWriteContract, getReadContract, writeRpcManager, reason) {
   try {
-    const isPaused = await callRpcWithBackoff(() => contract.paused(), "paused()");
+    const isPaused = await callRpcWithBackoff(() => getReadContract().paused(), "paused()", writeRpcManager);
     if (isPaused) {
       console.log("[monitor] Contract already paused.");
       return;
     }
     console.log(`[monitor] PAUSING contract: ${reason}`);
+
     let tx;
-    let sendAttempt = 0;
-    const MAX_SEND_RETRIES = 3;
+    let nonceAttempt = 0;
+    let sweepAttempt = 0;
+    let rateLimitAttempt = 0;
+    const MAX_NONCE_RETRIES = 3;
+    const endpointCount = writeRpcManager.count();
+    const MAX_TOTAL_RATE_LIMIT_ATTEMPTS = 6 * Math.max(1, endpointCount);
+
     while (true) {
       try {
-        tx = await contract.pause();
+        tx = await getWriteContract().pause();
         break;
       } catch (sendErr) {
         const isNonceRace = sendErr.code === "NONCE_EXPIRED" || sendErr.code === "REPLACEMENT_UNDERPRICED";
-        if (!isNonceRace || sendAttempt >= MAX_SEND_RETRIES) throw sendErr;
-        sendAttempt++;
-        const wait = 1500 * sendAttempt;
-        console.log(`  ⏳ Nonce/mempool race on pause() (${sendErr.code}), attempt ${sendAttempt}/${MAX_SEND_RETRIES}. Waiting ${wait}ms...`);
-        await delay(wait);
+        const isRateLimited = isRpcRateLimitError(sendErr);
+
+        if ((isNonceRace || isRateLimited) && (nonceAttempt < MAX_NONCE_RETRIES || rateLimitAttempt < MAX_TOTAL_RATE_LIMIT_ATTEMPTS)) {
+          try {
+            const stillUnpaused = !(await getReadContract().paused());
+            if (!stillUnpaused) {
+              console.log("[monitor] Contract was already paused by an earlier (phantom) broadcast — no duplicate send needed.");
+              return;
+            }
+          } catch {
+            // status-check itself failed too — fall through to normal retry logic
+          }
+        }
+
+        if (isNonceRace && nonceAttempt < MAX_NONCE_RETRIES) {
+          nonceAttempt++;
+          const wait = 1500 * nonceAttempt;
+          console.log(`  ⏳ Nonce/mempool race on pause() (${sendErr.code}), attempt ${nonceAttempt}/${MAX_NONCE_RETRIES}. Waiting ${wait}ms...`);
+          await delay(wait);
+          continue;
+        }
+
+        if (isRateLimited && rateLimitAttempt < MAX_TOTAL_RATE_LIMIT_ATTEMPTS) {
+          rateLimitAttempt++;
+          if (writeRpcManager.hasMultiple() && sweepAttempt < endpointCount - 1) {
+            sweepAttempt++;
+            writeRpcManager.rotate();
+            continue;
+          }
+          const backoff = Math.min(BASE_BACKOFF_MS * 2 ** Math.floor(rateLimitAttempt / endpointCount), MAX_BACKOFF_MS);
+          const jitter = Math.random() * 500;
+          console.log(`  ⏳ RPC rate limited sending pause() — all ${endpointCount} endpoint(s) tried. Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+          await delay(backoff + jitter);
+          sweepAttempt = 0;
+          writeRpcManager.rotate();
+          continue;
+        }
+
+        throw sendErr;
       }
     }
-    await callRpcWithBackoff(() => tx.wait(), "tx.wait(pause)");
+
+    await callRpcWithBackoff(() => tx.wait(), "tx.wait(pause)", writeRpcManager);
     console.log(`[monitor] Contract paused. TX: ${tx.hash}`);
     await sendTelegramAlert(
       `⛔ CONTRACT AUTO-PAUSED\n\nReason: ${reason}\nTX: ${tx.hash}\n\nManual review required before unpausing.`,
@@ -118,13 +204,9 @@ async function pauseContract(wallet, contract, reason) {
   }
 }
 
-// 🛡️ NEW: shared two-tier check — warn (alert only) below `critical`, actual
-// pause only past `critical`. Keeps `pauseContract`'s early-return semantics
-// (caller should `return` after this if it paused) but no longer punishes
-// organic traffic spikes with a full outage.
-async function checkThreshold(guardian, contract, { value, warn, critical, describe }) {
+async function checkThreshold(getWriteContract, getReadContract, writeRpcManager, { value, warn, critical, describe }) {
   if (value > critical) {
-    await pauseContract(guardian, contract, describe(value, "critical"));
+    await pauseContract(getWriteContract, getReadContract, writeRpcManager, describe(value, "critical"));
     return "paused";
   }
   if (value > warn) {
@@ -135,28 +217,41 @@ async function checkThreshold(guardian, contract, { value, warn, critical, descr
 }
 
 async function main() {
-  const { ARC_RPC_URL, GUARDIAN_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY } = process.env;
+  const {
+    ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, ARC_RPC_URL_5,
+    GUARDIAN_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY,
+  } = process.env;
   if (!ARC_RPC_URL || !GUARDIAN_PRIVATE_KEY) throw new Error("Missing env: ARC_RPC_URL, GUARDIAN_PRIVATE_KEY");
 
-  const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
-  const guardian = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, provider);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, guardian);
+  // 🛡️ NEW: same 5-endpoint rotating pool as the other scripts.
+  const publicFallbackUrl = ARC_RPC_URL_5 || "https://rpc.testnet.arc.network";
+  const rpcUrls = [ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, publicFallbackUrl];
+  const readRpcManager = new RpcManager(rpcUrls, "read");
+  const writeRpcManager = new RpcManager(rpcUrls, "write");
+  console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
 
-  const currentBlock = await callRpcWithBackoff(() => provider.getBlockNumber(), "getBlockNumber");
+  const getWriteContract = () => {
+    const guardian = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, writeRpcManager.current());
+    return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, guardian);
+  };
+  const getReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+
+  const currentBlock = await callRpcWithBackoff(() => readRpcManager.current().getBlockNumber(), "getBlockNumber", readRpcManager);
   const fromBlock = currentBlock - THRESHOLDS.SCAN_BLOCKS;
 
   console.log(`[monitor] Scanning blocks ${fromBlock} → ${currentBlock}`);
 
   // ১. Large claim check — single very large claim (per-claim size, not count)
-  const claimedFilter = contract.filters.Claimed();
+  const claimedFilter = getReadContract().filters.Claimed();
   const claimedEvents = await callRpcWithBackoff(
-    () => contract.queryFilter(claimedFilter, fromBlock, currentBlock),
+    () => getReadContract().queryFilter(claimedFilter, fromBlock, currentBlock),
     "queryFilter(Claimed)",
+    readRpcManager,
   );
 
   for (const ev of claimedEvents) {
     const amountUsdc = Number(ethers.formatUnits(ev.args[2], 18));
-    const result = await checkThreshold(guardian, contract, {
+    const result = await checkThreshold(getWriteContract, getReadContract, writeRpcManager, {
       value: amountUsdc,
       warn: THRESHOLDS.MAX_SINGLE_CLAIM_USDC.warn,
       critical: THRESHOLDS.MAX_SINGLE_CLAIM_USDC.critical,
@@ -167,16 +262,13 @@ async function main() {
     if (result === "paused") return;
   }
 
-  // ২. Claims per block check — this is the one most likely to catch
-  // legitimate simultaneous activity (e.g. many users claiming right after a
-  // batch of markets finalize), so warn is generous and critical is set well
-  // above any plausible organic burst.
+  // ২. Claims per block check
   const claimsByBlock = {};
   for (const ev of claimedEvents) {
     claimsByBlock[ev.blockNumber] = (claimsByBlock[ev.blockNumber] || 0) + 1;
   }
   for (const [block, count] of Object.entries(claimsByBlock)) {
-    const result = await checkThreshold(guardian, contract, {
+    const result = await checkThreshold(getWriteContract, getReadContract, writeRpcManager, {
       value: count,
       warn: THRESHOLDS.MAX_CLAIMS_PER_BLOCK.warn,
       critical: THRESHOLDS.MAX_CLAIMS_PER_BLOCK.critical,
@@ -188,13 +280,14 @@ async function main() {
   }
 
   // ৩. Dispute spam check
-  const disputeFilter = contract.filters.Disputed();
+  const disputeFilter = getReadContract().filters.Disputed();
   const disputeEvents = await callRpcWithBackoff(
-    () => contract.queryFilter(disputeFilter, fromBlock, currentBlock),
+    () => getReadContract().queryFilter(disputeFilter, fromBlock, currentBlock),
     "queryFilter(Disputed)",
+    readRpcManager,
   );
   {
-    const result = await checkThreshold(guardian, contract, {
+    const result = await checkThreshold(getWriteContract, getReadContract, writeRpcManager, {
       value: disputeEvents.length,
       warn: THRESHOLDS.MAX_DISPUTES_PER_HOUR.warn,
       critical: THRESHOLDS.MAX_DISPUTES_PER_HOUR.critical,
@@ -205,13 +298,12 @@ async function main() {
     if (result === "paused") return;
   }
 
-  // ৪. Stake spam from single wallet (per-wallet count — many DIFFERENT
-  // users staking simultaneously does NOT trigger this at all, only one
-  // wallet making many stakes does).
-  const stakeFilter = contract.filters.Staked();
+  // ৪. Stake spam from single wallet
+  const stakeFilter = getReadContract().filters.Staked();
   const stakeEvents = await callRpcWithBackoff(
-    () => contract.queryFilter(stakeFilter, fromBlock, currentBlock),
+    () => getReadContract().queryFilter(stakeFilter, fromBlock, currentBlock),
     "queryFilter(Staked)",
+    readRpcManager,
   );
   const stakesByWallet = {};
   for (const ev of stakeEvents) {
@@ -219,7 +311,7 @@ async function main() {
     stakesByWallet[wallet] = (stakesByWallet[wallet] || 0) + 1;
   }
   for (const [wallet, count] of Object.entries(stakesByWallet)) {
-    const result = await checkThreshold(guardian, contract, {
+    const result = await checkThreshold(getWriteContract, getReadContract, writeRpcManager, {
       value: count,
       warn: THRESHOLDS.MAX_STAKES_FROM_ONE_WALLET.warn,
       critical: THRESHOLDS.MAX_STAKES_FROM_ONE_WALLET.critical,
