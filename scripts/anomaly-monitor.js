@@ -44,6 +44,25 @@ function isRpcRateLimitError(error) {
   );
 }
 
+// 🛡️ NEW: some free-tier RPC providers cap eth_getLogs (used by
+// contract.queryFilter) to a small block range (e.g. GetBlock's free tier:
+// max 10 blocks per request) — a completely different failure mode from
+// rate limiting (JSON-RPC code -32600 "Invalid Request", not -32011/429),
+// but the correct response is the same: try a different endpoint, since
+// other providers (Alchemy, QuickNode) don't have this restriction on their
+// free tiers. Checked separately from isRpcRateLimitError since it's not
+// really a "rate limit" semantically, just bucketed with the same rotation
+// handling.
+function isBlockRangeTooLargeError(error) {
+  const code = error?.error?.code ?? error?.code;
+  const message = String(error?.error?.message ?? error?.message ?? error?.shortMessage ?? "");
+  return code === -32600 && /block range/i.test(message);
+}
+
+function isRotateWorthyError(error) {
+  return isRpcRateLimitError(error) || isBlockRangeTooLargeError(error);
+}
+
 // 🛡️ NEW: বাকি স্ক্রিপ্টগুলোর মতোই rotating multi-RPC manager। rate-limit hit
 // করলে সাথে সাথে অন্য configured endpoint-এ switch করে, একই endpoint-এ wait
 // করে বসে থাকার বদলে — এই স্ক্রিপ্ট প্রতি ১৫ মিনিটে চলে বলে একটা rate-limit hit-এই
@@ -81,7 +100,7 @@ async function callRpcWithBackoff(fn, label, rpcManager) {
     try {
       return await fn();
     } catch (error) {
-      if (!isRpcRateLimitError(error)) throw error;
+      if (!isRotateWorthyError(error)) throw error;
       totalAttempt++;
       if (rpcManager?.hasMultiple() && sweepAttempt < rpcManager.count() - 1) {
         sweepAttempt++;
@@ -97,6 +116,31 @@ async function callRpcWithBackoff(fn, label, rpcManager) {
       rpcManager?.rotate();
     }
   }
+}
+
+// 🛡️ NEW: splits [fromBlock, toBlock] into small chunks (default 10 blocks,
+// safe under the most restrictive known free-tier getLogs limit) and merges
+// results, instead of one big queryFilter call that some providers reject
+// outright regardless of retry/rotation. Each chunk still goes through
+// callRpcWithBackoff so a rate limit or a range-limit on any individual
+// chunk still rotates/retries normally.
+async function queryFilterChunked(getReadContract, readRpcManager, filterFn, fromBlock, toBlock, label) {
+  const chunkSize = Number(process.env.LOG_SCAN_CHUNK_SIZE || 10);
+  const chunkDelayMs = Number(process.env.LOG_SCAN_CHUNK_DELAY_MS || 150);
+  const allEvents = [];
+  let first = true;
+  for (let start = fromBlock; start <= toBlock; start += chunkSize) {
+    if (!first) await delay(chunkDelayMs);
+    first = false;
+    const end = Math.min(start + chunkSize - 1, toBlock);
+    const events = await callRpcWithBackoff(
+      () => getReadContract().queryFilter(filterFn(getReadContract()), start, end),
+      `${label}[${start}-${end}]`,
+      readRpcManager,
+    );
+    allEvents.push(...events);
+  }
+  return allEvents;
 }
 
 async function sendTelegramAlert(message, { severity = "critical" } = {}) {
@@ -242,11 +286,10 @@ async function main() {
   console.log(`[monitor] Scanning blocks ${fromBlock} → ${currentBlock}`);
 
   // ১. Large claim check — single very large claim (per-claim size, not count)
-  const claimedFilter = getReadContract().filters.Claimed();
-  const claimedEvents = await callRpcWithBackoff(
-    () => getReadContract().queryFilter(claimedFilter, fromBlock, currentBlock),
-    "queryFilter(Claimed)",
-    readRpcManager,
+  const claimedEvents = await queryFilterChunked(
+    getReadContract, readRpcManager,
+    (c) => c.filters.Claimed(),
+    fromBlock, currentBlock, "queryFilter(Claimed)",
   );
 
   for (const ev of claimedEvents) {
@@ -280,11 +323,10 @@ async function main() {
   }
 
   // ৩. Dispute spam check
-  const disputeFilter = getReadContract().filters.Disputed();
-  const disputeEvents = await callRpcWithBackoff(
-    () => getReadContract().queryFilter(disputeFilter, fromBlock, currentBlock),
-    "queryFilter(Disputed)",
-    readRpcManager,
+  const disputeEvents = await queryFilterChunked(
+    getReadContract, readRpcManager,
+    (c) => c.filters.Disputed(),
+    fromBlock, currentBlock, "queryFilter(Disputed)",
   );
   {
     const result = await checkThreshold(getWriteContract, getReadContract, writeRpcManager, {
@@ -299,11 +341,10 @@ async function main() {
   }
 
   // ৪. Stake spam from single wallet
-  const stakeFilter = getReadContract().filters.Staked();
-  const stakeEvents = await callRpcWithBackoff(
-    () => getReadContract().queryFilter(stakeFilter, fromBlock, currentBlock),
-    "queryFilter(Staked)",
-    readRpcManager,
+  const stakeEvents = await queryFilterChunked(
+    getReadContract, readRpcManager,
+    (c) => c.filters.Staked(),
+    fromBlock, currentBlock, "queryFilter(Staked)",
   );
   const stakesByWallet = {};
   for (const ev of stakeEvents) {
