@@ -142,6 +142,17 @@ async function callGroqWithBackoff(fn, label) {
       return await fn();
     } catch (error) {
       const status = error?.status ?? error?.response?.status;
+      const message = String(error?.message ?? error?.error?.message ?? "");
+      // 🛡️ FIX: same distinction added to resolve-markets.js — a "tokens per
+      // day" 429 won't clear within this run's lifetime no matter how long
+      // we backoff-retry, so fail fast instead of burning through MAX_RETRIES
+      // worth of exponential waits for nothing.
+      const isDailyQuotaExhausted = status === 429 && /tokens per day|requests per day|TPD|RPD/i.test(message);
+      if (isDailyQuotaExhausted) {
+        const quotaErr = new Error(`Groq daily quota exhausted: ${message}`);
+        quotaErr.isQuotaExhausted = true;
+        throw quotaErr;
+      }
       const isRateLimit = status === 429;
 
       if (!isRateLimit || attempt >= MAX_RETRIES) {
@@ -362,7 +373,19 @@ async function ingestNews() {
 
     const batches = chunk(candidateArticles, BATCH_SIZE);
     for (const [batchIndex, batch] of batches.entries()) {
-      const assessments = await checkArticlesBatchRelevance(batch, category.name);
+      // 🛡️ FIX: previously this call was unwrapped — if Groq threw after
+      // exhausting callGroqWithBackoff's retries (daily quota exhaustion, a
+      // sustained outage, anything non-429), the exception propagated all
+      // the way out of ingestNews() to the top-level `.catch(console.error)`,
+      // silently aborting every remaining batch AND every remaining category
+      // for that entire 2-hour run — not just the one batch that failed.
+      let assessments;
+      try {
+        assessments = await checkArticlesBatchRelevance(batch, category.name);
+      } catch (batchErr) {
+        console.error(`  ❌ Batch ${batchIndex + 1}/${batches.length} classification failed for ${category.name} (${batchErr.message}) — skipping this batch, continuing with the rest of the run.`);
+        continue;
+      }
 
       for (let i = 0; i < batch.length; i++) {
         const article = batch[i];
