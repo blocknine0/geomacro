@@ -11,7 +11,10 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    # 🛡️ NEW: bumped from 4 to 6 min — queryFilter calls are now chunked into
+    # 10-block windows (some free-tier RPC providers reject wider ranges),
+    # so a single run can make up to ~30 RPC calls instead of 3.
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
