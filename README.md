@@ -52,12 +52,15 @@ NewsAPI / Guardian  →  Groq (llama-3.1-8b-instant)  →  Supabase  →  Live F
 **Storage.** Supabase holds the event log (`events` table). The frontend reads straight from it, with Realtime subscriptions for instant updates.
 
 **Market automation.** Six independent GitHub Actions workflows run on their own schedules:
+
+Every script that talks to Arc Testnet rotates across up to 5 configured RPC endpoints (falling back immediately to the next one on a rate-limit error rather than waiting out a shared, sustained cap) and batches per-market reads into a single Multicall3 call instead of one request per market, since a naive one-request-per-market pattern is what public/shared testnet RPC endpoints throttle hardest.
+
 1. **Ingest** = pulls fresh news every ~2 hours, classifies, and inserts into Supabase.
-2. **Create markets** = scans for high-severity events (severity ≥ 40) without a market and opens one on Arc via `createMarket()`, with a 46-hour staking window and 48-hour resolution window, uncapped, every qualifying event gets a market. A startup guard enforces `resolutionDuration > stakingDuration` so the AI verdict can never be revealed before staking closes.
+2. **Create markets** = scans for high-severity events without a market and opens one on Arc via `createMarket()`, with a 46-hour staking window and 48-hour resolution window. Capped at 100 concurrently active (staking-open) markets — prioritizes severity 80-100 events first, falling back to the full 0-100 range only if that doesn't fill all available room, so a room slot never goes unused when high-severity news is scarce. Once at capacity, market creation pauses (news ingestion continues unaffected) until earlier markets close staking. A startup guard enforces `resolutionDuration > stakingDuration` so the AI verdict can never be revealed before staking closes.
 3. **Resolve** = checks markets past their `resolution_at` time, asks Groq to judge HAWK vs DOVE based on how the situation has evolved, and calls `declareWinnerByAI()`. This sets a *tentative* winner and opens a 24-hour public dispute window; it is not final yet.
 4. **Finalize** = checks markets whose dispute window has passed and calls `finalizeMarket()`, locking in the winner and making it claimable. This same step syncs each affected wallet's `positions` row (won → claimable, lost → history) and logs a `wallet_balance_history` event.
 5. **Sync stakes** = every 30 minutes, replays onchain `Staked` events into Supabase so no stake is ever missing from a wallet's position history even if a client-side write drops.
-6. **Sync lifecycle** = runs twice per 2-hour cycle (`:05`, right after ingest, and `:35`, right after finalize frees up completed slots) rather than a flat 30-minute interval — this staggering was deliberately introduced to stop it colliding with the other RPC-heavy workflows. Each run reads every open market's on-chain status and writes it back as one of four stages (`active` / `awaiting_dispute` / `disputed` / `completed`) plus a dispute audit log, so the frontend's lifecycle tabs and the public `market_lookup` view never drift from chain state.
+6. **Sync lifecycle** = triggered once per hour by GitHub's scheduler (a far less contested schedule than a tight interval, since GitHub Actions' native cron can be delayed by hours during high load on frequently-scheduled workflows), then loops internally every 15 minutes for the rest of that hour using a plain shell `sleep` — once a job has actually started, that loop is 100% reliable with no scheduler uncertainty left. Each iteration reads every open market's on-chain status via a single batched Multicall3 call and writes it back as one of four stages (`active` / `awaiting_dispute` / `disputed` / `completed`) plus a dispute audit log, so the frontend's lifecycle tabs and the public `market_lookup` view never drift from chain state.
 
 Two additional on-demand workflows (`auto-recovery.yml`, `debug-schema.yml`) let backfilling/re-syncing and schema-drift checks be triggered manually, and `security-monitor.yml` polls for on-chain anomalies every 15 minutes.
 
@@ -109,7 +112,7 @@ USDC is Arc's native gas token, so staking is just a payable call, no `approve()
 
 **Known issue (testnet, not mainnet-blocking):** the `DISPUTE_FEE`, `MIN_VOTE_AMOUNT`, and `MIN_VOLUME_FOR_DISPUTE` constants were originally written assuming 6-decimal precision (e.g. `50 * 10**6`), but since native values use 18 decimals, these currently resolve to near-zero amounts on-chain, the dispute/vote gating is not economically meaningful in the current testnet deployment. Since `constant`s are baked into bytecode at deploy time, fixing this requires a full redeploy (new contract address, no state migration), so it's deliberately deferred to the mainnet cutover rather than done mid-testnet. In the meantime, the 24-hour dispute window itself works correctly end to end, every market is classified into one of four lifecycle stages (`active` → `awaiting_dispute` → `disputed` / `completed`), synced from on-chain state into Supabase on a staggered ~2-hour cycle and surfaced as distinct tabs in the Analyst Panel, so disputed markets stay visibly isolated from the rest even though the fee gating is still testnet-scale.
 
-**One honest tradeoff worth calling out:** resolution uses a single Groq call (`llama-3.3-70b-versatile`) to judge how the original story has evolved 48 hours later, cross-checked against fresh news search results. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. To reduce single-call flakiness on close calls, the resolver now re-checks itself with a second independent read whenever the first verdict is low-confidence or a draw, and defaults to a draw rather than a shaky verdict if the two disagree. Fully decentralizing resolution remains on the roadmap.
+**One honest tradeoff worth calling out:** resolution uses a Groq call (`llama-3.1-8b-instant`, with a Cerebras `llama3.1-8b` fallback if Groq's daily quota is exhausted) to judge how the original story has evolved 48 hours later, cross-checked against fresh news search results. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. To reduce single-call flakiness on close calls, the resolver now re-checks itself with a second independent read whenever the first verdict is low-confidence or a draw, and defaults to a draw rather than a shaky verdict if the two disagree. Fully decentralizing resolution remains on the roadmap.
 
 ### Test coverage
 
@@ -154,7 +157,7 @@ test/
 foundry.toml                       Foundry config (src = contracts/, test = test/)
 scripts/
   ingest-news.js                  Pulls NewsAPI/Guardian articles, classifies with Groq, inserts to Supabase
-  create-markets.js               Scans for high-severity events, opens markets on Arc (uncapped)
+  create-markets.js               Scans for high-severity events, opens markets on Arc (capped at 100 concurrently active)
   resolve-markets.js              Checks due markets, Groq judges HAWK/DOVE, calls declareWinnerByAI(), repairs orphaned Supabase flags
   finalize-markets.js             Checks AI-resolved markets past the dispute window, calls finalizeMarket(), syncs positions
   sync-stakes.js                  Replays onchain Staked events into Supabase (scheduled every 30 min)
@@ -169,13 +172,11 @@ scripts/
   auto-resolve-markets.yml        Runs resolve-markets.js on its own ~2-hour schedule
   auto-finalize-markets.yml       Runs finalize-markets.js every ~2 hours
   sync-stakes.yml                 Runs sync-stakes.js every 30 minutes
-  sync-lifecycle.yml              Runs sync-lifecycle.js twice per 2-hour cycle (:05 and :35, staggered to avoid colliding with the RPC-heavy workflows above) *
+  sync-lifecycle.yml              Runs sync-lifecycle.js hourly, looping internally every 15 min via shell sleep (avoids GitHub's native-cron delay risk on tight schedules)
   auto-recovery.yml               Manual-trigger sync-stakes / resolve-markets / create-markets
   security-monitor.yml            Anomaly monitor, every 15 minutes
   debug-schema.yml                Manual-trigger schema drift check
 ```
-
-<sub>* On GitHub this workflow file is currently still saved as `sync lifecycle.yml` (with a literal space instead of a hyphen) — functionally harmless, but it should be renamed to `sync-lifecycle.yml` to match the rest of the naming convention and this doc.</sub>
 
 **Supabase, beyond the `events` table:** `positions` (per-wallet stake/claim state, RLS-scoped), `wallet_balance_history` (append-only ledger), `market_disputes` (audit log of every on-chain dispute), and a `market_lookup` view joining all of the above by market ID for one-query cross-checking.
 
@@ -194,7 +195,7 @@ scripts/
 - [x] Deterministic Risk Δ (24h category baseline, not LLM-guessed)
 - [x] SIWE-authenticated Portfolio with full position lifecycle and RLS
 - [x] Startup guard preventing verdict reveal before staking closes
-- [x] Four-stage market lifecycle (Active / Awaiting Dispute / Disputed / Completed) synced from chain to Supabase on a staggered ~2-hour cycle, surfaced as distinct tabs
+- [x] Four-stage market lifecycle (Active / Awaiting Dispute / Disputed / Completed) synced from chain to Supabase via a batched Multicall3 read, hourly-triggered with an internal 15-minute self-loop, surfaced as distinct tabs
 - [x] `market_lookup` cross-check view + historical `createMarket` tx-hash backfill for every market
 - [x] Sequential-rebuttal HAWK/DOVE debate (DOVE must quote and directly counter HAWK's specific claim, same API call)
 - [x] Self-consistency re-check on low-confidence/draw verdicts before a market settles
