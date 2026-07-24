@@ -111,10 +111,10 @@ flowchart LR
     USDC --> CT
 ```
 
-- **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq, with a Cerebras fallback on quota exhaustion.
-- **Automation tier (GitHub Actions)** — seven scheduled, unattended jobs covering the full market lifecycle: ingest, create, resolve, finalize, a self-looping 15-minute lifecycle sync, a 30-minute stake reconciliation sync, and a two-tier (WARN/CRITICAL) anomaly monitor watching the rest. No human approval step in any of them. A `workflow_dispatch`-only recovery workflow (`auto-recovery.yml`) sits alongside these for manually re-running sync-stakes, resolve-markets, or create-markets if a scheduled run needs a hand.
-- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery, through a 2-endpoint `FallbackProvider` plus Multicall3-batched calls, so no hardcoded market list and no single-RPC point of failure. This is intentionally lighter than the backend's RPC layer — the frontend bundle never carries premium RPC-provider API keys.
-- **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out after the dispute window closes.
+- **Ingestion tier** = NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq, with a Cerebras fallback on quota exhaustion.
+- **Automation tier (GitHub Actions)** = seven scheduled, unattended jobs covering the full market lifecycle: ingest, create, resolve, finalize, a self-looping 15-minute lifecycle sync, a 30-minute stake reconciliation sync, and a two-tier (WARN/CRITICAL) anomaly monitor watching the rest. No human approval step in any of them. A `workflow_dispatch`-only recovery workflow (`auto-recovery.yml`) sits alongside these for manually re-running sync-stakes, resolve-markets, or create-markets if a scheduled run needs a hand.
+- **Client tier (Vite + TanStack Start)** = reads live contract state directly for market discovery, through a 2-endpoint `FallbackProvider` plus Multicall3-batched calls, so no hardcoded market list and no single-RPC point of failure. This is intentionally lighter than the backend's RPC layer, the frontend bundle never carries premium RPC-provider API keys.
+- **Settlement tier (Arc Testnet)** = `AgentArena.sol` holds staked USDC and pays out after the dispute window closes.
 
 ---
 
@@ -246,7 +246,7 @@ sequenceDiagram
 
 - Source testnets: Ethereum Sepolia, Base Sepolia, Avalanche Fuji.
 - Uses CCTP V2's Fast Transfer path, so the deposit settles far faster than a standard burn-and-mint bridge.
-- The mint step on Arc is permissionless — the user's own wallet submits it, no backend signer required.
+- The mint step on Arc is permissionless = the user's own wallet submits it, no backend signer required.
 - Read-path RPC calls (balance checks, market discovery) go through the frontend's 2-endpoint `FallbackProvider` (see RPC resilience below), so a single rate-limited endpoint doesn't break the UI.
 
 ---
