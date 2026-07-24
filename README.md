@@ -64,6 +64,7 @@ flowchart LR
         RES[resolve-markets.js]
         FIN[finalize-markets.js]
         SYNC[sync-lifecycle.js<br/>self-looping, 15 min]
+        STK[sync-stakes.js<br/>every 30 min]
         MON[anomaly-monitor.js<br/>WARN / CRITICAL alerts]
     end
 
@@ -78,8 +79,12 @@ flowchart LR
         PORT[Portfolio — SIWE auth]
     end
 
-    subgraph rpc[RpcManager]
+    subgraph rpc[Backend RPC layer — scripts only]
         RM[5 rotating endpoints<br/>+ Multicall3 batching]
+    end
+
+    subgraph clientrpc[Frontend read path]
+        FRPC[2-endpoint FallbackProvider<br/>+ Multicall3 batching]
     end
 
     subgraph chain[Arc Testnet]
@@ -92,22 +97,23 @@ flowchart LR
     ING --> DB
     DB --> FEED
     CRE -->|scans high-severity events| DB
-    CRE -->|createMarket| CT
-    RES -->|resolves at 48h| CT
-    FIN -->|finalizes past dispute window| CT
-    SYNC -->|polls + advances lifecycle_stage| CT
+    CRE -->|createMarket, via RM| CT
+    RES -->|resolves at 48h, via RM| CT
+    FIN -->|finalizes past dispute window, via RM| CT
+    SYNC -->|polls + advances lifecycle_stage, via RM| CT
+    STK -->|reconciles stake events, via RM| CT
     MON -->|watches all workflows| DB
-    ARENA -->|reads live state via| RM
-    RM --> CT
+    ARENA -->|reads live state via| FRPC
+    FRPC --> CT
     FEED --> ARENA
     BRIDGE -->|CCTP V2| USDC
-    PORT -->|reads positions via| RM
+    PORT -->|reads positions via| FRPC
     USDC --> CT
 ```
 
 - **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq, with a Cerebras fallback on quota exhaustion.
-- **Automation tier (GitHub Actions)** — six scheduled, unattended jobs covering the full market lifecycle: ingest, create, resolve, finalize, a self-looping 15-minute lifecycle sync, and a two-tier (WARN/CRITICAL) anomaly monitor watching the rest. No human approval step in any of them.
-- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery, through `RpcManager`, so no hardcoded market list and no single-RPC point of failure.
+- **Automation tier (GitHub Actions)** — seven scheduled, unattended jobs covering the full market lifecycle: ingest, create, resolve, finalize, a self-looping 15-minute lifecycle sync, a 30-minute stake reconciliation sync, and a two-tier (WARN/CRITICAL) anomaly monitor watching the rest. No human approval step in any of them. A `workflow_dispatch`-only recovery workflow (`auto-recovery.yml`) sits alongside these for manually re-running sync-stakes, resolve-markets, or create-markets if a scheduled run needs a hand.
+- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery, through a 2-endpoint `FallbackProvider` plus Multicall3-batched calls, so no hardcoded market list and no single-RPC point of failure. This is intentionally lighter than the backend's RPC layer — the frontend bundle never carries premium RPC-provider API keys.
 - **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out after the dispute window closes.
 
 ---
@@ -241,18 +247,19 @@ sequenceDiagram
 - Source testnets: Ethereum Sepolia, Base Sepolia, Avalanche Fuji.
 - Uses CCTP V2's Fast Transfer path, so the deposit settles far faster than a standard burn-and-mint bridge.
 - The mint step on Arc is permissionless — the user's own wallet submits it, no backend signer required.
-- Read-path RPC calls (balance checks, market discovery) go through `RpcManager` (see below), so a single rate-limited endpoint doesn't break the UI.
+- Read-path RPC calls (balance checks, market discovery) go through the frontend's 2-endpoint `FallbackProvider` (see RPC resilience below), so a single rate-limited endpoint doesn't break the UI.
 
 ---
 
 ## RPC resilience
 
-Every read against Arc — balances, market state, portfolio positions — goes through a single `RpcManager` rather than a hardcoded endpoint.
+There are two separate RPC layers, deliberately sized differently for where they run:
 
-- **5 rotating endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the manager rotates to the next without the user noticing.
-- **Multicall3 batching**: instead of firing N separate `eth_call`s for N markets, reads are batched into a single Multicall3 call, cutting both request count and the chance of a partial-data UI state if one call in the batch fails.
+**Backend (GitHub Actions scripts)** — `create-markets.js`, `resolve-markets.js`, `finalize-markets.js`, `sync-lifecycle.js`, `sync-stakes.js`, and `anomaly-monitor.js` each rotate across **5 endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the job rotates to the next without the run failing. These endpoints are premium, API-key-gated providers — the keys live only in GitHub Actions secrets and never ship to a browser.
 
-This is a genuinely reusable primitive independent of anything specific to Geomacro's market logic — it's the kind of infrastructure most Arc-Testnet frontends end up needing and few actually ship with this level of resilience.
+**Frontend (`src/lib/arc.ts`)** — the client reads Arc through a plain 2-endpoint ethers `FallbackProvider` (`rpc.testnet.arc.network`, `arc-testnet.drpc.org`), both free and keyless. It doesn't need the backend's 5-endpoint rotation since it isn't burning a rate-limited paid quota per pageview.
+
+**Multicall3 batching** is shared across both layers: instead of firing N separate `eth_call`s for N markets, reads are batched into a single Multicall3 call (`0xcA11bde05977b3631167028862bE2a173976CA11`, same address on every EVM chain including Arc Testnet), cutting both request count and the chance of a partial-data UI state if one call in the batch fails. On the frontend this is implemented directly in `agent-arena.ts` and `arena-markets.ts`.
 
 ---
 
@@ -262,16 +269,16 @@ This is a genuinely reusable primitive independent of anything specific to Geoma
 |---|---|---|
 | Frontend | Vite 7 + TanStack Start + React 19 + Tailwind v4 | Fast dev loop, file-based routing, streaming-friendly SSR |
 | UI components | shadcn/ui + Radix primitives | Accessible defaults, no framework lock-in |
-| Chain client | ethers v6 + `RpcManager` (5 endpoints, Multicall3) | Read/write against Arc Testnet with real RPC-level redundancy, not just a two-URL fallback |
+| Chain client | ethers v6 — 5-endpoint rotation + Multicall3 in backend scripts, 2-endpoint `FallbackProvider` + Multicall3 on the frontend | Backend gets full RPC-level redundancy against paid endpoints; frontend stays keyless and light |
 | Data | Supabase (Postgres) | Event log for the Live Feed; frontend reads straight from it |
-| Classification | Groq (`llama-3.3-70b-versatile`), falling back to `llama-3.1-8b-instant` on quota exhaustion, then Cerebras | Fast, cheap inference for severity scoring and resolution judgment, with a two-tier fallback so quota limits don't stall the pipeline |
+| Classification | Groq (`llama-3.1-8b-instant`), falling back to Cerebras (`llama3.1-8b`) on daily quota exhaustion | Fast, cheap inference for severity scoring and resolution judgment, with a two-tier fallback so quota limits don't stall the pipeline |
 | News sources | NewsAPI.org + The Guardian | Two-source article fan-out across four categories, reduces single-source blind spots |
 | Validation | Zod | Schema validation on classified events before they hit Supabase |
 | Auth | Sign-In with Ethereum (SIWE) | Wallet-based auth gating `/portfolio`, no separate password/account system |
-| Automation | GitHub Actions (6 scheduled jobs) | Ingest, create, resolve, finalize, lifecycle sync, anomaly monitor — no server to maintain, no human in the loop |
+| Automation | GitHub Actions (7 scheduled jobs + 1 manual recovery workflow) | Ingest, create, resolve, finalize, lifecycle sync, stake sync, anomaly monitor — no server to maintain, no human in the loop |
 | Smart contract | Solidity 0.8, Arc Testnet | `AgentArena.sol`, verified, dependency-free |
 | Cross-chain | Circle CCTP V2 (Fast Transfer) + Iris attestation | Native USDC bridging without a custodian |
-| Package manager | bun | Fast installs, single lockfile |
+| Package manager | npm (bun locally / legacy on one workflow) | Most CI jobs run on `npm install`; `bun.lock` still drives local dev and `sync-stakes.yml` |
 
 ---
 
@@ -290,13 +297,12 @@ geomacro/
 │   │   ├── portfolio.tsx               # Per-wallet positions view, SIWE-gated
 │   │   └── ...                         # feed, arena, pipeline, onchain, bridge, roadmap
 │   ├── lib/
-│   │   ├── arc.ts                      # Arc network config
-│   │   ├── rpc-manager.ts              # 5-endpoint rotation + Multicall3 batching
-│   │   ├── agent-arena.ts              # Contract read client
+│   │   ├── arc.ts                      # Arc network config + 2-endpoint FallbackProvider
+│   │   ├── agent-arena.ts              # Contract read client, Multicall3 batching
 │   │   ├── arena-markets.ts            # Market discovery (onchain, no hardcoded list)
-│   │   ├── balance.ts                  # Wallet balance reads, multi-RPC fail-over
+│   │   ├── balance.ts                  # Wallet balance reads
 │   │   ├── cctp.ts                     # CCTP V2 addresses, ABIs, Iris poller
-│   │   ├── siwe.ts                     # Sign-In with Ethereum auth for Portfolio
+│   │   ├── siwe.functions.ts           # Sign-In with Ethereum auth for Portfolio
 │   │   ├── positions.functions.ts      # Server-side tx verification
 │   │   └── roadmap.ts                  # Single source of truth for roadmap data
 │   └── hooks/
@@ -308,14 +314,19 @@ geomacro/
 │   ├── resolve-markets.js              # Posts the AI verdict at the 48h mark (AI_RESOLVED)
 │   ├── finalize-markets.js             # Closes the dispute window, opens claim()
 │   ├── sync-lifecycle.js               # Self-looping every 15 min, keeps lifecycle_stage accurate
-│   └── anomaly-monitor.js              # Two-tier WARN/CRITICAL alerting across all jobs
+│   ├── sync-stakes.js                  # Reconciles onchain stake events into Supabase every 30 min
+│   ├── anomaly-monitor.js              # Two-tier WARN/CRITICAL alerting across all jobs
+│   └── (backfill-*.js, check-*.mjs, diagnose-*.mjs, debug-schema.js)  # One-off ops/debug tools, not scheduled
 ├── .github/workflows/
-│   ├── auto-ingest-news.yml            # Runs ingest-news.js
-│   ├── auto-create-markets.yml         # Runs create-markets.js
-│   ├── auto-resolve-markets.yml        # Runs resolve-markets.js
-│   ├── auto-finalize-markets.yml       # Runs finalize-markets.js
-│   ├── sync-lifecycle.yml              # Runs sync-lifecycle.js every 15 min
-│   └── anomaly-monitor.yml             # Runs anomaly-monitor.js
+│   ├── auto-ingest-news.yml            # Runs ingest-news.js, every ~2h
+│   ├── auto-create-markets.yml         # Runs create-markets.js, every ~2h
+│   ├── auto-resolve-markets.yml        # Runs resolve-markets.js, every ~2h
+│   ├── auto-finalize-markets.yml       # Runs finalize-markets.js, every ~2h
+│   ├── sync-lifecycle.yml              # Runs sync-lifecycle.js, hourly trigger self-looping to 15 min
+│   ├── sync-stakes.yml                 # Runs sync-stakes.js every 30 min
+│   ├── security-monitor.yml            # Runs anomaly-monitor.js every 15 min
+│   ├── auto-recovery.yml               # Manual (workflow_dispatch) re-run of sync-stakes / resolve / create
+│   └── debug-schema.yml                # Manual-only Supabase schema debug tool
 └── public/
 ```
 
@@ -344,7 +355,16 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 | `CEREBRAS_API_KEY` | ingestion + resolution | Fallback inference provider when Groq quota is exhausted |
 | `APP_SUPABASE_URL` / `APP_SUPABASE_ANON_KEY` | ingestion, feed | Persists classified events; leave unset to skip persistence |
 | `VITE_ARC_NETWORK` | frontend (build-time) | Force `mainnet` or `testnet`; leave unset for auto |
-| RPC endpoint keys (Alchemy / QuickNode / GetBlock / dRPC) | `RpcManager` | One key per rotating endpoint; see `.env.example` for exact variable names |
+| `ARC_RPC_URL` … `ARC_RPC_URL_5` | backend scripts only | One per rotating endpoint (Alchemy / QuickNode / GetBlock / dRPC / public fallback); never exposed to the frontend build |
+| `GUARDIAN_API_KEY` | ingestion pipeline | The Guardian news API key (separate from `GUARDIAN_PRIVATE_KEY` below) |
+| `CONTRACT_ADDRESS` | all onchain scripts | `AgentArena.sol` address on Arc Testnet |
+| `OWNER_PRIVATE_KEY` | create/resolve/finalize scripts | Signs `createMarket` / `declareWinner` / finalize transactions |
+| `GUARDIAN_PRIVATE_KEY` | `anomaly-monitor.js` | Circuit-breaker wallet used to pause the contract on a CRITICAL anomaly |
+| `SUPABASE_SERVICE_ROLE_KEY` | write-path scripts | Elevated Supabase key for scripts that insert/update rows (separate from the anon key used by the frontend) |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | `anomaly-monitor.js` | WARN/CRITICAL alert delivery |
+| `DEPLOY_BLOCK` | `sync-stakes.js` | Starting block for onchain stake-event backfill/sync |
+
+`.env.example` currently only covers the frontend-facing subset of these; the backend/automation vars above live only in GitHub Actions secrets. Treat this table, not `.env.example`, as the source of truth until that file is updated.
 
 ---
 
