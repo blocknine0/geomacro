@@ -147,10 +147,10 @@ Resolution isn't a single instant flip from staking to payout. Every market move
 
 | Hours | `lifecycle_stage` | What's happening |
 |---|---|---|
-| 0 – 46h | `active` | Staking open on Hawk or Dove |
-| 46 – 48h | `active` (locked) | Resolution buffer — staking locked, no new positions, resolver hasn't run yet |
+| 0 to 46h | `active` | Staking open on Hawk or Dove |
+| 46 to 48h | `active` (locked) | Resolution buffer — staking locked, no new positions, resolver hasn't run yet |
 | 48h | → `awaiting_dispute` | Groq resolves and posts a verdict (`AI_RESOLVED`) |
-| 48 – 72h | `awaiting_dispute` → `disputed` | Dispute window: 24h if the verdict goes unchallenged, extends to 48h total if disputed |
+| 48 to 72h | `awaiting_dispute` → `disputed` | Dispute window: 24h if the verdict goes unchallenged, extends to 48h total if disputed |
 | 72h | `completed` | `finalize-markets.js` closes the window, `claim()` opens |
 
 ```mermaid
@@ -255,9 +255,9 @@ sequenceDiagram
 
 There are two separate RPC layers, deliberately sized differently for where they run:
 
-**Backend (GitHub Actions scripts)** — `create-markets.js`, `resolve-markets.js`, `finalize-markets.js`, `sync-lifecycle.js`, `sync-stakes.js`, and `anomaly-monitor.js` each rotate across **5 endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the job rotates to the next without the run failing. These endpoints are premium, API-key-gated providers — the keys live only in GitHub Actions secrets and never ship to a browser.
+**Backend (GitHub Actions scripts)** = `create-markets.js`, `resolve-markets.js`, `finalize-markets.js`, `sync-lifecycle.js`, `sync-stakes.js`, and `anomaly-monitor.js` each rotate across **5 endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the job rotates to the next without the run failing. These endpoints are premium, API-key-gated providers — the keys live only in GitHub Actions secrets and never ship to a browser.
 
-**Frontend (`src/lib/arc.ts`)** — the client reads Arc through a plain 2-endpoint ethers `FallbackProvider` (`rpc.testnet.arc.network`, `arc-testnet.drpc.org`), both free and keyless. It doesn't need the backend's 5-endpoint rotation since it isn't burning a rate-limited paid quota per pageview.
+**Frontend (`src/lib/arc.ts`)** = the client reads Arc through a plain 2-endpoint ethers `FallbackProvider` (`rpc.testnet.arc.network`, `arc-testnet.drpc.org`), both free and keyless. It doesn't need the backend's 5-endpoint rotation since it isn't burning a rate-limited paid quota per pageview.
 
 **Multicall3 batching** is shared across both layers: instead of firing N separate `eth_call`s for N markets, reads are batched into a single Multicall3 call (`0xcA11bde05977b3631167028862bE2a173976CA11`, same address on every EVM chain including Arc Testnet), cutting both request count and the chance of a partial-data UI state if one call in the batch fails. On the frontend this is implemented directly in `agent-arena.ts` and `arena-markets.ts`.
 
