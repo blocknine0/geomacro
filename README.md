@@ -22,9 +22,11 @@ Geomacro reads the news, scores the risk, and lets two AI agents argue about wha
 - [What this is](#what-this-is)
 - [Architecture](#architecture)
 - [End-to-end market flow](#end-to-end-market-flow)
+- [Lifecycle stages](#lifecycle-stages)
 - [Contract state machine](#contract-state-machine)
 - [The contract](#the-contract)
 - [Cross-chain bridge (CCTP V2)](#cross-chain-bridge-cctp-v2)
+- [RPC resilience](#rpc-resilience)
 - [Tech stack](#tech-stack)
 - [Repository layout](#repository-layout)
 - [Local setup](#local-setup)
@@ -53,13 +55,16 @@ flowchart LR
     subgraph ingestion[Ingestion]
         NA[NewsAPI]
         GD[The Guardian]
-        GR[Groq llama-3.3-70b<br/>classify + score]
+        GR[Groq / Cerebras<br/>classify + score]
     end
 
-    subgraph automation[GitHub Actions — every ~2h]
+    subgraph automation[GitHub Actions — scheduled]
         ING[ingest-news.js]
         CRE[create-markets.js]
         RES[resolve-markets.js]
+        FIN[finalize-markets.js]
+        SYNC[sync-lifecycle.js<br/>self-looping, 15 min]
+        MON[anomaly-monitor.js<br/>WARN / CRITICAL alerts]
     end
 
     subgraph data[Supabase]
@@ -70,6 +75,11 @@ flowchart LR
         FEED[Live Feed]
         ARENA[Agent Arena]
         BRIDGE[Bridge]
+        PORT[Portfolio — SIWE auth]
+    end
+
+    subgraph rpc[RpcManager]
+        RM[5 rotating endpoints<br/>+ Multicall3 batching]
     end
 
     subgraph chain[Arc Testnet]
@@ -83,17 +93,22 @@ flowchart LR
     DB --> FEED
     CRE -->|scans high-severity events| DB
     CRE -->|createMarket| CT
-    RES -->|checks 48h+ markets, asks Groq| CT
-    ARENA -->|reads live state| CT
+    RES -->|resolves at 48h| CT
+    FIN -->|finalizes past dispute window| CT
+    SYNC -->|polls + advances lifecycle_stage| CT
+    MON -->|watches all workflows| DB
+    ARENA -->|reads live state via| RM
+    RM --> CT
     FEED --> ARENA
     BRIDGE -->|CCTP V2| USDC
+    PORT -->|reads positions via| RM
     USDC --> CT
 ```
 
-- **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq.
-- **Automation tier (GitHub Actions)** — three scheduled, unattended workflows: ingest, create, resolve. No human approval step in any of them.
-- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery; no hardcoded market list.
-- **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out on resolution.
+- **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq, with a Cerebras fallback on quota exhaustion.
+- **Automation tier (GitHub Actions)** — six scheduled, unattended jobs covering the full market lifecycle: ingest, create, resolve, finalize, a self-looping 15-minute lifecycle sync, and a two-tier (WARN/CRITICAL) anomaly monitor watching the rest. No human approval step in any of them.
+- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery, through `RpcManager`, so no hardcoded market list and no single-RPC point of failure.
+- **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out after the dispute window closes.
 
 ---
 
@@ -108,36 +123,69 @@ flowchart LR
     E --> E2[Staking closes at 46h]
     E2 --> F[48h resolution point]
     F --> G[Groq re-reads the story,<br/>judges which side aged better]
-    G --> H[declareWinner on Arc]
-    H --> I[Winners claim proportional payout]
+    G --> H[declareWinner on Arc<br/>status: AI_RESOLVED]
+    H --> J[24-48h dispute window]
+    J --> K[finalize-markets.js<br/>closes the window]
+    K --> I[Winners claim proportional payout]
 ```
 
-The primitive stays small on purpose: one story, one market, one 48-hour window, two sides.
+`sync-lifecycle.js` runs every 15 minutes in the background and keeps every market's `lifecycle_stage` in sync with however far along the clock actually is, independent of whether the other jobs fired on schedule.
+
+The primitive stays small on purpose: one story, one market, two sides, with a real dispute window instead of an instant, unchallengeable verdict.
+
+---
+
+## Lifecycle stages
+
+Resolution isn't a single instant flip from staking to payout. Every market moves through four `lifecycle_stage` values, each mapped to a fixed point on the clock:
+
+| Hours | `lifecycle_stage` | What's happening |
+|---|---|---|
+| 0 – 46h | `active` | Staking open on Hawk or Dove |
+| 46 – 48h | `active` (locked) | Resolution buffer — staking locked, no new positions, resolver hasn't run yet |
+| 48h | → `awaiting_dispute` | Groq resolves and posts a verdict (`AI_RESOLVED`) |
+| 48 – 72h | `awaiting_dispute` → `disputed` | Dispute window: 24h if the verdict goes unchallenged, extends to 48h total if disputed |
+| 72h | `completed` | `finalize-markets.js` closes the window, `claim()` opens |
+
+```mermaid
+stateDiagram-v2
+    [*] --> active: createMarket
+    active --> active: stake(side) [0–46h]
+    active --> awaiting_dispute: declareWinner at 48h<br/>(status: AI_RESOLVED)
+    awaiting_dispute --> disputed: challenge raised<br/>within 24h window
+    awaiting_dispute --> completed: 24h passes,<br/>no dispute raised
+    disputed --> completed: 48h total dispute<br/>window closes
+    completed --> [*]: claim() per winner
+```
+
+`sync-lifecycle.js` is what actually advances `lifecycle_stage` on its own 15-minute loop — it doesn't wait on the other scheduled jobs, so a market's displayed stage stays accurate even if `resolve-markets.js` or `finalize-markets.js` runs a few minutes late.
 
 ---
 
 ## Contract state machine
 
+The on-chain function calls that drive the lifecycle above:
+
 ```mermaid
 stateDiagram-v2
     [*] --> Created: createMarket
     Created --> Staked: stake(side)
-    Staked --> Resolved: declareWinner
-    Resolved --> Claimed: claim() per winner
+    Staked --> Resolved: declareWinner<br/>(AI_RESOLVED)
+    Resolved --> Disputed: challenge<br/>(within 24h)
+    Resolved --> Finalized: finalize<br/>(24h, undisputed)
+    Disputed --> Finalized: finalize<br/>(48h dispute window closes)
+    Finalized --> Claimed: claim() per winner
     Claimed --> [*]
 
-    note right of Created
-      Market is open.
-      Anyone can stake HAWK or DOVE.
-    end note
     note right of Staked
-      Staking open for 46 hours.
-      Locked for the final 2 hours
-      before the 48h resolution point.
+      Staking open 0–46h.
+      Locked 46–48h before resolution.
     end note
     note right of Resolved
-      Winning side declared by
-      automated Groq-judged resolver.
+      lifecycle_stage: awaiting_dispute
+    end note
+    note right of Finalized
+      lifecycle_stage: completed
     end note
 ```
 
@@ -150,7 +198,9 @@ Kept this intentionally small. No governance token, no oracle network, no multis
 ```solidity
 createMarket(marketId)          // owner opens a market
 stake(marketId, side) payable   // anyone backs HAWK or DOVE with USDC
-declareWinner(marketId, side)   // automated resolver declares outcome
+declareWinner(marketId, side)   // automated resolver posts the AI verdict
+// dispute + finalize entry points sit on top of this base loop —
+// see Lifecycle stages above for the 24h/48h dispute-window timing
 claim(marketId)                 // winners withdraw their share
 ```
 
@@ -191,7 +241,18 @@ sequenceDiagram
 - Source testnets: Ethereum Sepolia, Base Sepolia, Avalanche Fuji.
 - Uses CCTP V2's Fast Transfer path, so the deposit settles far faster than a standard burn-and-mint bridge.
 - The mint step on Arc is permissionless — the user's own wallet submits it, no backend signer required.
-- Read-path RPC calls (balance checks, market discovery) fail over across multiple Arc RPC endpoints, so a single rate-limited endpoint doesn't break the UI.
+- Read-path RPC calls (balance checks, market discovery) go through `RpcManager` (see below), so a single rate-limited endpoint doesn't break the UI.
+
+---
+
+## RPC resilience
+
+Every read against Arc — balances, market state, portfolio positions — goes through a single `RpcManager` rather than a hardcoded endpoint.
+
+- **5 rotating endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the manager rotates to the next without the user noticing.
+- **Multicall3 batching**: instead of firing N separate `eth_call`s for N markets, reads are batched into a single Multicall3 call, cutting both request count and the chance of a partial-data UI state if one call in the batch fails.
+
+This is a genuinely reusable primitive independent of anything specific to Geomacro's market logic — it's the kind of infrastructure most Arc-Testnet frontends end up needing and few actually ship with this level of resilience.
 
 ---
 
@@ -201,12 +262,13 @@ sequenceDiagram
 |---|---|---|
 | Frontend | Vite 7 + TanStack Start + React 19 + Tailwind v4 | Fast dev loop, file-based routing, streaming-friendly SSR |
 | UI components | shadcn/ui + Radix primitives | Accessible defaults, no framework lock-in |
-| Chain client | ethers v6 | Read/write against Arc Testnet, `FallbackProvider` for RPC resilience |
+| Chain client | ethers v6 + `RpcManager` (5 endpoints, Multicall3) | Read/write against Arc Testnet with real RPC-level redundancy, not just a two-URL fallback |
 | Data | Supabase (Postgres) | Event log for the Live Feed; frontend reads straight from it |
-| Classification | Groq (`llama-3.3-70b-versatile`) | Fast, cheap inference for severity scoring and resolution judgment |
+| Classification | Groq (`llama-3.3-70b-versatile`), falling back to `llama-3.1-8b-instant` on quota exhaustion, then Cerebras | Fast, cheap inference for severity scoring and resolution judgment, with a two-tier fallback so quota limits don't stall the pipeline |
 | News sources | NewsAPI.org + The Guardian | Two-source article fan-out across four categories, reduces single-source blind spots |
 | Validation | Zod | Schema validation on classified events before they hit Supabase |
-| Automation | GitHub Actions (3 scheduled workflows) | Ingest, create, resolve — no server to maintain, no human in the loop |
+| Auth | Sign-In with Ethereum (SIWE) | Wallet-based auth gating `/portfolio`, no separate password/account system |
+| Automation | GitHub Actions (6 scheduled jobs) | Ingest, create, resolve, finalize, lifecycle sync, anomaly monitor — no server to maintain, no human in the loop |
 | Smart contract | Solidity 0.8, Arc Testnet | `AgentArena.sol`, verified, dependency-free |
 | Cross-chain | Circle CCTP V2 (Fast Transfer) + Iris attestation | Native USDC bridging without a custodian |
 | Package manager | bun | Fast installs, single lockfile |
@@ -225,27 +287,35 @@ geomacro/
 │   │       └── roadmap-section.tsx     # Shipped/upcoming milestones page
 │   ├── routes/
 │   │   ├── docs.tsx                    # Developer docs (tabbed guides)
-│   │   ├── portfolio.tsx               # Per-wallet positions view
+│   │   ├── portfolio.tsx               # Per-wallet positions view, SIWE-gated
 │   │   └── ...                         # feed, arena, pipeline, onchain, bridge, roadmap
 │   ├── lib/
-│   │   ├── arc.ts                      # Arc network config + RPC fallback provider
+│   │   ├── arc.ts                      # Arc network config
+│   │   ├── rpc-manager.ts              # 5-endpoint rotation + Multicall3 batching
 │   │   ├── agent-arena.ts              # Contract read client
 │   │   ├── arena-markets.ts            # Market discovery (onchain, no hardcoded list)
 │   │   ├── balance.ts                  # Wallet balance reads, multi-RPC fail-over
 │   │   ├── cctp.ts                     # CCTP V2 addresses, ABIs, Iris poller
+│   │   ├── siwe.ts                     # Sign-In with Ethereum auth for Portfolio
 │   │   ├── positions.functions.ts      # Server-side tx verification
 │   │   └── roadmap.ts                  # Single source of truth for roadmap data
 │   └── hooks/
 │       ├── WalletProvider.tsx          # Wallet connection context
 │       └── use-wallet.ts
 ├── scripts/
-│   ├── ingest-news.js                  # NewsAPI + Guardian → Groq classify → Supabase insert
+│   ├── ingest-news.js                  # NewsAPI + Guardian → Groq/Cerebras classify → Supabase insert
 │   ├── create-markets.js               # Scans high-severity events, opens markets on Arc
-│   └── resolve-markets.js              # Checks 48h+ markets, asks Groq, calls declareWinner()
+│   ├── resolve-markets.js              # Posts the AI verdict at the 48h mark (AI_RESOLVED)
+│   ├── finalize-markets.js             # Closes the dispute window, opens claim()
+│   ├── sync-lifecycle.js               # Self-looping every 15 min, keeps lifecycle_stage accurate
+│   └── anomaly-monitor.js              # Two-tier WARN/CRITICAL alerting across all jobs
 ├── .github/workflows/
-│   ├── auto-ingest-news.yml            # Runs ingest-news.js every ~2 hours
-│   ├── auto-create-markets.yml         # Runs create-markets.js, 30 min after ingest
-│   └── auto-resolve-markets.yml        # Runs resolve-markets.js, 30 min after create
+│   ├── auto-ingest-news.yml            # Runs ingest-news.js
+│   ├── auto-create-markets.yml         # Runs create-markets.js
+│   ├── auto-resolve-markets.yml        # Runs resolve-markets.js
+│   ├── auto-finalize-markets.yml       # Runs finalize-markets.js
+│   ├── sync-lifecycle.yml              # Runs sync-lifecycle.js every 15 min
+│   └── anomaly-monitor.yml             # Runs anomaly-monitor.js
 └── public/
 ```
 
@@ -261,7 +331,7 @@ cp .env.example .env.local
 bun run dev
 ```
 
-You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. See [`.env.example`](.env.example).
+You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_API_KEY` for fallback), and a Supabase project. See [`.env.example`](.env.example).
 
 ---
 
@@ -271,8 +341,10 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. Se
 |---|---|---|
 | `NEWSAPI_KEY` | ingestion pipeline | Powers the Live Feed and Agent Arena news context |
 | `GROQ_API_KEY` | ingestion + resolution | Classifies articles and judges market resolution |
+| `CEREBRAS_API_KEY` | ingestion + resolution | Fallback inference provider when Groq quota is exhausted |
 | `APP_SUPABASE_URL` / `APP_SUPABASE_ANON_KEY` | ingestion, feed | Persists classified events; leave unset to skip persistence |
 | `VITE_ARC_NETWORK` | frontend (build-time) | Force `mainnet` or `testnet`; leave unset for auto |
+| RPC endpoint keys (Alchemy / QuickNode / GetBlock / dRPC) | `RpcManager` | One key per rotating endpoint; see `.env.example` for exact variable names |
 
 ---
 
@@ -286,6 +358,7 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. Se
 | `/pipeline` | How ingestion and classification work, in detail |
 | `/onchain` | Contract details, testnet/mainnet network info |
 | `/bridge` | Pull USDC into Arc via CCTP V2 |
+| `/portfolio` | Per-wallet positions across all markets, gated behind Sign-In with Ethereum (SIWE) |
 | `/roadmap` | Shipped and upcoming milestones |
 | `/docs` | Developer documentation — architecture, API, competitive moat |
 
@@ -298,6 +371,7 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. Se
 3. **Honest about the resolution tradeoff.** LLM-judged settlement is disclosed as a limitation, not hidden behind confident language. Decentralized dispute resolution is on the roadmap, not glossed over.
 4. **Relevance over volume.** The classification gate is strict on purpose — a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
 5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction — no bridging friction baked into the core loop.
+6. **Assume a job will fail, and watch for it.** Every scheduled job can miss a run. `sync-lifecycle.js` re-derives state from the clock instead of trusting that the last job fired on time, and `anomaly-monitor.js` watches the rest with a two-tier WARN/CRITICAL threshold so a silent failure doesn't sit undetected.
 
 ---
 
