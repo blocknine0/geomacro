@@ -3,8 +3,8 @@
 ### Onchain geopolitical risk intelligence, settled in USDC, on Arc.
 
 [![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
-[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
-[![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
+[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe)
+[![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 **[www.geomacro.live](https://www.geomacro.live)**
@@ -90,10 +90,10 @@ flowchart LR
     USDC --> CT
 ```
 
-- **Ingestion tier** = NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq.
-- **Automation tier (GitHub Actions)** = three scheduled, unattended workflows: ingest, create, resolve. No human approval step in any of them.
-- **Client tier (Vite + TanStack Start)** = reads live contract state directly for market discovery; no hardcoded market list.
-- **Settlement tier (Arc Testnet)** = `AgentArena.sol` holds staked USDC and pays out on resolution.
+- **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq.
+- **Automation tier (GitHub Actions)** — three scheduled, unattended workflows: ingest, create, resolve. No human approval step in any of them.
+- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery; no hardcoded market list.
+- **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out on resolution.
 
 ---
 
@@ -190,7 +190,7 @@ sequenceDiagram
 
 - Source testnets: Ethereum Sepolia, Base Sepolia, Avalanche Fuji.
 - Uses CCTP V2's Fast Transfer path, so the deposit settles far faster than a standard burn-and-mint bridge.
-- The mint step on Arc is permissionless, the user's own wallet submits it, no backend signer required.
+- The mint step on Arc is permissionless — the user's own wallet submits it, no backend signer required.
 - Read-path RPC calls (balance checks, market discovery) fail over across multiple Arc RPC endpoints, so a single rate-limited endpoint doesn't break the UI.
 
 ---
@@ -296,8 +296,8 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. Se
 1. **Contract state is source of truth.** Supabase is a read cache for the feed, not a system of record — market state always comes from the chain.
 2. **No human in the automation loop.** Ingestion, market creation, and resolution all run unattended on a schedule. If that's wrong, it's a code fix, not a manual override.
 3. **Honest about the resolution tradeoff.** LLM-judged settlement is disclosed as a limitation, not hidden behind confident language. Decentralized dispute resolution is on the roadmap, not glossed over.
-4. **Relevance over volume.** The classification gate is strict on purpose, a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
-5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction, no bridging friction baked into the core loop.
+4. **Relevance over volume.** The classification gate is strict on purpose — a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
+5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction — no bridging friction baked into the core loop.
 
 ---
 
