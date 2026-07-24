@@ -1,184 +1,301 @@
 # Geomacro
 
-### Financializing global risk narratives. Onchain, in USDC, on Arc.
+### Onchain geopolitical risk intelligence, settled in USDC, on Arc.
 
-[![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://geomacro.live)
-[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe)
-[![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe)
-[![X](https://img.shields.io/badge/X-@GeomacroLive-000000?style=for-the-badge&logo=x)](https://x.com/GeomacroLive)
+[![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
+[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
+[![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-**[geomacro.live](https://geomacro.live)**
+**[www.geomacro.live](https://www.geomacro.live)**
 
 ---
 
-Geomacro is a real-time intelligence terminal and prediction market across the four pillars that move global risk: **geopolitics, rare earth supply, macroeconomics and crypto liquidity.**
+Geomacro reads the news, scores the risk, and lets two AI agents argue about what happens next. Agent Hawk bets on escalation. Agent Dove bets on calm. Every market opens automatically from live news, settles in USDC on Arc, and resolves in 48 hours.
 
-Every breaking headline becomes a tradable 46-hour contract on Arc. An LLM scores each event for severity. The USDC staked on each side (HAWK vs DOVE) becomes the live implied probability of escalation. Settle onchain, no custodian, no middleman.
+> **Live site:** <https://www.geomacro.live> · **Contract:** [`0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D`](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D) on Arc Testnet
+
+---
+
+## Table of contents
+
+- [What this is](#what-this-is)
+- [Architecture](#architecture)
+- [End-to-end market flow](#end-to-end-market-flow)
+- [Contract state machine](#contract-state-machine)
+- [The contract](#the-contract)
+- [Cross-chain bridge (CCTP V2)](#cross-chain-bridge-cctp-v2)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Local setup](#local-setup)
+- [Configuration reference](#configuration-reference)
+- [Product surfaces](#product-surfaces)
+- [Design principles](#design-principles)
+- [Roadmap](#roadmap)
+- [Why Arc](#why-arc)
 
 ---
 
 ## What this is
 
-Most prediction markets wait for humans to notice the news. Here, markets open themselves. An LLM scores every breaking story and anyone can stake real USDC on whether the risk it describes will escalate (HAWK) or de-escalate (DOVE). Everything settles onchain in USDC on Arc. No custodian, no middleman.
+Most prediction markets wait for humans to notice the news. Here, markets open themselves. An LLM scores every breaking story, two AI agents argue opposite outcomes, and anyone can stake real USDC on who is right. Everything settles onchain in USDC on Arc. No custodian, no middleman.
 
-We built Geomacro because the gap between "news breaks" and "market opens" is where the real signal lives. By the time a human-curated platform lists a market, the uncertainty has already partially resolved. Geomacro closes that gap.
-
-**Non-custodial by design.** The app never requests, transmits, or stores a private key or seed phrase, at any point, in any flow. Wallet interactions (sign-in, stake, claim) all happen client-side via the wallet extension, which handles signing locally. The backend only ever sees a public wallet address.
+I built Geomacro because the gap between "news breaks" and "market opens" is where the real signal lives. By the time a human-curated platform lists a market, the uncertainty has already partially resolved. Geomacro closes that gap.
 
 ---
 
-## How it fits together
+## Architecture
 
+Three independent pieces, each doing one job:
+
+```mermaid
+flowchart LR
+    subgraph ingestion[Ingestion]
+        NA[NewsAPI]
+        GD[The Guardian]
+        GR[Groq llama-3.3-70b<br/>classify + score]
+    end
+
+    subgraph automation[GitHub Actions — every ~2h]
+        ING[ingest-news.js]
+        CRE[create-markets.js]
+        RES[resolve-markets.js]
+    end
+
+    subgraph data[Supabase]
+        DB[(events table)]
+    end
+
+    subgraph client[Frontend — Vite + TanStack Start]
+        FEED[Live Feed]
+        ARENA[Agent Arena]
+        BRIDGE[Bridge]
+    end
+
+    subgraph chain[Arc Testnet]
+        CT[AgentArena.sol]
+        USDC[Native USDC]
+    end
+
+    NA --> GR --> ING
+    GD --> GR
+    ING --> DB
+    DB --> FEED
+    CRE -->|scans high-severity events| DB
+    CRE -->|createMarket| CT
+    RES -->|checks 48h+ markets, asks Groq| CT
+    ARENA -->|reads live state| CT
+    FEED --> ARENA
+    BRIDGE -->|CCTP V2| USDC
+    USDC --> CT
 ```
-NewsAPI / Guardian  →  Groq (llama-3.1-8b-instant)  →  Supabase  →  Live Feed
-                                              │
-                                              ▼
-                          GitHub Actions, on independent staggered cron schedules
-              (ingest → create markets → resolve via AI → finalize)
-                                              │
-                                              ▼
-                            AgentArena.sol on Arc Testnet
-        createMarket → stake → declareWinnerByAI → (optional dispute/vote) → finalizeMarket → claim
-                                              │
-                                              ▼
-                    Supabase (positions + wallet_balance_history, RLS-protected)
-                              → Portfolio page (SIWE-authenticated)
-```
 
-**Ingestion.** NewsAPI (falling back to The Guardian on rate limits) pulls fresh articles across four categories: geopolitics, macro, rare-earth/commodities and crypto. Off-topic articles are rejected before they reach the feed via an LLM relevance gate, not just keyword filtering.
-
-**Classification.** Groq (`llama-3.1-8b-instant`) scores each article for severity (0-100), confidence (0-100), and generates a short narrative + summary, all stored directly on the event row. Each event's "Risk Δ" is computed deterministically from a rolling 24-hour category baseline, not guessed by the model.
-
-**Storage.** Supabase holds the event log (`events` table). The frontend reads straight from it, with Realtime subscriptions for instant updates.
-
-**Market automation.** Six independent GitHub Actions workflows run on their own schedules:
-
-Every script that talks to Arc Testnet rotates across up to 5 configured RPC endpoints (falling back immediately to the next one on a rate-limit error rather than waiting out a shared, sustained cap) and batches per-market reads into a single Multicall3 call instead of one request per market, since a naive one-request-per-market pattern is what public/shared testnet RPC endpoints throttle hardest.
-
-1. **Ingest** = pulls fresh news every ~2 hours, classifies, and inserts into Supabase.
-2. **Create markets** = scans for high-severity events without a market and opens one on Arc via `createMarket()`, with a 46-hour staking window and 48-hour resolution window. Capped at 100 concurrently active (staking-open) markets — prioritizes severity 80-100 events first, falling back to the full 0-100 range only if that doesn't fill all available room, so a room slot never goes unused when high-severity news is scarce. Once at capacity, market creation pauses (news ingestion continues unaffected) until earlier markets close staking. A startup guard enforces `resolutionDuration > stakingDuration` so the AI verdict can never be revealed before staking closes.
-3. **Resolve** = checks markets past their `resolution_at` time, asks Groq to judge HAWK vs DOVE based on how the situation has evolved, and calls `declareWinnerByAI()`. This sets a *tentative* winner and opens a 24-hour public dispute window; it is not final yet.
-4. **Finalize** = checks markets whose dispute window has passed and calls `finalizeMarket()`, locking in the winner and making it claimable. This same step syncs each affected wallet's `positions` row (won → claimable, lost → history) and logs a `wallet_balance_history` event.
-5. **Sync stakes** = every 30 minutes, replays onchain `Staked` events into Supabase so no stake is ever missing from a wallet's position history even if a client-side write drops.
-6. **Sync lifecycle** = triggered once per hour by GitHub's scheduler (a far less contested schedule than a tight interval, since GitHub Actions' native cron can be delayed by hours during high load on frequently-scheduled workflows), then loops internally every 15 minutes for the rest of that hour using a plain shell `sleep` — once a job has actually started, that loop is 100% reliable with no scheduler uncertainty left. Each iteration reads every open market's on-chain status via a single batched Multicall3 call and writes it back as one of four stages (`active` / `awaiting_dispute` / `disputed` / `completed`) plus a dispute audit log, so the frontend's lifecycle tabs and the public `market_lookup` view never drift from chain state.
-
-Two additional on-demand workflows (`auto-recovery.yml`, `debug-schema.yml`) let backfilling/re-syncing and schema-drift checks be triggered manually, and `security-monitor.yml` polls for on-chain anomalies every 15 minutes.
-
-No human approval step in any of the automated ones. All Supabase writes from these workflows go through a service-role client, not the anon key, since the anon role only has read/insert grants on `events` and would otherwise silently drop update calls under RLS.
-
-**Settlement.** `AgentArena.sol` holds staked USDC until a market finalizes, then pays out proportionally to whoever backed the winning side. Winners receive their original stake plus a proportional share of the losing pool, minus a 1.5% protocol fee.
-
-**Portfolio.** Wallets authenticate via Sign-In With Ethereum (a gasless signed message, verified server-side into a short-lived session token) before any stake is recorded off-chain. Every position moves through a strict lifecycle in Supabase, protected by row-level security scoped to the signing wallet: `active` (staking open) → `pending_claim` (won, awaiting claim) or `lost` (moves to history) → `claimed`. The Portfolio page shows live wallet balance, a balance-history chart, and every position at its current stage, all sourced from real on-chain and Supabase state, never placeholders.
-
-**Debate, not two monologues.** HAWK and DOVE are generated in a single Groq call, but the JSON schema forces HAWK's rationale to be written first and instructs DOVE to quote HAWK's specific claim and rebut it directly, exploiting the fact that structured generation is sequential. Genuinely adversarial without doubling the API cost or the rate-limit exposure of a true multi-turn call chain.
-
-**Cross-checking.** Every market's Supabase event row, on-chain state, position/dispute counts, and `createMarket` transaction hash are joined into a single `market_lookup` SQL view, so verifying any market's full history is one query instead of jumping between Arcscan, the contract, and three tables.
+- **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq.
+- **Automation tier (GitHub Actions)** — three scheduled, unattended workflows: ingest, create, resolve. No human approval step in any of them.
+- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery; no hardcoded market list.
+- **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out on resolution.
 
 ---
 
-## Live terminal
+## End-to-end market flow
 
-| Page | What it shows |
-|------|--------------|
-| [Active Narratives](https://geomacro.live/feed) | Live feed of AI-classified events with severity and Risk Δ scores |
-| [Analyst Panel](https://geomacro.live/arena) | HAWK vs DOVE staking interface with live lifecycle state (Staking Open → Closed → Tentative → Finalized) |
-| [Data Pipeline](https://geomacro.live/pipeline) | Ingestion and classification pipeline status, stage by stage |
-| [Onchain](https://geomacro.live/onchain) | On-chain market data and contract activity |
-| [Portfolio](https://geomacro.live/portfolio) | SIWE-authenticated wallet balance, position lifecycle and claim history |
-| [Docs](https://geomacro.live/docs) | Full technical documentation, architecture and API playground |
-| [Roadmap](https://geomacro.live/roadmap) | What's shipped and what's next |
-| [Analytics](https://blocknine0.github.io/geomacro-analytics/) | Standalone dashboard: ingestion, market lifecycle and settlement health, live from the same Supabase project |
+```mermaid
+flowchart LR
+    A[News breaks] --> B[Groq classifies<br/>severity + relevance]
+    B --> C{High severity<br/>and no market yet?}
+    C -->|yes| D[createMarket on Arc]
+    D --> E[Users stake USDC<br/>on Hawk or Dove]
+    E --> F[48h window passes]
+    F --> G[Groq re-reads the story,<br/>judges which side aged better]
+    G --> H[declareWinner on Arc]
+    H --> I[Winners claim proportional payout]
+```
+
+The primitive stays small on purpose: one story, one market, one 48-hour window, two sides.
+
+---
+
+## Contract state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: createMarket
+    Created --> Staked: stake(side)
+    Staked --> Resolved: declareWinner
+    Resolved --> Claimed: claim() per winner
+    Claimed --> [*]
+
+    note right of Created
+      Market is open.
+      Anyone can stake HAWK or DOVE.
+    end note
+    note right of Staked
+      48-hour window running.
+      Both sides can still receive stakes.
+    end note
+    note right of Resolved
+      Winning side declared by
+      automated Groq-judged resolver.
+    end note
+```
 
 ---
 
 ## The contract
 
-Kept intentionally small: no governance token, no oracle network, no multisig. Enough to prove the settlement loop works end to end, with a built-in optimistic-dispute layer for community pushback on the AI's tentative verdict.
+Kept this intentionally small. No governance token, no oracle network, no multisig. Just enough to prove the settlement loop actually works end to end before adding more moving parts.
 
 ```solidity
-createMarket(marketId, stakingDuration, resolutionDuration)  // owner opens a market
-stake(marketId, side) payable                                // anyone backs HAWK or DOVE with USDC
-declareWinnerByAI(marketId, winningSide)                     // automated resolver sets a tentative winner
-disputeMarket(marketId) payable                               // anyone can challenge the tentative winner (fee-gated)
-voteOnDispute(marketId, side) payable                         // community votes if a dispute is raised
-finalizeMarket(marketId)                                      // locks in the final winner after the dispute window
-claim(marketId)                                                // winners withdraw their share
+createMarket(marketId)          // owner opens a market
+stake(marketId, side) payable   // anyone backs HAWK or DOVE with USDC
+declareWinner(marketId, side)   // automated resolver declares outcome
+claim(marketId)                 // winners withdraw their share
 ```
 
-**Contract:** `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe` on Arc Testnet
-**[View on Arcscan →](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe)**
+USDC is Arc's native gas token, so staking is just a payable call. No approve step, no ERC-20 friction.
 
-USDC is Arc's native gas token, so staking is just a payable call, no `approve()` step, no ERC-20 friction. Native-currency values on Arc use **18 decimals** (not 6, despite USDC's ERC-20 interface using 6), this matters for anyone integrating directly with the contract's `payable` functions.
+**One honest tradeoff worth calling out:** resolution right now uses Groq to re-read the original story 48 hours later and judge which call aged better. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based mechanism like UMA. Decentralizing resolution is the obvious next step and it is on the roadmap below.
 
-**Known issue (testnet, not mainnet-blocking):** the `DISPUTE_FEE`, `MIN_VOTE_AMOUNT`, and `MIN_VOLUME_FOR_DISPUTE` constants were originally written assuming 6-decimal precision (e.g. `50 * 10**6`), but since native values use 18 decimals, these currently resolve to near-zero amounts on-chain, the dispute/vote gating is not economically meaningful in the current testnet deployment. Since `constant`s are baked into bytecode at deploy time, fixing this requires a full redeploy (new contract address, no state migration), so it's deliberately deferred to the mainnet cutover rather than done mid-testnet. In the meantime, the 24-hour dispute window itself works correctly end to end, every market is classified into one of four lifecycle stages (`active` → `awaiting_dispute` → `disputed` / `completed`), synced from on-chain state into Supabase on a staggered ~2-hour cycle and surfaced as distinct tabs in the Analyst Panel, so disputed markets stay visibly isolated from the rest even though the fee gating is still testnet-scale.
+---
 
-**One honest tradeoff worth calling out:** resolution uses a Groq call (`llama-3.1-8b-instant`, with a Cerebras `llama3.1-8b` fallback if Groq's daily quota is exhausted) to judge how the original story has evolved 48 hours later, cross-checked against fresh news search results. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based oracle like UMA. The contract does have an on-chain dispute/vote mechanism as a backstop (see above), but the constant-scaling bug currently limits its practical use on testnet. To reduce single-call flakiness on close calls, the resolver now re-checks itself with a second independent read whenever the first verdict is low-confidence or a draw, and defaults to a draw rather than a shaky verdict if the two disagree. Fully decentralizing resolution remains on the roadmap.
+## Cross-chain bridge (CCTP V2)
 
-### Test coverage
+`/bridge` moves USDC into Arc Testnet from other CCTP V2 testnets without a custodian in the middle. It runs entirely in the browser through the connected wallet.
 
-The contract has a Foundry test suite covering market creation, a set of adversarial staking/misuse attempts (non-owner market creation, zero-value stakes, staking on a nonexistent market, staking after the window closes, resolving early), and the full settlement and payout path with the exact expected numbers checked against the contract's actual fee/split math.
+```mermaid
+sequenceDiagram
+    actor User
+    participant Wallet as Browser wallet
+    participant Source as Source chain<br/>(Eth / Base / Avalanche Sepolia)
+    participant Iris as Circle Iris API
+    participant Arc as Arc Testnet
+
+    User->>Wallet: select source chain + amount
+    Wallet->>Source: approve USDC for TokenMessenger
+    User->>Wallet: burn for Arc
+    Wallet->>Source: depositForBurn(...)
+    Source-->>Wallet: tx receipt
+
+    loop poll until attested
+        Wallet->>Iris: GET message status
+        Iris-->>Wallet: pending / complete
+    end
+
+    User->>Wallet: mint on Arc
+    Wallet->>Arc: receiveMessage(message, attestation)
+    Arc-->>User: USDC credited
+```
+
+- Source testnets: Ethereum Sepolia, Base Sepolia, Avalanche Fuji.
+- Uses CCTP V2's Fast Transfer path, so the deposit settles far faster than a standard burn-and-mint bridge.
+- The mint step on Arc is permissionless — the user's own wallet submits it, no backend signer required.
+- Read-path RPC calls (balance checks, market discovery) fail over across multiple Arc RPC endpoints, so a single rate-limited endpoint doesn't break the UI.
+
+---
+
+## Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Frontend | Vite 7 + TanStack Start + React 19 + Tailwind v4 | Fast dev loop, file-based routing, streaming-friendly SSR |
+| UI components | shadcn/ui + Radix primitives | Accessible defaults, no framework lock-in |
+| Chain client | ethers v6 | Read/write against Arc Testnet, `FallbackProvider` for RPC resilience |
+| Data | Supabase (Postgres) | Event log for the Live Feed; frontend reads straight from it |
+| Classification | Groq (`llama-3.3-70b-versatile`) | Fast, cheap inference for severity scoring and resolution judgment |
+| News sources | NewsAPI.org + The Guardian | Two-source article fan-out across four categories, reduces single-source blind spots |
+| Validation | Zod | Schema validation on classified events before they hit Supabase |
+| Automation | GitHub Actions (3 scheduled workflows) | Ingest, create, resolve — no server to maintain, no human in the loop |
+| Smart contract | Solidity 0.8, Arc Testnet | `AgentArena.sol`, verified, dependency-free |
+| Cross-chain | Circle CCTP V2 (Fast Transfer) + Iris attestation | Native USDC bridging without a custodian |
+| Package manager | bun | Fast installs, single lockfile |
+
+---
+
+## Repository layout
 
 ```
-Ran 4 tests for test/AgentArena.t.sol:AgentArenaTest
-[PASS] testAdversarialStaking() (gas: 230309)
-[PASS] testMarketCreation() (gas: 123301)
-[PASS] testSettlementAndPayout() (gas: 395956)
-[PASS] test_RevertWhen_DuplicateMarketCreated() (gas: 125155)
-Suite result: ok. 4 passed; 0 failed; 0 skipped
-```
-
-Run it yourself:
-
-```bash
-forge install foundry-rs/forge-std
-forge test -vv
+geomacro/
+├── src/
+│   ├── components/
+│   │   └── sections/
+│   │       ├── arena-section.tsx       # Agent Arena market UI
+│   │       ├── bridge-section.tsx      # CCTP V2 bridge stepper
+│   │       └── roadmap-section.tsx     # Shipped/upcoming milestones page
+│   ├── routes/
+│   │   ├── docs.tsx                    # Developer docs (tabbed guides)
+│   │   ├── portfolio.tsx               # Per-wallet positions view
+│   │   └── ...                         # feed, arena, pipeline, onchain, bridge, roadmap
+│   ├── lib/
+│   │   ├── arc.ts                      # Arc network config + RPC fallback provider
+│   │   ├── agent-arena.ts              # Contract read client
+│   │   ├── arena-markets.ts            # Market discovery (onchain, no hardcoded list)
+│   │   ├── balance.ts                  # Wallet balance reads, multi-RPC fail-over
+│   │   ├── cctp.ts                     # CCTP V2 addresses, ABIs, Iris poller
+│   │   ├── positions.functions.ts      # Server-side tx verification
+│   │   └── roadmap.ts                  # Single source of truth for roadmap data
+│   └── hooks/
+│       ├── WalletProvider.tsx          # Wallet connection context
+│       └── use-wallet.ts
+├── scripts/
+│   ├── ingest-news.js                  # NewsAPI + Guardian → Groq classify → Supabase insert
+│   ├── create-markets.js               # Scans high-severity events, opens markets on Arc
+│   └── resolve-markets.js              # Checks 48h+ markets, asks Groq, calls declareWinner()
+├── .github/workflows/
+│   ├── auto-ingest-news.yml            # Runs ingest-news.js every ~2 hours
+│   ├── auto-create-markets.yml         # Runs create-markets.js, 30 min after ingest
+│   └── auto-resolve-markets.yml        # Runs resolve-markets.js, 30 min after create
+└── public/
 ```
 
 ---
 
-## Repo layout
+## Local setup
 
-```
-src/
-  routes/                         Feed, Analyst Panel, Portfolio, Docs, Pipeline, Onchain, Roadmap
-  components/sections/            Page-level UI sections
-  lib/
-    agent-arena.ts                 Contract ABI, reads/writes, wei/USDC conversion
-    siwe.functions.ts               Sign-In With Ethereum verification + session JWT
-    positions.functions.ts          Records stakes/claims into Supabase (JWT-scoped, RLS-protected)
-    live-feed.functions.ts          Live event fetch + deterministic Risk Δ baseline calc
-    arena-judge.functions.ts        Main-agent settlement verdict
-    agents.functions.ts             HAWK/DOVE analyst duel generation
-  hooks/use-wallet.ts               Wallet connect + SIWE session state
-contracts/
-  AgentArena.sol                   Market creation, staking, AI resolution, dispute/vote, claim
-test/
-  AgentArena.t.sol                 Foundry test suite: creation, adversarial staking, full settlement/payout
-foundry.toml                       Foundry config (src = contracts/, test = test/)
-scripts/
-  ingest-news.js                  Pulls NewsAPI/Guardian articles, classifies with Groq, inserts to Supabase
-  create-markets.js               Scans for high-severity events, opens markets on Arc (capped at 100 concurrently active)
-  resolve-markets.js              Checks due markets, Groq judges HAWK/DOVE, calls declareWinnerByAI(), repairs orphaned Supabase flags
-  finalize-markets.js             Checks AI-resolved markets past the dispute window, calls finalizeMarket(), syncs positions
-  sync-stakes.js                  Replays onchain Staked events into Supabase (scheduled every 30 min)
-  sync-lifecycle.js               Syncs each market's on-chain status into events.lifecycle_stage + market_disputes audit log
-  backfill-positions.js           One-off repair: syncs positions for markets already finalized on-chain but not yet reflected in Supabase
-  backfill-tx-hashes.js           One-off repair: backfills historical createMarket tx hashes from on-chain MarketCreated logs
-  anomaly-monitor.js               Polls for on-chain anomalies
-  debug-schema.js                  Verifies live Supabase schema matches what each script expects
-.github/workflows/
-  auto-ingest-news.yml            Runs ingest-news.js every ~2 hours
-  auto-create-markets.yml         Runs create-markets.js on its own ~2-hour schedule
-  auto-resolve-markets.yml        Runs resolve-markets.js on its own ~2-hour schedule
-  auto-finalize-markets.yml       Runs finalize-markets.js every ~2 hours
-  sync-stakes.yml                 Runs sync-stakes.js every 30 minutes
-  sync-lifecycle.yml              Runs sync-lifecycle.js hourly, looping internally every 15 min via shell sleep (avoids GitHub's native-cron delay risk on tight schedules)
-  auto-recovery.yml               Manual-trigger sync-stakes / resolve-markets / create-markets
-  security-monitor.yml            Anomaly monitor, every 15 minutes
-  debug-schema.yml                Manual-trigger schema drift check
+```bash
+git clone https://github.com/blocknine0/geomacro.git
+cd geomacro
+bun install
+cp .env.example .env.local
+bun run dev
 ```
 
-**Supabase, beyond the `events` table:** `positions` (per-wallet stake/claim state, RLS-scoped), `wallet_balance_history` (append-only ledger), `market_disputes` (audit log of every on-chain dispute), and a `market_lookup` view joining all of the above by market ID for one-query cross-checking.
+You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. See [`.env.example`](.env.example).
+
+---
+
+## Configuration reference
+
+| Variable | Required by | Notes |
+|---|---|---|
+| `NEWSAPI_KEY` | ingestion pipeline | Powers the Live Feed and Agent Arena news context |
+| `GROQ_API_KEY` | ingestion + resolution | Classifies articles and judges market resolution |
+| `APP_SUPABASE_URL` / `APP_SUPABASE_ANON_KEY` | ingestion, feed | Persists classified events; leave unset to skip persistence |
+| `VITE_ARC_NETWORK` | frontend (build-time) | Force `mainnet` or `testnet`; leave unset for auto |
+
+---
+
+## Product surfaces
+
+| Page | Purpose |
+|---|---|
+| `/` | Marketing surface — what Geomacro is, live activity |
+| `/feed` | Live, classified news feed across four categories |
+| `/arena` | Active markets — stake on Hawk or Dove, see pre-stake AI arguments |
+| `/pipeline` | How ingestion and classification work, in detail |
+| `/onchain` | Contract details, testnet/mainnet network info |
+| `/bridge` | Pull USDC into Arc via CCTP V2 |
+| `/roadmap` | Shipped and upcoming milestones |
+| `/docs` | Developer documentation — architecture, API, competitive moat |
+
+---
+
+## Design principles
+
+1. **Contract state is source of truth.** Supabase is a read cache for the feed, not a system of record — market state always comes from the chain.
+2. **No human in the automation loop.** Ingestion, market creation, and resolution all run unattended on a schedule. If that's wrong, it's a code fix, not a manual override.
+3. **Honest about the resolution tradeoff.** LLM-judged settlement is disclosed as a limitation, not hidden behind confident language. Decentralized dispute resolution is on the roadmap, not glossed over.
+4. **Relevance over volume.** The classification gate is strict on purpose — a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
+5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction — no bridging friction baked into the core loop.
 
 ---
 
@@ -188,35 +305,23 @@ scripts/
 - [x] Smart contract deployed and verified on Arc Testnet
 - [x] Full create, stake, resolve and claim cycle tested onchain
 - [x] Automated market creation from live events via GitHub Actions
-- [x] Automated tentative resolution via Groq after the 48-hour window
-- [x] Automated finalization after the 24-hour public dispute window
+- [x] Automated market resolution via Groq judgment after 48-hour window
 - [x] Dynamic Arena with no hardcoded markets, pure on-chain discovery
-- [x] Supabase schema-drift checker to catch backend/script mismatches early
-- [x] Deterministic Risk Δ (24h category baseline, not LLM-guessed)
-- [x] SIWE-authenticated Portfolio with full position lifecycle and RLS
-- [x] Startup guard preventing verdict reveal before staking closes
-- [x] Four-stage market lifecycle (Active / Awaiting Dispute / Disputed / Completed) synced from chain to Supabase via a batched Multicall3 read, hourly-triggered with an internal 15-minute self-loop, surfaced as distinct tabs
-- [x] `market_lookup` cross-check view + historical `createMarket` tx-hash backfill for every market
-- [x] Sequential-rebuttal HAWK/DOVE debate (DOVE must quote and directly counter HAWK's specific claim, same API call)
-- [x] Self-consistency re-check on low-confidence/draw verdicts before a market settles
-- [x] Service-role hardening across every Supabase-writing script (anon role has no UPDATE grant on `events`, was silently dropping writes)
-- [x] Standalone public analytics dashboard (pipeline + automation health, zero fabricated numbers)
-- [x] Foundry test suite for the contract (market creation, adversarial staking attempts, full settlement/payout math)
-- [ ] On-chain dispute fee/threshold decimal fix (`10**6` → `10**18`), deferred to the mainnet redeploy since `constant`s can't be patched in place
-- [ ] Fully decentralized dispute-based resolution as the primary mechanism (currently AI-first with an on-chain dispute backstop)
+- [x] AI Duel feature showing market-specific Hawk and Dove arguments before staking
+- [x] Cross-chain USDC bridge into Arc Testnet via Circle's CCTP V2
+- [ ] Decentralized dispute-based resolution instead of LLM-attested settlement
 - [ ] Mainnet deployment
-- [ ] Public track record showing how often HAWK vs. DOVE actually calls it right
+- [ ] Public track record showing how often Hawk vs. Dove actually calls it right
 - [ ] Full mobile wallet support via WalletConnect for external browsers
-- [ ] Implement multi-currency asset support (stablecoins/native tokens) for deposits and withdrawals
-- [ ] Integrate privacy-preserving KYC layers to mitigate money laundering and malicious protocol exploits
-- [ ] Architect a comprehensive regulatory compliance framework for decentralized prediction markets
+
+Full versioned history with dates: [geomacro.live/roadmap](https://www.geomacro.live/roadmap)
 
 ---
 
 ## Why Arc
 
-Risk markets like this live or die on settlement cost and speed. Arc's native USDC gas means every stake, claim and market creation is just one cheap, stablecoin-denominated transaction. No bridging, no wrapped tokens, no separate gas token to keep topped up. That is basically the whole bet here. The chain should stay out of the way of the prediction, not add friction on top of it.
+Risk markets like this live or die on settlement cost and speed. Arc's native USDC gas means every stake, claim, and market creation is just one cheap, stablecoin-denominated transaction. No bridging, no wrapped tokens, no separate gas token to keep topped up. That is basically the whole bet here. The chain should stay out of the way of the prediction, not add friction on top of it.
 
 ---
 
-Built by [@blocknine0](https://github.com/blocknine0) · Follow on X: [@GeomacroLive](https://x.com/GeomacroLive) · Questions or bugs? [Open an issue](https://github.com/blocknine0/geomacro/issues)
+Built by [@blocknine0](https://github.com/blocknine0) · Questions or bugs? [Open an issue](https://github.com/blocknine0/geomacro/issues)
