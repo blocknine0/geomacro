@@ -13,7 +13,7 @@
 
 Geomacro reads the news, scores the risk, and lets two AI agents argue about what happens next. Agent Hawk bets on escalation. Agent Dove bets on calm. Every market opens automatically from live news, settles in USDC on Arc, and resolves in 48 hours.
 
-> **Live site:** <https://www.geomacro.live> · **Contract:** [`0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D`](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D) on Arc Testnet
+> **Live site:** <https://www.geomacro.live> · **Contract:** [`0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe`](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe) on Arc Testnet
 
 ---
 
@@ -90,10 +90,10 @@ flowchart LR
     USDC --> CT
 ```
 
-- **Ingestion tier** — NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq.
-- **Automation tier (GitHub Actions)** — three scheduled, unattended workflows: ingest, create, resolve. No human approval step in any of them.
-- **Client tier (Vite + TanStack Start)** — reads live contract state directly for market discovery; no hardcoded market list.
-- **Settlement tier (Arc Testnet)** — `AgentArena.sol` holds staked USDC and pays out on resolution.
+- **Ingestion tier** = NewsAPI and The Guardian fan-out across four categories, classified and severity-scored by Groq.
+- **Automation tier (GitHub Actions)** = three scheduled, unattended workflows: ingest, create, resolve. No human approval step in any of them.
+- **Client tier (Vite + TanStack Start)** = reads live contract state directly for market discovery; no hardcoded market list.
+- **Settlement tier (Arc Testnet)** = `AgentArena.sol` holds staked USDC and pays out on resolution.
 
 ---
 
@@ -105,7 +105,8 @@ flowchart LR
     B --> C{High severity<br/>and no market yet?}
     C -->|yes| D[createMarket on Arc]
     D --> E[Users stake USDC<br/>on Hawk or Dove]
-    E --> F[48h window passes]
+    E --> E2[Staking closes at 46h]
+    E2 --> F[48h resolution point]
     F --> G[Groq re-reads the story,<br/>judges which side aged better]
     G --> H[declareWinner on Arc]
     H --> I[Winners claim proportional payout]
@@ -130,8 +131,9 @@ stateDiagram-v2
       Anyone can stake HAWK or DOVE.
     end note
     note right of Staked
-      48-hour window running.
-      Both sides can still receive stakes.
+      Staking open for 46 hours.
+      Locked for the final 2 hours
+      before the 48h resolution point.
     end note
     note right of Resolved
       Winning side declared by
@@ -188,7 +190,7 @@ sequenceDiagram
 
 - Source testnets: Ethereum Sepolia, Base Sepolia, Avalanche Fuji.
 - Uses CCTP V2's Fast Transfer path, so the deposit settles far faster than a standard burn-and-mint bridge.
-- The mint step on Arc is permissionless — the user's own wallet submits it, no backend signer required.
+- The mint step on Arc is permissionless, the user's own wallet submits it, no backend signer required.
 - Read-path RPC calls (balance checks, market discovery) fail over across multiple Arc RPC endpoints, so a single rate-limited endpoint doesn't break the UI.
 
 ---
@@ -294,8 +296,8 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. Se
 1. **Contract state is source of truth.** Supabase is a read cache for the feed, not a system of record — market state always comes from the chain.
 2. **No human in the automation loop.** Ingestion, market creation, and resolution all run unattended on a schedule. If that's wrong, it's a code fix, not a manual override.
 3. **Honest about the resolution tradeoff.** LLM-judged settlement is disclosed as a limitation, not hidden behind confident language. Decentralized dispute resolution is on the roadmap, not glossed over.
-4. **Relevance over volume.** The classification gate is strict on purpose — a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
-5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction — no bridging friction baked into the core loop.
+4. **Relevance over volume.** The classification gate is strict on purpose, a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
+5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction, no bridging friction baked into the core loop.
 
 ---
 
