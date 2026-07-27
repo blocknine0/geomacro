@@ -4,6 +4,12 @@ out = "out"
 libs = ["lib"]
 test = "test"
 
+# Required: AgentArenaV2 (with the UUPS + dispute-jury additions) exceeds
+# the 24,576-byte EIP-170 deploy limit without the optimizer on. runs=200
+# is the standard balance between deploy cost and runtime gas cost.
+optimizer = true
+optimizer_runs = 200
+
 # Arc Testnet, for reference when you get to forge script / verify
 # chain_id = 5042002
 # rpc: https://rpc.testnet.arc.network

@@ -12,11 +12,27 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+// 🆕 Dual-contract transition: markets created before the V2 migration live
+// on the old, non-upgradeable contract (7-field getMarketFullDetails, no
+// dispute-bond fields). Markets created after point at the new UUPS proxy
+// (9-field, includes disputeBond/disputeRaisedAt). Every event row already
+// carries its own market_address (written by create-markets.js) — this
+// script routes each market to the right contract+ABI by that column
+// instead of assuming a single global CONTRACT_ADDRESS. Once every legacy
+// market has reached lifecycle_stage="completed" (expected within ~72h of
+// the V2 deploy), the OLD_CONTRACT_ADDRESS branch can be deleted entirely.
+const OLD_CONTRACT_ADDRESS = ethers.getAddress(
+  (process.env.OLD_CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe").toLowerCase(),
+);
+const RAW_ADDRESS = process.env.CONTRACT_ADDRESS;
+if (!RAW_ADDRESS) throw new Error("Missing env: CONTRACT_ADDRESS (the new AgentArenaProxy address)");
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 
-const CONTRACT_ABI = [
+const OLD_CONTRACT_ABI = [
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
+];
+const CONTRACT_ABI = [
+  "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer, uint256 disputeBond, uint256 disputeRaisedAt)",
 ];
 
 // Canonical Multicall3 deployment address — same one used in resolve-markets.js,
@@ -115,9 +131,9 @@ async function callRpcWithBackoff(fn, label, rpcManager) {
 // via Multicall3.aggregate3 instead of one call per market — this is the
 // biggest single lever here, since this script previously made one RPC call
 // per open market with no batching at all.
-async function batchGetMarketDetails(readRpcManager, contractInterface, marketIds) {
+async function batchGetMarketDetails(readRpcManager, contractInterface, targetAddress, marketIds) {
   const calls = marketIds.map((marketId) => ({
-    target: CONTRACT_ADDRESS,
+    target: targetAddress,
     allowFailure: true,
     callData: contractInterface.encodeFunctionData("getMarketFullDetails", [marketId]),
   }));
@@ -162,10 +178,11 @@ async function main() {
   console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
 
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
+  const oldContractInterface = new ethers.Interface(OLD_CONTRACT_ABI);
 
   const { data: allEvents, error } = await adminSupabase
     .from("events")
-    .select("id, lifecycle_stage, disputer_address, market_resolved")
+    .select("id, lifecycle_stage, disputer_address, market_resolved, market_address")
     .eq("market_created", true)
     .neq("lifecycle_stage", "completed"); // "market_resolved=false" এর বদলে এখন এটা —
     // নাহলে যেসব market ইতিমধ্যে market_resolved=true হয়ে গেছে কিন্তু lifecycle_stage
@@ -176,6 +193,13 @@ async function main() {
     console.log("No open markets to sync.");
     return;
   }
+
+  // 🆕 Dual-contract split: a market with no market_address recorded
+  // (shouldn't happen post-migration, but covers pre-existing rows from
+  // before market_address was added) is treated as legacy by default.
+  const legacyEvents = allEvents.filter((e) => (e.market_address || OLD_CONTRACT_ADDRESS).toLowerCase() === OLD_CONTRACT_ADDRESS.toLowerCase());
+  const v2Events = allEvents.filter((e) => e.market_address && e.market_address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase());
+  console.log(`Legacy-contract markets to sync: ${legacyEvents.length}. V2-contract markets to sync: ${v2Events.length}.`);
 
   // 🛡️ FIX: previously capped at MAX_EVENTS_PER_RUN (150) with a plain
   // .slice(0, N) — since Supabase returns rows in a stable order with no
@@ -189,22 +213,29 @@ async function main() {
   // already turns this into just a few RPC calls regardless of count. Now
   // processes every open market every run, chunking the Multicall3 calls
   // internally so this scales cleanly as the market count grows.
-  const events = allEvents;
+  const events = [...legacyEvents, ...v2Events];
   const CHUNK_SIZE = Number(process.env.SYNC_MULTICALL_CHUNK_SIZE || 150);
   console.log(`Syncing lifecycle_stage for all ${events.length} open market(s) this run (in chunks of ${CHUNK_SIZE}).`);
 
-  const batchMarketIds = events.map((e) => `mkt_${e.id}`);
   let prefetchedDetails = new Map();
-  try {
-    for (let i = 0; i < batchMarketIds.length; i += CHUNK_SIZE) {
-      const chunk = batchMarketIds.slice(i, i + CHUNK_SIZE);
-      const chunkDetails = await batchGetMarketDetails(readRpcManager, contractInterface, chunk);
-      for (const [marketId, details] of chunkDetails) prefetchedDetails.set(marketId, details);
-      console.log(`  📦 Batched status check for markets ${i + 1}-${Math.min(i + CHUNK_SIZE, batchMarketIds.length)} of ${batchMarketIds.length} via Multicall3 (1 RPC call per chunk).`);
+
+  async function prefetchGroup(groupEvents, targetAddress, iface, groupLabel) {
+    if (groupEvents.length === 0) return;
+    const groupMarketIds = groupEvents.map((e) => `mkt_${e.id}`);
+    try {
+      for (let i = 0; i < groupMarketIds.length; i += CHUNK_SIZE) {
+        const chunk = groupMarketIds.slice(i, i + CHUNK_SIZE);
+        const chunkDetails = await batchGetMarketDetails(readRpcManager, iface, targetAddress, chunk);
+        for (const [marketId, details] of chunkDetails) prefetchedDetails.set(marketId, details);
+        console.log(`  📦 [${groupLabel}] Batched status check for markets ${i + 1}-${Math.min(i + CHUNK_SIZE, groupMarketIds.length)} of ${groupMarketIds.length} via Multicall3 (1 RPC call per chunk).`);
+      }
+    } catch (multicallErr) {
+      console.log(`  ⚠️ [${groupLabel}] Multicall3 batch prefetch failed (${multicallErr.message}) — falling back to one getMarketFullDetails call per market.`);
     }
-  } catch (multicallErr) {
-    console.log(`  ⚠️ Multicall3 batch prefetch failed (${multicallErr.message}) — falling back to one getMarketFullDetails call per market.`);
   }
+
+  await prefetchGroup(legacyEvents, OLD_CONTRACT_ADDRESS, oldContractInterface, "legacy");
+  await prefetchGroup(v2Events, CONTRACT_ADDRESS, contractInterface, "v2");
 
   let changed = 0;
   let rateLimitFailures = 0;
@@ -216,13 +247,16 @@ async function main() {
       break;
     }
     processedCount++;
+    const isLegacy = (event.market_address || OLD_CONTRACT_ADDRESS).toLowerCase() === OLD_CONTRACT_ADDRESS.toLowerCase();
+    const targetAddress = isLegacy ? OLD_CONTRACT_ADDRESS : CONTRACT_ADDRESS;
+    const activeInterface = isLegacy ? oldContractInterface : contractInterface;
     const marketId = `mkt_${event.id}`;
     try {
       const cached = prefetchedDetails.get(marketId);
       const details = cached !== undefined && cached !== null
         ? cached
         : await callRpcWithBackoff(
-            () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current()).getMarketFullDetails(marketId),
+            () => new ethers.Contract(targetAddress, isLegacy ? OLD_CONTRACT_ABI : CONTRACT_ABI, readRpcManager.current()).getMarketFullDetails(marketId),
             `getMarketFullDetails(${marketId})`,
             readRpcManager,
           );
@@ -256,6 +290,10 @@ async function main() {
           event_id: event.id,
           market_id: marketId,
           disputer_address: disputer,
+          // Legacy-contract disputes have no bond field in their ABI shape —
+          // bond_amount stays null for those, which is fine since the old
+          // DAO-vote dispute path was never wired to any script anyway.
+          ...(!isLegacy && details.disputeBond !== undefined ? { bond_amount: details.disputeBond.toString() } : {}),
         });
         console.log(`  ⚠️ New dispute detected on ${marketId} by ${disputer}`);
       }
