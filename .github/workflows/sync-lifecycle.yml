@@ -36,6 +36,13 @@ jobs:
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # 🛡️ FIX: these two were never actually passed to the script, even
+          # though sync-lifecycle.js requires CONTRACT_ADDRESS (and reads
+          # OLD_CONTRACT_ADDRESS for dual-contract routing) — the script has
+          # no hardcoded fallback anymore, so every run was crashing on
+          # startup with "Missing env: CONTRACT_ADDRESS" until this was added.
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
           ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
