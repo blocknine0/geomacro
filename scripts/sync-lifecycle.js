@@ -297,7 +297,7 @@ async function main() {
         ? new Date((aiResolutionTime + DISPUTE_WINDOW_SECONDS) * 1000).toISOString()
         : null;
 
-      await adminSupabase
+      const { error: updateError } = await adminSupabase
         .from("events")
         .update({
           lifecycle_stage: newStage,
@@ -307,9 +307,21 @@ async function main() {
         })
         .eq("id", event.id);
 
+      // 🛡️ FIX: this update's result was never checked. If it silently
+      // failed (RLS, constraint, bad column value), the console still
+      // logged the transition as if it succeeded, and the same market got
+      // reprocessed every single run forever with no visible cause. Now it
+      // logs the real Supabase error and skips the "changed" counter for
+      // this market, so the next run's log actually explains what's wrong.
+      if (updateError) {
+        console.log(`  ❌ ${marketId}: Supabase update FAILED — ${updateError.message} (code: ${updateError.code ?? "n/a"})`);
+        await delay(RPC_THROTTLE_MS);
+        continue;
+      }
+
       // নতুন dispute হলে audit log-এও একটা এন্ট্রি রাখো
       if (newStage === "disputed" && event.lifecycle_stage !== "disputed" && disputer) {
-        await adminSupabase.from("market_disputes").insert({
+        const { error: disputeInsertError } = await adminSupabase.from("market_disputes").insert({
           event_id: event.id,
           market_id: marketId,
           disputer_address: disputer,
@@ -318,6 +330,9 @@ async function main() {
           // DAO-vote dispute path was never wired to any script anyway.
           ...(!isLegacy && details.disputeBond !== undefined ? { bond_amount: details.disputeBond.toString() } : {}),
         });
+        if (disputeInsertError) {
+          console.log(`  ⚠️ ${marketId}: market_disputes insert failed — ${disputeInsertError.message}`);
+        }
         console.log(`  ⚠️ New dispute detected on ${marketId} by ${disputer}`);
       }
 
