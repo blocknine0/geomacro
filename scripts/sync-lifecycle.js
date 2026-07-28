@@ -197,9 +197,32 @@ async function main() {
   // 🆕 Dual-contract split: a market with no market_address recorded
   // (shouldn't happen post-migration, but covers pre-existing rows from
   // before market_address was added) is treated as legacy by default.
+  // 🛡️ FIX: before the real V2 cutover, CONTRACT_ADDRESS and
+  // OLD_CONTRACT_ADDRESS are the same value on purpose (V2 deployed but not
+  // yet activated). Without this guard, every legacy market matched BOTH
+  // the legacy and "v2" filters (since the two addresses were identical),
+  // so everything got processed twice — once successfully as legacy, once
+  // via a failing V2-ABI multicall that fell back to slow per-market calls.
+  // Once CONTRACT_ADDRESS is actually switched to the real V2 proxy address,
+  // this condition becomes false automatically and dual-contract routing
+  // kicks in for real, no code change needed at cutover time.
+  // 🛡️ FIX: legacy and "v2" filters must be mutually exclusive, or every
+  // market matches both whenever CONTRACT_ADDRESS still equals
+  // OLD_CONTRACT_ADDRESS (true right now, on purpose — V2 is deployed but
+  // not yet activated). Adding "&& not the old address" to the v2 filter
+  // makes this self-resolving: multicall for the v2 group stays fully wired
+  // and active (no mode flag, nothing to flip later), it just naturally
+  // batches 0 markets today. The moment CONTRACT_ADDRESS is switched to the
+  // real V2 proxy, new markets start landing here automatically.
+  const v2CutoverActive = CONTRACT_ADDRESS.toLowerCase() !== OLD_CONTRACT_ADDRESS.toLowerCase();
   const legacyEvents = allEvents.filter((e) => (e.market_address || OLD_CONTRACT_ADDRESS).toLowerCase() === OLD_CONTRACT_ADDRESS.toLowerCase());
-  const v2Events = allEvents.filter((e) => e.market_address && e.market_address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase());
-  console.log(`Legacy-contract markets to sync: ${legacyEvents.length}. V2-contract markets to sync: ${v2Events.length}.`);
+  const v2Events = allEvents.filter(
+    (e) =>
+      e.market_address &&
+      e.market_address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() &&
+      e.market_address.toLowerCase() !== OLD_CONTRACT_ADDRESS.toLowerCase(),
+  );
+  console.log(`Legacy-contract markets to sync: ${legacyEvents.length}. V2-contract markets to sync: ${v2Events.length}.${v2CutoverActive ? "" : " (new contract address not active yet)"}`);
 
   // 🛡️ FIX: previously capped at MAX_EVENTS_PER_RUN (150) with a plain
   // .slice(0, N) — since Supabase returns rows in a stable order with no
