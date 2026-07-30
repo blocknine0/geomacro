@@ -549,6 +549,7 @@ async function main() {
         ai_processed: true,
         ai_tentative_winner: judgment.sideLabel,
         ai_resolved_at: new Date().toISOString(),
+        ai_reasoning: judgment.reasoning || null,
       }).eq("id", event.id);
 
       if (updateErr)
