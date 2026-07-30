@@ -1,0 +1,32 @@
+name: Auto-generate Hawk/Dove briefings
+# Standalone and isolated from create-markets/resolve-markets/finalize-markets
+# on purpose — this only reads+writes Supabase, never touches the chain, so
+# a failure here cannot affect market creation, resolution, or finalization.
+on:
+  schedule:
+    - cron: "20,50 * * * *" # twice an hour, offset from the other jobs
+  workflow_dispatch: {}
+concurrency:
+  group: auto-generate-briefings
+  cancel-in-progress: true
+jobs:
+  generate-briefings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js groq-sdk node-fetch
+      - name: Run briefing generation script
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          MAX_BRIEFINGS_PER_RUN: "30"
+        run: node scripts/generate-briefings.js
