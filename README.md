@@ -25,7 +25,7 @@ Geomacro reads the news, scores the risk, and lets two AI agents argue about wha
 - [Lifecycle stages](#lifecycle-stages)
 - [Contract state machine](#contract-state-machine)
 - [The contract](#the-contract)
-- [Cross-chain bridge (CCTP V2)](#cross-chain-bridge-cctp-v2)
+- [Cross-chain bridge (CCTP V2) & swap](#cross-chain-bridge-cctp-v2--swap)
 - [RPC resilience](#rpc-resilience)
 - [Tech stack](#tech-stack)
 - [Repository layout](#repository-layout)
@@ -58,7 +58,7 @@ flowchart LR
         GR[Groq / Cerebras<br/>classify + score]
     end
 
-    subgraph automation[GitHub Actions — scheduled]
+    subgraph automation["GitHub Actions (scheduled)"]
         ING[ingest-news.js]
         CRE[create-markets.js]
         RES[resolve-markets.js]
@@ -72,14 +72,14 @@ flowchart LR
         DB[(events table)]
     end
 
-    subgraph client[Frontend — Vite + TanStack Start]
+    subgraph client["Frontend (Vite + TanStack Start)"]
         FEED[Live Feed]
         ARENA[Agent Arena]
         BRIDGE[Bridge]
-        PORT[Portfolio — SIWE auth]
+        PORT["Portfolio (SIWE auth)"]
     end
 
-    subgraph rpc[Backend RPC layer — scripts only]
+    subgraph rpc["Backend RPC layer (scripts only)"]
         RM[5 rotating endpoints<br/>+ Multicall3 batching]
     end
 
@@ -148,7 +148,7 @@ Resolution isn't a single instant flip from staking to payout. Every market move
 | Hours | `lifecycle_stage` | What's happening |
 |---|---|---|
 | 0 to 46h | `active` | Staking open on Hawk or Dove |
-| 46 to 48h | `active` (locked) | Resolution buffer — staking locked, no new positions, resolver hasn't run yet |
+| 46 to 48h | `active` (locked) | Resolution buffer: staking locked, no new positions, resolver hasn't run yet |
 | 48h | → `awaiting_dispute` | Groq resolves and posts a verdict (`AI_RESOLVED`) |
 | 48 to 72h | `awaiting_dispute` → `disputed` | Dispute window: 24h if the verdict goes unchallenged, extends to 48h total if disputed |
 | 72h | `completed` | `finalize-markets.js` closes the window, `claim()` opens |
@@ -164,7 +164,7 @@ stateDiagram-v2
     completed --> [*]: claim() per winner
 ```
 
-`sync-lifecycle.js` is what actually advances `lifecycle_stage` on its own 15-minute loop — it doesn't wait on the other scheduled jobs, so a market's displayed stage stays accurate even if `resolve-markets.js` or `finalize-markets.js` runs a few minutes late.
+`sync-lifecycle.js` is what actually advances `lifecycle_stage` on its own 15-minute loop. It doesn't wait on the other scheduled jobs, so a market's displayed stage stays accurate even if `resolve-markets.js` or `finalize-markets.js` runs a few minutes late.
 
 ---
 
@@ -199,24 +199,24 @@ stateDiagram-v2
 
 ## The contract
 
-Kept this intentionally small. No governance token, no oracle network, no multisig. Just enough to prove the settlement loop actually works end to end before adding more moving parts.
+Kept this intentionally small. No governance token, no oracle network. Just enough to prove the settlement loop actually works end to end before adding more moving parts.
 
 ```solidity
 createMarket(marketId)          // owner opens a market
 stake(marketId, side) payable   // anyone backs HAWK or DOVE with USDC
 declareWinner(marketId, side)   // automated resolver posts the AI verdict
-// dispute + finalize entry points sit on top of this base loop —
+// dispute + finalize entry points sit on top of this base loop:
 // see Lifecycle stages above for the 24h/48h dispute-window timing
 claim(marketId)                 // winners withdraw their share
 ```
 
 USDC is Arc's native gas token, so staking is just a payable call. No approve step, no ERC-20 friction.
 
-**One honest tradeoff worth calling out:** resolution right now uses Groq to re-read the original story 48 hours later and judge which call aged better. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based mechanism like UMA. Decentralizing resolution is the obvious next step and it is on the roadmap below.
+**On the resolution-tradeoff we used to flag here:** a decentralized dispute layer (`AgentArenaV2.sol`) is built, compiled, and deployed to Arc Testnet behind a UUPS proxy: 5 independent AI jurors (split across Groq and Cerebras so no single provider outage decides anything alone), 4-of-5 supermajority to overturn an AI verdict, fresh evidence pulled independently rather than re-reading the original source. It is **not yet activated in production** (the live contract address hasn't been switched over) while we finish validating it end to end. See the Roadmap below. Until then, the tradeoff described in earlier versions of this README still applies to the live deployment: resolution is an LLM judgment, not yet a dispute-based mechanism.
 
 ---
 
-## Cross-chain bridge (CCTP V2)
+## Cross-chain bridge (CCTP V2) & swap
 
 `/bridge` moves USDC into Arc Testnet from other CCTP V2 testnets without a custodian in the middle. It runs entirely in the browser through the connected wallet.
 
@@ -249,13 +249,15 @@ sequenceDiagram
 - The mint step on Arc is permissionless = the user's own wallet submits it, no backend signer required.
 - Read-path RPC calls (balance checks, market discovery) go through the frontend's 2-endpoint `FallbackProvider` (see RPC resilience below), so a single rate-limited endpoint doesn't break the UI.
 
+**Swap**: same-chain USDC ⇄ EURC ⇄ cirBTC on Arc Testnet via Circle's App Kit (`@circle-fin/app-kit`), no bridging required, browser-wallet-signed. **Built and verified, not yet integrated into the live frontend.** Arc Testnet is currently the only testnet App Kit supports for swaps.
+
 ---
 
 ## RPC resilience
 
 There are two separate RPC layers, deliberately sized differently for where they run:
 
-**Backend (GitHub Actions scripts)** = `create-markets.js`, `resolve-markets.js`, `finalize-markets.js`, `sync-lifecycle.js`, `sync-stakes.js`, and `anomaly-monitor.js` each rotate across **5 endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the job rotates to the next without the run failing. These endpoints are premium, API-key-gated providers — the keys live only in GitHub Actions secrets and never ship to a browser.
+**Backend (GitHub Actions scripts)** = `create-markets.js`, `resolve-markets.js`, `finalize-markets.js`, `sync-lifecycle.js`, `sync-stakes.js`, and `anomaly-monitor.js` each rotate across **5 endpoints**: Alchemy, QuickNode, GetBlock, dRPC, and a public fallback. If one is rate-limited, slow, or down, the job rotates to the next without the run failing. These endpoints are premium, API-key-gated providers; the keys live only in GitHub Actions secrets and never ship to a browser.
 
 **Frontend (`src/lib/arc.ts`)** = the client reads Arc through a plain 2-endpoint ethers `FallbackProvider` (`rpc.testnet.arc.network`, `arc-testnet.drpc.org`), both free and keyless. It doesn't need the backend's 5-endpoint rotation since it isn't burning a rate-limited paid quota per pageview.
 
@@ -269,13 +271,13 @@ There are two separate RPC layers, deliberately sized differently for where they
 |---|---|---|
 | Frontend | Vite 7 + TanStack Start + React 19 + Tailwind v4 | Fast dev loop, file-based routing, streaming-friendly SSR |
 | UI components | shadcn/ui + Radix primitives | Accessible defaults, no framework lock-in |
-| Chain client | ethers v6 — 5-endpoint rotation + Multicall3 in backend scripts, 2-endpoint `FallbackProvider` + Multicall3 on the frontend | Backend gets full RPC-level redundancy against paid endpoints; frontend stays keyless and light |
+| Chain client | ethers v6: 5-endpoint rotation + Multicall3 in backend scripts, 2-endpoint `FallbackProvider` + Multicall3 on the frontend | Backend gets full RPC-level redundancy against paid endpoints; frontend stays keyless and light |
 | Data | Supabase (Postgres) | Event log for the Live Feed; frontend reads straight from it |
 | Classification | Groq (`llama-3.1-8b-instant`), falling back to Cerebras (`llama3.1-8b`) on daily quota exhaustion | Fast, cheap inference for severity scoring and resolution judgment, with a two-tier fallback so quota limits don't stall the pipeline |
 | News sources | NewsAPI.org + The Guardian | Two-source article fan-out across four categories, reduces single-source blind spots |
 | Validation | Zod | Schema validation on classified events before they hit Supabase |
 | Auth | Sign-In with Ethereum (SIWE) | Wallet-based auth gating `/portfolio`, no separate password/account system |
-| Automation | GitHub Actions (7 scheduled jobs + 1 manual recovery workflow) | Ingest, create, resolve, finalize, lifecycle sync, stake sync, anomaly monitor — no server to maintain, no human in the loop |
+| Automation | GitHub Actions (7 scheduled jobs + 1 manual recovery workflow) | Ingest, create, resolve, finalize, lifecycle sync, stake sync, anomaly monitor; no server to maintain, no human in the loop |
 | Smart contract | Solidity 0.8, Arc Testnet | `AgentArena.sol`, verified, dependency-free |
 | Cross-chain | Circle CCTP V2 (Fast Transfer) + Iris attestation | Native USDC bridging without a custodian |
 | Package manager | npm (bun locally / legacy on one workflow) | Most CI jobs run on `npm install`; `bun.lock` still drives local dev and `sync-stakes.yml` |
@@ -286,11 +288,19 @@ There are two separate RPC layers, deliberately sized differently for where they
 
 ```
 geomacro/
+├── contracts/
+│   ├── AgentArena.sol                  # Live production contract (Arc Testnet)
+│   ├── AgentArenaV2.sol                # UUPS-upgradeable successor: AI-jury dispute resolution; deployed, not yet activated
+│   ├── AgentArenaProxy.sol             # ERC1967 proxy: the permanent address once V2 is activated
+│   └── MultisigTreasury.sol            # 2-of-3 multisig treasury for protocol fees
+├── script/
+│   └── Deploy.s.sol                    # Foundry script: deploys Multisig + V2 impl + Proxy in one broadcast
 ├── src/
 │   ├── components/
 │   │   └── sections/
 │   │       ├── arena-section.tsx       # Agent Arena market UI
 │   │       ├── bridge-section.tsx      # CCTP V2 bridge stepper
+│   │       ├── hawk-dove-stats-trigger.tsx  # Click-to-reveal Hawk/Dove historical verdict split
 │   │       └── roadmap-section.tsx     # Shipped/upcoming milestones page
 │   ├── routes/
 │   │   ├── docs.tsx                    # Developer docs (tabbed guides)
@@ -298,8 +308,9 @@ geomacro/
 │   │   └── ...                         # feed, arena, pipeline, onchain, bridge, roadmap
 │   ├── lib/
 │   │   ├── arc.ts                      # Arc network config + 2-endpoint FallbackProvider
-│   │   ├── agent-arena.ts              # Contract read client, Multicall3 batching
+│   │   ├── agent-arena.ts              # Contract read client, dual-contract (legacy + V2) routing, Multicall3 batching
 │   │   ├── arena-markets.ts            # Market discovery (onchain, no hardcoded list)
+│   │   ├── hawk-dove-stats.ts          # Real, deterministic Hawk/Dove verdict-distribution aggregate
 │   │   ├── balance.ts                  # Wallet balance reads
 │   │   ├── cctp.ts                     # CCTP V2 addresses, ABIs, Iris poller
 │   │   ├── siwe.functions.ts           # Sign-In with Ethereum auth for Portfolio
@@ -311,17 +322,26 @@ geomacro/
 ├── scripts/
 │   ├── ingest-news.js                  # NewsAPI + Guardian → Groq/Cerebras classify → Supabase insert
 │   ├── create-markets.js               # Scans high-severity events, opens markets on Arc
-│   ├── resolve-markets.js              # Posts the AI verdict at the 48h mark (AI_RESOLVED)
+│   ├── resolve-markets.js              # Posts the AI verdict at the 48h mark (AI_RESOLVED), persists reasoning
 │   ├── finalize-markets.js             # Closes the dispute window, opens claim()
-│   ├── sync-lifecycle.js               # Self-looping every 15 min, keeps lifecycle_stage accurate
+│   ├── generate-briefings.js           # Real Hawk/Dove pre-resolution briefings; isolated from the chain-writing scripts on purpose
+│   ├── resolve-disputes.js             # 5-agent AI jury runner for AgentArenaV2 disputes; dormant until V2 is activated
+│   ├── sync-lifecycle.js               # Self-looping every 15 min, dual-contract (legacy + V2) aware
 │   ├── sync-stakes.js                  # Reconciles onchain stake events into Supabase every 30 min
 │   ├── anomaly-monitor.js              # Two-tier WARN/CRITICAL alerting across all jobs
 │   └── (backfill-*.js, check-*.mjs, diagnose-*.mjs, debug-schema.js)  # One-off ops/debug tools, not scheduled
+├── supabase/migrations/
+│   ├── 001_ai_jury_dispute_system.sql  # market_disputes, jury_votes tables
+│   ├── 002_jury_track_record.sql       # Per-juror historical accuracy
+│   ├── 003_ai_reasoning.sql            # Persists the AI resolver's reasoning (previously generated, never saved)
+│   └── 004_hawk_dove_briefings.sql     # Real dual-sided pre-resolution briefing columns
 ├── .github/workflows/
 │   ├── auto-ingest-news.yml            # Runs ingest-news.js, every ~2h
 │   ├── auto-create-markets.yml         # Runs create-markets.js, every ~2h
 │   ├── auto-resolve-markets.yml        # Runs resolve-markets.js, every ~2h
 │   ├── auto-finalize-markets.yml       # Runs finalize-markets.js, every ~2h
+│   ├── auto-generate-briefings.yml     # Runs generate-briefings.js, twice hourly, isolated from on-chain jobs
+│   ├── auto-resolve-disputes.yml       # Runs resolve-disputes.js every 15 min, dormant until V2 is activated
 │   ├── sync-lifecycle.yml              # Runs sync-lifecycle.js, hourly trigger self-looping to 15 min
 │   ├── sync-stakes.yml                 # Runs sync-stakes.js every 30 min
 │   ├── security-monitor.yml            # Runs anomaly-monitor.js every 15 min
@@ -329,6 +349,8 @@ geomacro/
 │   └── debug-schema.yml                # Manual-only Supabase schema debug tool
 └── public/
 ```
+
+**Built and verified, not yet merged into the frontend:** `dispute-council-section.tsx` (+ route), `liquidity-section.tsx`, `swap-section.tsx`, `swap.ts`. Code compiles clean against real dependencies, but hasn't been applied to the live site yet. `hawk-dove-stats-trigger.tsx` and `hawk-dove-stats.ts` are the exception: those are live.
 
 ---
 
@@ -363,6 +385,11 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 | `SUPABASE_SERVICE_ROLE_KEY` | write-path scripts | Elevated Supabase key for scripts that insert/update rows (separate from the anon key used by the frontend) |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | `anomaly-monitor.js` | WARN/CRITICAL alert delivery |
 | `DEPLOY_BLOCK` | `sync-stakes.js` | Starting block for onchain stake-event backfill/sync |
+| `TAVILY_API_KEY` | `resolve-disputes.js` | Independent evidence search for AI-jury dispute review; deliberately separate from NewsAPI/Guardian so a dispute isn't re-asking the source that may have been wrong |
+| `JURY_PRIVATE_KEY_1` … `JURY_PRIVATE_KEY_5` | `resolve-disputes.js` | 5 dedicated wallets, one per AI juror, each casts its own on-chain vote |
+| `OLD_CONTRACT_ADDRESS` | `sync-lifecycle.js` | Legacy `AgentArena.sol` address, kept readable during the (not-yet-started) V2 cutover window |
+| `VITE_CONTRACT_ADDRESS` | frontend (build-time) | V2 proxy address: unset until activation; once the dispute-council page is merged, it gates behind a "work in progress" state until this is set |
+| `VITE_CIRCLE_KIT_KEY` | frontend (build-time) | Optional Circle App Kit key for the Swap tab; unset means shared rate limits |
 
 `.env.example` currently only covers the frontend-facing subset of these; the backend/automation vars above live only in GitHub Actions secrets. Treat this table, not `.env.example`, as the source of truth until that file is updated.
 
@@ -372,25 +399,26 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 
 | Page | Purpose |
 |---|---|
-| `/` | Marketing surface — what Geomacro is, live activity |
+| `/` | Marketing surface: what Geomacro is, live activity |
 | `/feed` | Live, classified news feed across four categories |
-| `/arena` | Active markets — stake on Hawk or Dove, see pre-stake AI arguments |
+| `/arena` | Active markets: stake on Hawk or Dove, see pre-stake AI arguments |
 | `/pipeline` | How ingestion and classification work, in detail |
 | `/onchain` | Contract details, testnet/mainnet network info |
-| `/bridge` | Pull USDC into Arc via CCTP V2 |
+| `/bridge` | Pull USDC into Arc via CCTP V2 (swap tab built, not yet live) |
+| `/dispute-council` | AI-jury dispute review: code built, not yet merged into the live frontend |
 | `/portfolio` | Per-wallet positions across all markets, gated behind Sign-In with Ethereum (SIWE) |
 | `/roadmap` | Shipped and upcoming milestones |
-| `/docs` | Developer documentation — architecture, API, competitive moat |
+| `/docs` | Developer documentation: architecture, API, competitive moat |
 
 ---
 
 ## Design principles
 
-1. **Contract state is source of truth.** Supabase is a read cache for the feed, not a system of record — market state always comes from the chain.
+1. **Contract state is source of truth.** Supabase is a read cache for the feed, not a system of record; market state always comes from the chain.
 2. **No human in the automation loop.** Ingestion, market creation, and resolution all run unattended on a schedule. If that's wrong, it's a code fix, not a manual override.
 3. **Honest about the resolution tradeoff.** LLM-judged settlement is disclosed as a limitation, not hidden behind confident language. Decentralized dispute resolution is on the roadmap, not glossed over.
-4. **Relevance over volume.** The classification gate is strict on purpose — a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
-5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction — no bridging friction baked into the core loop.
+4. **Relevance over volume.** The classification gate is strict on purpose: a market surface that lets through noise (celebrity gossip tagged "macro") is worse than a sparser, cleaner one.
+5. **The chain should stay out of the way.** Native USDC gas means every action is one cheap, stablecoin-denominated transaction, no bridging friction baked into the core loop.
 6. **Assume a job will fail, and watch for it.** Every scheduled job can miss a run. `sync-lifecycle.js` re-derives state from the clock instead of trusting that the last job fired on time, and `anomaly-monitor.js` watches the rest with a two-tier WARN/CRITICAL threshold so a silent failure doesn't sit undetected.
 
 ---
@@ -403,11 +431,14 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 - [x] Automated market creation from live events via GitHub Actions
 - [x] Automated market resolution via Groq judgment after 48-hour window
 - [x] Dynamic Arena with no hardcoded markets, pure on-chain discovery
-- [x] AI Duel feature showing market-specific Hawk and Dove arguments before staking
+- [x] Real, backend-generated Hawk and Dove pre-stake briefings, cached per market (not live-generated per visitor)
 - [x] Cross-chain USDC bridge into Arc Testnet via Circle's CCTP V2
-- [ ] Decentralized dispute-based resolution instead of LLM-attested settlement
+- [ ] Same-chain USDC/EURC/cirBTC swap via Circle's App Kit: code built and verified, not yet integrated into the live frontend
+- [x] Public track record for Hawk vs. Dove verdicts: one deterministic Supabase aggregate, identical for every visitor
+- [ ] AI-jury dispute resolution contract (`AgentArenaV2`, UUPS-upgradeable): built, deployed to Arc Testnet; **not yet merged/activated in production**
+- [x] Data-integrity audit of the agent UI: removed a client-side preview verdict that could diverge from the real on-chain resolution, and a formula that displayed as if it were AI confidence
+- [ ] Activate `AgentArenaV2` in production (cut the live contract address over)
 - [ ] Mainnet deployment
-- [ ] Public track record showing how often Hawk vs. Dove actually calls it right
 - [ ] Full mobile wallet support via WalletConnect for external browsers
 
 Full versioned history with dates: [geomacro.live/roadmap](https://www.geomacro.live/roadmap)
