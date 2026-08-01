@@ -140,6 +140,7 @@ async function main() {
   console.log(`\nTotal: ${events.length} Staked event(s) found in this range.`);
 
   let inserted = 0, skipped = 0, failed = 0;
+  let earliestFailedBlock = null;
 
   for (const ev of events) {
     const marketId = ev.args[0];
@@ -158,11 +159,24 @@ async function main() {
     const eventDbId = marketId.replace(/^mkt_/, "");
 
     // events table-এ আছে কিনা check
-    const { data: eventRow } = await supabase
+    const { data: eventRow, error: eventLookupErr } = await supabase
       .from("events")
       .select("id")
       .eq("id", eventDbId)
       .maybeSingle();
+
+    if (eventLookupErr) {
+      // Transient Supabase error != "event doesn't exist". Treating this as a
+      // skip would silently drop a real onchain stake forever, since the
+      // checkpoint advances past this block once the run completes. Count
+      // it as failed instead, so it shows up loudly and can be re-run via
+      // auto-recovery.yml (this event's block stays behind the checkpoint
+      // only if we throw — logging + failing the run is the safe choice).
+      console.error(`  ❌ Could not check events table for ${eventDbId}: ${eventLookupErr.message}`);
+      failed++;
+      earliestFailedBlock = earliestFailedBlock === null ? ev.blockNumber : Math.min(earliestFailedBlock, ev.blockNumber);
+      continue;
+    }
 
     if (!eventRow) {
       console.log(`  Skip: event ${eventDbId} not in Supabase`);
@@ -171,12 +185,19 @@ async function main() {
     }
 
     // already আছে কিনা check
-    const { data: existing } = await supabase
+    const { data: existing, error: existingLookupErr } = await supabase
       .from("positions")
       .select("market_id")
       .eq("wallet_address", userAddress)
       .eq("market_id", eventDbId)
       .maybeSingle();
+
+    if (existingLookupErr) {
+      console.error(`  ❌ Could not check existing position for ${userAddress} × ${eventDbId}: ${existingLookupErr.message}`);
+      failed++;
+      earliestFailedBlock = earliestFailedBlock === null ? ev.blockNumber : Math.min(earliestFailedBlock, ev.blockNumber);
+      continue;
+    }
 
     if (existing) {
       console.log(`  Skip: ${userAddress} × ${eventDbId} already exists`);
@@ -195,6 +216,7 @@ async function main() {
     if (error) {
       console.error(`  ❌ ${userAddress} × ${eventDbId}: ${error.message}`);
       failed++;
+      earliestFailedBlock = earliestFailedBlock === null ? ev.blockNumber : Math.min(earliestFailedBlock, ev.blockNumber);
     } else {
       console.log(`  ✅ ${userAddress} → ${side} on ${eventDbId} (${ethers.formatUnits(amount, 18)} USDC)`);
       inserted++;
@@ -207,7 +229,17 @@ async function main() {
   // ba insert loop-e kono crash hole checkpoint update hobe na, mane next run shei
   // purono checkpoint theke abar shuru korbe (safe — duplicate insert "already exists"
   // check-e skip hoye jabe, kono data miss hobe na).
-  await saveCheckpoint(supabase, currentBlock);
+  //
+  // Kintu jodi kono event process korte giye transient error hoy (failed > 0),
+  // tahole shei event-er block porjonto checkpoint egiye dewa jabe na — noile
+  // পরের রান আর ওই ব্লক scan-ই করবে না, real stake-টা চিরতরে হারিয়ে যাবে।
+  if (failed > 0 && earliestFailedBlock !== null) {
+    const safeCheckpoint = earliestFailedBlock - 1;
+    console.warn(`  ⚠ ${failed} event(s) failed — holding checkpoint at ${safeCheckpoint} (instead of ${currentBlock}) so they're retried next run.`);
+    await saveCheckpoint(supabase, safeCheckpoint);
+  } else {
+    await saveCheckpoint(supabase, currentBlock);
+  }
 }
 
 main().catch((err) => {
