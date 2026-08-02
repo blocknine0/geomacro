@@ -276,10 +276,16 @@ async function main() {
   if (flaggedActiveEvents && flaggedActiveEvents.length > 0) {
     const flaggedMarketIds = flaggedActiveEvents.map((e) => `mkt_${e.id}`);
     try {
+      // 🩹 FIX: this used to call the non-existent "getMarketFullDetails" —
+      // the ABI only ever declared "getMarket". That mismatch caused ethers
+      // to throw INVALID_ARGUMENT ("unknown function fragment") on every
+      // run, silently falling back to the raw (possibly-stale) Supabase
+      // count below. Now uses the real function name so verification
+      // actually runs instead of always failing into the fallback branch.
       const calls = flaggedMarketIds.map((marketId) => ({
         target: CONTRACT_ADDRESS,
         allowFailure: true,
-        callData: contractInterface.encodeFunctionData("getMarketFullDetails", [marketId]),
+        callData: contractInterface.encodeFunctionData("getMarket", [marketId]),
       }));
       const verifiedDetails = await callRpcWithBackoff(
         () => {
@@ -301,7 +307,7 @@ async function main() {
           return;
         }
         try {
-          const decoded = contractInterface.decodeFunctionResult("getMarketFullDetails", result.returnData);
+          const decoded = contractInterface.decodeFunctionResult("getMarket", result.returnData);
           const status = Number(decoded.status);
           const stage = status === 0 ? "active" : (STAGE_BY_STATUS[status] ?? "active");
           if (stage === "active") {
