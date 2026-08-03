@@ -16,12 +16,40 @@ const groq = new Groq({
   maxRetries: 0,
   fetch: fetch
 });
+if (!process.env.CEREBRAS_API_KEY) {
+  console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq's daily quota runs out mid-run.");
+}
 
 const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 5);
-const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 2000);
+// ⚠️ FIX: query count per category went up a lot (geopolitics ~20 -> ~47),
+// so more candidate articles -> more Groq batches per run. Bumped the
+// default delay between batches so we don't hammer Groq back-to-back.
+const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 3000);
 const MAX_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 60 * 1000;
+
+// ⚠️ FIX: with more queries per category, Guardian/NewsAPI were being hit
+// back-to-back with zero delay in the query loop below. Neither had any
+// retry/backoff (only Groq did) — a single 429 from either just skipped
+// straight to the other API or returned []  instead of waiting and retrying.
+// Added a small delay between queries + a shared backoff wrapper so both
+// news APIs behave like Groq's callGroqWithBackoff on rate limits.
+const QUERY_DELAY_MS = Number(process.env.NEWS_QUERY_DELAY_MS || 800);
+const NEWS_MAX_RETRIES = Number(process.env.NEWS_MAX_RETRIES || 3);
+
+// ⚠️ FIX: this Groq API key is shared with other services (rate limits are
+// enforced org/key-wide by Groq, not per-script — see docs). This script
+// previously assumed it owned the whole quota. Two safety nets added:
+// 1) a hard cap on how many Groq requests THIS run will make, so it always
+//    leaves headroom for whatever else is using the key.
+// 2) proactive throttling based on the x-ratelimit-remaining-* headers Groq
+//    returns on every response — if remaining quota (from ANY consumer of
+//    this key, not just us) gets low, we pause before hitting a hard 429.
+const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 40);
+const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 3);
+const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 500);
+let groqRequestsThisRun = 0;
 
 const GUARDIAN_SECTIONS = {
   geopolitics: "world|politics",
@@ -54,6 +82,45 @@ const CATEGORIES = [
       "cyberwarfare state-sponsored hacking critical infrastructure attack",
       "space race military satellite anti-satellite weapon test",
       "United Nations Security Council veto resolution crisis",
+
+      // Middle East — new/escalating war situations
+      "Israel Iran war strikes nuclear military",
+      "US Iran military conflict Middle East escalation",
+      "Israel Lebanon Hezbollah ground offensive",
+      "Israel Gaza ceasefire violation humanitarian crisis",
+      "Iraq Syria US troops militia attack",
+      "Yemen Houthi Red Sea shipping strike",
+      "Iran proxy militia regional war spillover",
+
+      // South Asia
+      "India Pakistan war Kashmir military escalation",
+      "India Pakistan ceasefire border conflict",
+
+      // Africa
+      "Sudan civil war RSF SAF famine displacement",
+      "DRC Congo M23 offensive Goma conflict",
+      "Mali Sahel Africa Corps mercenary violence",
+      "Somalia Al-Shabaab insurgency counterterrorism",
+      "Ethiopia Tigray internal conflict instability",
+
+      // Asia
+      "Myanmar civil war junta resistance fighting",
+      "Afghanistan Taliban instability insurgency",
+
+      // Europe
+      "Russia Ukraine war frontline offensive",
+      "Ukraine drone strikes Russia territory",
+      "Russia nuclear doctrine escalation warning",
+
+      // Americas
+      "Mexico cartel violence military conflict",
+      "Colombia ELN guerrilla conflict violence",
+      "Venezuela political crisis military tension",
+
+      // Global tracking / catch-all
+      "civil war insurgency casualties displacement global",
+      "ceasefire peace negotiation collapse conflict",
+      "war crimes humanitarian law violation conflict zone",
     ],
   },
   {
@@ -136,17 +203,38 @@ function normalizeTitle(title) {
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGroqWithBackoff(fn, label) {
+  if (groqRequestsThisRun >= GROQ_MAX_REQUESTS_PER_RUN) {
+    const budgetErr = new Error(`Groq per-run budget exhausted (${GROQ_MAX_REQUESTS_PER_RUN} requests) — leaving quota for other services on this key.`);
+    budgetErr.isBudgetExhausted = true;
+    throw budgetErr;
+  }
+
   let attempt = 0;
   while (true) {
     try {
-      return await fn();
+      groqRequestsThisRun++;
+      const { data, response } = await fn();
+
+      // Proactively back off based on shared org-wide quota, even if we
+      // personally didn't get a 429 — some other consumer of this key may
+      // have used most of it.
+      const remainingRequests = Number(response?.headers?.get?.('x-ratelimit-remaining-requests'));
+      const remainingTokens = Number(response?.headers?.get?.('x-ratelimit-remaining-tokens'));
+      const resetRequests = response?.headers?.get?.('x-ratelimit-reset-requests');
+      const resetTokens = response?.headers?.get?.('x-ratelimit-reset-tokens');
+
+      if (Number.isFinite(remainingRequests) && remainingRequests <= GROQ_MIN_REMAINING_REQUESTS) {
+        console.log(`  ⚠️ Groq shared quota low: only ${remainingRequests} requests left (resets in ${resetRequests || '?'}). Pausing briefly to leave room for other services.`);
+        await delay(5000);
+      } else if (Number.isFinite(remainingTokens) && remainingTokens <= GROQ_MIN_REMAINING_TOKENS) {
+        console.log(`  ⚠️ Groq shared quota low: only ${remainingTokens} tokens left (resets in ${resetTokens || '?'}). Pausing briefly to leave room for other services.`);
+        await delay(5000);
+      }
+
+      return data;
     } catch (error) {
       const status = error?.status ?? error?.response?.status;
       const message = String(error?.message ?? error?.error?.message ?? "");
-      // 🛡️ FIX: same distinction added to resolve-markets.js — a "tokens per
-      // day" 429 won't clear within this run's lifetime no matter how long
-      // we backoff-retry, so fail fast instead of burning through MAX_RETRIES
-      // worth of exponential waits for nothing.
       const isDailyQuotaExhausted = status === 429 && /tokens per day|requests per day|TPD|RPD/i.test(message);
       if (isDailyQuotaExhausted) {
         const quotaErr = new Error(`Groq daily quota exhausted: ${message}`);
@@ -175,6 +263,28 @@ async function callGroqWithBackoff(fn, label) {
   }
 }
 
+async function callCerebras(cerebrasApiKey, prompt) {
+  const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cerebrasApiKey}` },
+    body: JSON.stringify({
+      model: "llama3.1-8b",
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1500,
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    const err = new Error(`Cerebras HTTP ${response.status}: ${body.slice(0, 200)}`);
+    err.status = response.status;
+    if (response.status === 429) err.isQuotaExhausted = true;
+    throw err;
+  }
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
 async function checkArticlesBatchRelevance(articles, category) {
   const articlesBlock = articles
     .map((a, i) => `[${i}] Title: "${a.title}"\nDescription: "${a.description}"`)
@@ -195,17 +305,33 @@ Respond STRICTLY as a JSON object with a single key "results", an array of exact
 
 Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 70, "narrative": "...", "summary": "..." }, ... ] }`;
 
-  const chatCompletion = await callGroqWithBackoff(
-    () => groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.1-8b-instant',
-      response_format: { type: "json_object" },
-    }),
-    `batch-classify (${articles.length} articles)`,
-  );
+  let rawContent;
+  try {
+    const chatCompletion = await callGroqWithBackoff(
+      async () => {
+        const request = groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: 'llama-3.1-8b-instant',
+          response_format: { type: "json_object" },
+        });
+        if (typeof request.withResponse === 'function') {
+          return await request.withResponse();
+        }
+        const data = await request;
+        return { data, response: null };
+      },
+      `batch-classify (${articles.length} articles)`,
+    );
+    rawContent = chatCompletion.choices[0].message.content;
+  } catch (e) {
+    if (!e.isQuotaExhausted && !e.isBudgetExhausted) throw e;
+    if (!process.env.CEREBRAS_API_KEY) throw e;
+    console.log(`  ↪ Groq quota exhausted for batch-classify (${articles.length} articles) — falling back to Cerebras.`);
+    rawContent = await callCerebras(process.env.CEREBRAS_API_KEY, prompt);
+  }
 
   try {
-    const parsed = JSON.parse(chatCompletion.choices[0].message.content);
+    const parsed = JSON.parse(rawContent);
     const results = Array.isArray(parsed.results) ? parsed.results : [];
 
     return articles.map((a, i) => {
@@ -229,16 +355,42 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
 
 const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
 
+// Shared retry/backoff for the two news APIs, same shape as callGroqWithBackoff.
+// `fn` should return the fetch Response; a 429 triggers exponential backoff
+// (honoring Retry-After when the API sends one) instead of an immediate
+// fall-through/give-up.
+async function fetchWithBackoff(fn, label) {
+  let attempt = 0;
+  while (true) {
+    const response = await fn();
+
+    if (response.status !== 429) {
+      return response;
+    }
+
+    if (attempt >= NEWS_MAX_RETRIES) {
+      throw new Error(`${label} rate limit hit (out of retries)`);
+    }
+
+    const retryAfterHeader = response.headers?.get?.('retry-after');
+    const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : null;
+    const backoff = retryAfterMs && Number.isFinite(retryAfterMs)
+      ? retryAfterMs
+      : Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+    const jitter = Math.random() * 500;
+
+    attempt++;
+    console.log(`  ⏳ Rate limited on ${label} (attempt ${attempt}/${NEWS_MAX_RETRIES}). Waiting ${Math.round((backoff + jitter) / 1000)}s...`);
+    await delay(backoff + jitter);
+  }
+}
+
 async function fetchArticlesFromApis(query, categoryName) {
   try {
     const sectionFilter = GUARDIAN_SECTIONS[categoryName];
     const sectionParam = sectionFilter ? `&section=${encodeURIComponent(sectionFilter)}` : '';
     const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&type=article${sectionParam}&order-by=relevance&show-fields=trailText&page-size=10&api-key=${process.env.GUARDIAN_API_KEY}`;
-    const response = await fetch(guardianUrl);
-
-    if (response.status === 429) {
-      throw new Error("Guardian rate limit hit");
-    }
+    const response = await fetchWithBackoff(() => fetch(guardianUrl), `Guardian ("${query}")`);
 
     const data = await response.json();
 
@@ -267,11 +419,7 @@ async function fetchArticlesFromApis(query, categoryName) {
 
   try {
     const newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=10&apiKey=${process.env.NEWSAPI_KEY}`;
-    const response = await fetch(newsApiUrl);
-
-    if (response.status === 429) {
-      throw new Error("NewsAPI rate limit hit");
-    }
+    const response = await fetchWithBackoff(() => fetch(newsApiUrl), `NewsAPI ("${query}")`);
 
     const data = await response.json();
     if (data.articles) {
@@ -299,12 +447,6 @@ function chunk(arr, size) {
 async function ingestNews() {
   console.log("Run node scripts/ingest-news.js");
 
-  // ⚠️ FIX: Supabase (PostgREST) কোনো explicit limit/.range() না দিলে ডিফল্ট
-  // সর্বোচ্চ ১০০০টা row রিটার্ন করে। events টেবিলে ১০০০-এর বেশি row থাকায় এই
-  // fetch silently truncate হয়ে যাচ্ছিল — dedup set-এ পুরনো URL-গুলোর একটা অংশ
-  // মিসিং থাকছিল, ফলে সেগুলোকে আবার "নতুন" ভেবে insert করতে গিয়ে আসল unique
-  // constraint-এ ধাক্কা খাচ্ছিল (duplicate key error, শত শত লাইন)। এখন ১০০০-করে
-  // batch-এ পুরো টেবিল paginate করে সব URL/title নিয়ে আসা হচ্ছে।
   let existingEvents = [];
   {
     const PAGE_SIZE = 1000;
@@ -331,8 +473,10 @@ async function ingestNews() {
   console.log(`${existingUrls.size} existing unique URLs and ${existingTitles.size} existing titles fetched from Supabase.`);
 
   let totalInserted = 0;
+  let stopRun = false;
 
   for (const category of CATEGORIES) {
+    if (stopRun) break;
     console.log(`\nProcessing category: ${category.name}`);
     let categoryInserted = 0;
     let seenInCurrentRun = new Set();
@@ -357,7 +501,7 @@ async function ingestNews() {
     }
 
     let candidateArticles = [];
-    for (const query of category.queries) {
+    for (const [queryIndex, query] of category.queries.entries()) {
       const fetched = await fetchArticlesFromApis(query, category.name);
       for (const article of fetched) {
         const normTitle = normalizeTitle(article.title);
@@ -367,22 +511,28 @@ async function ingestNews() {
         seenInCurrentRun.add(normTitle);
         candidateArticles.push(article);
       }
+      // ⚠️ FIX: query lists got longer (geopolitics ~20 -> ~47), and this loop
+      // previously fired queries at Guardian/NewsAPI with zero gap between
+      // them. Small delay here keeps us well under both APIs' per-second/
+      // per-minute rate limits even with many more queries per category.
+      if (queryIndex < category.queries.length - 1) {
+        await delay(QUERY_DELAY_MS);
+      }
     }
 
     console.log(`  ${candidateArticles.length} new unique candidate article(s) to classify.`);
 
     const batches = chunk(candidateArticles, BATCH_SIZE);
     for (const [batchIndex, batch] of batches.entries()) {
-      // 🛡️ FIX: previously this call was unwrapped — if Groq threw after
-      // exhausting callGroqWithBackoff's retries (daily quota exhaustion, a
-      // sustained outage, anything non-429), the exception propagated all
-      // the way out of ingestNews() to the top-level `.catch(console.error)`,
-      // silently aborting every remaining batch AND every remaining category
-      // for that entire 2-hour run — not just the one batch that failed.
       let assessments;
       try {
         assessments = await checkArticlesBatchRelevance(batch, category.name);
       } catch (batchErr) {
+        if (batchErr.isBudgetExhausted || batchErr.isQuotaExhausted) {
+          console.error(`  🛑 ${batchErr.message} — stopping this run early (remaining articles will be picked up next run).`);
+          stopRun = true;
+          break;
+        }
         console.error(`  ❌ Batch ${batchIndex + 1}/${batches.length} classification failed for ${category.name} (${batchErr.message}) — skipping this batch, continuing with the rest of the run.`);
         continue;
       }
