@@ -44,6 +44,8 @@ Most prediction markets wait for humans to notice the news. Here, markets open t
 
 I built Geomacro because the gap between "news breaks" and "market opens" is where the real signal lives. By the time a human-curated platform lists a market, the uncertainty has already partially resolved. Geomacro closes that gap.
 
+![Geomacro architecture: ingestion, automation, data, Arc Testnet contract, and client, with design principles and lifecycle timeline](docs/architecture-diagram.svg)
+
 ---
 
 ## Architecture
@@ -249,7 +251,7 @@ sequenceDiagram
 - The mint step on Arc is permissionless = the user's own wallet submits it, no backend signer required.
 - Read-path RPC calls (balance checks, market discovery) go through the frontend's 2-endpoint `FallbackProvider` (see RPC resilience below), so a single rate-limited endpoint doesn't break the UI.
 
-**Swap**: same-chain USDC ⇄ EURC ⇄ cirBTC on Arc Testnet via Circle's App Kit (`@circle-fin/app-kit`), no bridging required, browser-wallet-signed. **Built and verified, not yet integrated into the live frontend.** Arc Testnet is currently the only testnet App Kit supports for swaps.
+**Swap**: same-chain USDC ⇄ EURC ⇄ cirBTC on Arc Testnet via Circle's App Kit (`@circle-fin/app-kit`), no bridging required, browser-wallet-signed. Live on `/bridge`, alongside a liquidity view and Supabase-backed tx history. Arc Testnet is currently the only testnet App Kit supports for swaps.
 
 ---
 
@@ -297,10 +299,13 @@ geomacro/
 │   └── Deploy.s.sol                    # Foundry script: deploys Multisig + V2 impl + Proxy in one broadcast
 ├── src/
 │   ├── components/
+│   │   ├── animated-background.tsx     # Site-wide animated backdrop (replaces the old static hero image)
 │   │   └── sections/
-│   │       ├── arena-section.tsx       # Agent Arena market UI
+│   │       ├── arena-section.tsx       # Agent Arena market UI — reads cached Hawk/Dove briefings, never calls an LLM client-side
 │   │       ├── bridge-section.tsx      # CCTP V2 bridge stepper
-│   │       ├── hawk-dove-stats-trigger.tsx  # Click-to-reveal Hawk/Dove historical verdict split
+│   │       ├── liquidity-section.tsx   # Bridge page: liquidity view
+│   │       ├── swap-section.tsx        # Bridge page: swap tab (Circle App Kit)
+│   │       ├── tx-history-section.tsx  # Bridge page: Supabase-backed tx history
 │   │       └── roadmap-section.tsx     # Shipped/upcoming milestones page
 │   ├── routes/
 │   │   ├── docs.tsx                    # Developer docs (tabbed guides)
@@ -309,12 +314,14 @@ geomacro/
 │   ├── lib/
 │   │   ├── arc.ts                      # Arc network config + 2-endpoint FallbackProvider
 │   │   ├── agent-arena.ts              # Contract read client, dual-contract (legacy + V2) routing, Multicall3 batching
-│   │   ├── arena-markets.ts            # Market discovery (onchain, no hardcoded list)
-│   │   ├── hawk-dove-stats.ts          # Real, deterministic Hawk/Dove verdict-distribution aggregate
+│   │   ├── arena-markets.ts            # Market discovery (onchain, no hardcoded list); reads the pre-generated Hawk/Dove briefing and `market_question` from Supabase; `loadAgentTrackRecord()` for the deterministic global win-rate aggregate
 │   │   ├── balance.ts                  # Wallet balance reads
 │   │   ├── cctp.ts                     # CCTP V2 addresses, ABIs, Iris poller
+│   │   ├── swap.ts                     # Circle App Kit swap integration
+│   │   ├── protocol-fee.ts             # 0.15% protocol fee calculation, treasury routing
 │   │   ├── siwe.functions.ts           # Sign-In with Ethereum auth for Portfolio
 │   │   ├── positions.functions.ts      # Server-side tx verification
+│   │   ├── tx-history.functions.ts     # Server-side Supabase-backed tx history
 │   │   └── roadmap.ts                  # Single source of truth for roadmap data
 │   └── hooks/
 │       ├── WalletProvider.tsx          # Wallet connection context
@@ -331,16 +338,18 @@ geomacro/
 │   ├── anomaly-monitor.js              # Two-tier WARN/CRITICAL alerting across all jobs
 │   └── (backfill-*.js, check-*.mjs, diagnose-*.mjs, debug-schema.js)  # One-off ops/debug tools, not scheduled
 ├── supabase/migrations/
-│   ├── 001_ai_jury_dispute_system.sql  # market_disputes, jury_votes tables
-│   ├── 002_jury_track_record.sql       # Per-juror historical accuracy
-│   ├── 003_ai_reasoning.sql            # Persists the AI resolver's reasoning (previously generated, never saved)
-│   └── 004_hawk_dove_briefings.sql     # Real dual-sided pre-resolution briefing columns
+│   └── 001_ai_jury_dispute_system.sql  # market_disputes, jury_votes tables
+│   # NOTE: several schema changes since (ai_reasoning, lifecycle_stage,
+│   # disputer_address, hawk/dove briefing columns, market_question) were
+│   # applied directly in the Supabase SQL editor and were never saved as
+│   # migration files here — the live schema and this folder have drifted.
+│   # TODO: pg_dump the current schema and backfill 002+ as real migrations.
 ├── .github/workflows/
 │   ├── auto-ingest-news.yml            # Runs ingest-news.js, every ~2h
 │   ├── auto-create-markets.yml         # Runs create-markets.js, every ~2h
 │   ├── auto-resolve-markets.yml        # Runs resolve-markets.js, every ~2h
 │   ├── auto-finalize-markets.yml       # Runs finalize-markets.js, every ~2h
-│   ├── auto-generate-briefings.yml     # Runs generate-briefings.js, twice hourly, isolated from on-chain jobs
+│   ├── Auto-generate-briefings.yml     # Runs generate-briefings.js, twice hourly, isolated from on-chain jobs — NOTE: capitalized filename (inconsistent with the other workflows); rename to lowercase recommended
 │   ├── auto-resolve-disputes.yml       # Runs resolve-disputes.js every 15 min, dormant until V2 is activated
 │   ├── sync-lifecycle.yml              # Runs sync-lifecycle.js, hourly trigger self-looping to 15 min
 │   ├── sync-stakes.yml                 # Runs sync-stakes.js every 30 min
@@ -350,7 +359,7 @@ geomacro/
 └── public/
 ```
 
-**Built and verified, not yet merged into the frontend:** `dispute-council-section.tsx` (+ route), `liquidity-section.tsx`, `swap-section.tsx`, `swap.ts`. Code compiles clean against real dependencies, but hasn't been applied to the live site yet. `hawk-dove-stats-trigger.tsx` and `hawk-dove-stats.ts` are the exception: those are live.
+**AI-jury dispute resolution (`AgentArenaV2.sol`, `resolve-disputes.js`):** deployed on Arc Testnet, not yet activated. Live markets still run on the original `AgentArena.sol`; the dispute workflow (`auto-resolve-disputes.yml`) runs against the new contract only after `CONTRACT_ADDRESS` is switched over.
 
 ---
 
@@ -388,10 +397,12 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 | `TAVILY_API_KEY` | `resolve-disputes.js` | Independent evidence search for AI-jury dispute review; deliberately separate from NewsAPI/Guardian so a dispute isn't re-asking the source that may have been wrong |
 | `JURY_PRIVATE_KEY_1` … `JURY_PRIVATE_KEY_5` | `resolve-disputes.js` | 5 dedicated wallets, one per AI juror, each casts its own on-chain vote |
 | `OLD_CONTRACT_ADDRESS` | `sync-lifecycle.js` | Legacy `AgentArena.sol` address, kept readable during the (not-yet-started) V2 cutover window |
-| `VITE_CONTRACT_ADDRESS` | frontend (build-time) | V2 proxy address: unset until activation; once the dispute-council page is merged, it gates behind a "work in progress" state until this is set |
+| `VITE_CONTRACT_ADDRESS` | frontend (build-time) | V2 proxy address: unset until activation; gates the AI-jury dispute UI behind a "work in progress" state until this is set |
 | `VITE_CIRCLE_KIT_KEY` | frontend (build-time) | Optional Circle App Kit key for the Swap tab; unset means shared rate limits |
 
 `.env.example` currently only covers the frontend-facing subset of these; the backend/automation vars above live only in GitHub Actions secrets. Treat this table, not `.env.example`, as the source of truth until that file is updated.
+
+**Known gap:** the Tx History section (`/bridge`) reads/writes a `tx_history` Supabase table that has no corresponding migration file in this repo — verify it exists in your Supabase project (`select to_regclass('public.tx_history');`) before relying on this feature.
 
 ---
 
@@ -404,8 +415,7 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 | `/arena` | Active markets: stake on Hawk or Dove, see pre-stake AI arguments |
 | `/pipeline` | How ingestion and classification work, in detail |
 | `/onchain` | Contract details, testnet/mainnet network info |
-| `/bridge` | Pull USDC into Arc via CCTP V2 (swap tab built, not yet live) |
-| `/dispute-council` | AI-jury dispute review: code built, not yet merged into the live frontend |
+| `/bridge` | Pull USDC into Arc via CCTP V2, swap, and view tx history |
 | `/portfolio` | Per-wallet positions across all markets, gated behind Sign-In with Ethereum (SIWE) |
 | `/roadmap` | Shipped and upcoming milestones |
 | `/docs` | Developer documentation: architecture, API, competitive moat |
@@ -433,10 +443,10 @@ You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY` (and optionally `CEREBRAS_A
 - [x] Dynamic Arena with no hardcoded markets, pure on-chain discovery
 - [x] Real, backend-generated Hawk and Dove pre-stake briefings, cached per market (not live-generated per visitor)
 - [x] Cross-chain USDC bridge into Arc Testnet via Circle's CCTP V2
-- [ ] Same-chain USDC/EURC/cirBTC swap via Circle's App Kit: code built and verified, not yet integrated into the live frontend
+- [x] Same-chain USDC/EURC/cirBTC swap via Circle's App Kit, integrated into the live frontend, with liquidity view and Supabase-backed tx history
 - [x] Public track record for Hawk vs. Dove verdicts: one deterministic Supabase aggregate, identical for every visitor
 - [ ] AI-jury dispute resolution contract (`AgentArenaV2`, UUPS-upgradeable): built, deployed to Arc Testnet; **not yet merged/activated in production**
-- [x] Data-integrity audit of the agent UI: removed a client-side preview verdict that could diverge from the real on-chain resolution, and a formula that displayed as if it were AI confidence
+- [x] Data-integrity audit of the agent UI: removed a client-side preview verdict that could diverge from the real on-chain resolution, a formula that displayed as if it were AI confidence, and a legacy client-triggered "AI duel" code path that called the LLM live per page-view — all replaced by the scheduled, cached `generate-briefings.js` pipeline
 - [ ] Activate `AgentArenaV2` in production (cut the live contract address over)
 - [ ] Mainnet deployment
 - [ ] Full mobile wallet support via WalletConnect for external browsers

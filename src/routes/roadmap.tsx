@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RoadmapSection } from "@/components/sections/roadmap-section";
+
 export const Route = createFileRoute("/roadmap")({
   head: () => ({
     meta: [

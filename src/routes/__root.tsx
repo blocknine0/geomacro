@@ -10,7 +10,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import ogImage from "../assets/og-share.jpg";
 import { reportClientError } from "../lib/error-reporting";
 import { SiteShell } from "../components/site-shell";
 import { WalletProvider } from "../hooks/WalletProvider";
@@ -80,19 +79,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Geomacro: Onchain Geopolitical & Macro Risk on Arc" },
-      { name: "description", content: "AI-classified geopolitical and macro events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
+      { title: "Geomacro: Onchain Geopolitical Risk on Arc" },
+      { name: "description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
       { name: "author", content: "Geomacro" },
-      { property: "og:title", content: "Geomacro: Onchain Geopolitical & Macro Risk on Arc" },
-      { property: "og:description", content: "AI-classified geopolitical and macro events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
+      { property: "og:title", content: "Geomacro: Onchain Geopolitical Risk on Arc" },
+      { property: "og:description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
       { property: "og:site_name", content: "Geomacro" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@GeomacroLive" },
-      { name: "twitter:title", content: "Geomacro: Onchain Geopolitical & Macro Risk on Arc" },
-      { name: "twitter:description", content: "AI-classified geopolitical and macro events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
-      { property: "og:image", content: `https://geomacro.live${ogImage}` },
-      { name: "twitter:image", content: `https://geomacro.live${ogImage}` },
+      { name: "twitter:title", content: "Geomacro: Onchain Geopolitical Risk on Arc" },
+      { name: "twitter:description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect your wallet to verify and subscribe." },
+      { property: "og:image", content: "https://geomacro.live/og-image-v2.png" },
+      { name: "twitter:image", content: "https://geomacro.live/og-image-v2.png" },
     ],
     links: [
       {
@@ -131,9 +130,6 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* WalletProvider wraps everything ONCE here — all components share
-          a single wallet state instance, so MetaMask only ever gets one
-          eth_accounts/eth_chainId request instead of one per component. */}
       <WalletProvider>
         {/* Shared header + footer; nested routes render inside SiteShell. */}
         <SiteShell>

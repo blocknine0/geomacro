@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FeedSection } from "@/components/sections/feed-section";
+
 export const Route = createFileRoute("/feed")({
   head: () => ({
     meta: [

@@ -1,0 +1,188 @@
+<svg viewBox="0 0 1500 900" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono','SF Mono',Consolas,monospace">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a0f"/>
+      <stop offset="100%" stop-color="#111116"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#F97316"/>
+    </marker>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1500" height="900" fill="url(#bg)"/>
+
+  <!-- subtle grid -->
+  <g stroke="#1c1c24" stroke-width="1">
+    <line x1="0" y1="150" x2="1500" y2="150"/>
+    <line x1="0" y1="820" x2="1500" y2="820"/>
+  </g>
+
+  <!-- Title -->
+  <image x="60" y="34" width="203" height="59" href="data:image/png;base64,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" />
+  <text x="278" y="70" fill="#8a8a94" font-size="16">Autonomous geopolitical prediction markets, settled onchain in USDC on Arc</text>
+  <rect x="60" y="112" width="86" height="4" fill="url(#accent)" rx="2"/>
+
+  <!-- ================= STAGE 1: INGESTION ================= -->
+  <g>
+    <rect x="60" y="190" width="250" height="230" rx="14" fill="#15151b" stroke="#26262f" stroke-width="1.5"/>
+    <rect x="60" y="190" width="250" height="40" rx="14" fill="#1a1a22"/>
+    <rect x="60" y="216" width="250" height="14" fill="#1a1a22"/>
+    <text x="85" y="216" fill="#f5f5f7" font-size="15" font-weight="700">INGESTION</text>
+    <circle cx="285" cy="210" r="5" fill="#F97316"/>
+
+    <text x="85" y="256" fill="#c9c9d1" font-size="13.5">NewsAPI + The Guardian</text>
+    <text x="85" y="278" fill="#8a8a94" font-size="12">4-category news fan-out</text>
+
+    <text x="85" y="312" fill="#c9c9d1" font-size="13.5">Groq — llama-3.1-8b-instant</text>
+    <text x="85" y="334" fill="#8a8a94" font-size="12">classifies + severity-scores</text>
+
+    <text x="85" y="368" fill="#c9c9d1" font-size="13.5">Cerebras fallback</text>
+    <text x="85" y="390" fill="#8a8a94" font-size="12">on daily quota exhaustion</text>
+  </g>
+
+  <!-- ================= STAGE 2: AUTOMATION ================= -->
+  <g>
+    <rect x="380" y="150" width="280" height="380" rx="14" fill="#15151b" stroke="#26262f" stroke-width="1.5"/>
+    <rect x="380" y="150" width="280" height="40" rx="14" fill="#1a1a22"/>
+    <rect x="380" y="176" width="280" height="14" fill="#1a1a22"/>
+    <text x="405" y="176" fill="#f5f5f7" font-size="15" font-weight="700">AUTOMATION</text>
+    <text x="405" y="194" fill="#8a8a94" font-size="11" font-style="italic"></text>
+    <circle cx="635" cy="170" r="5" fill="#F97316"/>
+    <text x="405" y="207" fill="#8a8a94" font-size="11">GitHub Actions · unattended</text>
+
+    <text x="405" y="240" fill="#c9c9d1" font-size="13">ingest-news.js</text>
+    <text x="405" y="266" fill="#c9c9d1" font-size="13">create-markets.js</text>
+    <text x="405" y="292" fill="#c9c9d1" font-size="13">generate-briefings.js</text>
+    <text x="405" y="318" fill="#c9c9d1" font-size="13">resolve-markets.js</text>
+    <text x="405" y="344" fill="#c9c9d1" font-size="13">finalize-markets.js</text>
+    <text x="405" y="370" fill="#c9c9d1" font-size="13">sync-lifecycle.js <tspan fill="#8a8a94" font-size="11">· every 15m</tspan></text>
+    <text x="405" y="396" fill="#c9c9d1" font-size="13">sync-stakes.js <tspan fill="#8a8a94" font-size="11">· every 30m</tspan></text>
+    <text x="405" y="422" fill="#c9c9d1" font-size="13">anomaly-monitor.js <tspan fill="#8a8a94" font-size="11">· WARN/CRIT</tspan></text>
+
+    <rect x="405" y="440" width="230" height="66" rx="8" fill="#1a1208" stroke="#3a2410" stroke-width="1"/>
+    <text x="418" y="462" fill="#FB923C" font-size="12" font-weight="700">resolve-disputes.js</text>
+    <text x="418" y="480" fill="#8a8a94" font-size="11">5-agent AI jury · dormant</text>
+    <text x="418" y="496" fill="#8a8a94" font-size="11">until AgentArenaV2 activates</text>
+  </g>
+
+  <!-- ================= STAGE 3: DATA ================= -->
+  <g>
+    <rect x="700" y="230" width="220" height="150" rx="14" fill="#15151b" stroke="#26262f" stroke-width="1.5"/>
+    <rect x="700" y="230" width="220" height="40" rx="14" fill="#1a1a22"/>
+    <rect x="700" y="256" width="220" height="14" fill="#1a1a22"/>
+    <text x="725" y="256" fill="#f5f5f7" font-size="15" font-weight="700">DATA</text>
+    <circle cx="895" cy="250" r="5" fill="#F97316"/>
+    <text x="725" y="296" fill="#c9c9d1" font-size="13.5">Supabase (Postgres)</text>
+    <text x="725" y="318" fill="#8a8a94" font-size="12">events · read cache, not</text>
+    <text x="725" y="336" fill="#8a8a94" font-size="12">the source of truth</text>
+    <text x="725" y="362" fill="#8a8a94" font-size="11">cached Hawk/Dove briefings ·</text>
+    <text x="725" y="378" fill="#8a8a94" font-size="11">tx history · lifecycle stage</text>
+  </g>
+
+  <!-- ================= STAGE 4: CHAIN ================= -->
+  <g filter="url(#glow)">
+    <rect x="960" y="150" width="250" height="380" rx="14" fill="#171008" stroke="#F97316" stroke-width="1.8"/>
+  </g>
+  <g>
+    <rect x="960" y="150" width="250" height="40" rx="14" fill="#241608"/>
+    <rect x="960" y="176" width="250" height="14" fill="#241608"/>
+    <text x="985" y="176" fill="#ffb877" font-size="15" font-weight="700">ARC TESTNET</text>
+    <circle cx="1185" cy="170" r="5" fill="#F97316"/>
+
+    <text x="985" y="216" fill="#f0d0aa" font-size="13.5" font-weight="700">AgentArena.sol</text>
+    <text x="985" y="236" fill="#8a8a94" font-size="12">live production contract</text>
+    <text x="985" y="252" fill="#8a8a94" font-size="12">native USDC gas — no</text>
+    <text x="985" y="268" fill="#8a8a94" font-size="12">approve step, no wrapping</text>
+
+    <line x1="985" y1="288" x2="1185" y2="288" stroke="#3a2b18" stroke-width="1"/>
+
+    <text x="985" y="314" fill="#c9c9d1" font-size="13">createMarket → stake →</text>
+    <text x="985" y="334" fill="#c9c9d1" font-size="13">declareWinner → dispute</text>
+    <text x="985" y="354" fill="#c9c9d1" font-size="13">window → finalize → claim</text>
+
+    <rect x="985" y="374" width="200" height="82" rx="8" fill="#1a1208" stroke="#3a2410" stroke-width="1"/>
+    <text x="998" y="396" fill="#FB923C" font-size="12" font-weight="700">AgentArenaV2.sol</text>
+    <text x="998" y="414" fill="#8a8a94" font-size="11">UUPS proxy · 5-juror AI</text>
+    <text x="998" y="430" fill="#8a8a94" font-size="11">dispute layer · deployed,</text>
+    <text x="998" y="446" fill="#8a8a94" font-size="11">not yet activated</text>
+
+    <text x="985" y="484" fill="#c9c9d1" font-size="12.5">CCTP V2 bridge in ·</text>
+    <text x="985" y="502" fill="#c9c9d1" font-size="12.5">App Kit swap (same-chain)</text>
+  </g>
+
+  <!-- ================= STAGE 5: CLIENT ================= -->
+  <g>
+    <rect x="1260" y="190" width="180" height="230" rx="14" fill="#15151b" stroke="#26262f" stroke-width="1.5"/>
+    <rect x="1260" y="190" width="180" height="40" rx="14" fill="#1a1a22"/>
+    <rect x="1260" y="216" width="180" height="14" fill="#1a1a22"/>
+    <text x="1285" y="216" fill="#f5f5f7" font-size="15" font-weight="700">CLIENT</text>
+    <circle cx="1415" cy="210" r="5" fill="#F97316"/>
+    <text x="1285" y="252" fill="#c9c9d1" font-size="13">Live Feed</text>
+    <text x="1285" y="278" fill="#c9c9d1" font-size="13">Agent Arena</text>
+    <text x="1285" y="304" fill="#c9c9d1" font-size="13">Bridge + Swap</text>
+    <text x="1285" y="330" fill="#c9c9d1" font-size="13">Portfolio (SIWE)</text>
+    <text x="1285" y="362" fill="#8a8a94" font-size="11">Vite + TanStack Start</text>
+    <text x="1285" y="380" fill="#8a8a94" font-size="11">reads chain directly —</text>
+    <text x="1285" y="396" fill="#8a8a94" font-size="11">no hardcoded market list</text>
+  </g>
+
+  <!-- ================= ARROWS ================= -->
+  <g stroke="#F97316" stroke-width="2" fill="none" marker-end="url(#arrow)">
+    <path d="M310,300 L378,270"/>
+    <path d="M660,320 L698,305"/>
+    <path d="M920,300 L958,300"/>
+    <path d="M660,240 L958,240"/>
+    <path d="M1210,320 L1258,300"/>
+    <path d="M810,380 L810,405 L920,405" stroke-dasharray="4 4"/>
+  </g>
+  <text x="330" y="298" fill="#5a5a64" font-size="10">events</text>
+  <text x="672" y="315" fill="#5a5a64" font-size="10">writes</text>
+  <text x="812" y="418" fill="#5a5a64" font-size="10">reads (frontend)</text>
+  <text x="672" y="235" fill="#5a5a64" font-size="10">createMarket / declareWinner / finalize</text>
+  <text x="1222" y="313" fill="#5a5a64" font-size="10">reads state</text>
+
+  <!-- ================= BOTTOM STRIP ================= -->
+  <g>
+    <text x="60" y="580" fill="#f5f5f7" font-size="16" font-weight="700">Design principles</text>
+    <rect x="60" y="592" width="46" height="3" fill="url(#accent)" rx="1.5"/>
+
+    <g font-size="12.5" fill="#c9c9d1">
+      <text x="60" y="628">01</text><text x="90" y="628">Contract state is the source of truth — Supabase is only a read cache</text>
+      <text x="60" y="654">02</text><text x="90" y="654">No human in the automation loop — every job runs unattended, on a clock</text>
+      <text x="60" y="680">03</text><text x="90" y="680">Honest about the resolution tradeoff — LLM judgment, disclosed as a limitation</text>
+      <text x="60" y="706">04</text><text x="90" y="706">Assume a job will fail — self-healing lifecycle sync + two-tier anomaly alerts</text>
+    </g>
+  </g>
+
+  <g>
+    <text x="820" y="580" fill="#f5f5f7" font-size="16" font-weight="700">Lifecycle</text>
+    <rect x="820" y="592" width="46" height="3" fill="url(#accent)" rx="1.5"/>
+
+    <g font-size="11.5" fill="#c9c9d1">
+      <rect x="820" y="612" width="620" height="34" rx="6" fill="#15151b" stroke="#26262f"/>
+      <circle cx="836" cy="629" r="4" fill="#F97316"/>
+      <text x="848" y="633">0–46h active</text>
+      <circle cx="945" cy="629" r="4" fill="#FB923C"/>
+      <text x="957" y="633">46–48h locked</text>
+      <circle cx="1063" cy="629" r="4" fill="#f0d0aa"/>
+      <text x="1075" y="633">48h AI_RESOLVED</text>
+      <circle cx="1195" cy="629" r="4" fill="#8a8a94"/>
+      <text x="1207" y="633">48–72h disputable</text>
+      <circle cx="1338" cy="629" r="4" fill="#4ade80"/>
+      <text x="1350" y="633">72h claim()</text>
+    </g>
+  </g>
+
+  <!-- footer -->
+  <line x1="60" y1="800" x2="1440" y2="800" stroke="#26262f" stroke-width="1"/>
+  <text x="60" y="830" fill="#8a8a94" font-size="12">geomacro.live</text>
+  <text x="1440" y="830" fill="#8a8a94" font-size="12" text-anchor="end">Arc Testnet · Solidity 0.8 · Vite + TanStack Start · Supabase · Groq/Cerebras</text>
+</svg>

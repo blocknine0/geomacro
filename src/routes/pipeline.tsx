@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PipelineSection } from "@/components/sections/pipeline-section";
+
 export const Route = createFileRoute("/pipeline")({
   head: () => ({
     meta: [

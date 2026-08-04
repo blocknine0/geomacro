@@ -4,71 +4,87 @@ import { assertSameOrigin } from "./origin-guard";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { jwtVerify } from "jose";
-import { ethers } from "ethers";
+import { Interface, JsonRpcProvider } from "ethers";
 
-// Server-side verification: never trust a client-submitted stake amount.
-// We re-derive the real amount from the on-chain Staked event emitted by
-// the confirmed transaction, so a tampered stakedAmountRaw in the request
-// body can never create a fake/inflated position.
-const STAKE_VERIFY_ABI = [
-  "event Staked(string marketId, address indexed user, uint8 side, uint256 amount)",
-];
-const SIDE_CODE_ONCHAIN: Record<"HAWK" | "DOVE", number> = { HAWK: 1, DOVE: 2 };
+const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+const STAKE_ABI = ["function stake(string marketId, uint8 side) payable"];
+const stakeInterface = new Interface(STAKE_ABI);
+const SIDE_CODE_MAP: Record<"HAWK" | "DOVE", number> = { HAWK: 1, DOVE: 2 };
+const ARC_TESTNET_RPC_URLS = [
+  process.env.ARC_TESTNET_RPC_URL,
+  "https://rpc.testnet.arc.network",
+  "https://arc-testnet.drpc.org",
+].filter((u): u is string => typeof u === "string" && u.length > 0);
 
-async function verifyStakeOnChain(params: {
+async function verifyStakeTx(params: {
   txHash: string;
-  expectedMarketId: string; // "mkt_<uuid>"
-  expectedWallet: string;
+  expectedFrom: string;
+  expectedMarketId: string;
   expectedSide: "HAWK" | "DOVE";
-}): Promise<{ ok: true; amountRaw: string } | { ok: false; reason: string }> {
-  const { ARC_RPC_URL, CONTRACT_ADDRESS } = process.env;
-  if (!ARC_RPC_URL || !CONTRACT_ADDRESS) {
-    return { ok: false, reason: "Server misconfigured: missing ARC_RPC_URL/CONTRACT_ADDRESS" };
-  }
-  const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
-  const iface = new ethers.Interface(STAKE_VERIFY_ABI);
-  const contractAddress = ethers.getAddress(CONTRACT_ADDRESS.toLowerCase());
+  expectedValueRaw: string;
+}): Promise<void> {
+  const { txHash, expectedFrom, expectedMarketId, expectedSide, expectedValueRaw } = params;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error("Invalid transaction hash");
 
-  let receipt;
-  try {
-    receipt = await provider.getTransactionReceipt(params.txHash);
-  } catch (err) {
-    return { ok: false, reason: `Could not fetch transaction receipt: ${(err as Error).message}` };
-  }
-  if (!receipt) return { ok: false, reason: "Transaction not found or not yet mined" };
-  if (receipt.status !== 1) return { ok: false, reason: "Transaction reverted on-chain" };
-  if (receipt.to?.toLowerCase() !== contractAddress.toLowerCase()) {
-    return { ok: false, reason: "Transaction was not sent to the AgentArena contract" };
-  }
-  if (receipt.from.toLowerCase() !== params.expectedWallet.toLowerCase()) {
-    return { ok: false, reason: "Transaction sender does not match the authenticated wallet" };
-  }
-
-  for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
-    let parsed;
+  let lastErr: unknown = null;
+  for (const url of ARC_TESTNET_RPC_URLS) {
     try {
-      parsed = iface.parseLog({ topics: log.topics as string[], data: log.data });
-    } catch {
-      continue;
-    }
-    if (!parsed || parsed.name !== "Staked") continue;
-
-    const evMarketId = String(parsed.args[0]);
-    const evUser = String(parsed.args[1]).toLowerCase();
-    const evSideCode = Number(parsed.args[2]);
-    const evAmount = parsed.args[3] as bigint;
-
-    if (
-      evMarketId === params.expectedMarketId &&
-      evUser === params.expectedWallet.toLowerCase() &&
-      evSideCode === SIDE_CODE_ONCHAIN[params.expectedSide]
-    ) {
-      return { ok: true, amountRaw: evAmount.toString() };
+      const provider = new JsonRpcProvider(url);
+      const [tx, receipt] = await Promise.all([
+        provider.getTransaction(txHash),
+        provider.getTransactionReceipt(txHash),
+      ]);
+      if (!tx || !receipt) throw new Error("Transaction not found on-chain");
+      if (receipt.status !== 1) throw new Error("Transaction reverted on-chain");
+      if (!tx.to || tx.to.toLowerCase() !== AGENT_ARENA_ADDRESS.toLowerCase()) {
+        throw new Error("Transaction did not call the Arena contract");
+      }
+      if (tx.from.toLowerCase() !== expectedFrom.toLowerCase()) {
+        throw new Error("Transaction sender does not match authenticated wallet");
+      }
+      let decoded: { marketId: string; side: number };
+      try {
+        const parsed = stakeInterface.parseTransaction({ data: tx.data, value: tx.value });
+        if (!parsed || parsed.name !== "stake") throw new Error("not a stake call");
+        decoded = {
+          marketId: String(parsed.args[0]),
+          side: Number(parsed.args[1]),
+        };
+      } catch {
+        throw new Error("Transaction is not an AgentArena.stake() call");
+      }
+      if (decoded.marketId !== expectedMarketId) {
+        throw new Error("Transaction marketId does not match");
+      }
+      if (decoded.side !== SIDE_CODE_MAP[expectedSide]) {
+        throw new Error("Transaction side does not match");
+      }
+      let expectedValue: bigint;
+      try {
+        expectedValue = BigInt(expectedValueRaw);
+      } catch {
+        throw new Error("Invalid staked amount");
+      }
+      if (tx.value !== expectedValue) {
+        throw new Error("Transaction value does not match staked amount");
+      }
+      return;
+    } catch (err) {
+      lastErr = err;
+      // Only retry other RPCs on transient network errors; verification
+      // failures (mismatch) should still surface — rethrow immediately.
+      const msg = (err as Error)?.message ?? "";
+      const transient =
+        msg.includes("Transaction not found") ||
+        msg.includes("network") ||
+        msg.includes("timeout") ||
+        msg.includes("fetch");
+      if (!transient) throw err;
     }
   }
-
-  return { ok: false, reason: "No matching Staked event found in this transaction's logs" };
+  throw new Error(
+    `Could not verify transaction on Arc RPC: ${(lastErr as Error)?.message ?? "unknown error"}`,
+  );
 }
 
 const RecordStakeInput = z.object({
@@ -76,7 +92,7 @@ const RecordStakeInput = z.object({
   marketId: z.string().uuid(),
   side: z.enum(["HAWK", "DOVE"]),
   stakedAmountRaw: z.string().min(1),
-  txHash: z.string().min(1),
+  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Invalid tx hash"),
 });
 
 export const recordStake = createServerFn({ method: "POST" })
@@ -98,24 +114,18 @@ export const recordStake = createServerFn({ method: "POST" })
     }
     if (!walletAddress) throw new Error("Invalid session");
 
-    // ⚠️ SECURITY FIX: stakedAmountRaw is client-submitted and must never be
-    // trusted directly — it only reflects what the user typed into the
-    // input box, not what was actually staked on-chain. We verify the
-    // confirmed transaction and derive the real amount from its Staked
-    // event log before writing anything to positions.
-    const verification = await verifyStakeOnChain({
-      txHash: data.txHash,
-      expectedMarketId: `mkt_${data.marketId}`,
-      expectedWallet: walletAddress,
-      expectedSide: data.side,
-    });
-    if (!verification.ok) {
-      throw new Error(`Could not verify stake on-chain: ${verification.reason}`);
-    }
-    const verifiedAmountRaw = verification.amountRaw;
-
     const supabase = createClient(url, anonKey, {
       global: { headers: { Authorization: `Bearer ${data.token}` } },
+    });
+
+    // The on-chain marketId is deterministically derived from the events UUID
+    // (see marketIdFromEventId in src/lib/arena-markets.ts).
+    await verifyStakeTx({
+      txHash: data.txHash,
+      expectedFrom: walletAddress,
+      expectedMarketId: `mkt_${data.marketId}`,
+      expectedSide: data.side,
+      expectedValueRaw: data.stakedAmountRaw,
     });
 
     const { error: posErr } = await supabase.from("positions").upsert(
@@ -123,14 +133,14 @@ export const recordStake = createServerFn({ method: "POST" })
         wallet_address: walletAddress,
         market_id: data.marketId,
         side: data.side,
-        staked_amount_raw: verifiedAmountRaw,
+        staked_amount_raw: data.stakedAmountRaw,
         status: "active",
       },
       { onConflict: "wallet_address,market_id" },
     );
     if (posErr) throw new Error(`Could not record position: ${posErr.message}`);
 
-    const stakedDisplay = Number(verifiedAmountRaw) / 1e18;
+    const stakedDisplay = Number(data.stakedAmountRaw) / 1e18;
     const { error: histErr } = await supabase.from("wallet_balance_history").insert({
       wallet_address: walletAddress,
       balance: 0,
@@ -251,9 +261,7 @@ export const getMyPositions = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await supabase
       .from("positions")
-      .select(
-        "market_id, side, staked_amount_raw, status, payout_amount, resolved_outcome, claimed_at, created_at",
-      )
+      .select("market_id, side, staked_amount_raw, status, payout_amount, resolved_outcome, claimed_at, created_at")
       .eq("wallet_address", walletAddress)
       .order("created_at", { ascending: false });
 

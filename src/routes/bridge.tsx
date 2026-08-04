@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BridgeSection } from "@/components/sections/bridge-section";
+import { LiquiditySection } from "@/components/sections/liquidity-section";
 
 export const Route = createFileRoute("/bridge")({
   head: () => ({
@@ -18,5 +18,5 @@ export const Route = createFileRoute("/bridge")({
       },
     ],
   }),
-  component: BridgeSection,
+  component: LiquiditySection,
 });

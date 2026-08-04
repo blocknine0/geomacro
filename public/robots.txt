@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://geomacro.live/sitemap.xml
+Sitemap: https://www.geomacro.live/sitemap.xml

@@ -4,7 +4,7 @@ import { assertSameOrigin } from "./origin-guard";
 import { z } from "zod";
 import { fetchNewsApi, type NewsHit } from "./newsapi.server";
 import { groqClassifyJson } from "./groq.server";
-import { upsertEvents, type StoredEvent } from "./supabase-app.server";
+import { upsertEvents, getAppSupabase, type StoredEvent } from "./supabase-app.server";
 import { stripInternalIds } from "./live-feed.sanitize";
 import { EVENT_STAGES, normalizeEventStage } from "./event-stage";
 
@@ -50,7 +50,7 @@ const EventOut = z.object({
   stage: z.preprocess(normalizeEventStage, z.enum(EVENT_STAGES)),
   severity: z.number(),
   confidence: z.number(),
-  delta: z.number(),
+  delta: z.number().optional().default(0),
   sourceUrl: z.string(),
   sourceTitle: z.string(),
   sourceName: z.string().optional().default(""),
@@ -109,6 +109,30 @@ export const fetchLiveFeed = createServerFn({ method: "POST" })
           }
           if (hits.length === 0) throw new Error("no fresh hits");
 
+          // Compute a real 24h baseline severity from historical events for
+          // this category so `delta` is a deterministic number, not an LLM
+          // guess. Falls back to the current batch average on cold start.
+          let baselineSeverity: number | null = null;
+          try {
+            const sb = getAppSupabase();
+            if (sb) {
+              const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+              const { data: rows, error } = await sb
+                .from("events")
+                .select("severity")
+                .eq("category", cat)
+                .gte("published_at", since);
+              if (error) {
+                console.error("[fetchLiveFeed] baseline query failed", cat, error.message);
+              } else if (rows && rows.length > 0) {
+                const sum = rows.reduce((acc, r) => acc + Number(r.severity ?? 0), 0);
+                baselineSeverity = sum / rows.length;
+              }
+            }
+          } catch (err) {
+            console.error("[fetchLiveFeed] baseline threw", cat, err);
+          }
+
           const items = hits
             .slice(0, Math.max(6, data.perCategory + 4))
             .map(
@@ -126,7 +150,7 @@ HITS:
 ${items}
 
 Return a JSON object with this exact shape:
-{"events":[{"id":"evt_xxx","category":"${cat}","narrative":"...","summary":"...","stage":"Active Escalation|Building|Fragile Ceasefire|De-escalation|Monitoring|Stable","severity":0,"confidence":0,"delta":0,"sourceUrl":"...","sourceTitle":"...","publishedAt":"ISO","relevance":"relevant|reject"}]}
+{"events":[{"id":"evt_xxx","category":"${cat}","narrative":"...","summary":"...","stage":"Active Escalation|Building|Fragile Ceasefire|De-escalation|Monitoring|Stable","severity":0,"confidence":0,"sourceUrl":"...","sourceTitle":"...","publishedAt":"ISO","relevance":"relevant|reject"}]}
 
 RULES
 - STRICT RELEVANCE: for EACH hit decide if it genuinely matches the CATEGORY TOPIC.
@@ -181,6 +205,16 @@ RULES
               const ts = Date.parse(e.publishedAt);
               return Number.isFinite(ts) && ts >= recencyCutoff;
             });
+
+          // Cold-start fallback: use the current batch's own average.
+          if (baselineSeverity === null && events.length > 0) {
+            const batchSum = events.reduce((acc, e) => acc + Number(e.severity ?? 0), 0);
+            baselineSeverity = batchSum / events.length;
+          }
+          const baseline = baselineSeverity ?? 0;
+          for (const e of events) {
+            e.delta = Math.round(Number(e.severity ?? 0) - baseline);
+          }
 
           if (events.length > 0) {
             FEED_CACHE.set(cat, { events, at: new Date().toISOString() });

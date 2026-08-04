@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ARC_NETWORKS,
@@ -7,6 +7,7 @@ import {
   type ArcNetwork,
 } from "@/lib/arc";
 import { buildSiweMessage, verifySiwe } from "@/lib/siwe.functions";
+import { fetchNativeBalance } from "@/lib/balance";
 
 const SESSION_KEY = (addr: string) => `geomacro.siwe-session.${addr.toLowerCase()}`;
 
@@ -40,50 +41,51 @@ declare global {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Dedupe guards: multiple components can call useWallet() (via the shared
-// WalletProvider context, or during the brief window before it's wrapped).
-// Without these, every mount fires its own eth_accounts/eth_chainId request
-// at MetaMask simultaneously, which trips MetaMask's own rate limiter
-// (-32005 "Request limit exceeded"). These module-level promises ensure only
-// ONE request is ever in flight at a time, and every caller awaits the same
-// promise.
-// ---------------------------------------------------------------------------
 let accountsRequestInFlight: Promise<string[]> | null = null;
 let chainIdRequestInFlight: Promise<string> | null = null;
 
 function getAccountsOnce(eth: EthereumProvider): Promise<string[]> {
   if (!accountsRequestInFlight) {
-    accountsRequestInFlight = (eth.request({ method: "eth_accounts" }) as Promise<string[]>).finally(() => {
-      accountsRequestInFlight = null;
-    });
+    accountsRequestInFlight = eth
+      .request({ method: "eth_accounts" })
+      .then((r) => (r as string[]) ?? [])
+      .finally(() => {
+        accountsRequestInFlight = null;
+      });
   }
   return accountsRequestInFlight;
 }
 
 function getChainIdOnce(eth: EthereumProvider): Promise<string> {
   if (!chainIdRequestInFlight) {
-    chainIdRequestInFlight = (eth.request({ method: "eth_chainId" }) as Promise<string>).finally(() => {
-      chainIdRequestInFlight = null;
-    });
+    chainIdRequestInFlight = eth
+      .request({ method: "eth_chainId" })
+      .then((r) => r as string)
+      .finally(() => {
+        chainIdRequestInFlight = null;
+      });
   }
   return chainIdRequestInFlight;
 }
 
-/**
- * Internal hook — do NOT import this directly in components.
- * Use `useWallet` from "@/hooks/WalletProvider" instead, which wraps this
- * in a single shared Context so wallet state (and its MetaMask requests)
- * is only ever created once per app, no matter how many components read it.
- */
 export function useWalletInternal() {
   const [address, setAddress] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<SiweSession | null>(null);
+  // false until the persisted SIWE session for the current address has been
+  // read from localStorage. Callers must never trigger a fresh SIWE prompt
+  // while this is false — that race is what caused repeated sign-in popups.
+  const [sessionReady, setSessionReady] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const callVerifySiwe = useServerFn(verifySiwe);
+
+  // ---- shared native USDC balance (single fetch for the whole app) ----
+  const [balance, setBalance] = useState<string | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const balanceKeyRef = useRef<string | null>(null);
+  const balanceInFlight = useRef(false);
 
   const network: ArcNetwork | null = networkByChainId(chainId);
   const onArc = network !== null;
@@ -92,23 +94,21 @@ export function useWalletInternal() {
   useEffect(() => {
     if (!address) {
       setSession(null);
+      setSessionReady(true);
       return;
     }
+    setSessionReady(false);
     setSession(loadSession(address));
+    setSessionReady(true);
   }, [address]);
 
   useEffect(() => {
     const eth = typeof window !== "undefined" ? window.ethereum : undefined;
     if (!eth) return;
-    getAccountsOnce(eth)
-      .then((accs) => {
-        const arr = accs as string[];
-        if (arr?.[0]) setAddress(arr[0]);
-      })
-      .catch(() => {});
-    getChainIdOnce(eth)
-      .then((c) => setChainId(c as string))
-      .catch(() => {});
+    getAccountsOnce(eth).then((arr) => {
+      if (arr?.[0]) setAddress(arr[0]);
+    }).catch(() => {});
+    getChainIdOnce(eth).then((c) => setChainId(c)).catch(() => {});
 
     const onAccounts = (...args: unknown[]) => {
       const accs = args[0] as string[];
@@ -182,7 +182,46 @@ export function useWalletInternal() {
     if (address) localStorage.removeItem(SESSION_KEY(address));
     setSession(null);
     setAddress(null);
+    setBalance(null);
+    balanceKeyRef.current = null;
   }, [address]);
+
+  /**
+   * Fetch the native USDC balance once for the whole app. Results are cached
+   * in context state keyed by address+network, so re-renders never refetch;
+   * only a wallet/network change, window focus, or an explicit call re-reads.
+   */
+  const refreshBalance = useCallback(async (force = false) => {
+    const net = network ?? preferredNetwork();
+    if (!address) return;
+    const key = `${net.key}:${address.toLowerCase()}`;
+    if (balanceInFlight.current) return;
+    if (!force && balanceKeyRef.current === key && balance !== null) return;
+    balanceInFlight.current = true;
+    setBalanceLoading(true);
+    try {
+      const bal = await fetchNativeBalance(net, address);
+      balanceKeyRef.current = key;
+      setBalance(bal ? bal.formatted : null);
+    } finally {
+      balanceInFlight.current = false;
+      setBalanceLoading(false);
+    }
+  }, [address, network, balance]);
+
+  // (Re)load the balance on wallet/network change and on window focus only.
+  useEffect(() => {
+    if (!address) {
+      setBalance(null);
+      balanceKeyRef.current = null;
+      return;
+    }
+    void refreshBalance(true);
+    const onFocus = () => void refreshBalance(true);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, network?.key]);
 
   /**
    * Sign-In With Ethereum: asks the wallet to sign a plain message (gasless,
@@ -236,8 +275,13 @@ export function useWalletInternal() {
     disconnect,
     // SIWE session — positions/wallet_balance_history writes require this
     session,
+    sessionReady,
     signingIn,
     signIn,
     isSignedIn: session !== null,
+    // shared balance
+    balance,
+    balanceLoading,
+    refreshBalance,
   };
 }

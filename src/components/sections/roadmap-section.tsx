@@ -1,93 +1,7 @@
 import { SectionHeader } from "@/components/section-ui";
+import { ROADMAP, type RoadmapStatus } from "@/lib/roadmap";
 
-type Status = "shipped" | "in-progress" | "next" | "research";
-
-type Milestone = {
-  version: string;
-  quarter: string;
-  title: string;
-  desc: string;
-  status: Status;
-  layer: "Data" | "Protocol" | "Markets" | "Intelligence" | "Client";
-  artifacts: string[];
-};
-
-const ROADMAP: Milestone[] = [
-  {
-    version: "v0.1",
-    quarter: "Q2 2025",
-    title: "Ingestion pipeline online",
-    desc: "NewsAPI fan-out across four narrative buckets with Groq llama-3.3-70b classification and severity scoring.",
-    status: "shipped",
-    layer: "Data",
-    artifacts: ["NewsAPI", "Groq 70B", "Zod schema"],
-  },
-  {
-    version: "v0.2",
-    quarter: "Q2 2025",
-    title: "Event contract on Arc Testnet",
-    desc: "AgentArena.sol deployed and verified. Binary outcome market primitive with USDC collateral.",
-    status: "shipped",
-    layer: "Protocol",
-    artifacts: ["Arc Testnet", "Solidity 0.8", "Verified"],
-  },
-  {
-    version: "v0.3",
-    quarter: "Q3 2025",
-    title: "End-to-end settlement loop",
-    desc: "Full stake to resolve to claim cycle exercised onchain with pro-rata payouts and resolver attestations.",
-    status: "shipped",
-    layer: "Markets",
-    artifacts: ["Stake", "Resolve", "Claim"],
-  },
-  {
-    version: "v0.4",
-    quarter: "Q4 2025",
-    title: "Autonomous market factory",
-    desc: "Scheduled GitHub Actions worker mints event contracts from high-signal headlines without human curation.",
-    status: "shipped",
-    layer: "Markets",
-    artifacts: ["GH Actions", "Cron", "Signer"],
-  },
-  {
-    version: "v0.5",
-    quarter: "Q1 2026",
-    title: "Dispute-based resolution",
-    desc: "Escrowed challenge window on resolver verdicts with slashing for malicious attestations.",
-    status: "in-progress",
-    layer: "Protocol",
-    artifacts: ["Challenge window", "Slashing", "Bond"],
-  },
-  {
-    version: "v0.6",
-    quarter: "Q2 2026",
-    title: "Mainnet deployment",
-    desc: "Audited contracts promoted to Arc mainnet. Production USDC liquidity and resolver bonding live.",
-    status: "next",
-    layer: "Protocol",
-    artifacts: ["Audit", "Arc mainnet", "USDC"],
-  },
-  {
-    version: "v0.7",
-    quarter: "Q2 2026",
-    title: "Public analyst track record",
-    desc: "Per-agent forecast accuracy, calibration curves and PnL exposed as a queryable onchain dataset.",
-    status: "next",
-    layer: "Intelligence",
-    artifacts: ["Calibration", "Brier score", "Onchain index"],
-  },
-  {
-    version: "v0.8",
-    quarter: "Q3 2026",
-    title: "iOS wallet support via WalletConnect",
-    desc: "WalletConnect v2 session flow for Safari and Chrome on iOS so mobile users can take positions without an injected provider.",
-    status: "next",
-    layer: "Client",
-    artifacts: ["WalletConnect v2", "iOS Safari", "Deep link"],
-  },
-];
-
-const STATUS_META: Record<Status, { label: string; dot: string; text: string; ring: string }> = {
+const STATUS_META: Record<RoadmapStatus, { label: string; dot: string; text: string; ring: string }> = {
   shipped: {
     label: "Shipped",
     dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]",
@@ -127,6 +41,10 @@ export function RoadmapSection() {
         desc="A reproducible build path. Every milestone ships with verifiable artifacts. No private roadmap, no surprise scope, no marketing-only phases."
       />
 
+      <p className="mt-3 text-xs italic text-muted-foreground">
+        Timelines for v0.7 onward depend on Circle's Arc mainnet launch.
+      </p>
+
       <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/60 sm:grid-cols-4">
         {[
           { k: "Total", v: ROADMAP.length.toString().padStart(2, "0") },
@@ -161,7 +79,7 @@ export function RoadmapSection() {
                   </span>
                 </div>
                 <h3 className="mt-3 text-base font-medium text-foreground sm:text-lg">{m.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{m.desc}</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{m.scope}</p>
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-border/40 pt-3">
                   {m.artifacts.map((a) => (
                     <span

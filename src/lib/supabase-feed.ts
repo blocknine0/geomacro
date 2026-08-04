@@ -39,5 +39,20 @@ export type StoredEventRow = {
   market_address?: string | null;
   ai_processed?: boolean | null;
   ai_tentative_winner?: "HAWK" | "DOVE" | string | null;
+  /** Reasoning written by the backend resolver alongside ai_tentative_winner. */
+  ai_reasoning?: string | null;
   ai_resolved_at?: string | null;
+  lifecycle_stage?: "active" | "awaiting_dispute" | "disputed" | "completed" | string | null;
+  disputer_address?: string | null;
+  dispute_window_ends_at?: string | null;
+  /** Pre-generated analyst briefing (written once by the scheduled backend
+   *  script). The frontend never generates these live. */
+  hawk_reasoning?: string | null;
+  dove_reasoning?: string | null;
+  hawk_conviction?: number | null;
+  dove_conviction?: number | null;
+  briefing_generated_at?: string | null;
+  /** Explicit human-readable market question written by the publisher.
+   *  When present it overrides the auto-generated severity template. */
+  market_question?: string | null;
 };

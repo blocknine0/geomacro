@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserProvider, formatUnits, parseUnits } from "ethers";
 import { ArrowRight, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
+import { chargeProtocolFee, computeProtocolFeeWei, formatFeeUsdc } from "@/lib/protocol-fee";
+import { recordTxHistory } from "@/lib/tx-history.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,6 +35,42 @@ const SOURCE_OPTIONS = Object.entries(CCTP_CHAINS).filter(([key]) => key !== "ar
 
 type Phase = "idle" | "approving" | "burning" | "attesting" | "minting" | "done";
 
+// 🛡️ FIX: burnTxHash/irisMessage/phase were plain useState — a refresh (or
+// crash) between "burn confirmed" and "mint confirmed" lost all of it, with
+// no way to find the burn tx again. The USDC isn't actually lost (it's
+// sitting attested on Iris, waiting for receiveMessage()), but the user had
+// no way to discover that. Iris attestation lookups are stateless/idempotent
+// by burn-tx-hash, so persisting just {sourceKey, burnTxHash} is enough to
+// resume: re-poll Iris with the saved hash, get the message+attestation
+// back, and the mint step works exactly as if nothing happened.
+const PENDING_BRIDGE_KEY = "geomacro:bridge:pending:v1";
+
+type PendingBridge = { sourceKey: string; burnTxHash: string; amount: string };
+
+function savePendingBridge(pending: PendingBridge) {
+  try {
+    localStorage.setItem(PENDING_BRIDGE_KEY, JSON.stringify(pending));
+  } catch {
+    // localStorage unavailable (private browsing, etc.) — resume just won't
+    // be offered after a refresh; the funds are still safe on-chain either way.
+  }
+}
+function loadPendingBridge(): PendingBridge | null {
+  try {
+    const raw = localStorage.getItem(PENDING_BRIDGE_KEY);
+    return raw ? (JSON.parse(raw) as PendingBridge) : null;
+  } catch {
+    return null;
+  }
+}
+function clearPendingBridge() {
+  try {
+    localStorage.removeItem(PENDING_BRIDGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 function shortHash(hash: string) {
   return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
@@ -62,7 +100,12 @@ export function BridgeSection() {
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [burnTxHash, setBurnTxHash] = useState<string | null>(null);
+  const [resumable, setResumable] = useState<PendingBridge | null>(null);
+  const [resuming, setResuming] = useState(false);
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
+  const [feeTxHash, setFeeTxHash] = useState<string | null>(null);
+  const [feeUsdc, setFeeUsdc] = useState<string | null>(null);
+  const [feeError, setFeeError] = useState<string | null>(null);
   const [irisMessage, setIrisMessage] = useState<IrisMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,8 +117,21 @@ export function BridgeSection() {
     }
   })();
   const needsApproval = allowance < amountUnits;
+  const previewFeeUsdc = (() => {
+    try {
+      return amount ? formatFeeUsdc(computeProtocolFeeWei(parseUnits(amount, 18))) : null;
+    } catch {
+      return null;
+    }
+  })();
   const onSourceChain = currentChainIdHex?.toLowerCase() === source.chainIdHex.toLowerCase();
   const onArc = currentChainIdHex?.toLowerCase() === DEST.chainIdHex.toLowerCase();
+
+  // -- resume check: did a previous session leave a burn unminted? -----------
+  useEffect(() => {
+    const pending = loadPendingBridge();
+    if (pending) setResumable(pending);
+  }, []);
 
   // -- wallet connect + chain tracking ---------------------------------------
   useEffect(() => {
@@ -212,6 +268,7 @@ export function BridgeSection() {
       );
       const receipt = await tx.wait();
       setBurnTxHash(receipt.hash);
+      savePendingBridge({ sourceKey, burnTxHash: receipt.hash, amount });
 
       setPhase("attesting");
       const msg = await pollIrisAttestation(source.domain, receipt.hash, { network: "testnet" });
@@ -236,11 +293,53 @@ export function BridgeSection() {
       const receipt = await tx.wait();
       setMintTxHash(receipt.hash);
       setPhase("done");
+      clearPendingBridge();
+
+      // Fee is charged here (post-mint, on Arc) rather than on the source
+      // chain — the treasury address expects native Arc USDC, and source
+      // chains' native gas is ETH/AVAX, not USDC, so charging pre-burn would
+      // be a different asset entirely. A fee failure here doesn't touch the
+      // mint that already succeeded — it's surfaced separately so the user
+      // isn't blocked from their bridged funds over an unrelated fee issue.
+      let recordedFeeTxHash: string | undefined;
+      let recordedFeeUsdc: string | undefined;
+      try {
+        const feeAmountWei = parseUnits(amount || "0", 18);
+        const fee = await chargeProtocolFee(feeAmountWei);
+        setFeeTxHash(fee.txHash);
+        setFeeUsdc(formatFeeUsdc(fee.feeWei));
+        recordedFeeTxHash = fee.txHash;
+        recordedFeeUsdc = formatFeeUsdc(fee.feeWei);
+      } catch (feeErr) {
+        setFeeError((feeErr as Error).message ?? "Fee payment failed");
+      }
+
+      if (address) {
+        try {
+          await recordTxHistory({
+            data: {
+              walletAddress: address,
+              type: "bridge",
+              txHash: receipt.hash,
+              tokenIn: "USDC",
+              tokenOut: "USDC",
+              amountIn: amount,
+              feeTxHash: recordedFeeTxHash,
+              feeUsdc: recordedFeeUsdc,
+              explorerUrl: `${DEST.explorerUrl}/tx/${receipt.hash}`,
+            },
+          });
+        } catch (historyErr) {
+          // The mint already succeeded — a history-recording failure
+          // shouldn't be shown as if the bridge itself failed.
+          console.error("[BridgeSection] recordTxHistory failed", historyErr);
+        }
+      }
     } catch (e) {
       setError((e as Error).message ?? "Mint failed");
       setPhase("idle");
     }
-  }, [irisMessage]);
+  }, [irisMessage, amount]);
 
   const reset = useCallback(() => {
     setBurnTxHash(null);
@@ -248,7 +347,40 @@ export function BridgeSection() {
     setIrisMessage(null);
     setPhase("idle");
     setError(null);
+    clearPendingBridge();
+    setResumable(null);
+    setFeeTxHash(null);
+    setFeeUsdc(null);
+    setFeeError(null);
   }, []);
+
+  // Re-fetches the Iris attestation for a burn that already happened in a
+  // previous session — the burn is on-chain and irreversible either way, so
+  // this just gets the UI back to the same "ready to mint" state it would
+  // have been in if the page had never refreshed.
+  const handleResume = useCallback(async () => {
+    if (!resumable) return;
+    setResuming(true);
+    setError(null);
+    try {
+      const resumedSource = CCTP_CHAINS[resumable.sourceKey];
+      if (!resumedSource) throw new Error(`Unknown source chain: ${resumable.sourceKey}`);
+      const msg = await pollIrisAttestation(resumedSource.domain, resumable.burnTxHash, { network: "testnet" });
+      setSourceKey(resumable.sourceKey);
+      setAmount(resumable.amount);
+      setBurnTxHash(resumable.burnTxHash);
+      setIrisMessage(msg);
+      setPhase("idle"); // ready to mint
+      setResumable(null);
+    } catch (e) {
+      setError(
+        `Couldn't resume automatically (${(e as Error).message ?? "attestation not found"}). ` +
+          `If the burn really did go through, it's still safe on Iris — try again in a minute, or check the burn tx on the source chain's explorer.`,
+      );
+    } finally {
+      setResuming(false);
+    }
+  }, [resumable]);
 
   const busy = phase !== "idle" && phase !== "done";
 
@@ -261,6 +393,33 @@ export function BridgeSection() {
           Testnet via Circle's CCTP burn-and-mint protocol. Fast Transfer mode, ~15s finality.
         </p>
       </div>
+
+      {resumable && (
+        <div className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+          <p className="text-sm font-medium text-amber-500">Unfinished bridge found</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You burned USDC on a previous visit but never completed the mint on Arc. Your funds
+            aren't lost — they're attested and waiting. Burn tx:{" "}
+            <span className="font-mono">{shortHash(resumable.burnTxHash)}</span>
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" onClick={handleResume} disabled={resuming}>
+              {resuming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Resume bridge
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                clearPendingBridge();
+                setResumable(null);
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-10 space-y-6 rounded-lg border border-border/60 bg-card/40 p-6">
         {/* wallet */}
@@ -345,10 +504,17 @@ export function BridgeSection() {
                 Switch wallet to Arc Testnet
               </Button>
             ) : (
-              <Button className="w-full" onClick={handleMint} disabled={busy || phase === "done"}>
-                {phase === "minting" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {phase === "done" ? "Minted" : "Mint on Arc"}
-              </Button>
+              <>
+                <Button className="w-full" onClick={handleMint} disabled={busy || phase === "done"}>
+                  {phase === "minting" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {phase === "done" ? "Minted" : "Mint on Arc"}
+                </Button>
+                {phase !== "done" && previewFeeUsdc && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    + ${previewFeeUsdc} protocol fee, charged separately right after mint
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -380,6 +546,18 @@ export function BridgeSection() {
                 Mint tx: {shortHash(mintTxHash)} <ExternalLink className="h-3 w-3" />
               </a>
             )}
+            {feeTxHash && (
+              <a
+                href={`${DEST.explorerUrl}/tx/${feeTxHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                Fee tx: {shortHash(feeTxHash)} (${feeUsdc}) <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+            {feeError && <p className="text-xs text-destructive">Fee payment didn't go through: {feeError}</p>}
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArenaSection } from "@/components/sections/arena-section";
+
 export const Route = createFileRoute("/arena")({
   head: () => ({
     meta: [

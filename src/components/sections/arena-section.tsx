@@ -3,13 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Bot,
-  Brain,
   Clock,
   Gavel,
   Loader2,
-  RefreshCw,
   ShieldCheck,
-  Swords,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -30,6 +27,7 @@ import { preferredNetwork } from "@/lib/arc";
 import { AGENTS, type AgentSide } from "@/lib/agents";
 import {
   getCachedMarkets,
+  loadAgentTrackRecord,
   loadArenaMarkets,
   setCachedMarkets,
   type Market,
@@ -45,8 +43,6 @@ import {
   type OnchainMarket,
   type OnchainStake,
 } from "@/lib/agent-arena";
-import { runAgentDuel } from "@/lib/agents.functions";
-import { mainAgentJudge } from "@/lib/arena-judge.functions";
 import { recordStake, recordClaim } from "@/lib/positions.functions";
 import { rememberSessionTx } from "@/lib/wallet-tx";
 import { supabaseFeed } from "@/lib/supabase-feed";
@@ -103,63 +99,39 @@ function MarketCardSkeleton() {
   );
 }
 
-function friendlyAgentError(err: unknown, kind: "duel" | "judge"): string {
-  const msg = (err as Error)?.message ?? "";
-  const code = msg.split(":")[0]?.trim();
-  switch (code) {
-    case "MISSING_GROQ_KEY":
-      return "AI service is not configured (missing GROQ_API_KEY). Ask the admin to set it.";
-    case "GROQ_TIMEOUT":
-      return kind === "judge"
-        ? "Main agent timed out fetching the verdict. Try again."
-        : "AI duel timed out. Try again.";
-    case "GROQ_RATE_LIMITED":
-      return "AI service is rate-limited. Wait ~30s and retry.";
-    case "GROQ_AUTH":
-      return "AI service rejected the API key. Admin must rotate GROQ_API_KEY.";
-    case "GROQ_BAD_REQUEST":
-      return "AI service rejected the request payload.";
-    case "GROQ_SERVER":
-    case "GROQ_NETWORK":
-      return "AI service is temporarily unavailable. Try again in a moment.";
-    case "GROQ_BAD_JSON":
-    case "GROQ_EMPTY":
-    case "VERDICT_SCHEMA_INVALID":
-    case "DUEL_SCHEMA_INVALID":
-      return "AI returned an unexpected response. Try again.";
-    case "Too many requests":
-      return "You're sending too many requests. Wait a minute and retry.";
-    case "Forbidden":
-      return "Blocked by origin guard. Reload the page and retry.";
-    case "AI service unavailable":
-      return "AI service is not configured. Ask the admin to set GROQ_API_KEY.";
-  }
-  if (kind === "judge") return `Main agent unavailable${msg ? `: ${msg}` : ""}. Try again in a moment.`;
-  return msg || "Agent duel unavailable. Please try again.";
-}
 
 export function ArenaSection() {
-  const { address, onArc, network, connect, switchToArc, session, signIn } = useWallet();
+  const { address, onArc, network, connect, switchToArc, session, sessionReady, signIn, signingIn } = useWallet();
   const activeNet = network ?? preferredNetwork();
 
-  const duel = useServerFn(runAgentDuel);
-  const judge = useServerFn(mainAgentJudge);
   const callRecordStake = useServerFn(recordStake);
   const callRecordClaim = useServerFn(recordClaim);
 
-  const [duelLoading, setDuelLoading] = useState<string | null>(null);
-  const [duelError, setDuelError] = useState<string | null>(null);
-  const [duels, setDuels] = useState<Record<string, Awaited<ReturnType<typeof runAgentDuel>>>>({});
-  const [verdicts, setVerdicts] = useState<Record<string, Awaited<ReturnType<typeof mainAgentJudge>>>>({});
-  const [judging, setJudging] = useState<string | null>(null);
   const [stakeTx, setStakeTx] = useState<Record<string, { side: AgentSide; hash: string }>>({});
   const [now, setNow] = useState<number>(() => Date.now());
-  const autoJudgedRef = useRef<Set<string>>(new Set());
   const [pendingStake, setPendingStake] = useState<{ market: Market; side: AgentSide } | null>(null);
   const [stakeAmount, setStakeAmount] = useState<string>("10");
   const [stakeSubmitting, setStakeSubmitting] = useState(false);
   const [stakeError, setStakeError] = useState<string | null>(null);
   const [onchainMarkets, setOnchainMarkets] = useState<Record<string, OnchainMarket>>({});
+  // Global agent win-rate. Single Supabase aggregate over fully finalized
+  // markets only (market_resolved = true, grouped by ai_tentative_winner) —
+  // not per-wallet, unaffected by claims, independent of RPC/multicall timing.
+  const [trackRecord, setTrackRecord] = useState<{
+    decided: number;
+    HAWK: number | null;
+    DOVE: number | null;
+  }>({ decided: 0, HAWK: null, DOVE: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadAgentTrackRecord().then((tr) => {
+      if (!cancelled) setTrackRecord(tr);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [myStakes, setMyStakes] = useState<Record<string, OnchainStake>>({});
   const [stakesLoading, setStakesLoading] = useState(false);
   const [claiming, setClaiming] = useState<string | null>(null);
@@ -204,7 +176,9 @@ export function ArenaSection() {
       return next;
     });
   }
-  const [activeTab, setActiveTab] = useState<"active" | "awaiting_dispute" | "disputed" | "completed">("active");
+  const [activeTab, setActiveTab] = useState<
+    "active" | "staking_closed" | "market_resolved" | "disputed" | "completed"
+  >("active");
   const [markets, setMarkets] = useState<Market[]>([]);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -370,52 +344,6 @@ export function ArenaSection() {
     };
   }, [address, markets]);
 
-  useEffect(() => {
-    for (const m of markets) {
-      const dl = m.resolutionAt;
-      if (!dl || now < dl) continue;
-      if (verdicts[m.id]) continue;
-      if (!duels[m.id]) continue;
-      if (judging === m.id) continue;
-      if (autoJudgedRef.current.has(m.id)) continue;
-      autoJudgedRef.current.add(m.id);
-      void judgeMarket(m);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, duels, verdicts, judging, markets]);
-
-  async function runDuel(m: Market, force = false) {
-    if (!force && duels[m.id]) return;
-    setDuelLoading(m.id);
-    setDuelError(null);
-    try {
-      const res = await duel({
-        data: {
-          marketId: m.id,
-          question: m.question,
-          threshold: m.threshold,
-          eventNarrative: m.narrative,
-          eventSeverity: m.severity,
-          eventStage: m.stage,
-          category: m.category,
-          sourceTitle: m.sourceTitle ?? undefined,
-        },
-      });
-      setDuels((prev) => ({ ...prev, [m.id]: res }));
-      setVerdicts((prev) => {
-        const next = { ...prev };
-        delete next[m.id];
-        return next;
-      });
-      autoJudgedRef.current.delete(m.id);
-    } catch (e) {
-      console.error("[runDuel] failed", e);
-      setDuelError(`[${m.id}] ${friendlyAgentError(e, "duel")}`);
-    } finally {
-      setDuelLoading(null);
-    }
-  }
-
   function openStakeDialog(market: Market, side: AgentSide) {
     setStakeError(null);
     if (!address) {
@@ -426,6 +354,9 @@ export function ArenaSection() {
       void switchToArc();
       return;
     }
+    // Wait for the persisted SIWE session to hydrate before prompting —
+    // otherwise a re-render mid-hydration triggers a duplicate signature request.
+    if (!sessionReady || signingIn) return;
     if (!session) {
       void signIn();
       return;
@@ -442,12 +373,12 @@ export function ArenaSection() {
       return;
     }
     let activeSession = session;
-    if (!activeSession) {
+    if (!activeSession && sessionReady && !signingIn) {
       activeSession = await signIn();
-      if (!activeSession) {
+    }
+    if (!activeSession) {
         setStakeError("Sign-in required to record your stake.");
         return;
-      }
     }
     setStakeSubmitting(true);
     setStakeError(null);
@@ -584,51 +515,12 @@ export function ArenaSection() {
     }
   }
 
-  async function judgeMarket(m: Market) {
-    const duelRes = duels[m.id];
-    if (!duelRes) {
-      setDuelError("Run the AI duel first so the main agent has positions to judge.");
-      return;
-    }
-    setJudging(m.id);
-    setDuelError(null);
-    try {
-      const v = await judge({
-        data: {
-          marketId: m.id,
-          question: m.question,
-          topic: m.narrative ?? m.question,
-          threshold: m.threshold,
-          hawk: {
-            side: duelRes.hawk.side,
-            confidence: duelRes.hawk.confidence,
-            stakeUsdc: duelRes.hawk.stakeUsdc,
-            rationale: duelRes.hawk.rationale,
-          },
-          dove: {
-            side: duelRes.dove.side,
-            confidence: duelRes.dove.confidence,
-            stakeUsdc: duelRes.dove.stakeUsdc,
-            rationale: duelRes.dove.rationale,
-          },
-          pastCalibration: null,
-        },
-      });
-      setVerdicts((p) => ({ ...p, [m.id]: v }));
-    } catch (e) {
-      console.error("[judgeMarket] failed", e);
-      setDuelError(`[${m.id}] ${friendlyAgentError(e, "judge")}`);
-    } finally {
-      setJudging(null);
-    }
-  }
-
   const renderMarketCard = (m: Market) => {
     const om = onchainMarkets[m.id];
     const hawkUsd = Number(om ? om.hawkTotalUsdc : m.onchain.hawkTotalUsdc) || 0;
     const doveUsd = Number(om ? om.doveTotalUsdc : m.onchain.doveTotalUsdc) || 0;
     const total = hawkUsd + doveUsd;
-    const result = duels[m.id];
+    const result = m.briefing;
     const staked = stakeTx[m.id];
     const mine = myStakes[m.id];
     const myHawk = mine?.hawkUsdc ?? 0;
@@ -662,13 +554,17 @@ export function ArenaSection() {
     for (let i = 0; i < m.id.length; i++) hash = (hash * 31 + m.id.charCodeAt(i)) | 0;
     const jitter = ((Math.abs(hash) % 17) - 8);
     const gap = m.threshold - m.severity;
-    const hawkConviction = Math.max(35, Math.min(95,
-      Math.round(55 + (m.severity - 50) * 0.6 - gap * 0.8 + jitter)
-    ));
+    const hawkConviction = result
+      ? result.hawk.confidence
+      : Math.max(35, Math.min(95,
+          Math.round(55 + (m.severity - 50) * 0.6 - gap * 0.8 + jitter)
+        ));
     const doveJitter = (((Math.abs(hash) >> 4) % 13) - 6);
-    const doveConviction = Math.max(35, Math.min(95,
-      Math.round(55 + gap * 0.8 - (m.severity - 50) * 0.4 + doveJitter)
-    ));
+    const doveConviction = result
+      ? result.dove.confidence
+      : Math.max(35, Math.min(95,
+          Math.round(55 + gap * 0.8 - (m.severity - 50) * 0.4 + doveJitter)
+        ));
     const velocityClass =
       velocity === "High"
         ? "text-destructive"
@@ -738,46 +634,15 @@ export function ArenaSection() {
             </div>
             <h3 className="mt-2 text-lg font-medium leading-snug">{m.question}</h3>
           </div>
-          {result ? (
-            <div className="flex items-center gap-2 self-start">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => runDuel(m, true)}
-                disabled={duelLoading === m.id}
-                className="gap-1.5"
-                title="Regenerate analyst briefings"
-              >
-                {duelLoading === m.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                {duelLoading === m.id ? "Refreshing…" : "Refresh briefings"}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => runDuel(m)}
-              disabled={duelLoading === m.id}
-              className="gap-2 self-start"
+          {!result && (
+            <Badge
+              variant="outline"
+              className="gap-1.5 self-start border-border/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
             >
-              {duelLoading === m.id ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Swords className="h-4 w-4" />
-              )}
-              {duelLoading === m.id ? "Analysts drafting…" : "Generate Briefings"}
-            </Button>
+              <Clock className="h-3.5 w-3.5" /> Briefing pending
+            </Badge>
           )}
         </div>
-
-        {duelError && duelError.startsWith(`[${m.id}]`) && (
-          <div className="mx-6 -mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {duelError.replace(`[${m.id}] `, "")}
-          </div>
-        )}
 
         <div className="px-6">
           <div className="rounded-xl border border-border/60 bg-background/40 p-4">
@@ -819,6 +684,10 @@ export function ArenaSection() {
                   <span className="text-primary">
                     settled · {om.winner === "HAWK" ? "Escalation" : "Calm"} resolved
                   </span>
+                ) : isTentative ? (
+                  <span className="text-accent">tentative · pending finalization</span>
+                ) : isAwaitingResolution ? (
+                  <span>staking closed · awaiting resolver agent</span>
                 ) : (
                   <span>open · accepting positions</span>
                 )}
@@ -871,63 +740,32 @@ export function ArenaSection() {
           </div>
         )}
 
-        {isFinalized && result && (
-          <div className="flex items-start gap-3 border-t border-border/60 bg-background/60 p-6">
-            <Gavel className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 font-mono text-xs">
-                <span className="uppercase tracking-widest text-accent">Resolver Agent · Settlement Note</span>
-                <Badge className="text-[10px]">winner: {displayWinnerSide ?? result.resolverVerdict.winner}</Badge>
-              </div>
-              <p className="mt-1.5 text-sm text-muted-foreground">{result.resolverVerdict.reasoning}</p>
-            </div>
-          </div>
-        )}
-
-        {isFinalized && (
+        {!!m.resolutionAt && now >= m.resolutionAt && (
           <div className="border-t border-border/60 bg-primary/5 p-6">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 font-mono text-xs">
-                <Brain className="h-3.5 w-3.5 text-primary" />
-                <span className="uppercase tracking-widest text-primary">Main Agent · Settlement Verdict</span>
-                {verdicts[m.id] && (
-                  <Badge className="text-[10px]">
-                    {verdicts[m.id].winner} · {verdicts[m.id].confidence}%
-                  </Badge>
+                <Gavel className="h-3.5 w-3.5 text-primary" />
+                <span className="uppercase tracking-widest text-primary">Resolver Agent · Verdict</span>
+                {m.aiTentativeWinner && (
+                  <Badge className="text-[10px]">winner: {m.aiTentativeWinner}</Badge>
                 )}
               </div>
               <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-                {verdicts[m.id] ? (
-                  <Badge variant="secondary" className="gap-1 text-[10px]"><ShieldCheck className="h-3 w-3" /> auto-decided</Badge>
-                ) : judging === m.id ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Main agent deciding…</>
-                ) : m.resolutionAt && now < m.resolutionAt ? (
-                  <><Clock className="h-3.5 w-3.5 text-primary" /> auto-verdict in {formatCountdown(m.resolutionAt - now)}</>
-                ) : null}
+                {m.aiTentativeWinner ? (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <ShieldCheck className="h-3 w-3" /> {isFinalized ? "final" : "on-chain · tentative"}
+                  </Badge>
+                ) : (
+                  <>
+                    <Clock className="h-3.5 w-3.5 text-primary" /> Awaiting resolution
+                  </>
+                )}
               </div>
             </div>
-            {!verdicts[m.id] && m.resolutionAt && now < m.resolutionAt && (
-              <div className="mt-3">
-                <div className="h-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full bg-gradient-to-r from-primary to-accent transition-all"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, 100 - ((m.resolutionAt - now) / Math.max(1, m.resolutionAt - m.createdAt)) * 100))}%`,
-                    }}
-                  />
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Prediction window runs until resolution. Main agent will pull live NewsAPI headlines + hybrid-score against hawk/dove positions and historical calibration, then declare a winner automatically.
-                </p>
-              </div>
-            )}
-            {verdicts[m.id] && (
-              <div className="mt-3 space-y-2 text-sm">
-                <p className="text-foreground">{verdicts[m.id].reasoning}</p>
-                <p className="text-xs text-muted-foreground">📰 {verdicts[m.id].newsAlignment}</p>
-                <p className="text-xs text-muted-foreground">🎯 {verdicts[m.id].calibrationNote}</p>
-              </div>
-            )}
+            <p className="mt-3 text-sm text-muted-foreground">
+              {m.aiReasoning ??
+                "Awaiting resolution — the resolver agent runs every 2 hours and will publish the verdict on-chain."}
+            </p>
           </div>
         )}
 
@@ -959,7 +797,14 @@ export function ArenaSection() {
               </Button>
             )}
             {!isFinalized && (
-              !isStakingOpen ? (
+              isTentative ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-accent/60 bg-accent/10 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-accent"
+                >
+                  <Gavel className="h-3.5 w-3.5" /> Pending Finalization
+                </Badge>
+              ) : !isStakingOpen ? (
                 <Badge
                   variant="outline"
                   className="gap-1.5 border-border/60 bg-muted/30 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground"
@@ -1048,36 +893,27 @@ export function ArenaSection() {
     return "active";
   };
 
-  const disputedMarkets = markets.filter((m) => effectiveStage(m) === "disputed");
-  const awaitingDisputeMarkets = markets.filter((m) => effectiveStage(m) === "awaiting_dispute");
-  const activeMarkets = markets.filter((m) => effectiveStage(m) === "active");
-  const openMarkets = [...disputedMarkets, ...awaitingDisputeMarkets, ...activeMarkets];
-  const resolvedMarkets = markets.filter(
-    (m) => effectiveStage(m) === "completed" && !claimedMarkets.has(m.id),
-  );
+  // 🆕 The DB/backend lifecycle_stage only tracks 4 states — "awaiting_dispute"
+  // covers both "resolver agent hasn't judged yet" and "resolver agent has
+  // judged, dispute window still open". The UI already tracks that split
+  // per-card via m.aiProcessed (see isAwaitingResolution/isTentative above),
+  // so we reuse it here to give the tab bar 5 buckets without touching the
+  // backend enum: Active / Staking Closed / Market Resolved / Dispute / Completed.
+  type TabStage = "active" | "staking_closed" | "market_resolved" | "disputed" | "completed";
+  const effectiveTabStage = (m: Market): TabStage => {
+    const stage = effectiveStage(m);
+    if (stage !== "awaiting_dispute") return stage;
+    return m.aiProcessed ? "market_resolved" : "staking_closed";
+  };
 
-  const trackRecord = (() => {
-    let hawkWins = 0;
-    let doveWins = 0;
-    let decided = 0;
-    for (const m of resolvedMarkets) {
-      const w = (onchainMarkets[m.id] ?? m.onchain).winner;
-      if (w === "HAWK") {
-        hawkWins += 1;
-        decided += 1;
-      } else if (w === "DOVE") {
-        doveWins += 1;
-        decided += 1;
-      }
-    }
-    const fmt = (n: number) =>
-      decided === 0 ? null : Math.round((n / decided) * 100);
-    return {
-      decided,
-      HAWK: fmt(hawkWins),
-      DOVE: fmt(doveWins),
-    };
-  })();
+  const disputedMarkets = markets.filter((m) => effectiveTabStage(m) === "disputed");
+  const stakingClosedMarkets = markets.filter((m) => effectiveTabStage(m) === "staking_closed");
+  const marketResolvedMarkets = markets.filter((m) => effectiveTabStage(m) === "market_resolved");
+  const activeMarkets = markets.filter((m) => effectiveTabStage(m) === "active");
+  const openMarkets = [...disputedMarkets, ...marketResolvedMarkets, ...stakingClosedMarkets, ...activeMarkets];
+  const resolvedMarkets = markets.filter(
+    (m) => effectiveTabStage(m) === "completed" && !claimedMarkets.has(m.id),
+  );
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 md:py-24">
@@ -1186,14 +1022,15 @@ export function ArenaSection() {
           <div className="mt-10 space-y-10">
             {(() => {
               const tabs: Array<{
-                key: "active" | "awaiting_dispute" | "disputed" | "completed";
+                key: "active" | "staking_closed" | "market_resolved" | "disputed" | "completed";
                 label: string;
                 count: number;
                 destructive?: boolean;
               }> = [
                 { key: "active", label: "Active", count: activeMarkets.length },
-                { key: "awaiting_dispute", label: "Staking Closed", count: awaitingDisputeMarkets.length },
-                { key: "disputed", label: "Disputed", count: disputedMarkets.length, destructive: true },
+                { key: "staking_closed", label: "Staking Closed", count: stakingClosedMarkets.length },
+                { key: "market_resolved", label: "Market Resolved", count: marketResolvedMarkets.length },
+                { key: "disputed", label: "Dispute", count: disputedMarkets.length, destructive: true },
                 { key: "completed", label: "Completed", count: resolvedMarkets.length },
               ];
               return (
@@ -1244,14 +1081,31 @@ export function ArenaSection() {
               )
             )}
 
-            {activeTab === "awaiting_dispute" && (
-              awaitingDisputeMarkets.length > 0 ? (
+            {activeTab === "staking_closed" && (
+              stakingClosedMarkets.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Anyone can dispute within this window — otherwise it finalizes automatically.
+                    Staking window closed — the resolver agent hasn't judged these yet.
                   </p>
                   <div className="space-y-4">
-                    {awaitingDisputeMarkets.map((m) => {
+                    {stakingClosedMarkets.map(renderMarketCard)}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
+                  No markets waiting on the resolver agent.
+                </div>
+              )
+            )}
+
+            {activeTab === "market_resolved" && (
+              marketResolvedMarkets.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Resolver agent has a verdict. Anyone can dispute within this window — otherwise it finalizes automatically.
+                  </p>
+                  <div className="space-y-4">
+                    {marketResolvedMarkets.map((m) => {
                       const remaining = m.disputeWindowEndsAt ? m.disputeWindowEndsAt - now : null;
                       return (
                         <div key={m.id} className="space-y-2">
@@ -1268,7 +1122,7 @@ export function ArenaSection() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-6 text-center font-mono text-xs text-muted-foreground">
-                  No markets awaiting the dispute window.
+                  No resolved markets awaiting the dispute window.
                 </div>
               )
             )}

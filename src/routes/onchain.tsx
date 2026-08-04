@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { OnchainSection } from "@/components/sections/onchain-section";
+
 export const Route = createFileRoute("/onchain")({
   head: () => ({
     meta: [

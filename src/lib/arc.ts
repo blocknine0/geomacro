@@ -31,7 +31,9 @@ export const ARC_TESTNET: ArcNetwork = {
   // Primary URL exposed for wallet_addEthereumChain and simple fetch-based
   // balance reads. Ethers read paths should use getArcReadProvider() below
   // to benefit from automatic RPC failover.
-  rpcUrl: ARC_TESTNET_RPC_URLS[0],
+  rpcUrl:
+    (import.meta.env.VITE_ARC_TESTNET_RPC_URL as string | undefined) ||
+    ARC_TESTNET_RPC_URLS[0],
   explorer: "https://testnet.arcscan.app",
   // Arc uses USDC as the native gas token with 18 decimals on-chain
   // (not the ERC-20 USDC 6-decimal convention).
@@ -69,6 +71,17 @@ export function getArcReadProvider(network: ArcNetwork): JsonRpcProvider | Fallb
     );
   }
   return new JsonRpcProvider(network.rpcUrl);
+}
+
+/**
+ * Ordered list of RPC URLs to try for a network, for callers that talk to
+ * the RPC directly via fetch() instead of through an ethers provider (e.g.
+ * balance.ts). Mirrors the failover order used by getArcReadProvider() so
+ * both paths behave the same way under a rate-limited/down endpoint.
+ */
+export function arcRpcUrls(network: ArcNetwork): string[] {
+  if (network.key === "testnet") return ARC_TESTNET_RPC_URLS;
+  return [network.rpcUrl];
 }
 
 /** Map a wallet-reported chainId (hex or decimal) to a known Arc network. */

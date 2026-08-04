@@ -10,6 +10,45 @@ import { supabaseFeed, type StoredEventRow } from "./supabase-feed";
 import { normalizeEventStage, type EventStage } from "./event-stage";
 import type { AgentSide } from "./agents";
 
+/** Analyst briefing persisted in Supabase by the scheduled backend job.
+ *  Generated exactly once per market — the frontend only reads it. */
+export type MarketBriefingPosition = {
+  side: "YES" | "NO";
+  confidence: number;
+  stakeUsdc: number;
+  rationale: string;
+};
+export type MarketBriefing = {
+  hawk: MarketBriefingPosition;
+  dove: MarketBriefingPosition;
+  generatedAt: string | null;
+};
+
+function buildBriefing(row: StoredEventRow): MarketBriefing | null {
+  const hawk = row.hawk_reasoning?.trim();
+  const dove = row.dove_reasoning?.trim();
+  if (!hawk || !dove) return null;
+  const clampConf = (v: number | null | undefined, fallback: number) =>
+    typeof v === "number" && Number.isFinite(v)
+      ? Math.max(0, Math.min(100, Math.round(v)))
+      : fallback;
+  return {
+    hawk: {
+      side: "YES",
+      confidence: clampConf(row.hawk_conviction, 50),
+      stakeUsdc: 0,
+      rationale: hawk,
+    },
+    dove: {
+      side: "NO",
+      confidence: clampConf(row.dove_conviction, 50),
+      stakeUsdc: 0,
+      rationale: dove,
+    },
+    generatedAt: row.briefing_generated_at ?? null,
+  };
+}
+
 /**
  * One row in the Agent Arena UI. Everything here is derived from on-chain
  * state (MarketCreated logs + getMarket) plus an optional Supabase event row
@@ -59,6 +98,9 @@ export type Market = {
   /** AI's provisional winner from Supabase (`events.ai_tentative_winner`).
    *  Only trust as final when `marketFinalized` is true. */
   aiTentativeWinner: AgentSide | null;
+  /** Reasoning from the backend resolver (`events.ai_reasoning`). Null until
+   *  the 2-hourly resolution cron has judged the market. */
+  aiReasoning: string | null;
   /** True once the market is fully settled (status FINALIZED on-chain or
    *  `events.market_resolved` in Supabase). */
   marketFinalized: boolean;
@@ -69,6 +111,9 @@ export type Market = {
   disputerAddress: string | null;
   /** ms epoch when the dispute window closes; used for awaiting_dispute countdown. */
   disputeWindowEndsAt: number | null;
+  /** Pre-generated Hawk/Dove briefing from Supabase, or null while the
+   *  scheduled generator hasn't written one yet. */
+  briefing: MarketBriefing | null;
 };
 
 /** Supabase events.id is a bare uuid; the on-chain contract stores the
@@ -84,11 +129,15 @@ function clampThreshold(severity: number, override?: number | null): number {
   if (typeof override === "number" && override > 0) {
     return Math.min(100, Math.max(0, Math.round(override)));
   }
+  // Default duel threshold is "the news has to escalate noticeably past
+  // where it sits today". Bumps severity by ~5pts and clamps to a sane band.
   return Math.min(95, Math.max(50, Math.round(severity + 5)));
 }
 
 function buildQuestion(row: StoredEventRow | undefined, id: string): string {
   if (!row) return `Market ${id}`;
+  const explicit = row.market_question?.trim();
+  if (explicit) return explicit;
   const title = row.source_title?.trim() || row.narrative?.trim() || id;
   const t = clampThreshold(row.severity ?? 70, row.market_threshold);
   return `Will "${title}" escalate past severity ${t} within 48h?`;
@@ -119,6 +168,8 @@ function buildMarketEntry(
   const id = marketIdFromEventId(row.id);
   const severity = row.severity ?? 70;
   const createdAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+  // Prefer authoritative on-chain resolutionTime; fall back to Supabase
+  // `resolution_at`; final fallback is created_at + 48h for legacy rows.
   const resolutionAt = fullDetails?.resolutionTime
     ? fullDetails.resolutionTime
     : row.resolution_at
@@ -159,10 +210,12 @@ function buildMarketEntry(
     fullDetails,
     aiProcessed,
     aiTentativeWinner,
+    aiReasoning: row.ai_reasoning?.trim() || null,
     marketFinalized,
     lifecycleStage,
     disputerAddress: row.disputer_address ?? null,
     disputeWindowEndsAt,
+    briefing: buildBriefing(row),
   };
 }
 
@@ -260,6 +313,49 @@ export async function loadArenaMarkets(
 export { eventIdFromMarketId };
 
 /**
+ * Authoritative agent win-rate, computed as a Supabase aggregate over every
+ * fully finalized market.
+ *
+ * Only rows with `market_resolved = true` are counted — verified against the
+ * live data, that flag is written exclusively by the finalizer after the
+ * dispute window closes (AI-tentative rows sit at
+ * `ai_processed = true, market_resolved = false`), so this never counts a
+ * verdict that can still be disputed.
+ *
+ * Deliberately independent of wallet, claim state and RPC/multicall timing:
+ * two `count`-only HEAD queries, identical for every visitor.
+ */
+export async function loadAgentTrackRecord(): Promise<{
+  decided: number;
+  HAWK: number | null;
+  DOVE: number | null;
+}> {
+  const countFor = async (winner: AgentSide) => {
+    const { count, error } = await supabaseFeed
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("market_created", true)
+      .eq("market_resolved", true)
+      .eq("ai_tentative_winner", winner);
+    if (error) throw error;
+    return count ?? 0;
+  };
+  try {
+    const [hawk, dove] = await Promise.all([countFor("HAWK"), countFor("DOVE")]);
+    const decided = hawk + dove;
+    if (decided === 0) return { decided: 0, HAWK: null, DOVE: null };
+    return {
+      decided,
+      HAWK: Math.round((hawk / decided) * 100),
+      DOVE: Math.round((dove / decided) * 100),
+    };
+  } catch (e) {
+    console.warn("[loadAgentTrackRecord] failed", e);
+    return { decided: 0, HAWK: null, DOVE: null };
+  }
+}
+
+/**
  * Module-level in-memory cache of the last successful market list, so
  * navigating away from /arena and back within the same session renders
  * instantly while a fresh fetch runs in the background. Cleared on full
@@ -268,6 +364,9 @@ export { eventIdFromMarketId };
  */
 let cachedMarkets: Market[] | null = null;
 
+// Persistent market caches caused deleted / duplicate markets to re-render
+// after the data source moved to Supabase-first. Keep this list aggressive so
+// only current database rows can define the visible market list.
 const LEGACY_LS_KEYS = ["arena:markets", "arena:markets:v1", "arena:markets:v2"];
 
 function purgeArenaMarketCache(): void {

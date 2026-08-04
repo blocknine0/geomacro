@@ -16,6 +16,7 @@ import { Route as OnchainRouteImport } from './routes/onchain'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BridgeRouteImport } from './routes/bridge'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -55,6 +56,11 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BridgeRoute = BridgeRouteImport.update({
+  id: '/bridge',
+  path: '/bridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArenaRoute = ArenaRouteImport.update({
   id: '/arena',
   path: '/arena',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
+  '/bridge': typeof BridgeRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
+  '/bridge': typeof BridgeRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
+  '/bridge': typeof BridgeRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/arena'
+    | '/bridge'
     | '/contact'
     | '/docs'
     | '/feed'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/arena'
+    | '/bridge'
     | '/contact'
     | '/docs'
     | '/feed'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/arena'
+    | '/bridge'
     | '/contact'
     | '/docs'
     | '/feed'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ArenaRoute: typeof ArenaRoute
+  BridgeRoute: typeof BridgeRoute
   ContactRoute: typeof ContactRoute
   DocsRoute: typeof DocsRoute
   FeedRoute: typeof FeedRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bridge': {
+      id: '/bridge'
+      path: '/bridge'
+      fullPath: '/bridge'
+      preLoaderRoute: typeof BridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/arena': {
       id: '/arena'
       path: '/arena'
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ArenaRoute: ArenaRoute,
+  BridgeRoute: BridgeRoute,
   ContactRoute: ContactRoute,
   DocsRoute: DocsRoute,
   FeedRoute: FeedRoute,

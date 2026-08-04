@@ -26,13 +26,24 @@ export function assertSameOrigin() {
   // Dev only: vite preview on localhost / 127.0.0.1 (either side).
   if (originHost === "localhost" || originHost === "127.0.0.1") return;
   if (reqHost === "localhost" || reqHost === "127.0.0.1") return;
-  // Allow this project's known public hosts (preview + published + custom domains).
-  const ALLOWED = new Set([
-    "geomacro.live",
-    "www.geomacro.live",
-    "geomacrooracle.lovable.app",
-    "id-preview--06310982-d80d-4d51-a786-7a015bd39be3.lovable.app",
-  ]);
+  // Allow this project's known public hosts (preview + published + custom
+  // domains). Configurable via the ALLOWED_ORIGINS env var (comma-separated
+  // hostnames) so new preview slugs / custom domains can be added without a
+  // code change; falls back to the hardcoded list when unset.
+  const envList = (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const ALLOWED = new Set(
+    envList.length > 0
+      ? envList
+      : [
+          "geomacro.live",
+          "www.geomacro.live",
+          "geomacrooracle.lovable.app",
+          "id-preview--06310982-d80d-4d51-a786-7a015bd39be3.lovable.app",
+        ],
+  );
   if (ALLOWED.has(originHost)) return;
   throw new Error("Forbidden");
 }

@@ -1,13 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { JsonRpcProvider, formatUnits } from "ethers";
 import { Gavel, Loader2, LogIn, RefreshCw, Trophy, Wallet, X } from "lucide-react";
 import {
   Area,
   AreaChart,
-  CartesianGrid,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,6 +26,7 @@ import {
   type PortfolioPosition,
 } from "@/lib/positions.functions";
 import { shortAddr } from "@/components/section-ui";
+import { Wordmark } from "@/components/wordmark";
 import { rememberSessionTx } from "@/lib/wallet-tx";
 
 export const Route = createFileRoute("/portfolio")({
@@ -48,6 +46,46 @@ export const Route = createFileRoute("/portfolio")({
 function fmtUsdc(n: number, digits = 4): string {
   if (!Number.isFinite(n)) return "0";
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
+}
+
+type RangeKey = "1D" | "1W" | "1M" | "1Y" | "YTD" | "ALL";
+const RANGE_OPTIONS: RangeKey[] = ["1D", "1W", "1M", "1Y", "YTD", "ALL"];
+
+function rangeStartMs(range: RangeKey): number | null {
+  const now = new Date();
+  switch (range) {
+    case "1D":
+      return now.getTime() - 24 * 60 * 60 * 1000;
+    case "1W":
+      return now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    case "1M": {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - 1);
+      return d.getTime();
+    }
+    case "1Y": {
+      const d = new Date(now);
+      d.setFullYear(d.getFullYear() - 1);
+      return d.getTime();
+    }
+    case "YTD":
+      return new Date(now.getFullYear(), 0, 1).getTime();
+    case "ALL":
+    default:
+      return null;
+  }
+}
+
+function rangeLabel(r: RangeKey): string {
+  switch (r) {
+    case "1D": return "Past day";
+    case "1W": return "Past week";
+    case "1M": return "Past month";
+    case "1Y": return "Past year";
+    case "YTD": return "Year to date";
+    case "ALL":
+    default: return "All time";
+  }
 }
 
 function stakedUsdc(p: PortfolioPosition): number {
@@ -71,6 +109,9 @@ function PortfolioPage() {
     session,
     signIn,
     signingIn,
+    balance: balanceUsdc,
+    balanceLoading,
+    refreshBalance,
   } = useWallet();
   const activeNet = network ?? preferredNetwork();
   const callGetPositions = useServerFn(getMyPositions);
@@ -79,24 +120,13 @@ function PortfolioPage() {
 
   const [positions, setPositions] = useState<PortfolioPosition[] | null>(null);
   const [history, setHistory] = useState<BalanceHistoryRow[] | null>(null);
-  const [balanceUsdc, setBalanceUsdc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimTx, setClaimTx] = useState<Record<string, string>>({});
-
-  const refreshBalance = useCallback(async () => {
-    if (!address) return;
-    try {
-      const provider = new JsonRpcProvider(activeNet.rpcUrl);
-      const bal = await provider.getBalance(address);
-      setBalanceUsdc(formatUnits(bal, activeNet.currency.decimals));
-    } catch (e) {
-      console.warn("[portfolio] balance fetch failed", e);
-    }
-  }, [address, activeNet.rpcUrl, activeNet.currency.decimals]);
+  const [range, setRange] = useState<RangeKey>("1D");
 
   const refresh = useCallback(
     async (showSpinner = true) => {
@@ -130,13 +160,6 @@ function PortfolioPage() {
     void refresh(false);
   }, [session, refresh]);
 
-  useEffect(() => {
-    if (!address) return;
-    void refreshBalance();
-    const id = window.setInterval(() => void refreshBalance(), 30_000);
-    return () => window.clearInterval(id);
-  }, [address, refreshBalance]);
-
   const active = useMemo(
     () => (positions ?? []).filter((p) => p.status === "active"),
     [positions],
@@ -165,14 +188,47 @@ function PortfolioPage() {
 
   const chartData = useMemo(() => {
     if (!history || history.length === 0) return [] as Array<{ ts: number; date: string; balance: number; delta: number; type: string }>;
-    return history.map((h) => ({
-      ts: new Date(h.created_at).getTime(),
-      date: new Date(h.created_at).toLocaleDateString(),
-      balance: Number(h.balance ?? 0),
-      delta: Number(h.amount_delta ?? 0),
-      type: h.event_type,
-    }));
+    let running = 0;
+    return history.map((h) => {
+      running += Number(h.amount_delta ?? 0);
+      return {
+        ts: new Date(h.created_at).getTime(),
+        date: new Date(h.created_at).toLocaleDateString(),
+        balance: running,
+        delta: Number(h.amount_delta ?? 0),
+        type: h.event_type,
+      };
+    });
   }, [history]);
+
+  const pnlSummary = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const first = chartData[0].balance;
+    const last = chartData[chartData.length - 1].balance;
+    const pnl = last - first;
+    const pct = first !== 0 ? (pnl / Math.abs(first)) * 100 : 0;
+    return { pnl, pct, isPositive: pnl >= 0 };
+  }, [chartData]);
+
+  const rangedChartData = useMemo(() => {
+    const start = rangeStartMs(range);
+    const filtered = start === null ? chartData : chartData.filter((d) => d.ts >= start);
+    return filtered.length > 0 ? filtered : chartData.slice(-1);
+  }, [chartData, range]);
+
+  const currentBalance = chartData.length > 0 ? chartData[chartData.length - 1].balance : 0;
+
+  const periodChange = useMemo(() => {
+    if (rangedChartData.length === 0) return { abs: 0, pct: null };
+    const first = rangedChartData[0].balance;
+    const last = rangedChartData[rangedChartData.length - 1].balance;
+    const abs = last - first;
+    const meaningfulStart = Math.abs(first) > 0.01;
+    const pct = meaningfulStart ? (abs / Math.abs(first)) * 100 : null;
+    return { abs, pct };
+  }, [rangedChartData]);
+  // keep pnlSummary referenced to avoid unused-var churn
+  void pnlSummary;
 
   async function handleClaim(p: PortfolioPosition) {
     if (!session) return;
@@ -276,12 +332,28 @@ function PortfolioPage() {
           </div>
           {balanceUsdc === null ? (
             <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Reading…
+              {balanceLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Reading…
+                </>
+              ) : (
+                <>
+                  <span>Unavailable</span>
+                  <button
+                    type="button"
+                    onClick={() => void refreshBalance(true)}
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    retry
+                  </button>
+                </>
+              )}
             </div>
           ) : (
-            <div className="mt-2 font-mono text-3xl tabular-nums">
+            <div className="mt-2 flex items-center gap-2 font-mono text-3xl tabular-nums">
               {fmtUsdc(Number(balanceUsdc))}{" "}
               <span className="text-sm text-muted-foreground">USDC</span>
+              {balanceLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             </div>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
@@ -290,51 +362,84 @@ function PortfolioPage() {
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Balance History
-            </div>
-            {history && (
-              <div className="font-mono text-[10px] text-muted-foreground">
-                {history.length} event{history.length === 1 ? "" : "s"}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Balance History
               </div>
-            )}
-          </div>
-          {history === null ? (
-            <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading history…
+              {history === null ? (
+                <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                </div>
+              ) : chartData.length === 0 ? null : (
+                <>
+                  <div className="mt-0 font-mono text-3xl font-semibold tabular-nums text-foreground">
+                    ${fmtUsdc(currentBalance, 2)}
+                  </div>
+                  <div
+                    className={`mt-0 flex flex-wrap items-center gap-x-1.5 text-xs font-medium ${
+                      periodChange.abs >= 0 ? "text-emerald-400" : "text-destructive"
+                    }`}
+                  >
+                    <span>
+                      {periodChange.abs >= 0 ? "+" : ""}
+                      {fmtUsdc(periodChange.abs, 2)} USDC
+                    </span>
+                    {periodChange.pct !== null && (
+                      <span className="opacity-70">
+                        ({periodChange.abs >= 0 ? "+" : ""}
+                        {periodChange.pct.toFixed(2)}%)
+                      </span>
+                    )}
+                    <span className="text-muted-foreground opacity-60">· {rangeLabel(range)}</span>
+                  </div>
+                </>
+              )}
             </div>
-          ) : chartData.length === 0 ? (
+            <div className="self-start opacity-70">
+              <span className="font-mono text-sm font-semibold uppercase tracking-widest text-foreground">
+                Geomacro
+              </span>
+            </div>
+          </div>
+
+          {history !== null && chartData.length > 0 && (
+            <div className="mt-2 flex w-fit items-center gap-1 rounded-full border border-border/60 bg-background/40 p-1">
+              {RANGE_OPTIONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRange(r)}
+                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                    range === r
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {history === null ? null : chartData.length === 0 ? (
             <EmptyHint>No activity yet.</EmptyHint>
           ) : (
-            <div className="mt-4 h-56 w-full">
+            <div className="mt-2 h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                <AreaChart data={rangedChartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="bal-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.45} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.5} />
+                      <stop offset="60%" stopColor="var(--primary)" stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="2 4" strokeOpacity={0.12} vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 10, fontFamily: "ui-monospace, monospace" }}
-                    stroke="currentColor"
-                    opacity={0.4}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fontFamily: "ui-monospace, monospace" }}
-                    stroke="currentColor"
-                    opacity={0.4}
-                    width={50}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.25} strokeDasharray="3 3" />
+                  <XAxis dataKey="date" hide />
+                  <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
                   <Tooltip
+                    cursor={{ stroke: "var(--primary)", strokeOpacity: 0.25, strokeWidth: 1 }}
                     content={({ active: a, payload }) => {
                       if (!a || !payload?.length) return null;
                       const d = payload[0].payload as (typeof chartData)[number];
@@ -360,12 +465,13 @@ function PortfolioPage() {
                   <Area
                     type="monotone"
                     dataKey="balance"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
+                    stroke="var(--primary)"
+                    strokeWidth={2.5}
                     fill="url(#bal-fill)"
                     dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                    isAnimationActive={false}
+                    activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--background)" }}
+                    isAnimationActive={true}
+                    animationDuration={500}
                   />
                 </AreaChart>
               </ResponsiveContainer>

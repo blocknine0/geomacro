@@ -22,7 +22,7 @@ export const Route = createFileRoute("/contact")({
 });
 
 const X_URL = "https://x.com/GeomacroLive";
-const GITHUB_URL = "https://github.com/blocknine0/geomacro-oracle";
+const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 const EMAIL = "mailto:team.geomacro@gmail.com";
 
 const sections = [

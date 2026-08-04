@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Wallet, Zap, Github, Twitter, Menu } from "lucide-react";
+import { Wallet, Zap, Github, Twitter, Menu, LogOut, Copy } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import heroBg from "@/assets/hero-bg.jpg";
+import { AnimatedBackground } from "@/components/animated-background";
 import {
   Sheet,
   SheetContent,
@@ -14,12 +14,20 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { useWallet } from "@/hooks/WalletProvider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { preferredNetwork } from "@/lib/arc";
 import { shortAddr } from "@/components/section-ui";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 function ConnectButton() {
-  const { address, onArc, network, connect, switchToArc, connecting, error } = useWallet();
+  const { address, onArc, network, connect, switchToArc, connecting, error, disconnect, isSignedIn } =
+    useWallet();
   if (!address) {
     return (
       <div className="flex flex-col items-end gap-1">
@@ -41,11 +49,35 @@ function ConnectButton() {
           <span className="sm:hidden">Switch</span>
         </Button>
       )}
-      <Badge variant={onArc ? "default" : "secondary"} className="gap-1.5 px-2 py-1 font-mono text-[10px] sm:px-3 sm:py-1.5 sm:text-xs">
-        <span className={`h-1.5 w-1.5 rounded-full ${onArc ? "bg-primary" : "bg-muted-foreground"}`} />
-        <span className="hidden md:inline">{network ? network.chainName : "Wrong network"} · </span>
-        {shortAddr(address)}
-      </Badge>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" aria-label="Wallet menu">
+            <Badge
+              variant={onArc ? "default" : "secondary"}
+              className="cursor-pointer gap-1.5 px-2 py-1 font-mono text-[10px] sm:px-3 sm:py-1.5 sm:text-xs"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${onArc ? "bg-primary" : "bg-muted-foreground"}`} />
+              <span className="hidden md:inline">{network ? network.chainName : "Wrong network"} · </span>
+              {shortAddr(address)}
+            </Badge>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="font-mono text-xs font-normal">
+            {shortAddr(address)}
+            <span className="mt-1 block text-[10px] text-muted-foreground">
+              {isSignedIn ? "Signed in with wallet" : "Not signed in"}
+            </span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => void navigator.clipboard?.writeText(address)} className="gap-2">
+            <Copy className="h-3.5 w-3.5" /> Copy address
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={disconnect} className="gap-2 text-destructive focus:text-destructive">
+            <LogOut className="h-3.5 w-3.5" /> Disconnect Wallet
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -62,23 +94,16 @@ const NAV_LINKS = [
 
 const PORTFOLIO_LINK = { to: "/portfolio", label: "Portfolio" } as const;
 
-const GITHUB_URL = "https://github.com/blocknine0/geomacro-oracle";
+const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const { network, address } = useWallet();
   const activeNet = network ?? preferredNetwork();
   const navLinks = address ? [...NAV_LINKS, PORTFOLIO_LINK] : NAV_LINKS;
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-        <img
-          src={heroBg}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-50 animate-bg-drift"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
-      </div>
+    <div className="relative min-h-screen text-foreground">
+      <AnimatedBackground />
+      <div className="relative z-10 flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
@@ -121,14 +146,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     </Link>
                   </SheetClose>
                 </nav>
-                <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
-                  <span className="text-sm text-muted-foreground">Theme</span>
-                  <ThemeToggle />
-                </div>
               </SheetContent>
             </Sheet>
-            <Link to="/" className="flex min-w-0 items-center" aria-label="Geomacro home">
-              <Wordmark height={32} className="shrink-0" />
+            <Link to="/" className="flex min-w-0 items-center py-1" aria-label="Geomacro home">
+              <Wordmark height={40} className="shrink-0" />
             </Link>
           </div>
           <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
@@ -143,10 +164,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <ConnectButton />
-          </div>
+          <ConnectButton />
         </div>
       </header>
 
@@ -154,7 +172,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
       <footer className="border-t border-border/60">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-center text-xs text-muted-foreground sm:px-6 md:flex-row md:text-left">
-          <span className="font-mono">© 2026 Geomacro · schema: geomacro.event.v1</span>
+          <span className="font-mono">© 2026 Geomacro&nbsp;</span>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-mono">
             <Link to="/about" className="transition hover:text-foreground" activeProps={{ className: "text-foreground" }}>
               About
@@ -184,6 +202,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

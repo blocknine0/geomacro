@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCcw, ExternalLink, Wallet } from "lucide-react";
 import { useWallet } from "@/hooks/WalletProvider";
 import { fetchWalletTxs, loadSessionTxs, mergeTxs, type WalletTx } from "@/lib/wallet-tx";
-import { fetchNativeBalance } from "@/lib/balance";
 import { preferredNetwork } from "@/lib/arc";
 
 function short(s: string, head = 6, tail = 4) {
@@ -19,25 +18,20 @@ function ts(t: number | null) {
 }
 
 export function WalletTxFeed() {
-  const { address, network, connect, switchToArc } = useWallet();
+  const { address, network, connect, switchToArc, balance, balanceLoading, refreshBalance } = useWallet();
   const active = network ?? preferredNetwork();
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [balance, setBalance] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!address) return;
     setLoading(true);
     setErr(null);
     try {
-      const [explorer, bal] = await Promise.all([
-        fetchWalletTxs(active, address),
-        fetchNativeBalance(active, address),
-      ]);
+      const explorer = await fetchWalletTxs(active, address);
       const session = loadSessionTxs(active, address);
       setTxs(mergeTxs(explorer, session));
-      setBalance(bal ? bal.formatted : null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -83,6 +77,11 @@ export function WalletTxFeed() {
           <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
             {short(address, 10, 6)} · auto-refresh 30s
           </p>
+          {balance === null && balanceLoading && (
+            <p className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> reading balance…
+            </p>
+          )}
           {balance !== null && (
             <p className="mt-1 font-mono text-xs">
               <span className="text-foreground">{balance}</span>{" "}
@@ -90,7 +89,16 @@ export function WalletTxFeed() {
             </p>
           )}
         </div>
-        <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading} className="gap-1.5">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void load();
+            void refreshBalance(true);
+          }}
+          disabled={loading}
+          className="gap-1.5"
+        >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
           Refresh
         </Button>

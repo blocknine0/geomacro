@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ROADMAP } from "@/lib/roadmap";
 import {
   BookOpen,
   Rocket,
@@ -213,7 +214,7 @@ function MathBlock({ children }: { children: string }) {
   );
 }
 function Code({ children }: { children: React.ReactNode }) {
-  return <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] text-primary">{children}</code>;
+  return <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] uppercase tracking-wide text-primary">{children}</code>;
 }
 function CodeBlock({ children }: { children: React.ReactNode }) {
   return (
@@ -232,18 +233,6 @@ function BadgeNext() {
 /* ===== Panes ===== */
 
 function IntroPane() {
-  const tradSteps = [
-    ["01", "News Break", "Unstructured Feed"],
-    ["02", "Proposal", "Manual Draft"],
-    ["03", "Vetting", "Admin Review"],
-    ["04", "Launch Pool", "Manual Setup"],
-  ];
-  const newSteps = [
-    ["01", "Ingest", "~1.5 seconds"],
-    ["02", "Adversarial Arena", "Dynamic Pricing"],
-    ["03", "AMM Bootstrap", "On-chain Pool"],
-    ["04", "Ledger Settle", "Programmable USDC"],
-  ];
   return (
     <>
       <SectionLabel>Introduction</SectionLabel>
@@ -261,26 +250,8 @@ function IntroPane() {
         prediction pools on-chain.
       </P>
 
-      <div className="my-7 overflow-hidden rounded-2xl border border-border/60">
-        <div className="border-b border-destructive/30 bg-destructive/5 p-5">
-          <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-destructive">
-            Traditional paradigm <span className="text-muted-foreground/70">· 12 to 24 hour latency</span>
-          </div>
-          <FlowRow steps={tradSteps} variant="destructive" />
-        </div>
-        <div className="flex items-center justify-center gap-4 bg-background/40 px-5 py-2 font-mono text-[10px] tracking-wider">
-          <span className="text-destructive">12 to 24 HOURS</span>
-          <div className="h-px flex-1 bg-border/60" />
-          <span className="text-muted-foreground">VS</span>
-          <div className="h-px flex-1 bg-border/60" />
-          <span className="text-primary">&lt; 2 SECONDS</span>
-        </div>
-        <div className="bg-primary/5 p-5">
-          <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-primary">
-            Geomacro autonomous engine <span className="text-muted-foreground/70">· instant ingestion and settle</span>
-          </div>
-          <FlowRow steps={newSteps} variant="primary" />
-        </div>
+      <div className="my-7 overflow-hidden rounded-2xl">
+        <PredictionMarketTree />
       </div>
 
       <H2>The problems we solve</H2>
@@ -314,23 +285,104 @@ function IntroPane() {
   );
 }
 
-function FlowRow({ steps, variant }: { steps: string[][]; variant: "primary" | "destructive" }) {
-  const accent = variant === "primary" ? "text-primary border-primary/40 bg-primary/15" : "text-destructive border-destructive/40 bg-destructive/10";
+function PredictionMarketTree() {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      {steps.map(([n, label, sub], i) => (
-        <div key={n} className="flex flex-1 items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded border font-mono text-[11px] font-bold ${accent}`}>{n}</span>
-            <div>
-              <div className="text-sm font-semibold text-foreground leading-tight">{label}</div>
-              <div className="font-mono text-[11px] text-muted-foreground">{sub}</div>
-            </div>
-          </div>
-          {i < steps.length - 1 && <div className="hidden flex-1 text-center text-muted-foreground/40 sm:block">→</div>}
-        </div>
-      ))}
-    </div>
+    <svg viewBox="0 0 1000 640" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <defs>
+        <style>{`
+          .pmt-bg { fill: #0d0f14; }
+          .pmt-title-box { fill: #1a1c22; stroke: #ff4d4d; stroke-width: 1.5; }
+          .pmt-title-text { fill: #ff4d4d; font-family: 'Courier New', monospace; font-weight: bold; font-size: 20px; letter-spacing: 1px; }
+          .pmt-trad-header { fill: #1a1c22; stroke: #ff4d4d; stroke-width: 1.5; }
+          .pmt-trad-header-text { fill: #ff6b6b; font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; letter-spacing: 1px; }
+          .pmt-geo-header { fill: #1a1c22; stroke: #ffb020; stroke-width: 1.5; }
+          .pmt-geo-header-text { fill: #ffb020; font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; letter-spacing: 1px; }
+          .pmt-trad-node { fill: #1a1c22; stroke: #ff4d4d; stroke-width: 1.2; }
+          .pmt-geo-node { fill: #1a1c22; stroke: #ffb020; stroke-width: 1.2; }
+          .pmt-trad-title { fill: #ff8080; font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; }
+          .pmt-geo-title { fill: #ffc966; font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; }
+          .pmt-node-sub { fill: #9aa0aa; font-family: Arial, sans-serif; font-size: 11px; }
+          .pmt-arrow { stroke: #555b66; stroke-width: 2; fill: none; }
+          .pmt-arrowhead { fill: #555b66; }
+          .pmt-vs-text { fill: #7a8290; font-family: 'Courier New', monospace; font-size: 13px; font-weight: bold; letter-spacing: 2px; }
+          .pmt-latency-red { fill: #ff4d4d; font-family: 'Courier New', monospace; font-weight: bold; font-size: 13px; }
+          .pmt-latency-amber { fill: #ffb020; font-family: 'Courier New', monospace; font-weight: bold; font-size: 13px; }
+          .pmt-divider { stroke: #2a2d35; stroke-width: 1; }
+        `}</style>
+        <marker id="pmtArrowMarker" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" className="pmt-arrowhead" />
+        </marker>
+      </defs>
+
+      <rect className="pmt-bg" x="0" y="0" width="1000" height="640" rx="14" />
+
+      {/* Root title */}
+      <rect className="pmt-title-box" x="360" y="16" width="280" height="46" rx="8" />
+      <text className="pmt-title-text" x="500" y="46" textAnchor="middle">PREDICTION MARKET</text>
+
+      {/* connector lines from root to two branches */}
+      <path d="M500,62 L500,86 L220,86 L220,106" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <path d="M500,62 L500,86 L780,86 L780,106" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+
+      {/* LEFT BRANCH HEADER */}
+      <rect className="pmt-trad-header" x="70" y="108" width="300" height="46" rx="8" />
+      <text className="pmt-trad-header-text" x="220" y="128" textAnchor="middle">TRADITIONAL PARADIGM</text>
+      <text className="pmt-latency-red" x="220" y="146" textAnchor="middle">12 TO 24 HOUR LATENCY</text>
+
+      {/* RIGHT BRANCH HEADER */}
+      <rect className="pmt-geo-header" x="630" y="108" width="300" height="46" rx="8" />
+      <text className="pmt-geo-header-text" x="780" y="128" textAnchor="middle">GEOMACRO AUTONOMOUS ENGINE</text>
+      <text className="pmt-latency-amber" x="780" y="146" textAnchor="middle">INSTANT INGESTION AND SETTLE</text>
+
+      {/* LEFT NODES */}
+      <path d="M220,154 L220,178" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-trad-node" x="70" y="180" width="300" height="60" rx="8" />
+      <text className="pmt-trad-title" x="220" y="205" textAnchor="middle">News Break</text>
+      <text className="pmt-node-sub" x="220" y="223" textAnchor="middle">Unstructured Feed</text>
+
+      <path d="M220,240 L220,264" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-trad-node" x="70" y="266" width="300" height="60" rx="8" />
+      <text className="pmt-trad-title" x="220" y="291" textAnchor="middle">Proposal</text>
+      <text className="pmt-node-sub" x="220" y="309" textAnchor="middle">Manual Draft</text>
+
+      <path d="M220,326 L220,350" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-trad-node" x="70" y="352" width="300" height="60" rx="8" />
+      <text className="pmt-trad-title" x="220" y="377" textAnchor="middle">Vetting</text>
+      <text className="pmt-node-sub" x="220" y="395" textAnchor="middle">Admin Review</text>
+
+      <path d="M220,412 L220,436" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-trad-node" x="70" y="438" width="300" height="60" rx="8" />
+      <text className="pmt-trad-title" x="220" y="463" textAnchor="middle">Launch Pool</text>
+      <text className="pmt-node-sub" x="220" y="481" textAnchor="middle">Manual Setup</text>
+
+      {/* RIGHT NODES */}
+      <path d="M780,154 L780,178" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-geo-node" x="630" y="180" width="300" height="60" rx="8" />
+      <text className="pmt-geo-title" x="780" y="205" textAnchor="middle">Ingest</text>
+      <text className="pmt-node-sub" x="780" y="223" textAnchor="middle">1.5 seconds</text>
+
+      <path d="M780,240 L780,264" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-geo-node" x="630" y="266" width="300" height="60" rx="8" />
+      <text className="pmt-geo-title" x="780" y="291" textAnchor="middle">Adversarial Arena</text>
+      <text className="pmt-node-sub" x="780" y="309" textAnchor="middle">Dynamic Pricing</text>
+
+      <path d="M780,326 L780,350" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-geo-node" x="630" y="352" width="300" height="60" rx="8" />
+      <text className="pmt-geo-title" x="780" y="377" textAnchor="middle">AMM Bootstrap</text>
+      <text className="pmt-node-sub" x="780" y="395" textAnchor="middle">Onchain Pool</text>
+
+      <path d="M780,412 L780,436" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
+      <rect className="pmt-geo-node" x="630" y="438" width="300" height="60" rx="8" />
+      <text className="pmt-geo-title" x="780" y="463" textAnchor="middle">Ledger Settle</text>
+      <text className="pmt-node-sub" x="780" y="481" textAnchor="middle">Programmable USDC</text>
+
+      {/* bottom comparison bar */}
+      <line className="pmt-divider" x1="40" y1="526" x2="960" y2="526" />
+      <text className="pmt-latency-red" x="160" y="556">12 to 24 HOURS</text>
+      <text className="pmt-vs-text" x="500" y="556" textAnchor="middle">VS</text>
+      <text className="pmt-latency-amber" x="840" y="556" textAnchor="middle">&lt; 2 SECONDS</text>
+      <line className="pmt-divider" x1="40" y1="581" x2="960" y2="581" />
+    </svg>
   );
 }
 
@@ -393,63 +445,52 @@ function FeedPane() {
   );
 }
 
-type PipelineStage = {
-  id: string;
-  name: string;
-  desc: string;
-  meta: string;
-  latency: string;
-};
-
-type PipelineStageGroup = {
-  phase: string;
-  label: string;
-  signal: string;
-  stages: PipelineStage[];
-};
-
-const PIPELINE_GROUPS: PipelineStageGroup[] = [
-  {
-    phase: "P1",
-    label: "Ingestion Layer",
-    signal: "Raw wire to structured event",
-    stages: [
-      { id: "01", name: "Ingest", desc: "Pull live headlines across geopolitics, rare earth, macro and crypto.", meta: "NewsAPI · 4 buckets", latency: "~5s" },
-      { id: "02", name: "Normalize", desc: "Reshape vendor payloads into one canonical event schema.", meta: "Zod schema", latency: "<50ms" },
-      { id: "03", name: "Dedupe", desc: "Rolling djb2 hash plus URL fingerprint to suppress duplicates.", meta: "djb2 + URL", latency: "<10ms" },
-    ],
-  },
-  {
-    phase: "P2",
-    label: "Intelligence Layer",
-    signal: "LLM classification and risk scoring",
-    stages: [
-      { id: "04", name: "Prefilter", desc: "Drop anything outside the four tracked narrative classes.", meta: "Heuristic gate", latency: "<5ms" },
-      { id: "05", name: "Classify", desc: "Route survivors to llama-3.3-70b for category and stage tagging.", meta: "Groq · 70B", latency: "~1.2s" },
-      { id: "06", name: "Score", desc: "Assign severity, confidence and contribution to the Global Risk Index.", meta: "0-100 scale", latency: "<200ms" },
-    ],
-  },
-  {
-    phase: "P3",
-    label: "Forecast Layer",
-    signal: "Falsifiable calls with calibration",
-    stages: [
-      { id: "07", name: "Predict", desc: "Write a falsifiable forecast with a 48h resolution deadline.", meta: "Deadline bound", latency: "~800ms" },
-      { id: "08", name: "Reflect", desc: "Backtest prior calls onchain and adjust analyst calibration.", meta: "Track record", latency: "rolling" },
-    ],
-  },
-  {
-    phase: "P4",
-    label: "Settlement Layer",
-    signal: "Onchain attestation and market settlement",
-    stages: [
-      { id: "09", name: "Attest", desc: "SHA-256 the event payload, sign the digest, post the attestation to Arc.", meta: "Arc · SHA-256", latency: "~3s" },
-      { id: "10", name: "Resolve", desc: "Main agent referees the analyst duel and settles the event contract.", meta: "Onchain payout", latency: "at T+48h" },
-    ],
-  },
-];
-
 function PipelinePane() {
+  const groups: {
+    phase: string;
+    label: string;
+    signal: string;
+    stages: { id: string; name: string; desc: string; meta: string; latency: string }[];
+  }[] = [
+    {
+      phase: "P1",
+      label: "Ingestion Layer",
+      signal: "Raw wire to structured event",
+      stages: [
+        { id: "01", name: "Ingest", desc: "Pull live headlines across geopolitics, rare earth, macro and crypto.", meta: "NewsAPI · 4 buckets", latency: "~5s" },
+        { id: "02", name: "Normalize", desc: "Reshape vendor payloads into one canonical event schema.", meta: "Zod schema", latency: "<50ms" },
+        { id: "03", name: "Dedupe", desc: "Rolling djb2 hash plus URL fingerprint to suppress duplicates.", meta: "djb2 + URL", latency: "<10ms" },
+      ],
+    },
+    {
+      phase: "P2",
+      label: "Intelligence Layer",
+      signal: "LLM classification and risk scoring",
+      stages: [
+        { id: "04", name: "Prefilter", desc: "Drop anything outside the four tracked narrative classes.", meta: "Heuristic gate", latency: "<5ms" },
+        { id: "05", name: "Classify", desc: "Route survivors to llama-3.3-70b for category and stage tagging.", meta: "Groq · 70B", latency: "~1.2s" },
+        { id: "06", name: "Score", desc: "Assign severity, confidence and contribution to the Global Risk Index.", meta: "0-100 scale", latency: "<200ms" },
+      ],
+    },
+    {
+      phase: "P3",
+      label: "Forecast Layer",
+      signal: "Falsifiable calls with calibration",
+      stages: [
+        { id: "07", name: "Predict", desc: "Write a falsifiable forecast with a 48h resolution deadline.", meta: "Deadline bound", latency: "~800ms" },
+        { id: "08", name: "Reflect", desc: "Backtest prior calls onchain and adjust analyst calibration.", meta: "Track record", latency: "rolling" },
+      ],
+    },
+    {
+      phase: "P4",
+      label: "Settlement Layer",
+      signal: "Onchain attestation and market settlement",
+      stages: [
+        { id: "09", name: "Attest", desc: "SHA-256 the event payload, sign the digest, post the attestation to Arc.", meta: "Arc · SHA-256", latency: "~3s" },
+        { id: "10", name: "Resolve", desc: "Main agent referees the analyst duel and settles the event contract.", meta: "Onchain payout", latency: "at T+48h" },
+      ],
+    },
+  ];
   return (
     <>
       <SectionLabel>Pipeline</SectionLabel>
@@ -458,8 +499,17 @@ function PipelinePane() {
         Ten deterministic stages across four layers. Every headline flows through the same path, every score is reproducible, every attestation is signed and posted to Arc.
       </PageSubtitle>
       <Divider />
-      <div className="space-y-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
-        {PIPELINE_GROUPS.map((group) => (
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="inline-flex items-center gap-2">
+          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+          Live
+        </span>
+        <span>10 stages</span>
+        <span>4 layers</span>
+        <span>End-to-end &lt; 10s typical</span>
+      </div>
+      <div className="mt-6 space-y-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
+        {groups.map((group) => (
           <div key={group.phase} className="bg-background">
             <div className="flex flex-col gap-1 border-b border-border/60 bg-card/40 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:px-6">
               <div className="flex items-baseline gap-3">
@@ -594,32 +644,33 @@ function Row({ k, v, highlight, mono }: { k: string; v: string; highlight?: bool
 }
 
 function RoadmapPane() {
-  const items: [string, string, "shipped" | "next"][] = [
-    ["v0.1", "Live feed pipeline (NewsAPI + Groq classification)", "shipped"],
-    ["v0.2", "Smart contract deployed and verified on Arc Testnet", "shipped"],
-    ["v0.3", "Full stake to resolve to claim cycle tested onchain", "shipped"],
-    ["v0.4", "Automated market creation via GitHub Actions", "shipped"],
-    ["v0.5", "Decentralized dispute-based resolution", "next"],
-    ["v0.6", "Mainnet deployment", "next"],
-    ["v0.7", "Public agent track record", "next"],
-    ["v0.8", "Full iPhone wallet support via WalletConnect for external browsers (Safari/Chrome)", "next"],
-  ];
   return (
     <>
       <SectionLabel>Roadmap</SectionLabel>
       <PageTitle>What we've shipped. What's coming.</PageTitle>
       <Divider />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(([v, label, status]) => (
-          <Card key={v}>
-            <div className="mb-3 flex items-center justify-between">
-              <span className="font-mono text-xs text-muted-foreground">{v}</span>
-              {status === "shipped" ? <BadgeShipped /> : <BadgeNext />}
+      {ROADMAP.map((m) => (
+        <div key={m.version}>
+          <H2>
+            <span className="flex items-center gap-3">
+              {m.version}, {m.layer} Layer: {m.title}
+              {m.status === "shipped" ? <BadgeShipped /> : <BadgeNext />}
+            </span>
+          </H2>
+          <Card>
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Objective</div>
+            <P>{m.objective}</P>
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Scope</div>
+            <P>{m.scope}</P>
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Artifacts</div>
+            <div className="flex flex-wrap gap-2">
+              {m.artifacts.map((a) => (
+                <Code key={a}>{a}</Code>
+              ))}
             </div>
-            <p className="text-sm font-semibold leading-snug text-foreground">{label}</p>
           </Card>
-        ))}
-      </div>
+        </div>
+      ))}
     </>
   );
 }

@@ -259,8 +259,7 @@ export function HeroSection() {
 
   return (
     <section className="relative overflow-hidden">
-      {/* Background is now provided globally by SiteShell (site-shell.tsx) so it's
-          consistent across every page — no need for a page-local duplicate here. */}
+      {/* Global background handled by SiteShell */}
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24 md:pb-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -282,17 +281,19 @@ export function HeroSection() {
             .
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Geomacro is a real-time intelligence terminal and prediction
-            market across the four pillars that move global risk.
-            Geopolitics, rare earth supply, macroeconomics and crypto
-            liquidity. Every breaking headline becomes a tradable
-            48-hour contract on Arc.
+            Geomacro turns global risk into a tradable signal. Across four
+            pillars, geopolitics, rare earth supply, macroeconomics, and crypto
+            liquidity, an autonomous pipeline reads breaking headlines the
+            moment they hit and turns them into onchain prediction markets. Each
+            market opens for a 46-hour staking window on Arc.
           </p>
           <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            An LLM scores each event for severity. Two analyst agents,
-            Hawk and Dove, publish opposing research notes. The USDC staked
-            on each side becomes the live implied probability of escalation.
-            Settle onchain in 48 hours. No custodian, no middleman, no noise.
+            An LLM scores every event for severity in real time. Two analyst
+            agents, Hawk and Dove, publish opposing research notes, building the
+            case for escalation or de-escalation. The USDC staked on each side
+            becomes a live, implied probability of what happens next. Markets
+            settle onchain in 48 hours.{"\n\n"}
+            No custodian. No middleman. No noise.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button size="lg" asChild className="w-full gap-2 sm:w-auto">

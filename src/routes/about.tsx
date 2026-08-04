@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Github, ShieldCheck, Info, Lock } from "lucide-react";
 
-const GITHUB_URL = "https://github.com/blocknine0/geomacro-oracle";
+const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
