@@ -113,6 +113,47 @@ async function generateSideBriefing(side, event, groq, groqApiKey, cerebrasApiKe
   }
 }
 
+function buildQuestionPrompt(event) {
+  return `Rewrite the following news headline as a single, clear, grammatically correct market question about whether the situation will escalate within 48 hours. Do not just quote the headline in quotes — turn it into a proper standalone question a reader can understand without any other context.
+
+Headline: "${event.source_title}"
+Category: ${event.category}
+Narrative: "${(event.narrative || "").slice(0, 250)}"
+Severity threshold: ${event.market_threshold ?? 25}
+
+Respond STRICTLY in JSON, no markdown fences, no extra text:
+{ "question": "your single well-formed question, ending in a question mark, under 200 characters" }`;
+}
+
+function parseQuestion(rawContent) {
+  const cleaned = rawContent.replace(/```json|```/g, "").trim();
+  const result = JSON.parse(cleaned);
+  const question = String(result.question || "").trim().slice(0, 300);
+  return question.length > 0 ? question : null;
+}
+
+async function generateMarketQuestion(event, groq, groqApiKey, cerebrasApiKey) {
+  const prompt = buildQuestionPrompt(event);
+  try {
+    const completion = await callGroqWithBackoff(
+      () => groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.1-8b-instant",
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+        max_tokens: 120,
+      }),
+      `question (${event.source_title?.slice(0, 30)})`,
+    );
+    return parseQuestion(completion.choices[0].message.content);
+  } catch (e) {
+    if (!e.isQuotaExhausted || !cerebrasApiKey) throw e;
+    console.log(`  ↪ Groq quota exhausted for question — falling back to Cerebras.`);
+    const raw = await callCerebras(cerebrasApiKey, prompt);
+    return parseQuestion(raw);
+  }
+}
+
 async function main() {
   const { APP_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GROQ_API_KEY, CEREBRAS_API_KEY } = process.env;
 
@@ -125,7 +166,7 @@ async function main() {
 
   const { data: events, error } = await adminSupabase
     .from("events")
-    .select("id, category, source_title, narrative, summary, severity")
+    .select("id, category, source_title, narrative, summary, severity, market_threshold")
     .eq("market_created", true)
     .is("briefing_generated_at", null)
     .order("created_at", { ascending: false })
@@ -139,12 +180,14 @@ async function main() {
   let successCount = 0;
   for (const event of events) {
     console.log(`\n📋 ${event.source_title?.slice(0, 60)}`);
-    let hawk, dove;
+    let hawk, dove, question;
     try {
       hawk = await generateSideBriefing("HAWK", event, groq, GROQ_API_KEY, CEREBRAS_API_KEY);
       console.log(`  🦅 Hawk (${hawk.conviction}%): ${hawk.reasoning}`);
       dove = await generateSideBriefing("DOVE", event, groq, GROQ_API_KEY, CEREBRAS_API_KEY);
       console.log(`  🕊️ Dove (${dove.conviction}%): ${dove.reasoning}`);
+      question = await generateMarketQuestion(event, groq, GROQ_API_KEY, CEREBRAS_API_KEY);
+      if (question) console.log(`  📝 Question: ${question}`);
     } catch (e) {
       console.log(`  ⚠️ Briefing generation failed (${e.message}) — will retry next run.`);
       continue;
@@ -157,6 +200,7 @@ async function main() {
         dove_reasoning: dove.reasoning,
         hawk_conviction: hawk.conviction,
         dove_conviction: dove.conviction,
+        market_question: question || null,
         briefing_generated_at: new Date().toISOString(),
       })
       .eq("id", event.id);
