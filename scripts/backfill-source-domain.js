@@ -8,6 +8,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Same helper used in ingest-news.js — kept identical so old and new rows
+// end up with domains in the same format (e.g. "theguardian.com").
 function extractDomain(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
@@ -19,6 +21,9 @@ function extractDomain(url) {
 async function backfillSourceDomain() {
   console.log("Run node scripts/backfill-source-domain.js");
 
+  // Only fetch rows that still need backfilling (source_domain is null),
+  // paginated the same way ingest-news.js does it, since some event tables
+  // here have gone past Supabase's default 1000-row response cap.
   let toUpdate = [];
   {
     const PAGE_SIZE = 1000;

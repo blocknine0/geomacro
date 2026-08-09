@@ -200,6 +200,17 @@ function normalizeTitle(title) {
     .trim();
 }
 
+// NEW: extracts a clean, deduped-friendly domain (e.g. "theguardian.com")
+// from an article URL. Used to populate `source_domain` so the frontend can
+// show real, verifiable publisher names instead of just "guardian"/"newsapi".
+function extractDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'unknown';
+  }
+}
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGroqWithBackoff(fn, label) {
@@ -404,7 +415,8 @@ async function fetchArticlesFromApis(query, categoryName) {
         description: a.fields?.trailText || "",
         url: a.webUrl,
         publishedAt: a.webPublicationDate || new Date().toISOString(),
-        source: 'guardian'
+        source: 'guardian',
+        sourceDomain: extractDomain(a.webUrl), // NEW: real publisher domain, e.g. "theguardian.com"
       }));
     }
 
@@ -428,7 +440,8 @@ async function fetchArticlesFromApis(query, categoryName) {
         description: a.description || "",
         url: a.url,
         publishedAt: a.publishedAt || new Date().toISOString(),
-        source: 'newsapi'
+        source: 'newsapi',
+        sourceDomain: extractDomain(a.url), // NEW: real publisher domain, e.g. "reuters.com"
       }));
     }
   } catch (ne) {
@@ -551,6 +564,7 @@ async function ingestNews() {
               source_url: article.url,
               source_title: article.title,
               source_name: article.source,
+              source_domain: article.sourceDomain, // NEW: real, verifiable publisher domain
               category: category.name,
               narrative: assessment.narrative,
               summary: assessment.summary,

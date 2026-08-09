@@ -35,6 +35,7 @@ Geomacro reads the news, scores the risk, and lets two AI agents argue about wha
 - [Design principles](#design-principles)
 - [Roadmap](#roadmap)
 - [Why Arc](#why-arc)
+- [Reusable primitives](#reusable-primitives)
 
 ---
 
@@ -458,6 +459,15 @@ Full versioned history with dates: [geomacro.live/roadmap](https://www.geomacro.
 ## Why Arc
 
 Risk markets like this live or die on settlement cost and speed. Arc's native USDC gas means every stake, claim, and market creation is just one cheap, stablecoin-denominated transaction. No bridging, no wrapped tokens, no separate gas token to keep topped up. That is basically the whole bet here. The chain should stay out of the way of the prediction, not add friction on top of it.
+
+---
+
+
+## Reusable primitives
+
+The RPC failover, Multicall batching, and LLM-fallback logic in `scripts/`
+are extracted into a standalone package:
+[arc-onchain-agent-primitives](https://github.com/blocknine0/arc-onchain-agent-primitives)
 
 ---
 
