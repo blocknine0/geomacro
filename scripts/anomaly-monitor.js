@@ -7,6 +7,18 @@ import { createClient } from "@supabase/supabase-js";
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 
+// 🆕 Dual-contract transition (mirrors sync-stakes.js): V1 and V2 are
+// separate contracts with independent pause state, so anomalies (large
+// claims, dispute spam, stake-bot activity) have to be checked against each
+// one separately — the same 15-min run now does two independent passes
+// instead of assuming everything lives on CONTRACT_ADDRESS. Pausing one
+// contract does NOT skip checks on the other (an incident on V1 shouldn't
+// blind monitoring on V2, or vice versa).
+const OLD_CONTRACT_ADDRESS = ethers.getAddress(
+  (process.env.OLD_CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe").toLowerCase()
+);
+const v2CutoverActive = CONTRACT_ADDRESS.toLowerCase() !== OLD_CONTRACT_ADDRESS.toLowerCase();
+
 const CONTRACT_ABI = [
   "function pause() external",
   "function paused() view returns (bool)",
@@ -171,14 +183,14 @@ async function sendTelegramAlert(message, { severity = "critical" } = {}) {
 // endpoint active, তাই duplicate-broadcast risk নেই), আর retry-র আগে
 // contract আগে থেকেই paused কিনা রিচেক করে, যাতে আগের attempt phantom-broadcast
 // হয়ে থাকলে duplicate pause() call পাঠানো না হয়।
-async function pauseContract(getWriteContract, getReadContract, writeRpcManager, reason) {
+async function pauseContract(getWriteContract, getReadContract, writeRpcManager, reason, label) {
   try {
     const isPaused = await callRpcWithBackoff(() => getReadContract().paused(), "paused()", writeRpcManager);
     if (isPaused) {
-      console.log("[monitor] Contract already paused.");
+      console.log(`[monitor:${label}] Contract already paused.`);
       return;
     }
-    console.log(`[monitor] PAUSING contract: ${reason}`);
+    console.log(`[monitor:${label}] PAUSING contract: ${reason}`);
 
     let tx;
     let nonceAttempt = 0;
@@ -200,7 +212,7 @@ async function pauseContract(getWriteContract, getReadContract, writeRpcManager,
           try {
             const stillUnpaused = !(await getReadContract().paused());
             if (!stillUnpaused) {
-              console.log("[monitor] Contract was already paused by an earlier (phantom) broadcast — no duplicate send needed.");
+              console.log(`[monitor:${label}] Contract was already paused by an earlier (phantom) broadcast — no duplicate send needed.`);
               return;
             }
           } catch {
@@ -237,59 +249,52 @@ async function pauseContract(getWriteContract, getReadContract, writeRpcManager,
     }
 
     await callRpcWithBackoff(() => tx.wait(), "tx.wait(pause)", writeRpcManager);
-    console.log(`[monitor] Contract paused. TX: ${tx.hash}`);
+    console.log(`[monitor:${label}] Contract paused. TX: ${tx.hash}`);
     await sendTelegramAlert(
-      `⛔ CONTRACT AUTO-PAUSED\n\nReason: ${reason}\nTX: ${tx.hash}\n\nManual review required before unpausing.`,
+      `⛔ CONTRACT AUTO-PAUSED [${label}]\n\nReason: ${reason}\nTX: ${tx.hash}\n\nManual review recommended. This is PERMISSIONLESS-callable to unpause by ANYONE after 6 hours (selfHealUnpause()) — if you need more than 6h to investigate, someone with the owner key must actively keep re-pausing it (call pause() again) before the 6h window closes, since the self-heal isn't owner-gated and will proceed regardless of investigation status.`,
       { severity: "critical" },
     );
   } catch (err) {
-    console.error("[monitor] Pause failed:", err.message);
-    await sendTelegramAlert(`❌ AUTO-PAUSE FAILED\n\nReason: ${reason}\nError: ${err.message}\n\nMANUAL ACTION REQUIRED IMMEDIATELY`, { severity: "critical" });
+    console.error(`[monitor:${label}] Pause failed:`, err.message);
+    await sendTelegramAlert(`❌ AUTO-PAUSE FAILED [${label}]\n\nReason: ${reason}\nError: ${err.message}\n\nMANUAL ACTION REQUIRED IMMEDIATELY`, { severity: "critical" });
   }
 }
 
-async function checkThreshold(getWriteContract, getReadContract, writeRpcManager, { value, warn, critical, describe }) {
+async function checkThreshold(getWriteContract, getReadContract, writeRpcManager, { value, warn, critical, describe }, label) {
   if (value > critical) {
-    await pauseContract(getWriteContract, getReadContract, writeRpcManager, describe(value, "critical"));
+    await pauseContract(getWriteContract, getReadContract, writeRpcManager, describe(value, "critical"), label);
     return "paused";
   }
   if (value > warn) {
-    await sendTelegramAlert(describe(value, "warn"), { severity: "warn" });
+    await sendTelegramAlert(`[${label}] ${describe(value, "warn")}`, { severity: "warn" });
     return "warned";
   }
   return "ok";
 }
 
-async function main() {
-  const {
-    ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, ARC_RPC_URL_5,
-    GUARDIAN_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY,
-  } = process.env;
-  if (!ARC_RPC_URL || !GUARDIAN_PRIVATE_KEY) throw new Error("Missing env: ARC_RPC_URL, GUARDIAN_PRIVATE_KEY");
-
-  // 🛡️ NEW: same 5-endpoint rotating pool as the other scripts.
-  const publicFallbackUrl = ARC_RPC_URL_5 || "https://rpc.testnet.arc.network";
-  const rpcUrls = [ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, publicFallbackUrl];
-  const readRpcManager = new RpcManager(rpcUrls, "read");
-  const writeRpcManager = new RpcManager(rpcUrls, "write");
-  console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
-
+/**
+ * Runs all four on-chain anomaly checks against ONE contract. Returns
+ * without throwing even if that contract gets paused — the caller still
+ * goes on to check the other contract afterward, since an incident on one
+ * shouldn't blind monitoring on the other.
+ */
+async function runChecksForContract({ label, contractAddress, readRpcManager, writeRpcManager, guardianPrivateKey }) {
   const getWriteContract = () => {
-    const guardian = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, writeRpcManager.current());
-    return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, guardian);
+    const guardian = new ethers.Wallet(guardianPrivateKey, writeRpcManager.current());
+    return new ethers.Contract(contractAddress, CONTRACT_ABI, guardian);
   };
-  const getReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+  const getReadContract = () => new ethers.Contract(contractAddress, CONTRACT_ABI, readRpcManager.current());
 
   const currentBlock = await callRpcWithBackoff(() => readRpcManager.current().getBlockNumber(), "getBlockNumber", readRpcManager);
   const fromBlock = currentBlock - THRESHOLDS.SCAN_BLOCKS;
 
-  console.log(`[monitor] Scanning blocks ${fromBlock} → ${currentBlock}`);
+  console.log(`[monitor:${label}] Scanning blocks ${fromBlock} → ${currentBlock} (contract ${contractAddress})`);
 
   // ১. Large claim check — single very large claim (per-claim size, not count)
   const claimedEvents = await queryFilterChunked(
     getReadContract, readRpcManager,
     (c) => c.filters.Claimed(),
-    fromBlock, currentBlock, "queryFilter(Claimed)",
+    fromBlock, currentBlock, `${label}:queryFilter(Claimed)`,
   );
 
   for (const ev of claimedEvents) {
@@ -301,7 +306,7 @@ async function main() {
       describe: (v, sev) => sev === "critical"
         ? `Unusually large claim: ${v} USDC by ${ev.args[1]} in market ${ev.args[0]}`
         : `Large claim: ${v} USDC by ${ev.args[1]} in market ${ev.args[0]} — above warn threshold (${THRESHOLDS.MAX_SINGLE_CLAIM_USDC.warn}), below auto-pause threshold. Likely a legitimate big winner — no action taken, just flagging for awareness.`,
-    });
+    }, label);
     if (result === "paused") return;
   }
 
@@ -318,7 +323,7 @@ async function main() {
       describe: (v, sev) => sev === "critical"
         ? `${v} claims in single block ${block} — possible exploit`
         : `${v} claims in single block ${block} — above warn threshold (${THRESHOLDS.MAX_CLAIMS_PER_BLOCK.warn}). Could be organic (many users claiming after a resolve-markets.js/finalize-markets.js batch) — no action taken, just flagging.`,
-    });
+    }, label);
     if (result === "paused") return;
   }
 
@@ -326,7 +331,7 @@ async function main() {
   const disputeEvents = await queryFilterChunked(
     getReadContract, readRpcManager,
     (c) => c.filters.Disputed(),
-    fromBlock, currentBlock, "queryFilter(Disputed)",
+    fromBlock, currentBlock, `${label}:queryFilter(Disputed)`,
   );
   {
     const result = await checkThreshold(getWriteContract, getReadContract, writeRpcManager, {
@@ -336,7 +341,7 @@ async function main() {
       describe: (v, sev) => sev === "critical"
         ? `${v} disputes in last ${THRESHOLDS.SCAN_BLOCKS} blocks — possible spam attack`
         : `${v} disputes in last ${THRESHOLDS.SCAN_BLOCKS} blocks — above warn threshold (${THRESHOLDS.MAX_DISPUTES_PER_HOUR.warn}). Worth a manual look, not necessarily an attack.`,
-    });
+    }, label);
     if (result === "paused") return;
   }
 
@@ -344,7 +349,7 @@ async function main() {
   const stakeEvents = await queryFilterChunked(
     getReadContract, readRpcManager,
     (c) => c.filters.Staked(),
-    fromBlock, currentBlock, "queryFilter(Staked)",
+    fromBlock, currentBlock, `${label}:queryFilter(Staked)`,
   );
   const stakesByWallet = {};
   for (const ev of stakeEvents) {
@@ -359,11 +364,57 @@ async function main() {
       describe: (v, sev) => sev === "critical"
         ? `Wallet ${wallet} made ${v} stakes in last ${THRESHOLDS.SCAN_BLOCKS} blocks — possible bot attack`
         : `Wallet ${wallet} made ${v} stakes in last ${THRESHOLDS.SCAN_BLOCKS} blocks — above warn threshold (${THRESHOLDS.MAX_STAKES_FROM_ONE_WALLET.warn}). Could be a power user — no action taken.`,
-    });
+    }, label);
     if (result === "paused") return;
   }
 
-  // ৫. Supabase integrity check — positions vs onchain mismatch
+  console.log(`[monitor:${label}] ✅ All checks passed. Contract healthy.`);
+}
+
+async function main() {
+  const {
+    ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, ARC_RPC_URL_5,
+    GUARDIAN_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY,
+  } = process.env;
+  if (!ARC_RPC_URL || !GUARDIAN_PRIVATE_KEY) throw new Error("Missing env: ARC_RPC_URL, GUARDIAN_PRIVATE_KEY");
+
+  // 🛡️ NEW: same 5-endpoint rotating pool as the other scripts.
+  const publicFallbackUrl = ARC_RPC_URL_5 || "https://rpc.testnet.arc.network";
+  const rpcUrls = [ARC_RPC_URL, ARC_RPC_URL_2, ARC_RPC_URL_3, ARC_RPC_URL_4, publicFallbackUrl];
+  const readRpcManager = new RpcManager(rpcUrls, "read");
+  const writeRpcManager = new RpcManager(rpcUrls, "write");
+  console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
+
+  // Legacy (V1) contract — always monitored, independent pause state.
+  // ⚠️ Assumes GUARDIAN_PRIVATE_KEY's wallet has pause authority on BOTH
+  // contracts. If V1 and V2 use different guardian/owner addresses, this
+  // needs a second env var (e.g. GUARDIAN_PRIVATE_KEY_V1) — worth confirming
+  // against how Deploy.s.sol set the V2 owner before relying on this.
+  await runChecksForContract({
+    label: "legacy",
+    contractAddress: OLD_CONTRACT_ADDRESS,
+    readRpcManager,
+    writeRpcManager,
+    guardianPrivateKey: GUARDIAN_PRIVATE_KEY,
+  });
+
+  // V2 contract — only checked once CONTRACT_ADDRESS actually differs from
+  // OLD_CONTRACT_ADDRESS, same guard as sync-stakes.js/sync-lifecycle.js.
+  if (v2CutoverActive) {
+    await runChecksForContract({
+      label: "v2",
+      contractAddress: CONTRACT_ADDRESS,
+      readRpcManager,
+      writeRpcManager,
+      guardianPrivateKey: GUARDIAN_PRIVATE_KEY,
+    });
+  } else {
+    console.log(`[monitor:v2] Skipped — CONTRACT_ADDRESS still equals OLD_CONTRACT_ADDRESS (cutover not active yet).`);
+  }
+
+  // ৫. Supabase integrity check — positions vs onchain mismatch. Contract-
+  // agnostic (just checks for duplicate claim rows), so runs once regardless
+  // of how many contracts are live.
   if (APP_SUPABASE_URL && APP_SUPABASE_SERVICE_ROLE_KEY) {
     const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY);
     const { data: positions } = await supabase
@@ -387,7 +438,7 @@ async function main() {
     }
   }
 
-  console.log("[monitor] ✅ All checks passed. System healthy.");
+  console.log("[monitor] ✅ Run complete.");
 }
 
 main().catch(async (err) => {
