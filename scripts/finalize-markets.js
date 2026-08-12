@@ -1,9 +1,15 @@
 // scripts/finalize-markets.js
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
+import { OLD_CONTRACT_ADDRESS, isLegacyEvent, partitionEventsByContract } from "./lib/dual-contract.js";
 
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
+// 🆕 Dual-contract transition (mirrors sync-lifecycle.js / resolve-markets.js):
+// finalizeMarket's signature and getMarketFullDetails/getMarket's shapes are
+// unchanged from V1 to V2, so only the target address differs per event —
+// V1 markets still pending finalization at cutover keep finalizing against
+// OLD_CONTRACT_ADDRESS instead of going unclaimed.
 const PROTOCOL_FEE_BPS = 150n; // 1.5% — must mirror AgentArena.sol PROTOCOL_FEE_BPS exactly
 
 // Hard cap on how many markets this run will touch, so a big backlog
@@ -201,9 +207,9 @@ async function sendFinalizeWithRetry(getWriteContract, getReadContract, writeRpc
 
 // 🛡️ Batch getMarketFullDetails for many markets into a single RPC call via
 // Multicall3.aggregate3 instead of one call per market.
-async function batchGetMarketDetails(readRpcManager, contractInterface, marketIds) {
+async function batchGetMarketDetails(readRpcManager, contractInterface, marketIds, targetAddress) {
   const calls = marketIds.map((marketId) => ({
-    target: CONTRACT_ADDRESS,
+    target: targetAddress,
     allowFailure: true,
     callData: contractInterface.encodeFunctionData("getMarketFullDetails", [marketId]),
   }));
@@ -378,11 +384,11 @@ async function main() {
   const writeRpcManager = new RpcManager(rpcUrls, "write");
   console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
 
-  const getWriteContract = () => {
+  const getWriteContract = (targetAddress = CONTRACT_ADDRESS) => {
     const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, writeRpcManager.current());
-    return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
+    return new ethers.Contract(targetAddress, CONTRACT_ABI, wallet);
   };
-  const getReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+  const getReadContract = (targetAddress = CONTRACT_ADDRESS) => new ethers.Contract(targetAddress, CONTRACT_ABI, readRpcManager.current());
   // 🛡️ NEW: for reads that immediately follow a successful write (post-tx
   // status/pool checks), use the SAME provider that mined the transaction
   // rather than the independently-rotating read provider. Different testnet
@@ -391,12 +397,12 @@ async function main() {
   // provider right after a write can hit a node that hasn't indexed that
   // block yet, which ethers surfaces as "missing revert data" even though
   // the contract call itself is a simple storage read with no revert paths.
-  const getPostTxReadContract = () => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeRpcManager.current());
+  const getPostTxReadContract = (targetAddress = CONTRACT_ADDRESS) => new ethers.Contract(targetAddress, CONTRACT_ABI, writeRpcManager.current());
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
 
   const { data: pendingMarkets } = await supabase
     .from("events")
-    .select("id")
+    .select("id, market_address")
     .eq("market_created", true)
     .eq("market_resolved", false)
     .eq("ai_processed", true);
@@ -408,13 +414,24 @@ async function main() {
   const batch = pendingMarkets.slice(0, MAX_EVENTS_PER_RUN);
   console.log(`Found ${pendingMarkets.length} market(s) pending finalization. Processing ${batch.length} this run.`);
 
+  const { legacyEvents, v2Events } = partitionEventsByContract(batch, CONTRACT_ADDRESS);
+  console.log(`Legacy-contract markets to finalize: ${legacyEvents.length}. V2-contract markets to finalize: ${v2Events.length}.`);
+
   // 🛡️ NEW: prefetch pre-finalize status for the whole batch in one
   // Multicall3 call instead of one getMarketFullDetails RPC call per market.
-  const batchMarketIds = batch.map((e) => `mkt_${e.id}`);
   let prefetchedDetails = new Map();
   try {
-    prefetchedDetails = await batchGetMarketDetails(readRpcManager, contractInterface, batchMarketIds);
-    console.log(`  📦 Batched pre-finalize status check for ${batchMarketIds.length} markets via Multicall3 (1 RPC call instead of ${batchMarketIds.length}).`);
+    if (legacyEvents.length > 0) {
+      const legacyIds = legacyEvents.map((e) => `mkt_${e.id}`);
+      const legacyDetails = await batchGetMarketDetails(readRpcManager, contractInterface, legacyIds, OLD_CONTRACT_ADDRESS);
+      for (const [id, d] of legacyDetails) prefetchedDetails.set(id, d);
+    }
+    if (v2Events.length > 0) {
+      const v2Ids = v2Events.map((e) => `mkt_${e.id}`);
+      const v2Details = await batchGetMarketDetails(readRpcManager, contractInterface, v2Ids, CONTRACT_ADDRESS);
+      for (const [id, d] of v2Details) prefetchedDetails.set(id, d);
+    }
+    console.log(`  📦 Batched pre-finalize status check for ${batch.length} markets via Multicall3 (split by contract).`);
   } catch (multicallErr) {
     console.log(`  ⚠️ Multicall3 batch prefetch failed (${multicallErr.message}) — falling back to one getMarketFullDetails call per market.`);
   }
@@ -427,12 +444,13 @@ async function main() {
       break;
     }
     const marketId = `mkt_${event.id}`;
+    const targetAddress = isLegacyEvent(event) ? OLD_CONTRACT_ADDRESS : CONTRACT_ADDRESS;
     try {
       const cached = prefetchedDetails.get(marketId);
       const onChainMarket = cached !== undefined && cached !== null
         ? cached
         : await callRpcWithBackoff(
-            () => getReadContract().getMarketFullDetails(marketId),
+            () => getReadContract(targetAddress).getMarketFullDetails(marketId),
             `getMarketFullDetails(${marketId})`,
             readRpcManager,
           );
@@ -452,7 +470,7 @@ async function main() {
         const winLabel = SIDE_LABEL[Number(onChainMarket.winner)];
         if (winLabel && winLabel !== "NONE") {
           const pools = await callRpcWithBackoff(
-            () => getReadContract().getMarket(marketId),
+            () => getReadContract(targetAddress).getMarket(marketId),
             `getMarket(${marketId})`,
             readRpcManager,
           );
@@ -487,15 +505,20 @@ async function main() {
       console.log(`Finalizing ${marketId}...`);
       let tx;
       try {
-        tx = await sendFinalizeWithRetry(getWriteContract, getPostTxReadContract, writeRpcManager, marketId);
+        tx = await sendFinalizeWithRetry(
+          () => getWriteContract(targetAddress),
+          () => getPostTxReadContract(targetAddress),
+          writeRpcManager,
+          marketId
+        );
       } catch (sendErr) {
         if (sendErr.alreadyFinalized) {
           console.log(`  ↪ ${sendErr.message}`);
-          const finalized = await getPostTxReadContract().getMarketFullDetails(marketId);
+          const finalized = await getPostTxReadContract(targetAddress).getMarketFullDetails(marketId);
           if (adminSupabase) {
             const winLabel = SIDE_LABEL[Number(finalized.winner)];
             if (winLabel && winLabel !== "NONE") {
-              const pools = await getPostTxReadContract().getMarket(marketId);
+              const pools = await getPostTxReadContract(targetAddress).getMarket(marketId);
               await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
             }
             await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
@@ -524,7 +547,7 @@ async function main() {
       // yet on testnet, which previously surfaced as a spurious "missing
       // revert data" error on a plain storage-read function.
       const finalized = await callRpcWithBackoff(
-        () => getPostTxReadContract().getMarketFullDetails(marketId),
+        () => getPostTxReadContract(targetAddress).getMarketFullDetails(marketId),
         `getMarketFullDetails-postfinalize(${marketId})`,
         writeRpcManager,
       );
@@ -539,7 +562,7 @@ async function main() {
           const winLabel = SIDE_LABEL[Number(finalized.winner)];
           if (winLabel && winLabel !== "NONE") {
             const pools = await callRpcWithBackoff(
-              () => getPostTxReadContract().getMarket(marketId),
+              () => getPostTxReadContract(targetAddress).getMarket(marketId),
               `getMarket-postfinalize(${marketId})`,
               writeRpcManager,
             );
