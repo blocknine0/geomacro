@@ -10,7 +10,19 @@ import {
 import type { AgentSide } from "./agents";
 import { ARC_TESTNET, getArcReadProvider } from "./arc";
 
-export const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+export const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe"; // ⚠️ UPDATE to the new V2 proxy after redeploy — this still shows V1
+// 🆕 V1/V2 dual-contract transition (mirrors the backend scripts' pattern):
+// V1 markets still mid-lifecycle need reads/writes routed to the OLD
+// address even after AGENT_ARENA_ADDRESS is flipped to V2 — otherwise
+// claimOnContract() would revert for anyone with a V1 position, since that
+// marketId was never created on the V2 contract. Every function below now
+// takes an optional `contractAddress` override; callers should pass the
+// market's own `market_address` (from Supabase, same column
+// sync-lifecycle.js/resolve-markets.js/finalize-markets.js already use) —
+// falling back to AGENT_ARENA_ADDRESS is safe ONLY for markets created
+// after the V2 cutover, or for pre-cutover code that hasn't been updated
+// to pass an explicit address yet.
+export const OLD_CONTRACT_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 
 /** Canonical Multicall3 deployment (same address across chains, incl. Arc Testnet). */
 export const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
@@ -85,7 +97,7 @@ export const MARKET_STATUS = {
   FINALIZED: 4,
 } as const;
 
-function getProvider() {
+export function getProvider() {
   const eth = (typeof window !== "undefined" ? window.ethereum : undefined) as
     | { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> }
     | undefined;
@@ -121,9 +133,10 @@ export function usdcToWei(amount: string | number): bigint {
 export async function readMarket(
   marketId: string,
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+  contractAddress: string = AGENT_ARENA_ADDRESS,
 ): Promise<OnchainMarket> {
   const p = provider ?? getReadProvider();
-  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
+  const contract = new Contract(contractAddress, AGENT_ARENA_ABI, p);
 
   const pools = (await contract.getMarket(marketId)) as [bigint, bigint, bigint, boolean];
   const status = Number(pools[0]);
@@ -157,9 +170,10 @@ export async function readMyStake(
   marketId: string,
   user: string,
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+  contractAddress: string = AGENT_ARENA_ADDRESS,
 ): Promise<OnchainStake> {
   const p = provider ?? getReadProvider();
-  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
+  const contract = new Contract(contractAddress, AGENT_ARENA_ABI, p);
   // stakes is a public mapping in AgentArena.sol — no getMyStake() function exists on-chain,
   // so each side must be read as a separate call: stakes(marketId, user, side)
   const [hawkWei, doveWei] = (await Promise.all([
@@ -181,9 +195,10 @@ export async function readMyStake(
 export async function readMarketFullDetails(
   marketId: string,
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+  contractAddress: string = AGENT_ARENA_ADDRESS,
 ): Promise<OnchainMarketFullDetails | null> {
   const p = provider ?? getReadProvider();
-  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, p);
+  const contract = new Contract(contractAddress, AGENT_ARENA_ABI, p);
   try {
     const r = (await contract.getMarketFullDetails(marketId)) as [
       bigint,
@@ -255,10 +270,11 @@ export async function stakeOnContract(
   marketId: string,
   side: AgentSide,
   amountUsdc: string | number,
+  contractAddress: string = AGENT_ARENA_ADDRESS,
 ): Promise<{ hash: string; confirmed: Promise<{ success: boolean; error?: string }> }> {
   const provider = getProvider();
   const signer = await provider.getSigner();
-  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
+  const contract = new Contract(contractAddress, AGENT_ARENA_ABI, signer);
   const value = usdcToWei(amountUsdc);
   const tx = await contract.stake(marketId, SIDE_CODE[side], { value });
   // Return as soon as the wallet has broadcast the tx so the caller can
@@ -297,10 +313,10 @@ export async function stakeOnContract(
  * position never gets recorded and Portfolio stays empty for that stake.
  */
 
-export async function claimOnContract(marketId: string): Promise<string> {
+export async function claimOnContract(marketId: string, contractAddress: string = AGENT_ARENA_ADDRESS): Promise<string> {
   const provider = getProvider();
   const signer = await provider.getSigner();
-  const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
+  const contract = new Contract(contractAddress, AGENT_ARENA_ABI, signer);
   const tx = await contract.claim(marketId);
   await withRpcRetry(() => tx.wait());
   return tx.hash as string;
@@ -403,18 +419,19 @@ function decodeFullDetails(res: MulticallResult | undefined): OnchainMarketFullD
 export async function batchReadMarkets(
   marketIds: string[],
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+  getAddressFor: (marketId: string) => string = () => AGENT_ARENA_ADDRESS,
 ): Promise<Record<string, OnchainMarket>> {
   if (marketIds.length === 0) return {};
   const p = provider ?? getReadProvider();
   const multicall = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, p);
   const calls = marketIds.flatMap((id) => [
     {
-      target: AGENT_ARENA_ADDRESS,
+      target: getAddressFor(id),
       allowFailure: true,
       callData: arenaInterface.encodeFunctionData("getMarket", [id]),
     },
     {
-      target: AGENT_ARENA_ADDRESS,
+      target: getAddressFor(id),
       allowFailure: true,
       callData: arenaInterface.encodeFunctionData("getMarketFullDetails", [id]),
     },
@@ -440,12 +457,13 @@ export async function batchReadMarkets(
 export async function batchReadMarketFullDetails(
   marketIds: string[],
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+  getAddressFor: (marketId: string) => string = () => AGENT_ARENA_ADDRESS,
 ): Promise<Record<string, OnchainMarketFullDetails | null>> {
   if (marketIds.length === 0) return {};
   const p = provider ?? getReadProvider();
   const multicall = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, p);
   const calls = marketIds.map((id) => ({
-    target: AGENT_ARENA_ADDRESS,
+    target: getAddressFor(id),
     allowFailure: true,
     callData: arenaInterface.encodeFunctionData("getMarketFullDetails", [id]),
   }));
@@ -465,18 +483,19 @@ export async function batchReadMyStakes(
   marketIds: string[],
   user: string,
   provider?: BrowserProvider | JsonRpcProvider | FallbackProvider,
+  getAddressFor: (marketId: string) => string = () => AGENT_ARENA_ADDRESS,
 ): Promise<Record<string, OnchainStake>> {
   if (marketIds.length === 0) return {};
   const p = provider ?? getReadProvider();
   const multicall = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, p);
   const calls = marketIds.flatMap((id) => [
     {
-      target: AGENT_ARENA_ADDRESS,
+      target: getAddressFor(id),
       allowFailure: true,
       callData: arenaInterface.encodeFunctionData("stakes", [id, user, SIDE_CODE.HAWK]),
     },
     {
-      target: AGENT_ARENA_ADDRESS,
+      target: getAddressFor(id),
       allowFailure: true,
       callData: arenaInterface.encodeFunctionData("stakes", [id, user, SIDE_CODE.DOVE]),
     },
