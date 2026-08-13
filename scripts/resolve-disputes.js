@@ -242,7 +242,8 @@ async function callGroqJuror(groq, prompt, label) {
   const completion = await callGroqWithBackoff(
     () => groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
+      reasoning_effort: "low",
       response_format: { type: "json_object" },
       temperature: 0.2,
       max_tokens: 200,
