@@ -322,7 +322,8 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
       async () => {
         const request = groq.chat.completions.create({
           messages: [{ role: 'user', content: prompt }],
-          model: 'llama-3.1-8b-instant',
+          model: "openai/gpt-oss-20b",
+          reasoning_effort: "low",
           response_format: { type: "json_object" },
         });
         if (typeof request.withResponse === 'function') {
