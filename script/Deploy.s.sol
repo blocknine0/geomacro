@@ -23,6 +23,11 @@ import { AgentArenaProxy } from "../contracts/AgentArenaProxy.sol";
  *   CONTRACT_OWNER          - optional, defaults to the deployer address
  *   MULTISIG_SIGNER_1/2/3   - the 3 treasury multisig signer addresses
  *   JURY_WALLET_1..5        - the 5 dispute-jury wallet addresses
+ *   GUARDIAN_PRIVATE_KEY    - already set for anomaly-monitor.js; this
+ *                             script derives its address automatically as
+ *                             the pause-capable guardian. Set GUARDIAN_ADDRESS
+ *                             instead if the guardian should be a different
+ *                             wallet than anomaly-monitor.js's signer.
  *
  * Run (Arc Testnet):
  *   forge script script/Deploy.s.sol:Deploy \
@@ -43,6 +48,12 @@ contract Deploy is Script {
             vm.envAddress("JURY_WALLET_5")
         ];
 
+        // 🛡️ NEW: guardian — the hot key anomaly-monitor.js uses to call
+        // pause() automatically. Separate from CONTRACT_OWNER/deployer (cold
+        // key, unpause-only) on purpose. Defaults to GUARDIAN_PRIVATE_KEY's
+        // own address if GUARDIAN_ADDRESS isn't explicitly set, since that's
+        // very likely the same wallet you already fund for anomaly-monitor.js.
+        address guardian = vm.envOr("GUARDIAN_ADDRESS", vm.addr(vm.envUint("GUARDIAN_PRIVATE_KEY")));
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
         address owner = vm.envOr("CONTRACT_OWNER", deployer);
@@ -65,7 +76,7 @@ contract Deploy is Script {
         // 3. Proxy — this IS the permanent contract address.
         bytes memory initData = abi.encodeCall(
             AgentArenaV2.initialize,
-            (owner, address(treasury), juryMembers)
+            (owner, address(treasury), juryMembers, guardian)
         );
         AgentArenaProxy proxy = new AgentArenaProxy(address(implementation), initData);
         console.log("AgentArenaProxy (permanent address) deployed at:", address(proxy));
@@ -76,10 +87,13 @@ contract Deploy is Script {
         console.log("MultisigTreasury:      ", address(treasury));
         console.log("AgentArenaV2 impl:     ", address(implementation));
         console.log("AgentArenaProxy (USE THIS as CONTRACT_ADDRESS):", address(proxy));
+        console.log("Guardian (can pause, cannot unpause):", guardian);
         console.log("\nNext steps:");
         console.log("1. Set CONTRACT_ADDRESS secret/env to the proxy address above, everywhere.");
         console.log("2. Fund the 5 jury wallets with Arc Testnet gas.");
         console.log("3. Run the Supabase migration (001_ai_jury_dispute_system.sql) if not already applied.");
         console.log("4. Leave the OLD contract's CONTRACT_ADDRESS reachable read-only (OLD_CONTRACT_ADDRESS env) until its remaining markets finish their lifecycle.");
+        console.log("5. Confirm the guardian address above matches GUARDIAN_PRIVATE_KEY's wallet used by anomaly-monitor.js.");
+        console.log("6. unpause() and upgrade() now require 2-of-3 approval from MultisigTreasury's signers, not the owner alone. Make sure all 3 signers can be reached in a real incident.");
     }
 }
