@@ -4,6 +4,16 @@ pragma solidity ^0.8.20;
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+
+/// @dev Minimal interface onto the already-deployed MultisigTreasury — only
+/// need its signer list, not its withdrawal machinery. Reusing these 3
+/// signers (instead of a separate signer set here) means there's exactly
+/// one place that defines "who has multisig authority" for this whole
+/// system, not two lists that could drift apart.
+interface IMultisigTreasury {
+    function getSigners() external view returns (address[3] memory);
+}
 
 /**
  * AgentArenaV2
@@ -24,7 +34,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
  * Currency note: same as V1 — Arc's native gas token IS USDC, so amounts
  * here use msg.value directly and "$X" in comments means X * 10**6.
  */
-contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable {
     // ---------------------------------------------------------------
     // Constants
     // ---------------------------------------------------------------
@@ -49,6 +59,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     uint256 public constant MAX_WINNER_FEE_BPS = 300;        // hard ceiling, 3% — cannot be exceeded even by the owner
     uint256 public constant UPGRADE_TIMELOCK = 48 hours;
+    uint256 public constant AUTO_UNPAUSE_DELAY = 6 hours;    // self-heal window — see selfHealUnpause() below
 
     // ---------------------------------------------------------------
     // Storage
@@ -99,8 +110,31 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public pendingImplementation;
     uint256 public upgradeUnlockTime;
 
+    // 🛡️ NEW: separate hot "guardian" key that can PAUSE (for automated
+    // anomaly-monitor.js response) but never UNPAUSE alone — unpausing now
+    // requires 2-of-3 treasury signers (see approveUnpause() below), so a
+    // compromised or malfunctioning monitoring script (or even a
+    // compromised owner key) can only ever make the contract safer, never
+    // resume it on a single key's say-so.
+    address public guardian;
+    uint256 public pausedAt; // 0 when not paused — set on pause(), cleared on any unpause
+
+    // 🛡️ Multisig-gated unpause — see approveUnpause() below. Tracks
+    // approvals for the CURRENT pause cycle only; cleared on any unpause.
+    mapping(address => bool) public unpauseApprovedBy;
+    uint256 public unpauseApprovalCount;
+
+    // 🛡️ Multisig-gated upgrade — see proposeUpgrade()/approveUpgrade()
+    // below. Tracks approvals for the CURRENT pendingImplementation only;
+    // cleared whenever a new implementation is proposed or an upgrade executes.
+    mapping(address => bool) public upgradeApprovedBy;
+    uint256 public upgradeApprovalCount;
+
     // Reserved storage slots for future upgrades (standard OZ upgradeable pattern).
-    uint256[45] private __gap;
+    // Reduced from 45 -> 39 to account for the 6 new slots above (guardian,
+    // pausedAt, unpauseApprovalCount, upgradeApprovalCount — the two mappings
+    // don't consume sequential slots the same way, but budgeting conservatively).
+    uint256[39] private __gap;
 
     // ---------------------------------------------------------------
     // Events
@@ -120,6 +154,10 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     event WinnerFeeUpdated(uint256 newBps);
     event JuryMemberUpdated(uint256 indexed index, address oldMember, address newMember);
     event UpgradeProposed(address indexed newImplementation, uint256 unlockTime);
+    event GuardianUpdated(address oldGuardian, address newGuardian);
+    event AutoUnpaused(uint256 timestamp);
+    event UnpauseApproved(address indexed signer, uint256 approvalCount);
+    event UpgradeApproved(address indexed signer, address indexed newImplementation, uint256 approvalCount);
 
     // ---------------------------------------------------------------
     // Initialization (replaces constructor for upgradeable contracts)
@@ -133,17 +171,22 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     function initialize(
         address initialOwner,
         address _treasury,
-        address[JURY_SIZE] memory _juryMembers
+        address[JURY_SIZE] memory _juryMembers,
+        address _guardian
     ) public initializer {
         __Ownable_init(initialOwner);
         // Note: __UUPSUpgradeable_init() is intentionally not called — OZ
         // 5.6+ removed it (it was a no-op with no state to initialize).
         // If you're compiling against an older OZ version (<5.6) that still
         // has it, calling it is harmless but not required either way.
+        __Pausable_init();
 
         require(_treasury != address(0), "zero address treasury");
         treasury = _treasury;
         winnerFeeBps = 200; // 2%, within the 3% hard ceiling
+
+        require(_guardian != address(0), "zero address guardian");
+        guardian = _guardian;
 
         for (uint256 i = 0; i < JURY_SIZE; i++) {
             require(_juryMembers[i] != address(0), "zero address juror");
@@ -155,18 +198,136 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // ---------------------------------------------------------------
     // Upgrade authorization — owner + 48h timelock on the exact address proposed
     // ---------------------------------------------------------------
-    function proposeUpgrade(address newImplementation) external onlyOwner {
+    /// @notice Starts a 48h-timelocked upgrade proposal. Callable by ANY
+    /// treasury signer (not the owner) — proposing counts as that signer's
+    /// own approval, same pattern as MultisigTreasury.proposeWithdrawal().
+    /// A single compromised key can propose but can never execute alone —
+    /// see _authorizeUpgrade below.
+    function proposeUpgrade(address newImplementation) external {
+        require(_isTreasurySigner(msg.sender), "not a treasury signer");
         require(newImplementation != address(0), "zero address");
+        _clearUpgradeApprovals();
         pendingImplementation = newImplementation;
         upgradeUnlockTime = block.timestamp + UPGRADE_TIMELOCK;
+        upgradeApprovedBy[msg.sender] = true;
+        upgradeApprovalCount = 1;
         emit UpgradeProposed(newImplementation, upgradeUnlockTime);
+        emit UpgradeApproved(msg.sender, newImplementation, 1);
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {
+    /// @notice A second (or third) treasury signer approves the currently
+    /// pending upgrade proposal.
+    function approveUpgrade(address newImplementation) external {
+        require(_isTreasurySigner(msg.sender), "not a treasury signer");
+        require(newImplementation == pendingImplementation, "does not match pending proposal");
+        require(!upgradeApprovedBy[msg.sender], "already approved by this signer");
+        upgradeApprovedBy[msg.sender] = true;
+        upgradeApprovalCount += 1;
+        emit UpgradeApproved(msg.sender, newImplementation, upgradeApprovalCount);
+    }
+
+    function _clearUpgradeApprovals() internal {
+        address[3] memory signers = IMultisigTreasury(treasury).getSigners();
+        for (uint256 i = 0; i < 3; i++) upgradeApprovedBy[signers[i]] = false;
+        upgradeApprovalCount = 0;
+    }
+
+    /// @notice Called automatically by UUPS's upgradeToAndCall(). No
+    /// onlyOwner here anymore — a single compromised key (owner OR any one
+    /// treasury signer) can never push a malicious implementation alone.
+    /// Requires: (1) the timelock has actually elapsed, (2) 2-of-3 treasury
+    /// signers explicitly approved THIS SPECIFIC implementation address —
+    /// not just "an upgrade in general". This closes the gap where pause()
+    /// alone couldn't stop a compromised-owner-key upgrade from rewriting
+    /// the contract's logic out from under the pause — upgrade authority is
+    /// now gated the same way fund withdrawals already are.
+    function _authorizeUpgrade(address newImplementation) internal override {
         require(newImplementation == pendingImplementation, "must match proposed implementation");
         require(upgradeUnlockTime != 0 && block.timestamp >= upgradeUnlockTime, "timelock not elapsed");
+        require(upgradeApprovalCount >= 2, "needs 2-of-3 treasury signer approval");
         pendingImplementation = address(0);
         upgradeUnlockTime = 0;
+        _clearUpgradeApprovals();
+    }
+
+    // ---------------------------------------------------------------
+    // Circuit breaker — pause() is callable by the guardian (hot key, driven
+    // by scripts/anomaly-monitor.js's WARN/CRITICAL thresholds) OR the owner.
+    // unpause() requires 2-of-3 treasury signers (see approveUnpause below) —
+    // deliberately asymmetric with pause, so an automated response can only
+    // make the contract safer, never resume it on a single key's say-so.
+    // automated response can only make the contract safer, never resume it
+    // ON ITS OWN AUTHORITY. Every fund-moving or state-changing external
+    // function below is gated with whenNotPaused, INCLUDING claim() — during
+    // a suspected exploit, letting withdrawals continue could be the attack
+    // itself, so the conservative default is to halt everything until
+    // manual review.
+    //
+    // SELF-HEAL: if nobody manually unpauses within AUTO_UNPAUSE_DELAY
+    // (6h), selfHealUnpause() becomes callable by ANYONE — permissionless,
+    // not guardian-gated, so this doesn't reopen the "automated key can
+    // resume itself" risk. This bounds the damage from a false-positive
+    // pause (organic traffic spike, no team member awake) without ever
+    // letting the pausing key unpause on its own judgment; a genuine
+    // incident still gives the team a real review window, and even after
+    // auto-unpause, per-market/per-wallet caps (dispute bond $1-$40, etc.)
+    // limit how much a still-ongoing attack could extract before the next
+    // anomaly-monitor.js run (every 15 min) re-pauses it.
+    // ---------------------------------------------------------------
+    function setGuardian(address newGuardian) external onlyOwner {
+        require(newGuardian != address(0), "zero address");
+        emit GuardianUpdated(guardian, newGuardian);
+        guardian = newGuardian;
+    }
+
+    function _isTreasurySigner(address account) internal view returns (bool) {
+        address[3] memory signers = IMultisigTreasury(treasury).getSigners();
+        return account == signers[0] || account == signers[1] || account == signers[2];
+    }
+
+    function pause() external {
+        require(msg.sender == guardian || msg.sender == owner(), "not authorized to pause");
+        pausedAt = block.timestamp;
+        _pause();
+    }
+
+    /// @notice Replaces the old owner-only unpause(). A SINGLE compromised
+    /// key (even the owner's) can no longer resume the contract — it now
+    /// takes 2-of-3 of the same signers who already guard treasury
+    /// withdrawals. Each signer calls this once; the second qualifying
+    /// call actually unpauses. Approvals are scoped to the current pause
+    /// cycle and reset automatically on any unpause.
+    function approveUnpause() external {
+        require(paused(), "not paused");
+        require(_isTreasurySigner(msg.sender), "not a treasury signer");
+        require(!unpauseApprovedBy[msg.sender], "already approved by this signer");
+        unpauseApprovedBy[msg.sender] = true;
+        unpauseApprovalCount += 1;
+        emit UnpauseApproved(msg.sender, unpauseApprovalCount);
+
+        if (unpauseApprovalCount >= 2) {
+            _clearUnpauseApprovals();
+            pausedAt = 0;
+            _unpause();
+        }
+    }
+
+    function _clearUnpauseApprovals() internal {
+        address[3] memory signers = IMultisigTreasury(treasury).getSigners();
+        for (uint256 i = 0; i < 3; i++) unpauseApprovedBy[signers[i]] = false;
+        unpauseApprovalCount = 0;
+    }
+
+    /// @notice Permissionless — anyone can call this once AUTO_UNPAUSE_DELAY
+    /// has elapsed since pause() was called. See the circuit-breaker note
+    /// above for why this is intentionally NOT restricted to guardian/owner.
+    function selfHealUnpause() external {
+        require(paused(), "not paused");
+        require(pausedAt != 0 && block.timestamp >= pausedAt + AUTO_UNPAUSE_DELAY, "auto-unpause delay not elapsed");
+        _clearUnpauseApprovals();
+        pausedAt = 0;
+        _unpause();
+        emit AutoUnpaused(block.timestamp);
     }
 
     // ---------------------------------------------------------------
@@ -239,7 +400,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         string calldata marketId,
         uint256 stakingDuration,
         uint256 resolutionDuration
-    ) external onlyOwner {
+    ) external onlyOwner whenNotPaused {
         require(!markets[marketId].exists, "Market already exists");
 
         markets[marketId] = Market({
@@ -261,7 +422,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit MarketCreated(marketId, block.timestamp + stakingDuration, block.timestamp + resolutionDuration);
     }
 
-    function declareWinnerByAI(string calldata marketId, Side winningSide) external onlyOwner {
+    function declareWinnerByAI(string calldata marketId, Side winningSide) external onlyOwner whenNotPaused {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
         require(m.status == Status.OPEN, "Invalid status");
@@ -275,7 +436,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         emit AIResolved(marketId, winningSide);
     }
 
-    function stake(string calldata marketId, Side side) external payable {
+    function stake(string calldata marketId, Side side) external payable whenNotPaused {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
         require(m.status == Status.OPEN, "Market closed");
@@ -301,7 +462,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// @notice Only a staker on the side the AI verdict went against can
     /// raise a dispute, and only within DISPUTE_WINDOW of the AI verdict.
     /// Bond is proportional to the caller's own losing-side stake.
-    function raiseDispute(string calldata marketId) external payable {
+    function raiseDispute(string calldata marketId) external payable whenNotPaused {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
         require(m.status == Status.AI_RESOLVED, "Not in dispute phase");
@@ -331,7 +492,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// @notice Called by one of the 5 fixed jury wallets. `overturn == true`
     /// means the juror agrees with the disputer (the AI verdict was wrong).
     /// Resolves immediately once either side reaches JURY_THRESHOLD (4-of-5).
-    function submitJuryVote(string calldata marketId, bool overturn) external {
+    function submitJuryVote(string calldata marketId, bool overturn) external whenNotPaused {
         require(isJury[msg.sender], "not a jury member");
 
         Market storage m = markets[marketId];
@@ -390,7 +551,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // ---------------------------------------------------------------
     // Finalize — normal path, plus the inconclusive-jury fallback
     // ---------------------------------------------------------------
-    function finalizeMarket(string calldata marketId) external {
+    function finalizeMarket(string calldata marketId) external whenNotPaused {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
 
@@ -423,7 +584,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     // ---------------------------------------------------------------
     // Claim
     // ---------------------------------------------------------------
-    function claim(string calldata marketId) external {
+    function claim(string calldata marketId) external whenNotPaused {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
         require(m.status == Status.FINALIZED, "Market not finalized yet");
