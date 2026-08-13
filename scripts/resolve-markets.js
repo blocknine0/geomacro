@@ -309,15 +309,16 @@ async function judgeOutcome(groq, event, cerebrasApiKey) {
 
   try {
     const completion = await callGroqWithBackoff(
-      () => groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.1-8b-instant",
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-        max_tokens: 150,
-      }),
-      `judgeOutcome (${event.source_title?.slice(0, 40) ?? "?"})`,
-    );
+  () => groq.chat.completions.create({
+    messages: [{ role: "user", content: prompt }],
+    model: "openai/gpt-oss-20b",
+    reasoning_effort: "low",
+    response_format: { type: "json_object" },
+    temperature: 0.1,
+    max_tokens: 150,
+  }),
+  `judgeOutcome (${event.source_title?.slice(0, 40) ?? "?"})`,
+);
     return parseJudgeResult(completion.choices[0].message.content);
   } catch (groqErr) {
     if (!groqErr.isQuotaExhausted || !cerebrasApiKey) throw groqErr;
