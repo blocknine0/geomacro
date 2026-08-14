@@ -34,6 +34,14 @@ jobs:
       - name: Run market resolution script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          # 🛡️ FIX: these two were missing entirely — the script was silently
+          # falling back to its own hardcoded default (the OLD V1 address)
+          # regardless of what CONTRACT_ADDRESS was set to in repo secrets,
+          # since this workflow never actually read the secret into the
+          # environment. This is why resolve-markets.js kept resolving
+          # against V1 even after CONTRACT_ADDRESS was updated post-cutover.
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
