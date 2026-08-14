@@ -88,7 +88,7 @@ const CATEGORIES = [
       "Armenia Azerbaijan Nagorno-Karabakh Zangezur corridor conflict",
       "Baltic Sea underwater pipeline cable sabotage critical infrastructure",
       "Global military coup junta democratic breakdown UN sanction",
-      "BRICS expansion de-dollarization bilateral local currency trade"
+      "BRICS expansion de-dollarization bilateral local currency trade",
       "space race military satellite anti-satellite weapon test",
       "United Nations Security Council veto resolution crisis",
 
@@ -158,7 +158,7 @@ const CATEGORIES = [
       "Global shadow banking private credit systemic risk contagion",
       "Global food security export bans wheat rice fertilizer trade protectionism",
       "Commercial real estate debt default regional bank crisis",
-      "Gold reserves central bank de-dollarization treasury selling"
+      "Gold reserves central bank de-dollarization treasury selling",
       "OPEC oil production cut price war energy market",
       "global food price crisis agriculture commodity shortage",
       "unemployment labor market wage growth major economies",
@@ -187,7 +187,7 @@ const CATEGORIES = [
       "Graphite synthetic natural anode material EV battery export restrictions",
       "Platinum Group Metals PGM South Africa Russia supply shock",
       "Rare earth permanent magnets NdFeB defense aerospace supply risk",
-      "Resource nationalism lithium windfall tax Latin America Africa"
+      "Resource nationalism lithium windfall tax Latin America Africa",
       "US CHIPS Act semiconductor manufacturing subsidy",
       "European Union critical raw materials act strategy",
       "solar panel battery supply chain graphite manganese",
@@ -215,7 +215,7 @@ const CATEGORIES = [
       "Crypto mixer sanction OFAC compliance Tornado Cash protocol",
       "Layer 1 validator slashing centralization risk infrastructure outage",
       "Cross-chain bridge exploit smart contract hack million drained",
-      "Institutional crypto custody bank bankruptcy reserve audit"
+      "Institutional crypto custody bank bankruptcy reserve audit",
       "global crypto mining energy consumption ban restriction",
       "central bank digital currency pilot rollout country",
     ],
