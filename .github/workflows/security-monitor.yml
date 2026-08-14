@@ -30,6 +30,12 @@ jobs:
           ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
           ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          # 🛡️ NEW: added for consistency with the other workflows — the
+          # script's own fallback default already equals the V1 address, so
+          # this wasn't silently broken like the other files, but the other
+          # 5 workflows all now set this explicitly and this one should too,
+          # in case the default is ever changed.
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           GUARDIAN_PRIVATE_KEY: ${{ secrets.GUARDIAN_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
