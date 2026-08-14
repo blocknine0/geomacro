@@ -41,6 +41,12 @@ jobs:
           # into the environment at all. New markets would have kept being
           # created on V1 indefinitely even after the V2 cutover.
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          # 🛡️ FIX: added — create-markets.js's active-market verification
+          # step now routes each flagged market to its recorded contract
+          # (legacy V1 vs current V2) instead of always checking against
+          # CONTRACT_ADDRESS, which was misreading old V1 markets as
+          # "genuinely active" once CONTRACT_ADDRESS pointed to V2.
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
