@@ -34,6 +34,13 @@ jobs:
       - name: Run market creation script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          # 🛡️ FIX: was missing entirely — every market create-markets.js
+          # made was going to this script's hardcoded fallback default (the
+          # OLD V1 address), regardless of what CONTRACT_ADDRESS actually
+          # held in repo secrets, since the workflow never read the secret
+          # into the environment at all. New markets would have kept being
+          # created on V1 indefinitely even after the V2 cutover.
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
