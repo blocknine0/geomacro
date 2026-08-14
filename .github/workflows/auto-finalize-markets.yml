@@ -29,6 +29,16 @@ jobs:
       - name: Run market finalization script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          # 🛡️ FIX: were missing entirely — this workflow's earlier logs
+          # ("Legacy: 8, V2: 0") looked correct only by coincidence, since
+          # with no CONTRACT_ADDRESS/OLD_CONTRACT_ADDRESS in the environment
+          # the script's own fallback default applies to BOTH constants
+          # equally (same V1 value), so v2CutoverActive evaluated false and
+          # every market got treated as legacy — which happened to be true
+          # since no real V2 markets existed yet to expose the gap. Once V2
+          # markets exist, this would have silently never finalized them.
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
