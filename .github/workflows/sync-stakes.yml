@@ -13,7 +13,20 @@ jobs:
       - run: bun scripts/sync-stakes.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          # 🛡️ FIX: were missing entirely — sync-stakes.js now scans BOTH
+          # contracts (legacy V1 + V2) with independent checkpoints, but
+          # without CONTRACT_ADDRESS/OLD_CONTRACT_ADDRESS in the environment
+          # both default to the script's own hardcoded V1 fallback, making
+          # v2CutoverActive evaluate false — so V2 stakes were never being
+          # scanned at all, silently, with no error to signal it.
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
+          # 🛡️ FIX: required once CONTRACT_ADDRESS actually differs from
+          # OLD_CONTRACT_ADDRESS — the script throws a clear startup error if
+          # this is missing/low rather than silently scanning from block 0.
+          # Using vars (not secrets) to match this workflow's existing
+          # DEPLOY_BLOCK pattern below.
+          DEPLOY_BLOCK_V2: ${{ vars.DEPLOY_BLOCK_V2 }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DEPLOY_BLOCK: ${{ vars.DEPLOY_BLOCK }}
-          
