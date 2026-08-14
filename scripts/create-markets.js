@@ -1,8 +1,17 @@
 // scripts/create-markets.js
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
+import { OLD_CONTRACT_ADDRESS, isLegacyEvent, partitionEventsByContract } from "./lib/dual-contract.js";
+
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
+// 🆕 Dual-contract transition (mirrors resolve-markets.js/finalize-markets.js):
+// NEW markets always go on CONTRACT_ADDRESS (the current/V2 contract) — no
+// dual-routing needed for creation itself. But the "is this Supabase-flagged
+// active market genuinely still active on-chain?" verification step below
+// was checking every flagged market against CONTRACT_ADDRESS only, which
+// silently mis-evaluated old V1 markets once CONTRACT_ADDRESS flipped to V2
+// — see the exists-field fix in the verification block for the actual bug.
 const THRESHOLD_STEP = 5;
 const STAKING_DURATION_SEC = 46 * 60 * 60;   // ৪৬ ঘণ্টা পর স্টেকিং বন্ধ — শেষ মুহূর্তে স্টেক করে জেতা ঠেকাতে
 const RESOLUTION_DURATION_SEC = 48 * 60 * 60; // ৪৮ ঘণ্টা পর রিজলভ — কন্ট্রাক্ট নিজেই এনফোর্স করে
@@ -175,6 +184,9 @@ async function sendCreateWithRetry(getWriteContract, getReadContract, writeRpcMa
 
 // 🛡️ Batch getMarket(marketId).exists for many candidate events into a
 // single RPC call via Multicall3.aggregate3 instead of one call per event.
+// Always targets CONTRACT_ADDRESS (current/V2) — these are candidate NEW
+// markets (market_created is null/false), which always get created on the
+// current contract, so no dual-routing needed here.
 async function batchGetMarketExists(readRpcManager, contractInterface, marketIds) {
   const calls = marketIds.map((marketId) => ({
     target: CONTRACT_ADDRESS,
@@ -206,6 +218,49 @@ async function batchGetMarketExists(readRpcManager, contractInterface, marketIds
     }
   });
   return existsByMarketId;
+}
+
+// 🛡️ NEW: batch-verify "active"-flagged events against the RIGHT contract
+// per event (legacy V1 vs current V2), fixing two bugs at once:
+// 1) Dual-contract routing — a V1 market's real status must be checked
+//    against OLD_CONTRACT_ADDRESS, not CONTRACT_ADDRESS (which is V2 post-
+//    cutover). Checking a V1-only marketId against V2 always returns a
+//    zero-value struct (the market was never created there).
+// 2) The exists-field bug — that zero-value struct decodes to status=0,
+//    which STAGE_BY_STATUS treats as "active" (status 0 IS the real "OPEN"
+//    enum value for markets that genuinely exist). Without checking the
+//    ABI's own `exists` boolean first, a market that doesn't exist on the
+//    queried contract at all gets misread as "genuinely active" — this is
+//    exactly what produced "14 genuinely active, 0 repaired" once
+//    CONTRACT_ADDRESS pointed at V2 while these 14 were still V1 markets.
+async function batchVerifyActiveMarkets(readRpcManager, contractInterface, flaggedEvents) {
+  const { legacyEvents, v2Events } = partitionEventsByContract(flaggedEvents, CONTRACT_ADDRESS);
+
+  async function verifyGroup(events, targetAddress) {
+    if (events.length === 0) return [];
+    const marketIds = events.map((e) => `mkt_${e.id}`);
+    const calls = marketIds.map((marketId) => ({
+      target: targetAddress,
+      allowFailure: true,
+      callData: contractInterface.encodeFunctionData("getMarket", [marketId]),
+    }));
+    const results = await callRpcWithBackoff(
+      () => {
+        const multicall = new ethers.Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, readRpcManager.current());
+        return multicall.aggregate3.staticCall(calls);
+      },
+      `multicall.aggregate3-active-verify (${marketIds.length} markets @ ${targetAddress})`,
+      readRpcManager,
+    );
+    return results.map((result, i) => ({ event: events[i], result }));
+  }
+
+  const [legacyResults, v2Results] = await Promise.all([
+    verifyGroup(legacyEvents, OLD_CONTRACT_ADDRESS),
+    verifyGroup(v2Events, CONTRACT_ADDRESS),
+  ]);
+
+  return [...legacyResults, ...v2Results];
 }
 
 // Mirrors STAGE_BY_STATUS in sync-lifecycle.js — status 1 (staking closed,
@@ -240,6 +295,7 @@ async function main() {
 
   const network = await callRpcWithBackoff(() => readRpcManager.current().getNetwork(), "getNetwork", readRpcManager);
   console.log(`Connected to Chain ID: ${network.chainId.toString()}`);
+  console.log(`Using contract address: ${CONTRACT_ADDRESS}`);
 
   const getWriteContract = () => {
     const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, writeRpcManager.current());
@@ -257,49 +313,26 @@ async function main() {
   // 🆕 PERMANENT FIX: don't blindly trust Supabase's lifecycle_stage column for
   // room-counting — it's written by sync-lifecycle.js only twice per 2h cycle,
   // so it can be up to ~1h stale (staking already closed on-chain, but the
-  // column still says "active"). This was the root cause of frontend/backend
-  // count mismatches: the frontend does a live on-chain-derived correction,
-  // but this script was trusting the raw, possibly-stale column. Now we
-  // batch-verify every "active"-flagged row's real on-chain status via
-  // Multicall3 (cheap — 1 RPC call for the whole batch) and only count ones
-  // that are genuinely still staking-open, self-repairing any stale rows we
-  // find along the way so the column converges to truth immediately instead
-  // of waiting for the next sync-lifecycle.js run.
+  // column still says "active"). Now we batch-verify every "active"-flagged
+  // row's real on-chain status via Multicall3, ROUTED TO THE CORRECT
+  // CONTRACT PER MARKET (market_address-aware — see batchVerifyActiveMarkets),
+  // and only count ones that are genuinely still staking-open, self-repairing
+  // any stale rows we find along the way.
   const { data: flaggedActiveEvents, error: countErr } = await supabase
     .from("events")
-    .select("id")
+    .select("id, market_address")
     .eq("market_created", true)
     .eq("lifecycle_stage", "active");
   if (countErr) throw new Error(`Supabase error counting active markets: ${countErr.message}`);
 
   let activeCount = flaggedActiveEvents?.length ?? 0;
   if (flaggedActiveEvents && flaggedActiveEvents.length > 0) {
-    const flaggedMarketIds = flaggedActiveEvents.map((e) => `mkt_${e.id}`);
     try {
-      // 🩹 FIX: this used to call the non-existent "getMarketFullDetails" —
-      // the ABI only ever declared "getMarket". That mismatch caused ethers
-      // to throw INVALID_ARGUMENT ("unknown function fragment") on every
-      // run, silently falling back to the raw (possibly-stale) Supabase
-      // count below. Now uses the real function name so verification
-      // actually runs instead of always failing into the fallback branch.
-      const calls = flaggedMarketIds.map((marketId) => ({
-        target: CONTRACT_ADDRESS,
-        allowFailure: true,
-        callData: contractInterface.encodeFunctionData("getMarket", [marketId]),
-      }));
-      const verifiedDetails = await callRpcWithBackoff(
-        () => {
-          const multicall = new ethers.Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, readRpcManager.current());
-          return multicall.aggregate3.staticCall(calls);
-        },
-        `multicall.aggregate3-active-verify (${flaggedMarketIds.length} markets)`,
-        readRpcManager,
-      );
+      const verified = await batchVerifyActiveMarkets(readRpcManager, contractInterface, flaggedActiveEvents);
 
       let genuinelyActive = 0;
       const staleRepairs = [];
-      verifiedDetails.forEach((result, i) => {
-        const event = flaggedActiveEvents[i];
+      verified.forEach(({ event, result }) => {
         if (!result.success) {
           // couldn't verify — count it as active (conservative: don't shrink
           // room based on a read we couldn't confirm)
@@ -308,12 +341,21 @@ async function main() {
         }
         try {
           const decoded = contractInterface.decodeFunctionResult("getMarket", result.returnData);
+          // 🩹 THE ACTUAL FIX: check `exists` FIRST. A market that was never
+          // created on the contract we just queried decodes to a zero-value
+          // struct — status=0, which STAGE_BY_STATUS treats as the real
+          // "OPEN" state. Without this check, "doesn't exist here" and
+          // "genuinely active" are indistinguishable.
+          if (!decoded.exists) {
+            staleRepairs.push({ id: event.id, newStage: "completed", reason: "does not exist on its recorded contract — likely a stale/orphaned row" });
+            return;
+          }
           const status = Number(decoded.status);
           const stage = status === 0 ? "active" : (STAGE_BY_STATUS[status] ?? "active");
           if (stage === "active") {
             genuinelyActive++;
           } else {
-            staleRepairs.push({ id: event.id, newStage: stage });
+            staleRepairs.push({ id: event.id, newStage: stage, reason: `on-chain status is ${status}` });
           }
         } catch {
           genuinelyActive++;
@@ -321,13 +363,14 @@ async function main() {
       });
 
       if (staleRepairs.length > 0) {
-        console.log(`  🔧 Found ${staleRepairs.length} market(s) flagged "active" in Supabase but no longer active on-chain — repairing lifecycle_stage now instead of waiting for sync-lifecycle.js.`);
+        console.log(`  🔧 Found ${staleRepairs.length} market(s) flagged "active" in Supabase but no longer (or never) active on-chain — repairing lifecycle_stage now instead of waiting for sync-lifecycle.js.`);
         for (const repair of staleRepairs) {
+          console.log(`     - ${repair.id}: ${repair.reason} → ${repair.newStage}`);
           await adminSupabase.from("events").update({ lifecycle_stage: repair.newStage }).eq("id", repair.id);
         }
       }
       activeCount = genuinelyActive;
-      console.log(`  📦 Verified ${flaggedMarketIds.length} "active"-flagged market(s) via Multicall3 (1 RPC call) — ${genuinelyActive} genuinely still active, ${staleRepairs.length} repaired.`);
+      console.log(`  📦 Verified ${flaggedActiveEvents.length} "active"-flagged market(s) via Multicall3 (split by contract) — ${genuinelyActive} genuinely still active, ${staleRepairs.length} repaired.`);
     } catch (multicallErr) {
       console.log(`  ⚠️ On-chain active-verification failed (${multicallErr.message}) — falling back to Supabase's raw lifecycle_stage count (may be stale).`);
     }
@@ -383,7 +426,8 @@ async function main() {
   console.log(`Found ${events.length} candidate event(s) for new markets (capped to available room).`);
 
   // 🛡️ NEW: prefetch on-chain existence for the whole batch in one
-  // Multicall3 call instead of one getMarket RPC call per event.
+  // Multicall3 call instead of one getMarket RPC call per event. Always
+  // against CONTRACT_ADDRESS (current/V2) — these are brand-new markets.
   const batchMarketIds = events.map((e) => `mkt_${e.id}`);
   let prefetchedExists = new Map();
   try {
@@ -414,12 +458,8 @@ async function main() {
       }
       if (marketExists) {
         console.log(`Market ${marketId} already exists on-chain. Syncing Supabase.`);
-        // 💡 ফিক্স: এখানেও actual chain time ব্যবহার করা উচিত ছিল, কিন্তু আমরা
-        // এই টার্মিনাল ব্লকে chain block time জানি না, তাই fallback হিসেবে
-        // event.created_at ভিত্তিক হিসাবই থাকছে (rare edge case — মার্কেট আগে
-        // থেকেই chain-এ আছে কিন্তু Supabase sync হয়নি)
         const fallbackResolutionAt = new Date(new Date(event.created_at).getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
-        await adminSupabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: fallbackResolutionAt }).eq("id", event.id);
+        await adminSupabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: fallbackResolutionAt, market_address: CONTRACT_ADDRESS }).eq("id", event.id);
         await delay(RPC_THROTTLE_MS);
         continue;
       }
@@ -431,7 +471,7 @@ async function main() {
         if (sendErr.alreadyExists) {
           console.log(`  ↪ ${sendErr.message}`);
           const fallbackResolutionAt = new Date(new Date(event.created_at).getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
-          await adminSupabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: fallbackResolutionAt }).eq("id", event.id);
+          await adminSupabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: fallbackResolutionAt, market_address: CONTRACT_ADDRESS }).eq("id", event.id);
           console.log(`  ✅ Repaired ${marketId} — was already created on-chain by an earlier attempt.`);
           await delay(RPC_THROTTLE_MS);
           continue;
@@ -442,12 +482,6 @@ async function main() {
       const receipt = await callRpcWithBackoff(() => tx.wait(), `tx.wait(${marketId})`, writeRpcManager);
       console.log(`  Confirmed in block ${receipt.blockNumber}`);
 
-      // 🛠️ পার্মানেন্ট ফিক্স: resolution_at এখন actual on-chain confirmation
-      // ব্লকের timestamp থেকে হিসাব হচ্ছে (event.created_at থেকে না), যাতে
-      // Supabase-এর resolution_at আর কন্ট্রাক্টের resolutionTime সবসময় sync থাকে।
-      // 🛡️ NEW: reads the just-mined block via the SAME provider that mined
-      // it (writeRpcManager), not the independently-rotating read provider —
-      // a different provider may not have indexed this exact block yet.
       const confirmedBlock = await callRpcWithBackoff(
         () => writeRpcManager.current().getBlock(receipt.blockNumber),
         `getBlock(${receipt.blockNumber})`,
@@ -456,7 +490,6 @@ async function main() {
       const chainConfirmedAt = new Date(Number(confirmedBlock.timestamp) * 1000);
       const resolutionAt = new Date(chainConfirmedAt.getTime() + RESOLUTION_DURATION_SEC * 1000).toISOString();
 
-      // ✅ tx hash এখন Supabase-এ সেভ হচ্ছে (market_lookup view-এ cross-check করার জন্য)
       await adminSupabase.from("events").update({
         market_created: true,
         market_threshold: marketThreshold,
@@ -467,8 +500,6 @@ async function main() {
     } catch (err) {
       console.error(`Failed to create market for event ${event.id}: ${err.message}`);
     }
-    // 🆕 প্রতিটা market touch করার পর fixed pause — read call হোক বা তৈরি
-    // হোক, উভয় ক্ষেত্রেই, যাতে rate limit-এ কখনো burst না হয়।
     await delay(RPC_THROTTLE_MS);
   }
   console.log("Done.");
