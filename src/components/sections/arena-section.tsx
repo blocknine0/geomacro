@@ -1,6 +1,8 @@
+import { notify } from "@/lib/notify";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import {
   Bot,
   Clock,
@@ -13,6 +15,11 @@ import {
 import { Activity, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InlineError } from "@/components/foundation/async-states";
+import { EmptyState } from "@/components/foundation/async-states";
+import { RiskBadge, ProbabilityBadge } from "@/components/foundation/risk";
+import { Status } from "@/components/foundation/data";
+import { TechnicalDisclosure, TestnetNotice } from "@/components/foundation/onchain";
 import {
   Dialog,
   DialogContent,
@@ -179,6 +186,9 @@ export function ArenaSection() {
   const [activeTab, setActiveTab] = useState<
     "active" | "staking_closed" | "market_resolved" | "disputed" | "completed"
   >("active");
+  const [category, setCategory] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<"newest" | "risk" | "closing">("newest");
+  const [openBriefings, setOpenBriefings] = useState<Record<string, boolean>>({});
   const [markets, setMarkets] = useState<Market[]>([]);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -328,7 +338,12 @@ export function ArenaSection() {
       if (!address) return;
       let stakesMap: Record<string, OnchainStake> = {};
       try {
-        stakesMap = await batchReadMyStakes(markets.map((m) => m.id), address);
+        stakesMap = await batchReadMyStakes(
+          markets.map((m) => m.id),
+          address,
+          undefined,
+          (marketId) => markets.find((m) => m.id === marketId)?.marketAddress ?? AGENT_ARENA_ADDRESS,
+        );
       } catch (e) {
         console.warn("[arena] batchReadMyStakes failed", e);
       }
@@ -393,7 +408,7 @@ export function ArenaSection() {
       // position always gets saved once the wallet confirms the tx was
       // sent, regardless of RPC flakiness. scripts/sync-stakes.js is the
       // periodic backstop that reconciles on-chain events either way.
-      const { hash, confirmed } = await stakeOnContract(market.id, side, stakeAmount);
+      const { hash, confirmed } = await stakeOnContract(market.id, side, stakeAmount, market.marketAddress);
       setStakeTx((prev) => ({ ...prev, [market.id]: { side, hash } }));
       if (market.eventId) {
         try {
@@ -430,13 +445,14 @@ export function ArenaSection() {
         input: `stake(${market.id},${side})`,
       });
       setPendingStake(null);
+      notify.success("Stake submitted", "Your position is recorded and will confirm onchain shortly.");
       setTimeout(() => {
         void (async () => {
           try {
-            const om = await readMarket(market.id);
+            const om = await readMarket(market.id, undefined, market.marketAddress);
             setOnchainMarkets((prev) => ({ ...prev, [market.id]: om }));
             if (address) {
-              const s = await readMyStake(market.id, address);
+              const s = await readMyStake(market.id, address, undefined, market.marketAddress);
               setMyStakes((prev) => ({ ...prev, [market.id]: s }));
             }
           } catch {
@@ -445,7 +461,7 @@ export function ArenaSection() {
         })();
       }, 4000);
     } catch (e) {
-      setStakeError((e as Error).message ?? "Transaction rejected");
+      setStakeError(notify.error("arena.stake", e, "submitting your stake").message);
     } finally {
       setStakeSubmitting(false);
     }
@@ -464,7 +480,7 @@ export function ArenaSection() {
     setClaiming(market.id);
     setClaimError(null);
     try {
-      const hash = await claimOnContract(market.id);
+      const hash = await claimOnContract(market.id, market.marketAddress);
       setClaimTx((prev) => ({ ...prev, [market.id]: hash }));
       if (market.eventId) {
         try {
@@ -480,6 +496,7 @@ export function ArenaSection() {
         [market.id]: { hawkWei: 0n, doveWei: 0n, hawkUsdc: 0, doveUsdc: 0 },
       }));
       markClaimed(market.id);
+      notify.success("Claim submitted", "Your winnings are on their way.");
       rememberSessionTx(activeNet, address, {
         hash,
         from: address,
@@ -492,7 +509,7 @@ export function ArenaSection() {
       setTimeout(() => {
         void (async () => {
           try {
-            const s = await readMyStake(market.id, address);
+            const s = await readMyStake(market.id, address, undefined, market.marketAddress);
             setMyStakes((prev) => ({ ...prev, [market.id]: s }));
           } catch {
             /* ignore */
@@ -508,7 +525,7 @@ export function ArenaSection() {
           [market.id]: { hawkWei: 0n, doveWei: 0n, hawkUsdc: 0, doveUsdc: 0 },
         }));
       } else {
-        setClaimError(`[${market.id}] ${msg}`);
+        setClaimError(`[${market.id}] ${notify.error("arena.claim", e, "claiming your winnings").message}`);
       }
     } finally {
       setClaiming(null);
@@ -571,6 +588,19 @@ export function ArenaSection() {
         : velocity === "Medium"
         ? "text-accent"
         : "text-muted-foreground";
+    // Implied probability is only shown when the pool actually has volume.
+    // With no positions there is no market-implied number, so we omit it
+    // rather than render a fake 0% or 50%.
+    const impliedEscalation = total > 0 ? (hawkUsd / total) * 100 : null;
+    const marketState: { label: string; tone: "neutral" | "positive" | "warning" | "negative" } =
+      isFinalized
+        ? { label: "Resolved", tone: "neutral" }
+        : isTentative
+          ? { label: "Awaiting finalization", tone: "warning" }
+          : isAwaitingResolution
+            ? { label: "Closed", tone: "warning" }
+            : { label: "Open", tone: "positive" };
+    const briefingOpen = !!openBriefings[m.id];
     return (
       <motion.article
         key={m.id}
@@ -580,12 +610,23 @@ export function ArenaSection() {
         transition={{ duration: 0.4 }}
         className={`overflow-hidden rounded-2xl border ${borderClass} bg-card/40 backdrop-blur`}
       >
-        <div className="grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-start">
-          <div>
-            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+        <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted-foreground">
+              <Status label={marketState.label} tone={marketState.tone} />
+              {m.category && m.category.toLowerCase() !== "unknown" && (
+                <span className="type-meta capitalize text-primary">{m.category}</span>
+              )}
+              <RiskBadge score={m.severity} showScore />
+              {impliedEscalation !== null && (
+                <ProbabilityBadge value={impliedEscalation} label="Escalation" />
+              )}
               {m.unlinked && (
                 <Badge variant="secondary" className="text-[10px]">unlinked</Badge>
               )}
+            </div>
+            <h3 className="mt-2 text-base font-medium leading-snug sm:text-lg">{m.question}</h3>
+            <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
               {backedSide === "HAWK" && (
                 <Badge className="bg-destructive/20 text-destructive text-[10px]">
                   Position: Escalation · {myHawk.toLocaleString(undefined, { maximumFractionDigits: 4 })} USDC
@@ -621,18 +662,12 @@ export function ArenaSection() {
                 Tentative · {displayWinnerSide === "HAWK" ? "Escalation" : "Calm"} · pending finalization
               </Badge>
             )}
-            {isAwaitingResolution && (
-              <Badge variant="outline" className="text-[10px]">
-                Staking closed · awaiting resolution
-              </Badge>
-            )}
             {isStakingOpen && (
               <Badge variant="outline" className="border-primary/40 text-primary text-[10px]">
                 Closing in {formatCountdown(m.stakingEndTime - now)} · Result in {formatCountdown(m.resolutionAt - now)}
               </Badge>
             )}
             </div>
-            <h3 className="mt-2 text-lg font-medium leading-snug">{m.question}</h3>
           </div>
           {!result && (
             <Badge
@@ -644,8 +679,8 @@ export function ArenaSection() {
           )}
         </div>
 
-        <div className="px-6">
-          <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+        <div className="px-4 sm:px-5">
+          <div className="rounded-xl border border-border/60 bg-background/40 p-3 sm:p-4">
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] uppercase tracking-widest text-accent">
                 Signal Brief
@@ -656,14 +691,20 @@ export function ArenaSection() {
             </div>
           </div>
 
-          <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/60">
+          <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/60 sm:grid-cols-3">
             <div className="bg-card/60 p-3">
               <dt className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                Narrative Volume
+                Market Volume
               </dt>
               <dd className="mt-1 font-mono text-base tabular-nums text-foreground">
-                {total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                <span className="ml-1 text-[10px] text-muted-foreground">USDC</span>
+                {total > 0 ? (
+                  <>
+                    {total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    <span className="ml-1 text-[10px] text-muted-foreground">USDC</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No positions yet</span>
+                )}
               </dd>
             </div>
             <div className="bg-card/60 p-3">
@@ -672,6 +713,21 @@ export function ArenaSection() {
               </dt>
               <dd className={`mt-1 flex items-center gap-1 font-mono text-base ${velocityClass}`}>
                 <Activity className="h-3.5 w-3.5" /> {velocity}
+              </dd>
+            </div>
+            <div className="bg-card/60 p-3">
+              <dt className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                Updated
+              </dt>
+              <dd className="mt-1 font-mono text-sm text-foreground">
+                {m.createdAt
+                  ? new Date(m.createdAt).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Unavailable"}
               </dd>
             </div>
           </dl>
@@ -706,27 +762,36 @@ export function ArenaSection() {
         </div>
 
         {result && (
-          <div className="mt-6 border-t border-border/60">
-            <div className="flex items-center justify-between border-b border-border/60 bg-background/40 px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              <span>Analyst Briefings · Market Research Notes</span>
-              <span>Two-Sided View</span>
-            </div>
-            <div className="grid gap-px bg-border/60 md:grid-cols-2">
-              <AgentPosition
-                side="HAWK"
-                position={result.hawk}
-                realStakeUsdc={hawkUsd}
-                realConfidence={hawkConviction}
-                trackRecord={trackRecord.HAWK}
-              />
-              <AgentPosition
-                side="DOVE"
-                position={result.dove}
-                realStakeUsdc={doveUsd}
-                realConfidence={doveConviction}
-                trackRecord={trackRecord.DOVE}
-              />
-            </div>
+          <div className="mt-4 border-t border-border/60">
+            <button
+              type="button"
+              aria-expanded={briefingOpen}
+              onClick={() =>
+                setOpenBriefings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))
+              }
+              className="tap-target flex w-full items-center justify-between gap-3 border-b border-border/60 bg-background/40 px-4 py-2 text-left font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground sm:px-5"
+            >
+              <span>Analyst briefings · two-sided view</span>
+              <span className="text-foreground">{briefingOpen ? "Hide" : "Show"}</span>
+            </button>
+            {briefingOpen && (
+              <div className="grid gap-px bg-border/60 md:grid-cols-2">
+                <AgentPosition
+                  side="HAWK"
+                  position={result.hawk}
+                  realStakeUsdc={hawkUsd}
+                  realConfidence={hawkConviction}
+                  trackRecord={trackRecord.HAWK}
+                />
+                <AgentPosition
+                  side="DOVE"
+                  position={result.dove}
+                  realStakeUsdc={doveUsd}
+                  realConfidence={doveConviction}
+                  trackRecord={trackRecord.DOVE}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -764,12 +829,12 @@ export function ArenaSection() {
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               {m.aiReasoning ??
-                "Awaiting resolution — the resolver agent runs every 2 hours and will publish the verdict on-chain."}
+                "Awaiting resolution. The resolver agent runs every 2 hours and will publish the verdict on-chain."}
             </p>
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 p-4 sm:p-5">
           <div className="flex flex-col gap-0.5 font-mono text-[11px] text-muted-foreground">
             <span>
               {isFinalized
@@ -784,13 +849,20 @@ export function ArenaSection() {
               <span className="text-foreground/80">trading from {shortAddr(address)}</span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            {m.eventId && (
+              <Button asChild size="sm" className="tap-target flex-1 gap-1.5 sm:flex-none">
+                <Link to="/event/$eventId" params={{ eventId: m.eventId }}>
+                  View event
+                </Link>
+              </Button>
+            )}
             {canClaim && (
               <Button
                 size="sm"
                 onClick={() => void claimWinnings(m)}
                 disabled={claiming === m.id}
-                className="gap-1.5"
+                className="tap-target flex-1 gap-1.5 sm:flex-none"
               >
                 {claiming === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gavel className="h-4 w-4" />}
                 {claiming === m.id ? "Settling…" : "Claim Settlement"}
@@ -798,12 +870,25 @@ export function ArenaSection() {
             )}
             {!isFinalized && (
               isTentative ? (
-                <Badge
-                  variant="outline"
-                  className="gap-1.5 border-accent/60 bg-accent/10 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-accent"
-                >
-                  <Gavel className="h-3.5 w-3.5" /> Pending Finalization
-                </Badge>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Badge
+                    variant="outline"
+                    className="gap-1.5 border-accent/60 bg-accent/10 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-accent"
+                  >
+                    <Gavel className="h-3.5 w-3.5" /> Pending Finalization
+                  </Badge>
+                  {m.marketAddress.toLowerCase() === AGENT_ARENA_ADDRESS.toLowerCase() &&
+                    ((displayWinnerSide === "HAWK" && myDove > 0) ||
+                      (displayWinnerSide === "DOVE" && myHawk > 0)) && (
+                      <Link
+                        to="/dispute/$marketId"
+                        params={{ marketId: m.id }}
+                        className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-accent"
+                      >
+                        Think this is wrong? Raise a dispute →
+                      </Link>
+                    )}
+                </div>
               ) : !isStakingOpen ? (
                 <Badge
                   variant="outline"
@@ -824,7 +909,7 @@ export function ArenaSection() {
                     size="sm"
                     variant="outline"
                     onClick={() => openStakeDialog(m, "HAWK")}
-                    className="gap-1.5 border-destructive/40 font-mono text-xs uppercase tracking-wider text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="tap-target flex-1 gap-1.5 border-destructive/40 font-mono text-xs uppercase tracking-wider text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none"
                   >
                     Long Escalation
                   </Button>
@@ -832,7 +917,7 @@ export function ArenaSection() {
                     size="sm"
                     variant="outline"
                     onClick={() => openStakeDialog(m, "DOVE")}
-                    className="gap-1.5 border-primary/40 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/10 hover:text-primary"
+                    className="tap-target flex-1 gap-1.5 border-primary/40 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/10 hover:text-primary sm:flex-none"
                   >
                     Long Calm
                   </Button>
@@ -906,12 +991,42 @@ export function ArenaSection() {
     return m.aiProcessed ? "market_resolved" : "staking_closed";
   };
 
-  const disputedMarkets = markets.filter((m) => effectiveTabStage(m) === "disputed");
-  const stakingClosedMarkets = markets.filter((m) => effectiveTabStage(m) === "staking_closed");
-  const marketResolvedMarkets = markets.filter((m) => effectiveTabStage(m) === "market_resolved");
-  const activeMarkets = markets.filter((m) => effectiveTabStage(m) === "active");
+  // Categories are derived from real event metadata only — no hardcoded list.
+  const availableCategories = Array.from(
+    new Set(
+      markets
+        .map((m) => (m.category ?? "").trim())
+        .filter((c) => c.length > 0 && c.toLowerCase() !== "unknown"),
+    ),
+  ).sort();
+
+  // "Closing soon" is only offered because stakingEndTime is a real timestamp.
+  const sortMarkets = (list: Market[]) => {
+    const arr = [...list];
+    if (sortKey === "risk") return arr.sort((a, b) => b.severity - a.severity);
+    if (sortKey === "closing") {
+      return arr.sort((a, b) => {
+        const aOpen = a.stakingEndTime > now;
+        const bOpen = b.stakingEndTime > now;
+        if (aOpen !== bOpen) return aOpen ? -1 : 1;
+        return a.stakingEndTime - b.stakingEndTime;
+      });
+    }
+    return arr.sort((a, b) => b.createdAt - a.createdAt);
+  };
+
+  const visibleMarkets = sortMarkets(
+    category === "all"
+      ? markets
+      : markets.filter((m) => (m.category ?? "").trim() === category),
+  );
+
+  const disputedMarkets = visibleMarkets.filter((m) => effectiveTabStage(m) === "disputed");
+  const stakingClosedMarkets = visibleMarkets.filter((m) => effectiveTabStage(m) === "staking_closed");
+  const marketResolvedMarkets = visibleMarkets.filter((m) => effectiveTabStage(m) === "market_resolved");
+  const activeMarkets = visibleMarkets.filter((m) => effectiveTabStage(m) === "active");
   const openMarkets = [...disputedMarkets, ...marketResolvedMarkets, ...stakingClosedMarkets, ...activeMarkets];
-  const resolvedMarkets = markets.filter(
+  const resolvedMarkets = visibleMarkets.filter(
     (m) => effectiveTabStage(m) === "completed" && !claimedMarkets.has(m.id),
   );
 
@@ -919,9 +1034,10 @@ export function ArenaSection() {
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 md:py-24">
       <div className="relative">
         <SectionHeader
-          eyebrow="Analyst Panel · Market Research Notes"
-          title="Two algorithmic analysts. Opposing risk frameworks. One settled contract."
-          desc="Every contract opens with two formal research notes from Agent Hawk and Agent Dove, taking opposite sides of the same event. Read the briefings, weigh the implied probability and take a position in USDC on Arc. Forty-eight hours later the main resolver agent re-reads the news, judges which call aged better and the contract settles the winning side automatically."
+          as="h1"
+          eyebrow="Markets"
+          title="Markets"
+          desc="Explore markets around events shaping the world. Every market is opened by an event in the pipeline, priced by two opposing analyst briefings, and settled automatically once the outcome is judged."
         />
         {refreshing && (
           <div className="absolute right-0 top-0 flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
@@ -931,21 +1047,15 @@ export function ArenaSection() {
         )}
       </div>
 
-      {!address ? (
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
-          <span className="font-mono text-xs text-muted-foreground">
-            Connect wallet to take positions in the Intelligence Panel.
-          </span>
-          <Button size="sm" onClick={connect} className="gap-2">
-            <Wallet className="h-4 w-4" /> Connect wallet
-          </Button>
-        </div>
-      ) : !onArc ? (
+      {/* Browsing never requires a wallet. Only a connected-but-wrong-network
+          wallet gets a notice here; connection itself is requested at the
+          action boundary inside the position dialog. */}
+      {address && !onArc ? (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3">
           <span className="font-mono text-xs text-destructive">
             Wrong network. Positions settle on Arc Testnet.
           </span>
-          <Button size="sm" variant="outline" onClick={() => void switchToArc()} className="gap-2">
+          <Button size="sm" variant="outline" onClick={() => void switchToArc()} className="tap-target gap-2">
             <Zap className="h-3.5 w-3.5" /> Switch to Arc Testnet
           </Button>
         </div>
@@ -975,7 +1085,7 @@ export function ArenaSection() {
                     Track Record
                   </div>
                   <div className={`font-mono text-xl tabular-nums ${accColor}`}>
-                    {acc === null ? "—" : `${acc}%`}
+                    {acc === null ? "N/A" : `${acc}%`}
                   </div>
                 </div>
               </div>
@@ -1020,6 +1130,57 @@ export function ArenaSection() {
       ) : (
         <>
           <div className="mt-10 space-y-10">
+            <div className="flex flex-col gap-3">
+              {availableCategories.length > 0 && (
+                <div
+                  role="group"
+                  aria-label="Filter markets by category"
+                  className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+                >
+                  {["all", ...availableCategories].map((c) => {
+                    const isActive = category === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => setCategory(c)}
+                        className={`tap-target shrink-0 rounded-[var(--radius-control)] border px-3 py-1.5 text-xs capitalize transition ${
+                          isActive
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border/60 text-muted-foreground hover:bg-muted/40"
+                        }`}
+                      >
+                        {c === "all" ? "All" : c}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="type-meta text-muted-foreground">Sort</span>
+                {([
+                  { key: "newest", label: "Newest" },
+                  { key: "risk", label: "Highest risk" },
+                  { key: "closing", label: "Closing soon" },
+                ] as const).map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    aria-pressed={sortKey === s.key}
+                    onClick={() => setSortKey(s.key)}
+                    className={`tap-target rounded-[var(--radius-control)] border px-3 py-1.5 text-xs transition ${
+                      sortKey === s.key
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/60 text-muted-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {(() => {
               const tabs: Array<{
                 key: "active" | "staking_closed" | "market_resolved" | "disputed" | "completed";
@@ -1037,7 +1198,8 @@ export function ArenaSection() {
                 <div className="flex flex-wrap gap-2">
                   {tabs.map((t) => {
                     const isActive = activeTab === t.key;
-                    const base = "rounded-lg border px-3 py-1.5 font-mono text-xs transition";
+                    const base =
+                      "min-h-11 rounded-lg border px-3 py-1.5 font-mono text-xs transition sm:min-h-0";
                     const cls = t.destructive
                       ? isActive
                         ? `${base} border-destructive bg-destructive/10 text-destructive`
@@ -1046,7 +1208,13 @@ export function ArenaSection() {
                         ? `${base} border-primary bg-primary/10 text-primary`
                         : `${base} border-border/60 text-muted-foreground hover:bg-muted/40`;
                     return (
-                      <button key={t.key} type="button" onClick={() => setActiveTab(t.key)} className={cls}>
+                      <button
+                        key={t.key}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => setActiveTab(t.key)}
+                        className={cls}
+                      >
                         {t.label} · {t.count}
                       </button>
                     );
@@ -1085,7 +1253,7 @@ export function ArenaSection() {
               stakingClosedMarkets.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Staking window closed — the resolver agent hasn't judged these yet.
+                    Staking window closed. The resolver agent hasn't judged these yet.
                   </p>
                   <div className="space-y-4">
                     {stakingClosedMarkets.map(renderMarketCard)}
@@ -1102,7 +1270,7 @@ export function ArenaSection() {
               marketResolvedMarkets.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Resolver agent has a verdict. Anyone can dispute within this window — otherwise it finalizes automatically.
+                    Resolver agent has a verdict. Anyone can dispute within this window, otherwise it finalizes automatically.
                   </p>
                   <div className="space-y-4">
                     {marketResolvedMarkets.map((m) => {
@@ -1203,25 +1371,31 @@ export function ArenaSection() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-3 text-xs">
-            <div className="font-mono font-medium text-primary">Live on Arc Testnet</div>
-            <p className="text-muted-foreground">
-              Confirming will send <strong>{stakeAmount || "0"} USDC</strong> as <code>msg.value</code> to the
-              AgentArena contract&apos;s <code>stake(marketId, side)</code> function. Funds are held in
-              the contract until the market settles. The winning side can then claim their settlement payout.
-            </p>
-            <div className="break-all font-mono text-[10px] text-muted-foreground">
-              contract: {AGENT_ARENA_ADDRESS}
+          <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3 text-sm">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted-foreground">Outcome</span>
+              <span className="text-foreground">
+                {pendingStake?.side === "HAWK" ? "Escalation" : "Calm"}
+              </span>
             </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted-foreground">Amount</span>
+              <span className="font-mono text-foreground">
+                {Number(stakeAmount) > 0 ? `${stakeAmount} USDC` : "Enter an amount"}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted-foreground">Network</span>
+              <span className="text-foreground">{activeNet.chainName}</span>
+            </div>
+            <p className="pt-1 text-xs text-muted-foreground">
+              Your amount is held by the market contract until settlement. The winning side can then
+              claim its payout. No projected return is shown because the final pool is not known in
+              advance.
+            </p>
           </div>
 
-          <div className="space-y-2 font-mono text-xs">
-            <Row k="Market" v={pendingStake?.market.id ?? ""} mono />
-            <Row k="Forecast" v={pendingStake?.side === "HAWK" ? "Escalation" : pendingStake?.side === "DOVE" ? "Calm" : ""} mono />
-            <Row k="From" v={address ? shortAddr(address) : ""} mono />
-            <Row k="Network" v={activeNet.chainName} mono />
-            <Row k="Contract" v={`${AGENT_ARENA_ADDRESS.slice(0, 10)}…${AGENT_ARENA_ADDRESS.slice(-6)}`} mono />
-          </div>
+          <TestnetNotice network={activeNet} />
 
           <div className="space-y-1.5">
             <label htmlFor="stake-amount" className="text-xs font-medium">Capital to allocate (USDC)</label>
@@ -1240,7 +1414,20 @@ export function ArenaSection() {
             </p>
           </div>
 
-          {stakeError && <p className="text-xs text-destructive">{stakeError}</p>}
+          <TechnicalDisclosure
+            rows={[
+              { label: "Market ID", value: pendingStake?.market.id },
+              { label: "From", value: address ? shortAddr(address) : null },
+              { label: "Chain ID", value: String(activeNet.chainIdDec) },
+              {
+                label: "Contract",
+                value: AGENT_ARENA_ADDRESS,
+                href: `${activeNet.explorer}/address/${AGENT_ARENA_ADDRESS}`,
+              },
+            ]}
+          />
+
+          {stakeError && <InlineError error={stakeError} />}
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPendingStake(null)} disabled={stakeSubmitting}>
@@ -1248,7 +1435,7 @@ export function ArenaSection() {
             </Button>
             <Button onClick={() => void confirmStake()} disabled={stakeSubmitting} className="gap-2">
               {stakeSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Confirm Position
+              {stakeSubmitting ? "Confirming…" : "Confirm position"}
             </Button>
           </DialogFooter>
         </DialogContent>
