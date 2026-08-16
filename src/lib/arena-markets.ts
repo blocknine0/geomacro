@@ -3,6 +3,8 @@ import {
   batchReadMarkets,
   batchReadMarketFullDetails,
   STAKING_TO_RESOLUTION_BUFFER_MS,
+  AGENT_ARENA_ADDRESS,
+  OLD_CONTRACT_ADDRESS,
   type OnchainMarket,
   type OnchainMarketFullDetails,
 } from "./agent-arena";
@@ -59,6 +61,12 @@ function buildBriefing(row: StoredEventRow): MarketBriefing | null {
 export type Market = {
   /** marketId as emitted by the AgentArena contract. */
   id: string;
+  /** Which deployed contract this market actually lives on (V1 legacy or
+   *  V2) — from events.market_address. Falls back to OLD_CONTRACT_ADDRESS
+   *  for rows written before that column existed. Required for routing
+   *  on-chain reads/writes (stake, claim, dispute) to the right contract
+   *  during the V1→V2 transition period. */
+  marketAddress: string;
   /** Supabase event uuid parsed from the marketId, if it followed the
    *  `mkt_<event_uuid>` convention the publisher uses. Null otherwise. */
   eventId: string | null;
@@ -193,6 +201,7 @@ function buildMarketEntry(
     : null;
   return {
     id,
+    marketAddress: (row.market_address as string | null) || OLD_CONTRACT_ADDRESS,
     eventId: row.id,
     question: buildQuestion(row, id),
     narrative: row.narrative ?? "On-chain market with no linked event metadata.",
@@ -283,12 +292,14 @@ export async function loadArenaMarkets(
   }
   await Promise.all(
     chunks.map(async (ids) => {
+      const getAddressFor = (marketId: string) =>
+        (rowsById.get(marketId)?.market_address as string | null) || OLD_CONTRACT_ADDRESS;
       const [marketsMap, detailsMap] = await Promise.all([
-        batchReadMarkets(ids, provider).catch((e) => {
+        batchReadMarkets(ids, provider, getAddressFor).catch((e) => {
           console.warn("[loadArenaMarkets] batchReadMarkets failed", e);
           return {} as Record<string, OnchainMarket>;
         }),
-        batchReadMarketFullDetails(ids, provider).catch((e) => {
+        batchReadMarketFullDetails(ids, provider, getAddressFor).catch((e) => {
           console.warn("[loadArenaMarkets] batchReadMarketFullDetails failed", e);
           return {} as Record<string, OnchainMarketFullDetails | null>;
         }),
@@ -393,4 +404,39 @@ export function getCachedMarkets(): Market[] | null {
 
 export function setCachedMarkets(list: Market[]): void {
   cachedMarkets = list;
+}
+/**
+ * Single-market read for the event detail page. Same Supabase-first shape as
+ * loadArenaMarkets (one row + the authoritative on-chain snapshot), so the
+ * detail page never diverges from the arena list. Returns null when no event
+ * row exists for the id.
+ */
+export async function loadMarketByEventId(rawId: string): Promise<{
+  row: StoredEventRow;
+  market: Market | null;
+}> {
+  const eventId = eventIdFromMarketId(rawId);
+  const { data, error } = await supabaseFeed
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("EVENT_NOT_FOUND");
+  const row = data as StoredEventRow;
+  if (!row.market_created) return { row, market: null };
+
+  const id = marketIdFromEventId(row.id);
+  const marketAddress = (row.market_address as string | null) || OLD_CONTRACT_ADDRESS;
+  const provider = getArcReadProvider(ARC_TESTNET);
+  const [marketsMap, detailsMap] = await Promise.all([
+    batchReadMarkets([id], provider, () => marketAddress).catch(() => ({}) as Record<string, OnchainMarket>),
+    batchReadMarketFullDetails([id], provider, () => marketAddress).catch(
+      () => ({}) as Record<string, OnchainMarketFullDetails | null>,
+    ),
+  ]);
+  return {
+    row,
+    market: buildMarketEntry(row, marketsMap[id] ?? ZERO_ONCHAIN, detailsMap[id] ?? null),
+  };
 }
