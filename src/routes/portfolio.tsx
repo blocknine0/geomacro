@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Gavel, Loader2, LogIn, RefreshCw, Trophy, Wallet, X } from "lucide-react";
@@ -17,6 +17,7 @@ import { preferredNetwork } from "@/lib/arc";
 import {
   claimOnContract,
   weiToUsdc,
+  OLD_CONTRACT_ADDRESS,
 } from "@/lib/agent-arena";
 import {
   getMyBalanceHistory,
@@ -26,8 +27,17 @@ import {
   type PortfolioPosition,
 } from "@/lib/positions.functions";
 import { shortAddr } from "@/components/section-ui";
+import { EmptyState } from "@/components/foundation/async-states";
 import { Wordmark } from "@/components/wordmark";
 import { rememberSessionTx } from "@/lib/wallet-tx";
+import { notify } from "@/lib/notify";
+import {
+  ExplorerLink,
+  TechnicalDisclosure,
+  TestnetNotice,
+  TransactionProgress,
+  type TxState,
+} from "@/components/foundation/onchain";
 
 export const Route = createFileRoute("/portfolio")({
   head: () => ({
@@ -38,7 +48,17 @@ export const Route = createFileRoute("/portfolio")({
         content:
           "Your Agent Arena activity: wallet balance, active positions, pending claims and full history.",
       },
+      { property: "og:title", content: "Portfolio · Geomacro" },
+      {
+        property: "og:description",
+        content:
+          "Your Agent Arena activity: wallet balance, active positions, pending claims and full history.",
+      },
+      { property: "og:url", content: "https://geomacro.live/portfolio" },
+      // Wallet-gated, per-user view with no crawlable content: intentionally excluded from search.
+      { name: "robots", content: "noindex, follow" },
     ],
+    links: [{ rel: "canonical", href: "https://geomacro.live/portfolio" }],
   }),
   component: PortfolioPage,
 });
@@ -126,6 +146,8 @@ function PortfolioPage() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimTx, setClaimTx] = useState<Record<string, string>>({});
+  const [claimStage, setClaimStage] = useState<Record<string, TxState>>({});
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("1D");
 
   const refresh = useCallback(
@@ -234,10 +256,19 @@ function PortfolioPage() {
     if (!session) return;
     setClaimError(null);
     setClaiming(p.market_id);
+    setClaimStage((prev) => ({ ...prev, [p.market_id]: "confirm" }));
     try {
       const onchainMarketId = `mkt_${p.market_id}`;
-      const hash = await claimOnContract(onchainMarketId);
+      // 🛡️ FIX: was always calling claimOnContract with no address override,
+      // so it defaulted to AGENT_ARENA_ADDRESS (V2) for every market — any
+      // claim on a market that actually lives on legacy V1 would revert
+      // ("Market does not exist"), surfacing as "We couldn't complete the
+      // transaction" with no further explanation. Now routes to whichever
+      // contract this specific market was actually created on.
+      const claimTargetAddress = p.event?.market_address || OLD_CONTRACT_ADDRESS;
+      const hash = await claimOnContract(onchainMarketId, claimTargetAddress);
       setClaimTx((prev) => ({ ...prev, [p.market_id]: hash }));
+      setClaimStage((prev) => ({ ...prev, [p.market_id]: "pending" }));
       try {
         await callRecordClaim({
           data: { token: session.token, marketId: p.market_id, txHash: hash },
@@ -258,9 +289,12 @@ function PortfolioPage() {
         void refresh(true);
         void refreshBalance();
       }, 1500);
+      setClaimStage((prev) => ({ ...prev, [p.market_id]: "complete" }));
+      setReviewing(null);
+      notify.success("Claim submitted", "Your payout will appear once the network confirms it.");
     } catch (e) {
-      const msg = (e as Error).message ?? "Claim failed";
-      setClaimError(`[${p.market_id.slice(0, 8)}…] ${msg}`);
+      setClaimError(notify.error("portfolio.claim", e, "claiming your payout").message);
+      setClaimStage((prev) => ({ ...prev, [p.market_id]: "failed" }));
     } finally {
       setClaiming(null);
     }
@@ -270,7 +304,7 @@ function PortfolioPage() {
 
   if (!address) {
     return (
-      <main className="mx-auto max-w-lg px-6 py-24 text-center">
+      <div className="mx-auto max-w-lg px-6 py-24 text-center">
         <Wallet className="mx-auto h-10 w-10 text-muted-foreground" />
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">Connect your wallet</h1>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -280,13 +314,13 @@ function PortfolioPage() {
           {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
           {connecting ? "Connecting…" : "Connect Wallet"}
         </Button>
-      </main>
+      </div>
     );
   }
 
   if (!session) {
     return (
-      <main className="mx-auto max-w-lg px-6 py-24 text-center">
+      <div className="mx-auto max-w-lg px-6 py-24 text-center">
         <LogIn className="mx-auto h-10 w-10 text-muted-foreground" />
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">Sign in with your wallet</h1>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -296,21 +330,25 @@ function PortfolioPage() {
           {signingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
           {signingIn ? "Waiting for signature…" : "Sign in with wallet"}
         </Button>
-      </main>
+      </div>
     );
   }
 
   // --- MAIN CONTENT ---
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="font-mono text-xs uppercase tracking-widest text-primary">Portfolio</div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Your Arena activity</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">PORTFOLIO</h1>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            Track your active positions, settlement status and available actions.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
             Signed in as <span className="font-mono text-foreground">{shortAddr(address)}</span> on {activeNet.chainName}.
           </p>
+          <TestnetNotice network={activeNet} className="mt-3 max-w-md" />
         </div>
         <Button variant="outline" size="sm" onClick={() => void refresh(true)} disabled={refreshing} className="gap-2">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -411,7 +449,7 @@ function PortfolioPage() {
                   key={r}
                   type="button"
                   onClick={() => setRange(r)}
-                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                  className={`min-h-11 rounded-full px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors sm:min-h-0 ${
                     range === r
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -506,6 +544,18 @@ function PortfolioPage() {
         <div className="mt-16 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading positions…
         </div>
+      ) : (positions ?? []).length === 0 ? (
+        <div className="mt-10">
+          <EmptyState
+            title="Your portfolio is empty"
+            description="Participate in an available market to see your position here."
+            action={
+              <Button asChild size="sm">
+                <Link to="/arena">Explore markets</Link>
+              </Button>
+            }
+          />
+        </div>
       ) : (
         <>
           <Section
@@ -547,37 +597,79 @@ function PortfolioPage() {
                     }
                     resolvedOutcome={p.resolved_outcome}
                     actionSlot={
-                      <div className="flex flex-col items-end gap-1">
-                        <Button
-                          size="sm"
-                          onClick={() => void handleClaim(p)}
-                          disabled={claiming === p.market_id}
-                          className="gap-2"
-                        >
-                          {claiming === p.market_id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Gavel className="h-4 w-4" />
-                          )}
-                          {claiming === p.market_id ? "Claiming…" : "Claim"}
-                        </Button>
-                        {claimTx[p.market_id] && (
-                          <a
-                            className="font-mono text-[10px] text-primary underline-offset-4 hover:underline"
-                            href={`${activeNet.explorer}/tx/${claimTx[p.market_id]}`}
-                            target="_blank"
-                            rel="noreferrer"
+                      <div className="flex w-full min-w-0 flex-col gap-2 md:w-72 md:items-end">
+                        {reviewing === p.market_id ? (
+                          <div className="w-full rounded-xl border border-border/60 bg-background/40 p-3 text-left">
+                            <p className="text-sm font-medium text-foreground">Review your claim</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              You are asking the contract to release your settled payout
+                              {p.payout_amount != null
+                                ? ` of ${fmtUsdc(p.payout_amount)} USDC`
+                                : ""}{" "}
+                              to your wallet. You will confirm the transaction in your wallet next.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                className="tap-target gap-2"
+                                onClick={() => void handleClaim(p)}
+                                disabled={claiming === p.market_id}
+                              >
+                                {claiming === p.market_id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Gavel className="h-4 w-4" />
+                                )}
+                                {claiming === p.market_id ? "Confirming…" : "Confirm claim"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="tap-target"
+                                onClick={() => setReviewing(null)}
+                                disabled={claiming === p.market_id}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="tap-target gap-2"
+                            onClick={() => setReviewing(p.market_id)}
+                            disabled={claiming === p.market_id}
                           >
-                            ✓ tx {claimTx[p.market_id].slice(0, 12)}…
-                          </a>
+                            <Gavel className="h-4 w-4" />
+                            {claimStage[p.market_id] === "failed" ? "Try again" : "Claim"}
+                          </Button>
                         )}
+                        {claimStage[p.market_id] && (
+                          <TransactionProgress
+                            state={claimStage[p.market_id]}
+                            className="w-full text-left"
+                            message={
+                              claimStage[p.market_id] === "failed" && claimError
+                                ? claimError
+                                : undefined
+                            }
+                          />
+                        )}
+                        <ExplorerLink network={activeNet} hash={claimTx[p.market_id]} />
                       </div>
                     }
                   />
                 ))}
               </div>
             )}
-            {claimError && <p className="mt-3 text-xs text-destructive">{claimError}</p>}
+            <TechnicalDisclosure
+              className="mt-4"
+              rows={[
+                { label: "Network", value: activeNet.chainName },
+                { label: "Chain ID", value: String(activeNet.chainIdDec) },
+                { label: "Explorer", value: activeNet.explorer, href: activeNet.explorer },
+              ]}
+            />
           </Section>
 
           <Section
@@ -628,7 +720,7 @@ function PortfolioPage() {
           </Section>
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -647,7 +739,7 @@ function StatCard({
         {label}
       </div>
       {value === null ? (
-        <div className="mt-2 font-mono text-sm text-muted-foreground">—</div>
+        <div className="mt-2 font-mono text-sm text-muted-foreground">N/A</div>
       ) : (
         <div className={`mt-2 font-mono text-2xl tabular-nums ${accent ? "text-primary" : ""}`}>
           {value}
