@@ -110,7 +110,7 @@ export const recordStake = createServerFn({ method: "POST" })
       const { payload } = await jwtVerify(data.token, new TextEncoder().encode(jwtSecret));
       walletAddress = String(payload.wallet_address ?? "");
     } catch {
-      throw new Error("Session expired — please sign in again");
+      throw new Error("Session expired, please sign in again");
     }
     if (!walletAddress) throw new Error("Invalid session");
 
@@ -174,7 +174,7 @@ export const recordClaim = createServerFn({ method: "POST" })
       const { payload } = await jwtVerify(data.token, new TextEncoder().encode(jwtSecret));
       walletAddress = String(payload.wallet_address ?? "");
     } catch {
-      throw new Error("Session expired — please sign in again");
+      throw new Error("Session expired, please sign in again");
     }
     if (!walletAddress) throw new Error("Invalid session");
 
@@ -225,7 +225,7 @@ async function verifyTokenAndClient(token: string) {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(jwtSecret));
     walletAddress = String(payload.wallet_address ?? "");
   } catch {
-    throw new Error("Session expired — please sign in again");
+    throw new Error("Session expired, please sign in again");
   }
   if (!walletAddress) throw new Error("Invalid session");
   const supabase = createClient(url, anonKey, {
@@ -250,6 +250,10 @@ export type PortfolioPosition = {
     category: string | null;
     source_url: string | null;
     resolution_at: string | null;
+    /** Which deployed contract this market lives on (V1 legacy or V2) —
+     * required so claimOnContract() targets the right one. Falls back to
+     * OLD_CONTRACT_ADDRESS in the UI if this is null (pre-cutover rows). */
+    market_address: string | null;
   } | null;
 };
 
@@ -277,7 +281,7 @@ export const getMyPositions = createServerFn({ method: "POST" })
       const anonSupabase = createClient(url, anonKey);
       const { data: evs } = await anonSupabase
         .from("events")
-        .select("id, source_title, narrative, category, source_url, resolution_at")
+        .select("id, source_title, narrative, category, source_url, resolution_at, market_address")
         .in("id", ids);
       for (const e of evs ?? []) {
         eventsById[e.id as string] = e as PortfolioPosition["event"];
