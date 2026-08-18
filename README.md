@@ -1,865 +1,516 @@
 # Geomacro
 
-### Onchain geopolitical risk intelligence, settled in USDC, on Arc.
+**Event-driven geopolitical and macro risk intelligence with onchain prediction and settlement on Arc.**
 
 [![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
-[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
-[![V2 Proxy](https://img.shields.io/badge/V2-Active-success?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Arc Testnet](https://img.shields.io/badge/Network-Arc_Testnet-2775CA?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
+[![USDC](https://img.shields.io/badge/Settlement-USDC-2775CA?style=for-the-badge)](https://www.circle.com/usdc)
+[![License](https://img.shields.io/badge/License-MIT-111827?style=for-the-badge)](LICENSE)
 
-**[www.geomacro.live](https://www.geomacro.live)**
-
----
-
-Geomacro is an event-driven geopolitical and macro risk intelligence platform with an onchain prediction and settlement layer.
-
-The system ingests live news, classifies and scores events, generates structured HAWK/DOVE intelligence, creates eligible prediction markets, and manages their lifecycle through tentative resolution, dispute review, finalization, and claims.
-
-The current architecture preserves both generations of the protocol:
-
-- **V1** remains readable for historical markets and positions.
-- **V2** is the current market architecture and introduces a structured dispute and tribunal lifecycle.
-
-> **Current V2 proxy:** [`0x2F874FB07084a22D2bB314D0762Af57Cb1856868`](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)  
-> **V2 implementation:** `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c`  
-> **V2 deployment block:** `56797869`  
-> **Legacy V1:** [`0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe`](https://testnet.arcscan.app/address/0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe)
+**Live product:** https://www.geomacro.live
 
 ---
 
-## Table of contents
+Geomacro ingests real-world geopolitical and macro events, converts them into structured risk intelligence, and links selected events to HAWK/DOVE prediction markets with onchain settlement.
 
-- [What this is](#what-this-is)
+The system separates intelligence from transaction execution:
+
+- intelligence and market discovery are publicly readable;
+- wallet connection is deferred until an onchain action is required;
+- Supabase provides the structured application read model;
+- Arc contract state remains authoritative for financial state;
+- V1 and V2 market history are both preserved.
+
+> **Current deployment**
+>
+> - **Network:** Arc Testnet
+> - **Chain ID:** `5042002`
+> - **V2 proxy:** `0x2F874FB07084a22D2bB314D0762Af57Cb1856868`
+> - **V2 implementation:** `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c`
+> - **V2 deployment block:** `56797869`
+> - **V1 legacy contract:** `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe`
+
+V2 is the current contract path for new markets. V1 remains readable for historical markets, positions, lifecycle state, and claims.
+
+---
+
+## Mermaid compatibility
+
+The diagrams in this README intentionally use conservative Mermaid syntax for GitHub rendering: quoted labels, no HTML line breaks inside nodes, and no experimental diagram features.
+
+## Contents
+
 - [Architecture](#architecture)
-- [End-to-end market flow](#end-to-end-market-flow)
+- [Event lifecycle](#event-lifecycle)
 - [V1 and V2 routing](#v1-and-v2-routing)
-- [Lifecycle stages](#lifecycle-stages)
-- [V2 contract state machine](#v2-contract-state-machine)
-- [Resolution and dispute system](#resolution-and-dispute-system)
-- [Five-juror tribunal](#five-juror-tribunal)
-- [Contract architecture](#contract-architecture)
-- [Cross-chain bridge (CCTP V2) & swap](#cross-chain-bridge-cctp-v2--swap)
-- [RPC resilience](#rpc-resilience)
-- [Supabase data model](#supabase-data-model)
+- [V2 market lifecycle](#v2-market-lifecycle)
+- [Resolution and dispute model](#resolution-and-dispute-model)
+- [Contract security model](#contract-security-model)
+- [Protocol economics](#protocol-economics)
+- [Crosschain and swap](#crosschain-and-swap)
+- [Data model](#data-model)
 - [Automation](#automation)
-- [Tech stack](#tech-stack)
-- [Repository layout](#repository-layout)
-- [Local setup](#local-setup)
-- [Configuration reference](#configuration-reference)
+- [Resilience](#resilience)
+- [Technology stack](#technology-stack)
+- [Repository structure](#repository-structure)
+- [Local development](#local-development)
+- [Configuration](#configuration)
 - [Product surfaces](#product-surfaces)
-- [Design principles](#design-principles)
+- [Engineering principles](#engineering-principles)
 - [Current status](#current-status)
 - [Roadmap](#roadmap)
-- [Why Arc and USDC](#why-arc-and-usdc)
-- [Reusable primitives](#reusable-primitives)
-
----
-
-## What this is
-
-Geomacro begins with the underlying real-world event rather than with a manually created prediction market.
-
-The platform continuously ingests geopolitical and macro news, classifies relevance and severity, converts qualifying events into structured intelligence, and can create HAWK/DOVE markets around selected events.
-
-**HAWK** represents escalation.
-
-**DOVE** represents de-escalation.
-
-The resulting lifecycle connects:
-
-```text
-event
-→ intelligence
-→ risk
-→ market
-→ position
-→ tentative resolution
-→ dispute review
-→ finalization
-→ settlement
-```
-
-Intelligence remains useful independently of wallet participation. Wallet access is required only when the user initiates an onchain action.
-
-The market is therefore one component of the system rather than the entire product.
-
-![Geomacro architecture: ingestion, automation, data, Arc Testnet contract, and client, with design principles and lifecycle timeline](docs/architecture-diagram.svg)
 
 ---
 
 ## Architecture
 
-The current system separates ingestion, intelligence, automation, application data, blockchain state, and user-facing product surfaces.
-
 ```mermaid
-flowchart LR
-    subgraph ingestion["Event ingestion"]
-        NA[NewsAPI]
-        GD[The Guardian]
-        AI[Groq / Cerebras<br/>classification + scoring]
-    end
-
-    subgraph automation["GitHub Actions"]
-        ING[ingest-news.js]
-        BRF[generate-briefings.js]
-        CRE[create-markets.js]
-        RES[resolve-markets.js]
-        JRY[resolve-disputes.js]
-        FIN[finalize-markets.js]
-        SYNC[sync-lifecycle.js]
-        STK[sync-stakes.js]
-        MON[anomaly-monitor.js]
-    end
-
-    subgraph data["Supabase"]
-        EVENTS[(events)]
-        POS[(positions)]
-        DIS[(market_disputes)]
-        VOTES[(jury_votes)]
-        TX[(tx_history)]
-    end
-
-    subgraph client["Frontend"]
-        GRI[Global Risk Index]
-        FEED[Intelligence]
-        ARENA[Agent Arena]
-        PORT[Portfolio]
-        BRIDGE[Bridge]
-        SWAP[Swap]
-    end
-
-    subgraph rpc["RPC layer"]
-        BACKEND[Backend RPC rotation<br/>+ Multicall3]
-        FRONTEND[Frontend FallbackProvider<br/>+ Multicall3]
-    end
-
-    subgraph chain["Arc Testnet"]
-        V1[AgentArena V1]
-        V2[AgentArena V2 Proxy]
-        TREASURY[MultisigTreasury]
-        USDC[Native USDC]
-    end
-
-    NA --> AI
-    GD --> AI
-    AI --> ING
-    ING --> EVENTS
-
-    EVENTS --> BRF
-    BRF --> EVENTS
-
-    EVENTS --> CRE
-    CRE --> BACKEND
-    BACKEND --> V2
-
-    RES --> BACKEND
-    JRY --> BACKEND
-    FIN --> BACKEND
-    SYNC --> BACKEND
-    STK --> BACKEND
-
-    BACKEND --> V1
-    BACKEND --> V2
-
-    V2 --> TREASURY
-
-    EVENTS --> GRI
-    EVENTS --> FEED
-    EVENTS --> ARENA
-
-    POS --> PORT
-    DIS --> PORT
-    VOTES --> PORT
-
-    ARENA --> FRONTEND
-    PORT --> FRONTEND
-    FRONTEND --> V1
-    FRONTEND --> V2
-
-    BRIDGE --> USDC
-    SWAP --> USDC
+graph LR;
+    NEWS["NewsAPI / The Guardian"] --> INGEST["Ingest and deduplicate"];
+    INGEST --> CLASSIFY["Classify and score"];
+    CLASSIFY --> EVENTS["Supabase events"];
+    EVENTS --> BRIEF["HAWK / DOVE briefings"];
+    EVENTS --> CREATE["Create eligible markets"];
+    CREATE --> V2["AgentArena V2 proxy"];
+    V2 --> RESOLVE["Tentative resolution"];
+    RESOLVE --> DISPUTE["Dispute review when challenged"];
+    DISPUTE --> FINALIZE["Finalization"];
+    FINALIZE --> CLAIM["Claim and settlement"];
+    EVENTS --> PRODUCT["Risk and intelligence"];
+    V2 --> PRODUCT;
 ```
 
 ### Responsibility boundaries
 
-- **Ingestion** discovers and normalizes external events.
-- **Intelligence** classifies relevance, severity, category, and HAWK/DOVE context.
-- **Supabase** provides the structured application read model and transparency records.
-- **GitHub Actions** runs scheduled lifecycle automation.
-- **Arc contracts** remain authoritative for financial state.
-- **Frontend** exposes intelligence, markets, positions, resolution state, disputes, Bridge, and Swap.
-
-Supabase is not used as a substitute for authoritative onchain financial state.
+| Layer | Responsibility |
+|---|---|
+| Intelligence | Ingestion, classification, severity, briefings, market questions, tentative resolution |
+| Supabase | Structured read model, event metadata, position mirror, dispute/jury transparency records |
+| GitHub Actions | Scheduled lifecycle automation and reconciliation |
+| Arc | Authoritative financial state for markets, stakes, disputes, finalization, and claims |
+| Frontend | Public intelligence, market discovery, transaction flows, lifecycle transparency |
 
 ---
 
-## End-to-end market flow
+## Event lifecycle
+
+Geomacro starts from the underlying event rather than from a manually created market.
 
 ```mermaid
-flowchart LR
-    A[News breaks] --> B[Ingest + deduplicate]
-    B --> C[Classify<br/>category + severity]
-    C --> D[Structured event]
-    D --> E[Generate HAWK / DOVE intelligence]
-    D --> F{Market eligible?}
-
-    F -->|No| G[Intelligence only]
-    F -->|Yes| H[Create V2 market]
-
-    H --> I[Users take HAWK / DOVE positions]
-    I --> J[Staking locks]
-    J --> K[Tentative resolution]
-    K --> L{Eligible dispute raised?}
-
-    L -->|No| M[Finalize]
-    L -->|Yes| N[5-juror review]
-
-    N --> O[Onchain vote tally]
-    O --> M
-
-    M --> P[Claim / settlement]
+graph LR;
+    EVENT["Real-world event"] --> INTEL["Structured intelligence"];
+    INTEL --> RISK["Risk assessment"];
+    RISK --> ELIGIBLE{"Market eligible?"};
+    ELIGIBLE -->|No| READ["Intelligence only"];
+    ELIGIBLE -->|Yes| MARKET["V2 market"];
+    MARKET --> POSITION["HAWK / DOVE positions"];
+    POSITION --> RESOLUTION["Tentative resolution"];
+    RESOLUTION --> CHALLENGE{"Disputed?"};
+    CHALLENGE -->|No| FINAL["Finalize"];
+    CHALLENGE -->|Yes| JURY["Five-juror review"];
+    JURY --> FINAL;
+    FINAL --> CLAIM["Claim / settlement"];
 ```
 
-The system preserves the event identity across intelligence, market state, resolution, and settlement.
+This architecture keeps risk intelligence, market state, resolution, and settlement connected to the same event identity.
 
 ---
 
 ## V1 and V2 routing
 
-Geomacro currently operates with explicit dual-contract awareness.
+Geomacro maintains explicit dual-contract routing.
 
-| Version | Role | Address |
+| Version | Purpose | Address |
 |---|---|---|
-| V1 | Historical / legacy markets | `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe` |
-| V2 Proxy | Current market architecture | `0x2F874FB07084a22D2bB314D0762Af57Cb1856868` |
-| V2 Implementation | Current implementation behind proxy | `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c` |
+| V1 | Legacy markets and historical positions | `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe` |
+| V2 proxy | Current market contract | `0x2F874FB07084a22D2bB314D0762Af57Cb1856868` |
+| V2 implementation | Upgrade implementation | `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c` |
 
-New market state is associated with the V2 proxy.
-
-Historical V1 records remain readable so protocol evolution does not erase earlier markets or positions.
-
-Routing uses the market address stored with the event rather than assuming every row belongs to the newest contract.
+The application and automation layer route a market using `events.market_address`.
 
 ```mermaid
-flowchart TD
-    E[Event / position] --> A{market_address}
-
-    A -->|V1 address| V1[V1 ABI + contract]
-    A -->|V2 proxy| V2[V2 ABI + proxy]
-    A -->|Legacy record without mapping| L[Legacy fallback / diagnostic state]
-
-    V1 --> N[Normalized application state]
-    V2 --> N
-    L --> N
-
-    N --> F[Frontend]
-    N --> S[Sync jobs]
-    N --> P[Portfolio]
+graph TD;
+    RECORD["Event or market record"] --> ADDRESS{"market_address"};
+    ADDRESS -->|V1| V1["V1 contract and V1 ABI"];
+    ADDRESS -->|V2| V2["V2 proxy and V2 ABI"];
+    ADDRESS -->|Legacy missing mapping| FALLBACK["Legacy diagnostic fallback"];
+    V1 --> NORMAL["Normalized market state"];
+    V2 --> NORMAL;
+    FALLBACK --> NORMAL;
+    NORMAL --> APP["Frontend, automation and analytics"];
 ```
 
-This distinction matters because V1 and V2 expose different market-detail structures and lifecycle capabilities.
+The V1 and V2 `getMarketFullDetails()` return shapes differ:
 
-V2 includes additional resolution and dispute state that does not exist in the same form on V1.
+- **V1:** 7 fields
+- **V2:** 9 fields, including dispute-specific state
+
+New market creation targets the V2 proxy. Historical V1 lifecycle and claims remain readable.
 
 ---
 
-## Lifecycle stages
-
-The market lifecycle is intentionally separated into multiple states rather than treating resolution as an immediate transition from staking to payout.
+## V2 market lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> OPEN: createMarket
-    OPEN --> LOCKED: staking closes
-    LOCKED --> AI_RESOLVED: tentative outcome
-    AI_RESOLVED --> DISPUTED: eligible challenge
-    AI_RESOLVED --> FINALIZED: no valid dispute
-    DISPUTED --> FINALIZED: tribunal / fallback resolution
-    FINALIZED --> CLAIMED: eligible claim
+    [*] --> OPEN
+    OPEN --> LOCKED
+    LOCKED --> AI_RESOLVED
+    AI_RESOLVED --> DISPUTED
+    AI_RESOLVED --> FINALIZED
+    DISPUTED --> FINALIZED
+    FINALIZED --> CLAIMED
     CLAIMED --> [*]
 ```
 
-### Application-level lifecycle
-
-| Stage | Meaning |
+| State | Meaning |
 |---|---|
-| `active` | Market is active or awaiting the resolution boundary |
-| `awaiting_dispute` | Tentative resolution exists and dispute state is relevant |
-| `disputed` | A valid V2 dispute has been opened |
-| `completed` | Market is finalized |
-| claim state | Eligible winning positions can progress through payout / claim |
+| `OPEN` | Market exists and staking remains open |
+| `LOCKED` | Staking has ended; resolution is pending |
+| `AI_RESOLVED` | Tentative AI-assisted outcome is available |
+| `DISPUTED` | An eligible challenge has been raised |
+| `FINALIZED` | Outcome is final; claim processing may proceed |
 
-The exact financial state is read from the relevant contract.
-
-The application lifecycle is a normalized representation used for display, synchronization, and portfolio transparency.
+Supabase mirrors user-facing lifecycle state, but the contract remains authoritative for financial state.
 
 ---
 
-## V2 contract state machine
+## Resolution and dispute model
 
-V2 extends the original market lifecycle with explicit dispute handling.
+V2 separates tentative resolution from finalization.
+
+A dispute is only created when an eligible participant actually challenges the tentative outcome. Markets that are never challenged have no jury history.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Created: createMarket
-    Created --> Staked: stake
-    Staked --> Tentative: declareWinner
-    Tentative --> Disputed: raiseDispute
-    Tentative --> Finalized: finalize if undisputed
-    Disputed --> Tribunal: juror votes
-    Tribunal --> Finalized: threshold / fallback
-    Finalized --> Claimed: claim
-    Claimed --> [*]
-
-    note right of Tentative
-      Tentative outcome is
-      challengeable during the
-      configured dispute window.
-    end note
-
-    note right of Tribunal
-      Five differentiated juror roles.
-      4-of-5 threshold.
-    end note
+graph TD;
+    TENTATIVE["Tentative outcome"] --> ELIGIBLE{"Eligible challenge?"};
+    ELIGIBLE -->|No| FINALIZE["Finalize after dispute window"];
+    ELIGIBLE -->|Yes| DISPUTED["Disputed market"];
+    DISPUTED --> J1["Fact-Checker"];
+    DISPUTED --> J2["Hawk Re-arguer"];
+    DISPUTED --> J3["Dove Re-arguer"];
+    DISPUTED --> J4["Evidence Skeptic"];
+    DISPUTED --> J5["Domain Specialist"];
+    J1 --> TALLY["Onchain vote tally"];
+    J2 --> TALLY;
+    J3 --> TALLY;
+    J4 --> TALLY;
+    J5 --> TALLY;
+    TALLY --> THRESHOLD{"Four matching votes?"};
+    THRESHOLD -->|Uphold| UPHOLD["Uphold tentative outcome"];
+    THRESHOLD -->|Overturn| OVERTURN["Overturn tentative outcome"];
+    UPHOLD --> FINAL["Finalized"];
+    OVERTURN --> FINAL;
 ```
 
-V2 therefore separates:
+### Eligibility
 
-1. market participation;
-2. tentative resolution;
-3. dispute eligibility;
-4. tribunal review;
-5. finalization;
-6. claims.
+A dispute requires:
 
----
+1. the market to be in the dispute-eligible V2 lifecycle state;
+2. the dispute window to remain open;
+3. the caller to hold real stake on the losing side of the tentative outcome;
+4. the required bond to be supplied.
 
-## Resolution and dispute system
+### Bond
 
-Geomacro does not treat an AI-generated tentative verdict as inherently infallible.
-
-V2 introduces a challenge path around tentative resolution.
-
-```mermaid
-flowchart TD
-    A[Tentative HAWK / DOVE verdict] --> B{Dispute eligible?}
-
-    B -->|No| C[Finalize through normal lifecycle]
-
-    B -->|Yes| D[Participant reviews dispute bond]
-    D --> E[raiseDispute on V2]
-    E --> F[Onchain market enters disputed state]
-    F --> G[Dispute automation detects case]
-    G --> H[Five juror reviews]
-    H --> I[Votes submitted onchain]
-    I --> J{4-of-5 threshold reached?}
-
-    J -->|Overturn| K[Overturn tentative outcome]
-    J -->|Uphold| L[Uphold tentative outcome]
-    J -->|No threshold before contract fallback| M[Fallback resolution path]
-
-    K --> N[Finalized]
-    L --> N
-    M --> N
+```text
+bond = 8% of caller's losing-side stake
+minimum = 1 native USDC unit
+maximum = 40 native USDC units
 ```
 
-### Dispute eligibility
+The deployed V2 contract uses Arc's native-gas denomination for the bond transaction.
 
-The frontend does not determine final eligibility from Supabase alone.
+### Juror roles
 
-Supabase fields can identify a potential action, but the application confirms relevant state against the V2 contract before offering the transaction.
-
-The current frontend flow checks contract state and the user's actual position before presenting the dispute action.
-
-This prevents an application cache from becoming the authority for a financial transaction.
-
-### Dispute bond
-
-The bond is computed from the user's relevant losing-side stake and contract rules.
-
-The UI reads the actual contract-derived requirement before the transaction is submitted.
-
-The bond is therefore not a hardcoded frontend fee.
-
----
-
-## Five-juror tribunal
-
-The V2 dispute architecture uses five differentiated AI-assisted review roles.
-
-The objective is not to call the same model five times and label those outputs independent jurors.
-
-Each role is assigned a distinct review responsibility.
-
-| Juror role | Responsibility |
+| Role | Purpose |
 |---|---|
-| Fact-Checker | Tests factual claims against available evidence |
-| Hawk Re-arguer | Constructs the strongest escalation interpretation |
-| Dove Re-arguer | Constructs the strongest de-escalation interpretation |
-| Evidence Skeptic | Challenges evidence quality and unsupported assumptions |
-| Domain Specialist | Applies event/category-specific context |
+| Fact-Checker | Evaluate factual claims and available evidence |
+| Hawk Re-arguer | Construct the strongest escalation case |
+| Dove Re-arguer | Construct the strongest de-escalation case |
+| Evidence Skeptic | Challenge evidence quality and unsupported assumptions |
+| Domain Specialist | Apply category-specific context |
 
-```mermaid
-flowchart LR
-    D[Disputed V2 market]
+The design uses differentiated review roles rather than treating repeated model calls as independent evidence.
 
-    D --> J1[Fact-Checker]
-    D --> J2[Hawk Re-arguer]
-    D --> J3[Dove Re-arguer]
-    D --> J4[Evidence Skeptic]
-    D --> J5[Domain Specialist]
-
-    J1 --> T[Tally]
-    J2 --> T
-    J3 --> T
-    J4 --> T
-    J5 --> T
-
-    T --> Q{4 matching votes?}
-
-    Q -->|Uphold| U[Uphold tentative verdict]
-    Q -->|Overturn| O[Overturn tentative verdict]
-
-    U --> F[Finalize]
-    O --> F
-```
-
-### Decision threshold
+### Decision rule
 
 - Jury size: **5**
-- Required decision threshold: **4 of 5**
-- Juror submissions are individually represented
-- Vote state is tied to the disputed market
-- Public transparency data can include verdict, reasoning, evidence count, vote time, and transaction hash where available
+- Decision threshold: **4 of 5**
+- Juror votes are submitted independently
+- Onchain vote state is authoritative
+- Supabase provides a public transparency mirror for reasoning, evidence metadata, timestamps, and transaction references where available
 
-The tribunal is activated only for an actual dispute.
-
-If no dispute was opened for a finalized V2 market, the UI explicitly reports that no tribunal case was activated.
-
-No synthetic juror history is created to make an undisputed market appear reviewed.
+> The dispute automation is implemented and scheduled. It activates only when a real V2 market enters the onchain disputed state. No synthetic tribunal records are created for undisputed markets.
 
 ---
 
-## Contract architecture
+## Contract security model
 
-V2 uses an upgradeable proxy architecture.
+### Proxy
 
-```mermaid
-flowchart TD
-    APP[Frontend + backend] --> PROXY[AgentArenaProxy<br/>0x2F874F...56868]
-    PROXY --> IMPL[AgentArenaV2<br/>implementation]
-    IMPL --> TREASURY[MultisigTreasury]
+- `AgentArenaProxy` is the application address.
+- `AgentArenaV2` is the implementation.
+- Frontend and backend configuration should target the proxy, not the implementation.
 
-    OWNERS[2-of-3 treasury signers] --> TREASURY
-    TREASURY --> UPGRADE[Upgrade authorization]
-    UPGRADE --> PROXY
+### Treasury and upgrades
 
-    GUARDIAN[Guardian] --> PAUSE[Emergency pause]
-    PAUSE --> PROXY
-```
-
-### V2 proxy
-
-Current application address:
-
-```text
-0x2F874FB07084a22D2bB314D0762Af57Cb1856868
-```
-
-Implementation:
-
-```text
-0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c
-```
-
-Deployment block:
-
-```text
-56797869
-```
-
-Application configuration should target the proxy rather than calling the implementation directly.
-
-### Treasury and upgrade control
-
-The V2 architecture includes a multisig treasury and delayed upgrade path.
-
-The purpose is to avoid making a single application key the sole authority over protocol upgrades and treasury-controlled operations.
+- `MultisigTreasury` uses a **2-of-3** signer model.
+- Upgrades use a **48-hour timelock**.
+- Upgrade approval requires **2-of-3** treasury signers.
+- A single owner key cannot unilaterally complete an upgrade.
 
 ### Circuit breaker
 
-The protocol architecture includes guardian-based emergency controls and monitoring.
+- A guardian can pause the protocol.
+- The owner can also pause.
+- Unpause requires treasury approval.
+- A permissionless recovery path exists after the configured timeout.
+- `anomaly-monitor.js` runs on a scheduled basis and can react to configured critical conditions.
 
-`anomaly-monitor.js` observes configured operational and protocol conditions so critical failures are not dependent on manual UI discovery.
+### Fee ceiling
 
-This architecture improves operational controls, but it should not be interpreted as a substitute for an external production security review.
+The V2 winner fee is initialized at **2%** and constrained by a **3%** contract ceiling.
+
+> Production deployment should still undergo the appropriate external security review and operational readiness process before larger-scale economic activity.
 
 ---
 
-## Cross-chain bridge (CCTP V2) & swap
+## Protocol economics
 
-`/bridge` provides the current crosschain USDC experience.
+The current V2 contract contains protocol-level fee and dispute economics.
 
-The Bridge uses Circle CCTP V2 testnet infrastructure to move native USDC from supported source testnets toward Arc Testnet.
+### Winner fee
+
+- Initial fee: **200 bps (2%)**
+- Maximum: **300 bps (3%)**
+- Fees route to the configured treasury
+
+### Dispute economics
+
+If a dispute is overturned:
+
+- the disputer receives the bond back;
+- the contract can pay an additional reward from the available dispute reserve, subject to contract limits.
+
+If a dispute is upheld:
+
+- rejected-bond value is allocated according to the deployed treasury/reserve rules.
+
+Commercial subscription, professional, and institutional pricing are intentionally outside the scope of this repository documentation.
+
+---
+
+## Crosschain and swap
+
+### CCTP V2 bridge
+
+The current Bridge surface integrates Circle CCTP V2 testnet infrastructure for native USDC movement toward Arc.
+
+```mermaid
+erDiagram
+    EVENTS ||--o{ POSITIONS : has
+    EVENTS ||--o| MARKET_DISPUTES : may_have
+    MARKET_DISPUTES ||--o{ JURY_VOTES : contains
+
+    EVENTS {
+        uuid id
+        text market_address
+        text market_question
+        text ai_tentative_winner
+        boolean market_resolved
+    }
+
+    POSITIONS {
+        uuid id
+        uuid market_id
+        text wallet_address
+        text side
+        numeric staked_amount_raw
+    }
+
+    MARKET_DISPUTES {
+        uuid id
+        uuid event_id
+        text market_id
+        text disputer_address
+        boolean resolved
+    }
+
+    JURY_VOTES {
+        bigint id
+        text market_id
+        text juror_role
+        text verdict
+        text tx_hash
+    }
+```
+
+Configured source testnets include Ethereum Sepolia, Base Sepolia, and Avalanche Fuji.
+
+### Swap
+
+The current Swap surface uses Circle App Kit for supported same-chain swap flows on Arc Testnet.
+
+Both surfaces keep transaction state, errors, and technical details explicit, while deferring wallet access until the user initiates an action.
+
+---
+
+## Data model
+
+Supabase is the structured application data layer and public transparency mirror. It is not a replacement for authoritative onchain financial state.
+
+```mermaid
+graph LR;
+    NEWS["News sources"] --> INGEST["auto-ingest-news"];
+    INGEST --> DB["Supabase"];
+    DB --> BRIEF["Generate briefings"];
+    DB --> CREATE["Create markets"];
+    CREATE --> V2["V2 proxy"];
+    V2 --> RESOLVE["Resolve markets"];
+    RESOLVE --> DISPUTE{"Disputed?"};
+    DISPUTE -->|Yes| JURY["Resolve disputes"];
+    DISPUTE -->|No| FINALIZE["Finalize markets"];
+    JURY --> FINALIZE;
+    V2 --> LIFECYCLE["Sync lifecycle"];
+    V2 --> STAKES["Sync stakes"];
+    LIFECYCLE --> DB;
+    STAKES --> DB;
+```
+
+### Core tables
+
+**`events`**
+
+Stores structured event intelligence and market lifecycle metadata, including market address, market question, tentative resolution, dispute-window state, and final resolution state.
+
+**`positions`**
+
+Stores the application mirror of wallet positions, stake amount, side, status, outcome, payout, and claim state.
+
+**`market_disputes`**
+
+Stores the public dispute case record, including event/market identity, disputer, bond, vote totals, verdict, and timestamps.
+
+**`jury_votes`**
+
+Stores the public transparency record for individual juror submissions, including role, verdict, reasoning, evidence metadata where available, transaction hash, and vote time.
+
+**`tx_history`**
+
+Stores transaction-history data used by the Bridge / Swap transaction-history surface.
+
+### RLS
+
+Public dispute and jury records are readable through RLS-controlled public access. Trusted writes use server-side credentials. Service-role credentials are never exposed to the browser.
+
+### Migrations
+
+```text
+supabase/migrations/
+├── 001_ai_jury_dispute_system.sql
+├── 002_events_schema_backfill.sql
+└── 003_tx_history.sql
+```
+
+The live schema has also evolved through direct operational SQL changes. A fresh deployment should reconcile the current schema with repository migrations before assuming the migration directory is a complete historical snapshot.
+
+---
+
+## Automation
+
+The market and intelligence lifecycle is operated through scheduled GitHub Actions.
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant Wallet as Browser wallet
-    participant Source as Source chain
-    participant Iris as Circle Iris
-    participant Arc as Arc Testnet
+    participant Wallet
+    participant Source
+    participant Iris
+    participant Arc
 
-    User->>Wallet: Select source chain + amount
-    Wallet->>Source: Approve USDC
-    User->>Wallet: Initiate burn
-    Wallet->>Source: depositForBurn(...)
+    User->>Wallet: Select source and amount
+    Wallet->>Source: Approve and burn USDC
     Source-->>Wallet: Burn transaction confirmed
-
-    loop Attestation polling
-        Wallet->>Iris: Request message status
-        Iris-->>Wallet: pending / complete
-    end
-
-    User->>Wallet: Complete transfer
-    Wallet->>Arc: receiveMessage(message, attestation)
+    Wallet->>Iris: Request attestation status
+    Iris-->>Wallet: Pending or complete
+    Wallet->>Arc: Submit message and attestation
     Arc-->>User: Native USDC available
 ```
 
-Current configured source testnets include:
+| Workflow | Role |
+|---|---|
+| `auto-ingest-news.yml` | Ingest and classify external events |
+| `Auto-generate-briefings.yml` | Generate / cache HAWK and DOVE briefings |
+| `auto-create-markets.yml` | Create eligible V2 markets |
+| `auto-resolve-markets.yml` | Post tentative AI-assisted outcomes |
+| `auto-resolve-disputes.yml` | Process real V2 disputes |
+| `auto-finalize-markets.yml` | Finalize eligible markets |
+| `sync-lifecycle.yml` | Reconcile V1 / V2 lifecycle state |
+| `sync-stakes.yml` | Reconcile V1 / V2 stake events into positions |
+| `security-monitor.yml` | Monitor configured protocol anomalies |
+| `auto-recovery.yml` | Manual recovery operations |
+| `debug-schema.yml` | Manual schema diagnostics |
 
-- Ethereum Sepolia
-- Base Sepolia
-- Avalanche Fuji
-
-The user remains in control of the wallet-signed flow.
-
-The interface exposes transfer state rather than hiding the multi-stage CCTP lifecycle behind a single synthetic status.
-
-### Swap
-
-The current Bridge surface also includes same-chain Swap functionality through Circle App Kit on Arc Testnet.
-
-The live surface includes the currently supported swap flow, liquidity information, and transaction history.
-
-Bridge and Swap are separate actions presented within the same crosschain/liquidity experience.
+Scheduled jobs are designed around reconciliation and retry safety rather than manual state editing.
 
 ---
 
-## RPC resilience
+## Resilience
 
-Geomacro maintains separate backend and frontend RPC strategies.
+### RPC
 
-### Backend
+Backend lifecycle jobs can rotate across multiple RPC endpoints. Premium credentials remain server-side.
 
-Lifecycle scripts can rotate across multiple RPC endpoints.
-
-The backend pool is designed to avoid a single RPC provider becoming a hard dependency for scheduled market operations.
-
-Typical configured providers include:
+Typical providers include:
 
 ```text
 Alchemy
 QuickNode
 GetBlock
 dRPC
-Arc public fallback
+Arc public RPC fallback
 ```
 
-Premium provider credentials remain server-side in GitHub Actions secrets.
-
-### Frontend
-
-The browser uses a lighter fallback configuration suitable for public reads.
-
-Premium backend RPC keys are not shipped in the frontend bundle.
-
-### Multicall3
-
-Compatible contract reads are batched through Multicall3 where appropriate.
+Compatible reads are batched with Multicall3:
 
 ```text
 0xcA11bde05977b3631167028862bE2a173976CA11
 ```
 
-```mermaid
-flowchart LR
-    UI[Frontend request] --> MC[Multicall3]
-    MC --> M1[Market 1]
-    MC --> M2[Market 2]
-    MC --> M3[Market 3]
-    MC --> MN[Market N]
+### AI providers
 
-    M1 --> R[Normalized response]
-    M2 --> R
-    M3 --> R
-    MN --> R
-```
+The automation layer uses Groq as a primary provider in several paths, with Cerebras configured as an independent fallback where supported.
 
-Batching reduces RPC request volume and lowers the chance of partially loaded market views caused by independent request failures.
+Dispute evidence can additionally use Tavily. If fresh evidence retrieval is unavailable, the system should report that limitation rather than invent external evidence.
 
 ---
 
-## Supabase data model
+## Technology stack
 
-Supabase provides the application read model and transparency layer around events, positions, disputes, juror votes, and transaction history.
-
-Financial truth remains onchain.
-
-```mermaid
-erDiagram
-    EVENTS ||--o{ POSITIONS : maps
-    EVENTS ||--o| MARKET_DISPUTES : may_have
-    MARKET_DISPUTES ||--o{ JURY_VOTES : contains
-
-    EVENTS {
-        uuid id PK
-        text category
-        integer severity
-        boolean market_created
-        text market_address
-        text market_question
-        boolean market_resolved
-        text ai_tentative_winner
-        timestamptz dispute_window_ends_at
-        text disputer_address
-        timestamptz disputed_at
-        timestamptz created_at
-    }
-
-    POSITIONS {
-        uuid id PK
-        text wallet_address
-        uuid market_id
-        text side
-        numeric staked_amount_raw
-        text status
-        text resolved_outcome
-        numeric payout_amount
-        timestamptz claimed_at
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    MARKET_DISPUTES {
-        uuid id PK
-        uuid event_id
-        text market_id
-        text disputer_address
-        text dispute_tx_hash
-        timestamptz disputed_at
-        timestamptz resolved_at
-        text outcome
-        numeric bond_amount
-        smallint overturn_votes
-        smallint uphold_votes
-        boolean resolved
-        text final_verdict
-        timestamptz created_at
-    }
-
-    JURY_VOTES {
-        bigint id PK
-        text market_id
-        text juror_role
-        text juror_wallet
-        text verdict
-        text reasoning
-        text tx_hash
-        timestamptz voted_at
-        smallint evidence_count
-    }
-```
-
-### `events`
-
-The event table contains both intelligence and market-lifecycle metadata.
-
-Relevant V2 fields include:
-
-```text
-market_created
-market_threshold
-resolution_at
-market_resolved
-ai_tentative_winner
-market_address
-disputer_address
-disputed_at
-dispute_window_ends_at
-market_created_tx_hash
-briefing_generated_at
-market_question
-```
-
-### `positions`
-
-The position table mirrors wallet-specific market positions.
-
-Current fields include:
-
-```text
-id
-wallet_address
-market_id
-side
-staked_amount_raw
-status
-resolved_outcome
-payout_amount
-claimed_at
-created_at
-updated_at
-```
-
-The application uses this data for Portfolio discovery and then verifies relevant financial/action state against the contract where required.
-
-### `market_disputes`
-
-Stores dispute-level transparency information.
-
-Current schema includes:
-
-```text
-id
-event_id
-market_id
-disputer_address
-dispute_tx_hash
-disputed_at
-resolved_at
-outcome
-created_at
-bond_amount
-overturn_votes
-uphold_votes
-resolved
-final_verdict
-```
-
-### `jury_votes`
-
-Stores individual tribunal vote records.
-
-Current schema includes:
-
-```text
-id
-market_id
-juror_role
-juror_wallet
-verdict
-reasoning
-tx_hash
-voted_at
-evidence_count
-```
-
-### Row Level Security
-
-RLS is enabled for both:
-
-```text
-market_disputes
-jury_votes
-```
-
-Public read access is available for tribunal transparency.
-
-Trusted write operations remain server-side.
-
-The browser must never receive the Supabase service-role key.
-
-### Schema history
-
-The live Supabase schema has evolved beyond the original migration snapshot.
-
-This means the migration directory should not automatically be treated as a complete historical reconstruction of every operational SQL change.
-
-A production-hardening task is to capture the current live schema as a reproducible migration baseline.
-
----
-
-## Automation
-
-Scheduled GitHub Actions operate the intelligence and market lifecycle.
-
-```mermaid
-flowchart LR
-    NEWS[News sources] --> INGEST[auto-ingest-news]
-    INGEST --> DB[(Supabase)]
-
-    DB --> BRIEF[generate briefings]
-    DB --> CREATE[create markets]
-
-    CREATE --> V2[V2 Proxy]
-    V2 --> RESOLVE[resolve markets]
-    RESOLVE --> DISPUTE{Disputed?}
-
-    DISPUTE -->|Yes| JURY[resolve disputes]
-    DISPUTE -->|No| FINALIZE[finalize markets]
-
-    JURY --> FINALIZE
-
-    V2 --> LIFE[sync lifecycle]
-    V2 --> STAKE[sync stakes]
-
-    LIFE --> DB
-    STAKE --> DB
-    JURY --> DB
-
-    MONITOR[security monitor] --> V2
-```
-
-### Workflow responsibilities
-
-| Workflow | Responsibility |
+| Layer | Technology |
 |---|---|
-| `auto-ingest-news.yml` | Ingest and classify external events |
-| `Auto-generate-briefings.yml` | Generate cached HAWK/DOVE intelligence |
-| `auto-create-markets.yml` | Create eligible markets |
-| `auto-resolve-markets.yml` | Produce tentative market resolution |
-| `auto-resolve-disputes.yml` | Process actual disputed V2 markets |
-| `auto-finalize-markets.yml` | Finalize eligible markets |
-| `sync-lifecycle.yml` | Reconcile lifecycle state |
-| `sync-stakes.yml` | Reconcile onchain positions |
-| `security-monitor.yml` | Monitor configured anomalies |
-| `auto-recovery.yml` | Manual operational recovery |
-| `debug-schema.yml` | Manual schema diagnostics |
-
-The dispute runner does not manufacture tribunal activity.
-
-If no V2 market is disputed, there is no tribunal case to process.
-
----
-
-## Tech stack
-
-| Layer | Choice | Responsibility |
-|---|---|---|
-| Frontend | Vite 7 + TanStack Start + React 19 + Tailwind v4 | Product interface and routing |
-| UI | shadcn/ui + Radix primitives | Accessible UI primitives |
-| Chain client | ethers v6 | Contract reads and wallet transactions |
-| RPC | Multi-endpoint backend rotation + frontend fallback | Chain availability |
-| Batching | Multicall3 | Efficient contract reads |
-| Data | Supabase / PostgreSQL | Intelligence, positions, transparency records |
-| Classification | Groq + Cerebras fallback | Event classification and scoring |
-| Dispute evidence | Tavily | Independent evidence retrieval for dispute review |
-| News | NewsAPI + The Guardian | External event ingestion |
-| Validation | Zod | Structured input validation |
-| Authentication | Sign-In with Ethereum | Wallet-based Portfolio authentication |
-| Automation | GitHub Actions | Scheduled lifecycle execution |
-| Contracts | Solidity 0.8.20 | Market and dispute logic |
-| Contract libraries | OpenZeppelin upgradeable contracts | V2 proxy/security primitives |
-| Contract tooling | Foundry | Build, test, deployment |
-| Network | Arc Testnet | Current execution environment |
-| Settlement | Native USDC | Market denomination and settlement |
-| Crosschain | Circle CCTP V2 | Native USDC transfer |
-| Swap | Circle App Kit | Current swap surface |
+| Frontend | Vite 7, TanStack Start, React 19, Tailwind CSS v4 |
+| UI | shadcn/ui, Radix primitives |
+| Chain client | ethers v6, Multicall3 |
+| Data | Supabase / PostgreSQL |
+| AI | Groq, Cerebras |
+| Dispute evidence | Tavily |
+| News ingestion | NewsAPI, The Guardian |
+| Validation | Zod |
+| Authentication | Sign-In with Ethereum |
+| Automation | GitHub Actions |
+| Contracts | Solidity 0.8.20, OpenZeppelin upgradeable contracts |
+| Proxy model | UUPS / ERC1967-style proxy |
+| Network | Arc Testnet |
+| Crosschain USDC | Circle CCTP V2 |
+| Swap | Circle App Kit |
+| Contract tooling | Foundry |
 
 ---
 
-## Repository layout
+## Repository structure
 
 ```text
 geomacro/
@@ -868,10 +519,8 @@ geomacro/
 │   ├── AgentArenaV2.sol
 │   ├── AgentArenaProxy.sol
 │   └── MultisigTreasury.sol
-│
 ├── script/
 │   └── Deploy.s.sol
-│
 ├── scripts/
 │   ├── ingest-news.js
 │   ├── generate-briefings.js
@@ -884,55 +533,15 @@ geomacro/
 │   ├── anomaly-monitor.js
 │   └── lib/
 │       └── dual-contract.js
-│
 ├── supabase/
 │   └── migrations/
-│       ├── 001_ai_jury_dispute_system.sql
-│       └── ...
-│
 ├── src/
 │   ├── components/
-│   │   ├── DisputeTribunal.tsx
-│   │   ├── portfolio/
-│   │   │   └── resolution-tribunal.tsx
-│   │   └── sections/
-│   │       ├── arena-section.tsx
-│   │       ├── bridge-section.tsx
-│   │       ├── liquidity-section.tsx
-│   │       ├── swap-section.tsx
-│   │       └── tx-history-section.tsx
-│   │
 │   ├── routes/
-│   │   ├── portfolio.tsx
-│   │   ├── docs.tsx
-│   │   └── ...
-│   │
 │   ├── lib/
-│   │   ├── arc.ts
-│   │   ├── agent-arena.ts
-│   │   ├── arena-markets.ts
-│   │   ├── positions.functions.ts
-│   │   ├── cctp.ts
-│   │   ├── swap.ts
-│   │   └── ...
-│   │
 │   └── hooks/
-│       └── ...
-│
 ├── .github/
 │   └── workflows/
-│       ├── auto-ingest-news.yml
-│       ├── Auto-generate-briefings.yml
-│       ├── auto-create-markets.yml
-│       ├── auto-resolve-markets.yml
-│       ├── auto-resolve-disputes.yml
-│       ├── auto-finalize-markets.yml
-│       ├── sync-lifecycle.yml
-│       ├── sync-stakes.yml
-│       ├── security-monitor.yml
-│       ├── auto-recovery.yml
-│       └── debug-schema.yml
-│
 ├── docs/
 ├── foundry.toml
 └── package.json
@@ -940,12 +549,11 @@ geomacro/
 
 ---
 
-## Local setup
+## Local development
 
 ```bash
 git clone https://github.com/blocknine0/geomacro.git
 cd geomacro
-
 npm install
 cp .env.example .env.local
 npm run dev
@@ -958,281 +566,136 @@ forge build
 forge test
 ```
 
-Never commit:
-
-```text
-private keys
-Supabase service-role credentials
-jury signer keys
-guardian keys
-premium RPC credentials
-```
+Do not commit private keys, service-role credentials, jury signer keys, or privileged RPC credentials.
 
 ---
 
-## Configuration reference
+## Configuration
 
-| Variable | Responsibility |
+| Variable | Purpose |
 |---|---|
 | `NEWSAPI_KEY` | NewsAPI ingestion |
-| `GUARDIAN_API_KEY` | The Guardian ingestion |
-| `GROQ_API_KEY` | Classification, briefing, resolution, selected jury roles |
-| `CEREBRAS_API_KEY` | Secondary AI provider / fallback |
-| `TAVILY_API_KEY` | Independent dispute evidence retrieval |
-| `APP_SUPABASE_URL` | Supabase project |
-| `APP_SUPABASE_ANON_KEY` | Public RLS-controlled access |
+| `GUARDIAN_API_KEY` | The Guardian API |
+| `GROQ_API_KEY` | Classification / briefing / resolution / selected juror roles |
+| `CEREBRAS_API_KEY` | Secondary model provider / fallback |
+| `TAVILY_API_KEY` | Dispute evidence retrieval |
+| `APP_SUPABASE_URL` | Supabase project URL |
+| `APP_SUPABASE_ANON_KEY` | Public RLS-controlled reads |
 | `SUPABASE_SERVICE_ROLE_KEY` | Trusted server-side writes |
 | `CONTRACT_ADDRESS` | Current V2 proxy |
-| `OLD_CONTRACT_ADDRESS` | Legacy V1 contract |
-| `OWNER_PRIVATE_KEY` | Trusted lifecycle signer where required |
-| `JURY_PRIVATE_KEY_1` | Juror signer 1 |
-| `JURY_PRIVATE_KEY_2` | Juror signer 2 |
-| `JURY_PRIVATE_KEY_3` | Juror signer 3 |
-| `JURY_PRIVATE_KEY_4` | Juror signer 4 |
-| `JURY_PRIVATE_KEY_5` | Juror signer 5 |
-| `GUARDIAN_PRIVATE_KEY` | Emergency guardian |
-| `ARC_RPC_URL` ... `ARC_RPC_URL_5` | Backend RPC pool |
-| `DEPLOY_BLOCK` | V2 event scan starting block |
-| `MULTICALL3_ADDRESS` | Multicall3 contract |
-| `VITE_ARC_NETWORK` | Frontend network |
-| `VITE_CONTRACT_ADDRESS` | Frontend V2 proxy |
-| `VITE_CIRCLE_KIT_KEY` | Circle App Kit |
+| `OLD_CONTRACT_ADDRESS` | V1 legacy contract |
+| `OWNER_PRIVATE_KEY` | Trusted automation signer where required |
+| `JURY_PRIVATE_KEY_1..5` | Dedicated juror signers |
+| `GUARDIAN_PRIVATE_KEY` | Protocol guardian signer |
+| `ARC_RPC_URL..ARC_RPC_URL_5` | Backend RPC pool |
+| `DEPLOY_BLOCK` | Current-contract event scan start |
+| `MULTICALL3_ADDRESS` | Multicall3 address |
+| `VITE_ARC_NETWORK` | Frontend Arc network |
+| `VITE_CIRCLE_KIT_KEY` | Circle App Kit configuration |
 
-Privileged values belong in server-side / GitHub Actions secrets and must not be exposed through frontend environment variables.
+Deployment-specific values are consumed by `script/Deploy.s.sol` and should remain outside client-visible configuration.
 
 ---
 
 ## Product surfaces
 
-| Surface | Purpose |
-|---|---|
-| `/` | Global risk and primary product entry |
-| Intelligence / Feed | Structured geopolitical and macro intelligence |
-| Event detail | Event-specific context, severity, sources, and market linkage |
-| `/arena` | HAWK / DOVE markets |
-| `/portfolio` | Wallet positions and lifecycle transparency |
-| Resolution & Tribunal | V2 resolution, dispute, tribunal, finalization, and claim visibility |
-| `/bridge` | CCTP V2 USDC bridge |
-| Swap | Circle App Kit swap experience |
-| Tx History | Supabase-backed transaction history |
-| `/pipeline` | Intelligence / automation pipeline |
-| `/onchain` | Contract and network information |
-| `/roadmap` | Shipped and planned work |
-| `/docs` | Developer-facing documentation |
+The current product exposes:
 
-### Portfolio resolution transparency
+- Global Risk Index and intelligence
+- Intelligence discovery and event detail
+- V1 / V2 market state
+- HAWK / DOVE participation
+- Portfolio and claim lifecycle
+- Resolution and tribunal lifecycle visibility
+- CCTP Bridge
+- Swap
+- Transaction history
 
-V2 positions expose a compact lifecycle view:
+The live application is the canonical reference for what is currently exposed to users:
 
-```text
-Active
-→ Tentative Resolution
-→ Dispute Window
-→ Tribunal
-→ Finalized
-→ Claim / Claimed
-```
-
-Where available, the interface can expose:
-
-- tentative verdict;
-- user's position;
-- market question;
-- dispute deadline;
-- dispute status;
-- bond requirement;
-- juror roles;
-- vote status;
-- verdict;
-- reasoning;
-- evidence count;
-- transaction reference;
-- 4-of-5 tally;
-- finalization state;
-- claim state.
-
-If tribunal data does not exist because no dispute was opened, the application reports that explicitly.
-
-Read failures are displayed as unknown/error states rather than being silently converted into "no dispute."
+**https://www.geomacro.live**
 
 ---
 
-## Design principles
+## Engineering principles
 
-1. **Contract state is authoritative for financial state.**  
-   Supabase supports discovery, synchronization, and transparency but does not replace onchain verification for financial actions.
-
-2. **Preserve protocol history.**  
-   V1 remains readable while V2 handles the current market architecture.
-
-3. **Do not fabricate missing data.**  
-   If a value is unavailable, the interface should say so.
-
-4. **Treat AI resolution as challengeable.**  
-   Tentative AI-assisted resolution is not presented as unquestionable truth.
-
-5. **Separate intelligence from wallet access.**  
-   Users can inspect risk and market information without connecting a wallet.
-
-6. **Verify before transacting.**  
-   Dispute eligibility and other sensitive actions are checked against current contract state before the transaction is offered.
-
-7. **Use differentiated tribunal roles.**  
-   Five repeated prompts are not treated as five independent reviewers.
-
-8. **Keep privileged credentials server-side.**
-
-9. **Design scheduled operations for reconciliation and retry.**
-
-10. **Make lifecycle state visible.**  
-    Users should be able to understand what stage a position or market is in and why.
-
-11. **Preserve uncertainty.**  
-    Missing evidence, failed reads, unresolved disputes, and inactive tribunals should remain visible as such.
-
-12. **Keep documentation aligned with implementation.**  
-    Planned capabilities should not be described as currently deployed functionality.
+1. **Preserve event identity.** Intelligence, market state, resolution, and settlement remain linked to the same event.
+2. **Use contract state for financial truth.** Supabase is the read model and transparency layer.
+3. **Preserve V1 history.** Protocol upgrades must not orphan historical markets or positions.
+4. **Do not fabricate missing data.** Missing values remain unavailable.
+5. **Treat AI output as challengeable.** Tentative resolution is not assumed to be infallible.
+6. **Keep privileged credentials server-side.**
+7. **Make scheduled operations retry-safe.**
+8. **Request wallet access only at action boundaries.**
+9. **Expose lifecycle state explicitly.**
+10. **Keep documentation consistent with the current implementation.**
 
 ---
 
 ## Current status
 
-### Intelligence
+### Implemented
 
-- [x] Multi-source news ingestion
-- [x] Event classification
-- [x] Severity scoring
-- [x] Structured event persistence
+- [x] Event ingestion from NewsAPI and The Guardian
+- [x] Event classification and severity scoring
+- [x] Structured Supabase intelligence model
 - [x] HAWK / DOVE briefing generation
-- [x] Global risk / intelligence surfaces
-- [x] Market question generation / persistence
-
-### Markets
-
-- [x] V1 market history preserved
-- [x] V2 proxy deployed
-- [x] V2 markets active
-- [x] Dual V1 / V2 routing
 - [x] Automated market creation
-- [x] HAWK / DOVE positions
+- [x] V1 legacy market support
+- [x] Active V2 proxy for new markets
+- [x] V1 / V2 lifecycle routing
 - [x] Automated tentative resolution
-- [x] Automated finalization
-- [x] Position reconciliation
-- [x] Portfolio lifecycle visibility
-
-### V2 dispute system
-
 - [x] V2 dispute contract path
-- [x] Dispute bond calculation
-- [x] Onchain eligibility verification before action
-- [x] Five differentiated juror roles
-- [x] 4-of-5 decision threshold
-- [x] Dedicated juror wallets
-- [x] Automated dispute runner
-- [x] `market_disputes` transparency table
-- [x] `jury_votes` transparency table
-- [x] Public read policies for dispute transparency
-- [x] Portfolio Resolution & Tribunal interface
-- [x] Explicit undisputed / tribunal-not-activated state
-- [x] Explicit read-error / unknown state
-
-### Infrastructure
-
-- [x] Backend RPC failover
-- [x] Frontend RPC fallback
+- [x] Five-role juror automation and scheduled dispute runner
+- [x] Supabase dispute and jury transparency tables
+- [x] Automated finalization
+- [x] V1 / V2 stake reconciliation
+- [x] Portfolio and claim lifecycle
+- [x] Multi-endpoint RPC failover
 - [x] Multicall3 batching
-- [x] GitHub Actions lifecycle automation
-- [x] Guardian / monitoring architecture
-- [x] Upgradeable V2 proxy architecture
-- [x] Multisig treasury architecture
-
-### Circle infrastructure
-
-- [x] Native USDC settlement architecture
+- [x] Guardian / multisig security architecture
 - [x] CCTP V2 Bridge surface
 - [x] Circle App Kit Swap surface
-- [x] Bridge / Swap transaction history
+- [x] Supabase transaction history
+
+### Operational note
+
+A tribunal record exists only when a real eligible V2 participant raises an onchain dispute. An undisputed finalized market correctly has no jury case or jury-vote history.
 
 ---
 
 ## Roadmap
 
-The immediate priority is production hardening rather than replacing the current architecture.
+The current priority is production hardening rather than a protocol rewrite.
 
-- [x] Live intelligence pipeline
-- [x] Automated market creation
-- [x] Automated tentative resolution
-- [x] V1 historical compatibility
-- [x] V2 activation
-- [x] V2 dispute architecture
-- [x] Five-role tribunal automation
-- [x] Portfolio tribunal transparency
-- [x] CCTP V2 Bridge
-- [x] Circle App Kit Swap
-- [x] RPC failover and Multicall3
 - [ ] External production security review
 - [ ] Expand V2 dispute and failure-recovery test coverage
 - [ ] Reconcile historical unmapped position records
-- [ ] Capture the current Supabase schema as a complete reproducible migration baseline
-- [ ] Improve DB/onchain discrepancy monitoring
-- [ ] Harden Bridge and Swap recovery paths
-- [ ] Complete production-readiness review before larger-scale economic activity
-- [ ] Mainnet deployment when technical, security, and operational requirements are satisfied
-- [ ] Continue commercial validation of professional and institutional intelligence layers separately from protocol implementation
+- [ ] Capture the current Supabase schema as a reproducible migration baseline
+- [ ] Improve RPC / synchronization / DB-onchain discrepancy monitoring
+- [ ] Harden CCTP and Swap recovery paths
+- [ ] Complete production-readiness review before mainnet economic activity
+- [ ] Validate commercial professional and institutional intelligence models separately from protocol implementation
 
 ---
 
-## Why Arc and USDC
+## Arc and USDC
 
-Geomacro separates the risk being predicted from unnecessary settlement-asset volatility.
+Geomacro separates information risk from settlement-asset risk.
 
-A participant taking a view on geopolitical or macro risk should not also need to take an unrelated position on the asset used to settle that market.
+A participant expressing a view on geopolitical or macro risk should not also need unnecessary volatility exposure from the asset used to settle that position. USDC provides a stable economic denomination for participation and settlement.
 
-USDC provides a stable economic denomination for participation and settlement.
-
-Arc provides the execution environment for the current onchain market layer.
-
-CCTP provides a path for native USDC movement across supported ecosystems.
+Arc provides the execution environment for the onchain market layer, while CCTP provides a path for native USDC movement across supported ecosystems.
 
 ```mermaid
-flowchart LR
-    EVENT[Real-world event] --> INTEL[Structured intelligence]
-    INTEL --> RISK[Risk assessment]
-    RISK --> MARKET[HAWK / DOVE market]
-    MARKET --> POSITION[User position]
-    POSITION --> USDC[USDC-denominated economics]
-    USDC --> ARC[Arc settlement]
-
-    CCTP[Circle CCTP V2] --> USDC
+graph LR;
+    EVENT["Real-world event"] --> INTEL["Risk intelligence"];
+    INTEL --> MARKET["HAWK / DOVE market"];
+    MARKET --> USDC["USDC-denominated participation"];
+    CCTP["CCTP"] --> USDC;
+    USDC --> ARC["Arc settlement"];
 ```
 
-The intended architecture keeps the blockchain underneath the user workflow rather than making chain mechanics the primary product experience.
-
 ---
 
-## Reusable primitives
-
-The RPC failover, Multicall batching, and model-fallback patterns used by the automation layer are also represented in:
-
-[arc-onchain-agent-primitives](https://github.com/blocknine0/arc-onchain-agent-primitives)
-
----
-
-## Implementation note
-
-Geomacro is currently operating on **Arc Testnet**.
-
-The repository and live application should distinguish clearly between:
-
-- implemented functionality;
-- active testnet functionality;
-- production-hardening work;
-- planned future functionality.
-
-Testnet activity should not be represented as commercial adoption or production-scale economic activity.
-
-The current system demonstrates the complete technical direction from event ingestion through intelligence, market participation, resolution, dispute handling, finalization, and settlement while retaining explicit visibility into incomplete or unavailable state.
-
----
-
-Built by [@blocknine0](https://github.com/blocknine0) · [Live product](https://www.geomacro.live) · [Open an issue](https://github.com/blocknine0/geomacro/issues)
+Built by [@blocknine0](https://github.com/blocknine0) · [Live product](https://www.geomacro.live) · [Issues](https://github.com/blocknine0/geomacro/issues)
