@@ -5,7 +5,7 @@
 [![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
 [![Arc Testnet](https://img.shields.io/badge/Network-Arc_Testnet-2775CA?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
 [![USDC](https://img.shields.io/badge/Settlement-USDC-2775CA?style=for-the-badge)](https://www.circle.com/usdc)
-[![License](https://img.shields.io/badge/License-MIT-111827?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)](LICENSE.txt)
 
 **Live product:** https://www.geomacro.live
 
