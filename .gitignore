@@ -39,3 +39,26 @@ dist-ssr
 
 out/
 cache/
+# Private keys / signing material
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+keystore/
+keystores/
+
+# Foundry local/deployment artifacts
+broadcast/
+cache/
+
+# Local secrets / credentials
+.env.*
+!.env.example
+secrets/
+credentials/
+*.secret
+
+# OS / temporary
+Thumbs.db
+*.tmp
