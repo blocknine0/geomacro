@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies / build output
 node_modules
 dist
 dist-ssr
@@ -14,12 +15,29 @@ dist-ssr
 .vinxi
 .tanstack/**
 .nitro
-*.local
+out/
+cache/
+broadcast/
 
 # Environment secrets — never commit real values
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+*.local
+
+# Private keys / signing material
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+keystore/
+keystores/
+secrets/
+credentials/
+*.secret
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -30,35 +48,10 @@ dist-ssr
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.env
-
-out/
-cache/
-# Private keys / signing material
-*.pem
-*.key
-*.p12
-*.pfx
-*.keystore
-keystore/
-keystores/
-
-# Foundry local/deployment artifacts
-broadcast/
-cache/
-
-# Local secrets / credentials
-.env.*
-!.env.example
-secrets/
-credentials/
-*.secret
-
-# OS / temporary
-Thumbs.db
 *.tmp
