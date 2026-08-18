@@ -1,45 +1,85 @@
-# Contributing
+# Contributing to Geomacro
 
-Thanks for taking the time to look at Geomacro.
+Thank you for your interest in Geomacro.
 
-## Ground rules
+Geomacro is a proprietary software project. The source code in this
+repository is publicly viewable for technical evaluation, security review,
+and project assessment, but it is not an open-source codebase.
 
-- Run `bun run lint` and `bunx vitest run` before opening a PR.
-- Keep `src/**.server.ts` files out of client imports. Server logic is
-  reached via `createServerFn` + `useServerFn`, never via direct import.
-- Never store private keys or API secrets in `VITE_*` env vars = those
-  ship to the browser.
-- New onchain interactions must be signed by the user's wallet; the
-  server never holds a signing key.
-- New client-facing data must go through `src/lib/live-feed.sanitize.ts`
-  (or an equivalent allowlist) so internal identifiers do not leak. The
-  test `src/__tests__/live-feed-no-ids.test.ts` enforces this.
+Please review [LICENSE.txt](LICENSE.txt) before using any source code from
+this repository.
 
-## Working on the automation (`scripts/` + `.github/workflows/`)
+## Contributions
 
-- **Any `.update()`/`.insert()` against `events`, `positions`, or
-  `wallet_balance_history` from a GitHub Actions script must use the
-  service-role Supabase client, not the anon key.** The `anon` role only
-  has `SELECT`/`INSERT` grants on `events` (see the RLS policies in
-  Supabase) — a write through the anon client fails *silently*: no
-  thrown error, zero rows affected, and the script logs success anyway.
-  This exact bug orphaned ~90 markets earlier in the project's history.
-  If you add a new script that writes to Supabase, add the
-  `SUPABASE_SERVICE_ROLE_KEY` env var to its workflow file and construct
-  an admin client the same way `finalize-markets.js` does.
-- Don't swallow errors into a generic message (`catch (err) { console.log("skip") }`).
-  Log `err.message`/`err.reason` — a masked error is how the flags-not-persisting
-  bug above went unnoticed for as long as it did.
-- New scheduled scripts need both a `scripts/*.js` file *and* a matching
-  `.github/workflows/*.yml` — the workflow is what actually wires env vars
-  to the script; adding one without the other is a no-op.
-- If a script marks something as done/resolved before every downstream
-  step actually completed (e.g. flipping `market_resolved` before
-  `positions` finished syncing), that record becomes unrecoverable by any
-  later run that filters on the same flag. Only set a completion flag
-  after the write it gates has been confirmed.
+Geomacro does not currently accept unsolicited feature implementations or
+large pull requests.
 
-## Reporting a security issue
+If you identify a bug, documentation issue, compatibility problem, or
+potential improvement, please open an issue first so the proposed change can
+be discussed before implementation.
 
-Please do not open public issues for security reports. Use a private
-GitHub security advisory instead.
+A request for discussion, review, or contribution does not grant permission
+to copy, modify, redistribute, deploy, or commercially use the Geomacro
+codebase outside the terms of [LICENSE.txt](LICENSE.txt).
+
+Maintainers may accept, reject, or close proposed changes at their
+discretion.
+
+## Development Standards
+
+For changes explicitly coordinated with the Geomacro maintainers:
+
+- keep server-only logic out of client imports;
+- never expose private keys, service-role credentials, API secrets, or other
+  privileged credentials through client-side environment variables;
+- preserve wallet-controlled signing for user-initiated onchain actions;
+- validate client-facing data through an explicit allowlist or equivalent
+  sanitization boundary;
+- preserve V1/V2 compatibility where the affected subsystem requires it;
+- treat onchain contract state as authoritative for financial actions;
+- do not silently suppress operational errors;
+- ensure scheduled automation has both executable logic and the required
+  workflow configuration;
+- update completion state only after the operation it represents has
+  successfully completed.
+
+Changes should pass the repository's applicable linting, type checking, and
+test requirements before review.
+
+## Security Issues
+
+Do **not** open a public GitHub issue for a suspected security vulnerability.
+
+Please use GitHub's private security reporting / security advisory mechanism
+for vulnerabilities that could affect users, funds, smart contracts,
+credentials, infrastructure, or other sensitive systems.
+
+See [SECURITY.md](SECURITY.md) for the current disclosure policy.
+
+## Reusable Primitives
+
+The licensing restrictions of the main Geomacro repository do not
+automatically apply to reusable components that Geomacro explicitly publishes
+in a separate repository.
+
+Reusable Arc infrastructure primitives are maintained separately and are
+governed by the license included with that repository.
+
+## Intellectual Property
+
+Submitting an issue, participating in a technical discussion, or proposing a
+change does not grant rights to Geomacro's source code, trademarks, branding,
+data, or other intellectual property.
+
+Any contribution that Geomacro agrees to accept may be subject to additional
+contribution or intellectual-property terms before it is incorporated into
+the proprietary codebase.
+
+## Contact
+
+For contribution-related questions, use an official Geomacro contact channel
+identified in this repository.
+
+---
+
+Copyright © 2026 Geomacro. All rights reserved.
