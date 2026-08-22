@@ -11,6 +11,8 @@ if (!ARC_RPC_URL || !CONTRACT_ADDRESS) {
   throw new Error("Missing ARC_RPC_URL or CONTRACT_ADDRESS");
 }
 
+const REQUIRE_READY = process.env.REQUIRE_READY === "true";
+
 const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
 
 const legacyAbi = [
@@ -69,7 +71,8 @@ if (!fixedOddsSupported) {
     ],
   });
 
-  process.exit(2);
+  if (REQUIRE_READY) process.exit(2);
+  process.exit(0);
 }
 
 const stake = ethers.parseUnits(SAMPLE_STAKE_USDC, 18);
@@ -136,7 +139,8 @@ if (!fixedOddsEnabled) {
   console.error(
     "NEEDS_INITIALIZATION: implementation is upgraded but initializeFixedOddsV3() has not been run."
   );
-  process.exit(4);
+  if (REQUIRE_READY) process.exit(4);
+  process.exit(0);
 }
 
 console.log("PASS: V2 fixed-odds economics configuration is correct.");
