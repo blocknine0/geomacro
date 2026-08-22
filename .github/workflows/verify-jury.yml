@@ -2,6 +2,9 @@ name: Verify 5-AI Jury Configuration
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - circle-grant-readiness
 
 jobs:
   verify-jury:
@@ -22,7 +25,7 @@ jobs:
 
       - name: Verify jury wallets against V2 proxy
         env:
-          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          CONTRACT_ADDRESS: 0x2F874FB07084a22D2bB314D0762Af57Cb1856868
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           JURY_PRIVATE_KEY_1: ${{ secrets.JURY_PRIVATE_KEY_1 }}
           JURY_PRIVATE_KEY_2: ${{ secrets.JURY_PRIVATE_KEY_2 }}
