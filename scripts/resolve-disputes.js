@@ -24,6 +24,7 @@ const CONTRACT_ABI = [
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer, uint256 disputeBond, uint256 disputeRaisedAt)",
   "function getDispute(string marketId) view returns (uint256 overturnVotes, uint256 upholdVotes, bool resolved)",
   "function hasJuryVoted(string marketId, address juror) view returns (bool)",
+  "function getJuryMembers() view returns (address[5])",
   "function submitJuryVote(string marketId, bool overturn) external",
 ];
 
@@ -254,31 +255,30 @@ async function callGroqJuror(groq, prompt, label) {
 }
 
 async function getJurorVerdict(role, prompt, groq, groqApiKey, cerebrasApiKey) {
-  const wantsGroqFirst = role.provider === "groq" || (role.provider === "auto" && groqApiKey);
-  const wantsCerebrasFirst = role.provider === "cerebras";
-
-  if (wantsCerebrasFirst) {
-    if (!cerebrasApiKey) throw new Error(`Role ${role.name} wants Cerebras but CEREBRAS_API_KEY is missing`);
-    try {
-      return await callCerebrasJuror(cerebrasApiKey, prompt);
-    } catch (e) {
-      if (!e.isQuotaExhausted || !groqApiKey) throw e;
-      console.log(`  ↪ Cerebras exhausted for ${role.name} — falling back to Groq.`);
-      return await callGroqJuror(groq, prompt, role.name);
-    }
+  const providers = [];
+  if (role.provider === "groq") {
+    if (groqApiKey && groq) providers.push("groq");
+    if (cerebrasApiKey) providers.push("cerebras");
+  } else if (role.provider === "cerebras") {
+    if (cerebrasApiKey) providers.push("cerebras");
+    if (groqApiKey && groq) providers.push("groq");
+  } else {
+    if (groqApiKey && groq) providers.push("groq");
+    if (cerebrasApiKey) providers.push("cerebras");
   }
 
-  if (wantsGroqFirst) {
+  if (providers.length === 0) throw new Error(`No AI provider configured for ${role.name}`);
+  let lastError;
+  for (const providerName of providers) {
     try {
-      return await callGroqJuror(groq, prompt, role.name);
-    } catch (e) {
-      if (!e.isQuotaExhausted || !cerebrasApiKey) throw e;
-      console.log(`  ↪ Groq daily quota exhausted for ${role.name} — falling back to Cerebras.`);
+      if (providerName === "groq") return await callGroqJuror(groq, prompt, role.name);
       return await callCerebrasJuror(cerebrasApiKey, prompt);
+    } catch (e) {
+      lastError = e;
+      console.log(`  ↪ ${providerName} failed for ${role.name} (${e.message}); trying fallback if available.`);
     }
   }
-
-  throw new Error(`No available provider for role ${role.name}`);
+  throw lastError ?? new Error(`No provider could resolve ${role.name}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -362,13 +362,16 @@ async function main() {
     JURY_PRIVATE_KEY_1, JURY_PRIVATE_KEY_2, JURY_PRIVATE_KEY_3, JURY_PRIVATE_KEY_4, JURY_PRIVATE_KEY_5,
   } = process.env;
 
-  if (!APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL || !GROQ_API_KEY)
-    throw new Error("Missing required env (APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, ARC_RPC_URL, GROQ_API_KEY).");
+  if (!APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL)
+    throw new Error("Missing required env (APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, ARC_RPC_URL).");
+  if (!GROQ_API_KEY && !CEREBRAS_API_KEY)
+    throw new Error("At least one jury AI provider is required: GROQ_API_KEY or CEREBRAS_API_KEY.");
 
   const juryKeys = [JURY_PRIVATE_KEY_1, JURY_PRIVATE_KEY_2, JURY_PRIVATE_KEY_3, JURY_PRIVATE_KEY_4, JURY_PRIVATE_KEY_5];
   if (juryKeys.some((k) => !k)) throw new Error("Missing one or more JURY_PRIVATE_KEY_1..5 env vars.");
   if (!TAVILY_API_KEY) console.warn("⚠️ TAVILY_API_KEY missing — jury will judge on original event data only, no fresh independent evidence.");
-  if (!CEREBRAS_API_KEY) console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq's daily quota runs out mid-run.");
+  if (!GROQ_API_KEY) console.warn("⚠️ GROQ_API_KEY missing — all jury roles will use Cerebras where available.");
+  if (!CEREBRAS_API_KEY) console.warn("⚠️ CEREBRAS_API_KEY missing — all jury roles will use Groq where available.");
   if (!SUPABASE_SERVICE_ROLE_KEY) console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY missing — jury_votes/disputes table writes will likely be blocked by RLS.");
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
@@ -381,11 +384,23 @@ async function main() {
   console.log(`Configured ${readRpcManager.count()} RPC endpoint(s) for automatic failover.`);
   console.log(`Using contract address: ${CONTRACT_ADDRESS}`);
 
-  const groq = new Groq({ apiKey: GROQ_API_KEY, timeout: 30 * 1000, maxRetries: 3, fetch });
+  const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY, timeout: 30 * 1000, maxRetries: 3, fetch }) : null;
   const contractInterface = new ethers.Interface(CONTRACT_ABI);
   const juryWallets = juryKeys.map((key) => new ethers.Wallet(key));
 
   console.log(`Jury wallets: ${juryWallets.map((w) => w.address).join(", ")}`);
+
+  // Fail fast before spending AI quota: the five signer wallets must exactly
+  // match the jury seats configured in the active V2 proxy.
+  const juryReadContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+  const configuredJury = await callRpcWithBackoff(() => juryReadContract.getJuryMembers(), "getJuryMembers()", readRpcManager);
+  const configured = Array.from(configuredJury).map((a) => ethers.getAddress(String(a)).toLowerCase());
+  const supplied = juryWallets.map((w) => w.address.toLowerCase());
+  const mismatches = supplied.map((a, i) => a === configured[i] ? null : `seat ${i + 1}: contract=${configured[i]} secret=${a}`).filter(Boolean);
+  if (mismatches.length) {
+    throw new Error(`Jury wallet preflight failed. ${mismatches.join("; ")}`);
+  }
+  console.log("✅ Jury wallet preflight passed: all 5 secrets match the on-chain jury seats.");
 
   // Pull a working set of recently-created markets from Supabase and check
   // their on-chain status in one Multicall3 batch, rather than maintaining
@@ -490,19 +505,41 @@ async function main() {
       }
       console.log(`  ✅ ${role.name}'s vote submitted: ${txHash}`);
 
-      const { error: voteInsertError } = await adminSupabase.from("jury_votes").insert({
+      const { error: voteInsertError } = await adminSupabase.from("jury_votes").upsert({
         market_id: marketId,
         juror_role: role.key,
         juror_wallet: wallet.address,
         verdict: verdict.overturn ? "OVERTURN" : "UPHOLD",
         reasoning: verdict.reasoning,
         tx_hash: txHash,
-      });
+        evidence_count: evidence?.results?.length ?? null,
+      }, { onConflict: "market_id,juror_wallet" });
       // Non-fatal by design: on-chain vote is the source of truth, Supabase
       // is only a transparency mirror for the frontend council page — if
       // this table doesn't exist yet (before the Phase 4 migration runs),
       // don't let it block the on-chain vote that already succeeded.
       if (voteInsertError) console.log(`  ⚠️ Supabase jury_votes insert failed (${voteInsertError.message}) — vote is on-chain regardless.`);
+    }
+
+    // Keep the Supabase transparency mirror synchronized with the actual
+    // contract state. The frontend still treats chain state as authoritative.
+    try {
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readRpcManager.current());
+      const finalDispute = await callRpcWithBackoff(() => contract.getDispute(marketId), `getDispute-final(${marketId})`, readRpcManager);
+      const overturnVotes = Number(finalDispute.overturnVotes ?? finalDispute[0]);
+      const upholdVotes = Number(finalDispute.upholdVotes ?? finalDispute[1]);
+      const resolved = Boolean(finalDispute.resolved ?? finalDispute[2]);
+      const finalVerdict = resolved ? (overturnVotes >= 4 ? "OVERTURNED" : upholdVotes >= 4 ? "UPHELD" : "INCONCLUSIVE") : null;
+      const { error: mirrorError } = await adminSupabase.from("market_disputes").update({
+        overturn_votes: overturnVotes,
+        uphold_votes: upholdVotes,
+        resolved,
+        final_verdict: finalVerdict,
+        resolved_at: resolved ? new Date().toISOString() : null,
+      }).eq("market_id", marketId);
+      if (mirrorError) console.log(`  ⚠️ market_disputes mirror update failed (${mirrorError.message})`);
+    } catch (mirrorErr) {
+      console.log(`  ⚠️ Could not refresh dispute mirror for ${marketId} (${mirrorErr.message})`);
     }
 
     processedCount++;

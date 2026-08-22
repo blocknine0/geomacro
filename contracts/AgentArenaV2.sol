@@ -32,7 +32,7 @@ interface IMultisigTreasury {
  * (5 fixed AI-agent wallets, 4-of-5 supermajority to overturn).
  *
  * Currency note: same as V1 — Arc's native gas token IS USDC, so amounts
- * here use msg.value directly and "$X" in comments means X * 10**6.
+ * here use msg.value directly and "$X" in comments means X * 10**18 wei.
  */
 contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable {
     // ---------------------------------------------------------------
@@ -58,6 +58,8 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     //  every wei is accounted for, unlike the V1 bug where 70% of a rejected dispute fee was never sent anywhere)
 
     uint256 public constant MAX_WINNER_FEE_BPS = 300;        // hard ceiling, 3% — cannot be exceeded even by the owner
+    uint256 public constant FIXED_PROFIT_BPS = 10000;        // 100% gross profit on winning stake (1:1 fixed odds)
+    uint256 public constant MAX_LOSS_TREASURY_BPS = 1000;    // losing-pool treasury cut hard-capped at 10%
     uint256 public constant UPGRADE_TIMELOCK = 48 hours;
     uint256 public constant AUTO_UNPAUSE_DELAY = 6 hours;    // self-heal window — see selfHealUnpause() below
 
@@ -130,11 +132,26 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     mapping(address => bool) public upgradeApprovedBy;
     uint256 public upgradeApprovalCount;
 
+    // ---------------------------------------------------------------
+    // V3 fixed-odds / funded-liquidity storage.
+    // IMPORTANT: these variables consume slots from the existing storage gap;
+    // no pre-existing slot above this point has moved. This is proxy-safe.
+    // ---------------------------------------------------------------
+    bool public fixedOddsEnabled;
+    uint256 public lossTreasuryBps;          // default 5% of losing pool
+    uint256 public liquidityReserve;         // protocol/LP-funded underwriting pool
+    uint256 public totalReservedLiquidity;   // worst-case reserve locked across OPEN fixed-odds markets
+    uint256 public totalLiquidityShares;
+    mapping(address => uint256) public liquidityShares;
+    mapping(string => bool) public fixedOddsMarket;
+    mapping(string => uint256) public marketReserveRequirement;
+    mapping(string => bool) public marketEconomicsSettled;
+    mapping(string => uint256) public marketReserveUsed;
+    mapping(string => uint256) public marketLossTreasuryAmount;
+
     // Reserved storage slots for future upgrades (standard OZ upgradeable pattern).
-    // Reduced from 45 -> 39 to account for the 6 new slots above (guardian,
-    // pausedAt, unpauseApprovalCount, upgradeApprovalCount — the two mappings
-    // don't consume sequential slots the same way, but budgeting conservatively).
-    uint256[39] private __gap;
+    // V3 consumes 11 slots from the previous 39-slot gap.
+    uint256[28] private __gap;
 
     // ---------------------------------------------------------------
     // Events
@@ -158,6 +175,14 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     event AutoUnpaused(uint256 timestamp);
     event UnpauseApproved(address indexed signer, uint256 approvalCount);
     event UpgradeApproved(address indexed signer, address indexed newImplementation, uint256 approvalCount);
+    event FixedOddsInitialized(uint256 winnerFeeBps, uint256 lossTreasuryBps);
+    event FixedOddsEnabledUpdated(bool enabled);
+    event LossTreasuryShareUpdated(uint256 newBps);
+    event LiquidityProvided(address indexed provider, uint256 amount, uint256 sharesMinted);
+    event LiquidityDonated(address indexed provider, uint256 amount);
+    event LiquidityWithdrawn(address indexed provider, uint256 amount, uint256 sharesBurned);
+    event MarketReserveUpdated(string marketId, uint256 oldRequirement, uint256 newRequirement);
+    event MarketEconomicsSettled(string marketId, uint256 reserveUsed, uint256 reserveSurplus, uint256 lossTreasuryAmount);
 
     // ---------------------------------------------------------------
     // Initialization (replaces constructor for upgradeable contracts)
@@ -193,6 +218,19 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
             juryMembers[i] = _juryMembers[i];
             isJury[_juryMembers[i]] = true;
         }
+    }
+
+    /// @notice One-time initializer for the fixed-odds funded-liquidity model.
+    /// Existing V2 markets remain legacy/parimutuel; markets created after
+    /// this call are explicitly marked fixedOddsMarket=true.
+    function initializeFixedOddsV3() external reinitializer(2) onlyOwner {
+        winnerFeeBps = 150;      // preserve original Geomacro 1.5% fee, now charged ONLY on profit
+        lossTreasuryBps = 500;   // 5% of losing stake goes to treasury; configurable up to 10%
+        fixedOddsEnabled = true;
+        emit WinnerFeeUpdated(winnerFeeBps);
+        emit LossTreasuryShareUpdated(lossTreasuryBps);
+        emit FixedOddsEnabledUpdated(true);
+        emit FixedOddsInitialized(winnerFeeBps, lossTreasuryBps);
     }
 
     // ---------------------------------------------------------------
@@ -339,6 +377,19 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
         emit WinnerFeeUpdated(newBps);
     }
 
+    function setLossTreasuryBps(uint256 newBps) external onlyOwner {
+        require(newBps <= MAX_LOSS_TREASURY_BPS, "loss treasury share too high");
+        require(totalReservedLiquidity == 0, "active reserve commitments");
+        lossTreasuryBps = newBps;
+        emit LossTreasuryShareUpdated(newBps);
+    }
+
+    function setFixedOddsEnabled(bool enabled) external onlyOwner {
+        if (!enabled) require(totalReservedLiquidity == 0, "active reserve commitments");
+        fixedOddsEnabled = enabled;
+        emit FixedOddsEnabledUpdated(enabled);
+    }
+
     /// @notice Jury wallets are automated, project-run bots (not third-party
     /// custody like the treasury signers), so rotation is a plain owner
     /// action — no timelock needed for an operational key swap.
@@ -393,8 +444,79 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
         return juryMembers;
     }
 
+    function availableLiquidityReserve() public view returns (uint256) {
+        return liquidityReserve > totalReservedLiquidity ? liquidityReserve - totalReservedLiquidity : 0;
+    }
+
+    function quoteFixedPayout(uint256 stakeAmount) public view returns (
+        uint256 principal, uint256 grossProfit, uint256 winnerFee, uint256 netPayout
+    ) {
+        principal = stakeAmount;
+        grossProfit = (stakeAmount * FIXED_PROFIT_BPS) / 10000;
+        winnerFee = (grossProfit * winnerFeeBps) / 10000;
+        netPayout = principal + grossProfit - winnerFee;
+    }
+
+    function requiredReserveForTotals(uint256 hawkTotal, uint256 doveTotal) public view returns (uint256) {
+        uint256 usableDoveIfHawkWins = doveTotal - ((doveTotal * lossTreasuryBps) / 10000);
+        uint256 usableHawkIfDoveWins = hawkTotal - ((hawkTotal * lossTreasuryBps) / 10000);
+
+        uint256 hawkProfitLiability = (hawkTotal * FIXED_PROFIT_BPS) / 10000;
+        uint256 doveProfitLiability = (doveTotal * FIXED_PROFIT_BPS) / 10000;
+
+        uint256 ifHawkWins = hawkProfitLiability > usableDoveIfHawkWins
+            ? hawkProfitLiability - usableDoveIfHawkWins
+            : 0;
+        uint256 ifDoveWins = doveProfitLiability > usableHawkIfDoveWins
+            ? doveProfitLiability - usableHawkIfDoveWins
+            : 0;
+        return ifHawkWins > ifDoveWins ? ifHawkWins : ifDoveWins;
+    }
+
+    /// @notice Permissionless LP funding. Shares represent a pro-rata claim on
+    /// the protocol underwriting reserve, including future reserve gains/losses.
+    function provideLiquidity() external payable whenNotPaused returns (uint256 sharesMinted) {
+        require(msg.value > 0, "liquidity must be > 0");
+        require(totalLiquidityShares == 0 || liquidityReserve > 0, "reserve needs recapitalization first");
+        if (totalLiquidityShares == 0) {
+            sharesMinted = msg.value;
+        } else {
+            sharesMinted = (msg.value * totalLiquidityShares) / liquidityReserve;
+        }
+        require(sharesMinted > 0, "liquidity too small");
+        liquidityShares[msg.sender] += sharesMinted;
+        totalLiquidityShares += sharesMinted;
+        liquidityReserve += msg.value;
+        emit LiquidityProvided(msg.sender, msg.value, sharesMinted);
+    }
+
+    /// @notice Adds reserve capital without minting LP shares. Useful for
+    /// treasury grants/recapitalization after reserve losses.
+    function donateLiquidity() external payable whenNotPaused {
+        require(msg.value > 0, "liquidity must be > 0");
+        liquidityReserve += msg.value;
+        emit LiquidityDonated(msg.sender, msg.value);
+    }
+
+    /// @notice LP withdrawal can only use reserve that is not already locked
+    /// to guarantee active fixed-odds markets.
+    function withdrawLiquidity(uint256 sharesToBurn) external whenNotPaused {
+        require(sharesToBurn > 0 && sharesToBurn <= liquidityShares[msg.sender], "invalid shares");
+        require(totalLiquidityShares > 0, "no liquidity shares");
+        uint256 amount = (sharesToBurn * liquidityReserve) / totalLiquidityShares;
+        require(amount <= availableLiquidityReserve(), "liquidity reserved for active markets");
+
+        liquidityShares[msg.sender] -= sharesToBurn;
+        totalLiquidityShares -= sharesToBurn;
+        liquidityReserve -= amount;
+
+        (bool sent, ) = msg.sender.call{value: amount}("");
+        require(sent, "liquidity withdrawal failed");
+        emit LiquidityWithdrawn(msg.sender, amount, sharesToBurn);
+    }
+
     // ---------------------------------------------------------------
-    // Market lifecycle — unchanged from V1
+    // Market lifecycle
     // ---------------------------------------------------------------
     function createMarket(
         string calldata marketId,
@@ -418,6 +540,10 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
             disputeRaisedAt: 0,
             exists: true
         });
+
+        if (fixedOddsEnabled) {
+            fixedOddsMarket[marketId] = true;
+        }
 
         emit MarketCreated(marketId, block.timestamp + stakingDuration, block.timestamp + resolutionDuration);
     }
@@ -443,6 +569,23 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
         require(block.timestamp <= m.stakingEndTime, "Staking period has ended");
         require(side == Side.HAWK || side == Side.DOVE, "Invalid side");
         require(msg.value > 0, "Stake must be > 0");
+
+        if (fixedOddsMarket[marketId]) {
+            uint256 newHawkTotal = m.hawkTotal + (side == Side.HAWK ? msg.value : 0);
+            uint256 newDoveTotal = m.doveTotal + (side == Side.DOVE ? msg.value : 0);
+            uint256 oldRequirement = marketReserveRequirement[marketId];
+            uint256 newRequirement = requiredReserveForTotals(newHawkTotal, newDoveTotal);
+
+            if (newRequirement > oldRequirement) {
+                uint256 additional = newRequirement - oldRequirement;
+                require(additional <= availableLiquidityReserve(), "insufficient funded liquidity reserve");
+                totalReservedLiquidity += additional;
+            } else if (oldRequirement > newRequirement) {
+                totalReservedLiquidity -= (oldRequirement - newRequirement);
+            }
+            marketReserveRequirement[marketId] = newRequirement;
+            emit MarketReserveUpdated(marketId, oldRequirement, newRequirement);
+        }
 
         stakes[marketId][msg.sender][side] += msg.value;
 
@@ -528,6 +671,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
             ? (m.tentativeWinner == Side.HAWK ? Side.DOVE : Side.HAWK)
             : m.tentativeWinner;
         m.status = Status.FINALIZED;
+        _settleFixedOddsEconomics(marketId);
 
         if (overturned) {
             uint256 reward = (m.disputeBond * DISPUTE_REWARD_BPS) / 10000;
@@ -558,6 +702,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
         if (m.status == Status.AI_RESOLVED && block.timestamp > m.aiResolutionTime + DISPUTE_WINDOW) {
             m.winner = m.tentativeWinner;
             m.status = Status.FINALIZED;
+            _settleFixedOddsEconomics(marketId);
             emit Finalized(marketId, m.winner);
             return;
         }
@@ -572,6 +717,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
 
             m.winner = m.tentativeWinner;
             m.status = Status.FINALIZED;
+            _settleFixedOddsEconomics(marketId);
 
             (bool sent, ) = m.disputer.call{value: m.disputeBond}("");
             require(sent, "Bond refund failed");
@@ -582,8 +728,42 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     }
 
     // ---------------------------------------------------------------
-    // Claim
+    // Fixed-odds market economics + claim
     // ---------------------------------------------------------------
+    function _settleFixedOddsEconomics(string memory marketId) private {
+        if (!fixedOddsMarket[marketId] || marketEconomicsSettled[marketId]) return;
+
+        Market storage m = markets[marketId];
+        uint256 reserved = marketReserveRequirement[marketId];
+        if (reserved > 0) {
+            totalReservedLiquidity -= reserved;
+            marketReserveRequirement[marketId] = 0;
+        }
+
+        uint256 winningPool = m.winner == Side.HAWK ? m.hawkTotal : m.doveTotal;
+        uint256 losingPool = m.winner == Side.HAWK ? m.doveTotal : m.hawkTotal;
+        uint256 lossTreasuryAmount = (losingPool * lossTreasuryBps) / 10000;
+        uint256 usableLosingPool = losingPool - lossTreasuryAmount;
+        uint256 grossProfitLiability = (winningPool * FIXED_PROFIT_BPS) / 10000;
+
+        uint256 reserveUsed = 0;
+        uint256 reserveSurplus = 0;
+        if (grossProfitLiability > usableLosingPool) {
+            reserveUsed = grossProfitLiability - usableLosingPool;
+            require(reserveUsed <= liquidityReserve, "liquidity reserve insolvent");
+            liquidityReserve -= reserveUsed;
+        } else {
+            reserveSurplus = usableLosingPool - grossProfitLiability;
+            liquidityReserve += reserveSurplus;
+        }
+
+        marketReserveUsed[marketId] = reserveUsed;
+        marketLossTreasuryAmount[marketId] = lossTreasuryAmount;
+        marketEconomicsSettled[marketId] = true;
+        _pushToTreasury(marketId, lossTreasuryAmount);
+        emit MarketEconomicsSettled(marketId, reserveUsed, reserveSurplus, lossTreasuryAmount);
+    }
+
     function claim(string calldata marketId) external whenNotPaused {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
@@ -594,24 +774,33 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
         uint256 totalUserStaked = stakes[marketId][msg.sender][winSide];
         require(totalUserStaked > 0, "Nothing to claim");
 
-        uint256 payout = totalUserStaked;
-        {
+        uint256 netPayout;
+        uint256 platformFee;
+
+        if (fixedOddsMarket[marketId]) {
+            if (!marketEconomicsSettled[marketId]) _settleFixedOddsEconomics(marketId);
+            (, uint256 grossProfit, uint256 fee, uint256 quotedNet) = quoteFixedPayout(totalUserStaked);
+            grossProfit; // explicit for readability; fee is charged only on profit
+            platformFee = fee;
+            netPayout = quotedNet;
+        } else {
+            // Legacy V2 markets retain the original parimutuel payout formula.
+            uint256 payout = totalUserStaked;
             uint256 winningPoolTotal = winSide == Side.HAWK ? m.hawkTotal : m.doveTotal;
             uint256 losingPoolTotal = winSide == Side.HAWK ? m.doveTotal : m.hawkTotal;
             if (winningPoolTotal > 0 && losingPoolTotal > 0) {
                 payout += (totalUserStaked * losingPoolTotal) / winningPoolTotal;
             }
+            platformFee = (payout * winnerFeeBps) / 10000;
+            netPayout = payout - platformFee;
         }
 
         claimed[marketId][msg.sender] = true;
-        uint256 platformFee = (payout * winnerFeeBps) / 10000;
-
         _pushToTreasury(marketId, platformFee);
 
-        (bool sent, ) = msg.sender.call{value: payout - platformFee}("");
+        (bool sent, ) = msg.sender.call{value: netPayout}("");
         require(sent, "Payout transfer failed");
-
-        emit Claimed(marketId, msg.sender, payout - platformFee);
+        emit Claimed(marketId, msg.sender, netPayout);
     }
 
     // ---------------------------------------------------------------
