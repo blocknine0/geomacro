@@ -284,7 +284,15 @@ async function main() {
             readRpcManager,
           );
       const status = Number(details.status);
-      const newStage = STAGE_BY_STATUS[status] ?? "active";
+      const stakingEndTime = Number(details.stakingEndTime ?? 0);
+      const nowSec = Math.floor(Date.now() / 1000);
+      // Contract status remains OPEN until the resolver runs, even after the
+      // staking cutoff. Treat an expired OPEN market as staking-closed so the
+      // DB/frontend never keeps showing it as active for up to the next resolver run.
+      let newStage = STAGE_BY_STATUS[status] ?? "active";
+      if (status === 0 && stakingEndTime > 0 && nowSec > stakingEndTime) {
+        newStage = "awaiting_dispute";
+      }
       const disputer = details.disputer && details.disputer !== ethers.ZeroAddress ? details.disputer : null;
 
       if (newStage === event.lifecycle_stage && disputer === event.disputer_address) {

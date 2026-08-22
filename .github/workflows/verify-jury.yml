@@ -1,0 +1,35 @@
+name: Verify 5-AI Jury Configuration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - circle-grant-readiness
+
+jobs:
+  verify-jury:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install verifier dependency
+        run: npm install ethers dotenv
+
+      - name: Verify jury wallets against V2 proxy
+        env:
+          CONTRACT_ADDRESS: "0x2F874FB07084a22D2bB314D0762Af57Cb1856868"
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          JURY_PRIVATE_KEY_1: ${{ secrets.JURY_PRIVATE_KEY_1 }}
+          JURY_PRIVATE_KEY_2: ${{ secrets.JURY_PRIVATE_KEY_2 }}
+          JURY_PRIVATE_KEY_3: ${{ secrets.JURY_PRIVATE_KEY_3 }}
+          JURY_PRIVATE_KEY_4: ${{ secrets.JURY_PRIVATE_KEY_4 }}
+          JURY_PRIVATE_KEY_5: ${{ secrets.JURY_PRIVATE_KEY_5 }}
+        run: node scripts/ops/verify-jury.js

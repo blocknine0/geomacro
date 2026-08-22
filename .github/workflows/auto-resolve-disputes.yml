@@ -1,22 +1,20 @@
 name: Auto-resolve Agent Arena disputes
-# Runs every 15 minutes — disputes have a 48h jury window (JURY_VOTE_WINDOW
-# in AgentArenaV2.sol), so this needs a tighter cadence than the 2h main
-# lifecycle jobs to give the 5-agent jury a real chance to converge before
-# the inconclusive-fallback (uphold AI verdict) kicks in.
+
+# Fast enough for a live 5-AI-jury demo while preserving a 48h on-chain vote
+# window. A queued run never cancels a jury that is already mid-vote.
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
+
 concurrency:
-  # Same reasoning as the other auto-* workflows: each of the 5 jury wallets
-  # has its own nonce, but overlapping runs racing to submit votes on the
-  # same dispute is still worth avoiding — cancel the older run.
   group: auto-resolve-disputes
-  cancel-in-progress: true
+  cancel-in-progress: false
+
 jobs:
   resolve-disputes:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -26,7 +24,7 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: npm install ethers @supabase/supabase-js groq-sdk node-fetch
-      - name: Run dispute resolution script
+      - name: Run 5-AI jury
         env:
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -47,5 +45,5 @@ jobs:
           JURY_PRIVATE_KEY_5: ${{ secrets.JURY_PRIVATE_KEY_5 }}
           MAX_DISPUTES_PER_RUN: "5"
           MAX_MARKETS_SCANNED_PER_RUN: "100"
-          RUN_TIME_BUDGET_MS: "360000"
+          RUN_TIME_BUDGET_MS: "900000"
         run: node scripts/resolve-disputes.js
