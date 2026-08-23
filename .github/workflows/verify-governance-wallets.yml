@@ -1,0 +1,81 @@
+name: Verify Governance Wallet Mapping
+
+on:
+  push:
+    branches:
+      - circle-grant-readiness
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install ethers
+        run: npm install ethers
+
+      - name: Compare secret wallets with treasury signers
+        env:
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          GUARDIAN_PRIVATE_KEY: ${{ secrets.GUARDIAN_PRIVATE_KEY }}
+          JURY_PRIVATE_KEY_1: ${{ secrets.JURY_PRIVATE_KEY_1 }}
+          JURY_PRIVATE_KEY_2: ${{ secrets.JURY_PRIVATE_KEY_2 }}
+          JURY_PRIVATE_KEY_3: ${{ secrets.JURY_PRIVATE_KEY_3 }}
+          JURY_PRIVATE_KEY_4: ${{ secrets.JURY_PRIVATE_KEY_4 }}
+          JURY_PRIVATE_KEY_5: ${{ secrets.JURY_PRIVATE_KEY_5 }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { Wallet } from "ethers";
+
+          const treasurySigners = [
+            "0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5",
+            "0x47A7950D29510BC84C3b74B395B8f94446D4a78F",
+            "0x572F13EC5266A17EBa047eb1ab82fEA8C2839C78"
+          ].map(x => x.toLowerCase());
+
+          const keys = {
+            OWNER_PRIVATE_KEY: process.env.OWNER_PRIVATE_KEY,
+            GUARDIAN_PRIVATE_KEY: process.env.GUARDIAN_PRIVATE_KEY,
+            JURY_PRIVATE_KEY_1: process.env.JURY_PRIVATE_KEY_1,
+            JURY_PRIVATE_KEY_2: process.env.JURY_PRIVATE_KEY_2,
+            JURY_PRIVATE_KEY_3: process.env.JURY_PRIVATE_KEY_3,
+            JURY_PRIVATE_KEY_4: process.env.JURY_PRIVATE_KEY_4,
+            JURY_PRIVATE_KEY_5: process.env.JURY_PRIVATE_KEY_5,
+          };
+
+          let matches = 0;
+
+          for (const [name, key] of Object.entries(keys)) {
+            if (!key) {
+              console.log(`${name}: MISSING`);
+              continue;
+            }
+
+            const address = new Wallet(key).address;
+            const idx = treasurySigners.indexOf(address.toLowerCase());
+
+            if (idx >= 0) {
+              matches++;
+              console.log(`${name}: MATCHES TREASURY SIGNER ${idx + 1} | ${address}`);
+            } else {
+              console.log(`${name}: ${address} | not a treasury signer`);
+            }
+          }
+
+          console.log(`Treasury signer keys available from existing secrets: ${matches}/3`);
+
+          if (matches < 2) {
+            console.log("RESULT: Fewer than 2 treasury signer keys are currently available.");
+          } else {
+            console.log("RESULT: Enough treasury signer keys are available for the 2-of-3 upgrade approval.");
+          }
+          NODE
