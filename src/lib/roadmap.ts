@@ -101,7 +101,7 @@ export const ROADMAP: RoadmapEntry[] = [
     objective:
       "Let users move USDC into Arc Testnet from the chains they already hold it on, without a custodian in the middle.",
     scope:
-      "Native USDC bridging from Ethereum Sepolia, Base Sepolia and Avalanche Fuji into Arc Testnet, built on Circle's CCTP V2 burn-and-mint. Fast Transfer mode settles in under 20 seconds, so a deposit feels closer to a wallet transfer than a bridge.",
+      "Native USDC bridging from multiple Circle-supported testnets into Arc Testnet, built on Circle's CCTP V2 burn-and-mint. Fast Transfer mode settles in under 20 seconds, so a deposit feels closer to a wallet transfer than a bridge.",
     artifacts: ["CCTP V2", "Fast Transfer", "Circle Iris"],
   },
   {

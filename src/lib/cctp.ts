@@ -92,6 +92,46 @@ export const CCTP_CHAINS: Record<string, CctpChain> = {
     usdc: "0x5425890298aed601595a70AB815c96711a31Bc65",
     explorerUrl: "https://testnet.snowtrace.io",
   },
+  arbitrumSepolia: {
+    name: "Arbitrum Sepolia",
+    chainIdDec: 421614,
+    chainIdHex: "0x66eee",
+    domain: 3,
+    usdc: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+    explorerUrl: "https://sepolia.arbiscan.io",
+  },
+  opSepolia: {
+    name: "OP Sepolia",
+    chainIdDec: 11155420,
+    chainIdHex: "0xaa37dc",
+    domain: 2,
+    usdc: "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
+    explorerUrl: "https://sepolia-optimism.etherscan.io",
+  },
+  polygonAmoy: {
+    name: "Polygon Amoy",
+    chainIdDec: 80002,
+    chainIdHex: "0x13882",
+    domain: 7,
+    usdc: "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
+    explorerUrl: "https://amoy.polygonscan.com",
+  },
+  unichainSepolia: {
+    name: "Unichain Sepolia",
+    chainIdDec: 1301,
+    chainIdHex: "0x515",
+    domain: 10,
+    usdc: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    explorerUrl: "https://unichain-sepolia.blockscout.com",
+  },
+  lineaSepolia: {
+    name: "Linea Sepolia",
+    chainIdDec: 59141,
+    chainIdHex: "0xe705",
+    domain: 11,
+    usdc: "0xFEce4462D57bD51A6A552365A011b95f0E16d9B7",
+    explorerUrl: "https://sepolia.lineascan.build",
+  },
 };
 
 // -- EURC (verified addresses, NOT yet bridgeable via CCTP) -----------------
