@@ -7,7 +7,7 @@ if (!ARC_RPC_URL || !OWNER_PRIVATE_KEY || !CONTRACT_ADDRESS) {
 const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
 const signer = new ethers.Wallet(OWNER_PRIVATE_KEY, provider);
 const arena = new ethers.Contract(CONTRACT_ADDRESS, [
-  "function initializeFixedOddsV3() external",
+  "function initializeFixedOddsV2() external",
   "function fixedOddsEnabled() view returns (bool)",
   "function winnerFeeBps() view returns (uint256)",
   "function lossTreasuryBps() view returns (uint256)",
@@ -17,8 +17,8 @@ const arena = new ethers.Contract(CONTRACT_ADDRESS, [
 if (await arena.fixedOddsEnabled()) {
   console.log("Fixed-odds model already initialized; no transaction sent.");
 } else {
-  const tx = await arena.initializeFixedOddsV3();
-  console.log("initializeFixedOddsV3 tx:", tx.hash);
+  const tx = await arena.initializeFixedOddsV2();
+  console.log("initializeFixedOddsV2 tx:", tx.hash);
   await tx.wait();
 }
 console.log({

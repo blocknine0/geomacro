@@ -133,7 +133,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     uint256 public upgradeApprovalCount;
 
     // ---------------------------------------------------------------
-    // V3 fixed-odds / funded-liquidity storage.
+    // V2 fixed-odds / funded-liquidity storage.
     // IMPORTANT: these variables consume slots from the existing storage gap;
     // no pre-existing slot above this point has moved. This is proxy-safe.
     // ---------------------------------------------------------------
@@ -150,7 +150,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     mapping(string => uint256) public marketLossTreasuryAmount;
 
     // Reserved storage slots for future upgrades (standard OZ upgradeable pattern).
-    // V3 consumes 11 slots from the previous 39-slot gap.
+    // Fixed-odds upgrade consumes 11 slots from the previous 39-slot gap.
     uint256[28] private __gap;
 
     // ---------------------------------------------------------------
@@ -223,7 +223,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     /// @notice One-time initializer for the fixed-odds funded-liquidity model.
     /// Existing V2 markets remain legacy/parimutuel; markets created after
     /// this call are explicitly marked fixedOddsMarket=true.
-    function initializeFixedOddsV3() external reinitializer(2) onlyOwner {
+    function initializeFixedOddsV2() external reinitializer(2) onlyOwner {
         winnerFeeBps = 150;      // preserve original Geomacro 1.5% fee, now charged ONLY on profit
         lossTreasuryBps = 500;   // 5% of losing stake goes to treasury; configurable up to 10%
         fixedOddsEnabled = true;

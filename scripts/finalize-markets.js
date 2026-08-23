@@ -11,7 +11,7 @@ const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 // V1 markets still pending finalization at cutover keep finalizing against
 // OLD_CONTRACT_ADDRESS instead of going unclaimed.
 const PROTOCOL_FEE_BPS = 150n; // 1.5% winner fee
-const FIXED_PROFIT_BPS = 10000n; // 100% gross profit for V3 fixed-odds markets
+const FIXED_PROFIT_BPS = 10000n; // 100% gross profit for V2 fixed-odds markets
 
 // Hard cap on how many markets this run will touch, so a big backlog
 // can't generate an unbounded burst of RPC calls in a single run.

@@ -61,11 +61,11 @@ if (!fixedOddsSupported) {
     status: "NEEDS_UPGRADE",
     proxy: CONTRACT_ADDRESS,
     message:
-      "The proxy is live, but its current implementation does not expose the fixed-odds V3 interface yet.",
+      "The proxy is live, but its current implementation does not expose the updated V2 fixed-odds interface yet.",
     nextSteps: [
-      "Deploy the new AgentArenaV2 implementation.",
+      "Deploy the updated AgentArenaV2 implementation.",
       "Run the existing 48h timelocked UUPS upgrade flow.",
-      "After upgrade, call initializeFixedOddsV3() exactly once.",
+      "After upgrade, call initializeFixedOddsV2() exactly once.",
       "Fund liquidity before enabling new fixed-odds markets.",
       "Re-run economics:verify.",
     ],
@@ -137,7 +137,7 @@ if (!expected) {
 
 if (!fixedOddsEnabled) {
   console.error(
-    "NEEDS_INITIALIZATION: implementation is upgraded but initializeFixedOddsV3() has not been run."
+    "NEEDS_INITIALIZATION: implementation is upgraded but initializeFixedOddsV2() has not been run."
   );
   if (REQUIRE_READY) process.exit(4);
   process.exit(0);
