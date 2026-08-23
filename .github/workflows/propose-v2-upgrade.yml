@@ -1,0 +1,121 @@
+name: Propose and Approve AgentArena V2 Upgrade
+
+on:
+  workflow_dispatch:
+
+jobs:
+  propose-and-approve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Safety guard
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "circle-grant-readiness" ]; then
+            echo "Refusing upgrade proposal from ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install ethers
+        run: npm install ethers
+
+      - name: Propose and approve updated V2 implementation
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          TREASURY_PRIVATE_KEY_1: ${{ secrets.TREASURY_PRIVATE_KEY_1 }}
+          TREASURY_PRIVATE_KEY_2: ${{ secrets.TREASURY_PRIVATE_KEY_2 }}
+          CONTRACT_ADDRESS: "0x2F874FB07084a22D2bB314D0762Af57Cb1856868"
+          NEW_IMPLEMENTATION: "0x3FbB284915DBE96785D10803e644650cDf76086D"
+        run: |
+          node --input-type=module <<'NODE'
+          import { ethers } from "ethers";
+
+          const {
+            ARC_RPC_URL,
+            TREASURY_PRIVATE_KEY_1,
+            TREASURY_PRIVATE_KEY_2,
+            CONTRACT_ADDRESS,
+            NEW_IMPLEMENTATION,
+          } = process.env;
+
+          const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
+          const signer1 = new ethers.Wallet(TREASURY_PRIVATE_KEY_1, provider);
+          const signer2 = new ethers.Wallet(TREASURY_PRIVATE_KEY_2, provider);
+
+          const abi = [
+            "function proposeUpgrade(address)",
+            "function approveUpgrade(address)",
+            "function pendingImplementation() view returns (address)",
+            "function upgradeUnlockTime() view returns (uint256)",
+            "function upgradeApprovalCount() view returns (uint256)",
+            "function upgradeApprovedBy(address) view returns (bool)"
+          ];
+
+          const arena1 = new ethers.Contract(CONTRACT_ADDRESS, abi, signer1);
+          const arena2 = new ethers.Contract(CONTRACT_ADDRESS, abi, signer2);
+
+          console.log("Signer 1:", signer1.address);
+          console.log("Signer 2:", signer2.address);
+          console.log("Target implementation:", NEW_IMPLEMENTATION);
+
+          const beforePending = await arena1.pendingImplementation();
+          const beforeCount = Number(await arena1.upgradeApprovalCount());
+
+          console.log("Before pendingImplementation:", beforePending);
+          console.log("Before approvalCount:", beforeCount);
+
+          if (
+            beforePending !== ethers.ZeroAddress &&
+            beforePending.toLowerCase() !== NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            throw new Error(
+              `Different upgrade already pending: ${beforePending}`
+            );
+          }
+
+          if (beforePending === ethers.ZeroAddress) {
+            const tx1 = await arena1.proposeUpgrade(NEW_IMPLEMENTATION);
+            console.log("proposeUpgrade tx:", tx1.hash);
+            await tx1.wait();
+          } else {
+            console.log("Proposal already exists for target implementation.");
+          }
+
+          const approved2 = await arena1.upgradeApprovedBy(signer2.address);
+
+          if (!approved2) {
+            const tx2 = await arena2.approveUpgrade(NEW_IMPLEMENTATION);
+            console.log("approveUpgrade tx:", tx2.hash);
+            await tx2.wait();
+          } else {
+            console.log("Signer 2 already approved.");
+          }
+
+          const pending = await arena1.pendingImplementation();
+          const unlock = Number(await arena1.upgradeUnlockTime());
+          const count = Number(await arena1.upgradeApprovalCount());
+
+          console.log("pendingImplementation:", pending);
+          console.log("upgradeApprovalCount:", count);
+          console.log("upgradeUnlockTime:", unlock);
+          console.log("unlock ISO:", new Date(unlock * 1000).toISOString());
+
+          if (pending.toLowerCase() !== NEW_IMPLEMENTATION.toLowerCase()) {
+            throw new Error("Pending implementation mismatch");
+          }
+
+          if (count < 2) {
+            throw new Error(`Expected at least 2 approvals, got ${count}`);
+          }
+
+          console.log("PASS: V2 upgrade proposal has 2-of-3 approval.");
+          console.log("WAIT: upgrade execution remains blocked until the 48h timelock expires.");
+          NODE
