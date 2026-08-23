@@ -8,11 +8,13 @@ import {
   ARC_SWAP_TOKENS,
   checkArcSwapStatus,
   clearPendingSwapIntent,
+  estimateArcSwap,
   executeArcSwap,
   loadPendingSwapIntent,
-  previewSwapFeeUsdc,
   type ArcSwapToken,
   type PendingSwapIntent,
+  type SwapQuote,
+  type SwapResult,
 } from "@/lib/swap";
 import { recordTxHistory } from "@/lib/tx-history.functions";
 
@@ -30,7 +32,10 @@ export function SwapSection() {
   const [amountIn, setAmountIn] = useState("");
   const [swapping, setSwapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ txHash: string; amountOut?: string; feeUsdc: string } | null>(null);
+  const [result, setResult] = useState<SwapResult | null>(null);
+  const [quote, setQuote] = useState<SwapQuote | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PendingSwapIntent | null>(null);
   const [checkTxInput, setCheckTxInput] = useState("");
   const [checking, setChecking] = useState(false);
@@ -39,6 +44,34 @@ export function SwapSection() {
   useEffect(() => {
     setPendingIntent(loadPendingSwapIntent());
   }, []);
+
+  useEffect(() => {
+    setQuote(null);
+    setQuoteError(null);
+
+    if (!address || !onArc || !amountIn || Number(amountIn) <= 0) return;
+
+    let cancelled = false;
+
+    const timer = window.setTimeout(async () => {
+      setQuoting(true);
+      try {
+        const next = await estimateArcSwap({ tokenIn, tokenOut, amountIn });
+        if (!cancelled) setQuote(next);
+      } catch (e) {
+        if (!cancelled) {
+          setQuoteError(e instanceof Error ? e.message : "Could not fetch swap quote.");
+        }
+      } finally {
+        if (!cancelled) setQuoting(false);
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [address, onArc, amountIn, tokenIn, tokenOut]);
 
   async function handleCheckStatus() {
     if (!checkTxInput.trim()) return;
@@ -66,6 +99,8 @@ export function SwapSection() {
     setTokenIn(tokenOut);
     setTokenOut(tokenIn);
     setResult(null);
+    setQuote(null);
+    setQuoteError(null);
   }
 
   async function handleSwap() {
@@ -76,10 +111,26 @@ export function SwapSection() {
       setError("Enter an amount greater than 0.");
       return;
     }
+    if (!quote) {
+      setError("Wait for a current Circle swap quote before confirming.");
+      return;
+    }
+
     setSwapping(true);
     try {
-      const res = await executeArcSwap({ tokenIn, tokenOut, amountIn });
+      const res = await executeArcSwap({
+        tokenIn,
+        tokenOut,
+        amountIn,
+        geomacroFeeUsdc: quote.geomacroFeeUsdc,
+      });
       setResult(res);
+
+      if (res.status !== "DONE") {
+        setPendingIntent(loadPendingSwapIntent());
+        return;
+      }
+
       if (address) {
         try {
           await recordTxHistory({
@@ -103,6 +154,7 @@ export function SwapSection() {
         }
       }
       setAmountIn("");
+      setQuote(null);
       setPendingIntent(null);
     } catch (e) {
       console.error("[SwapSection] swap failed", e);
@@ -205,11 +257,6 @@ export function SwapSection() {
               </SelectContent>
             </Select>
           </div>
-          {Number(amountIn) > 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              + ${previewSwapFeeUsdc(amountIn)} protocol fee (charged separately, on top of this amount)
-            </p>
-          )}
         </div>
 
         <div className="flex justify-center">
@@ -223,7 +270,13 @@ export function SwapSection() {
             <span>You receive (estimate)</span>
           </div>
           <div className="mt-2 flex gap-3">
-            <Input type="text" disabled placeholder="—" className="font-mono text-muted-foreground" />
+            <Input
+              type="text"
+              disabled
+              value={quote?.estimatedOutput ?? ""}
+              placeholder={quoting ? "Fetching quote..." : "—"}
+              className="font-mono text-muted-foreground"
+            />
             <Select value={tokenOut} onValueChange={(v) => setTokenOut(v as ArcSwapToken)}>
               <SelectTrigger className="w-28">
                 <SelectValue />
@@ -238,6 +291,43 @@ export function SwapSection() {
             </Select>
           </div>
         </div>
+
+        {quote && (
+          <div className="rounded-md border border-border/60 bg-muted/20 p-4 text-xs">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Estimated receive</span>
+              <span className="font-mono">{quote.estimatedOutput} {tokenOut}</span>
+            </div>
+
+            <div className="mt-2 flex justify-between gap-4">
+              <span className="text-muted-foreground">Minimum receive</span>
+              <span className="font-mono">{quote.minimumOutput} {tokenOut}</span>
+            </div>
+
+            {quote.fees.length > 0 && (
+              <div className="mt-3 border-t border-border/60 pt-3">
+                <p className="mb-2 text-muted-foreground">Circle route fees</p>
+                {quote.fees.map((fee, index) => (
+                  <div key={`${fee.type}-${index}`} className="flex justify-between gap-4">
+                    <span className="capitalize">{fee.type}</span>
+                    <span className="font-mono">
+                      {fee.amount ?? "unavailable"} {fee.token}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-3 flex justify-between gap-4 border-t border-border/60 pt-3">
+              <span className="text-muted-foreground">Geomacro protocol fee</span>
+              <span className="font-mono">${quote.geomacroFeeUsdc} USDC</span>
+            </div>
+          </div>
+        )}
+
+        {quoteError && Number(amountIn) > 0 && (
+          <p className="text-xs text-destructive">{quoteError}</p>
+        )}
       </div>
 
       {error && (
@@ -249,17 +339,41 @@ export function SwapSection() {
       {!result ? (
         <Button
           className="w-full"
-          disabled={!address || !onArc || swapping}
+          disabled={!address || !onArc || swapping || quoting || !quote}
           onClick={handleSwap}
         >
-          {swapping ? <Loader2 className="h-4 w-4 animate-spin" /> : `Swap ${tokenIn} → ${tokenOut}`}
+          {swapping ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            `Swap ${tokenIn} → ${tokenOut}`
+          )}
         </Button>
+      ) : result.status !== "DONE" ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <p className="font-medium text-amber-500">
+            Swap submitted and still pending.
+          </p>
+
+          <a
+            href={arcscanTxUrl(result.txHash)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1 text-xs underline"
+          >
+            View transaction <ExternalLink className="h-3 w-3" />
+          </a>
+
+          <p className="mt-2 text-xs text-muted-foreground">
+            Geomacro will only attempt the separate USDC protocol fee after Circle reports the swap as complete.
+          </p>
+        </div>
       ) : (
         <div className="rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-2 text-primary">
-              <CheckCircle2 className="h-4 w-4" /> Swap submitted.
+              <CheckCircle2 className="h-4 w-4" /> Swap completed.
             </p>
+
             <a
               href={arcscanTxUrl(result.txHash)}
               target="_blank"
@@ -269,7 +383,27 @@ export function SwapSection() {
               View tx <ExternalLink className="h-3 w-3" />
             </a>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Protocol fee paid: ${result.feeUsdc}</p>
+
+          {result.amountOut && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Received: {result.amountOut} {tokenOut}
+            </p>
+          )}
+
+          {result.feeUsdc ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Geomacro protocol fee paid: ${result.feeUsdc} USDC
+            </p>
+          ) : result.feeError ? (
+            <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+              <p className="font-medium text-amber-500">
+                Swap succeeded, but the separate protocol fee payment did not complete.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {result.feeError}
+              </p>
+            </div>
+          ) : null}
         </div>
       )}
 
