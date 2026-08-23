@@ -1,0 +1,31 @@
+name: Verify V2 Market Economics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - circle-grant-readiness
+
+jobs:
+  verify-economics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify V2 market economics
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: "0x2F874FB07084a22D2bB314D0762Af57Cb1856868"
+          REQUIRE_READY: "false"
+        run: npm run economics:verify

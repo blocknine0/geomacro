@@ -389,7 +389,7 @@ export function BridgeSection() {
       <div className="max-w-xl">
         <h1 className="font-mono text-3xl tracking-tight">Bridge USDC to Arc</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Bring native USDC from Ethereum Sepolia, Base Sepolia, or Avalanche Fuji into Arc
+          Bring native USDC from supported CCTP testnets into Arc
           Testnet via Circle's CCTP burn-and-mint protocol. Fast Transfer mode, ~15s finality.
         </p>
       </div>

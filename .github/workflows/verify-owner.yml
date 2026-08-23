@@ -1,0 +1,68 @@
+name: Verify V2 Owner Wallet
+
+on:
+  push:
+    branches:
+      - circle-grant-readiness
+  workflow_dispatch:
+
+jobs:
+  verify-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify owner private key against V2 proxy
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          CONTRACT_ADDRESS: "0x2F874FB07084a22D2bB314D0762Af57Cb1856868"
+        run: |
+          node --input-type=module <<'NODE'
+          import { ethers } from "ethers";
+
+          const {
+            ARC_RPC_URL,
+            OWNER_PRIVATE_KEY,
+            CONTRACT_ADDRESS,
+          } = process.env;
+
+          if (!ARC_RPC_URL || !OWNER_PRIVATE_KEY || !CONTRACT_ADDRESS) {
+            throw new Error("Missing required environment variable");
+          }
+
+          const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
+          const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY);
+          const contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            ["function owner() view returns (address)"],
+            provider
+          );
+
+          const onchainOwner = await contract.owner();
+          const secretWallet = wallet.address;
+
+          console.log("On-chain owner:", onchainOwner);
+          console.log("Secret wallet:  ", secretWallet);
+
+          if (
+            onchainOwner.toLowerCase() !== secretWallet.toLowerCase()
+          ) {
+            throw new Error(
+              "OWNER_PRIVATE_KEY does not match the V2 proxy owner"
+            );
+          }
+
+          console.log("PASS: OWNER_PRIVATE_KEY matches the V2 proxy owner.");
+          NODE

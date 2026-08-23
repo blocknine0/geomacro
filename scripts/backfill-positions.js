@@ -14,25 +14,30 @@ import { createClient } from "@supabase/supabase-js";
 
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
-const PROTOCOL_FEE_BPS = 150n; // claim() / AgentArena.sol এর সাথে হুবহু মিলিয়ে
+const PROTOCOL_FEE_BPS = 150n;
+const FIXED_PROFIT_BPS = 10000n;
 
 const CONTRACT_ABI = [
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
   "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
+  "function fixedOddsMarket(string marketId) view returns (bool)",
 ];
 
 const SIDE_LABEL = { 0: "NONE", 1: "HAWK", 2: "DOVE" };
 
-function computePayout(userStaked, winningPoolTotal, losingPoolTotal) {
-  let payout = userStaked;
-  if (winningPoolTotal > 0n && losingPoolTotal > 0n) {
-    payout += (userStaked * losingPoolTotal) / winningPoolTotal;
+function computePayout(userStaked, winningPoolTotal, losingPoolTotal, fixedOdds = false) {
+  if (fixedOdds) {
+    const grossProfit = (userStaked * FIXED_PROFIT_BPS) / 10000n;
+    const platformFee = (grossProfit * PROTOCOL_FEE_BPS) / 10000n;
+    return userStaked + grossProfit - platformFee;
   }
+  let payout = userStaked;
+  if (winningPoolTotal > 0n && losingPoolTotal > 0n) payout += (userStaked * losingPoolTotal) / winningPoolTotal;
   const platformFee = (payout * PROTOCOL_FEE_BPS) / 10000n;
   return payout - platformFee;
 }
 
-async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawkTotal, doveTotal) {
+async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawkTotal, doveTotal, fixedOdds = false) {
   const { data: activePositions, error } = await adminSupabase
     .from("positions")
     .select("*")
@@ -54,7 +59,7 @@ async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawk
 
     if (won) {
       const staked = BigInt(position.staked_amount_raw);
-      const payoutRaw = computePayout(staked, winningPoolTotal, losingPoolTotal);
+      const payoutRaw = computePayout(staked, winningPoolTotal, losingPoolTotal, fixedOdds);
       const payoutDisplay = Number(ethers.formatUnits(payoutRaw, 18));
 
       await adminSupabase

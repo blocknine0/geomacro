@@ -10,7 +10,8 @@ const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 // unchanged from V1 to V2, so only the target address differs per event —
 // V1 markets still pending finalization at cutover keep finalizing against
 // OLD_CONTRACT_ADDRESS instead of going unclaimed.
-const PROTOCOL_FEE_BPS = 150n; // 1.5% — must mirror AgentArena.sol PROTOCOL_FEE_BPS exactly
+const PROTOCOL_FEE_BPS = 150n; // 1.5% winner fee
+const FIXED_PROFIT_BPS = 10000n; // 100% gross profit for V2 fixed-odds markets
 
 // Hard cap on how many markets this run will touch, so a big backlog
 // can't generate an unbounded burst of RPC calls in a single run.
@@ -31,7 +32,12 @@ const timeBudgetExceeded = () => Date.now() - runStartedAt > RUN_TIME_BUDGET_MS;
 const CONTRACT_ABI = [
   "function finalizeMarket(string marketId) external",
   "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer)",
-  "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)"
+  "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
+  "function fixedOddsMarket(string marketId) view returns (bool)"
+];
+
+const V2_FULL_DETAILS_ABI = [
+  "function getMarketFullDetails(string marketId) view returns (uint8 status, uint8 winner, uint8 tentativeWinner, uint256 stakingEndTime, uint256 resolutionTime, uint256 aiResolutionTime, address disputer, uint256 disputeBond, uint256 disputeRaisedAt)"
 ];
 
 // Canonical Multicall3 deployment address — same one used in resolve-markets.js
@@ -62,7 +68,9 @@ const STATUS_DISPUTED = Number(process.env.DISPUTED_STATUS_INDEX ?? 3);
 // function just silently no-ops if neither time condition is met) — so this
 // wasn't causing incorrect state, just wasted transactions/gas on doomed
 // early attempts for disputed markets specifically.
-const DISPUTE_EXTRA_VOTING_WINDOW_SECONDS = Number(process.env.DISPUTE_EXTRA_VOTING_WINDOW_SECONDS ?? 86400);
+const LEGACY_DISPUTE_EXTRA_VOTING_WINDOW_SECONDS = Number(process.env.DISPUTE_EXTRA_VOTING_WINDOW_SECONDS ?? 86400);
+// AgentArenaV2.sol measures a fresh 48h jury window FROM disputeRaisedAt.
+const V2_JURY_VOTE_WINDOW_SECONDS = Number(process.env.V2_JURY_VOTE_WINDOW_SECONDS ?? 172800);
 
 // ✅ CONFIRMED via production logs (see run on markets aiResolutionTime
 // 87368s vs 70750s old): markets older than ~86400s (24h) since
@@ -241,7 +249,12 @@ async function batchGetMarketDetails(readRpcManager, contractInterface, marketId
 
 // claim()-এর সাথে হুবহু ম্যাচিং payout ফর্মুলা (parimutuel + protocol fee),
 // যাতে positions টেবিলে যা "claimable" দেখানো হয় আর ইউজার আসলে অনচেইন যা পাবে তা এক থাকে।
-function computePayout(userStaked, winningPoolTotal, losingPoolTotal) {
+function computePayout(userStaked, winningPoolTotal, losingPoolTotal, fixedOdds = false) {
+  if (fixedOdds) {
+    const grossProfit = (userStaked * FIXED_PROFIT_BPS) / 10000n;
+    const platformFee = (grossProfit * PROTOCOL_FEE_BPS) / 10000n;
+    return userStaked + grossProfit - platformFee;
+  }
   let payout = userStaked;
   if (winningPoolTotal > 0n && losingPoolTotal > 0n) {
     payout += (userStaked * losingPoolTotal) / winningPoolTotal;
@@ -253,7 +266,7 @@ function computePayout(userStaked, winningPoolTotal, losingPoolTotal) {
 // একটি রিজলভড মার্কেটের জন্য সব wallet-এর positions আপডেট করে +
 // প্রতিটির জন্য একটি balance-history ইভেন্ট বসায়। প্রতিটি wallet × market independent —
 // একজনের পজিশন আরেকজনকে টাচ করে না।
-async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawkTotal, doveTotal) {
+async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawkTotal, doveTotal, fixedOdds = false) {
   const { data: activePositions, error } = await adminSupabase
     .from("positions")
     .select("*")
@@ -275,7 +288,7 @@ async function syncPositionsForMarket(adminSupabase, eventId, winSideLabel, hawk
 
     if (won) {
       const staked = BigInt(position.staked_amount_raw); // ৬ ডেসিমেল রঢ ইউনিটে সংরক্ষিত মান
-      const payoutRaw = computePayout(staked, winningPoolTotal, losingPoolTotal);
+      const payoutRaw = computePayout(staked, winningPoolTotal, losingPoolTotal, fixedOdds);
       const payoutDisplay = Number(ethers.formatUnits(payoutRaw, 18));
 
       const { error: updErr } = await adminSupabase
@@ -474,7 +487,10 @@ async function main() {
             `getMarket(${marketId})`,
             readRpcManager,
           );
-          await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
+          const fixedOdds = !isLegacyEvent(event)
+            ? await getReadContract(CONTRACT_ADDRESS).fixedOddsMarket(marketId).catch(() => false)
+            : false;
+          await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal, fixedOdds);
         }
         await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
         finalizedCount++;
@@ -489,12 +505,29 @@ async function main() {
       // (and wasted gas on a no-op) a full 24h too early for disputed markets.
       const aiResolutionTime = Number(onChainMarket.aiResolutionTime ?? 0);
       const nowSec = Math.floor(Date.now() / 1000);
-      const requiredWindowSeconds = status === STATUS_DISPUTED
-        ? DISPUTE_WINDOW_SECONDS + DISPUTE_EXTRA_VOTING_WINDOW_SECONDS
-        : DISPUTE_WINDOW_SECONDS;
-      const windowRemaining = aiResolutionTime > 0
-        ? (aiResolutionTime + requiredWindowSeconds + SAFETY_MARGIN_SECONDS) - nowSec
-        : null;
+      let windowRemaining = null;
+
+      if (status === STATUS_DISPUTED && !isLegacyEvent(event)) {
+        // V2 is NOT "AI resolution + 24h + 24h". The contract starts a fresh
+        // 48h jury clock at the exact disputeRaisedAt timestamp.
+        try {
+          const v2 = new ethers.Contract(CONTRACT_ADDRESS, V2_FULL_DETAILS_ABI, readRpcManager.current());
+          const full = await callRpcWithBackoff(() => v2.getMarketFullDetails(marketId), `getMarketFullDetails-v2(${marketId})`, readRpcManager);
+          const disputeRaisedAt = Number(full.disputeRaisedAt ?? full[8] ?? 0);
+          if (disputeRaisedAt > 0) {
+            windowRemaining = (disputeRaisedAt + V2_JURY_VOTE_WINDOW_SECONDS + SAFETY_MARGIN_SECONDS) - nowSec;
+          }
+        } catch (timingErr) {
+          console.log(`  ⚠️ Could not read V2 disputeRaisedAt for ${marketId} (${timingErr.message}); skipping rather than risking an early finalize.`);
+          await delay(RPC_THROTTLE_MS);
+          continue;
+        }
+      } else if (aiResolutionTime > 0) {
+        const requiredWindowSeconds = status === STATUS_DISPUTED
+          ? DISPUTE_WINDOW_SECONDS + LEGACY_DISPUTE_EXTRA_VOTING_WINDOW_SECONDS
+          : DISPUTE_WINDOW_SECONDS;
+        windowRemaining = (aiResolutionTime + requiredWindowSeconds + SAFETY_MARGIN_SECONDS) - nowSec;
+      }
 
       if (windowRemaining !== null && windowRemaining > 0) {
         console.log(`  ⏭️ Skipping ${marketId}: still inside ${status === STATUS_DISPUTED ? "dispute voting" : "dispute"} window (${windowRemaining}s remaining). Not sending a transaction. Will retry once elapsed.`);
@@ -519,7 +552,10 @@ async function main() {
             const winLabel = SIDE_LABEL[Number(finalized.winner)];
             if (winLabel && winLabel !== "NONE") {
               const pools = await getPostTxReadContract(targetAddress).getMarket(marketId);
-              await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
+              const fixedOdds = !isLegacyEvent(event)
+            ? await getReadContract(CONTRACT_ADDRESS).fixedOddsMarket(marketId).catch(() => false)
+            : false;
+          await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal, fixedOdds);
             }
             await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
             finalizedCount++;
@@ -566,7 +602,10 @@ async function main() {
               `getMarket-postfinalize(${marketId})`,
               writeRpcManager,
             );
-            await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal);
+            const fixedOdds = !isLegacyEvent(event)
+            ? await getReadContract(CONTRACT_ADDRESS).fixedOddsMarket(marketId).catch(() => false)
+            : false;
+          await syncPositionsForMarket(adminSupabase, event.id, winLabel, pools.hawkTotal, pools.doveTotal, fixedOdds);
           }
           await adminSupabase.from("events").update({ market_resolved: true }).eq("id", event.id);
           finalizedCount++;
