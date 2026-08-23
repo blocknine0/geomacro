@@ -8,13 +8,13 @@ export const Route = createFileRoute("/bridge")({
       {
         name: "description",
         content:
-          "Bridge native USDC from Ethereum Sepolia, Avalanche Fuji, Base Sepolia, or Solana Devnet to Arc Testnet via Circle's CCTP.",
+          "Bridge native USDC from supported Circle CCTP testnets to Arc Testnet.",
       },
       { property: "og:title", content: "Bridge USDC to Arc · Geomacro" },
       {
         property: "og:description",
         content:
-          "Bridge native USDC from Ethereum Sepolia, Avalanche Fuji, Base Sepolia, or Solana Devnet to Arc Testnet via Circle's CCTP.",
+          "Bridge native USDC from supported Circle CCTP testnets to Arc Testnet.",
       },
     ],
   }),
