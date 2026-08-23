@@ -9,6 +9,14 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Safety guard
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "circle-grant-readiness" ]; then
+            echo "Refusing deployment from ${GITHUB_REF_NAME}"
+            echo "Select circle-grant-readiness in the Run workflow branch dropdown."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
