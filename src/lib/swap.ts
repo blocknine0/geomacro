@@ -7,15 +7,14 @@
 import { AppKit } from "@circle-fin/app-kit";
 import { createEthersAdapterFromProvider } from "@circle-fin/adapter-ethers-v6";
 import { parseUnits, type Eip1193Provider } from "ethers";
-import { chargeProtocolFee, computeProtocolFeeWei, formatFeeUsdc } from "./protocol-fee";
+import {
+  chargeExactProtocolFeeWei,
+  computeProtocolFeeWei,
+  formatFeeUsdc,
+} from "./protocol-fee";
 
 export type ArcSwapToken = "USDC" | "EURC" | "cirBTC";
 export const ARC_SWAP_TOKENS: ArcSwapToken[] = ["USDC", "EURC", "cirBTC"];
-
-// A kit key is optional but strongly recommended — without one, requests
-// run against a shared rate limit. Get one free from the Circle Console:
-// https://console.circle.com
-const KIT_KEY = import.meta.env.VITE_CIRCLE_KIT_KEY as string | undefined;
 
 let kitSingleton: AppKit | null = null;
 function getKit(): AppKit {
@@ -72,35 +71,115 @@ export type SwapQuoteParams = {
   amountIn: string; // decimal string, e.g. "1.00" — NOT wei, App Kit handles decimals internally
 };
 
+export type ExecuteSwapParams = SwapQuoteParams & {
+  geomacroFeeUsdc: string;
+};
+
+async function getSwapInputUsdValue(
+  token: ArcSwapToken,
+  amount: string,
+): Promise<string> {
+  const kit = getKit();
+
+  const { rates } = await kit.getTokenRates({
+    chain: "Arc_Testnet",
+    tokens: [token],
+  });
+
+  const chainRates = rates["Arc_Testnet"] ?? {};
+  const rate = Object.values(chainRates)[0];
+
+  if (!rate) {
+    if (token === "USDC") return amount;
+    throw new Error(`No Circle USD rate available for ${token}.`);
+  }
+
+  const price = Number(rate.priceUSD);
+  const quantity = Number(amount);
+
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error(`Invalid Circle USD rate for ${token}.`);
+  }
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error("Invalid swap amount.");
+  }
+
+  return (quantity * price).toFixed(18);
+}
+
+export type SwapQuote = {
+  estimatedOutput: string;
+  minimumOutput: string;
+  geomacroFeeUsdc: string;
+  fees: readonly {
+    token: string;
+    amount: string | null;
+    type: "provider" | "swap" | "gas" | "developer";
+  }[];
+};
+
 export type SwapResult = {
   txHash: string;
   amountOut?: string;
-  feeTxHash: string;
-  feeUsdc: string;
+  status: string;
+  feeTxHash?: string;
+  feeUsdc?: string;
+  feeError?: string;
 };
 
-/** Lets the UI show "+ $0.05 protocol fee" before the user confirms. */
-export function previewSwapFeeUsdc(amountIn: string): string {
-  if (!amountIn || Number(amountIn) <= 0) return "0.00";
-  const feeWei = computeProtocolFeeWei(parseUnits(amountIn, 18));
-  return formatFeeUsdc(feeWei);
+export async function estimateArcSwap({
+  tokenIn,
+  tokenOut,
+  amountIn,
+}: SwapQuoteParams): Promise<SwapQuote> {
+  if (tokenIn === tokenOut) {
+    throw new Error("tokenIn and tokenOut must be different");
+  }
+
+  if (!amountIn || Number(amountIn) <= 0) {
+    throw new Error("Enter an amount greater than 0.");
+  }
+
+  const provider = getEthereumProvider();
+  const adapter = await createEthersAdapterFromProvider({ provider });
+  const kit = getKit();
+
+  const estimate = await kit.estimateSwap({
+    from: { adapter, chain: "Arc_Testnet" },
+    tokenIn,
+    tokenOut,
+    amountIn,
+  });
+
+  const inputUsdValue = await getSwapInputUsdValue(tokenIn, amountIn);
+  const feeWei = computeProtocolFeeWei(parseUnits(inputUsdValue, 18));
+
+  return {
+    estimatedOutput: estimate.estimatedOutput.amount,
+    minimumOutput: estimate.stopLimit.amount,
+    geomacroFeeUsdc: formatFeeUsdc(feeWei),
+    fees: estimate.fees ?? [],
+  };
 }
 
 /**
  * Executes a same-chain swap on Arc Testnet using the connected browser
- * wallet. Charges the protocol fee first (on top of amountIn, sent to
- * treasury) — if the fee payment fails or is rejected, the swap itself
- * never happens, so a fee is never silently skipped. Persists the swap
+ * wallet. The protocol fee is charged separately after App Kit confirms
+ * the same-chain swap transaction, so a rejected or reverted swap never
+ * leaves the user paying a Geomacro fee for no swap. Persists the swap
  * intent to localStorage before calling so an interrupted session
  * (refresh/crash mid-await) can be surfaced to the user afterward, and
  * clears it once the call resolves either way (success or a clean failure
  * — see the UI layer for how an ambiguous outcome is handled).
  */
-export async function executeArcSwap({ tokenIn, tokenOut, amountIn }: SwapQuoteParams): Promise<SwapResult> {
+export async function executeArcSwap({
+  tokenIn,
+  tokenOut,
+  amountIn,
+  geomacroFeeUsdc,
+}: ExecuteSwapParams): Promise<SwapResult> {
   if (tokenIn === tokenOut) throw new Error("tokenIn and tokenOut must be different");
-
-  const amountWei = parseUnits(amountIn, 18);
-  const fee = await chargeProtocolFee(amountWei);
 
   const provider = getEthereumProvider();
   const adapter = await createEthersAdapterFromProvider({ provider });
@@ -113,11 +192,44 @@ export async function executeArcSwap({ tokenIn, tokenOut, amountIn }: SwapQuoteP
     tokenIn,
     tokenOut,
     amountIn,
-    ...(KIT_KEY ? { config: { kitKey: KIT_KEY } } : {}),
   });
 
+  if (result.progress.status !== "DONE") {
+    return {
+      txHash: result.txHash,
+      amountOut: result.amountOut,
+      status: result.progress.status,
+    };
+  }
+
   clearPendingSwapIntent();
-  return { txHash: result.txHash, amountOut: result.amountOut, feeTxHash: fee.txHash, feeUsdc: formatFeeUsdc(fee.feeWei) };
+
+  // The swap itself is already complete at this point. Fee collection is a
+  // separate transaction and must never turn a successful swap into a
+  // reported swap failure.
+  try {
+    const fee = await chargeExactProtocolFeeWei(
+      parseUnits(geomacroFeeUsdc, 18),
+    );
+
+    return {
+      txHash: result.txHash,
+      amountOut: result.amountOut,
+      status: result.progress.status,
+      feeTxHash: fee.txHash,
+      feeUsdc: formatFeeUsdc(fee.feeWei),
+    };
+  } catch (error) {
+    return {
+      txHash: result.txHash,
+      amountOut: result.amountOut,
+      status: result.progress.status,
+      feeError:
+        error instanceof Error
+          ? error.message
+          : "Protocol fee collection failed after the swap completed.",
+    };
+  }
 }
 
 /**
@@ -132,7 +244,6 @@ export async function checkArcSwapStatus(txHash: string): Promise<{ status: stri
   const status = await kit.getSwapStatus({
     txHash,
     chainIn: "Arc_Testnet",
-    ...(KIT_KEY ? { kitKey: KIT_KEY } : {}),
   });
   return { status: status.progress.status, amountOut: status.destination?.amount };
 }

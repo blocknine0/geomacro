@@ -10,9 +10,9 @@
 // convention as agent-arena.ts's ARC_USDC_DECIMALS.
 import { BrowserProvider, type Eip1193Provider } from "ethers";
 
-// ⚠️ Read directly from AgentArena.sol's treasury() view function on Arcscan
-// — verify this matches before deploying, a wrong address here sends real
-// funds somewhere unrecoverable.
+// Project-wide protocol fee recipient wallet used by Geomacro for
+// Bridge/Swap fees. This is intentionally the fee recipient wallet, not the
+// AgentArena V2 MultisigTreasury contract address.
 export const TREASURY_ADDRESS = "0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5";
 
 const FEE_BPS = 15n; // 0.15%
@@ -49,6 +49,44 @@ export async function chargeProtocolFee(amountWei: bigint): Promise<FeePaymentRe
   const tx = await signer.sendTransaction({ to: TREASURY_ADDRESS, value: feeWei });
   const receipt = await tx.wait();
   if (!receipt) throw new Error("Fee transaction did not confirm.");
+
+  return { txHash: receipt.hash, feeWei };
+}
+
+/**
+ * Pays an already-computed protocol fee exactly as supplied.
+ *
+ * Use this when the caller has already calculated the final USDC-denominated
+ * fee, for example from a snapshotted Circle swap quote. Unlike
+ * chargeProtocolFee(), this function does not apply FEE_BPS/floor/cap again.
+ */
+export async function chargeExactProtocolFeeWei(
+  feeWei: bigint,
+): Promise<FeePaymentResult> {
+  if (feeWei <= 0n) {
+    throw new Error("Protocol fee must be greater than zero.");
+  }
+
+  const eth =
+    typeof window !== "undefined"
+      ? (window as unknown as { ethereum?: Eip1193Provider }).ethereum
+      : undefined;
+
+  if (!eth) {
+    throw new Error("No wallet provider found — connect a wallet first.");
+  }
+
+  const provider = new BrowserProvider(eth);
+  const signer = await provider.getSigner();
+  const tx = await signer.sendTransaction({
+    to: TREASURY_ADDRESS,
+    value: feeWei,
+  });
+
+  const receipt = await tx.wait();
+  if (!receipt) {
+    throw new Error("Fee transaction did not confirm.");
+  }
 
   return { txHash: receipt.hash, feeWei };
 }
