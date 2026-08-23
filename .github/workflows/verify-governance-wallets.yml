@@ -25,6 +25,8 @@ jobs:
 
       - name: Compare secret wallets with treasury signers
         env:
+          TREASURY_PRIVATE_KEY_1: ${{ secrets.TREASURY_PRIVATE_KEY_1 }}
+          TREASURY_PRIVATE_KEY_2: ${{ secrets.TREASURY_PRIVATE_KEY_2 }}
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
           GUARDIAN_PRIVATE_KEY: ${{ secrets.GUARDIAN_PRIVATE_KEY }}
           JURY_PRIVATE_KEY_1: ${{ secrets.JURY_PRIVATE_KEY_1 }}
@@ -43,6 +45,8 @@ jobs:
           ].map(x => x.toLowerCase());
 
           const keys = {
+            TREASURY_PRIVATE_KEY_1: process.env.TREASURY_PRIVATE_KEY_1,
+            TREASURY_PRIVATE_KEY_2: process.env.TREASURY_PRIVATE_KEY_2,
             OWNER_PRIVATE_KEY: process.env.OWNER_PRIVATE_KEY,
             GUARDIAN_PRIVATE_KEY: process.env.GUARDIAN_PRIVATE_KEY,
             JURY_PRIVATE_KEY_1: process.env.JURY_PRIVATE_KEY_1,
