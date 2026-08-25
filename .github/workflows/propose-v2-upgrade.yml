@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       new_implementation:
-        description: "Already deployed AgentArenaV2 implementation address"
+        description: "Fresh deployed AgentArenaV2 implementation address"
         required: true
         type: string
 
@@ -16,8 +16,11 @@ jobs:
     steps:
       - name: Safety guard
         run: |
+          set -euo pipefail
+
           if [ "${GITHUB_REF_NAME}" != "main" ]; then
-            echo "Refusing upgrade proposal from ${GITHUB_REF_NAME}"
+            echo "Refusing V2 upgrade proposal from ${GITHUB_REF_NAME}"
+            echo "Run this workflow from main."
             exit 1
           fi
 
@@ -29,19 +32,23 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install ethers
-        run: npm install ethers
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Propose and approve updated V2 implementation
+      - name: Propose and approve fresh V2 implementation
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           TREASURY_PRIVATE_KEY_1: ${{ secrets.TREASURY_PRIVATE_KEY_1 }}
           TREASURY_PRIVATE_KEY_2: ${{ secrets.TREASURY_PRIVATE_KEY_2 }}
           CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
           NEW_IMPLEMENTATION: ${{ inputs.new_implementation }}
+
         run: |
           node --input-type=module <<'NODE'
           import { ethers } from "ethers";
+
+          const EXPECTED_CHAIN_ID = 5042002n;
+          const ZERO = ethers.ZeroAddress;
 
           const {
             ARC_RPC_URL,
@@ -59,38 +66,83 @@ jobs:
             !NEW_IMPLEMENTATION
           ) {
             throw new Error(
-              "Missing required RPC, signer, proxy, or implementation configuration"
+              "Missing ARC_RPC_URL, treasury signer keys, proxy address, or new implementation"
+            );
+          }
+
+          if (!ethers.isAddress(CONTRACT_ADDRESS)) {
+            throw new Error(
+              `Invalid ARC_V2_PROXY_ADDRESS: ${CONTRACT_ADDRESS}`
+            );
+          }
+
+          if (!ethers.isAddress(NEW_IMPLEMENTATION)) {
+            throw new Error(
+              `Invalid new implementation address: ${NEW_IMPLEMENTATION}`
             );
           }
 
           if (
-            !ethers.isAddress(CONTRACT_ADDRESS) ||
-            !ethers.isAddress(NEW_IMPLEMENTATION)
+            CONTRACT_ADDRESS.toLowerCase() ===
+            NEW_IMPLEMENTATION.toLowerCase()
           ) {
-            throw new Error("Invalid proxy or implementation address");
+            throw new Error(
+              "Implementation address cannot equal proxy address"
+            );
           }
 
-          const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
+          const provider = new ethers.JsonRpcProvider(
+            ARC_RPC_URL
+          );
 
-          const [network, proxyCode, implementationCode] = await Promise.all([
-            provider.getNetwork(),
+          const network = await provider.getNetwork();
+
+          console.log(
+            "Chain ID:",
+            network.chainId.toString()
+          );
+
+          if (network.chainId !== EXPECTED_CHAIN_ID) {
+            throw new Error(
+              `Wrong network. Expected Arc Testnet ${EXPECTED_CHAIN_ID}, got ${network.chainId}`
+            );
+          }
+
+          const [
+            proxyCode,
+            implementationCode,
+          ] = await Promise.all([
             provider.getCode(CONTRACT_ADDRESS),
             provider.getCode(NEW_IMPLEMENTATION),
           ]);
 
-          console.log("Chain ID:", network.chainId.toString());
-          console.log("Proxy:", CONTRACT_ADDRESS);
-          console.log("Target implementation:", NEW_IMPLEMENTATION);
-
           if (proxyCode === "0x") {
-            throw new Error("Proxy address has no deployed bytecode");
+            throw new Error(
+              `Proxy has no deployed bytecode: ${CONTRACT_ADDRESS}`
+            );
           }
 
           if (implementationCode === "0x") {
             throw new Error(
-              "Implementation address has no deployed bytecode"
+              `New implementation has no deployed bytecode: ${NEW_IMPLEMENTATION}`
             );
           }
+
+          console.log(
+            "Proxy:",
+            CONTRACT_ADDRESS
+          );
+
+          console.log(
+            "Fresh V2 implementation:",
+            NEW_IMPLEMENTATION
+          );
+
+          console.log(
+            "Implementation runtime code size:",
+            (implementationCode.length - 2) / 2,
+            "bytes"
+          );
 
           const signer1 = new ethers.Wallet(
             TREASURY_PRIVATE_KEY_1,
@@ -107,11 +159,11 @@ jobs:
             signer2.address.toLowerCase()
           ) {
             throw new Error(
-              "Treasury signer 1 and signer 2 must be different addresses"
+              "TREASURY_PRIVATE_KEY_1 and TREASURY_PRIVATE_KEY_2 resolve to the same address"
             );
           }
 
-          const abi = [
+          const arenaAbi = [
             "function treasury() view returns (address)",
             "function proposeUpgrade(address)",
             "function approveUpgrade(address)",
@@ -128,20 +180,26 @@ jobs:
 
           const arena1 = new ethers.Contract(
             CONTRACT_ADDRESS,
-            abi,
+            arenaAbi,
             signer1
           );
 
           const arena2 = new ethers.Contract(
             CONTRACT_ADDRESS,
-            abi,
+            arenaAbi,
             signer2
           );
 
-          const treasuryAddress = await arena1.treasury();
+          const treasuryAddress =
+            await arena1.treasury();
 
-          if (!ethers.isAddress(treasuryAddress)) {
-            throw new Error("Invalid treasury address returned by proxy");
+          if (
+            !ethers.isAddress(treasuryAddress) ||
+            treasuryAddress === ZERO
+          ) {
+            throw new Error(
+              `Invalid treasury returned by proxy: ${treasuryAddress}`
+            );
           }
 
           const treasury = new ethers.Contract(
@@ -151,37 +209,56 @@ jobs:
           );
 
           const [
+            configuredSigners,
             signer1Allowed,
             signer2Allowed,
-            treasurySigners,
           ] = await Promise.all([
+            treasury.getSigners(),
             treasury.isSigner(signer1.address),
             treasury.isSigner(signer2.address),
-            treasury.getSigners(),
           ]);
 
-          console.log("Treasury:", treasuryAddress);
-          console.log("Treasury signer 1:", signer1.address);
-          console.log("Treasury signer 2:", signer2.address);
-          console.log("Configured treasury signers:", treasurySigners);
+          console.log(
+            "Treasury:",
+            treasuryAddress
+          );
+
+          console.log(
+            "Configured treasury signers:",
+            configuredSigners
+          );
+
+          console.log(
+            "Signer 1:",
+            signer1.address
+          );
+
+          console.log(
+            "Signer 2:",
+            signer2.address
+          );
 
           if (!signer1Allowed) {
             throw new Error(
-              `TREASURY_PRIVATE_KEY_1 address ${signer1.address} is not a treasury signer`
+              `TREASURY_PRIVATE_KEY_1 address ${signer1.address} is not an authorized treasury signer`
             );
           }
 
           if (!signer2Allowed) {
             throw new Error(
-              `TREASURY_PRIVATE_KEY_2 address ${signer2.address} is not a treasury signer`
+              `TREASURY_PRIVATE_KEY_2 address ${signer2.address} is not an authorized treasury signer`
             );
           }
 
-          const beforePending =
-            await arena1.pendingImplementation();
-
-          const beforeCount =
-            Number(await arena1.upgradeApprovalCount());
+          const [
+            beforePending,
+            beforeUnlock,
+            beforeCount,
+          ] = await Promise.all([
+            arena1.pendingImplementation(),
+            arena1.upgradeUnlockTime(),
+            arena1.upgradeApprovalCount(),
+          ]);
 
           console.log(
             "Before pendingImplementation:",
@@ -189,119 +266,222 @@ jobs:
           );
 
           console.log(
-            "Before approvalCount:",
-            beforeCount
+            "Before upgradeApprovalCount:",
+            Number(beforeCount)
           );
 
-          if (
-            beforePending !== ethers.ZeroAddress &&
-            beforePending.toLowerCase() !==
-              NEW_IMPLEMENTATION.toLowerCase()
-          ) {
-            throw new Error(
-              `Different upgrade already pending: ${beforePending}`
-            );
-          }
+          console.log(
+            "Before upgradeUnlockTime:",
+            beforeUnlock.toString()
+          );
 
-          if (beforePending === ethers.ZeroAddress) {
-            const tx1 =
+          let proposalTxHash = null;
+
+          if (
+            beforePending === ZERO
+          ) {
+            console.log(
+              "No pending implementation. Creating fresh V2 proposal."
+            );
+
+            const tx =
               await arena1.proposeUpgrade(
                 NEW_IMPLEMENTATION
               );
 
+            proposalTxHash = tx.hash;
+
             console.log(
               "proposeUpgrade tx:",
-              tx1.hash
+              tx.hash
             );
 
-            await tx1.wait();
-          } else {
+            const receipt = await tx.wait();
+
+            if (
+              !receipt ||
+              receipt.status !== 1
+            ) {
+              throw new Error(
+                "V2 proposal transaction failed"
+              );
+            }
+          } else if (
+            beforePending.toLowerCase() !==
+            NEW_IMPLEMENTATION.toLowerCase()
+          ) {
             console.log(
-              "Proposal already exists for target implementation."
-            );
-          }
-
-          const approved2 =
-            await arena1.upgradeApprovedBy(
-              signer2.address
+              `Replacing stale pending implementation ${beforePending}`
             );
 
-          if (!approved2) {
-            const tx2 =
-              await arena2.approveUpgrade(
+            console.log(
+              `New V2 implementation: ${NEW_IMPLEMENTATION}`
+            );
+
+            const tx =
+              await arena1.proposeUpgrade(
                 NEW_IMPLEMENTATION
               );
 
+            proposalTxHash = tx.hash;
+
             console.log(
-              "approveUpgrade tx:",
-              tx2.hash
+              "replacement proposeUpgrade tx:",
+              tx.hash
             );
 
-            await tx2.wait();
+            const receipt = await tx.wait();
+
+            if (
+              !receipt ||
+              receipt.status !== 1
+            ) {
+              throw new Error(
+                "Replacement V2 proposal transaction failed"
+              );
+            }
           } else {
             console.log(
-              "Signer 2 already approved."
+              "Fresh V2 implementation is already the pending target."
             );
           }
 
           const [
-            pending,
-            unlock,
-            count,
+            pendingAfterProposal,
+            countAfterProposal,
+            unlockAfterProposal,
+            signer1ApprovedAfterProposal,
+          ] = await Promise.all([
+            arena1.pendingImplementation(),
+            arena1.upgradeApprovalCount(),
+            arena1.upgradeUnlockTime(),
+            arena1.upgradeApprovedBy(
+              signer1.address
+            ),
+          ]);
+
+          if (
+            pendingAfterProposal.toLowerCase() !==
+            NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            throw new Error(
+              `Pending implementation mismatch after proposal. Expected ${NEW_IMPLEMENTATION}, got ${pendingAfterProposal}`
+            );
+          }
+
+          if (
+            countAfterProposal < 1n
+          ) {
+            throw new Error(
+              "Proposal did not register the first treasury approval"
+            );
+          }
+
+          if (
+            !signer1ApprovedAfterProposal
+          ) {
+            throw new Error(
+              "Treasury signer 1 was not recorded as approving the fresh V2 proposal"
+            );
+          }
+
+          if (
+            unlockAfterProposal === 0n
+          ) {
+            throw new Error(
+              "Fresh V2 proposal did not set an upgrade timelock"
+            );
+          }
+
+          console.log(
+            "Pending after proposal:",
+            pendingAfterProposal
+          );
+
+          console.log(
+            "Approval count after proposal:",
+            Number(countAfterProposal)
+          );
+
+          console.log(
+            "Unlock after proposal:",
+            unlockAfterProposal.toString()
+          );
+
+          let approvalTxHash = null;
+
+          const signer2AlreadyApproved =
+            await arena1.upgradeApprovedBy(
+              signer2.address
+            );
+
+          if (
+            !signer2AlreadyApproved
+          ) {
+            console.log(
+              "Submitting treasury signer 2 approval."
+            );
+
+            const tx =
+              await arena2.approveUpgrade(
+                NEW_IMPLEMENTATION
+              );
+
+            approvalTxHash = tx.hash;
+
+            console.log(
+              "approveUpgrade tx:",
+              tx.hash
+            );
+
+            const receipt = await tx.wait();
+
+            if (
+              !receipt ||
+              receipt.status !== 1
+            ) {
+              throw new Error(
+                "Second treasury approval transaction failed"
+              );
+            }
+          } else {
+            console.log(
+              "Treasury signer 2 already approved this exact V2 implementation."
+            );
+          }
+
+          const [
+            finalPending,
+            finalUnlock,
+            finalCount,
             signer1Approved,
             signer2Approved,
           ] = await Promise.all([
             arena1.pendingImplementation(),
             arena1.upgradeUnlockTime(),
             arena1.upgradeApprovalCount(),
-            arena1.upgradeApprovedBy(signer1.address),
-            arena1.upgradeApprovedBy(signer2.address),
+            arena1.upgradeApprovedBy(
+              signer1.address
+            ),
+            arena1.upgradeApprovedBy(
+              signer2.address
+            ),
           ]);
 
-          console.log(
-            "pendingImplementation:",
-            pending
-          );
-
-          console.log(
-            "upgradeApprovalCount:",
-            Number(count)
-          );
-
-          console.log(
-            "upgradeUnlockTime:",
-            unlock.toString()
-          );
-
-          console.log(
-            "unlock ISO:",
-            new Date(
-              Number(unlock) * 1000
-            ).toISOString()
-          );
-
-          console.log(
-            "signer1 approved:",
-            signer1Approved
-          );
-
-          console.log(
-            "signer2 approved:",
-            signer2Approved
-          );
-
           if (
-            pending.toLowerCase() !==
+            finalPending.toLowerCase() !==
             NEW_IMPLEMENTATION.toLowerCase()
           ) {
             throw new Error(
-              "Pending implementation mismatch"
+              `Final pendingImplementation mismatch: ${finalPending}`
             );
           }
 
-          if (Number(count) < 2) {
+          if (
+            finalCount < 2n
+          ) {
             throw new Error(
-              `Expected at least 2 approvals, got ${count}`
+              `Expected at least 2 treasury approvals, got ${finalCount}`
             );
           }
 
@@ -310,15 +490,107 @@ jobs:
             !signer2Approved
           ) {
             throw new Error(
-              "Expected both configured treasury signers to have approved"
+              "Both configured treasury signers must approve the exact V2 implementation"
             );
           }
 
+          if (
+            finalUnlock === 0n
+          ) {
+            throw new Error(
+              "Final upgradeUnlockTime is zero"
+            );
+          }
+
+          const latestBlock =
+            await provider.getBlock(
+              "latest"
+            );
+
+          if (!latestBlock) {
+            throw new Error(
+              "Unable to read latest Arc block"
+            );
+          }
+
+          const unlockDate =
+            new Date(
+              Number(finalUnlock) * 1000
+            );
+
+          console.log("");
           console.log(
-            "PASS: V2 upgrade proposal has 2-of-3 approval."
+            "========================================"
           );
 
           console.log(
-            "WAIT: upgrade execution remains blocked until the 48h timelock expires."
+            "V2 UPGRADE PROPOSAL READY"
+          );
+
+          console.log(
+            "========================================"
+          );
+
+          console.log(
+            "Permanent proxy:",
+            CONTRACT_ADDRESS
+          );
+
+          console.log(
+            "Pending V2 implementation:",
+            finalPending
+          );
+
+          console.log(
+            "Upgrade approval count:",
+            Number(finalCount)
+          );
+
+          console.log(
+            "Signer 1 approved:",
+            signer1Approved
+          );
+
+          console.log(
+            "Signer 2 approved:",
+            signer2Approved
+          );
+
+          console.log(
+            "Upgrade unlock timestamp:",
+            finalUnlock.toString()
+          );
+
+          console.log(
+            "Upgrade unlock ISO:",
+            unlockDate.toISOString()
+          );
+
+          console.log(
+            "Current block timestamp:",
+            latestBlock.timestamp
+          );
+
+          if (proposalTxHash) {
+            console.log(
+              "Proposal tx:",
+              proposalTxHash
+            );
+          }
+
+          if (approvalTxHash) {
+            console.log(
+              "Second approval tx:",
+              approvalTxHash
+            );
+          }
+
+          console.log("");
+          console.log(
+            "WAIT: Do not run execute-v2-upgrade until this new 48h timelock has elapsed."
+          );
+
+          console.log(
+            "V2 ONLY: no V3 initializer or V3 implementation is used."
           );
           NODE
