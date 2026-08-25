@@ -1,0 +1,39 @@
+name: Fund AgentArena V2 Liquidity Reserve
+
+on:
+  workflow_dispatch:
+    inputs:
+      amount:
+        description: "Native USDC amount to add to the V2 liquidity reserve (18-decimal tx.value precision)"
+        required: true
+        type: string
+
+jobs:
+  fund:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify V2 economics before funding
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
+        run: npm run economics:verify
+
+      - name: Fund V2 liquidity reserve
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
+          LIQUIDITY_PRIVATE_KEY: ${{ secrets.LIQUIDITY_PRIVATE_KEY }}
+          LIQUIDITY_AMOUNT: ${{ inputs.amount }}
+        run: npm run liquidity:fund
