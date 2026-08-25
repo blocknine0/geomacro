@@ -10,7 +10,7 @@ import { AGENT_ARENA_ADDRESS, getReadProvider, getProvider } from "./agent-arena
  * merged into AGENT_ARENA_ABI there, so the V1-only surface (still used by
  * markets mid-lifecycle under the old contract) doesn't need touching.
  *
- * IMPORTANT: AGENT_ARENA_ADDRESS in agent-arena.ts still points at the V1
+ * IMPORTANT: AGENT_ARENA_ADDRESS in agent-arena.ts points at the current V2 proxy.
  * proxy (0xC026...) until the V2 redeploy lands and that constant is
  * updated. These functions will simply call the wrong contract until then
  * — that's expected, not a bug in this file.

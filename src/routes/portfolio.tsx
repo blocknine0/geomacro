@@ -279,7 +279,7 @@ function PortfolioPage() {
       rememberSessionTx(activeNet, address ?? "", {
         hash,
         from: address ?? "",
-        to: null,
+        to: claimTargetAddress,
         valueWei: "0",
         timestamp: Math.floor(Date.now() / 1000),
         blockNumber: null,

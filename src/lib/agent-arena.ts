@@ -10,7 +10,7 @@ import {
 import type { AgentSide } from "./agents";
 import { ARC_TESTNET, getArcReadProvider } from "./arc";
 
-export const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe"; // ⚠️ UPDATE to the new V2 proxy after redeploy — this still shows V1
+export const AGENT_ARENA_ADDRESS = "0x2F874FB07084a22D2bB314D0762Af57Cb1856868";
 // 🆕 V1/V2 dual-contract transition (mirrors the backend scripts' pattern):
 // V1 markets still mid-lifecycle need reads/writes routed to the OLD
 // address even after AGENT_ARENA_ADDRESS is flipped to V2 — otherwise

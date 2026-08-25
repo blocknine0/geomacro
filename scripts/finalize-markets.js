@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 import { OLD_CONTRACT_ADDRESS, isLegacyEvent, partitionEventsByContract } from "./lib/dual-contract.js";
 
-const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0x2F874FB07084a22D2bB314D0762Af57Cb1856868";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 // 🆕 Dual-contract transition (mirrors sync-lifecycle.js / resolve-markets.js):
 // finalizeMarket's signature and getMarketFullDetails/getMarket's shapes are

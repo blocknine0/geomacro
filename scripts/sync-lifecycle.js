@@ -18,9 +18,9 @@ import { createClient } from "@supabase/supabase-js";
 // (9-field, includes disputeBond/disputeRaisedAt). Every event row already
 // carries its own market_address (written by create-markets.js) — this
 // script routes each market to the right contract+ABI by that column
-// instead of assuming a single global CONTRACT_ADDRESS. Once every legacy
-// market has reached lifecycle_stage="completed" (expected within ~72h of
-// the V2 deploy), the OLD_CONTRACT_ADDRESS branch can be deleted entirely.
+// instead of assuming a single global CONTRACT_ADDRESS.
+// V1 compatibility is intentionally retained for historical markets,
+// positions, lifecycle state, claims, analytics, and backward compatibility.
 const OLD_CONTRACT_ADDRESS = ethers.getAddress(
   (process.env.OLD_CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe").toLowerCase(),
 );
