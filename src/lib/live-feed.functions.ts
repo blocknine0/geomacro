@@ -44,6 +44,7 @@ const FeedInput = z.object({
 
 const EventOut = z.object({
   id: z.string(),
+  hitIndex: z.number().int(),
   category: z.enum(FEED_CATEGORIES),
   narrative: z.string(),
   summary: z.string(),
@@ -63,7 +64,7 @@ const FeedSchema = z.object({
 });
 
 type RawFeedEvent = z.infer<typeof EventOut>;
-export type FeedEvent = Omit<RawFeedEvent, "id">;
+export type FeedEvent = Omit<RawFeedEvent, "id" | "hitIndex">;
 export type FeedResult = { events: FeedEvent[]; generatedAt: string };
 
 // Per-category cache: last successful classified events. Used as fallback
@@ -150,9 +151,15 @@ HITS:
 ${items}
 
 Return a JSON object with this exact shape:
-{"events":[{"id":"evt_xxx","category":"${cat}","narrative":"...","summary":"...","stage":"Active Escalation|Building|Fragile Ceasefire|De-escalation|Monitoring|Stable","severity":0,"confidence":0,"sourceUrl":"...","sourceTitle":"...","publishedAt":"ISO","relevance":"relevant|reject"}]}
+{"events":[{"id":"evt_xxx","hitIndex":1,"category":"${cat}","narrative":"...","summary":"...","stage":"Active Escalation|Building|Fragile Ceasefire|De-escalation|Monitoring|Stable","severity":0,"confidence":0,"sourceUrl":"...","sourceTitle":"...","publishedAt":"ISO","relevance":"relevant|reject"}]}
 
 RULES
+- GROUNDING: emit exactly one event per hit, in the same order as the numbered
+  HITS list. hitIndex MUST equal that hit's (N) number. narrative, summary,
+  sourceUrl, and sourceTitle MUST all describe THAT SAME hit only — never
+  combine wording, facts, or figures from a different hit, even if two hits
+  cover the same macro theme (e.g. an Iran-war-fear story about gold and a
+  separate one about Bitcoin are TWO DISTINCT events, not one blended event).
 - STRICT RELEVANCE: for EACH hit decide if it genuinely matches the CATEGORY TOPIC.
   Sports, entertainment, celebrity, lifestyle, local school/exam results, local crime,
   weather, generic business PR, or anything unrelated MUST be emitted with
@@ -190,6 +197,22 @@ RULES
             { accepted: accepted.slice(0, 3), rejected: rejected.slice(0, 3) },
           );
           const events = parsed.events
+            .filter((e) => {
+              // Grounding check: the hit at hitIndex must be the exact same
+              // hit as sourceUrl. If they disagree, the model has blended
+              // content across two different hits (e.g. a gold headline
+              // paired with a Bitcoin summary) — drop rather than show a
+              // corrupted narrative/summary pair.
+              const hit = hits[e.hitIndex - 1];
+              if (!hit || hit.url !== e.sourceUrl) {
+                console.error(
+                  `[fetchLiveFeed:${cat}] hitIndex/sourceUrl mismatch — dropping event`,
+                  { hitIndex: e.hitIndex, sourceUrl: e.sourceUrl, expectedUrl: hit?.url },
+                );
+                return false;
+              }
+              return true;
+            })
             .filter((e) => allowed.has(e.sourceUrl))
             .filter((e) => e.relevance !== "reject")
             .map((e) => {
