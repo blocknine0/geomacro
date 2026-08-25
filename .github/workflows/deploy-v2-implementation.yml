@@ -1,10 +1,18 @@
-name: Deploy Updated AgentArena V2 Implementation
+# `.github/workflows/propose-v2-upgrade.yml`
+
+```yaml
+name: Propose and Approve AgentArena V2 Upgrade
 
 on:
   workflow_dispatch:
+    inputs:
+      new_implementation:
+        description: "Already deployed AgentArenaV2 implementation address"
+        required: true
+        type: string
 
 jobs:
-  deploy:
+  propose-and-approve:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -12,135 +20,499 @@ jobs:
       - name: Safety guard
         run: |
           if [ "${GITHUB_REF_NAME}" != "main" ]; then
-            echo "Refusing deployment from ${GITHUB_REF_NAME}"
-            echo "Select main in the Run workflow branch dropdown."
+            echo "Refusing upgrade proposal from ${GITHUB_REF_NAME}"
             exit 1
           fi
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          submodules: recursive
+          node-version: "22"
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
+      - name: Install ethers
+        run: npm install ethers
 
-      - name: Build and test
-        run: |
-          forge clean
-          forge build
-          forge test -vvv
-
-      - name: Validate configuration
+      - name: Propose and approve updated V2 implementation
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          TREASURY_PRIVATE_KEY_1: ${{ secrets.TREASURY_PRIVATE_KEY_1 }}
+          TREASURY_PRIVATE_KEY_2: ${{ secrets.TREASURY_PRIVATE_KEY_2 }}
+          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
+          NEW_IMPLEMENTATION: ${{ inputs.new_implementation }}
+
         run: |
-          if [ -z "$ARC_RPC_URL" ]; then
-            echo "ARC_RPC_URL is missing"
-            exit 1
-          fi
+          node --input-type=module <<'NODE'
+          import { ethers } from "ethers";
 
-          if [ -z "$OWNER_PRIVATE_KEY" ]; then
-            echo "OWNER_PRIVATE_KEY is missing"
-            exit 1
-          fi
+          const {
+            ARC_RPC_URL,
+            TREASURY_PRIVATE_KEY_1,
+            TREASURY_PRIVATE_KEY_2,
+            CONTRACT_ADDRESS,
+            NEW_IMPLEMENTATION,
+          } = process.env;
 
-          CHAIN_ID=$(cast chain-id --rpc-url "$ARC_RPC_URL")
-          echo "Chain ID: $CHAIN_ID"
+          if (
+            !ARC_RPC_URL ||
+            !TREASURY_PRIVATE_KEY_1 ||
+            !TREASURY_PRIVATE_KEY_2 ||
+            !CONTRACT_ADDRESS ||
+            !NEW_IMPLEMENTATION
+          ) {
+            throw new Error(
+              "Missing required RPC, signer, proxy, or implementation configuration"
+            );
+          }
 
-          if [ "$CHAIN_ID" != "5042002" ]; then
-            echo "Expected Arc Testnet chain ID 5042002"
-            exit 1
-          fi
+          if (
+            !ethers.isAddress(CONTRACT_ADDRESS) ||
+            !ethers.isAddress(NEW_IMPLEMENTATION)
+          ) {
+            throw new Error(
+              "Invalid proxy or implementation address"
+            );
+          }
 
-      - name: Deploy fresh V2 implementation
-        env:
-          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          DEPLOYER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
+          const provider =
+            new ethers.JsonRpcProvider(
+              ARC_RPC_URL
+            );
 
-          rm -rf broadcast/DeployAgentArenaV2Implementation.s.sol
+          const [
+            network,
+            proxyCode,
+            implementationCode,
+          ] = await Promise.all([
+            provider.getNetwork(),
+            provider.getCode(CONTRACT_ADDRESS),
+            provider.getCode(NEW_IMPLEMENTATION),
+          ]);
 
-          forge script \
-            script/DeployAgentArenaV2Implementation.s.sol:DeployAgentArenaV2Implementation \
-            --rpc-url "$ARC_RPC_URL" \
-            --broadcast \
-            -vvvv
+          console.log(
+            "Chain ID:",
+            network.chainId.toString()
+          );
 
-      - name: Read deployment artifact and verify on-chain code
-        env:
-          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-        run: |
-          set -euo pipefail
+          if (
+            network.chainId !== 5042002n
+          ) {
+            throw new Error(
+              `Unexpected chain ID: ${network.chainId}`
+            );
+          }
 
-          FILE="broadcast/DeployAgentArenaV2Implementation.s.sol/5042002/run-latest.json"
+          console.log(
+            "Proxy:",
+            CONTRACT_ADDRESS
+          );
 
-          if [ ! -f "$FILE" ]; then
-            echo "Deployment artifact not found: $FILE"
-            exit 1
-          fi
+          console.log(
+            "Target implementation:",
+            NEW_IMPLEMENTATION
+          );
 
-          echo "Deployment artifact:"
-          echo "$FILE"
+          if (
+            proxyCode === "0x"
+          ) {
+            throw new Error(
+              "Proxy address has no deployed bytecode"
+            );
+          }
 
-          NEW_IMPL=$(jq -r '
-            .transactions[]
-            | select(.transactionType == "CREATE")
-            | .contractAddress
-          ' "$FILE" | tail -1)
+          if (
+            implementationCode === "0x"
+          ) {
+            throw new Error(
+              "Implementation address has no deployed bytecode"
+            );
+          }
 
-          TX_HASH=$(jq -r '
-            .transactions[]
-            | select(.transactionType == "CREATE")
-            | .hash
-          ' "$FILE" | tail -1)
+          const signer1 =
+            new ethers.Wallet(
+              TREASURY_PRIVATE_KEY_1,
+              provider
+            );
 
-          if [ -z "$NEW_IMPL" ] || [ "$NEW_IMPL" = "null" ]; then
-            echo "Unable to determine implementation address"
-            exit 1
-          fi
+          const signer2 =
+            new ethers.Wallet(
+              TREASURY_PRIVATE_KEY_2,
+              provider
+            );
 
-          if [ -z "$TX_HASH" ] || [ "$TX_HASH" = "null" ]; then
-            echo "Unable to determine deployment transaction hash"
-            exit 1
-          fi
+          if (
+            signer1.address.toLowerCase() ===
+            signer2.address.toLowerCase()
+          ) {
+            throw new Error(
+              "Treasury signer 1 and signer 2 must be different addresses"
+            );
+          }
 
-          echo "Deployment tx: $TX_HASH"
-          echo "Implementation: $NEW_IMPL"
+          const abi = [
+            "function treasury() view returns (address)",
+            "function proposeUpgrade(address)",
+            "function approveUpgrade(address)",
+            "function pendingImplementation() view returns (address)",
+            "function upgradeUnlockTime() view returns (uint256)",
+            "function upgradeApprovalCount() view returns (uint256)",
+            "function upgradeApprovedBy(address) view returns (bool)"
+          ];
 
-          STALE="0x3FbB284915DBE96785D10803e644650cDf76086D"
+          const treasuryAbi = [
+            "function isSigner(address) view returns (bool)",
+            "function getSigners() view returns (address[3])"
+          ];
 
-          if [ "$(echo "$NEW_IMPL" | tr '[:upper:]' '[:lower:]')" = "$(echo "$STALE" | tr '[:upper:]' '[:lower:]')" ]; then
-            echo "FAIL: deployment returned stale implementation address"
-            exit 1
-          fi
+          const arena1 =
+            new ethers.Contract(
+              CONTRACT_ADDRESS,
+              abi,
+              signer1
+            );
 
-          CODE=$(cast code "$NEW_IMPL" --rpc-url "$ARC_RPC_URL")
+          const arena2 =
+            new ethers.Contract(
+              CONTRACT_ADDRESS,
+              abi,
+              signer2
+            );
 
-          if [ "$CODE" = "0x" ]; then
-            echo "FAIL: deployed implementation has no on-chain bytecode"
-            exit 1
-          fi
+          const treasuryAddress =
+            await arena1.treasury();
 
-          RECEIPT_STATUS=$(cast receipt "$TX_HASH" status --rpc-url "$ARC_RPC_URL")
+          if (
+            !ethers.isAddress(
+              treasuryAddress
+            )
+          ) {
+            throw new Error(
+              "Invalid treasury address returned by proxy"
+            );
+          }
 
-          echo "Receipt status: $RECEIPT_STATUS"
+          const treasury =
+            new ethers.Contract(
+              treasuryAddress,
+              treasuryAbi,
+              provider
+            );
 
-          if [ "$RECEIPT_STATUS" != "1" ]; then
-            echo "FAIL: deployment transaction was not successful"
-            exit 1
-          fi
+          const [
+            signer1Allowed,
+            signer2Allowed,
+            treasurySigners,
+          ] = await Promise.all([
+            treasury.isSigner(
+              signer1.address
+            ),
+            treasury.isSigner(
+              signer2.address
+            ),
+            treasury.getSigners(),
+          ]);
 
-          echo
-          echo "======================================"
-          echo "FRESH V2 IMPLEMENTATION DEPLOYED"
-          echo "======================================"
-          echo "Address: $NEW_IMPL"
-          echo "Tx:      $TX_HASH"
-          echo "Code size: $(( (${#CODE} - 2) / 2 )) bytes"
-          echo
-          echo "DO NOT EXECUTE THE PROXY UPGRADE YET."
+          console.log(
+            "Treasury:",
+            treasuryAddress
+          );
+
+          console.log(
+            "Treasury signer 1:",
+            signer1.address
+          );
+
+          console.log(
+            "Treasury signer 2:",
+            signer2.address
+          );
+
+          console.log(
+            "Configured treasury signers:",
+            treasurySigners
+          );
+
+          if (
+            !signer1Allowed
+          ) {
+            throw new Error(
+              `TREASURY_PRIVATE_KEY_1 address ${signer1.address} is not a treasury signer`
+            );
+          }
+
+          if (
+            !signer2Allowed
+          ) {
+            throw new Error(
+              `TREASURY_PRIVATE_KEY_2 address ${signer2.address} is not a treasury signer`
+            );
+          }
+
+          const beforePending =
+            await arena1.pendingImplementation();
+
+          const beforeCount =
+            Number(
+              await arena1.upgradeApprovalCount()
+            );
+
+          console.log(
+            "Before pendingImplementation:",
+            beforePending
+          );
+
+          console.log(
+            "Before approvalCount:",
+            beforeCount
+          );
+
+          if (
+            beforePending !== ethers.ZeroAddress &&
+            beforePending.toLowerCase() !==
+              NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            console.log(
+              `Replacing stale pending implementation ${beforePending} with ${NEW_IMPLEMENTATION}`
+            );
+
+            const replaceTx =
+              await arena1.proposeUpgrade(
+                NEW_IMPLEMENTATION
+              );
+
+            console.log(
+              "replacement proposeUpgrade tx:",
+              replaceTx.hash
+            );
+
+            const replaceReceipt =
+              await replaceTx.wait();
+
+            if (
+              !replaceReceipt ||
+              replaceReceipt.status !== 1
+            ) {
+              throw new Error(
+                "Replacement proposal transaction failed"
+              );
+            }
+          } else if (
+            beforePending ===
+            ethers.ZeroAddress
+          ) {
+            const tx1 =
+              await arena1.proposeUpgrade(
+                NEW_IMPLEMENTATION
+              );
+
+            console.log(
+              "proposeUpgrade tx:",
+              tx1.hash
+            );
+
+            const receipt1 =
+              await tx1.wait();
+
+            if (
+              !receipt1 ||
+              receipt1.status !== 1
+            ) {
+              throw new Error(
+                "Proposal transaction failed"
+              );
+            }
+          } else {
+            console.log(
+              "Proposal already exists for target implementation."
+            );
+          }
+
+          const [
+            pendingAfterProposal,
+            countAfterProposal,
+          ] = await Promise.all([
+            arena1.pendingImplementation(),
+            arena1.upgradeApprovalCount(),
+          ]);
+
+          if (
+            pendingAfterProposal.toLowerCase() !==
+            NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            throw new Error(
+              `Proposal replacement failed; pending implementation is ${pendingAfterProposal}`
+            );
+          }
+
+          console.log(
+            "Pending after proposal:",
+            pendingAfterProposal
+          );
+
+          console.log(
+            "Approval count after proposal:",
+            Number(
+              countAfterProposal
+            )
+          );
+
+          const approved2 =
+            await arena1.upgradeApprovedBy(
+              signer2.address
+            );
+
+          if (
+            !approved2
+          ) {
+            const tx2 =
+              await arena2.approveUpgrade(
+                NEW_IMPLEMENTATION
+              );
+
+            console.log(
+              "approveUpgrade tx:",
+              tx2.hash
+            );
+
+            const receipt2 =
+              await tx2.wait();
+
+            if (
+              !receipt2 ||
+              receipt2.status !== 1
+            ) {
+              throw new Error(
+                "Second treasury approval transaction failed"
+              );
+            }
+          } else {
+            console.log(
+              "Signer 2 already approved."
+            );
+          }
+
+          const [
+            pending,
+            unlock,
+            count,
+            signer1Approved,
+            signer2Approved,
+          ] = await Promise.all([
+            arena1.pendingImplementation(),
+            arena1.upgradeUnlockTime(),
+            arena1.upgradeApprovalCount(),
+            arena1.upgradeApprovedBy(
+              signer1.address
+            ),
+            arena1.upgradeApprovedBy(
+              signer2.address
+            ),
+          ]);
+
+          console.log(
+            "pendingImplementation:",
+            pending
+          );
+
+          console.log(
+            "upgradeApprovalCount:",
+            Number(count)
+          );
+
+          console.log(
+            "upgradeUnlockTime:",
+            unlock.toString()
+          );
+
+          console.log(
+            "unlock ISO:",
+            new Date(
+              Number(unlock) * 1000
+            ).toISOString()
+          );
+
+          console.log(
+            "signer1 approved:",
+            signer1Approved
+          );
+
+          console.log(
+            "signer2 approved:",
+            signer2Approved
+          );
+
+          if (
+            pending.toLowerCase() !==
+            NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            throw new Error(
+              "Pending implementation mismatch"
+            );
+          }
+
+          if (
+            Number(count) < 2
+          ) {
+            throw new Error(
+              `Expected at least 2 approvals, got ${count}`
+            );
+          }
+
+          if (
+            !signer1Approved ||
+            !signer2Approved
+          ) {
+            throw new Error(
+              "Expected both configured treasury signers to have approved"
+            );
+          }
+
+          if (
+            unlock === 0n
+          ) {
+            throw new Error(
+              "Upgrade unlock time was not set"
+            );
+          }
+
+          console.log(
+            "======================================"
+          );
+
+          console.log(
+            "PASS: V2 UPGRADE PROPOSAL READY"
+          );
+
+          console.log(
+            "======================================"
+          );
+
+          console.log(
+            "Target:",
+            pending
+          );
+
+          console.log(
+            "Approvals:",
+            Number(count)
+          );
+
+          console.log(
+            "Unlock timestamp:",
+            unlock.toString()
+          );
+
+          console.log(
+            "Unlock ISO:",
+            new Date(
+              Number(unlock) * 1000
+            ).toISOString()
+          );
+
+          console.log(
+            "WAIT: Do not execute upgrade until the new 48h timelock has elapsed."
+          );
+          NODE
+```
