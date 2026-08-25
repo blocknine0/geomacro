@@ -32,8 +32,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install ethers
+        run: npm install --no-save --package-lock=false ethers@6
 
       - name: Propose and approve fresh V2 implementation
         env:
