@@ -29,15 +29,118 @@ jobs:
 
       - name: Build and test
         run: |
+          forge clean
           forge build
-          forge test
+          forge test -vvv
 
-      - name: Deploy implementation only
+      - name: Validate configuration
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+        run: |
+          if [ -z "$ARC_RPC_URL" ]; then
+            echo "ARC_RPC_URL is missing"
+            exit 1
+          fi
+
+          if [ -z "$OWNER_PRIVATE_KEY" ]; then
+            echo "OWNER_PRIVATE_KEY is missing"
+            exit 1
+          fi
+
+          CHAIN_ID=$(cast chain-id --rpc-url "$ARC_RPC_URL")
+          echo "Chain ID: $CHAIN_ID"
+
+          if [ "$CHAIN_ID" != "5042002" ]; then
+            echo "Expected Arc Testnet chain ID 5042002"
+            exit 1
+          fi
+
+      - name: Deploy fresh V2 implementation
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           DEPLOYER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
         run: |
-          forge script script/DeployAgentArenaV2Implementation.s.sol:DeployAgentArenaV2Implementation \
+          set -euo pipefail
+
+          rm -rf broadcast/DeployAgentArenaV2Implementation.s.sol
+
+          forge script \
+            script/DeployAgentArenaV2Implementation.s.sol:DeployAgentArenaV2Implementation \
             --rpc-url "$ARC_RPC_URL" \
             --broadcast \
             -vvvv
+
+      - name: Read deployment artifact and verify on-chain code
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+        run: |
+          set -euo pipefail
+
+          FILE="broadcast/DeployAgentArenaV2Implementation.s.sol/5042002/run-latest.json"
+
+          if [ ! -f "$FILE" ]; then
+            echo "Deployment artifact not found: $FILE"
+            exit 1
+          fi
+
+          echo "Deployment artifact:"
+          echo "$FILE"
+
+          NEW_IMPL=$(jq -r '
+            .transactions[]
+            | select(.transactionType == "CREATE")
+            | .contractAddress
+          ' "$FILE" | tail -1)
+
+          TX_HASH=$(jq -r '
+            .transactions[]
+            | select(.transactionType == "CREATE")
+            | .hash
+          ' "$FILE" | tail -1)
+
+          if [ -z "$NEW_IMPL" ] || [ "$NEW_IMPL" = "null" ]; then
+            echo "Unable to determine implementation address"
+            exit 1
+          fi
+
+          if [ -z "$TX_HASH" ] || [ "$TX_HASH" = "null" ]; then
+            echo "Unable to determine deployment transaction hash"
+            exit 1
+          fi
+
+          echo "Deployment tx: $TX_HASH"
+          echo "Implementation: $NEW_IMPL"
+
+          STALE="0x3FbB284915DBE96785D10803e644650cDf76086D"
+
+          if [ "$(echo "$NEW_IMPL" | tr '[:upper:]' '[:lower:]')" = "$(echo "$STALE" | tr '[:upper:]' '[:lower:]')" ]; then
+            echo "FAIL: deployment returned stale implementation address"
+            exit 1
+          fi
+
+          CODE=$(cast code "$NEW_IMPL" --rpc-url "$ARC_RPC_URL")
+
+          if [ "$CODE" = "0x" ]; then
+            echo "FAIL: deployed implementation has no on-chain bytecode"
+            exit 1
+          fi
+
+          RECEIPT_STATUS=$(cast receipt "$TX_HASH" status --rpc-url "$ARC_RPC_URL")
+
+          echo "Receipt status: $RECEIPT_STATUS"
+
+          if [ "$RECEIPT_STATUS" != "1" ]; then
+            echo "FAIL: deployment transaction was not successful"
+            exit 1
+          fi
+
+          echo
+          echo "======================================"
+          echo "FRESH V2 IMPLEMENTATION DEPLOYED"
+          echo "======================================"
+          echo "Address: $NEW_IMPL"
+          echo "Tx:      $TX_HASH"
+          echo "Code size: $(( (${#CODE} - 2) / 2 )) bytes"
+          echo
+          echo "DO NOT EXECUTE THE PROXY UPGRADE YET."
