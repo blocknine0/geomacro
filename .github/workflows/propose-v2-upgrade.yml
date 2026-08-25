@@ -2,6 +2,11 @@ name: Propose and Approve AgentArena V2 Upgrade
 
 on:
   workflow_dispatch:
+    inputs:
+      new_implementation:
+        description: "Already deployed AgentArenaV2 implementation address"
+        required: true
+        type: string
 
 jobs:
   propose-and-approve:
@@ -11,7 +16,7 @@ jobs:
     steps:
       - name: Safety guard
         run: |
-          if [ "${GITHUB_REF_NAME}" != "circle-grant-readiness" ]; then
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
             echo "Refusing upgrade proposal from ${GITHUB_REF_NAME}"
             exit 1
           fi
@@ -32,8 +37,8 @@ jobs:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           TREASURY_PRIVATE_KEY_1: ${{ secrets.TREASURY_PRIVATE_KEY_1 }}
           TREASURY_PRIVATE_KEY_2: ${{ secrets.TREASURY_PRIVATE_KEY_2 }}
-          CONTRACT_ADDRESS: "0x2F874FB07084a22D2bB314D0762Af57Cb1856868"
-          NEW_IMPLEMENTATION: "0x3FbB284915DBE96785D10803e644650cDf76086D"
+          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
+          NEW_IMPLEMENTATION: ${{ inputs.new_implementation }}
         run: |
           node --input-type=module <<'NODE'
           import { ethers } from "ethers";
@@ -46,11 +51,68 @@ jobs:
             NEW_IMPLEMENTATION,
           } = process.env;
 
+          if (
+            !ARC_RPC_URL ||
+            !TREASURY_PRIVATE_KEY_1 ||
+            !TREASURY_PRIVATE_KEY_2 ||
+            !CONTRACT_ADDRESS ||
+            !NEW_IMPLEMENTATION
+          ) {
+            throw new Error(
+              "Missing required RPC, signer, proxy, or implementation configuration"
+            );
+          }
+
+          if (
+            !ethers.isAddress(CONTRACT_ADDRESS) ||
+            !ethers.isAddress(NEW_IMPLEMENTATION)
+          ) {
+            throw new Error("Invalid proxy or implementation address");
+          }
+
           const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
-          const signer1 = new ethers.Wallet(TREASURY_PRIVATE_KEY_1, provider);
-          const signer2 = new ethers.Wallet(TREASURY_PRIVATE_KEY_2, provider);
+
+          const [network, proxyCode, implementationCode] = await Promise.all([
+            provider.getNetwork(),
+            provider.getCode(CONTRACT_ADDRESS),
+            provider.getCode(NEW_IMPLEMENTATION),
+          ]);
+
+          console.log("Chain ID:", network.chainId.toString());
+          console.log("Proxy:", CONTRACT_ADDRESS);
+          console.log("Target implementation:", NEW_IMPLEMENTATION);
+
+          if (proxyCode === "0x") {
+            throw new Error("Proxy address has no deployed bytecode");
+          }
+
+          if (implementationCode === "0x") {
+            throw new Error(
+              "Implementation address has no deployed bytecode"
+            );
+          }
+
+          const signer1 = new ethers.Wallet(
+            TREASURY_PRIVATE_KEY_1,
+            provider
+          );
+
+          const signer2 = new ethers.Wallet(
+            TREASURY_PRIVATE_KEY_2,
+            provider
+          );
+
+          if (
+            signer1.address.toLowerCase() ===
+            signer2.address.toLowerCase()
+          ) {
+            throw new Error(
+              "Treasury signer 1 and signer 2 must be different addresses"
+            );
+          }
 
           const abi = [
+            "function treasury() view returns (address)",
             "function proposeUpgrade(address)",
             "function approveUpgrade(address)",
             "function pendingImplementation() view returns (address)",
@@ -59,22 +121,82 @@ jobs:
             "function upgradeApprovedBy(address) view returns (bool)"
           ];
 
-          const arena1 = new ethers.Contract(CONTRACT_ADDRESS, abi, signer1);
-          const arena2 = new ethers.Contract(CONTRACT_ADDRESS, abi, signer2);
+          const treasuryAbi = [
+            "function isSigner(address) view returns (bool)",
+            "function getSigners() view returns (address[3])"
+          ];
 
-          console.log("Signer 1:", signer1.address);
-          console.log("Signer 2:", signer2.address);
-          console.log("Target implementation:", NEW_IMPLEMENTATION);
+          const arena1 = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            abi,
+            signer1
+          );
 
-          const beforePending = await arena1.pendingImplementation();
-          const beforeCount = Number(await arena1.upgradeApprovalCount());
+          const arena2 = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            abi,
+            signer2
+          );
 
-          console.log("Before pendingImplementation:", beforePending);
-          console.log("Before approvalCount:", beforeCount);
+          const treasuryAddress = await arena1.treasury();
+
+          if (!ethers.isAddress(treasuryAddress)) {
+            throw new Error("Invalid treasury address returned by proxy");
+          }
+
+          const treasury = new ethers.Contract(
+            treasuryAddress,
+            treasuryAbi,
+            provider
+          );
+
+          const [
+            signer1Allowed,
+            signer2Allowed,
+            treasurySigners,
+          ] = await Promise.all([
+            treasury.isSigner(signer1.address),
+            treasury.isSigner(signer2.address),
+            treasury.getSigners(),
+          ]);
+
+          console.log("Treasury:", treasuryAddress);
+          console.log("Treasury signer 1:", signer1.address);
+          console.log("Treasury signer 2:", signer2.address);
+          console.log("Configured treasury signers:", treasurySigners);
+
+          if (!signer1Allowed) {
+            throw new Error(
+              `TREASURY_PRIVATE_KEY_1 address ${signer1.address} is not a treasury signer`
+            );
+          }
+
+          if (!signer2Allowed) {
+            throw new Error(
+              `TREASURY_PRIVATE_KEY_2 address ${signer2.address} is not a treasury signer`
+            );
+          }
+
+          const beforePending =
+            await arena1.pendingImplementation();
+
+          const beforeCount =
+            Number(await arena1.upgradeApprovalCount());
+
+          console.log(
+            "Before pendingImplementation:",
+            beforePending
+          );
+
+          console.log(
+            "Before approvalCount:",
+            beforeCount
+          );
 
           if (
             beforePending !== ethers.ZeroAddress &&
-            beforePending.toLowerCase() !== NEW_IMPLEMENTATION.toLowerCase()
+            beforePending.toLowerCase() !==
+              NEW_IMPLEMENTATION.toLowerCase()
           ) {
             throw new Error(
               `Different upgrade already pending: ${beforePending}`
@@ -82,40 +204,121 @@ jobs:
           }
 
           if (beforePending === ethers.ZeroAddress) {
-            const tx1 = await arena1.proposeUpgrade(NEW_IMPLEMENTATION);
-            console.log("proposeUpgrade tx:", tx1.hash);
+            const tx1 =
+              await arena1.proposeUpgrade(
+                NEW_IMPLEMENTATION
+              );
+
+            console.log(
+              "proposeUpgrade tx:",
+              tx1.hash
+            );
+
             await tx1.wait();
           } else {
-            console.log("Proposal already exists for target implementation.");
+            console.log(
+              "Proposal already exists for target implementation."
+            );
           }
 
-          const approved2 = await arena1.upgradeApprovedBy(signer2.address);
+          const approved2 =
+            await arena1.upgradeApprovedBy(
+              signer2.address
+            );
 
           if (!approved2) {
-            const tx2 = await arena2.approveUpgrade(NEW_IMPLEMENTATION);
-            console.log("approveUpgrade tx:", tx2.hash);
+            const tx2 =
+              await arena2.approveUpgrade(
+                NEW_IMPLEMENTATION
+              );
+
+            console.log(
+              "approveUpgrade tx:",
+              tx2.hash
+            );
+
             await tx2.wait();
           } else {
-            console.log("Signer 2 already approved.");
+            console.log(
+              "Signer 2 already approved."
+            );
           }
 
-          const pending = await arena1.pendingImplementation();
-          const unlock = Number(await arena1.upgradeUnlockTime());
-          const count = Number(await arena1.upgradeApprovalCount());
+          const [
+            pending,
+            unlock,
+            count,
+            signer1Approved,
+            signer2Approved,
+          ] = await Promise.all([
+            arena1.pendingImplementation(),
+            arena1.upgradeUnlockTime(),
+            arena1.upgradeApprovalCount(),
+            arena1.upgradeApprovedBy(signer1.address),
+            arena1.upgradeApprovedBy(signer2.address),
+          ]);
 
-          console.log("pendingImplementation:", pending);
-          console.log("upgradeApprovalCount:", count);
-          console.log("upgradeUnlockTime:", unlock);
-          console.log("unlock ISO:", new Date(unlock * 1000).toISOString());
+          console.log(
+            "pendingImplementation:",
+            pending
+          );
 
-          if (pending.toLowerCase() !== NEW_IMPLEMENTATION.toLowerCase()) {
-            throw new Error("Pending implementation mismatch");
+          console.log(
+            "upgradeApprovalCount:",
+            Number(count)
+          );
+
+          console.log(
+            "upgradeUnlockTime:",
+            unlock.toString()
+          );
+
+          console.log(
+            "unlock ISO:",
+            new Date(
+              Number(unlock) * 1000
+            ).toISOString()
+          );
+
+          console.log(
+            "signer1 approved:",
+            signer1Approved
+          );
+
+          console.log(
+            "signer2 approved:",
+            signer2Approved
+          );
+
+          if (
+            pending.toLowerCase() !==
+            NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            throw new Error(
+              "Pending implementation mismatch"
+            );
           }
 
-          if (count < 2) {
-            throw new Error(`Expected at least 2 approvals, got ${count}`);
+          if (Number(count) < 2) {
+            throw new Error(
+              `Expected at least 2 approvals, got ${count}`
+            );
           }
 
-          console.log("PASS: V2 upgrade proposal has 2-of-3 approval.");
-          console.log("WAIT: upgrade execution remains blocked until the 48h timelock expires.");
+          if (
+            !signer1Approved ||
+            !signer2Approved
+          ) {
+            throw new Error(
+              "Expected both configured treasury signers to have approved"
+            );
+          }
+
+          console.log(
+            "PASS: V2 upgrade proposal has 2-of-3 approval."
+          );
+
+          console.log(
+            "WAIT: upgrade execution remains blocked until the 48h timelock expires."
+          );
           NODE
