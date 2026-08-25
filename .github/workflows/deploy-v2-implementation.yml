@@ -11,9 +11,9 @@ jobs:
     steps:
       - name: Safety guard
         run: |
-          if [ "${GITHUB_REF_NAME}" != "circle-grant-readiness" ]; then
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
             echo "Refusing deployment from ${GITHUB_REF_NAME}"
-            echo "Select circle-grant-readiness in the Run workflow branch dropdown."
+            echo "Select main in the Run workflow branch dropdown."
             exit 1
           fi
 
