@@ -1,0 +1,407 @@
+# `.github/workflows/execute-v2-upgrade.yml`
+
+```yaml
+name: Execute AgentArena V2 Upgrade + Initialize Fixed Odds
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_implementation:
+        description: "Already deployed AgentArenaV2 implementation address"
+        required: true
+        type: string
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Safety guard
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            echo "Refusing upgrade execution from ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify and execute atomic V2 upgrade
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
+          NEW_IMPLEMENTATION: ${{ inputs.new_implementation }}
+
+        run: |
+          node --input-type=module <<'NODE'
+          import { ethers } from "ethers";
+
+          const {
+            ARC_RPC_URL,
+            OWNER_PRIVATE_KEY,
+            CONTRACT_ADDRESS,
+            NEW_IMPLEMENTATION,
+          } = process.env;
+
+          if (
+            !ARC_RPC_URL ||
+            !OWNER_PRIVATE_KEY ||
+            !CONTRACT_ADDRESS ||
+            !NEW_IMPLEMENTATION
+          ) {
+            throw new Error(
+              "ARC_RPC_URL, OWNER_PRIVATE_KEY, ARC_V2_PROXY_ADDRESS and new_implementation are required"
+            );
+          }
+
+          if (
+            !ethers.isAddress(CONTRACT_ADDRESS) ||
+            !ethers.isAddress(NEW_IMPLEMENTATION)
+          ) {
+            throw new Error(
+              "Invalid proxy or implementation address"
+            );
+          }
+
+          const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
+
+          const ownerSigner = new ethers.Wallet(
+            OWNER_PRIVATE_KEY,
+            provider
+          );
+
+          const [
+            network,
+            proxyCode,
+            implementationCode,
+          ] = await Promise.all([
+            provider.getNetwork(),
+            provider.getCode(CONTRACT_ADDRESS),
+            provider.getCode(NEW_IMPLEMENTATION),
+          ]);
+
+          console.log(
+            "Chain ID:",
+            network.chainId.toString()
+          );
+
+          console.log(
+            "Proxy:",
+            CONTRACT_ADDRESS
+          );
+
+          console.log(
+            "Target implementation:",
+            NEW_IMPLEMENTATION
+          );
+
+          console.log(
+            "Execution signer:",
+            ownerSigner.address
+          );
+
+          if (proxyCode === "0x") {
+            throw new Error(
+              "Proxy address has no deployed bytecode"
+            );
+          }
+
+          if (implementationCode === "0x") {
+            throw new Error(
+              "Target implementation has no deployed bytecode"
+            );
+          }
+
+          const abi = [
+            "function owner() view returns (address)",
+            "function treasury() view returns (address)",
+            "function guardian() view returns (address)",
+            "function pendingImplementation() view returns (address)",
+            "function upgradeUnlockTime() view returns (uint256)",
+            "function upgradeApprovalCount() view returns (uint256)",
+            "function upgradeToAndCall(address,bytes)",
+            "function initializeFixedOddsV2()",
+            "function fixedOddsEnabled() view returns (bool)",
+            "function fixedOddsWinnerFeeBps() view returns (uint256)",
+            "function lossTreasuryBps() view returns (uint256)",
+            "function winnerFeeBps() view returns (uint256)"
+          ];
+
+          const arena = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            abi,
+            ownerSigner
+          );
+
+          const [
+            owner,
+            treasuryBefore,
+            guardianBefore,
+            legacyFeeBefore,
+            pending,
+            unlock,
+            approvals,
+            latestBlock,
+          ] = await Promise.all([
+            arena.owner(),
+            arena.treasury(),
+            arena.guardian(),
+            arena.winnerFeeBps(),
+            arena.pendingImplementation(),
+            arena.upgradeUnlockTime(),
+            arena.upgradeApprovalCount(),
+            provider.getBlock("latest"),
+          ]);
+
+          console.log(
+            "Current owner:",
+            owner
+          );
+
+          console.log(
+            "Treasury before upgrade:",
+            treasuryBefore
+          );
+
+          console.log(
+            "Guardian before upgrade:",
+            guardianBefore
+          );
+
+          console.log(
+            "Legacy winnerFeeBps before upgrade:",
+            Number(legacyFeeBefore)
+          );
+
+          console.log(
+            "Pending implementation:",
+            pending
+          );
+
+          console.log(
+            "Approval count:",
+            Number(approvals)
+          );
+
+          console.log(
+            "Unlock timestamp:",
+            unlock.toString()
+          );
+
+          console.log(
+            "Latest block timestamp:",
+            latestBlock.timestamp
+          );
+
+          if (
+            owner.toLowerCase() !==
+            ownerSigner.address.toLowerCase()
+          ) {
+            throw new Error(
+              "OWNER_PRIVATE_KEY does not match proxy owner"
+            );
+          }
+
+          if (
+            pending.toLowerCase() !==
+            NEW_IMPLEMENTATION.toLowerCase()
+          ) {
+            throw new Error(
+              `pendingImplementation mismatch: ${pending}`
+            );
+          }
+
+          if (Number(approvals) < 2) {
+            throw new Error(
+              `Need at least 2 approvals, got ${approvals}`
+            );
+          }
+
+          if (
+            BigInt(latestBlock.timestamp) <
+            unlock
+          ) {
+            throw new Error(
+              `48h timelock not elapsed; unlock=${unlock}`
+            );
+          }
+
+          if (
+            Number(legacyFeeBefore) !== 200
+          ) {
+            throw new Error(
+              `Unexpected legacy winnerFeeBps before upgrade: ${legacyFeeBefore}`
+            );
+          }
+
+          const initData =
+            arena.interface.encodeFunctionData(
+              "initializeFixedOddsV2"
+            );
+
+          console.log(
+            "Initializer calldata:",
+            initData
+          );
+
+          const tx =
+            await arena.upgradeToAndCall(
+              NEW_IMPLEMENTATION,
+              initData
+            );
+
+          console.log(
+            "upgradeToAndCall tx:",
+            tx.hash
+          );
+
+          const receipt = await tx.wait();
+
+          if (!receipt || receipt.status !== 1) {
+            throw new Error(
+              "Upgrade transaction failed"
+            );
+          }
+
+          console.log(
+            "Upgrade confirmed in block:",
+            receipt.blockNumber
+          );
+
+          const [
+            ownerAfter,
+            treasuryAfter,
+            guardianAfter,
+            enabled,
+            fixedFee,
+            lossFee,
+            legacyFee,
+            pendingAfter,
+            unlockAfter,
+            approvalsAfter,
+          ] = await Promise.all([
+            arena.owner(),
+            arena.treasury(),
+            arena.guardian(),
+            arena.fixedOddsEnabled(),
+            arena.fixedOddsWinnerFeeBps(),
+            arena.lossTreasuryBps(),
+            arena.winnerFeeBps(),
+            arena.pendingImplementation(),
+            arena.upgradeUnlockTime(),
+            arena.upgradeApprovalCount(),
+          ]);
+
+          if (
+            ownerAfter.toLowerCase() !==
+            owner.toLowerCase()
+          ) {
+            throw new Error(
+              "Owner changed unexpectedly during upgrade"
+            );
+          }
+
+          if (
+            treasuryAfter.toLowerCase() !==
+            treasuryBefore.toLowerCase()
+          ) {
+            throw new Error(
+              "Treasury changed unexpectedly during upgrade"
+            );
+          }
+
+          if (
+            guardianAfter.toLowerCase() !==
+            guardianBefore.toLowerCase()
+          ) {
+            throw new Error(
+              "Guardian changed unexpectedly during upgrade"
+            );
+          }
+
+          if (
+            !enabled ||
+            Number(fixedFee) !== 150 ||
+            Number(lossFee) !== 500 ||
+            Number(legacyFee) !== 200
+          ) {
+            throw new Error(
+              "Post-upgrade V2 economics initialization check failed"
+            );
+          }
+
+          if (
+            pendingAfter !==
+            ethers.ZeroAddress
+          ) {
+            throw new Error(
+              `pendingImplementation was not cleared: ${pendingAfter}`
+            );
+          }
+
+          if (
+            unlockAfter !== 0n
+          ) {
+            throw new Error(
+              `upgradeUnlockTime was not cleared: ${unlockAfter}`
+            );
+          }
+
+          if (
+            approvalsAfter !== 0n
+          ) {
+            throw new Error(
+              `upgradeApprovalCount was not cleared: ${approvalsAfter}`
+            );
+          }
+
+          console.log(
+            "PASS: V2 upgrade initialized atomically"
+          );
+
+          console.log(
+            "owner:",
+            ownerAfter
+          );
+
+          console.log(
+            "treasury:",
+            treasuryAfter
+          );
+
+          console.log(
+            "guardian:",
+            guardianAfter
+          );
+
+          console.log(
+            "legacy winnerFeeBps:",
+            Number(legacyFee)
+          );
+
+          console.log(
+            "fixedOddsWinnerFeeBps:",
+            Number(fixedFee)
+          );
+
+          console.log(
+            "lossTreasuryBps:",
+            Number(lossFee)
+          );
+
+          console.log(
+            "fixedOddsEnabled:",
+            enabled
+          );
+          NODE
+```
