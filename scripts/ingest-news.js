@@ -339,13 +339,14 @@ ${articlesBlock}
 For each article, determine if it represents a significant macro/geopolitical trend or shock. Discard sports, celebrity gossip, local crimes, or casual entertainment reviews.
 
 Respond STRICTLY as a JSON object with a single key "results", an array of exactly ${articles.length} objects in the SAME ORDER as the articles above, each with:
+- "index": number (MUST equal the [N] number of the article this result describes — the exact same article, never a different one, even if two articles cover the same broader story)
 - "relevant": boolean
 - "severity": number (0-100, where 100 is catastrophic global impact, e.g., world war or global systemic market crash)
 - "confidence": number (0-100, how confident you are in this assessment)
-- "narrative": string (a short one-sentence framing of what risk/trend this event represents)
-- "summary": string (2-3 sentence neutral summary of the article's core facts)
+- "narrative": string (a short one-sentence framing of what risk/trend THIS SPECIFIC article represents — do not blend in details from other articles)
+- "summary": string (2-3 sentence neutral summary of THIS article's core facts only)
 
-Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 70, "narrative": "...", "summary": "..." }, ... ] }`;
+Example shape: { "results": [ { "index": 0, "relevant": true, "severity": 65, "confidence": 70, "narrative": "...", "summary": "..." }, ... ] }`;
 
   let rawContent;
   try {
@@ -376,10 +377,23 @@ Example shape: { "results": [ { "relevant": true, "severity": 65, "confidence": 
   try {
     const parsed = JSON.parse(rawContent);
     const results = Array.isArray(parsed.results) ? parsed.results : [];
+    // Build an index-keyed lookup instead of trusting positional order —
+    // the model is asked to echo back which article [N] each result
+    // describes, so we can detect (and drop) any result that drifted onto
+    // the wrong article instead of silently merging mismatched
+    // narrative/summary pairs (e.g. a gold headline paired with a Bitcoin
+    // summary).
+    const byIndex = new Map();
+    for (const r of results) {
+      if (Number.isInteger(r?.index) && !byIndex.has(r.index)) {
+        byIndex.set(r.index, r);
+      }
+    }
 
     return articles.map((a, i) => {
-      const r = results[i];
+      const r = byIndex.get(i);
       if (!r) {
+        console.error(`  ⚠️ Batch classify: no grounded result for article [${i}] "${a.title}" — treating as not relevant.`);
         return { relevant: false, severity: 0, confidence: 0, narrative: a.title, summary: a.description || a.title };
       }
       return {
