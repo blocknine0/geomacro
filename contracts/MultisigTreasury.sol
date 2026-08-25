@@ -9,9 +9,9 @@ pragma solidity ^0.8.20;
  * agreement from at least 2 of the 3 fixed signers.
  *
  * Note on currency: exactly like AgentArena.sol, this contract deals in
- * Arc's native gas token, which IS USDC (18 decimals wei-style units, e.g.
- * `50 * 10**6` elsewhere in this codebase means "50 USDC" because Arc's
- * native token uses USDC's own decimal convention). There is no ERC-20
+ * Arc's native gas token, which IS USDC. Native value transfers and
+ * `msg.value` use 18-decimal EVM precision (so 50 USDC is 50 * 10**18
+ * native units). The optional ERC-20 interface uses 6 decimals. There is no ERC-20
  * transfer here — fees arrive via plain value transfer (`receive()`),
  * and withdrawals leave the same way.
  *

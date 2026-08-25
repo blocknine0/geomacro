@@ -334,6 +334,8 @@ The repository includes:
 ```text
 deploy-v2-implementation.yml
 propose-v2-upgrade.yml
+execute-v2-upgrade.yml
+fund-v2-liquidity.yml
 ```
 
 ### Guardian and pause controls
@@ -388,9 +390,9 @@ The current V2 contract contains protocol-level fee, funded-liquidity, and dispu
 
 ### Fixed-odds winner fee
 
-The funded fixed-odds path uses a **1.5% winner fee on profit**.
+The funded fixed-odds path uses a separate **1.5% winner fee on profit** (`fixedOddsWinnerFeeBps = 150`).
 
-This differs from the base pool-style V2 fee path and is applied only to the funded fixed-odds economics.
+This is intentionally separate from the legacy/base pool-style V2 `winnerFeeBps = 200`, so activating fixed odds does not retroactively change the fee math for markets created before `initializeFixedOddsV2()`. Fixed-odds markets also route **5% of losing stake** to treasury by default (`lossTreasuryBps = 500`).
 
 ### Dispute economics
 
@@ -645,7 +647,9 @@ graph LR;
 | `auto-recovery.yml` | Recovery operations |
 | `debug-schema.yml` | Manual schema diagnostics |
 | `deploy-v2-implementation.yml` | Deploy a new V2 implementation |
-| `propose-v2-upgrade.yml` | Propose or stage a V2 proxy upgrade |
+| `propose-v2-upgrade.yml` | Propose/approve a specific deployed V2 implementation |
+| `execute-v2-upgrade.yml` | Execute the timelocked V2 upgrade and atomically call `initializeFixedOddsV2()` |
+| `fund-v2-liquidity.yml` | Fund the V2 underwriting reserve after upgrade initialization |
 
 Scheduled jobs are designed around reconciliation and retry safety rather than manual state editing.
 
@@ -742,16 +746,17 @@ If fresh evidence retrieval is unavailable, the system should report the limitat
 ```text
 geomacro/
 ├── AgentArena.sol
-├── AgentArenaV2.sol
 ├── contracts/
 │   ├── AgentArena.sol
 │   ├── AgentArenaV2.sol
 │   ├── AgentArenaProxy.sol
 │   └── MultisigTreasury.sol
 ├── script/
-│   └── Deploy.s.sol
+│   ├── Deploy.s.sol
+│   └── DeployAgentArenaV2Implementation.s.sol
 ├── test/
-│   └── AgentArena.t.sol
+│   ├── AgentArena.t.sol
+│   └── AgentArenaV2FixedOdds.t.sol
 ├── scripts/
 │   ├── ingest-news.js
 │   ├── generate-briefings.js
@@ -764,6 +769,10 @@ geomacro/
 │   ├── anomaly-monitor.js
 │   ├── backfill-positions.js
 │   ├── backfill-tx-hashes.js
+│   ├── ops/
+│   │   ├── verify-market-economics.js
+│   │   ├── fund-liquidity.js
+│   │   └── verify-jury.js
 │   └── lib/
 │       └── dual-contract.js
 ├── supabase/
@@ -786,7 +795,7 @@ geomacro/
 └── package.json
 ```
 
-> The repository currently contains root-level Arena contract copies in addition to the `contracts/` tree. Deployment and upgrade operations should always confirm the intended canonical source before production execution.
+> `contracts/AgentArenaV2.sol` is the canonical V2 implementation source used by Foundry, deployment scripts, and upgrade workflows. The duplicate root-level `AgentArenaV2.sol` was removed to prevent source drift.
 
 ---
 

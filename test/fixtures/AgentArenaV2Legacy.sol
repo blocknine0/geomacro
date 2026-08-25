@@ -34,7 +34,7 @@ interface IMultisigTreasury {
  * Currency note: same as V1 — Arc's native gas token IS USDC, so amounts
  * here use msg.value directly and "$X" in comments means X * 10**18 wei.
  */
-contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable {
+contract AgentArenaV2Legacy is Initializable, OwnableUpgradeable, UUPSUpgradeable, PausableUpgradeable {
     // ---------------------------------------------------------------
     // Constants
     // ---------------------------------------------------------------
@@ -148,11 +148,10 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     mapping(string => bool) public marketEconomicsSettled;
     mapping(string => uint256) public marketReserveUsed;
     mapping(string => uint256) public marketLossTreasuryAmount;
-    uint256 public fixedOddsWinnerFeeBps;   // default 1.5%, charged only on fixed-odds profit
 
     // Reserved storage slots for future upgrades (standard OZ upgradeable pattern).
-    // V2 fixed-odds extension consumes the first slot of the previous 28-slot gap for the new fixed-odds fee configuration.
-    uint256[27] private __gap;
+    // V2 fixed-odds extension consumes 11 slots from the previous 39-slot gap.
+    uint256[28] private __gap;
 
     // ---------------------------------------------------------------
     // Events
@@ -176,9 +175,8 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     event AutoUnpaused(uint256 timestamp);
     event UnpauseApproved(address indexed signer, uint256 approvalCount);
     event UpgradeApproved(address indexed signer, address indexed newImplementation, uint256 approvalCount);
-    event FixedOddsInitialized(uint256 fixedOddsWinnerFeeBps, uint256 lossTreasuryBps);
+    event FixedOddsInitialized(uint256 winnerFeeBps, uint256 lossTreasuryBps);
     event FixedOddsEnabledUpdated(bool enabled);
-    event FixedOddsWinnerFeeUpdated(uint256 newBps);
     event LossTreasuryShareUpdated(uint256 newBps);
     event LiquidityProvided(address indexed provider, uint256 amount, uint256 sharesMinted);
     event LiquidityDonated(address indexed provider, uint256 amount);
@@ -226,15 +224,13 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     /// Existing V2 markets remain legacy/parimutuel; markets created after
     /// this call are explicitly marked fixedOddsMarket=true.
     function initializeFixedOddsV2() external reinitializer(2) onlyOwner {
-        // Keep winnerFeeBps untouched so pre-upgrade/legacy V2 markets preserve
-        // their original pool-style fee. Fixed odds has its own profit-only fee.
-        fixedOddsWinnerFeeBps = 150; // 1.5% of gross fixed-odds profit
-        lossTreasuryBps = 500;       // 5% of losing stake goes to treasury; configurable up to 10%
+        winnerFeeBps = 150;      // preserve original Geomacro 1.5% fee, now charged ONLY on profit
+        lossTreasuryBps = 500;   // 5% of losing stake goes to treasury; configurable up to 10%
         fixedOddsEnabled = true;
-        emit FixedOddsWinnerFeeUpdated(fixedOddsWinnerFeeBps);
+        emit WinnerFeeUpdated(winnerFeeBps);
         emit LossTreasuryShareUpdated(lossTreasuryBps);
         emit FixedOddsEnabledUpdated(true);
-        emit FixedOddsInitialized(fixedOddsWinnerFeeBps, lossTreasuryBps);
+        emit FixedOddsInitialized(winnerFeeBps, lossTreasuryBps);
     }
 
     // ---------------------------------------------------------------
@@ -283,7 +279,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     /// alone couldn't stop a compromised-owner-key upgrade from rewriting
     /// the contract's logic out from under the pause — upgrade authority is
     /// now gated the same way fund withdrawals already are.
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {
+    function _authorizeUpgrade(address newImplementation) internal override {
         require(newImplementation == pendingImplementation, "must match proposed implementation");
         require(upgradeUnlockTime != 0 && block.timestamp >= upgradeUnlockTime, "timelock not elapsed");
         require(upgradeApprovalCount >= 2, "needs 2-of-3 treasury signer approval");
@@ -381,13 +377,6 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
         emit WinnerFeeUpdated(newBps);
     }
 
-    function setFixedOddsWinnerFeeBps(uint256 newBps) external onlyOwner {
-        require(newBps <= MAX_WINNER_FEE_BPS, "fee too high");
-        require(totalReservedLiquidity == 0, "active reserve commitments");
-        fixedOddsWinnerFeeBps = newBps;
-        emit FixedOddsWinnerFeeUpdated(newBps);
-    }
-
     function setLossTreasuryBps(uint256 newBps) external onlyOwner {
         require(newBps <= MAX_LOSS_TREASURY_BPS, "loss treasury share too high");
         require(totalReservedLiquidity == 0, "active reserve commitments");
@@ -464,7 +453,7 @@ contract AgentArenaV2 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pau
     ) {
         principal = stakeAmount;
         grossProfit = (stakeAmount * FIXED_PROFIT_BPS) / 10000;
-        winnerFee = (grossProfit * fixedOddsWinnerFeeBps) / 10000;
+        winnerFee = (grossProfit * winnerFeeBps) / 10000;
         netPayout = principal + grossProfit - winnerFee;
     }
 
