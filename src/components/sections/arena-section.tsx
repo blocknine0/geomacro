@@ -438,7 +438,7 @@ export function ArenaSection() {
       rememberSessionTx(activeNet, address, {
         hash,
         from: address,
-        to: AGENT_ARENA_ADDRESS,
+        to: market.marketAddress,
         valueWei: String(BigInt(Math.round(amount * 1e6)) * BigInt(1e12)),
         timestamp: Math.floor(Date.now() / 1000),
         blockNumber: null,
@@ -500,7 +500,7 @@ export function ArenaSection() {
       rememberSessionTx(activeNet, address, {
         hash,
         from: address,
-        to: AGENT_ARENA_ADDRESS,
+        to: market.marketAddress,
         valueWei: "0",
         timestamp: Math.floor(Date.now() / 1000),
         blockNumber: null,
@@ -1421,8 +1421,10 @@ export function ArenaSection() {
               { label: "Chain ID", value: String(activeNet.chainIdDec) },
               {
                 label: "Contract",
-                value: AGENT_ARENA_ADDRESS,
-                href: `${activeNet.explorer}/address/${AGENT_ARENA_ADDRESS}`,
+                value: pendingStake?.market.marketAddress ?? AGENT_ARENA_ADDRESS,
+                href: `${activeNet.explorer}/address/${
+                  pendingStake?.market.marketAddress ?? AGENT_ARENA_ADDRESS
+                }`,
               },
             ]}
           />

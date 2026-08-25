@@ -6,7 +6,13 @@ import { createClient } from "@supabase/supabase-js";
 import { jwtVerify } from "jose";
 import { Interface, JsonRpcProvider } from "ethers";
 
-const AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+const LEGACY_AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
+const CURRENT_AGENT_ARENA_ADDRESS = "0x2F874FB07084a22D2bB314D0762Af57Cb1856868";
+
+const VALID_AGENT_ARENA_ADDRESSES = new Set([
+  LEGACY_AGENT_ARENA_ADDRESS.toLowerCase(),
+  CURRENT_AGENT_ARENA_ADDRESS.toLowerCase(),
+]);
 const STAKE_ABI = ["function stake(string marketId, uint8 side) payable"];
 const stakeInterface = new Interface(STAKE_ABI);
 const SIDE_CODE_MAP: Record<"HAWK" | "DOVE", number> = { HAWK: 1, DOVE: 2 };
@@ -36,7 +42,7 @@ async function verifyStakeTx(params: {
       ]);
       if (!tx || !receipt) throw new Error("Transaction not found on-chain");
       if (receipt.status !== 1) throw new Error("Transaction reverted on-chain");
-      if (!tx.to || tx.to.toLowerCase() !== AGENT_ARENA_ADDRESS.toLowerCase()) {
+      if (!tx.to || !VALID_AGENT_ARENA_ADDRESSES.has(tx.to.toLowerCase())) {
         throw new Error("Transaction did not call the Arena contract");
       }
       if (tx.from.toLowerCase() !== expectedFrom.toLowerCase()) {

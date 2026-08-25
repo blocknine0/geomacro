@@ -26,7 +26,6 @@ import { useWallet } from "@/hooks/WalletProvider";
 import { preferredNetwork } from "@/lib/arc";
 import type { AgentSide } from "@/lib/agents";
 import {
-  AGENT_ARENA_ADDRESS,
   readMyStake,
   stakeOnContract,
   usdcToWei,
@@ -136,7 +135,7 @@ export function ParticipationSection({ detail }: { detail: EventDetail }) {
       rememberSessionTx(activeNet, address, {
         hash,
         from: address,
-        to: AGENT_ARENA_ADDRESS,
+        to: market.marketAddress,
         valueWei: String(BigInt(Math.round(value * 1e6)) * BigInt(1e12)),
         timestamp: Math.floor(Date.now() / 1000),
         blockNumber: null,

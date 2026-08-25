@@ -11,7 +11,6 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "economics:verify": "node scripts/ops/verify-market-economics.js",
-    "economics:init": "node scripts/ops/initialize-fixed-odds-v3.js",
     "liquidity:fund": "node scripts/ops/fund-liquidity.js",
     "jury:verify": "node scripts/ops/verify-jury.js"
   },
