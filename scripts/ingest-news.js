@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import { createHash } from 'node:crypto';
 
 dotenv.config();
 
@@ -48,6 +49,15 @@ const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
 const MAX_ARTICLE_AGE_MS = Number(process.env.MAX_ARTICLE_AGE_MS || 72 * 60 * 60 * 1000);
 const MIN_CONFIDENCE = Number(process.env.MIN_CONFIDENCE || 60);
 const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
+
+// Immutable scoring provenance written with every newly classified event.
+// Bump these whenever the classification contract or prompt semantics change.
+const CLASSIFICATION_VERSION = 'event-severity-v1.0.0';
+const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.0';
+
+function sha256Text(value) {
+  return createHash('sha256').update(String(value), 'utf8').digest('hex');
+}
 
 const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth', 'crypto'];
 
@@ -546,6 +556,9 @@ async function checkArticlesBatchRelevance(articles, category) {
   }
 
   let rawContent;
+  let classificationProvider = 'groq';
+  let classificationModel = GROQ_MODEL;
+  const classificationInputHash = sha256Text(prompt);
   try {
     const chatCompletion = await callGroqWithBackoff(async () => {
       const request = groq.chat.completions.create(groqPayload);
@@ -563,13 +576,24 @@ async function checkArticlesBatchRelevance(articles, category) {
       `  ↪ Groq unavailable (${e.isModelMissing ? 'model missing' : 'quota'}) — falling back to Cerebras ${CEREBRAS_MODEL}.`
     );
     rawContent = await callCerebras(process.env.CEREBRAS_API_KEY, prompt);
+    classificationProvider = 'cerebras';
+    classificationModel = CEREBRAS_MODEL;
   }
 
+  const attachProvenance = (assessment) => ({
+    ...assessment,
+    classificationProvider,
+    classificationModel,
+    classificationVersion: CLASSIFICATION_VERSION,
+    classificationPromptVersion: CLASSIFICATION_PROMPT_VERSION,
+    classificationInputHash,
+  });
+
   try {
-    return parseAssessments(rawContent, articles);
+    return parseAssessments(rawContent, articles).map(attachProvenance);
   } catch (parseErr) {
     console.error(`  ❌ Failed to parse batch response: ${parseErr.message}`);
-    return articles.map((a) => emptyAssessment(a));
+    return articles.map((a) => attachProvenance(emptyAssessment(a)));
   }
 }
 
@@ -820,24 +844,52 @@ async function ingestNews() {
         if (baselineSeverity === null) baselineSeverity = assessment.severity;
         const delta = Math.round(assessment.severity - baselineSeverity);
 
-        const { error: insertError } = await supabase.from('events').insert([
-          {
-            source_url: article.url,
-            source_title: gated.title,
-            source_name: article.source,
-            source_domain: article.sourceDomain,
-            category: gated.category,
-            narrative: assessment.narrative,
-            summary: assessment.summary,
-            stage: 'new',
-            severity: assessment.severity,
-            confidence: assessment.confidence,
-            delta,
-            published_at: article.publishedAt,
-            market_created: false,
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        const eventRow = {
+          source_url: article.url,
+          source_title: gated.title,
+          source_name: article.source,
+          source_domain: article.sourceDomain,
+          category: gated.category,
+          narrative: assessment.narrative,
+          summary: assessment.summary,
+          stage: 'new',
+          severity: assessment.severity,
+          confidence: assessment.confidence,
+          delta,
+          classification_provider: assessment.classificationProvider,
+          classification_model: assessment.classificationModel,
+          classification_version: assessment.classificationVersion,
+          classification_prompt_version: assessment.classificationPromptVersion,
+          classification_scored_at: new Date().toISOString(),
+          classification_input_hash: assessment.classificationInputHash,
+          published_at: article.publishedAt,
+          market_created: false,
+          created_at: new Date().toISOString(),
+        };
+
+        let { error: insertError } = await supabase.from('events').insert([eventRow]);
+
+        // Safe rollout path: code may deploy before migration 004 reaches the
+        // live Supabase schema. If PostgREST reports a missing audit/source
+        // column, retry the exact event without the new optional provenance
+        // fields rather than dropping ingestion. Migration 004 later marks
+        // such rows legacy-unversioned instead of inventing metadata.
+        if (insertError && /column|schema cache|classification_|source_domain/i.test(String(insertError.message || ''))) {
+          const legacyCompatibleRow = { ...eventRow };
+          for (const key of [
+            'source_domain',
+            'classification_provider',
+            'classification_model',
+            'classification_version',
+            'classification_prompt_version',
+            'classification_scored_at',
+            'classification_input_hash',
+          ]) {
+            delete legacyCompatibleRow[key];
+          }
+          console.warn('  ⚠️ GRI audit columns not available yet — retrying legacy-compatible event insert.');
+          ({ error: insertError } = await supabase.from('events').insert([legacyCompatibleRow]));
+        }
 
         if (!insertError) {
           console.log(
