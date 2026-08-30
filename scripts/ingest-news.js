@@ -18,7 +18,7 @@ const groq = new Groq({
 });
 
 if (!process.env.CEREBRAS_API_KEY) {
-  console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq's daily quota runs out mid-run.");
+  console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq quota/model fails mid-run.");
 }
 
 const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 3);
@@ -30,7 +30,8 @@ const MAX_BACKOFF_MS = 60 * 1000;
 const QUERY_DELAY_MS = Number(process.env.NEWS_QUERY_DELAY_MS || 800);
 const NEWS_MAX_RETRIES = Number(process.env.NEWS_MAX_RETRIES || 3);
 
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'llama3.1-8b';
 const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
 const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 2);
 const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 1500);
@@ -403,6 +404,13 @@ async function callGroqWithBackoff(fn, label) {
     } catch (error) {
       const status = error?.status ?? error?.response?.status;
       const message = String(error?.message ?? error?.error?.message ?? '');
+      const isModelMissing =
+        status === 404 || /model_not_found|does not exist or you do not have access/i.test(message);
+      if (isModelMissing) {
+        const modelErr = new Error(`Groq model missing: ${message}`);
+        modelErr.isModelMissing = true;
+        throw modelErr;
+      }
       const isDailyQuotaExhausted =
         status === 429 && /tokens per day|requests per day|TPD|RPD/i.test(message);
       if (isDailyQuotaExhausted) {
@@ -447,7 +455,7 @@ async function callCerebras(cerebrasApiKey, prompt) {
       Authorization: `Bearer ${cerebrasApiKey}`,
     },
     body: JSON.stringify({
-      model: 'llama3.1-8b',
+      model: CEREBRAS_MODEL,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
       max_tokens: 900,
@@ -542,10 +550,10 @@ async function checkArticlesBatchRelevance(articles, category) {
     }, `batch-classify (${articles.length} articles)`);
     rawContent = chatCompletion.choices[0].message.content;
   } catch (e) {
-    if (!e.isQuotaExhausted && !e.isBudgetExhausted) throw e;
+    if (!e.isQuotaExhausted && !e.isBudgetExhausted && !e.isModelMissing) throw e;
     if (!process.env.CEREBRAS_API_KEY) throw e;
     console.log(
-      `  ↪ Groq unavailable for batch-classify (${articles.length} articles) — falling back to Cerebras.`
+      `  ↪ Groq unavailable (${e.isModelMissing ? 'model missing' : 'quota'}) — falling back to Cerebras ${CEREBRAS_MODEL}.`
     );
     rawContent = await callCerebras(process.env.CEREBRAS_API_KEY, prompt);
   }
@@ -672,7 +680,7 @@ function chunk(arr, size) {
 async function ingestNews() {
   console.log('Run node scripts/ingest-news.js');
   console.log(
-    `Groq model=${GROQ_MODEL} batch=${BATCH_SIZE} maxReq=${GROQ_MAX_REQUESTS_PER_RUN} minSeverity=${MIN_SEVERITY}`
+    `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | minSeverity=${MIN_SEVERITY}`
   );
 
   let existingEvents = [];
