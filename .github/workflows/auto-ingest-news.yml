@@ -27,5 +27,20 @@ jobs:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          # Optional repository variables; empty/unset values fall back to script defaults.
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+          GROQ_BATCH_SIZE: ${{ vars.GROQ_BATCH_SIZE }}
+          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
+          GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
+          GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
+          GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
+          GROQ_MAX_WAIT_MS: ${{ vars.GROQ_MAX_WAIT_MS }}
+          NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
+          NEWS_MAX_RETRIES: ${{ vars.NEWS_MAX_RETRIES }}
+          MAX_CANDIDATES_PER_CATEGORY: ${{ vars.MAX_CANDIDATES_PER_CATEGORY }}
+          MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}
+          MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
+          MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
+          DISABLE_NEWSAPI: ${{ vars.DISABLE_NEWSAPI }}
         run: node scripts/ingest-news.js
-        
