@@ -194,7 +194,9 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
   let validationMetrics: GriValidationMetric[] = [];
   const validationResult = await supabaseFeed
     .from("gri_validation_runs")
-    .select("id,methodology_version,validation_version,evidence_mode,source_replay_run_id,status,sample_start,sample_end,sample_count,benchmark_count,train_fraction,result_hash,summary,published_at")
+    .select(
+      "id,methodology_version,validation_version,evidence_mode,source_replay_run_id,status,sample_start,sample_end,sample_count,benchmark_count,train_fraction,result_hash,summary,published_at",
+    )
     .eq("methodology_version", GRI_METHOD_VERSION)
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
@@ -204,11 +206,14 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
     validationRun = validationResult.data as GriValidationRun;
     const metricsResult = await supabaseFeed
       .from("gri_validation_metrics")
-      .select("benchmark_key,horizon_hours,split,sample_count,pearson_r,spearman_rho,delta_pearson_r,delta_pearson_p_approx,direction_hit_rate,high_risk_event_count,false_positive_rate,event_study_high_mean_z,event_study_baseline_mean_z,event_study_effect_z,notes")
+      .select(
+        "benchmark_key,horizon_hours,split,sample_count,pearson_r,spearman_rho,delta_pearson_r,delta_pearson_p_approx,direction_hit_rate,high_risk_event_count,false_positive_rate,event_study_high_mean_z,event_study_baseline_mean_z,event_study_effect_z,notes",
+      )
       .eq("validation_run_id", validationRun.id)
       .order("benchmark_key", { ascending: true })
       .order("horizon_hours", { ascending: true });
-    if (!metricsResult.error) validationMetrics = (metricsResult.data ?? []) as GriValidationMetric[];
+    if (!metricsResult.error)
+      validationMetrics = (metricsResult.data ?? []) as GriValidationMetric[];
   }
 
   return {

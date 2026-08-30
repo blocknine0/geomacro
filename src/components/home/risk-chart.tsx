@@ -31,7 +31,9 @@ export function RiskChart({
       x: PAD_X + (i * (W - PAD_X * 2)) / (n - 1),
       y: PAD_Y + (1 - Math.min(100, Math.max(0, b.avg)) / 100) * (H - PAD_Y * 2),
     }));
-    const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const d = points
+      .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+      .join(" ");
     return {
       pts: points,
       path: d,
@@ -60,7 +62,9 @@ export function RiskChart({
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const ratio = (e.clientX - rect.left) / rect.width;
-          setHover(Math.min(buckets.length - 1, Math.max(0, Math.round(ratio * (buckets.length - 1)))));
+          setHover(
+            Math.min(buckets.length - 1, Math.max(0, Math.round(ratio * (buckets.length - 1)))),
+          );
         }}
       >
         <defs>
@@ -105,8 +109,20 @@ export function RiskChart({
           className="text-border"
           vectorEffect="non-scaling-stroke"
         />
-        <circle cx={activePt.x} cy={activePt.y} r="4" fill="var(--primary)" vectorEffect="non-scaling-stroke" />
-        <circle cx={last.x} cy={last.y} r="3" fill="var(--primary)" vectorEffect="non-scaling-stroke" />
+        <circle
+          cx={activePt.x}
+          cy={activePt.y}
+          r="4"
+          fill="var(--primary)"
+          vectorEffect="non-scaling-stroke"
+        />
+        <circle
+          cx={last.x}
+          cy={last.y}
+          r="3"
+          fill="var(--primary)"
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
       <figcaption className="mt-2 flex items-center justify-between type-meta text-muted-foreground">
         <span>

@@ -10,7 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-export const Route = createFileRoute("/docs/gri-architecture")({
+export const Route = createFileRoute("/docs_/gri-architecture")({
   head: () => ({
     meta: [
       { title: "GRI Architecture & Proof System · Geomacro" },

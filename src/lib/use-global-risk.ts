@@ -99,10 +99,8 @@ const LOOKBACK = GRI_LOOKBACK_HOURS * HOUR;
 
 export const GRI_METHODOLOGY = {
   version: GRI_METHOD_VERSION,
-  definition:
-    `GRI ${GRI_METHOD_VERSION} is a deterministic source-capped, confidence- and recency-weighted severity index over the trailing ${GRI_LOOKBACK_HOURS} hours.`,
-  weighting:
-    `Event weight = confidence × exponential recency decay (${GRI_HALF_LIFE_HOURS}h half-life); each source is capped so article volume cannot dominate. Active domains are equally weighted and missing domains are disclosed as coverage, never zero risk.`,
+  definition: `GRI ${GRI_METHOD_VERSION} is a deterministic source-capped, confidence- and recency-weighted severity index over the trailing ${GRI_LOOKBACK_HOURS} hours.`,
+  weighting: `Event weight = confidence × exponential recency decay (${GRI_HALF_LIFE_HOURS}h half-life); each source is capped so article volume cannot dominate. Active domains are equally weighted and missing domains are disclosed as coverage, never zero risk.`,
   notProbability: "GRI is an aggregate intelligence signal, not a market probability.",
 } as const;
 
@@ -149,15 +147,25 @@ function finishSeries(timeframe: Timeframe, buckets: Bucket[]): TimeframeSeries 
   return { timeframe, buckets, low: Math.min(...values), high: Math.max(...values) };
 }
 
-function seriesForSnapshots(rows: SnapshotRow[], timeframe: Timeframe, latestAt: number): TimeframeSeries {
+function seriesForSnapshots(
+  rows: SnapshotRow[],
+  timeframe: Timeframe,
+  latestAt: number,
+): TimeframeSeries {
   const ms: Record<Timeframe, number> = { "24H": DAY, "7D": 7 * DAY, "30D": 30 * DAY };
   const start = latestAt - ms[timeframe];
   const buckets = rows
     .filter((row) => {
       const t = new Date(row.as_of).getTime();
-      return Number.isFinite(t) && t >= start && t <= latestAt && typeof row.display_score === "number";
+      return (
+        Number.isFinite(t) && t >= start && t <= latestAt && typeof row.display_score === "number"
+      );
     })
-    .map((row) => ({ t: new Date(row.as_of).getTime(), avg: row.display_score as number, count: row.event_count }))
+    .map((row) => ({
+      t: new Date(row.as_of).getTime(),
+      avg: row.display_score as number,
+      count: row.event_count,
+    }))
     .sort((a, b) => a.t - b.t);
   return finishSeries(timeframe, buckets);
 }
@@ -166,22 +174,28 @@ function snapshotDrivers(snapshot: SnapshotRow): RiskDriver[] {
   const categories = Array.isArray(snapshot.category_breakdown)
     ? (snapshot.category_breakdown as Array<Record<string, unknown>>)
     : [];
-  const changeObj = snapshot.change_attribution && typeof snapshot.change_attribution === "object"
-    ? (snapshot.change_attribution as Record<string, unknown>)
-    : null;
+  const changeObj =
+    snapshot.change_attribution && typeof snapshot.change_attribution === "object"
+      ? (snapshot.change_attribution as Record<string, unknown>)
+      : null;
   const categoryChanges = Array.isArray(changeObj?.categoryChanges)
     ? (changeObj?.categoryChanges as Array<Record<string, unknown>>)
     : [];
   const changeByCategory = new Map(
-    categoryChanges.map((c) => [String(c.category ?? ""), n(c.deltaPoints as number | string | null)]),
+    categoryChanges.map((c) => [
+      String(c.category ?? ""),
+      n(c.deltaPoints as number | string | null),
+    ]),
   );
 
-  const explanation = snapshot.explanation && typeof snapshot.explanation === "object"
-    ? (snapshot.explanation as Record<string, unknown>)
-    : null;
-  const how = explanation?.how && typeof explanation.how === "object"
-    ? (explanation.how as Record<string, unknown>)
-    : null;
+  const explanation =
+    snapshot.explanation && typeof snapshot.explanation === "object"
+      ? (snapshot.explanation as Record<string, unknown>)
+      : null;
+  const how =
+    explanation?.how && typeof explanation.how === "object"
+      ? (explanation.how as Record<string, unknown>)
+      : null;
   const topCurrentEvents = Array.isArray(how?.topCurrentEvents)
     ? (how.topCurrentEvents as Array<Record<string, unknown>>)
     : [];
@@ -210,13 +224,18 @@ function snapshotDrivers(snapshot: SnapshotRow): RiskDriver[] {
       } satisfies RiskDriver;
     })
     .filter((d) => d.category.length > 0)
-    .sort((a, b) => Math.abs(b.change ?? 0) - Math.abs(a.change ?? 0) || b.contribution - a.contribution);
+    .sort(
+      (a, b) =>
+        Math.abs(b.change ?? 0) - Math.abs(a.change ?? 0) || b.contribution - a.contribution,
+    );
 }
 
 async function loadRecentEvents(since: string, limit = 24): Promise<RiskRow[]> {
   const { data, error } = await supabaseFeed
     .from("events")
-    .select("id,source_title,summary,category,severity,confidence,delta,source_name,source_url,created_at,published_at,market_created")
+    .select(
+      "id,source_title,summary,category,severity,confidence,delta,source_name,source_url,created_at,published_at,market_created",
+    )
     .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -258,7 +277,8 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           setData(null);
           setStatus("error");
           setError({
-            message: "Risk index unavailable: no published, verified snapshot exists for the current methodology.",
+            message:
+              "Risk index unavailable: no published, verified snapshot exists for the current methodology.",
             retryable: true,
           });
           setUpdatedAt(null);
@@ -268,12 +288,20 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
         const snapshots = snapshotResult.data as SnapshotRow[];
         const latest = snapshots[0];
         const latestAt = new Date(latest.as_of).getTime();
-        const snapshotAgeHours = Number.isFinite(latestAt) ? (now - latestAt) / HOUR : Number.POSITIVE_INFINITY;
+        const snapshotAgeHours = Number.isFinite(latestAt)
+          ? (now - latestAt) / HOUR
+          : Number.POSITIVE_INFINITY;
         const reconciliationResidual = n(latest.reconciliation_residual);
         const changeResidual = n(latest.change_residual);
         const proofReady =
           latest.verification_status === "verified" &&
-          Boolean(latest.proof_hash && latest.evidence_hash && latest.calculation_hash && latest.input_hash && latest.methodology_hash) &&
+          Boolean(
+            latest.proof_hash &&
+            latest.evidence_hash &&
+            latest.calculation_hash &&
+            latest.input_hash &&
+            latest.methodology_hash,
+          ) &&
           (reconciliationResidual === null || Math.abs(reconciliationResidual) <= 1e-7) &&
           (changeResidual === null || Math.abs(changeResidual) <= 1e-7);
 
@@ -282,7 +310,11 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           hasData.current = false;
           setData(null);
           setStatus("error");
-          setError({ message: "Risk index unavailable: the newest canonical snapshot has not passed proof verification.", retryable: true });
+          setError({
+            message:
+              "Risk index unavailable: the newest canonical snapshot has not passed proof verification.",
+            retryable: true,
+          });
           setUpdatedAt(Number.isFinite(latestAt) ? latestAt : null);
           return;
         }
@@ -292,7 +324,10 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           hasData.current = false;
           setData(null);
           setStatus("error");
-          setError({ message: `Risk index temporarily unavailable: the latest verified snapshot is older than ${GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS} hours.`, retryable: true });
+          setError({
+            message: `Risk index temporarily unavailable: the latest verified snapshot is older than ${GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS} hours.`,
+            retryable: true,
+          });
           setUpdatedAt(Number.isFinite(latestAt) ? latestAt : null);
           return;
         }
@@ -302,7 +337,11 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           hasData.current = false;
           setData(null);
           setStatus("error");
-          setError({ message: "Risk index unavailable: the latest canonical snapshot has no qualifying score.", retryable: true });
+          setError({
+            message:
+              "Risk index unavailable: the latest canonical snapshot has no qualifying score.",
+            retryable: true,
+          });
           setUpdatedAt(new Date(latest.as_of).getTime());
           return;
         }
@@ -371,5 +410,8 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
     };
   }, [reloadKey, refreshMs]);
 
-  return useMemo(() => ({ data, status, error, updatedAt, retry }), [data, status, error, updatedAt, retry]);
+  return useMemo(
+    () => ({ data, status, error, updatedAt, retry }),
+    [data, status, error, updatedAt, retry],
+  );
 }

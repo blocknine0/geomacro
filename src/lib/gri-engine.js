@@ -59,12 +59,15 @@ function isoMs(value) {
 }
 
 function stableSource(row) {
-  const domain = typeof row.source_domain === "string" ? row.source_domain.trim().toLowerCase() : "";
+  const domain =
+    typeof row.source_domain === "string" ? row.source_domain.trim().toLowerCase() : "";
   if (domain) return domain;
   const name = typeof row.source_name === "string" ? row.source_name.trim().toLowerCase() : "";
   if (name) return name;
   try {
-    return new URL(row.source_url ?? "").hostname.toLowerCase().replace(/^www\./, "") || "unknown-source";
+    return (
+      new URL(row.source_url ?? "").hostname.toLowerCase().replace(/^www\./, "") || "unknown-source"
+    );
   } catch {
     return "unknown-source";
   }
@@ -194,7 +197,9 @@ export function calculateGri(rows, asOf = new Date()) {
 
     const sourceParts = [];
     let categoryEffectiveWeight = 0;
-    for (const [sourceKey, sourceEvents] of [...sources.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [sourceKey, sourceEvents] of [...sources.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
       const sourceRawWeight = sourceEvents.reduce((sum, e) => sum + e.rawWeight, 0);
       const sourceEffectiveWeight = Math.min(GRI_SOURCE_WEIGHT_CAP, sourceRawWeight);
       if (sourceRawWeight <= EPS || sourceEffectiveWeight <= EPS) continue;
@@ -212,7 +217,11 @@ export function calculateGri(rows, asOf = new Date()) {
         const effectiveEventWeight = part.sourceEffectiveWeight * withinSourceShare;
         categorySeverityNumerator += event.severity * effectiveEventWeight;
         categoryConfidenceNumerator += event.confidence * effectiveEventWeight;
-        eventParts.push({ ...event, effectiveEventWeight, sourceEffectiveWeight: part.sourceEffectiveWeight });
+        eventParts.push({
+          ...event,
+          effectiveEventWeight,
+          sourceEffectiveWeight: part.sourceEffectiveWeight,
+        });
       }
     }
 
@@ -281,9 +290,13 @@ export function calculateGri(rows, asOf = new Date()) {
     eventCount: eligible.length,
     sourceCount,
     weightedConfidence:
-      globalConfidenceDenominator > EPS ? globalConfidenceNumerator / globalConfidenceDenominator : null,
+      globalConfidenceDenominator > EPS
+        ? globalConfidenceNumerator / globalConfidenceDenominator
+        : null,
     categories: categories.sort((a, b) => b.contributionPoints - a.contributionPoints),
-    contributions: contributions.sort((a, b) => Math.abs(b.contributionPoints) - Math.abs(a.contributionPoints)),
+    contributions: contributions.sort(
+      (a, b) => Math.abs(b.contributionPoints) - Math.abs(a.contributionPoints),
+    ),
     inputRows,
   };
 }
@@ -316,28 +329,30 @@ export function attributeGriChange(previous, current) {
   const prevEvents = new Map((previous.contributions ?? []).map((e) => [e.eventId, e]));
   const currEvents = new Map((current.contributions ?? []).map((e) => [e.eventId, e]));
   const ids = [...new Set([...prevEvents.keys(), ...currEvents.keys()])].sort();
-  const eventChanges = ids.map((eventId) => {
-    const p = prevEvents.get(eventId);
-    const c = currEvents.get(eventId);
-    const previousContribution = p?.contributionPoints ?? 0;
-    const currentContribution = c?.contributionPoints ?? 0;
-    let kind = "reweighted";
-    if (!p && c) kind = "added";
-    else if (p && !c) kind = "removed";
-    else if (p && c && Math.abs((p.severity ?? 0) - (c.severity ?? 0)) > EPS) kind = "rescored";
-    return {
-      eventId,
-      kind,
-      category: c?.category ?? p?.category ?? null,
-      sourceTitle: c?.sourceTitle ?? p?.sourceTitle ?? null,
-      sourceUrl: c?.sourceUrl ?? p?.sourceUrl ?? null,
-      previousSeverity: p?.severity ?? null,
-      currentSeverity: c?.severity ?? null,
-      previousContribution,
-      currentContribution,
-      deltaPoints: currentContribution - previousContribution,
-    };
-  }).sort((a, b) => Math.abs(b.deltaPoints) - Math.abs(a.deltaPoints));
+  const eventChanges = ids
+    .map((eventId) => {
+      const p = prevEvents.get(eventId);
+      const c = currEvents.get(eventId);
+      const previousContribution = p?.contributionPoints ?? 0;
+      const currentContribution = c?.contributionPoints ?? 0;
+      let kind = "reweighted";
+      if (!p && c) kind = "added";
+      else if (p && !c) kind = "removed";
+      else if (p && c && Math.abs((p.severity ?? 0) - (c.severity ?? 0)) > EPS) kind = "rescored";
+      return {
+        eventId,
+        kind,
+        category: c?.category ?? p?.category ?? null,
+        sourceTitle: c?.sourceTitle ?? p?.sourceTitle ?? null,
+        sourceUrl: c?.sourceUrl ?? p?.sourceUrl ?? null,
+        previousSeverity: p?.severity ?? null,
+        currentSeverity: c?.severity ?? null,
+        previousContribution,
+        currentContribution,
+        deltaPoints: currentContribution - previousContribution,
+      };
+    })
+    .sort((a, b) => Math.abs(b.deltaPoints) - Math.abs(a.deltaPoints));
 
   const rawDelta = current.rawScore - previous.rawScore;
   const eventDeltaSum = eventChanges.reduce((sum, e) => sum + e.deltaPoints, 0);

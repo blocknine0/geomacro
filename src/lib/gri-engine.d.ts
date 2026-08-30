@@ -91,7 +91,10 @@ export function canonicalJson(value: unknown): string;
 export function methodologyManifest(): Record<string, unknown>;
 export function normalizeGriEvent(row: GriInputRow, asOfMs: number): Record<string, unknown> | null;
 export function calculateGri(rows: GriInputRow[], asOf?: Date | string | number): GriCalculation;
-export function attributeGriChange(previous: GriCalculation, current: GriCalculation): null | {
+export function attributeGriChange(
+  previous: GriCalculation,
+  current: GriCalculation,
+): null | {
   previousAsOf: string;
   currentAsOf: string;
   previousRawScore: number;

@@ -36,27 +36,49 @@ export function toUserError(error: unknown, context = "completing that action"):
   const detail = raw(error);
   const lower = detail.toLowerCase();
 
-  if (lower.includes("user rejected") || lower.includes("user denied") || lower.includes("action_rejected")) {
+  if (
+    lower.includes("user rejected") ||
+    lower.includes("user denied") ||
+    lower.includes("action_rejected")
+  ) {
     return { message: "You cancelled the request in your wallet.", detail, retryable: true };
   }
   if (lower.includes("insufficient funds") || lower.includes("insufficient balance")) {
     return {
-      message: "Your wallet doesn't have enough balance to cover this transaction and its network fee.",
+      message:
+        "Your wallet doesn't have enough balance to cover this transaction and its network fee.",
       detail,
       retryable: false,
     };
   }
-  if (lower.includes("no wallet") || lower.includes("ethereum") && lower.includes("undefined")) {
+  if (lower.includes("no wallet") || (lower.includes("ethereum") && lower.includes("undefined"))) {
     return { message: "No wallet was detected in this browser.", detail, retryable: false };
   }
   if (lower.includes("chain") && (lower.includes("mismatch") || lower.includes("unrecognized"))) {
-    return { message: "Your wallet is on a different network. Switch networks and try again.", detail, retryable: true };
+    return {
+      message: "Your wallet is on a different network. Switch networks and try again.",
+      detail,
+      retryable: true,
+    };
   }
   if (lower.includes("revert") || lower.includes("execution reverted")) {
-    return { message: "We couldn't complete the transaction. Please try again.", detail, retryable: true };
+    return {
+      message: "We couldn't complete the transaction. Please try again.",
+      detail,
+      retryable: true,
+    };
   }
-  if (lower.includes("network") || lower.includes("fetch") || lower.includes("timeout") || lower.includes("rpc")) {
-    return { message: `We're having trouble reaching our data service while ${context}.`, detail, retryable: true };
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("timeout") ||
+    lower.includes("rpc")
+  ) {
+    return {
+      message: `We're having trouble reaching our data service while ${context}.`,
+      detail,
+      retryable: true,
+    };
   }
   if (lower.includes("jwt") || lower.includes("unauthorized") || lower.includes("401")) {
     return { message: "Your session expired. Sign in again to continue.", detail, retryable: true };
