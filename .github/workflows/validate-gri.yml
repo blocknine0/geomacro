@@ -1,0 +1,49 @@
+name: Validate GRI Against External Benchmarks
+
+on:
+  schedule:
+    - cron: "35 3 * * *"
+  workflow_dispatch:
+    inputs:
+      full_history:
+        description: "Backfill all available FRED history before validation"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gri-validation
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.GRI_VALIDATION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install validation runtime dependencies
+        run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+      - name: Ingest benchmark observations
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ "${{ inputs.full_history }}" = "true" ]; then
+            node scripts/ingest-gri-benchmarks.js --full-history
+          else
+            node scripts/ingest-gri-benchmarks.js --days 45
+          fi
+      - name: Run versioned empirical validation
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/validate-gri.js
