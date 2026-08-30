@@ -1,0 +1,63 @@
+name: GRI Retrospective Replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'Replay start timestamp/date (optional; defaults to earliest event)'
+        required: false
+        type: string
+      end:
+        description: 'Replay end timestamp/date (optional; defaults to latest event)'
+        required: false
+        type: string
+      cadence_hours:
+        description: 'Snapshot cadence in hours'
+        required: true
+        default: '24'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gri-retrospective-replay
+  cancel-in-progress: false
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install runtime dependencies
+        run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+      - name: Replay fixed GRI methodology over historical event store
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+          CADENCE: ${{ inputs.cadence_hours }}
+        run: |
+          ARGS=(--cadence-hours "$CADENCE")
+          if [ -n "$START" ]; then ARGS+=(--start "$START"); fi
+          if [ -n "$END" ]; then ARGS+=(--end "$END"); fi
+          node scripts/replay-gri-history.js "${ARGS[@]}"
+      - name: Validate retrospective replay separately from live OOS evidence
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          RUN_ID=$(node - <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const sb=createClient(process.env.APP_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+          const {data,error}=await sb.from('gri_replay_runs').select('id').eq('status','published').order('published_at',{ascending:false}).limit(1).single();
+          if(error) throw error;
+          process.stdout.write(data.id);
+          NODE
+          )
+          node scripts/validate-gri.js --replay-run "$RUN_ID"
