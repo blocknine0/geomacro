@@ -21,7 +21,7 @@ if (!process.env.CEREBRAS_API_KEY) {
   console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq quota/model fails mid-run.");
 }
 
-const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 3);
+const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 2);
 const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 4000);
 const MAX_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
@@ -55,7 +55,7 @@ const ALLOW = {
   geopolitics:
     /\b(war|warfare|airstrike|missile|troop|troops|ceasefire|nato|blockade|coup|junta|nuclear|invasion|militia|drone|artillery|offensive|frontline|sanctions?|embargo|occupation|mobilization|hezbollah|houthi|pla|pentagon|kremlin|idf|irgc|battlefield|conscript|recruit|oil imports?|west bank|gaza)\b/i,
   macro:
-    /\b(federal reserve|the fed\b|ecb|boj|rbi|pboc|imf|world bank|inflation|interest rate|rate cut|rate hike|default|sovereign debt|tariff|bond yield|treasur(?:y|ies)|recession|devaluat(?:e|ion)|opec|stimulus|gilt|stagflation|liquidity|credit crunch|bank failure|gas stor(?:age|es)|wholesale gas|lng\b|brent|wti\b|oil price|petrol price|energy shock|energy crisis)\b/i,
+    /\b(federal reserve|the fed\b|ecb|boj|rbi|pboc|imf|world bank|inflation|interest rate|rate cut|rate hike|default|sovereign debt|tariff|bond yield|treasur(?:y|ies)|recession|devaluat(?:e|ion)|opec|stimulus|gilt|stagflation|liquidity|credit crunch|bank failure|gas stor(?:age|es)|wholesale gas|lng\b|brent|wti\b|oil price|petrol prices?|energy shock|energy crisis)\b/i,
   rare_earth:
     /\b(rare earths?|ree\b|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnet|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka|refin(?:e|ing)|export (?:ban|quota|license|control)|critical minerals?)\b/i,
   crypto:
@@ -71,7 +71,7 @@ const CATEGORY_DENY = {
   geopolitics:
     /\b(football|cricket|tennis|film festival|bauhaus|far right is waging)\b/i,
   macro:
-    /\b(crypto winter|nft|memecoin|households could save)\b/i,
+    /\b(crypto winter|nft|memecoin|households could save|bank holiday getaway)\b/i,
   crypto:
     /\b(price prediction|how to buy|best wallet)\b/i,
 };
@@ -284,6 +284,18 @@ function markSeen(article, existingUrls, existingTitles, seenInCurrentRun) {
   if (title) existingTitles.add(normalizeTitle(title));
 }
 
+function emptyAssessment(article) {
+  return {
+    relevant: false,
+    category: 'none',
+    severity: 0,
+    confidence: 0,
+    narrative: article.title,
+    summary: article.description || article.title,
+    ungrounded: true,
+  };
+}
+
 function passesGates(article, assessment, fallbackCategory) {
   const title = stripHtml(article.title);
   const description = stripHtml(article.description);
@@ -482,6 +494,7 @@ relevant=true only for material breaking risk, not opinion/newsletter/history/sp
 category must be one of: geopolitics, macro, rare_earth, crypto, none
 rare_earth only if minerals/magnets/export controls. AI/semiconductors/datacentres = none.
 Household energy-switching tips and art/culture stories = none.
+You MUST return exactly ${articles.length} results with index 0 through ${articles.length - 1}.
 Return JSON only:
 {"results":[{"index":0,"relevant":true,"category":"geopolitics","severity":65,"confidence":70,"narrative":"...","summary":"..."}]}
 
@@ -503,16 +516,9 @@ function parseAssessments(rawContent, articles) {
     const r = byIndex.get(i);
     if (!r) {
       console.error(
-        `  ⚠️ Batch classify: no grounded result for article [${i}] "${a.title}" — treating as not relevant.`
+        `  ⚠️ Batch classify: no grounded result for article [${i}] "${a.title}" — will retry solo.`
       );
-      return {
-        relevant: false,
-        category: 'none',
-        severity: 0,
-        confidence: 0,
-        narrative: a.title,
-        summary: a.description || a.title,
-      };
+      return emptyAssessment(a);
     }
     return {
       relevant: !!r.relevant,
@@ -521,6 +527,7 @@ function parseAssessments(rawContent, articles) {
       confidence: Number.isFinite(r.confidence) ? r.confidence : 50,
       narrative: stripHtml(r.narrative || a.title),
       summary: stripHtml(r.summary || a.description || a.title),
+      ungrounded: false,
     };
   });
 }
@@ -562,15 +569,19 @@ async function checkArticlesBatchRelevance(articles, category) {
     return parseAssessments(rawContent, articles);
   } catch (parseErr) {
     console.error(`  ❌ Failed to parse batch response: ${parseErr.message}`);
-    return articles.map((a) => ({
-      relevant: false,
-      category: 'none',
-      severity: 0,
-      confidence: 0,
-      narrative: a.title,
-      summary: a.description || a.title,
-    }));
+    return articles.map((a) => emptyAssessment(a));
   }
+}
+
+async function assessWithRetry(articles, category) {
+  const assessments = await checkArticlesBatchRelevance(articles, category);
+  for (let i = 0; i < articles.length; i++) {
+    if (!assessments[i]?.ungrounded) continue;
+    console.log(`  ↻ Solo retry: "${articles[i].title}"`);
+    const solo = await checkArticlesBatchRelevance([articles[i]], category);
+    assessments[i] = solo[0];
+  }
+  return assessments;
 }
 
 async function fetchWithBackoff(fn, label) {
@@ -779,7 +790,7 @@ async function ingestNews() {
     for (const [batchIndex, batch] of batches.entries()) {
       let assessments;
       try {
-        assessments = await checkArticlesBatchRelevance(batch, category.name);
+        assessments = await assessWithRetry(batch, category.name);
       } catch (batchErr) {
         if (batchErr.isBudgetExhausted || batchErr.isQuotaExhausted) {
           console.error(
