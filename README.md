@@ -1,6 +1,6 @@
 # Geomacro
 
-**Event-driven geopolitical and macro risk intelligence with onchain prediction and settlement on Arc.**
+**Global geopolitical and macro risk intelligence infrastructure, with prediction and onchain markets as an application and feedback layer.**
 
 [![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
 [![Arc Testnet](https://img.shields.io/badge/Network-Arc_Testnet-2775CA?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
@@ -11,17 +11,21 @@
 
 ---
 
-Geomacro ingests real-world geopolitical, macroeconomic, critical-mineral, and crypto events, converts them into structured risk intelligence, and links selected events to HAWK/DOVE prediction markets with onchain settlement.
+Geomacro ingests real-world geopolitical, macroeconomic, critical-mineral, commodity, and crypto events and converts them into structured, machine-readable risk intelligence for research, monitoring, professional decision-making, and downstream applications.
 
-The system separates intelligence from transaction execution:
+**The intelligence layer is the core product.** Prediction markets, onchain probabilities, USDC settlement, CCTP and swap flows are application and feedback layers built on top of that intelligence infrastructure; they are not the primary company identity.
 
-- intelligence and market discovery are publicly readable;
-- wallet connection is deferred until an onchain action is required;
-- Supabase provides the structured application read model;
+The product architecture deliberately separates intelligence from transaction execution:
+
+- public intelligence, research, risk signals, source context and market discovery are readable without a wallet;
+- wallet connection is deferred until an explicit onchain action is required;
+- Supabase provides the structured application read model and historical intelligence store;
 - Arc contract state remains authoritative for financial state;
 - V1 and V2 market history are both preserved;
 - historical and current markets are routed using their own contract address;
 - new market creation uses the current V2 proxy.
+
+Commercially, Geomacro is being built around three layers: an accessible public intelligence funnel; recurring professional intelligence products with deeper analytics, research/history, alerts and advanced Ask Geomacro workflows; and institutional/enterprise delivery through structured data exports, partner/API access, monitoring, persistent alerts, team workspaces, permissions/SSO, provenance/audit tooling and custom integrations as those capabilities ship. Current vs planned capabilities are intentionally distinguished in the product and documentation.
 
 > **Current deployment**
 >
@@ -46,6 +50,7 @@ The diagrams in this README intentionally use conservative Mermaid syntax for Gi
 
 ## Contents
 
+- [Commercial product architecture](#commercial-product-architecture)
 - [Architecture](#architecture)
 - [Event lifecycle](#event-lifecycle)
 - [V1 and V2 routing](#v1-and-v2-routing)
@@ -68,6 +73,28 @@ The diagrams in this README intentionally use conservative Mermaid syntax for Gi
 - [Arc and USDC](#arc-and-usdc)
 
 ---
+
+## Commercial product architecture
+
+Geomacro's commercialization does not depend on turning every intelligence user into a market participant. The intelligence product is designed to stand on its own.
+
+| Layer | Role | Current direction |
+|---|---|---|
+| Public intelligence | Discovery and trust | Global Risk Index, live intelligence, event research, source context, selected market/probability context |
+| Professional intelligence | Recurring subscription product | Deeper analytics, history, alerts, research workflows and advanced Ask Geomacro capabilities |
+| Institutional / enterprise | High-value data and workflow product | Structured exports, partner/API access, persistent monitoring, teams, permissions/SSO, provenance/audit tooling and custom integrations |
+| Prediction / onchain application | Feedback, participation and programmable settlement | HAWK/DOVE markets, V1/V2 routing, USDC settlement, dispute lifecycle, CCTP and swap |
+
+Professional and enterprise capabilities are only described as live when they exist in the current product. Planned commercial capabilities are labelled as planned. Pricing is intentionally not hard-coded into the technical repository before product packaging and customer validation are complete.
+
+The repository should therefore be evaluated as both an intelligence system and a programmable application stack—not as a prediction-market-only codebase.
+
+
+### Global Risk Index audit model
+
+GRI `gri-v1.0.0` is deterministic after event classification. Eligible observations use severity as the risk signal, confidence and exponential recency decay as evidence weights, a 72-hour lookback, a per-source cap, and equal base weights across the four supported risk domains. Missing domains reduce disclosed coverage rather than being treated as zero risk.
+
+`scripts/compute-gri.js` persists versioned snapshots and exact event-level contribution points after migration `004_gri_audit_system.sql` is applied. Each published snapshot carries methodology, input and calculation hashes plus a mathematically reconciling 24-hour change attribution. See `docs/GRI_METHODOLOGY.md` and `docs/GRI_TRANSPARENCY_REQUIREMENTS.md`.
 
 ## Architecture
 
@@ -415,7 +442,7 @@ If a dispute is rejected:
 
 The current source defines a **50% treasury share** for rejected dispute bonds.
 
-Commercial subscription, professional, and institutional intelligence pricing are intentionally outside the scope of this repository documentation.
+Commercial packaging and pricing are documented as a product layer rather than embedded in protocol economics. The technical fee model below applies only to the onchain application layer.
 
 ---
 
@@ -745,7 +772,6 @@ If fresh evidence retrieval is unavailable, the system should report the limitat
 
 ```text
 geomacro/
-├── AgentArena.sol
 ├── contracts/
 │   ├── AgentArena.sol
 │   ├── AgentArenaV2.sol
@@ -804,15 +830,15 @@ geomacro/
 ```bash
 git clone https://github.com/blocknine0/geomacro.git
 cd geomacro
-npm install
+bun install
 cp .env.example .env.local
-npm run dev
+bun run dev
 ```
 
 Production build:
 
 ```bash
-npm run build
+bun run build
 ```
 
 Contract development:
@@ -841,8 +867,9 @@ Do not commit:
 | `GROQ_API_KEY` | Classification / briefing / resolution / selected juror roles |
 | `CEREBRAS_API_KEY` | Secondary model provider / fallback |
 | `TAVILY_API_KEY` | Dispute evidence retrieval |
-| `APP_SUPABASE_URL` | Supabase project URL |
+| `APP_SUPABASE_URL` | Public app Supabase project URL |
 | `APP_SUPABASE_ANON_KEY` | Public RLS-controlled reads |
+| `SUPABASE_URL` | Server-side Supabase URL used by ingestion jobs |
 | `SUPABASE_SERVICE_ROLE_KEY` | Trusted server-side writes |
 | `CONTRACT_ADDRESS` | Current V2 proxy |
 | `OLD_CONTRACT_ADDRESS` | V1 legacy contract |
@@ -854,6 +881,10 @@ Do not commit:
 | `MULTICALL3_ADDRESS` | Multicall3 address |
 | `VITE_ARC_NETWORK` | Frontend Arc network |
 | `VITE_CIRCLE_KIT_KEY` | Circle App Kit configuration |
+
+### News-ingestion controls
+
+`scripts/ingest-news.js` uses The Guardian as the primary source and NewsAPI as fallback, then applies freshness, deduplication, precision-oriented allow/deny gates, LLM relevance classification, severity/confidence thresholds, and Groq quota-aware throttling before trusted Supabase insertion. Its runtime knobs (model selection, batch size, quota headroom, article age, candidate cap, and thresholds) are documented in `.env.example`. See `docs/NEWS_INGESTION.md` for the operational contract. Newly accepted events also carry classification provider/model/version/prompt provenance used by the GRI audit layer.
 
 Deployment-specific values are consumed by deployment and automation tooling and should remain outside client-visible configuration.
 
