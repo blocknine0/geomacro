@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "geomacro",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -12,10 +12,17 @@
     "format": "prettier --write .",
     "economics:verify": "node scripts/ops/verify-market-economics.js",
     "liquidity:fund": "node scripts/ops/fund-liquidity.js",
-    "jury:verify": "node scripts/ops/verify-jury.js"
+    "jury:verify": "node scripts/ops/verify-jury.js",
+    "gri:compute": "node scripts/compute-gri.js",
+    "gri:verify": "node scripts/verify-gri-snapshot.js",
+    "gri:benchmarks": "node scripts/ingest-gri-benchmarks.js",
+    "gri:validate": "node scripts/validate-gri.js",
+    "gri:replay": "node scripts/replay-gri-history.js"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.50",
+    "@circle-fin/adapter-ethers-v6": "1.11.1",
+    "@circle-fin/app-kit": "1.13.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -50,19 +57,17 @@
     "@tanstack/react-start": "^1.168.27",
     "@tanstack/router-plugin": "^1.168.18",
     "ai": "^6.0.199",
+    "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
-    "dotenv": "^16.4.5",
     "embla-carousel-react": "^8.6.0",
     "ethers": "^6.17.0",
     "framer-motion": "^12.40.0",
-    "groq-sdk": "^0.3.3",
     "input-otp": "^1.4.2",
     "jose": "^6.2.3",
     "lucide-react": "^0.575.0",
-    "node-fetch": "^3.3.2",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
@@ -76,13 +81,13 @@
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2",
-    "@circle-fin/adapter-ethers-v6": "^1.9.4",
-    "@circle-fin/app-kit": "^1.11.0",
-    "buffer": "^6.0.3"
+    "dotenv": "^16.4.5",
+    "groq-sdk": "^0.3.3",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^2.3.2",
+    "@lovable.dev/vite-tanstack-config": "2.13.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -99,5 +104,13 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.1",
     "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "js-yaml": "^5.0.0",
+    "uuid": "^11.1.0"
+  },
+  "resolutions": {
+    "js-yaml": "^5.0.0",
+    "uuid": "^11.1.0"
   }
 }
