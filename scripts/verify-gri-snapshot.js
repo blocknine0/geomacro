@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+import { attributeGriChange, calculateGri } from '../src/lib/gri-engine.js';
+import { buildProofArtifacts, roundNumber } from './lib/gri-proof.js';
+
+dotenv.config();
+const args = process.argv.slice(2);
+const snapshotArg = args.indexOf('--snapshot-id');
+const snapshotId = snapshotArg >= 0 ? args[snapshotArg + 1] : null;
+
+const url = process.env.SUPABASE_URL || process.env.APP_SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
+if (!url || !key) throw new Error('Supabase URL and service-role key are required');
+const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+async function loadSnapshot(id = null) {
+  let q = supabase.from('gri_snapshots').select('*').eq('status', 'published');
+  if (id) q = q.eq('id', id);
+  else q = q.order('as_of', { ascending: false }).limit(1);
+  const { data, error } = await q.maybeSingle();
+  if (error) throw new Error(`snapshot query failed: ${error.message}`);
+  if (!data) throw new Error(id ? `snapshot ${id} not found` : 'no published GRI snapshot found');
+  return data;
+}
+
+async function loadContributions(id) {
+  const { data, error } = await supabase
+    .from('gri_contributions')
+    .select('*')
+    .eq('snapshot_id', id)
+    .order('event_id', { ascending: true });
+  if (error) throw new Error(`contribution query failed: ${error.message}`);
+  return data ?? [];
+}
+
+function contributionRowsToInput(rows) {
+  return rows.map((r) => ({
+    id: r.event_id,
+    category: r.category,
+    severity: Number(r.severity),
+    confidence: Number(r.confidence),
+    created_at: r.observed_at,
+    published_at: r.published_at,
+    source_name: r.source_name,
+    source_domain: r.source_domain,
+    source_url: r.source_url,
+    source_title: r.source_title,
+    summary: r.summary,
+    classification_provider: r.classification_provider,
+    classification_model: r.classification_model,
+    classification_version: r.classification_version,
+    classification_prompt_version: r.classification_prompt_version,
+    classification_scored_at: r.classification_scored_at,
+    classification_input_hash: r.classification_input_hash,
+  }));
+}
+
+function storedCalculation(snapshot, rows) {
+  return {
+    snapshotId: snapshot.id,
+    methodologyVersion: snapshot.methodology_version,
+    asOf: snapshot.as_of,
+    rawScore: snapshot.raw_score === null ? null : Number(snapshot.raw_score),
+    displayScore: snapshot.display_score,
+    coverage: Number(snapshot.coverage),
+    activeCategories: snapshot.active_categories ?? [],
+    eventCount: snapshot.event_count,
+    sourceCount: snapshot.source_count,
+    weightedConfidence: snapshot.weighted_confidence === null ? null : Number(snapshot.weighted_confidence),
+    categories: Array.isArray(snapshot.category_breakdown) ? snapshot.category_breakdown : [],
+    contributions: rows.map((r) => ({
+      eventId: r.event_id,
+      category: r.category,
+      sourceKey: r.source_key,
+      sourceName: r.source_name,
+      sourceDomain: r.source_domain,
+      sourceUrl: r.source_url,
+      sourceTitle: r.source_title,
+      summary: r.summary,
+      severity: Number(r.severity),
+      confidence: Number(r.confidence),
+      observedAt: r.observed_at,
+      publishedAt: r.published_at,
+      ageHours: Number(r.age_hours),
+      confidenceWeight: Number(r.confidence_weight),
+      decayWeight: Number(r.decay_weight),
+      rawWeight: Number(r.raw_weight),
+      effectiveEventWeight: Number(r.effective_event_weight),
+      sourceEffectiveWeight: Number(r.source_effective_weight),
+      categoryEffectiveWeight: Number(r.category_effective_weight),
+      normalizedCategoryWeight: Number(r.normalized_category_weight),
+      withinCategoryShare: Number(r.within_category_share),
+      globalShare: Number(r.global_share),
+      contributionPoints: Number(r.contribution_points),
+      classificationProvider: r.classification_provider,
+      classificationModel: r.classification_model,
+      classificationVersion: r.classification_version,
+      classificationPromptVersion: r.classification_prompt_version,
+      classificationScoredAt: r.classification_scored_at,
+      classificationInputHash: r.classification_input_hash,
+    })),
+    inputRows: [],
+  };
+}
+
+async function main() {
+  const snapshot = await loadSnapshot(snapshotId);
+  const rows = await loadContributions(snapshot.id);
+  const recalculated = calculateGri(contributionRowsToInput(rows), new Date(snapshot.as_of));
+
+  let previous = null;
+  if (snapshot.previous_snapshot_id) {
+    const prevSnapshot = await loadSnapshot(snapshot.previous_snapshot_id);
+    const prevRows = await loadContributions(prevSnapshot.id);
+    previous = storedCalculation(prevSnapshot, prevRows);
+  }
+  const attribution = previous ? attributeGriChange(previous, recalculated) : null;
+  const proof = buildProofArtifacts(recalculated, attribution);
+
+  const checks = {
+    methodologyVersion: recalculated.methodologyVersion === snapshot.methodology_version,
+    displayScore: recalculated.displayScore === snapshot.display_score,
+    rawScore: snapshot.raw_score === null
+      ? recalculated.rawScore === null
+      : Math.abs(Number(snapshot.raw_score) - Number(recalculated.rawScore)) <= 0.00001,
+    methodologyHash: proof.methodologyHash === snapshot.methodology_hash,
+    inputHash: proof.inputHash === snapshot.input_hash,
+    evidenceHash: proof.evidenceHash === snapshot.evidence_hash,
+    calculationHash: proof.calculationHash === snapshot.calculation_hash,
+    changeHash: (proof.changeHash ?? null) === (snapshot.change_hash ?? null),
+    proofHash: proof.proofHash === snapshot.proof_hash,
+    scoreReconciles: proof.reconciliationResidual === null || Math.abs(proof.reconciliationResidual) <= 1e-7,
+    changeReconciles: proof.changeResidual === null || Math.abs(proof.changeResidual) <= 1e-7,
+  };
+  const verified = Object.values(checks).every(Boolean);
+
+  console.log(JSON.stringify({
+    snapshotId: snapshot.id,
+    asOf: snapshot.as_of,
+    methodologyVersion: snapshot.methodology_version,
+    storedScore: snapshot.display_score,
+    recalculatedScore: recalculated.displayScore,
+    storedRawScore: snapshot.raw_score === null ? null : Number(snapshot.raw_score),
+    recalculatedRawScore: roundNumber(recalculated.rawScore, 8),
+    checks,
+    verified,
+  }, null, 2));
+
+  if (!verified) process.exitCode = 1;
+}
+
+main().catch((error) => {
+  console.error('❌ GRI verification failed:', error?.stack || error?.message || error);
+  process.exit(1);
+});
