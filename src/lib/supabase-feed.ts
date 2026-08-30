@@ -23,6 +23,7 @@ export type StoredEventRow = {
   source_url: string;
   source_title: string;
   source_name: string | null;
+  source_domain?: string | null;
   category: string;
   narrative: string;
   summary: string;
@@ -30,6 +31,12 @@ export type StoredEventRow = {
   severity: number;
   confidence: number;
   delta: number;
+  classification_provider?: string | null;
+  classification_model?: string | null;
+  classification_version?: string | null;
+  classification_prompt_version?: string | null;
+  classification_scored_at?: string | null;
+  classification_input_hash?: string | null;
   published_at: string;
   created_at: string;
   resolution_at: string | null;
