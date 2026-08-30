@@ -52,7 +52,15 @@ export function EventIntelCard({
 }
 
 /** Dense list row used inside ranked panels and the sidebar. */
-export function EventIntelRow({ event, rank, meta }: { event: IntelEvent; rank?: number; meta?: string }) {
+export function EventIntelRow({
+  event,
+  rank,
+  meta,
+}: {
+  event: IntelEvent;
+  rank?: number;
+  meta?: string;
+}) {
   return (
     <Link
       to="/event/$eventId"
@@ -68,7 +76,9 @@ export function EventIntelRow({ event, rank, meta }: { event: IntelEvent; rank?:
         </span>
       </span>
       {event.severity !== null && (
-        <span className="type-metric shrink-0 text-sm text-foreground">{Math.round(event.severity)}</span>
+        <span className="type-metric shrink-0 text-sm text-foreground">
+          {Math.round(event.severity)}
+        </span>
       )}
     </Link>
   );

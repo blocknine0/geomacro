@@ -1,38 +1,55 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ROADMAP } from "@/lib/roadmap";
 import {
   BookOpen,
-  Rocket,
-  Radio,
-  GitBranch,
+  Activity,
+  BrainCircuit,
+  Search,
   Swords,
+  Scale,
+  Network,
   Database,
+  ShieldCheck,
+  Building2,
   Map as MapIcon,
-  Trophy,
   TerminalSquare,
 } from "lucide-react";
 
 export const Route = createFileRoute("/docs")({
   head: () => ({
     meta: [
-      { title: "Developer Docs · Geomacro" },
+      { title: "Documentation · Geomacro" },
       {
         name: "description",
         content:
-          "Technical documentation for Geomacro. Pipeline, Agent Arena, onchain settlement, competitive moat and API reference.",
+          "Official Geomacro documentation covering the live intelligence system, Global Risk Index, Ask Geomacro, HAWK/DOVE markets, V1/V2 contracts, resolution and tribunal lifecycle, USDC settlement, CCTP, data architecture and current limitations.",
       },
-      { property: "og:title", content: "Developer Docs · Geomacro" },
+      { property: "og:title", content: "Documentation · Geomacro" },
       {
         property: "og:description",
         content:
-          "Geomacro is an autonomous semantic-to-asset translation engine. Read the developer docs.",
+          "How Geomacro turns real-world geopolitical and macro events into structured intelligence, risk signals, prediction markets and onchain settlement.",
       },
+      { property: "og:url", content: "https://geomacro.live/docs" },
     ],
-    links: [
+    links: [{ rel: "canonical", href: "https://geomacro.live/docs" }],
+    scripts: [
       {
-        rel: "stylesheet",
-        href: "https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "TechArticle",
+          headline: "Geomacro Documentation",
+          url: "https://geomacro.live/docs",
+          description:
+            "Technical and product documentation for the current Geomacro intelligence and onchain market system.",
+          isPartOf: {
+            "@type": "WebSite",
+            name: "Geomacro",
+            url: "https://geomacro.live/",
+          },
+        }),
       },
     ],
   }),
@@ -41,91 +58,85 @@ export const Route = createFileRoute("/docs")({
 
 type TabId =
   | "intro"
-  | "quickstart"
-  | "feed"
-  | "pipeline"
-  | "arena"
-  | "settlement"
+  | "product"
+  | "intelligence"
+  | "ask"
+  | "markets"
+  | "protocol"
+  | "tribunal"
+  | "circle"
+  | "data"
+  | "institutional"
   | "roadmap"
-  | "competition"
   | "api";
 
-const SIDEBAR: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }>; group: "guides" | "analysis" | "tools" }[] = [
-  { id: "intro", label: "Introduction", icon: BookOpen, group: "guides" },
-  { id: "quickstart", label: "Quick Start", icon: Rocket, group: "guides" },
-  { id: "feed", label: "Live Feed", icon: Radio, group: "guides" },
-  { id: "pipeline", label: "Pipeline", icon: GitBranch, group: "guides" },
-  { id: "arena", label: "Agent Arena", icon: Swords, group: "guides" },
-  { id: "settlement", label: "Onchain Settlement", icon: Database, group: "guides" },
-  { id: "roadmap", label: "Roadmap", icon: MapIcon, group: "guides" },
-  { id: "competition", label: "Competitive Moat", icon: Trophy, group: "analysis" },
-  { id: "api", label: "API Playground", icon: TerminalSquare, group: "tools" },
+const SIDEBAR: {
+  id: TabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  group: "overview" | "system" | "reference";
+}[] = [
+  { id: "intro", label: "Introduction", icon: BookOpen, group: "overview" },
+  { id: "product", label: "Live Product", icon: Activity, group: "overview" },
+  { id: "intelligence", label: "Intelligence & GRI", icon: BrainCircuit, group: "system" },
+  { id: "ask", label: "Ask Geomacro", icon: Search, group: "system" },
+  { id: "markets", label: "Markets & Divergence", icon: Swords, group: "system" },
+  { id: "protocol", label: "V1 / V2 Protocol", icon: Network, group: "system" },
+  { id: "tribunal", label: "Resolution & Tribunal", icon: Scale, group: "system" },
+  { id: "circle", label: "USDC, CCTP & Swap", icon: Database, group: "system" },
+  { id: "data", label: "Data & Security", icon: ShieldCheck, group: "reference" },
+  { id: "institutional", label: "Institutional", icon: Building2, group: "reference" },
+  { id: "roadmap", label: "Roadmap", icon: MapIcon, group: "reference" },
+  { id: "api", label: "Developer Reference", icon: TerminalSquare, group: "reference" },
 ];
-
-function loadKatex(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  const w = window as unknown as { katex?: unknown; renderMathInElement?: (el: HTMLElement, opts: unknown) => void };
-  if (w.renderMathInElement) return Promise.resolve();
-  return new Promise((resolve) => {
-    const s1 = document.createElement("script");
-    s1.src = "https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js";
-    s1.onload = () => {
-      const s2 = document.createElement("script");
-      s2.src = "https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js";
-      s2.onload = () => resolve();
-      document.head.appendChild(s2);
-    };
-    document.head.appendChild(s1);
-  });
-}
 
 function DocsPage() {
   const [tab, setTab] = useState<TabId>("intro");
 
-  useEffect(() => {
-    let cancelled = false;
-    loadKatex().then(() => {
-      if (cancelled) return;
-      const w = window as unknown as { renderMathInElement?: (el: HTMLElement, opts: unknown) => void };
-      const root = document.getElementById("docs-content");
-      if (root && w.renderMathInElement) {
-        w.renderMathInElement(root, {
-          delimiters: [
-            { left: "$$", right: "$$", display: true },
-            { left: "$", right: "$", display: false },
-          ],
-          throwOnError: false,
-        });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [tab]);
-
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
       <div className="flex flex-col gap-8 lg:flex-row">
-        {/* Sidebar */}
-        <aside className="lg:w-60 lg:flex-shrink-0">
+        <aside className="lg:w-64 lg:flex-shrink-0">
           <div className="sticky top-20 space-y-6">
-            <SidebarGroup title="Guides">
-              {SIDEBAR.filter((s) => s.group === "guides").map((s) => (
-                <SidebarBtn key={s.id} active={tab === s.id} onClick={() => setTab(s.id)} icon={s.icon}>
+            <SidebarGroup title="Overview">
+              {SIDEBAR.filter((s) => s.group === "overview").map((s) => (
+                <SidebarBtn
+                  key={s.id}
+                  active={tab === s.id}
+                  onClick={() => setTab(s.id)}
+                  icon={s.icon}
+                >
                   {s.label}
                 </SidebarBtn>
               ))}
             </SidebarGroup>
-            <SidebarGroup title="Analysis">
-              {SIDEBAR.filter((s) => s.group === "analysis").map((s) => (
-                <SidebarBtn key={s.id} active={tab === s.id} onClick={() => setTab(s.id)} icon={s.icon}>
+            <SidebarGroup title="System">
+              {SIDEBAR.filter((s) => s.group === "system").map((s) => (
+                <SidebarBtn
+                  key={s.id}
+                  active={tab === s.id}
+                  onClick={() => setTab(s.id)}
+                  icon={s.icon}
+                >
                   {s.label}
                 </SidebarBtn>
               ))}
+              <a
+                href="/docs/gri-architecture"
+                className="flex min-h-11 w-full items-center gap-2 rounded-md border-l-2 border-transparent px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>GRI Architecture & Proof</span>
+              </a>
             </SidebarGroup>
-            <SidebarGroup title="Tools">
-              {SIDEBAR.filter((s) => s.group === "tools").map((s) => (
-                <SidebarBtn key={s.id} active={tab === s.id} onClick={() => setTab(s.id)} icon={s.icon}>
+            <SidebarGroup title="Reference">
+              {SIDEBAR.filter((s) => s.group === "reference").map((s) => (
+                <SidebarBtn
+                  key={s.id}
+                  active={tab === s.id}
+                  onClick={() => setTab(s.id)}
+                  icon={s.icon}
+                >
                   {s.label}
                 </SidebarBtn>
               ))}
@@ -133,27 +144,31 @@ function DocsPage() {
           </div>
         </aside>
 
-        {/* Content */}
         <div id="docs-content" className="min-w-0 flex-1">
           {tab === "intro" && <IntroPane />}
-          {tab === "quickstart" && <QuickstartPane />}
-          {tab === "feed" && <FeedPane />}
-          {tab === "pipeline" && <PipelinePane />}
-          {tab === "arena" && <ArenaPane />}
-          {tab === "settlement" && <SettlementPane />}
+          {tab === "product" && <ProductPane />}
+          {tab === "intelligence" && <IntelligencePane />}
+          {tab === "ask" && <AskPane />}
+          {tab === "markets" && <MarketsPane />}
+          {tab === "protocol" && <ProtocolPane />}
+          {tab === "tribunal" && <TribunalPane />}
+          {tab === "circle" && <CirclePane />}
+          {tab === "data" && <DataPane />}
+          {tab === "institutional" && <InstitutionalPane />}
           {tab === "roadmap" && <RoadmapPane />}
-          {tab === "competition" && <CompetitionPane />}
           {tab === "api" && <ApiPane />}
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
 function SidebarGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-primary">{title}</div>
+      <div className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-primary">
+        {title}
+      </div>
       <div className="flex flex-col gap-1">{children}</div>
     </div>
   );
@@ -172,8 +187,10 @@ function SidebarBtn({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-md border-l-2 px-3 py-2 text-left text-sm transition ${
+      aria-pressed={active}
+      className={`flex min-h-11 w-full items-center gap-2 rounded-md border-l-2 px-3 py-2 text-left text-sm transition ${
         active
           ? "border-primary bg-primary/10 text-primary"
           : "border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -186,35 +203,47 @@ function SidebarBtn({
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mb-1 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-primary">{children}</div>;
+  return (
+    <div className="mb-1 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-primary">
+      {children}
+    </div>
+  );
 }
 function PageTitle({ children }: { children: React.ReactNode }) {
-  return <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{children}</h1>;
+  return (
+    <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{children}</h1>
+  );
 }
 function PageSubtitle({ children }: { children: React.ReactNode }) {
-  return <p className="mt-3 max-w-3xl text-base text-muted-foreground">{children}</p>;
+  return (
+    <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">{children}</p>
+  );
 }
 function Divider() {
   return <div className="my-6 h-px bg-border/60" />;
 }
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-8 mb-3 text-xl font-semibold text-foreground">{children}</h2>;
+  return <h2 className="mb-3 mt-8 text-xl font-semibold text-foreground">{children}</h2>;
+}
+function H3({ children }: { children: React.ReactNode }) {
+  return <h3 className="mb-2 mt-5 text-base font-semibold text-foreground">{children}</h3>;
 }
 function P({ children }: { children: React.ReactNode }) {
   return <p className="mb-4 text-[15px] leading-relaxed text-muted-foreground">{children}</p>;
 }
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-lg border border-border/60 bg-card/40 p-5 ${className}`}>{children}</div>;
-}
-function MathBlock({ children }: { children: string }) {
   return (
-    <div className="my-4 overflow-x-auto rounded-lg border border-border/60 bg-muted/20 px-6 py-5 text-center font-mono text-base text-foreground">
+    <div className={`rounded-lg border border-border/60 bg-card/40 p-5 ${className}`}>
       {children}
     </div>
   );
 }
 function Code({ children }: { children: React.ReactNode }) {
-  return <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] uppercase tracking-wide text-primary">{children}</code>;
+  return (
+    <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] text-primary">
+      {children}
+    </code>
+  );
 }
 function CodeBlock({ children }: { children: React.ReactNode }) {
   return (
@@ -223,423 +252,927 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
     </pre>
   );
 }
-function BadgeShipped() {
-  return <span className="rounded-full bg-primary/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary">shipped</span>;
+function Badge({
+  children,
+  tone = "live",
+}: {
+  children: React.ReactNode;
+  tone?: "live" | "planned" | "legacy";
+}) {
+  const cls =
+    tone === "live"
+      ? "bg-emerald-500/10 text-emerald-300"
+      : tone === "legacy"
+        ? "bg-amber-500/10 text-amber-300"
+        : "bg-muted text-muted-foreground";
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${cls}`}
+    >
+      {children}
+    </span>
+  );
 }
-function BadgeNext() {
-  return <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">next</span>;
+function FactGrid({ items }: { items: { label: string; value: string; note?: string }[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {items.map((item) => (
+        <Card key={item.label}>
+          <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            {item.label}
+          </div>
+          <div className="mt-2 break-words text-base font-semibold text-foreground">
+            {item.value}
+          </div>
+          {item.note ? (
+            <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.note}</div>
+          ) : null}
+        </Card>
+      ))}
+    </div>
+  );
+}
+function Flow({ items }: { items: string[] }) {
+  return (
+    <div className="my-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      {items.map((item, index) => (
+        <div
+          key={item}
+          className="relative rounded-lg border border-border/60 bg-muted/20 px-4 py-4"
+        >
+          <div className="mb-2 font-mono text-[10px] text-primary">
+            {String(index + 1).padStart(2, "0")}
+          </div>
+          <div className="text-sm font-medium text-foreground">{item}</div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
-/* ===== Panes ===== */
+function DiagramNode({
+  title,
+  note,
+  tone = "default",
+}: {
+  title: string;
+  note?: string;
+  tone?: "default" | "primary" | "success" | "warning";
+}) {
+  const toneClass =
+    tone === "primary"
+      ? "border-primary/50 bg-primary/10"
+      : tone === "success"
+        ? "border-emerald-500/40 bg-emerald-500/10"
+        : tone === "warning"
+          ? "border-amber-500/40 bg-amber-500/10"
+          : "border-border/70 bg-muted/20";
+  return (
+    <div className={`min-w-0 rounded-lg border px-4 py-3 text-center ${toneClass}`}>
+      <div className="text-sm font-semibold text-foreground">{title}</div>
+      {note ? (
+        <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{note}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function DiagramArrow({ label }: { label?: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-1 text-muted-foreground md:py-0">
+      <div className="h-5 w-px bg-border md:h-px md:w-8" />
+      {label ? (
+        <span className="font-mono text-[9px] uppercase tracking-wider">{label}</span>
+      ) : null}
+      <span aria-hidden="true" className="rotate-90 text-sm md:rotate-0">
+        →
+      </span>
+    </div>
+  );
+}
+
+function LinearDiagram({
+  items,
+}: {
+  items: { title: string; note?: string; tone?: "default" | "primary" | "success" | "warning" }[];
+}) {
+  return (
+    <div className="my-5 overflow-x-auto rounded-xl border border-border/60 bg-card/30 p-4">
+      <div className="grid min-w-[680px] items-center gap-2 md:grid-flow-col md:auto-cols-fr">
+        {items.map((item, index) => (
+          <div key={item.title} className="contents">
+            <DiagramNode {...item} />
+            {index < items.length - 1 ? <DiagramArrow /> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoutingDiagram() {
+  return (
+    <div className="my-5 rounded-xl border border-border/60 bg-card/30 p-4">
+      <div className="mx-auto max-w-3xl">
+        <DiagramNode title="Event / position" note="Read stored market_address" tone="primary" />
+        <div className="flex justify-center">
+          <DiagramArrow />
+        </div>
+        <DiagramNode
+          title="Contract router"
+          note="Choose ABI and address from the stored market generation"
+        />
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <DiagramNode
+            title="V1 legacy path"
+            note="Historical markets and positions"
+            tone="warning"
+          />
+          <DiagramNode
+            title="V2 current path"
+            note="Active proxy, dispute-aware lifecycle"
+            tone="success"
+          />
+        </div>
+        <div className="flex justify-center">
+          <DiagramArrow />
+        </div>
+        <DiagramNode
+          title="Normalized application state"
+          note="Shared UI, lifecycle and portfolio representation"
+        />
+      </div>
+    </div>
+  );
+}
+
+function TribunalDiagram() {
+  const jurors = [
+    "Fact-Checker",
+    "Hawk Re-arguer",
+    "Dove Re-arguer",
+    "Evidence Skeptic",
+    "Domain Specialist",
+  ];
+  return (
+    <div className="my-5 rounded-xl border border-border/60 bg-card/30 p-4">
+      <DiagramNode
+        title="Eligible V2 dispute"
+        note="Real losing-side stake + open dispute state + required bond"
+        tone="primary"
+      />
+      <div className="flex justify-center">
+        <DiagramArrow />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        {jurors.map((juror) => (
+          <DiagramNode key={juror} title={juror} />
+        ))}
+      </div>
+      <div className="flex justify-center">
+        <DiagramArrow />
+      </div>
+      <DiagramNode
+        title="4-of-5 decision threshold"
+        note="Uphold or overturn, then finalize through contract state"
+        tone="success"
+      />
+    </div>
+  );
+}
+
+function DataBoundaryDiagram() {
+  return (
+    <div className="my-5 grid gap-3 rounded-xl border border-border/60 bg-card/30 p-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+      <div className="space-y-2">
+        <DiagramNode
+          title="Supabase read model"
+          note="Events, positions, dispute records and public transparency"
+          tone="primary"
+        />
+        <DiagramNode
+          title="RLS + least privilege"
+          note="Public intelligence separated from wallet-scoped data"
+        />
+      </div>
+      <DiagramArrow label="verify" />
+      <div className="space-y-2">
+        <DiagramNode
+          title="Arc contract state"
+          note="Authoritative financial and transaction eligibility state"
+          tone="success"
+        />
+        <DiagramNode
+          title="Wallet action boundary"
+          note="Connection requested only when the user acts"
+        />
+      </div>
+    </div>
+  );
+}
 
 function IntroPane() {
   return (
     <>
-      <SectionLabel>Introduction</SectionLabel>
-      <PageTitle>Introduction to Geomacro</PageTitle>
-      <PageSubtitle>Autonomous semantic-to-asset translation engine. Concept, motivation and architectural moat.</PageSubtitle>
-      <Divider />
-      <H2>What is Geomacro and why did we build it?</H2>
-      <P>
-        Modern information moves at the speed of light. Financial risk hedging infrastructure is bottlenecked by human coordination. Current
-        platforms require manual pipeline setups. Community proposals, administrative reviews and oracle resolutions add massive transaction latency.
-      </P>
-      <P>
-        We built <span className="font-medium text-foreground">Geomacro</span> to remove the human gatekeeper. The protocol ingests raw unstructured global
-        news, parses it with lightweight LLMs, triggers a structured adversarial debate in our Agent Arena and instantly constructs tradeable narrative
-        prediction pools on-chain.
-      </P>
-
-      <div className="my-7 overflow-hidden rounded-2xl">
-        <PredictionMarketTree />
-      </div>
-
-      <H2>The problems we solve</H2>
-      <div className="flex flex-col gap-3">
-        <Card>
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Example 1. Geopolitical shipping disruption</div>
-          <P>
-            <span className="text-foreground">Traditional problem:</span> a major shipping corridor is blocked at 02:00 UTC. Traditional prediction markets
-            take up to 12 hours to write a proposal, get it approved, configure resolution conditions and deploy a liquidity pool.
-          </P>
-          <P>
-            <span className="text-foreground">Geomacro solution:</span> within 1.5 seconds of the raw news hitting global wire feeds the ingestion system
-            parses the payload, validates it through our <Code>geomacro.event.v1</Code> schema, initializes a tradeable contract on-chain and triggers Hawk
-            vs Dove agent debates to automatically establish fair-market liquidity pricing.
-          </P>
-        </Card>
-        <Card>
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Example 2. Dynamic tariff announcements</div>
-          <P>
-            <span className="text-foreground">Traditional problem:</span> an unexpected international tariff is announced. Speculators must trade broad,
-            imprecise assets like index futures because specific binary contracts don't exist or take too long to launch.
-          </P>
-          <P>
-            <span className="text-foreground">Geomacro solution:</span> the parser isolates the economic scope from the announcement wire. The Agent Arena
-            compiles opposite dynamic narrative vectors and instantly prices a specific target-focused on-chain pool with USDC for immediate asset risk
-            hedging.
-          </P>
-        </Card>
-      </div>
-    </>
-  );
-}
-
-function PredictionMarketTree() {
-  return (
-    <svg viewBox="0 0 1000 640" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-      <defs>
-        <style>{`
-          .pmt-bg { fill: #0d0f14; }
-          .pmt-title-box { fill: #1a1c22; stroke: #ff4d4d; stroke-width: 1.5; }
-          .pmt-title-text { fill: #ff4d4d; font-family: 'Courier New', monospace; font-weight: bold; font-size: 20px; letter-spacing: 1px; }
-          .pmt-trad-header { fill: #1a1c22; stroke: #ff4d4d; stroke-width: 1.5; }
-          .pmt-trad-header-text { fill: #ff6b6b; font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; letter-spacing: 1px; }
-          .pmt-geo-header { fill: #1a1c22; stroke: #ffb020; stroke-width: 1.5; }
-          .pmt-geo-header-text { fill: #ffb020; font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; letter-spacing: 1px; }
-          .pmt-trad-node { fill: #1a1c22; stroke: #ff4d4d; stroke-width: 1.2; }
-          .pmt-geo-node { fill: #1a1c22; stroke: #ffb020; stroke-width: 1.2; }
-          .pmt-trad-title { fill: #ff8080; font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; }
-          .pmt-geo-title { fill: #ffc966; font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; }
-          .pmt-node-sub { fill: #9aa0aa; font-family: Arial, sans-serif; font-size: 11px; }
-          .pmt-arrow { stroke: #555b66; stroke-width: 2; fill: none; }
-          .pmt-arrowhead { fill: #555b66; }
-          .pmt-vs-text { fill: #7a8290; font-family: 'Courier New', monospace; font-size: 13px; font-weight: bold; letter-spacing: 2px; }
-          .pmt-latency-red { fill: #ff4d4d; font-family: 'Courier New', monospace; font-weight: bold; font-size: 13px; }
-          .pmt-latency-amber { fill: #ffb020; font-family: 'Courier New', monospace; font-weight: bold; font-size: 13px; }
-          .pmt-divider { stroke: #2a2d35; stroke-width: 1; }
-        `}</style>
-        <marker id="pmtArrowMarker" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-          <path d="M0,0 L0,6 L9,3 z" className="pmt-arrowhead" />
-        </marker>
-      </defs>
-
-      <rect className="pmt-bg" x="0" y="0" width="1000" height="640" rx="14" />
-
-      {/* Root title */}
-      <rect className="pmt-title-box" x="360" y="16" width="280" height="46" rx="8" />
-      <text className="pmt-title-text" x="500" y="46" textAnchor="middle">PREDICTION MARKET</text>
-
-      {/* connector lines from root to two branches */}
-      <path d="M500,62 L500,86 L220,86 L220,106" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <path d="M500,62 L500,86 L780,86 L780,106" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-
-      {/* LEFT BRANCH HEADER */}
-      <rect className="pmt-trad-header" x="70" y="108" width="300" height="46" rx="8" />
-      <text className="pmt-trad-header-text" x="220" y="128" textAnchor="middle">TRADITIONAL PARADIGM</text>
-      <text className="pmt-latency-red" x="220" y="146" textAnchor="middle">12 TO 24 HOUR LATENCY</text>
-
-      {/* RIGHT BRANCH HEADER */}
-      <rect className="pmt-geo-header" x="630" y="108" width="300" height="46" rx="8" />
-      <text className="pmt-geo-header-text" x="780" y="128" textAnchor="middle">GEOMACRO AUTONOMOUS ENGINE</text>
-      <text className="pmt-latency-amber" x="780" y="146" textAnchor="middle">INSTANT INGESTION AND SETTLE</text>
-
-      {/* LEFT NODES */}
-      <path d="M220,154 L220,178" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-trad-node" x="70" y="180" width="300" height="60" rx="8" />
-      <text className="pmt-trad-title" x="220" y="205" textAnchor="middle">News Break</text>
-      <text className="pmt-node-sub" x="220" y="223" textAnchor="middle">Unstructured Feed</text>
-
-      <path d="M220,240 L220,264" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-trad-node" x="70" y="266" width="300" height="60" rx="8" />
-      <text className="pmt-trad-title" x="220" y="291" textAnchor="middle">Proposal</text>
-      <text className="pmt-node-sub" x="220" y="309" textAnchor="middle">Manual Draft</text>
-
-      <path d="M220,326 L220,350" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-trad-node" x="70" y="352" width="300" height="60" rx="8" />
-      <text className="pmt-trad-title" x="220" y="377" textAnchor="middle">Vetting</text>
-      <text className="pmt-node-sub" x="220" y="395" textAnchor="middle">Admin Review</text>
-
-      <path d="M220,412 L220,436" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-trad-node" x="70" y="438" width="300" height="60" rx="8" />
-      <text className="pmt-trad-title" x="220" y="463" textAnchor="middle">Launch Pool</text>
-      <text className="pmt-node-sub" x="220" y="481" textAnchor="middle">Manual Setup</text>
-
-      {/* RIGHT NODES */}
-      <path d="M780,154 L780,178" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-geo-node" x="630" y="180" width="300" height="60" rx="8" />
-      <text className="pmt-geo-title" x="780" y="205" textAnchor="middle">Ingest</text>
-      <text className="pmt-node-sub" x="780" y="223" textAnchor="middle">1.5 seconds</text>
-
-      <path d="M780,240 L780,264" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-geo-node" x="630" y="266" width="300" height="60" rx="8" />
-      <text className="pmt-geo-title" x="780" y="291" textAnchor="middle">Adversarial Arena</text>
-      <text className="pmt-node-sub" x="780" y="309" textAnchor="middle">Dynamic Pricing</text>
-
-      <path d="M780,326 L780,350" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-geo-node" x="630" y="352" width="300" height="60" rx="8" />
-      <text className="pmt-geo-title" x="780" y="377" textAnchor="middle">AMM Bootstrap</text>
-      <text className="pmt-node-sub" x="780" y="395" textAnchor="middle">Onchain Pool</text>
-
-      <path d="M780,412 L780,436" className="pmt-arrow" markerEnd="url(#pmtArrowMarker)" />
-      <rect className="pmt-geo-node" x="630" y="438" width="300" height="60" rx="8" />
-      <text className="pmt-geo-title" x="780" y="463" textAnchor="middle">Ledger Settle</text>
-      <text className="pmt-node-sub" x="780" y="481" textAnchor="middle">Programmable USDC</text>
-
-      {/* bottom comparison bar */}
-      <line className="pmt-divider" x1="40" y1="526" x2="960" y2="526" />
-      <text className="pmt-latency-red" x="160" y="556">12 to 24 HOURS</text>
-      <text className="pmt-vs-text" x="500" y="556" textAnchor="middle">VS</text>
-      <text className="pmt-latency-amber" x="840" y="556" textAnchor="middle">&lt; 2 SECONDS</text>
-      <line className="pmt-divider" x1="40" y1="581" x2="960" y2="581" />
-    </svg>
-  );
-}
-
-function QuickstartPane() {
-  return (
-    <>
-      <SectionLabel>Getting started</SectionLabel>
-      <PageTitle>Quick start guide</PageTitle>
-      <PageSubtitle>Integrating Geomacro's semantic data and smart contracts inside your systems.</PageSubtitle>
-      <Divider />
-      <H2>1. Connect to the live RPC node</H2>
-      <P>Configure your execution environment to fetch the latest state transitions directly from validator nodes on Arc Testnet (Chain 5042002).</P>
-      <H2>2. Interacting via CLI</H2>
-      <P>
-        Use the official open-source CLI tools (available in the <Code>geomacro-oracle</Code> repository) to synchronize your data structures.
-      </P>
-      <CodeBlock>{`# Synchronize all localized nodes with Arc Testnet
-geomacro-client --node "https://api.geomacro.live/v1" --sync-all --chain-id 5042002`}</CodeBlock>
-      <Card className="mt-4 border-primary/30 bg-primary/5">
-        <div className="text-sm text-muted-foreground">
-          <span className="font-semibold text-primary">Note:</span> make sure your node balance is capitalized with testnet USDC before executing transaction
-          state updates.
-        </div>
-      </Card>
-    </>
-  );
-}
-
-function FeedPane() {
-  return (
-    <>
-      <SectionLabel>Live feed</SectionLabel>
-      <PageTitle>Live feed ingestion</PageTitle>
-      <PageSubtitle>Data telemetry, indexing velocity and real-time visualization mechanics.</PageSubtitle>
-      <Divider />
-      <P>
-        The Live Feed page is the primary visual and data interface of the Geomacro protocol. It updates in real-time as the oracle processes global RSS,
-        API and social media signals.
-      </P>
-      <H2>Global Risk Index calculation</H2>
-      <P>
-        The Global Risk Index (0 to 100) uses a dynamic weighting algorithm that filters and calculates aggregate risk from all active parsed events over a
-        sliding temporal window.
-      </P>
-      <MathBlock>{"$$G_{\\text{index}} = \\sum_{i=1}^{N} \\left( w_i \\cdot \\sigma_i \\cdot V_{\\text{intensity}} \\right)$$"}</MathBlock>
-      <div className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-        <div className="text-foreground">Where:</div>
-        <div>
-          <span className="font-mono text-primary">w_i</span> source authority weight. Vetted outlets like Reuters hold higher weight vectors than
-          unverified sources.
-        </div>
-        <div>
-          <span className="font-mono text-primary">σ_i</span> content vector deviation over the baseline running average.
-        </div>
-        <div>
-          <span className="font-mono text-primary">V_intensity</span> event intensity parameter generated by the LLM schema parsing layers.
-        </div>
-      </div>
-    </>
-  );
-}
-
-function PipelinePane() {
-  const groups: {
-    phase: string;
-    label: string;
-    signal: string;
-    stages: { id: string; name: string; desc: string; meta: string; latency: string }[];
-  }[] = [
-    {
-      phase: "P1",
-      label: "Ingestion Layer",
-      signal: "Raw wire to structured event",
-      stages: [
-        { id: "01", name: "Ingest", desc: "Pull live headlines across geopolitics, rare earth, macro and crypto.", meta: "NewsAPI · 4 buckets", latency: "~5s" },
-        { id: "02", name: "Normalize", desc: "Reshape vendor payloads into one canonical event schema.", meta: "Zod schema", latency: "<50ms" },
-        { id: "03", name: "Dedupe", desc: "Rolling djb2 hash plus URL fingerprint to suppress duplicates.", meta: "djb2 + URL", latency: "<10ms" },
-      ],
-    },
-    {
-      phase: "P2",
-      label: "Intelligence Layer",
-      signal: "LLM classification and risk scoring",
-      stages: [
-        { id: "04", name: "Prefilter", desc: "Drop anything outside the four tracked narrative classes.", meta: "Heuristic gate", latency: "<5ms" },
-        { id: "05", name: "Classify", desc: "Route survivors to llama-3.3-70b for category and stage tagging.", meta: "Groq · 70B", latency: "~1.2s" },
-        { id: "06", name: "Score", desc: "Assign severity, confidence and contribution to the Global Risk Index.", meta: "0-100 scale", latency: "<200ms" },
-      ],
-    },
-    {
-      phase: "P3",
-      label: "Forecast Layer",
-      signal: "Falsifiable calls with calibration",
-      stages: [
-        { id: "07", name: "Predict", desc: "Write a falsifiable forecast with a 48h resolution deadline.", meta: "Deadline bound", latency: "~800ms" },
-        { id: "08", name: "Reflect", desc: "Backtest prior calls onchain and adjust analyst calibration.", meta: "Track record", latency: "rolling" },
-      ],
-    },
-    {
-      phase: "P4",
-      label: "Settlement Layer",
-      signal: "Onchain attestation and market settlement",
-      stages: [
-        { id: "09", name: "Attest", desc: "SHA-256 the event payload, sign the digest, post the attestation to Arc.", meta: "Arc · SHA-256", latency: "~3s" },
-        { id: "10", name: "Resolve", desc: "Main agent referees the analyst duel and settles the event contract.", meta: "Onchain payout", latency: "at T+48h" },
-      ],
-    },
-  ];
-  return (
-    <>
-      <SectionLabel>Pipeline</SectionLabel>
-      <PageTitle>From raw headline to a signed event on Arc</PageTitle>
+      <SectionLabel>Official documentation</SectionLabel>
+      <PageTitle>Geomacro</PageTitle>
       <PageSubtitle>
-        Ten deterministic stages across four layers. Every headline flows through the same path, every score is reproducible, every attestation is signed and posted to Arc.
+        Geopolitical and macro risk intelligence connected to HAWK/DOVE prediction markets, onchain
+        resolution and USDC settlement on Arc Testnet.
       </PageSubtitle>
       <Divider />
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span className="inline-flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
-          Live
-        </span>
-        <span>10 stages</span>
-        <span>4 layers</span>
-        <span>End-to-end &lt; 10s typical</span>
-      </div>
-      <div className="mt-6 space-y-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
-        {groups.map((group) => (
-          <div key={group.phase} className="bg-background">
-            <div className="flex flex-col gap-1 border-b border-border/60 bg-card/40 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:px-6">
-              <div className="flex items-baseline gap-3">
-                <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">{group.phase}</span>
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-foreground">{group.label}</h3>
-              </div>
-              <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{group.signal}</div>
-            </div>
-            <ol className={`grid grid-cols-1 gap-px bg-border/60 sm:grid-cols-2 ${group.stages.length < 3 ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
-              {group.stages.map((s) => (
-                <li key={s.id} className="group relative flex flex-col gap-3 bg-background p-5 transition-colors hover:bg-card/40 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] tracking-[0.18em] text-primary">{s.id}</span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{s.latency}</span>
-                  </div>
-                  <div>
-                    <div className="text-base font-medium text-foreground">{s.name}</div>
-                    <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.desc}</div>
-                  </div>
-                  <div className="mt-auto flex items-center gap-2 border-t border-border/40 pt-3">
-                    <span className="size-1 rounded-full bg-primary/70" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{s.meta}</span>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+
+      <H2>What Geomacro is</H2>
+      <P>
+        Geomacro is an event-driven intelligence system. It starts with a real-world geopolitical or
+        macro event, classifies and scores the event, stores structured intelligence, and can link
+        selected events to prediction markets. The same event identity is preserved from
+        intelligence through market participation, resolution, dispute state and settlement.
+      </P>
+      <P>
+        The product is deliberately broader than a market interface. A visitor can read the Global
+        Risk Index, intelligence, event detail, research, market divergence and institutional
+        surfaces without a wallet. A wallet is requested only when the user initiates an onchain
+        action.
+      </P>
+
+      <H2>The system in one line</H2>
+      <LinearDiagram
+        items={[
+          { title: "Event ingestion" },
+          { title: "Structured intelligence", tone: "primary" },
+          { title: "HAWK / DOVE market" },
+          { title: "Resolution + USDC settlement", tone: "success" },
+        ]}
+      />
+
+      <H2>Why it exists</H2>
+      <P>
+        Geomacro is designed around the gap between raw information and an actionable market.
+        Instead of treating news, research, risk scoring, prediction and settlement as unrelated
+        surfaces, the platform keeps them connected to the same event record.
+      </P>
+
+      <H2>What is structurally different</H2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[
+          [
+            "Event first",
+            "The system begins with the event and its intelligence record, not with a manually isolated market question.",
+          ],
+          [
+            "One data lineage",
+            "Risk, briefings, convictions, market state, resolution and portfolio state remain linked by the event / market identity.",
+          ],
+          [
+            "Wallet-free intelligence",
+            "Reading and research stay available without forcing a wallet connection.",
+          ],
+          [
+            "Market-linked intelligence",
+            "HAWK/DOVE participation sits beside the underlying event context rather than replacing it.",
+          ],
+          [
+            "Inspectable resolution",
+            "V2 exposes tentative resolution, dispute state, tribunal state, finalization and claim state to the participant.",
+          ],
+          [
+            "Stable settlement layer",
+            "The onchain market layer settles in USDC on Arc Testnet, with CCTP and Swap exposed as separate user flows.",
+          ],
+        ].map(([title, copy]) => (
+          <Card key={title}>
+            <div className="mb-2 text-sm font-semibold text-foreground">{title}</div>
+            <p className="text-sm leading-relaxed text-muted-foreground">{copy}</p>
+          </Card>
         ))}
       </div>
+
+      <H2>Current network</H2>
+      <FactGrid
+        items={[
+          { label: "Network", value: "Arc Testnet", note: "Current onchain environment" },
+          { label: "Chain ID", value: "5042002" },
+          { label: "Settlement asset", value: "USDC" },
+          { label: "Current V2 proxy", value: "0x2F874F…56868" },
+          { label: "V2 implementation", value: "0x96DDb2…1DA7c" },
+          {
+            label: "Legacy V1",
+            value: "0xC026fD…0FADe",
+            note: "Preserved for historical markets and positions",
+          },
+        ]}
+      />
     </>
   );
 }
 
-function ArenaPane() {
+function ProductPane() {
   return (
     <>
-      <SectionLabel>Agent Arena</SectionLabel>
-      <PageTitle>Agent Arena and narrative marketplace</PageTitle>
-      <PageSubtitle>How competitive adversarial AI agents debate geopolitical events and establish asset values.</PageSubtitle>
+      <SectionLabel>Live product</SectionLabel>
+      <PageTitle>What users can use today</PageTitle>
+      <PageSubtitle>
+        The current website exposes intelligence first, with onchain actions added only where they
+        are relevant.
+      </PageSubtitle>
       <Divider />
-      <H2>Adversarial debate logic</H2>
-      <P>
-        Instead of using subjective editors, Geomacro implements an adversarial game theory framework. Two competing LLM nodes evaluate each ingested news
-        payload.
-      </P>
-      <div className="my-5 grid gap-4 sm:grid-cols-2">
-        <Card className="border-destructive/40 bg-destructive/5">
-          <div className="mb-2 font-mono text-xs font-bold text-destructive">Agent Hawk. Escalation maximalist</div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Predicts risk will intensify. Stakes USDC on severity rising or ceasefires breaking. Optimized to identify escalation, systemic volatility and
-            supply chain friction.
-          </p>
-        </Card>
-        <Card className="border-primary/40 bg-primary/5">
-          <div className="mb-2 font-mono text-xs font-bold text-primary">Agent Dove. De-escalation seeker</div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Predicts risk will cool. Stakes USDC on de-escalation, mediation, ceasefire holding. Optimized to identify stabilization parameters and
-            geopolitical resilience.
-          </p>
-        </Card>
+
+      <div className="space-y-3">
+        {[
+          [
+            "Global Risk Index",
+            "Versioned aggregate risk score and historical series derived from source-capped, confidence- and recency-weighted event severity.",
+          ],
+          [
+            "Intelligence",
+            "Scannable event intelligence with category, severity, movement, timestamps, sources and event detail.",
+          ],
+          [
+            "Ask Geomacro",
+            "Supabase-first deterministic research over stored Geomacro intelligence. It does not consume Groq/Cerebras on each user question.",
+          ],
+          ["Markets / Arena", "HAWK/DOVE markets connected to the events that generated them."],
+          [
+            "Market divergence",
+            "Compares onchain stake-implied HAWK probability with stored Geomacro HAWK conviction when both sides are real.",
+          ],
+          ["Portfolio", "Wallet positions, claim state and V2 Resolution & Tribunal lifecycle."],
+          ["Bridge", "Current CCTP V2 crosschain USDC transfer flow into Arc Testnet."],
+          ["Swap", "Current same-chain swap surface exposed alongside Bridge."],
+          [
+            "Institutional",
+            "Live risk, intelligence and research previews, with planned capabilities clearly marked as planned.",
+          ],
+          [
+            "Search / Watchlist / Alerts",
+            "Search across live destinations, browser-local following, and local alert preferences with delivery limitations disclosed.",
+          ],
+        ].map(([title, copy]) => (
+          <Card key={title}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-foreground">{title}</div>
+              <Badge>live</Badge>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
+          </Card>
+        ))}
       </div>
-      <H2>The sentiment spread calculation</H2>
+
+      <H2>Transparency rule</H2>
       <P>
-        The resulting competitive values generate the Sentiment Spread $S_v$, which bounds risk vectors on an interval between $-1.0$ and $1.0$.
-      </P>
-      <MathBlock>{"$$S_v = \\tanh \\left( H_{\\text{score}} - D_{\\text{score}} \\right)$$"}</MathBlock>
-      <P>
-        If $S_v$ crosses specified volatility margins, execution smart contracts immediately bootstrap the corresponding USDC pools, setting initial trade
-        bounds dynamically on-chain.
+        Geomacro does not replace missing values with synthetic zeros and does not invent tribunal
+        activity. If a market has no stake-implied probability, if a comparison side is missing, or
+        if no dispute was opened, the relevant surface stays unavailable or explicitly says that the
+        case was not activated.
       </P>
     </>
   );
 }
 
-function SettlementPane() {
+function IntelligencePane() {
   return (
     <>
-      <SectionLabel>Onchain</SectionLabel>
-      <PageTitle>Onchain Arc and USDC settlement ledger</PageTitle>
-      <PageSubtitle>DeFi market formulation, constant-product execution and programmable USDC settlement architecture.</PageSubtitle>
+      <SectionLabel>Intelligence</SectionLabel>
+      <PageTitle>Global Risk Index and event intelligence</PageTitle>
+      <PageSubtitle>
+        One event layer feeds the risk index, intelligence pages, research, market candidates and
+        later lifecycle state.
+      </PageSubtitle>
       <Divider />
-      <H2>Liquidity pricing model</H2>
-      <P>Every narrative market runs on top of a constant-product formulation, establishing continuous liquidity profiles on Arc Testnet.</P>
-      <MathBlock>{"$$x \\cdot y = k$$"}</MathBlock>
-      <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-        <div className="text-foreground">Where:</div>
-        <div><span className="font-mono text-primary">x</span> reserve of Hawk narrative tokens in the pool.</div>
-        <div><span className="font-mono text-primary">y</span> reserve of Dove narrative tokens in the pool.</div>
-        <div><span className="font-mono text-primary">k</span> the constant invariant of the pool.</div>
-      </div>
+
+      <H2>Canonical GRI calculation · v1.0.0</H2>
       <P>
-        When trades process, prices shift programmatically along the constant curve. Because we settle in native USDC on Arc Testnet, developers and smart
-        contracts can query or swap assets with predictable execution, zero human mediation and minimized transaction gas.
+        The Global Risk Index is deterministic after event classification. Eligible observations in
+        the trailing 72 hours are weighted by model confidence and exponential recency decay with a
+        24-hour half-life. Evidence from any one source is capped, then category scores are combined
+        across the four equally weighted domains. Missing domains are excluded and disclosed as
+        coverage; they are never converted to zero risk.
       </P>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <CodeBlock>{`eventWeight = (confidence / 100) × 2^(-ageHours / 24)
+sourceEffectiveWeight = min(1.0, sum(eventWeight from source))
+categoryScore = weightedMean(severity, source-capped event weights)
+GRI_raw = Σ(normalized active-category weight × categoryScore)
+GRI_display = round(GRI_raw)
+
+Canonical observation time = created_at
+Canonical lookback = 72h
+No synthetic fallback, zero-fill or forward-fill.`}</CodeBlock>
+
+      <H2>Audit, proof and change attribution</H2>
+      <P>
+        Each publication is written as a hidden draft, receives its complete contribution ledger,
+        must pass score/change reconciliation, and only then becomes publicly readable. Published
+        proof packages are immutable. The public “Verify this GRI” control exposes the exact
+        event/category change ledger, source and classifier provenance,
+        methodology/input/evidence/calculation/change/proof hashes, and the latest empirical
+        validation status on demand.
+      </P>
+      <P>
+        Comparing contribution points between same-version snapshots decomposes the full score move,
+        so a change such as 83 → 63 can be traced point by point. A methodology transition is
+        treated as a new baseline rather than being presented as a real-world risk move.
+      </P>
+      <p className="mb-5">
+        <a
+          href="/docs/gri-architecture"
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Open the complete GRI Architecture & Proof specification →
+        </a>
+      </p>
+
+      <H2>What an event carries</H2>
+      <P>
+        The current product uses stored event fields such as category, severity, delta, timestamps,
+        source metadata, summaries, narrative / briefing data, market question and lifecycle
+        metadata. Not every event has every field, and downstream surfaces are expected to preserve
+        that distinction.
+      </P>
+
+      <H2>Real stored examples</H2>
+      <div className="grid gap-3 md:grid-cols-2">
         <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Testnet</span>
-            <BadgeShipped />
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-primary">
+            V2 market example
           </div>
-          <div className="space-y-2 text-sm">
-            <Row k="Network" v="Arc Testnet" />
-            <Row k="Chain ID" v="5042002 (0x4cef52)" />
-            <Row k="Currency" v="USDC" highlight />
-            <Row k="Explorer" v="testnet.arcscan.app" mono />
+          <div className="text-sm font-semibold text-foreground">
+            Italy / Spain border-control tensions
           </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Stored market question: “Will the tensions over Italy's condemnation of Spain’s border
+            controls in Ceuta intensify within the next 48 hours?”
+          </p>
         </Card>
-        <Card className="opacity-60">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mainnet</span>
-            <BadgeNext />
+        <Card>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-primary">
+            V2 market example
           </div>
-          <div className="space-y-2 text-sm">
-            <Row k="Network" v="Arc" />
-            <Row k="Chain ID" v="5042001 (0x4cef51)" />
-            <Row k="Currency" v="USDC" highlight />
-            <Row k="Explorer" v="arcscan.app" mono />
+          <div className="text-sm font-semibold text-foreground">
+            Afghanistan / Iran / U.S. / Australia dynamics
           </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Stored market question asks whether the situation involving Abbas and the shifting
+            regional dynamics will intensify within the next 48 hours.
+          </p>
         </Card>
       </div>
+
+      <H2>From event to product surfaces</H2>
+      <Flow
+        items={[
+          "Stored event",
+          "GRI contribution",
+          "Intelligence / research",
+          "Market candidate when eligible",
+        ]}
+      />
     </>
   );
 }
 
-function Row({ k, v, highlight, mono }: { k: string; v: string; highlight?: boolean; mono?: boolean }) {
+function AskPane() {
   return (
-    <div className="flex justify-between">
-      <span className="text-muted-foreground">{k}</span>
-      <span className={`${highlight ? "text-primary" : "text-foreground"} ${mono ? "font-mono text-xs" : ""}`}>{v}</span>
-    </div>
+    <>
+      <SectionLabel>Research</SectionLabel>
+      <PageTitle>Ask Geomacro</PageTitle>
+      <PageSubtitle>
+        Research over Geomacro’s stored intelligence without spending backend model quota again for
+        every user question.
+      </PageSubtitle>
+      <Divider />
+
+      <H2>Current data flow</H2>
+      <LinearDiagram
+        items={[
+          { title: "Question validation" },
+          { title: "Bounded Supabase reads", note: "public.events", tone: "primary" },
+          { title: "Deterministic ranking" },
+          { title: "Stored-data answer", tone: "success" },
+        ]}
+      />
+      <P>
+        Ask Geomacro is Supabase-first. The backend intelligence pipeline may already have used
+        model providers to classify and enrich events, but the Ask request path reuses that stored
+        work rather than calling Groq or Cerebras again for each visitor question.
+      </P>
+
+      <H2>Search and ranking</H2>
+      <P>
+        The current deterministic engine extracts useful terms and category intent, performs bounded
+        reads against <Code>public.events</Code>, and ranks candidates by textual relevance,
+        category match, recency, severity and movement. Only the strongest matching records are used
+        in the final response.
+      </P>
+      <CodeBlock>{`question
+→ sanitize + validate
+→ term extraction + category inference
+→ bounded event queries
+→ relevance ranking
+→ top matching records
+→ deterministic response from stored fields`}</CodeBlock>
+
+      <H2>Current query examples</H2>
+      <div className="grid gap-3 md:grid-cols-3">
+        {[
+          "What is happening with rare earths?",
+          "What are the highest severity geopolitical risks?",
+          "What happened recently in crypto?",
+        ].map((q) => (
+          <Card key={q}>
+            <div className="text-sm text-foreground">{q}</div>
+          </Card>
+        ))}
+      </div>
+
+      <H2>Failure behavior</H2>
+      <P>
+        If stored Geomacro data is not sufficient to answer a question reliably, the research
+        surface says so. It does not silently invent context and it no longer depends on a live
+        research-model call being available.
+      </P>
+    </>
+  );
+}
+
+function MarketsPane() {
+  return (
+    <>
+      <SectionLabel>Markets</SectionLabel>
+      <PageTitle>HAWK / DOVE markets and divergence</PageTitle>
+      <PageSubtitle>
+        Selected events progress from intelligence into a binary escalation / de-escalation market
+        while preserving the event context.
+      </PageSubtitle>
+      <Divider />
+
+      <H2>HAWK and DOVE</H2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card>
+          <div className="text-sm font-semibold text-foreground">HAWK</div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Represents the escalation side of the market question.
+          </p>
+        </Card>
+        <Card>
+          <div className="text-sm font-semibold text-foreground">DOVE</div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Represents the de-escalation / containment side of the market question.
+          </p>
+        </Card>
+      </div>
+
+      <H2>Market probability</H2>
+      <P>
+        The current divergence surface does not treat a fabricated “market probability” as real. It
+        derives HAWK probability only when the onchain market has actual staked liquidity on at
+        least one side.
+      </P>
+      <CodeBlock>{`marketHawkProbability = hawkTotalUsdc / (hawkTotalUsdc + doveTotalUsdc) * 100
+
+Skip the row when total staked liquidity is 0.`}</CodeBlock>
+
+      <H2>Geomacro probability</H2>
+      <P>
+        The comparison side comes from stored briefing convictions already written to Supabase by
+        the intelligence backend.
+      </P>
+      <CodeBlock>{`geomacroHawkProbability = hawk_conviction / (hawk_conviction + dove_conviction) * 100
+
+difference = geomacroHawkProbability - marketHawkProbability`}</CodeBlock>
+
+      <H2>Real divergence behavior</H2>
+      <P>
+        The section only renders events for which both a real onchain pool probability and a stored
+        Geomacro conviction pair exist. At the most recent implementation verification, only three
+        currently staked markets qualified, producing divergence readings of approximately -43.7,
+        +21.7 and +6.3 percentage points. The set grows automatically as additional markets receive
+        stake.
+      </P>
+
+      <H2>Why this matters</H2>
+      <P>
+        Divergence is not presented as proof that either side is correct. It is a comparison between
+        two independently derived views: current participant capital allocation and Geomacro’s
+        stored HAWK/DOVE conviction balance.
+      </P>
+    </>
+  );
+}
+
+function ProtocolPane() {
+  return (
+    <>
+      <SectionLabel>Protocol</SectionLabel>
+      <PageTitle>V1 and V2</PageTitle>
+      <PageSubtitle>
+        Geomacro preserves historical V1 state while routing the current market architecture through
+        the active V2 proxy.
+      </PageSubtitle>
+      <Divider />
+
+      <FactGrid
+        items={[
+          {
+            label: "V2 proxy",
+            value: "0x2F874FB07084a22D2bB314D0762Af57Cb1856868",
+            note: "Current market address",
+          },
+          { label: "V2 implementation", value: "0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c" },
+          { label: "V2 deployment block", value: "56797869" },
+          {
+            label: "Legacy V1",
+            value: "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe",
+            note: "Historical markets and positions remain readable",
+          },
+        ]}
+      />
+
+      <H2>Routing rule</H2>
+      <P>
+        The application does not assume that every position belongs to one contract generation. It
+        uses the event / market address to route reads through the correct ABI and normalize the
+        result for the frontend.
+      </P>
+      <RoutingDiagram />
+
+      <H2>Why V1 remains visible</H2>
+      <P>
+        Existing market and position history should not disappear because the protocol evolved. V1
+        is therefore treated as legacy, not erased. V2 adds a richer resolution, dispute and
+        tribunal lifecycle while preserving the ability to display older activity accurately.
+      </P>
+
+      <H2>Current V2 participant lifecycle</H2>
+      <LinearDiagram
+        items={[
+          { title: "Active" },
+          { title: "Tentative resolution", tone: "primary" },
+          { title: "Dispute / tribunal" },
+          { title: "Finalized + claim", tone: "success" },
+        ]}
+      />
+    </>
+  );
+}
+
+function TribunalPane() {
+  return (
+    <>
+      <SectionLabel>Resolution</SectionLabel>
+      <PageTitle>Resolution and 5-juror tribunal</PageTitle>
+      <PageSubtitle>
+        V2 separates a tentative AI-assisted outcome from dispute review, finalization and claim
+        state.
+      </PageSubtitle>
+      <Divider />
+
+      <H2>User-visible lifecycle</H2>
+      <LinearDiagram
+        items={[
+          { title: "Active" },
+          { title: "Tentative resolution", tone: "primary" },
+          { title: "Dispute window" },
+          { title: "Tribunal" },
+          { title: "Finalized" },
+          { title: "Claim / Claimed", tone: "success" },
+        ]}
+      />
+      <P>
+        Portfolio exposes this lifecycle on V2 positions so a participant can see what the system
+        currently believes, whether a challenge exists, whether a tribunal was activated, and
+        whether the market is final.
+      </P>
+
+      <H2>Real portfolio examples</H2>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-wider text-primary">
+            Stored V2 position
+          </div>
+          <div className="mt-2 text-sm font-semibold text-foreground">
+            Ceuta / Italy-Spain market
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            A real stored position showed DOVE against a tentative HAWK outcome and later finalized
+            without a tribunal case. The UI therefore displayed “Not activated” rather than
+            synthetic juror activity.
+          </p>
+        </Card>
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-wider text-primary">
+            Stored V2 position
+          </div>
+          <div className="mt-2 text-sm font-semibold text-foreground">
+            Abbas / regional dynamics market
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            A real stored DOVE position likewise showed a tentative HAWK outcome and an explicit
+            dispute deadline before finalization.
+          </p>
+        </Card>
+      </div>
+
+      <H2>Five review roles</H2>
+      <TribunalDiagram />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {[
+          ["Fact-Checker", "Tests factual claims and evidence."],
+          ["Hawk Re-arguer", "Builds the strongest escalation case."],
+          ["Dove Re-arguer", "Builds the strongest de-escalation case."],
+          ["Evidence Skeptic", "Challenges evidence quality and unsupported assumptions."],
+          ["Domain Specialist", "Applies event / category-specific context."],
+        ].map(([title, copy]) => (
+          <Card key={title}>
+            <div className="text-sm font-semibold text-foreground">{title}</div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
+          </Card>
+        ))}
+      </div>
+
+      <H2>Decision threshold</H2>
+      <FactGrid
+        items={[
+          { label: "Jurors", value: "5" },
+          { label: "Decision threshold", value: "4 of 5" },
+          { label: "Transparency tables", value: "market_disputes + jury_votes" },
+        ]}
+      />
+
+      <H2>Important limitation</H2>
+      <P>
+        A tribunal exists only when an actual eligible dispute is raised. If the dispute table
+        contains no case for a market, the product must not imply that five jurors reviewed it. This
+        distinction is intentional and visible in Portfolio.
+      </P>
+    </>
+  );
+}
+
+function CirclePane() {
+  return (
+    <>
+      <SectionLabel>Circle infrastructure</SectionLabel>
+      <PageTitle>USDC, CCTP and Swap</PageTitle>
+      <PageSubtitle>
+        USDC is the settlement denomination for the market layer, while Bridge and Swap are exposed
+        as separate user-facing flows.
+      </PageSubtitle>
+      <Divider />
+
+      <H2>Why USDC is used</H2>
+      <P>
+        A HAWK/DOVE position represents a view on an event. Using a stable settlement denomination
+        keeps the economic unit separate from unnecessary settlement-asset volatility. On the
+        current Arc Testnet deployment, USDC is also used as the native transaction currency.
+      </P>
+
+      <H2>CCTP Bridge flow</H2>
+      <LinearDiagram
+        items={[
+          { title: "Choose source + amount" },
+          { title: "Burn / transfer message", tone: "primary" },
+          { title: "Attestation" },
+          { title: "Native USDC on Arc", tone: "success" },
+        ]}
+      />
+      <P>
+        The Bridge surface exposes From / To state and transfer status. Wallet access is requested
+        only when the user actually begins the transfer.
+      </P>
+
+      <H2>Current source testnets</H2>
+      <FactGrid
+        items={[
+          { label: "Source", value: "Ethereum Sepolia" },
+          { label: "Source", value: "Base Sepolia" },
+          { label: "Source", value: "Avalanche Fuji" },
+          { label: "Destination", value: "Arc Testnet" },
+        ]}
+      />
+
+      <H2>Swap</H2>
+      <P>
+        The current website also exposes a Swap surface through the existing Circle integration.
+        Bridge and Swap are documented separately because they solve different user actions even
+        though they share the same liquidity / settlement context.
+      </P>
+    </>
+  );
+}
+
+function DataPane() {
+  return (
+    <>
+      <SectionLabel>Data & security</SectionLabel>
+      <PageTitle>Source of truth, Supabase and browser boundaries</PageTitle>
+      <PageSubtitle>
+        The application uses Supabase as a structured read model and transparency layer while
+        verifying sensitive financial state onchain.
+      </PageSubtitle>
+      <Divider />
+
+      <H2>Core data model</H2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[
+          [
+            "events",
+            "Structured intelligence, market metadata, convictions, tentative outcome and lifecycle fields.",
+          ],
+          [
+            "positions",
+            "Wallet-scoped position mirror, stake, status, resolved outcome, payout and claim metadata.",
+          ],
+          [
+            "market_disputes",
+            "Public dispute-case transparency, bond, tally and final verdict fields.",
+          ],
+          [
+            "jury_votes",
+            "Public per-juror role, verdict, reasoning / evidence metadata and transaction reference.",
+          ],
+          ["wallet_balance_history", "Wallet-scoped balance history."],
+          [
+            "sync_state / operational tables",
+            "Internal synchronization state, not a public product surface.",
+          ],
+        ].map(([title, copy]) => (
+          <Card key={title}>
+            <Code>{title}</Code>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{copy}</p>
+          </Card>
+        ))}
+      </div>
+
+      <H2>Current public-read model</H2>
+      <P>
+        Public intelligence and tribunal transparency are separated from wallet-scoped information.
+        Current least-privilege grants expose read access to public intelligence / tribunal data
+        while wallet-specific position and balance data remain authenticated and filtered by RLS.
+      </P>
+
+      <H2>Data and financial-state boundary</H2>
+      <DataBoundaryDiagram />
+
+      <H2>Financial-action rule</H2>
+      <P>
+        Supabase may suggest what the UI should display, but it is not allowed to become the
+        authority for a sensitive onchain action. For example, V2 dispute eligibility is proposed
+        from stored lifecycle fields and then confirmed against current contract state and the
+        user's actual stake before the transaction is offered.
+      </P>
+
+      <H2>Credential boundary</H2>
+      <P>
+        Service-role keys, signer keys, jury keys, guardian keys and premium RPC credentials belong
+        on the trusted server / automation side. Client-visible variables are not used as a place to
+        hide privileged credentials.
+      </P>
+    </>
+  );
+}
+
+function InstitutionalPane() {
+  return (
+    <>
+      <SectionLabel>Institutional</SectionLabel>
+      <PageTitle>One intelligence system, a deeper workflow</PageTitle>
+      <PageSubtitle>
+        The institutional surface uses the same live risk and event data rather than a separate
+        demonstration dataset.
+      </PageSubtitle>
+      <Divider />
+
+      <H2>Available today</H2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[
+          ["Global risk", "Current GRI score and historical series."],
+          ["Risk table", "Scored events with real severity, delta, category and timestamps."],
+          ["Recent intelligence", "Current stored event intelligence and briefing context."],
+          ["Research preview", "Stored briefings and sources linked back to event detail."],
+          [
+            "Market presence",
+            "Market state is shown only where an event actually has a created market.",
+          ],
+          [
+            "Divergence",
+            "Rendered only when both market-implied and Geomacro probabilities are real.",
+          ],
+        ].map(([title, copy]) => (
+          <Card key={title}>
+            <div className="text-sm font-semibold text-foreground">{title}</div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>
+          </Card>
+        ))}
+      </div>
+
+      <H2>Clearly marked as planned</H2>
+      <P>
+        Research exports, structured data access / public API, team access, SSO and workspace
+        permissions are not represented as live capabilities. They remain future institutional
+        capabilities until the required backend infrastructure exists.
+      </P>
+    </>
   );
 }
 
@@ -647,22 +1180,33 @@ function RoadmapPane() {
   return (
     <>
       <SectionLabel>Roadmap</SectionLabel>
-      <PageTitle>What we've shipped. What's coming.</PageTitle>
+      <PageTitle>What is shipped and what is next</PageTitle>
+      <PageSubtitle>
+        This section reads the same roadmap source used elsewhere in the product.
+      </PageSubtitle>
       <Divider />
       {ROADMAP.map((m) => (
         <div key={m.version}>
           <H2>
-            <span className="flex items-center gap-3">
+            <span className="flex flex-wrap items-center gap-3">
               {m.version}, {m.layer} Layer: {m.title}
-              {m.status === "shipped" ? <BadgeShipped /> : <BadgeNext />}
+              <Badge tone={m.status === "shipped" ? "live" : "planned"}>
+                {m.status === "shipped" ? "shipped" : "planned"}
+              </Badge>
             </span>
           </H2>
           <Card>
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Objective</div>
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+              Objective
+            </div>
             <P>{m.objective}</P>
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Scope</div>
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+              Scope
+            </div>
             <P>{m.scope}</P>
-            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">Artifacts</div>
+            <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+              Artifacts
+            </div>
             <div className="flex flex-wrap gap-2">
               {m.artifacts.map((a) => (
                 <Code key={a}>{a}</Code>
@@ -675,159 +1219,45 @@ function RoadmapPane() {
   );
 }
 
-function CompetitionPane() {
-  return (
-    <>
-      <SectionLabel>Competitive analysis</SectionLabel>
-      <PageTitle>The uncopyable architectural moat</PageTitle>
-      <PageSubtitle>Why Geomacro cannot be copied by Polymarket, Kalshi, Limitless or any legacy event market.</PageSubtitle>
-      <Divider />
-      <H2>Why competitors are structurally trapped</H2>
-      <P>
-        At first glance, traditional platforms might look like they could spawn an AI agent to emulate our functionality. They are blocked by their core
-        state architecture and security trust models.
-      </P>
-      <div className="my-5 overflow-x-auto rounded-lg border border-border/60">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Feature</th>
-              <th className="px-4 py-3">Polymarket / Kalshi</th>
-              <th className="px-4 py-3">Limitless</th>
-              <th className="px-4 py-3 text-primary">Geomacro</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {[
-              ["Market creation", "Human admin / community submission", "Semi-automated templates", "100% autonomous pipeline"],
-              ["Liquidity", "Manual market makers / retail pools", "Automated AMM pools", "Programmatic Agent Arena"],
-              ["Settlement oracles", "Optimistic oracles (UMA) / human disputes", "Decentralized oracles (Pyth)", "Multi-agent state consensus"],
-              ["Core asset class", "Binary speculative event (yes/no)", "Binary prediction tokens", "Dynamic risk and sentiment streams"],
-            ].map((row) => (
-              <tr key={row[0]}>
-                <td className="px-4 py-3 font-medium text-foreground">{row[0]}</td>
-                <td className="px-4 py-3 text-muted-foreground">{row[1]}</td>
-                <td className="px-4 py-3 text-muted-foreground">{row[2]}</td>
-                <td className="px-4 py-3 font-medium text-primary">{row[3]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <H2>The three copy-barriers</H2>
-      <div className="flex flex-col gap-3">
-        <Card>
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">1. Consensus trust model barrier</div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Traditional platforms use optimistic oracles like UMA. These depend on human actors monitoring disputes over 2-hour to 2-day windows. Injecting
-            high-frequency autonomous agent triggers would expose them to catastrophic flash-loan attacks, front-running and arbitrage exploits. Rebuilding
-            their trust structure requires rewriting their consensus layer from scratch.
-          </p>
-        </Card>
-        <Card>
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">2. State-machine synchronicity barrier</div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Traditional prediction structures are asynchronous order-books designed for humans. Geomacro is a fully synchronous multi-agent pipeline
-            {" "}{"($E \\rightarrow S_v \\rightarrow \\text{AMM pricing}$)"}. Bots on human platforms still execute inside human timelines. Geomacro runs
-            native multi-agent computational sandboxes on Arc's pipeline at the consensus tier.
-          </p>
-        </Card>
-        <Card>
-          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">3. Slashing and collusion moat</div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Traditional systems cannot prevent or penalize colluding automated actors. Geomacro implements cryptographic staking and slashing layers native
-            to the validator nodes inside the Agent Arena. Rogue validation parameters automatically trigger asset slashing, enforcing strict mathematical
-            safety bounds.
-          </p>
-        </Card>
-      </div>
-    </>
-  );
-}
-
 function ApiPane() {
-  const [endpoint, setEndpoint] = useState("post-event");
-  const [payload, setPayload] = useState(`{
-  "source_feed": "RSS_Macro_Wire_Global",
-  "raw_text": "Middle-East oil transit parameters show dynamic volatility metrics crossing variance baseline.",
-  "intensity_coefficient": 8.5
-}`);
-  const [logs, setLogs] = useState<string[]>(["// Terminal initialized. Awaiting API trigger..."]);
-  const [status, setStatus] = useState<"IDLE" | "OK" | "ERROR">("IDLE");
-  const [latency, setLatency] = useState(0);
-
-  const execute = () => {
-    const start = performance.now();
-    setLogs((l) => [...l, `> ${endpoint.toUpperCase()} dispatched`]);
-    setTimeout(() => {
-      const took = Math.round(performance.now() - start);
-      setLatency(took);
-      setStatus("OK");
-      setLogs((l) => [
-        ...l,
-        `< 200 OK { "event_id": "evt_${Math.random().toString(36).slice(2, 10)}", "indexed_at": "${new Date().toISOString()}" }`,
-      ]);
-    }, 300 + Math.random() * 400);
-  };
-
   return (
     <>
-      <SectionLabel>API explorer</SectionLabel>
-      <PageTitle>Interactive API sandbox console</PageTitle>
-      <PageSubtitle>Send simulated API requests to Geomacro oracle endpoints and test structured payloads.</PageSubtitle>
+      <SectionLabel>Developer reference</SectionLabel>
+      <PageTitle>Current developer access</PageTitle>
+      <PageSubtitle>
+        Geomacro does not currently advertise a public hosted data API. Public onchain state can be
+        read directly from Arc Testnet.
+      </PageSubtitle>
       <Divider />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-4">
-          <div>
-            <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Target oracle endpoint
-            </label>
-            <select
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value)}
-              className="w-full rounded-md border border-border/60 bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
-            >
-              <option value="post-event">POST /v1/events. Initialize narrative market</option>
-              <option value="get-consensus">GET /v1/arena/consensus. Query sentiment spread</option>
-              <option value="post-vote">POST /v1/arena/vote. Cast programmatic agent stake</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payload variables</label>
-            <textarea
-              value={payload}
-              onChange={(e) => setPayload(e.target.value)}
-              rows={8}
-              className="w-full rounded-md border border-border/60 bg-background p-3 font-mono text-xs text-primary outline-none focus:border-primary"
-            />
-          </div>
-          <button
-            onClick={execute}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-          >
-            Execute simulated request
-          </button>
-        </div>
-        <div>
-          <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Response sandbox console</label>
-          <div className="flex flex-col rounded-md border border-border/60 bg-background p-4 font-mono text-xs">
-            <div className="max-h-56 flex-1 space-y-1.5 overflow-y-auto leading-relaxed">
-              {logs.map((l, i) => (
-                <div key={i} className={l.startsWith("<") ? "text-primary" : l.startsWith(">") ? "text-foreground" : "text-muted-foreground"}>
-                  {l}
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex justify-between border-t border-border/60 pt-2 text-[10px] text-muted-foreground">
-              <span>
-                STATUS:{" "}
-                <strong className={status === "OK" ? "text-primary" : status === "ERROR" ? "text-destructive" : "text-muted-foreground"}>{status}</strong>
-              </span>
-              <span>{latency}ms</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
+      <H2>V2 contract</H2>
+      <CodeBlock>{`Network: Arc Testnet
+Chain ID: 5042002
+AgentArenaProxy: 0x2F874FB07084a22D2bB314D0762Af57Cb1856868
+AgentArenaV2 implementation: 0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c
+Legacy V1: 0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe
+Multicall3: 0xcA11bde05977b3631167028862bE2a173976CA11`}</CodeBlock>
+
+      <H2>Reading market state</H2>
+      <P>
+        The current frontend uses contract reads and batching rather than a hardcoded market list.
+        V1 and V2 require different ABIs and response handling, so integrations should not assume
+        one return shape for both generations.
+      </P>
+
+      <H2>Public data API</H2>
+      <P>
+        Structured public data access is not a live product capability today. The institutional
+        surface marks it as planned. Developers should not depend on undocumented Supabase internals
+        as if they were a stable public API contract.
+      </P>
+
+      <H2>Repository and license</H2>
+      <P>
+        The main Geomacro repository is source-visible under the repository's proprietary license.
+        Reusable infrastructure primitives are published separately and governed by the license in
+        their own repository.
+      </P>
     </>
   );
 }

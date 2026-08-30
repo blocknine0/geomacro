@@ -34,7 +34,9 @@ export function HomeSection({
           <h2 id={headingId} className="type-page-heading mt-2 text-balance text-foreground">
             {title}
           </h2>
-          {subtitle && <p className="mt-3 max-w-2xl text-pretty type-body text-muted-foreground">{subtitle}</p>}
+          {subtitle && (
+            <p className="mt-3 max-w-2xl text-pretty type-body text-muted-foreground">{subtitle}</p>
+          )}
         </div>
         {aside && <div className="shrink-0">{aside}</div>}
       </div>

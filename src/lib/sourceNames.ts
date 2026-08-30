@@ -21,7 +21,10 @@ export function formatSourceName(domain?: string | null): string {
   if (!raw || raw === "unknown") return "Unknown source";
 
   // Strip protocol / path if a full URL slipped through.
-  const host = raw.replace(/^https?:\/\//, "").split("/")[0]!.replace(/:\d+$/, "");
+  const host = raw
+    .replace(/^https?:\/\//, "")
+    .split("/")[0]!
+    .replace(/:\d+$/, "");
   if (KNOWN_SOURCES[host]) return KNOWN_SOURCES[host]!;
 
   const stripped = host.replace(/^(?:www|m|amp|news|edition|feeds|rss|en)\./, "");
@@ -33,15 +36,22 @@ export function formatSourceName(domain?: string | null): string {
   if (labels.length > 1) {
     const last = labels[labels.length - 1]!;
     const secondLast = labels[labels.length - 2]!;
-    const dropCount = labels.length > 2 && ["co", "com", "org", "net", "gov", "ac"].includes(secondLast) && last.length === 2 ? 2 : 1;
+    const dropCount =
+      labels.length > 2 &&
+      ["co", "com", "org", "net", "gov", "ac"].includes(secondLast) &&
+      last.length === 2
+        ? 2
+        : 1;
     labels = labels.slice(0, labels.length - dropCount);
   }
   labels = labels.filter((l) => !SUBDOMAIN_PREFIXES.includes(l));
   const base = labels.join(" ") || stripped;
 
-  return base
-    .split(/[-_.\s]+/)
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ") || "Unknown source";
+  return (
+    base
+      .split(/[-_.\s]+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ") || "Unknown source"
+  );
 }

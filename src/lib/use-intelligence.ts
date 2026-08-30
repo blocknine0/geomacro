@@ -81,8 +81,12 @@ function build(rows: IntelEvent[], now: number): Intelligence {
   const topRisks = [...scored].sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0)).slice(0, 8);
 
   const moved = pool.filter((r) => r.delta !== null && r.delta !== 0);
-  const rising = moved.filter((r) => (r.delta ?? 0) > 0).sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0));
-  const falling = moved.filter((r) => (r.delta ?? 0) < 0).sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0));
+  const rising = moved
+    .filter((r) => (r.delta ?? 0) > 0)
+    .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0));
+  const falling = moved
+    .filter((r) => (r.delta ?? 0) < 0)
+    .sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0));
 
   const med = median(scored.map((r) => r.severity as number));
   const emergingPool =
@@ -201,7 +205,10 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
     };
   }, [reloadKey, refreshMs]);
 
-  return useMemo(() => ({ data, status, error, updatedAt, retry }), [data, status, error, updatedAt, retry]);
+  return useMemo(
+    () => ({ data, status, error, updatedAt, retry }),
+    [data, status, error, updatedAt, retry],
+  );
 }
 
 /** Client-side filter + search + sort over already-loaded rows. */

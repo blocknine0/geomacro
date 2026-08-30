@@ -20,6 +20,7 @@ import { Route as BridgeRouteImport } from './routes/bridge'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
 
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
@@ -76,6 +77,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsGriArchitectureRoute = DocsGriArchitectureRouteImport.update({
+  id: '/docs_/gri-architecture',
+  path: '/docs/gri-architecture',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/docs/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/docs/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/docs/gri-architecture'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/docs/gri-architecture'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/docs_/gri-architecture'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
   RoadmapRoute: typeof RoadmapRoute
+  DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs_/gri-architecture': {
+      id: '/docs_/gri-architecture'
+      path: '/docs/gri-architecture'
+      fullPath: '/docs/gri-architecture'
+      preLoaderRoute: typeof DocsGriArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
   RoadmapRoute: RoadmapRoute,
+  DocsGriArchitectureRoute: DocsGriArchitectureRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

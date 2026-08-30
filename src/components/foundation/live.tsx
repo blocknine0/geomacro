@@ -18,7 +18,13 @@ export function relativeTime(input: string | number | Date | null | undefined): 
   return `${days}d ago`;
 }
 
-export function LiveIndicator({ label = "Live", className }: { label?: string; className?: string }) {
+export function LiveIndicator({
+  label = "Live",
+  className,
+}: {
+  label?: string;
+  className?: string;
+}) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 type-meta text-primary", className)}>
       <span className="size-1.5 rounded-full bg-positive animate-blink-live" aria-hidden />
@@ -47,9 +53,22 @@ export function LastUpdated({
 }
 
 /** Technical provenance: kept, but visually secondary. */
-export function SourceBadge({ source, count, className }: { source?: string; count?: number; className?: string }) {
+export function SourceBadge({
+  source,
+  count,
+  className,
+}: {
+  source?: string;
+  count?: number;
+  className?: string;
+}) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border/60 bg-card/50 px-1.5 py-0.5 type-meta text-muted-foreground", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border/60 bg-card/50 px-1.5 py-0.5 type-meta text-muted-foreground",
+        className,
+      )}
+    >
       {source ?? "Source"}
       {typeof count === "number" && <span className="type-metric text-[10px]">{count}</span>}
     </span>

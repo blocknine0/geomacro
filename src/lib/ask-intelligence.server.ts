@@ -1,5 +1,5 @@
 import { getAppSupabase } from "./supabase-app.server";
-import { GRI_METHOD_VERSION } from "./gri-engine.js";
+import { GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS, GRI_METHOD_VERSION } from "./gri-engine.js";
 
 /** Deterministic Ask Geomacro engine: Supabase stored intelligence only.
  *  No LLM provider is involved (no Groq, no Cerebras, no external search). */
@@ -19,25 +19,129 @@ export type AskAnswer = {
   generatedAt: string;
 };
 
-const INSUFFICIENT =
-  "No strongly relevant stored events found for this question.";
-
+const INSUFFICIENT = "No strongly relevant stored events found for this question.";
 
 const STOPWORDS = new Set([
-  "what", "whats", "why", "how", "who", "when", "where", "is", "are", "was", "were",
-  "the", "a", "an", "of", "in", "on", "to", "and", "or", "at", "by", "from", "into",
-  "today", "now", "recent", "recently", "latest", "happening", "happened", "going",
-  "global", "biggest", "missing", "geomacro", "does", "do", "did", "it", "that",
-  "this", "these", "those", "for", "with", "about", "there", "any", "much", "more",
-  "tell", "show", "give", "me", "us", "you", "please", "current", "currently",
+  "what",
+  "whats",
+  "why",
+  "how",
+  "who",
+  "when",
+  "where",
+  "is",
+  "are",
+  "was",
+  "were",
+  "the",
+  "a",
+  "an",
+  "of",
+  "in",
+  "on",
+  "to",
+  "and",
+  "or",
+  "at",
+  "by",
+  "from",
+  "into",
+  "today",
+  "now",
+  "recent",
+  "recently",
+  "latest",
+  "happening",
+  "happened",
+  "going",
+  "global",
+  "biggest",
+  "missing",
+  "geomacro",
+  "does",
+  "do",
+  "did",
+  "it",
+  "that",
+  "this",
+  "these",
+  "those",
+  "for",
+  "with",
+  "about",
+  "there",
+  "any",
+  "much",
+  "more",
+  "tell",
+  "show",
+  "give",
+  "me",
+  "us",
+  "you",
+  "please",
+  "current",
+  "currently",
 ]);
 
 /** Category keyword map, aligned with the pipeline's stored categories. */
 const CATEGORY_HINTS: Record<string, string[]> = {
-  rare_earth: ["rare", "earth", "earths", "minerals", "mineral", "lithium", "cobalt", "magnet", "supply", "chips", "semiconductor", "mining"],
-  geopolitics: ["geopolitics", "geopolitical", "war", "conflict", "military", "sanctions", "border", "attack", "strike", "diplomacy", "election", "coup"],
-  macro: ["macro", "inflation", "rates", "rate", "economy", "economic", "gdp", "bond", "yields", "unemployment", "fed", "central", "bank", "growth"],
-  crypto: ["crypto", "bitcoin", "btc", "ethereum", "eth", "stablecoin", "token", "liquidity", "defi", "exchange"],
+  rare_earth: [
+    "rare",
+    "earth",
+    "earths",
+    "minerals",
+    "mineral",
+    "lithium",
+    "cobalt",
+    "magnet",
+    "supply",
+    "chips",
+    "semiconductor",
+    "mining",
+  ],
+  geopolitics: [
+    "geopolitics",
+    "geopolitical",
+    "war",
+    "conflict",
+    "military",
+    "sanctions",
+    "border",
+    "attack",
+    "strike",
+    "diplomacy",
+    "election",
+    "coup",
+  ],
+  macro: [
+    "macro",
+    "inflation",
+    "rates",
+    "rate",
+    "economy",
+    "economic",
+    "gdp",
+    "bond",
+    "yields",
+    "unemployment",
+    "fed",
+    "central",
+    "bank",
+    "growth",
+  ],
+  crypto: [
+    "crypto",
+    "bitcoin",
+    "btc",
+    "ethereum",
+    "eth",
+    "stablecoin",
+    "token",
+    "liquidity",
+    "defi",
+    "exchange",
+  ],
 };
 
 export type EventRow = {
@@ -72,7 +176,6 @@ export const SIMILARITY_THRESHOLD = 0.45;
 /** Mean similarity required before a confident interpretation is written. */
 export const CONFIDENT_MEAN_SIMILARITY = 0.5;
 
-
 export function extractTerms(question: string): string[] {
   return Array.from(
     new Set(
@@ -95,7 +198,8 @@ export function inferCategories(terms: string[]): string[] {
 
 /** Relevance = keyword match + category match + recency + severity + movement. */
 export function rankRow(row: EventRow, terms: string[], categories: string[], now: number) {
-  const hay = `${row.source_title ?? ""} ${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
+  const hay =
+    `${row.source_title ?? ""} ${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
   const matches = terms.filter((t) => hay.includes(t)).length;
   const catMatch = categories.length && row.category && categories.includes(row.category) ? 1 : 0;
   const ageHours = Math.max(0, (now - new Date(row.created_at).getTime()) / 3_600_000);
@@ -115,7 +219,8 @@ export function similarityOf(
   categories: string[],
   now: number,
 ): number {
-  const hay = `${row.source_title ?? ""} ${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
+  const hay =
+    `${row.source_title ?? ""} ${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
   const catMatch = categories.length && row.category && categories.includes(row.category) ? 1 : 0;
   const ageHours = Math.max(0, (now - new Date(row.created_at).getTime()) / 3_600_000);
   const recency = Math.max(0, 168 - ageHours) / 168;
@@ -129,8 +234,6 @@ export function similarityOf(
   const coverage = terms.filter((t) => hay.includes(t)).length / terms.length;
   return Math.min(1, coverage * 0.65 + catMatch * 0.2 + recency * 0.15);
 }
-
-
 
 function escapeLike(term: string) {
   return term.replace(/[%,()]/g, " ");
@@ -170,7 +273,9 @@ async function retrieve(terms: string[], categories: string[]) {
     .order("created_at", { ascending: false })
     .limit(RECENT_LIMIT);
 
-  const queries: Array<PromiseLike<{ data: unknown; error: { message: string } | null }>> = [recent];
+  const queries: Array<PromiseLike<{ data: unknown; error: { message: string } | null }>> = [
+    recent,
+  ];
 
   const filters: string[] = [];
   for (const t of terms.slice(0, 4)) {
@@ -207,37 +312,59 @@ async function retrieve(terms: string[], categories: string[]) {
   return { rows: Array.from(merged.values()), recentRows };
 }
 
-
 async function loadPublishedGri() {
+  const unavailable = () => ({
+    displayScore: null,
+    eventCount: 0,
+    coverage: 0,
+    methodologyVersion: GRI_METHOD_VERSION,
+    auditPersisted: false,
+  });
+
   const supabase = getAppSupabase();
-  if (!supabase) {
-    return {
-      displayScore: null,
-      eventCount: 0,
-      coverage: 0,
-      methodologyVersion: GRI_METHOD_VERSION,
-      auditPersisted: false,
-    };
-  }
+  if (!supabase) return unavailable();
 
   const { data, error } = await supabase
     .from("gri_snapshots")
-    .select("display_score,event_count,coverage,methodology_version,as_of,verification_status")
+    .select(
+      "display_score,event_count,coverage,methodology_version,as_of,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,reconciliation_residual,change_residual",
+    )
     .eq("status", "published")
     .eq("methodology_version", GRI_METHOD_VERSION)
     .order("as_of", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(`Canonical GRI unavailable: ${error.message}`);
-  if (!data || typeof data.display_score !== "number") {
-    return {
-      displayScore: null,
-      eventCount: 0,
-      coverage: 0,
-      methodologyVersion: GRI_METHOD_VERSION,
-      auditPersisted: false,
-    };
+
+  if (error) {
+    console.error("[askGeomacro] canonical GRI read failed", error.message);
+    return unavailable();
   }
+  if (!data || typeof data.display_score !== "number") return unavailable();
+
+  const asOfMs = new Date(data.as_of).getTime();
+  const ageHours = Number.isFinite(asOfMs)
+    ? (Date.now() - asOfMs) / 3_600_000
+    : Number.POSITIVE_INFINITY;
+  const reconciliationResidual = Number(data.reconciliation_residual);
+  const changeResidual = data.change_residual === null ? null : Number(data.change_residual);
+  const hashesReady = Boolean(
+    data.proof_hash &&
+    data.evidence_hash &&
+    data.calculation_hash &&
+    data.input_hash &&
+    data.methodology_hash,
+  );
+  const residualsReady =
+    Number.isFinite(reconciliationResidual) &&
+    Math.abs(reconciliationResidual) <= 1e-7 &&
+    (changeResidual === null ||
+      (Number.isFinite(changeResidual) && Math.abs(changeResidual) <= 1e-7));
+  const fresh = ageHours >= -0.25 && ageHours <= GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS;
+  const verified =
+    data.verification_status === "verified" && hashesReady && residualsReady && fresh;
+
+  if (!verified) return unavailable();
+
   return {
     displayScore: data.display_score,
     eventCount: Number(data.event_count ?? 0),
@@ -291,10 +418,8 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
     };
   }
 
-  const meanSimilarity =
-    selected.reduce((a, s) => a + s.similarity, 0) / selected.length;
+  const meanSimilarity = selected.reduce((a, s) => a + s.similarity, 0) / selected.length;
   const lowConfidence = meanSimilarity < CONFIDENT_MEAN_SIMILARITY;
-
 
   const picked = selected.map((s) => s.row);
   const sevValues = picked.map((r) => r.severity).filter((s): s is number => typeof s === "number");
@@ -325,7 +450,9 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
       hour12: true,
       timeZone: "UTC",
     })} UTC): ${sentence(newest)}`,
-    rising.length ? `${rising.length} matched ${rising.length === 1 ? "event is" : "events are"} scoring higher than their previous reading.` : "",
+    rising.length
+      ? `${rising.length} matched ${rising.length === 1 ? "event is" : "events are"} scoring higher than their previous reading.`
+      : "",
     falling.length ? `${falling.length} ${falling.length === 1 ? "is" : "are"} scoring lower.` : "",
   ]
     .filter(Boolean)
@@ -377,4 +504,3 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
     generatedAt,
   };
 }
-
