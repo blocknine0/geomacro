@@ -640,7 +640,9 @@ async function fetchWithBackoff(fn, label) {
 async function fetchArticlesFromApis(query, categoryName) {
   const fromDate = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString().slice(0, 10);
   const fromIso = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString();
+  const articles = [];
 
+  // Guardian is one source, not the sole primary source.
   try {
     const sectionFilter = GUARDIAN_SECTIONS[categoryName];
     const sectionParam = sectionFilter ? `&section=${encodeURIComponent(sectionFilter)}` : '';
@@ -650,60 +652,107 @@ async function fetchArticlesFromApis(query, categoryName) {
       `&order-by=newest&from-date=${fromDate}` +
       `&show-fields=trailText&page-size=10` +
       `&api-key=${process.env.GUARDIAN_API_KEY}`;
-    const response = await fetchWithBackoff(() => fetch(guardianUrl), `Guardian ("${query}")`);
+
+    const response = await fetchWithBackoff(
+      () => fetch(guardianUrl),
+      `Guardian ("${query}")`
+    );
 
     const data = await response.json();
 
-    if (!data.response || !data.response.results || data.response.results.length === 0) {
-      console.log(`   🔍 Guardian raw response for "${query}": ${JSON.stringify(data).slice(0, 300)}`);
+    if (!data.response?.results?.length) {
+      console.log(
+        `   🔍 Guardian raw response for "${query}": ${JSON.stringify(data).slice(0, 300)}`
+      );
     }
 
-    if (data.response && data.response.results && data.response.results.length > 0) {
-      return data.response.results.map((a) => ({
-        title: stripHtml(a.webTitle),
-        description: stripHtml(a.fields?.trailText || ''),
-        url: a.webUrl,
-        publishedAt: a.webPublicationDate || new Date().toISOString(),
-        source: 'guardian',
-        sourceDomain: extractDomain(a.webUrl),
-      }));
+    if (data.response?.results?.length) {
+      articles.push(
+        ...data.response.results.map((a) => ({
+          title: stripHtml(a.webTitle),
+          description: stripHtml(a.fields?.trailText || ''),
+          url: a.webUrl,
+          publishedAt: a.webPublicationDate || new Date().toISOString(),
+          source: 'guardian',
+          sourceDomain: extractDomain(a.webUrl),
+        }))
+      );
     }
-
-    console.log(`   Guardian returned no results for query "${query}". Trying NewsAPI fallback...`);
   } catch (e) {
-    console.log(`   Guardian failed for query "${query}" (${e.message}). Trying NewsAPI fallback...`);
+    console.log(`   Guardian failed for query "${query}" (${e.message}).`);
   }
 
-  if (DISABLE_NEWSAPI) {
-    return [];
-  }
+  // NewsAPI is an additional source aggregator, not only a Guardian fallback.
+  if (!DISABLE_NEWSAPI && process.env.NEWSAPI_KEY) {
+    try {
+      const newsApiUrl =
+        `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}` +
+        `&language=en&sortBy=publishedAt&pageSize=10` +
+        `&from=${encodeURIComponent(fromIso)}` +
+        `&apiKey=${process.env.NEWSAPI_KEY}`;
 
-  try {
-    const newsApiUrl =
-      `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}` +
-      `&language=en&sortBy=publishedAt&pageSize=10` +
-      `&from=${encodeURIComponent(fromIso)}` +
-      `&apiKey=${process.env.NEWSAPI_KEY}`;
-    const response = await fetchWithBackoff(() => fetch(newsApiUrl), `NewsAPI ("${query}")`);
+      const response = await fetchWithBackoff(
+        () => fetch(newsApiUrl),
+        `NewsAPI ("${query}")`
+      );
 
-    const data = await response.json();
-    if (data.articles) {
-      return data.articles
-        .filter((a) => a?.title && a.title !== '[Removed]')
-        .map((a) => ({
-          title: stripHtml(a.title),
-          description: stripHtml(a.description || ''),
-          url: a.url,
-          publishedAt: a.publishedAt || new Date().toISOString(),
-          source: 'newsapi',
-          sourceDomain: extractDomain(a.url),
-        }));
+      const data = await response.json();
+
+      if (data.articles?.length) {
+        articles.push(
+          ...data.articles
+            .filter(
+              (a) =>
+                a?.title &&
+                a.title !== '[Removed]' &&
+                a.url
+            )
+            .map((a) => ({
+              title: stripHtml(a.title),
+              description: stripHtml(a.description || ''),
+              url: a.url,
+              publishedAt: a.publishedAt || new Date().toISOString(),
+              source: a.source?.name || 'NewsAPI',
+              sourceDomain: extractDomain(a.url),
+            }))
+        );
+      }
+    } catch (e) {
+      console.error(
+        `   Failed fetching from NewsAPI for query "${query}":`,
+        e.message
+      );
     }
-  } catch (ne) {
-    console.error(`   Failed fetching from NewsAPI for query "${query}":`, ne.message);
+  } else if (DISABLE_NEWSAPI) {
+    console.log('   NewsAPI disabled by DISABLE_NEWSAPI=true.');
+  } else {
+    console.log('   NEWSAPI_KEY not configured; skipping NewsAPI.');
   }
 
-  return [];
+  // Remove exact duplicate URLs while preserving genuinely distinct publishers.
+  const uniqueArticles = new Map();
+
+  for (const article of articles) {
+    const normalizedUrl = article.url
+      ?.trim()
+      .replace(/#.*$/, '')
+      .replace(/\/$/, '');
+
+    const normalizedTitle = article.title
+      ?.toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const key =
+      normalizedUrl ||
+      `${article.sourceDomain || 'unknown-source'}|${normalizedTitle || 'untitled'}`;
+
+    if (!uniqueArticles.has(key)) {
+      uniqueArticles.set(key, article);
+    }
+  }
+
+  return [...uniqueArticles.values()];
 }
 
 function chunk(arr, size) {
