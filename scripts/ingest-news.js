@@ -21,8 +21,8 @@ if (!process.env.CEREBRAS_API_KEY) {
   console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq's daily quota runs out mid-run.");
 }
 
-const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 5);
-const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 3000);
+const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 3);
+const BATCH_DELAY_MS = Number(process.env.GROQ_BATCH_DELAY_MS || 4000);
 const MAX_RETRIES = Number(process.env.GROQ_MAX_RETRIES || 5);
 const BASE_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 60 * 1000;
@@ -30,15 +30,23 @@ const MAX_BACKOFF_MS = 60 * 1000;
 const QUERY_DELAY_MS = Number(process.env.NEWS_QUERY_DELAY_MS || 800);
 const NEWS_MAX_RETRIES = Number(process.env.NEWS_MAX_RETRIES || 3);
 
-const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 40);
-const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 3);
-const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 500);
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
+const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 2);
+const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 1500);
+const GROQ_MAX_WAIT_MS = Number(process.env.GROQ_MAX_WAIT_MS || 90 * 1000);
+const MAX_CANDIDATES_PER_CATEGORY = Number(process.env.MAX_CANDIDATES_PER_CATEGORY || 18);
+
 let groqRequestsThisRun = 0;
+let groqRemainingRequests = Infinity;
+let groqRemainingTokens = Infinity;
+let groqResetRequestsMs = null;
+let groqResetTokensMs = null;
 
 const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
 const MAX_ARTICLE_AGE_MS = Number(process.env.MAX_ARTICLE_AGE_MS || 72 * 60 * 60 * 1000);
 const MIN_CONFIDENCE = Number(process.env.MIN_CONFIDENCE || 60);
-const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 35);
+const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
 
 const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth', 'crypto'];
 
@@ -316,6 +324,67 @@ function passesGates(article, assessment, fallbackCategory) {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function parseDurationToMs(value) {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  if (/^\d+(\.\d+)?$/.test(raw)) return Number(raw) * 1000;
+
+  const match = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?$/i);
+  if (!match) return null;
+
+  const hours = Number(match[1] || 0);
+  const mins = Number(match[2] || 0);
+  const secs = Number(match[3] || 0);
+  const ms = (((hours * 3600) + (mins * 60) + secs) * 1000);
+  return ms > 0 ? ms : null;
+}
+
+function readGroqQuota(response) {
+  if (!response?.headers?.get) return;
+
+  const remainingRequests = Number(response.headers.get('x-ratelimit-remaining-requests'));
+  const remainingTokens = Number(response.headers.get('x-ratelimit-remaining-tokens'));
+  const resetRequests = parseDurationToMs(response.headers.get('x-ratelimit-reset-requests'));
+  const resetTokens = parseDurationToMs(response.headers.get('x-ratelimit-reset-tokens'));
+
+  if (Number.isFinite(remainingRequests)) groqRemainingRequests = remainingRequests;
+  if (Number.isFinite(remainingTokens)) groqRemainingTokens = remainingTokens;
+  if (resetRequests != null) groqResetRequestsMs = resetRequests;
+  if (resetTokens != null) groqResetTokensMs = resetTokens;
+}
+
+async function waitForGroqHeadroom(label) {
+  const needWaitForRequests =
+    Number.isFinite(groqRemainingRequests) &&
+    groqRemainingRequests <= GROQ_MIN_REMAINING_REQUESTS;
+  const needWaitForTokens =
+    Number.isFinite(groqRemainingTokens) &&
+    groqRemainingTokens <= GROQ_MIN_REMAINING_TOKENS;
+
+  if (!needWaitForRequests && !needWaitForTokens) return;
+
+  const resetMs = Math.max(
+    needWaitForRequests ? (groqResetRequestsMs || 5000) : 0,
+    needWaitForTokens ? (groqResetTokensMs || 5000) : 0
+  );
+  const waitMs = Math.min(resetMs + 1500, GROQ_MAX_WAIT_MS);
+
+  if (resetMs > GROQ_MAX_WAIT_MS) {
+    const quotaErr = new Error(
+      `Groq quota too low for ${label} (req=${groqRemainingRequests}, tokens=${groqRemainingTokens}, reset=${Math.round(resetMs / 1000)}s)`
+    );
+    quotaErr.isQuotaExhausted = true;
+    throw quotaErr;
+  }
+
+  console.log(
+    `  ⚠️ Groq headroom low (req=${groqRemainingRequests}, tokens=${groqRemainingTokens}). Waiting ${Math.round(waitMs / 1000)}s for reset before ${label}.`
+  );
+  await delay(waitMs);
+  groqRemainingRequests = Infinity;
+  groqRemainingTokens = Infinity;
+}
+
 async function callGroqWithBackoff(fn, label) {
   if (groqRequestsThisRun >= GROQ_MAX_REQUESTS_PER_RUN) {
     const budgetErr = new Error(
@@ -325,29 +394,14 @@ async function callGroqWithBackoff(fn, label) {
     throw budgetErr;
   }
 
+  await waitForGroqHeadroom(label);
+
   let attempt = 0;
   while (true) {
     try {
       groqRequestsThisRun++;
       const { data, response } = await fn();
-
-      const remainingRequests = Number(response?.headers?.get?.('x-ratelimit-remaining-requests'));
-      const remainingTokens = Number(response?.headers?.get?.('x-ratelimit-remaining-tokens'));
-      const resetRequests = response?.headers?.get?.('x-ratelimit-reset-requests');
-      const resetTokens = response?.headers?.get?.('x-ratelimit-reset-tokens');
-
-      if (Number.isFinite(remainingRequests) && remainingRequests <= GROQ_MIN_REMAINING_REQUESTS) {
-        console.log(
-          `  ⚠️ Groq shared quota low: only ${remainingRequests} requests left (resets in ${resetRequests || '?'}). Pausing briefly to leave room for other services.`
-        );
-        await delay(5000);
-      } else if (Number.isFinite(remainingTokens) && remainingTokens <= GROQ_MIN_REMAINING_TOKENS) {
-        console.log(
-          `  ⚠️ Groq shared quota low: only ${remainingTokens} tokens left (resets in ${resetTokens || '?'}). Pausing briefly to leave room for other services.`
-        );
-        await delay(5000);
-      }
-
+      readGroqQuota(response);
       return data;
     } catch (error) {
       const status = error?.status ?? error?.response?.status;
@@ -366,13 +420,18 @@ async function callGroqWithBackoff(fn, label) {
       }
 
       const retryAfterHeader =
-        error?.headers?.['retry-after'] ?? error?.response?.headers?.get?.('retry-after');
+        error?.headers?.['retry-after'] ??
+        error?.response?.headers?.get?.('retry-after') ??
+        error?.headers?.get?.?.('retry-after');
+      const headerReset =
+        parseDurationToMs(error?.headers?.get?.('x-ratelimit-reset-tokens')) ||
+        parseDurationToMs(error?.response?.headers?.get?.('x-ratelimit-reset-tokens'));
       const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : null;
 
       const backoff =
-        retryAfterMs && Number.isFinite(retryAfterMs)
-          ? retryAfterMs
-          : Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
+        headerReset ||
+        (retryAfterMs && Number.isFinite(retryAfterMs) ? retryAfterMs : null) ||
+        Math.min(BASE_BACKOFF_MS * 2 ** attempt, MAX_BACKOFF_MS);
       const jitter = Math.random() * 500;
 
       attempt++;
@@ -394,8 +453,8 @@ async function callCerebras(cerebrasApiKey, prompt) {
     body: JSON.stringify({
       model: 'llama3.1-8b',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 1500,
+      temperature: 0.2,
+      max_tokens: 900,
     }),
   });
   if (!response.ok) {
@@ -409,39 +468,75 @@ async function callCerebras(cerebrasApiKey, prompt) {
   return data.choices[0].message.content;
 }
 
-async function checkArticlesBatchRelevance(articles, category) {
+function buildClassifyPrompt(articles, category) {
   const articlesBlock = articles
-    .map((a, i) => `[${i}] Title: "${a.title}"\nDescription: "${a.description}"`)
+    .map((a, i) => `[${i}] Title: "${a.title}"\nDescription: "${(a.description || '').slice(0, 240)}"`)
     .join('\n\n');
 
-  const prompt = `You are a strict event filter for a geopolitical/macro risk desk.
-Category being fetched: "${category}".
+  return `Strict risk-desk filter. Fetch bucket: "${category}".
+relevant=true only for material breaking risk, not opinion/newsletter/history/sport.
+category must be one of: geopolitics, macro, rare_earth, crypto, none
+rare_earth only if minerals/magnets/export controls. AI/semiconductors/datacentres = none.
+Return JSON only:
+{"results":[{"index":0,"relevant":true,"category":"geopolitics","severity":65,"confidence":70,"narrative":"...","summary":"..."}]}
 
 Articles:
-${articlesBlock}
+${articlesBlock}`;
+}
 
-For EACH article return one object in the same order.
+function parseAssessments(rawContent, articles) {
+  const parsed = JSON.parse(rawContent);
+  const results = Array.isArray(parsed.results) ? parsed.results : [];
+  const byIndex = new Map();
+  for (const r of results) {
+    if (Number.isInteger(r?.index) && !byIndex.has(r.index)) {
+      byIndex.set(r.index, r);
+    }
+  }
 
-Rules:
-- relevant=true ONLY if this is a breaking or material risk event, not analysis colour, not a newsletter wrap, not an opinion letter, not historical trivia.
-- category MUST be exactly one of: geopolitics, macro, rare_earth, crypto, none
-- Do NOT copy the fetch bucket if the subject does not fit.
-- rare_earth ONLY for rare earth elements, permanent magnets, or critical mineral mine/refine/export controls (lithium, nickel, cobalt, graphite, gallium, germanium, antimony, tungsten, copper, uranium).
-- AI companies, semiconductors, datacentres, general tech lawsuits, culture, sport = none and relevant=false.
-- summary: 2 sentences of THIS article's facts only. No HTML.
+  return articles.map((a, i) => {
+    const r = byIndex.get(i);
+    if (!r) {
+      console.error(
+        `  ⚠️ Batch classify: no grounded result for article [${i}] "${a.title}" — treating as not relevant.`
+      );
+      return {
+        relevant: false,
+        category: 'none',
+        severity: 0,
+        confidence: 0,
+        narrative: a.title,
+        summary: a.description || a.title,
+      };
+    }
+    return {
+      relevant: !!r.relevant,
+      category: typeof r.category === 'string' ? r.category.trim().toLowerCase() : 'none',
+      severity: Number.isFinite(r.severity) ? r.severity : 0,
+      confidence: Number.isFinite(r.confidence) ? r.confidence : 50,
+      narrative: stripHtml(r.narrative || a.title),
+      summary: stripHtml(r.summary || a.description || a.title),
+    };
+  });
+}
 
-Respond STRICTLY as JSON:
-{ "results": [ { "index": 0, "relevant": true, "category": "geopolitics", "severity": 65, "confidence": 70, "narrative": "...", "summary": "..." } ] }`;
+async function checkArticlesBatchRelevance(articles, category) {
+  const prompt = buildClassifyPrompt(articles, category);
+  const groqPayload = {
+    messages: [{ role: 'user', content: prompt }],
+    model: GROQ_MODEL,
+    temperature: 0.2,
+    max_tokens: 900,
+    response_format: { type: 'json_object' },
+  };
+  if (GROQ_MODEL.includes('gpt-oss') || GROQ_MODEL.includes('o1') || GROQ_MODEL.includes('o3')) {
+    groqPayload.reasoning_effort = 'low';
+  }
 
   let rawContent;
   try {
     const chatCompletion = await callGroqWithBackoff(async () => {
-      const request = groq.chat.completions.create({
-        messages: [{ role: 'user', content: prompt }],
-        model: 'openai/gpt-oss-20b',
-        reasoning_effort: 'low',
-        response_format: { type: 'json_object' },
-      });
+      const request = groq.chat.completions.create(groqPayload);
       if (typeof request.withResponse === 'function') {
         return await request.withResponse();
       }
@@ -453,45 +548,13 @@ Respond STRICTLY as JSON:
     if (!e.isQuotaExhausted && !e.isBudgetExhausted) throw e;
     if (!process.env.CEREBRAS_API_KEY) throw e;
     console.log(
-      `  ↪ Groq quota exhausted for batch-classify (${articles.length} articles) — falling back to Cerebras.`
+      `  ↪ Groq unavailable for batch-classify (${articles.length} articles) — falling back to Cerebras.`
     );
     rawContent = await callCerebras(process.env.CEREBRAS_API_KEY, prompt);
   }
 
   try {
-    const parsed = JSON.parse(rawContent);
-    const results = Array.isArray(parsed.results) ? parsed.results : [];
-    const byIndex = new Map();
-    for (const r of results) {
-      if (Number.isInteger(r?.index) && !byIndex.has(r.index)) {
-        byIndex.set(r.index, r);
-      }
-    }
-
-    return articles.map((a, i) => {
-      const r = byIndex.get(i);
-      if (!r) {
-        console.error(
-          `  ⚠️ Batch classify: no grounded result for article [${i}] "${a.title}" — treating as not relevant.`
-        );
-        return {
-          relevant: false,
-          category: 'none',
-          severity: 0,
-          confidence: 0,
-          narrative: a.title,
-          summary: a.description || a.title,
-        };
-      }
-      return {
-        relevant: !!r.relevant,
-        category: typeof r.category === 'string' ? r.category.trim().toLowerCase() : 'none',
-        severity: Number.isFinite(r.severity) ? r.severity : 0,
-        confidence: Number.isFinite(r.confidence) ? r.confidence : 50,
-        narrative: stripHtml(r.narrative || a.title),
-        summary: stripHtml(r.summary || a.description || a.title),
-      };
-    });
+    return parseAssessments(rawContent, articles);
   } catch (parseErr) {
     console.error(`  ❌ Failed to parse batch response: ${parseErr.message}`);
     return articles.map((a) => ({
@@ -611,6 +674,9 @@ function chunk(arr, size) {
 
 async function ingestNews() {
   console.log('Run node scripts/ingest-news.js');
+  console.log(
+    `Groq model=${GROQ_MODEL} batch=${BATCH_SIZE} maxReq=${GROQ_MAX_REQUESTS_PER_RUN} minSeverity=${MIN_SEVERITY}`
+  );
 
   let existingEvents = [];
   {
@@ -692,6 +758,16 @@ async function ingestNews() {
       }
     }
 
+    candidateArticles.sort(
+      (a, b) => Date.parse(b.publishedAt || 0) - Date.parse(a.publishedAt || 0)
+    );
+    if (candidateArticles.length > MAX_CANDIDATES_PER_CATEGORY) {
+      console.log(
+        `  Capping ${category.name} candidates ${candidateArticles.length} → ${MAX_CANDIDATES_PER_CATEGORY} newest.`
+      );
+      candidateArticles = candidateArticles.slice(0, MAX_CANDIDATES_PER_CATEGORY);
+    }
+
     console.log(`  ${candidateArticles.length} new unique candidate article(s) to classify.`);
 
     const batches = chunk(candidateArticles, BATCH_SIZE);
@@ -768,7 +844,7 @@ async function ingestNews() {
   }
 
   console.log(`\nDone. Total unique inserted: ${totalInserted} events.`);
-  console.log(`Rejected by gate: ${totalRejectedByGate}.`);
+  console.log(`Rejected by gate: ${totalRejectedByGate}. Groq requests this run: ${groqRequestsThisRun}.`);
 }
 
 ingestNews().catch(console.error);
