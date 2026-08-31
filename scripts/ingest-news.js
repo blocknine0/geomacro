@@ -45,7 +45,6 @@ let groqRemainingTokens = Infinity;
 let groqResetRequestsMs = null;
 let groqResetTokensMs = null;
 
-const DISABLE_NEWSAPI = process.env.DISABLE_NEWSAPI === 'true';
 const MAX_ARTICLE_AGE_MS = Number(process.env.MAX_ARTICLE_AGE_MS || 72 * 60 * 60 * 1000);
 const MIN_CONFIDENCE = Number(process.env.MIN_CONFIDENCE || 60);
 const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
@@ -897,7 +896,7 @@ async function fetchArticlesFromApis(query, categoryName) {
   }
 
   // Guardian is currently the canonical news provider for this ingestion path.
-  // NewsAPI was removed because its request limits caused repeated retries and
+  // Keep this ingestion path limited to providers that are reliable under scheduled use.
   // made scheduled ingestion unreliable. Additional source diversity will be
   // added through rate-limit-friendly and official/free providers separately.
 
