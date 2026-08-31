@@ -52,8 +52,8 @@ const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
 
 // Immutable scoring provenance written with every newly classified event.
 // Bump these whenever the classification contract or prompt semantics change.
-const CLASSIFICATION_VERSION = 'event-severity-v1.0.1';
-const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.1';
+const CLASSIFICATION_VERSION = 'event-severity-v1.0.2';
+const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.2';
 
 function sha256Text(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex');
@@ -61,17 +61,23 @@ function sha256Text(value) {
 
 const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth', 'crypto'];
 
+const GEOPOLITICS_ANCHOR =
+  /\b(war|warfare|armed conflict|military|airstrikes?|missiles?|troops?|ceasefires?|nato|blockade|coup|junta|invasion|militias?|drone strikes?|drone attacks?|artillery|offensive|frontline|occupation|mobilization|nuclear weapons?|nuclear strike|nuclear facility|nuclear test|nuclear doctrine|hezbollah|houthi|irgc|idf|pla|battlefield|conscription|border clash|naval clash|territorial dispute|west bank|gaza|taiwan strait|south china sea|red sea shipping|strait of hormuz|sanctions?|embargo)\b/i;
+
+const MACRO_ANCHOR =
+  /\b(federal reserve|the fed|fed\b|central banks?|bank of england|boe\b|ecb\b|boj\b|rbi\b|pboc\b|imf\b|world bank|inflation|cpi\b|pce\b|interest rates?|rate cuts?|rate hikes?|monetary policy|sovereign debt|sovereign default|bond yields?|treasur(?:y|ies)|yield curve|recession|stagflation|gdp\b|unemployment|payrolls?|currency devaluation|devaluation|fiscal deficit|trade deficit|stimulus|liquidity|credit crunch|bank failure|opec\b|brent\b|wti\b|oil prices?|wholesale gas|gas stor(?:age|es)|lng\b|energy shock|energy crisis|tariffs?)\b/i;
+
 const RARE_EARTH_ANCHOR =
   /\b(rare[- ]earths?|ree\b|rare[- ]earth elements?|critical minerals?|strategic minerals?|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnets?|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka)\b/i;
 
+const CRYPTO_ANCHOR =
+  /\b(bitcoin|btc\b|ethereum|ether\b|eth\b|cryptocurrenc(?:y|ies)|crypto\b|blockchain|stablecoins?|usdc\b|usdt\b|tether|depeg|defi\b|decentralized finance|digital assets?|tokeni[sz](?:e|ed|ation)|solana|xrp\b|ripple|binance|coinbase|kraken|mica\b|cbdc\b|tornado cash|crypto mixers?|on[- ]chain|onchain|web3)\b/i;
+
 const ALLOW = {
-  geopolitics:
-    /\b(war|warfare|airstrike|missile|troop|troops|ceasefire|nato|blockade|coup|junta|nuclear|invasion|militia|drone|artillery|offensive|frontline|sanctions?|embargo|occupation|mobilization|hezbollah|houthi|pla|pentagon|kremlin|idf|irgc|battlefield|conscript|recruit|oil imports?|west bank|gaza)\b/i,
-  macro:
-    /\b(federal reserve|the fed\b|ecb|boj|rbi|pboc|imf|world bank|inflation|interest rate|rate cut|rate hike|default|sovereign debt|tariff|bond yield|treasur(?:y|ies)|recession|devaluat(?:e|ion)|opec|stimulus|gilt|stagflation|liquidity|credit crunch|bank failure|gas stor(?:age|es)|wholesale gas|lng\b|brent|wti\b|oil price|petrol prices?|energy shock|energy crisis)\b/i,
+  geopolitics: GEOPOLITICS_ANCHOR,
+  macro: MACRO_ANCHOR,
   rare_earth: RARE_EARTH_ANCHOR,
-  crypto:
-    /\b(sec\b|cftc|mica|stablecoin|usdc|usdt|tether|depeg|hack|exploit|etf|ofac|cbdc|binance|coinbase|tornado cash|mixer|bridge exploit|withdrawal halt|reserve audit)\b/i,
+  crypto: CRYPTO_ANCHOR,
 };
 
 const DENY =
@@ -80,13 +86,66 @@ const DENY =
 const CATEGORY_DENY = {
   rare_earth:
     /\b(anthropic|openai|semiconductor|tsmc|asml|chips act|datacent(?:er|re)|ai model|lawsuit against|blacklisting of)\b/i,
+
   geopolitics:
-    /\b(football|cricket|tennis|film festival|bauhaus|far right is waging|culture wars?|war on woke|war on dei|war on diversity|war on christmas)\b/i,
+    /\b(football|cricket|tennis|film festival|bauhaus|culture wars?|war on woke|war on dei|war on diversity|war on christmas|price war|bidding war)\b/i,
+
   macro:
-    /\b(crypto winter|nft|memecoin|households could save|bank holiday getaway)\b/i,
+    /\b(nft\b|memecoin|crypto winter|households could save|bank holiday getaway)\b/i,
+
   crypto:
-    /\b(price prediction|how to buy|best wallet)\b/i,
+    /\b(price prediction|how to buy|best wallet|gold etf|bond etf|equity etf|stock etf)\b/i,
 };
+
+
+/*
+ * Fixed category ownership.
+ *
+ * A fetched article can NEVER be moved from one GRI domain to another.
+ *
+ * fetch bucket -> LLM agrees with exact bucket -> mandatory domain anchor
+ * -> deterministic conflict check -> confidence/severity -> insert
+ *
+ * Cross-domain ambiguity fails closed instead of choosing a category.
+ */
+function categoryConflict(blob, category) {
+  const hasMacro = MACRO_ANCHOR.test(blob);
+  const hasRareEarth = RARE_EARTH_ANCHOR.test(blob);
+  const hasCrypto = CRYPTO_ANCHOR.test(blob);
+
+  switch (category) {
+    case 'geopolitics':
+      // Critical-mineral and crypto-native stories belong to their own
+      // dedicated GRI domains, never geopolitics.
+      if (hasRareEarth) return 'rare_earth';
+      if (hasCrypto) return 'crypto';
+      return null;
+
+    case 'macro':
+      // This permanently prevents crypto-native evidence being admitted
+      // into macro, even when the story also mentions markets/regulators.
+      if (hasRareEarth) return 'rare_earth';
+      if (hasCrypto) return 'crypto';
+      return null;
+
+    case 'rare_earth':
+      // Explicit critical-mineral evidence owns this domain.
+      // Crypto-native evidence makes the story ambiguous and is rejected.
+      if (hasCrypto) return 'crypto';
+      return null;
+
+    case 'crypto':
+      // Crypto must remain crypto-native. A story whose evidence is also
+      // explicitly macro-native is treated as cross-domain ambiguous rather
+      // than being silently assigned based on ingestion order.
+      if (hasRareEarth) return 'rare_earth';
+      if (hasMacro) return 'macro';
+      return null;
+
+    default:
+      return 'invalid';
+  }
+}
 
 const GUARDIAN_SECTIONS = {
   geopolitics: 'world|politics',
@@ -313,13 +372,20 @@ function passesGates(article, assessment, fallbackCategory) {
   const description = stripHtml(article.description);
   const blob = `${title} ${description}`;
 
+  if (!ALLOWED_CATEGORIES.includes(fallbackCategory)) {
+    return {
+      ok: false,
+      reason: `invalid fetch bucket "${fallbackCategory}"`,
+    };
+  }
+
   const assessedCategory =
     typeof assessment.category === 'string'
       ? assessment.category.trim().toLowerCase()
       : 'none';
 
-  // The classifier must explicitly return one canonical category.
-  // "none", malformed categories, or missing categories are rejected.
+  // The classifier must explicitly choose one canonical category.
+  // Missing, malformed and "none" results fail closed.
   if (!ALLOWED_CATEGORIES.includes(assessedCategory)) {
     return {
       ok: false,
@@ -327,9 +393,8 @@ function passesGates(article, assessment, fallbackCategory) {
     };
   }
 
-  // Each fetch bucket is independently classified and admitted.
-  // Do not silently route a row into another category because bucket-level
-  // baselines, dedupe and provenance belong to the bucket being processed.
+  // Permanent category ownership:
+  // the model is NEVER allowed to reroute an event between GRI domains.
   if (assessedCategory !== fallbackCategory) {
     return {
       ok: false,
@@ -337,34 +402,53 @@ function passesGates(article, assessment, fallbackCategory) {
     };
   }
 
-  const category = assessedCategory;
+  const category = fallbackCategory;
 
   if (!assessment.relevant) {
-    return { ok: false, reason: 'llm relevant=false' };
+    return {
+      ok: false,
+      reason: 'llm relevant=false',
+    };
   }
 
   if (!isFresh(article.publishedAt)) {
-    return { ok: false, reason: `stale ${article.publishedAt}` };
+    return {
+      ok: false,
+      reason: `stale ${article.publishedAt}`,
+    };
   }
 
   if (DENY.test(blob)) {
-    return { ok: false, reason: 'global deny' };
+    return {
+      ok: false,
+      reason: 'global deny',
+    };
   }
 
   if (CATEGORY_DENY[category]?.test(blob)) {
-    return { ok: false, reason: `${category} deny` };
+    return {
+      ok: false,
+      reason: `${category} deny`,
+    };
   }
 
-  // Rare-earth / critical-mineral evidence requires an explicit domain
-  // anchor in the source title/description. Generic terms such as
-  // "refining", "export controls", "supply chain", "sanctions",
-  // "defence", "AI" or "datacentres" cannot qualify by themselves.
-  if (category === 'rare_earth' && !RARE_EARTH_ANCHOR.test(blob)) {
-    return { ok: false, reason: 'rare_earth anchor miss' };
+  // Every GRI domain requires its own deterministic semantic anchor.
+  // Generic regulator/market/supply-chain words cannot qualify by themselves.
+  if (!ALLOW[category]?.test(blob)) {
+    return {
+      ok: false,
+      reason: `${category} anchor miss`,
+    };
   }
 
-  if (!ALLOW[category].test(blob)) {
-    return { ok: false, reason: `${category} allowlist miss` };
+  // Reject deterministic cross-domain contamination.
+  const conflict = categoryConflict(blob, category);
+
+  if (conflict) {
+    return {
+      ok: false,
+      reason: `cross-category conflict ${category}<->${conflict}`,
+    };
   }
 
   if (Number(assessment.confidence) < MIN_CONFIDENCE) {
@@ -549,41 +633,94 @@ function buildClassifyPrompt(articles, category) {
     )
     .join('\n\n');
 
-  return `Strict risk-desk filter. Fetch bucket: "${category}".
+  return `You are a strict risk-desk admission classifier.
 
-relevant=true only for material breaking risk supported by the supplied title/description.
-Reject opinion, newsletter, historical commentary, sport, culture, lifestyle and generic commentary.
+FETCH BUCKET: "${category}"
 
-category must be one of:
+Your job is NOT to move articles between categories.
+
+For an article to be accepted:
+1. relevant must be true.
+2. category must equal the fetch bucket "${category}" exactly.
+3. The article must materially belong to that GRI domain.
+4. Cross-domain or ambiguous stories should be rejected with:
+   relevant=false, category=none.
+
+Allowed output categories:
 geopolitics, macro, rare_earth, crypto, none
 
-geopolitics is only for material interstate, military, security, sanctions,
-foreign-policy coercion, nuclear, armed-conflict or cross-border geopolitical risk.
-Domestic election campaigning, mayoral politics, party messaging and culture-war
-coverage must be relevant=false and category=none unless the article itself is
-materially centered on an actual geopolitical/security risk.
+DOMAIN OWNERSHIP
 
-For an accepted article, category must equal the fetch bucket "${category}".
-If the article belongs mainly to another category, return relevant=false and category=none.
+GEOPOLITICS:
+Only material interstate conflict, military/security escalation, armed conflict,
+territorial confrontation, sanctions/embargoes, nuclear risk, blockade or
+cross-border geopolitical coercion.
 
-rare_earth is the Rare Earth / Critical Minerals risk domain.
-rare_earth=true only when the title or description contains an explicit domain anchor such as:
-rare earth / REE / rare-earth elements, critical or strategic minerals,
-neodymium, praseodymium, dysprosium, terbium, NdFeB/permanent magnets,
-gallium, germanium, antimony, tungsten, graphite, lithium, cobalt, nickel,
-Lynas, MP Materials or Iluka.
+Domestic campaigning, mayoral politics, party messaging, culture wars,
+metaphorical wars, sport and lifestyle are NOT geopolitics.
+
+MACRO:
+Only material macroeconomic, monetary-policy, sovereign-credit, inflation,
+interest-rate, central-bank, recession, currency, bond, systemic banking,
+energy-price or broad economic risk.
+
+Crypto-native events are NOT macro.
+If Bitcoin, Ethereum, stablecoins, USDC, USDT, DeFi, crypto exchanges,
+blockchain or other explicit crypto-native evidence is central to the article,
+return none for the macro bucket.
+
+RARE_EARTH:
+Only material rare-earth / critical-mineral / strategic-mineral risk.
+
+It requires an explicit mineral-domain anchor such as rare earths, REE,
+critical minerals, strategic minerals, neodymium, praseodymium, dysprosium,
+terbium, NdFeB/permanent magnets, gallium, germanium, antimony, tungsten,
+graphite, lithium, cobalt, nickel, Lynas, MP Materials or Iluka.
 
 Generic mining, refining, export controls, sanctions, defence supply chains,
-AI, semiconductors or datacentres WITHOUT an explicit rare-earth/critical-mineral
-anchor must be relevant=false and category=none.
+AI, semiconductors and datacentres WITHOUT an explicit mineral-domain anchor
+are NOT rare_earth.
 
-AI/semiconductors/datacentres by themselves are never rare_earth.
-Household energy-switching tips and art/culture stories are none.
+CRYPTO:
+Only material crypto-native risk.
+
+It requires explicit crypto-native evidence such as Bitcoin, Ethereum,
+cryptocurrency, blockchain, stablecoins, USDC, USDT, DeFi, digital assets,
+Coinbase, Binance, Kraken, MiCA, CBDC, Tornado Cash or on-chain systems.
+
+SEC, CFTC, OFAC, ETF, hack, exploit, reserve, regulation or enforcement
+BY THEMSELVES do NOT make an article crypto.
+
+Gold ETFs, stock ETFs, generic cyber incidents, bank reserves and ordinary
+corporate SEC matters are NOT crypto.
+
+MACRO <-> CRYPTO RULE:
+If the same article is materially both macro-native and crypto-native,
+do not guess which domain owns it.
+Return relevant=false, category=none.
+Geomacro rejects cross-domain ambiguity instead of allowing category drift.
+
+GENERAL REJECTION RULES
+
+Reject:
+- opinion
+- letters
+- newsletters
+- lifestyle
+- culture
+- sport
+- historical commentary without new material risk
+- generic political commentary
+- unrelated domestic stories
+- cross-category ambiguity
+
+Severity and confidence must describe the supplied article only.
+Do not invent missing facts.
 
 You MUST return exactly ${articles.length} results with index 0 through ${articles.length - 1}.
 
 Return JSON only:
-{"results":[{"index":0,"relevant":true,"category":"geopolitics","severity":65,"confidence":70,"narrative":"...","summary":"..."}]}
+{"results":[{"index":0,"relevant":true,"category":"${category}","severity":65,"confidence":75,"narrative":"...","summary":"..."}]}
 
 Articles:
 ${articlesBlock}`;
