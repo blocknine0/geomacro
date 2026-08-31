@@ -759,52 +759,10 @@ async function fetchArticlesFromApis(query, categoryName) {
     console.log(`   Guardian failed for query "${query}" (${e.message}).`);
   }
 
-  // NewsAPI is an additional source aggregator, not only a Guardian fallback.
-  if (!DISABLE_NEWSAPI && process.env.NEWSAPI_KEY) {
-    try {
-      const newsApiUrl =
-        `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}` +
-        `&language=en&sortBy=publishedAt&pageSize=10` +
-        `&from=${encodeURIComponent(fromIso)}` +
-        `&apiKey=${process.env.NEWSAPI_KEY}`;
-
-      const response = await fetchWithBackoff(
-        () => fetch(newsApiUrl),
-        `NewsAPI ("${query}")`
-      );
-
-      const data = await response.json();
-
-      if (data.articles?.length) {
-        articles.push(
-          ...data.articles
-            .filter(
-              (a) =>
-                a?.title &&
-                a.title !== '[Removed]' &&
-                a.url
-            )
-            .map((a) => ({
-              title: stripHtml(a.title),
-              description: stripHtml(a.description || ''),
-              url: a.url,
-              publishedAt: a.publishedAt || new Date().toISOString(),
-              source: a.source?.name || 'NewsAPI',
-              sourceDomain: extractDomain(a.url),
-            }))
-        );
-      }
-    } catch (e) {
-      console.error(
-        `   Failed fetching from NewsAPI for query "${query}":`,
-        e.message
-      );
-    }
-  } else if (DISABLE_NEWSAPI) {
-    console.log('   NewsAPI disabled by DISABLE_NEWSAPI=true.');
-  } else {
-    console.log('   NEWSAPI_KEY not configured; skipping NewsAPI.');
-  }
+  // Guardian is currently the canonical news provider for this ingestion path.
+  // NewsAPI was removed because its request limits caused repeated retries and
+  // made scheduled ingestion unreliable. Additional source diversity will be
+  // added through rate-limit-friendly and official/free providers separately.
 
   // Remove exact duplicate URLs while preserving genuinely distinct publishers.
   const uniqueArticles = new Map();
