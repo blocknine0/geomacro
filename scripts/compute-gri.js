@@ -30,6 +30,29 @@ if (!url || !key) {
 }
 const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
+const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.1';
+const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.1';
+
+function hasCanonicalClassificationProvenance(row) {
+  if (!row) return false;
+
+  const classificationVersion = String(row.classification_version || '').trim();
+  const provider = String(row.classification_provider || '').trim();
+  const model = String(row.classification_model || '').trim();
+  const promptVersion = String(row.classification_prompt_version || '').trim();
+  const inputHash = String(row.classification_input_hash || '').trim();
+  const scoredAt = Date.parse(String(row.classification_scored_at || ''));
+
+  return Boolean(
+    classificationVersion === CANONICAL_CLASSIFICATION_VERSION &&
+      promptVersion === CANONICAL_CLASSIFICATION_PROMPT_VERSION &&
+      provider &&
+      model &&
+      Number.isFinite(scoredAt) &&
+      /^[a-f0-9]{64}$/i.test(inputHash)
+  );
+}
+
 async function fetchAllEvents() {
   const cutoff = new Date(asOf.getTime() - GRI_LOOKBACK_HOURS * 3_600_000).toISOString();
   const pageSize = 1000;
@@ -52,7 +75,15 @@ async function fetchAllEvents() {
     out.push(...rows);
     if (rows.length < pageSize) break;
   }
-  return out;
+  const eligible = out.filter(hasCanonicalClassificationProvenance);
+  const excluded = out.length - eligible.length;
+
+  console.log(
+    `GRI input eligibility: using ${eligible.length} provenance-complete event(s); ` +
+      `excluding ${excluded} legacy/incomplete event(s).`
+  );
+
+  return eligible;
 }
 
 function storedContributionToEngine(row) {
@@ -90,54 +121,104 @@ function storedContributionToEngine(row) {
 }
 
 async function loadComparisonSnapshot() {
-  // Change attribution is always anchored to the closest verified snapshot
-  // around T-24h, not simply the latest previous publication. This keeps
-  // "24-hour change" mathematically meaningful even if an hourly run was
-  // delayed by a few minutes.
+  // Change attribution is anchored to the closest verified snapshot around
+  // T-24h, not simply the latest previous publication.
+  //
+  // IMPORTANT:
+  // A historical snapshot is eligible for comparison only when every stored
+  // contribution carries canonical classification provenance. This prevents
+  // a legacy/unversioned -> provenance-complete data transition from being
+  // presented as a real-world GRI movement.
   const target = new Date(asOf.getTime() - 24 * 3_600_000);
   const earliest = new Date(target.getTime() - 6 * 3_600_000);
   const latest = new Date(target.getTime() + 6 * 3_600_000);
+
   const { data: candidates, error } = await supabase
     .from('gri_snapshots')
-    .select('id,as_of,methodology_version,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,category_breakdown,verification_status')
+    .select(
+      'id,as_of,methodology_version,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,category_breakdown,verification_status'
+    )
     .eq('status', 'published')
     .eq('verification_status', 'verified')
     .eq('methodology_version', GRI_METHOD_VERSION)
     .gte('as_of', earliest.toISOString())
     .lte('as_of', latest.toISOString())
     .order('as_of', { ascending: true });
-  if (error) throw new Error(`previous GRI snapshot query failed: ${error.message}`);
 
-  const data = (candidates ?? [])
+  if (error) {
+    throw new Error(`previous GRI snapshot query failed: ${error.message}`);
+  }
+
+  const orderedCandidates = (candidates ?? [])
     .filter((row) => row.raw_score !== null)
-    .sort((a, b) =>
-      Math.abs(new Date(a.as_of).getTime() - target.getTime()) -
-      Math.abs(new Date(b.as_of).getTime() - target.getTime())
-    )[0];
-  if (!data) return null;
+    .sort(
+      (a, b) =>
+        Math.abs(new Date(a.as_of).getTime() - target.getTime()) -
+        Math.abs(new Date(b.as_of).getTime() - target.getTime())
+    );
 
-  const { data: contribRows, error: contribError } = await supabase
-    .from('gri_contributions')
-    .select('*')
-    .eq('snapshot_id', data.id)
-    .order('event_id', { ascending: true });
-  if (contribError) throw new Error(`previous GRI contributions query failed: ${contribError.message}`);
+  for (const data of orderedCandidates) {
+    const { data: contribRows, error: contribError } = await supabase
+      .from('gri_contributions')
+      .select('*')
+      .eq('snapshot_id', data.id)
+      .order('event_id', { ascending: true });
 
-  return {
-    snapshotId: data.id,
-    methodologyVersion: data.methodology_version,
-    asOf: data.as_of,
-    rawScore: Number(data.raw_score),
-    displayScore: Number(data.display_score),
-    coverage: Number(data.coverage),
-    activeCategories: data.active_categories ?? [],
-    eventCount: data.event_count,
-    sourceCount: data.source_count,
-    weightedConfidence: data.weighted_confidence === null ? null : Number(data.weighted_confidence),
-    categories: Array.isArray(data.category_breakdown) ? data.category_breakdown : [],
-    contributions: (contribRows ?? []).map(storedContributionToEngine),
-    inputRows: [],
-  };
+    if (contribError) {
+      throw new Error(
+        `previous GRI contributions query failed for ${data.id}: ${contribError.message}`
+      );
+    }
+
+    const rows = contribRows ?? [];
+
+    const canonicalComparison =
+      rows.length > 0 && rows.every(hasCanonicalClassificationProvenance);
+
+    if (!canonicalComparison) {
+      console.log(
+        `Skipping comparison snapshot ${data.id}: contribution ledger contains ` +
+          `legacy/incomplete classification provenance.`
+      );
+      continue;
+    }
+
+    if (
+      Number.isInteger(Number(data.event_count)) &&
+      Number(data.event_count) !== rows.length
+    ) {
+      console.log(
+        `Skipping comparison snapshot ${data.id}: stored event_count ` +
+          `${data.event_count} does not match ${rows.length} contribution row(s).`
+      );
+      continue;
+    }
+
+    return {
+      snapshotId: data.id,
+      methodologyVersion: data.methodology_version,
+      asOf: data.as_of,
+      rawScore: Number(data.raw_score),
+      displayScore: Number(data.display_score),
+      coverage: Number(data.coverage),
+      activeCategories: data.active_categories ?? [],
+      eventCount: data.event_count,
+      sourceCount: data.source_count,
+      weightedConfidence:
+        data.weighted_confidence === null
+          ? null
+          : Number(data.weighted_confidence),
+      categories: Array.isArray(data.category_breakdown)
+        ? data.category_breakdown
+        : [],
+      contributions: rows.map(storedContributionToEngine),
+      inputRows: [],
+    };
+  }
+
+  // Fail closed. Until a provenance-complete T-24h reference exists,
+  // no change attribution is published.
+  return null;
 }
 
 function contributionStorageRows(snapshotId, contributions) {
@@ -303,7 +384,23 @@ async function main() {
     verified: proof.verified,
   }, null, 2));
 
+  // Dry-run is allowed to report an unavailable/empty calculation so
+  // operators can diagnose coverage without mutating production state.
   if (dryRun) return;
+
+  // Production publication must fail closed when no canonical evidence is
+  // available. An internally reproducible empty calculation is not a
+  // publishable public GRI snapshot.
+  if (
+    calculation.rawScore === null ||
+    calculation.displayScore === null ||
+    calculation.contributions.length === 0 ||
+    calculation.activeCategories.length === 0
+  ) {
+    throw new Error(
+      'GRI publication blocked: no canonical provenance-complete evidence is available.'
+    );
+  }
 
   const snapshotRow = {
     as_of: calculation.asOf,

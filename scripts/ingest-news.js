@@ -52,8 +52,8 @@ const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
 
 // Immutable scoring provenance written with every newly classified event.
 // Bump these whenever the classification contract or prompt semantics change.
-const CLASSIFICATION_VERSION = 'event-severity-v1.0.0';
-const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.0';
+const CLASSIFICATION_VERSION = 'event-severity-v1.0.1';
+const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.1';
 
 function sha256Text(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex');
@@ -61,13 +61,15 @@ function sha256Text(value) {
 
 const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth', 'crypto'];
 
+const RARE_EARTH_ANCHOR =
+  /\b(rare[- ]earths?|ree\b|rare[- ]earth elements?|critical minerals?|strategic minerals?|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnets?|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka)\b/i;
+
 const ALLOW = {
   geopolitics:
     /\b(war|warfare|airstrike|missile|troop|troops|ceasefire|nato|blockade|coup|junta|nuclear|invasion|militia|drone|artillery|offensive|frontline|sanctions?|embargo|occupation|mobilization|hezbollah|houthi|pla|pentagon|kremlin|idf|irgc|battlefield|conscript|recruit|oil imports?|west bank|gaza)\b/i,
   macro:
     /\b(federal reserve|the fed\b|ecb|boj|rbi|pboc|imf|world bank|inflation|interest rate|rate cut|rate hike|default|sovereign debt|tariff|bond yield|treasur(?:y|ies)|recession|devaluat(?:e|ion)|opec|stimulus|gilt|stagflation|liquidity|credit crunch|bank failure|gas stor(?:age|es)|wholesale gas|lng\b|brent|wti\b|oil price|petrol prices?|energy shock|energy crisis)\b/i,
-  rare_earth:
-    /\b(rare earths?|ree\b|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnet|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka|refin(?:e|ing)|export (?:ban|quota|license|control)|critical minerals?)\b/i,
+  rare_earth: RARE_EARTH_ANCHOR,
   crypto:
     /\b(sec\b|cftc|mica|stablecoin|usdc|usdt|tether|depeg|hack|exploit|etf|ofac|cbdc|binance|coinbase|tornado cash|mixer|bridge exploit|withdrawal halt|reserve audit)\b/i,
 };
@@ -79,7 +81,7 @@ const CATEGORY_DENY = {
   rare_earth:
     /\b(anthropic|openai|semiconductor|tsmc|asml|chips act|datacent(?:er|re)|ai model|lawsuit against|blacklisting of)\b/i,
   geopolitics:
-    /\b(football|cricket|tennis|film festival|bauhaus|far right is waging)\b/i,
+    /\b(football|cricket|tennis|film festival|bauhaus|far right is waging|culture wars?|war on woke|war on dei|war on diversity|war on christmas)\b/i,
   macro:
     /\b(crypto winter|nft|memecoin|households could save|bank holiday getaway)\b/i,
   crypto:
@@ -310,36 +312,81 @@ function passesGates(article, assessment, fallbackCategory) {
   const title = stripHtml(article.title);
   const description = stripHtml(article.description);
   const blob = `${title} ${description}`;
-  const category = ALLOWED_CATEGORIES.includes(assessment.category)
-    ? assessment.category
-    : fallbackCategory;
 
-  if (!ALLOWED_CATEGORIES.includes(category)) {
-    return { ok: false, reason: `bad category "${assessment.category}"` };
+  const assessedCategory =
+    typeof assessment.category === 'string'
+      ? assessment.category.trim().toLowerCase()
+      : 'none';
+
+  // The classifier must explicitly return one canonical category.
+  // "none", malformed categories, or missing categories are rejected.
+  if (!ALLOWED_CATEGORIES.includes(assessedCategory)) {
+    return {
+      ok: false,
+      reason: `bad category "${assessment.category}"`,
+    };
   }
+
+  // Each fetch bucket is independently classified and admitted.
+  // Do not silently route a row into another category because bucket-level
+  // baselines, dedupe and provenance belong to the bucket being processed.
+  if (assessedCategory !== fallbackCategory) {
+    return {
+      ok: false,
+      reason: `category mismatch ${fallbackCategory}->${assessedCategory}`,
+    };
+  }
+
+  const category = assessedCategory;
+
   if (!assessment.relevant) {
     return { ok: false, reason: 'llm relevant=false' };
   }
+
   if (!isFresh(article.publishedAt)) {
     return { ok: false, reason: `stale ${article.publishedAt}` };
   }
+
   if (DENY.test(blob)) {
     return { ok: false, reason: 'global deny' };
   }
+
   if (CATEGORY_DENY[category]?.test(blob)) {
     return { ok: false, reason: `${category} deny` };
   }
+
+  // Rare-earth / critical-mineral evidence requires an explicit domain
+  // anchor in the source title/description. Generic terms such as
+  // "refining", "export controls", "supply chain", "sanctions",
+  // "defence", "AI" or "datacentres" cannot qualify by themselves.
+  if (category === 'rare_earth' && !RARE_EARTH_ANCHOR.test(blob)) {
+    return { ok: false, reason: 'rare_earth anchor miss' };
+  }
+
   if (!ALLOW[category].test(blob)) {
     return { ok: false, reason: `${category} allowlist miss` };
   }
+
   if (Number(assessment.confidence) < MIN_CONFIDENCE) {
-    return { ok: false, reason: `low confidence ${assessment.confidence}` };
-  }
-  if (Number(assessment.severity) < MIN_SEVERITY) {
-    return { ok: false, reason: `low severity ${assessment.severity}` };
+    return {
+      ok: false,
+      reason: `low confidence ${assessment.confidence}`,
+    };
   }
 
-  return { ok: true, category, title, description };
+  if (Number(assessment.severity) < MIN_SEVERITY) {
+    return {
+      ok: false,
+      reason: `low severity ${assessment.severity}`,
+    };
+  }
+
+  return {
+    ok: true,
+    category,
+    title,
+    description,
+  };
 }
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -496,15 +543,45 @@ async function callCerebras(cerebrasApiKey, prompt) {
 
 function buildClassifyPrompt(articles, category) {
   const articlesBlock = articles
-    .map((a, i) => `[${i}] Title: "${a.title}"\nDescription: "${(a.description || '').slice(0, 240)}"`)
+    .map(
+      (a, i) =>
+        `[${i}] Title: "${a.title}"\nDescription: "${(a.description || '').slice(0, 240)}"`
+    )
     .join('\n\n');
 
   return `Strict risk-desk filter. Fetch bucket: "${category}".
-relevant=true only for material breaking risk, not opinion/newsletter/history/sport/culture.
-category must be one of: geopolitics, macro, rare_earth, crypto, none
-rare_earth only if minerals/magnets/export controls. AI/semiconductors/datacentres = none.
-Household energy-switching tips and art/culture stories = none.
+
+relevant=true only for material breaking risk supported by the supplied title/description.
+Reject opinion, newsletter, historical commentary, sport, culture, lifestyle and generic commentary.
+
+category must be one of:
+geopolitics, macro, rare_earth, crypto, none
+
+geopolitics is only for material interstate, military, security, sanctions,
+foreign-policy coercion, nuclear, armed-conflict or cross-border geopolitical risk.
+Domestic election campaigning, mayoral politics, party messaging and culture-war
+coverage must be relevant=false and category=none unless the article itself is
+materially centered on an actual geopolitical/security risk.
+
+For an accepted article, category must equal the fetch bucket "${category}".
+If the article belongs mainly to another category, return relevant=false and category=none.
+
+rare_earth is the Rare Earth / Critical Minerals risk domain.
+rare_earth=true only when the title or description contains an explicit domain anchor such as:
+rare earth / REE / rare-earth elements, critical or strategic minerals,
+neodymium, praseodymium, dysprosium, terbium, NdFeB/permanent magnets,
+gallium, germanium, antimony, tungsten, graphite, lithium, cobalt, nickel,
+Lynas, MP Materials or Iluka.
+
+Generic mining, refining, export controls, sanctions, defence supply chains,
+AI, semiconductors or datacentres WITHOUT an explicit rare-earth/critical-mineral
+anchor must be relevant=false and category=none.
+
+AI/semiconductors/datacentres by themselves are never rare_earth.
+Household energy-switching tips and art/culture stories are none.
+
 You MUST return exactly ${articles.length} results with index 0 through ${articles.length - 1}.
+
 Return JSON only:
 {"results":[{"index":0,"relevant":true,"category":"geopolitics","severity":65,"confidence":70,"narrative":"...","summary":"..."}]}
 
