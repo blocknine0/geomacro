@@ -44,4 +44,11 @@ jobs:
           MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
           MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
 
-        run: node scripts/ingest-news.js --reclassify-existing
+        run: |
+          set -o pipefail
+          node scripts/ingest-news.js --reclassify-existing 2>&1 | tee /tmp/gri-reclassification.log
+
+          if grep -q "Reassessment classification failed" /tmp/gri-reclassification.log; then
+            echo "Reclassification provider failure detected."
+            exit 1
+          fi
