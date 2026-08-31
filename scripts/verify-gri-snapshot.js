@@ -14,6 +14,29 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.APP_SUPABASE_SE
 if (!url || !key) throw new Error('Supabase URL and service-role key are required');
 const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
+const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.1';
+const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.1';
+
+function contributionHasCanonicalProvenance(row) {
+  if (!row) return false;
+
+  const classificationVersion = String(row.classification_version || '').trim();
+  const provider = String(row.classification_provider || '').trim();
+  const model = String(row.classification_model || '').trim();
+  const promptVersion = String(row.classification_prompt_version || '').trim();
+  const inputHash = String(row.classification_input_hash || '').trim();
+  const scoredAt = Date.parse(String(row.classification_scored_at || ''));
+
+  return Boolean(
+    classificationVersion === CANONICAL_CLASSIFICATION_VERSION &&
+      promptVersion === CANONICAL_CLASSIFICATION_PROMPT_VERSION &&
+      provider &&
+      model &&
+      Number.isFinite(scoredAt) &&
+      /^[a-f0-9]{64}$/i.test(inputHash)
+  );
+}
+
 async function loadSnapshot(id = null) {
   let q = supabase.from('gri_snapshots').select('*').eq('status', 'published');
   if (id) q = q.eq('id', id);
@@ -107,18 +130,37 @@ function storedCalculation(snapshot, rows) {
 async function main() {
   const snapshot = await loadSnapshot(snapshotId);
   const rows = await loadContributions(snapshot.id);
-  const recalculated = calculateGri(contributionRowsToInput(rows), new Date(snapshot.as_of));
+
+  const classificationProvenance =
+    rows.length > 0 && rows.every(contributionHasCanonicalProvenance);
+
+  const recalculated = calculateGri(
+    contributionRowsToInput(rows),
+    new Date(snapshot.as_of)
+  );
 
   let previous = null;
+  let previousClassificationProvenance = true;
+
   if (snapshot.previous_snapshot_id) {
     const prevSnapshot = await loadSnapshot(snapshot.previous_snapshot_id);
     const prevRows = await loadContributions(prevSnapshot.id);
+
+    previousClassificationProvenance =
+      prevRows.length > 0 &&
+      prevRows.every(contributionHasCanonicalProvenance);
+
     previous = storedCalculation(prevSnapshot, prevRows);
   }
-  const attribution = previous ? attributeGriChange(previous, recalculated) : null;
+
+  const attribution = previous
+    ? attributeGriChange(previous, recalculated)
+    : null;
   const proof = buildProofArtifacts(recalculated, attribution);
 
   const checks = {
+    classificationProvenance,
+    previousClassificationProvenance,
     methodologyVersion: recalculated.methodologyVersion === snapshot.methodology_version,
     displayScore: recalculated.displayScore === snapshot.display_score,
     rawScore: snapshot.raw_score === null
