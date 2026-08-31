@@ -54,33 +54,163 @@ function hasCanonicalClassificationProvenance(row) {
 }
 
 async function fetchAllEvents() {
-  const cutoff = new Date(asOf.getTime() - GRI_LOOKBACK_HOURS * 3_600_000).toISOString();
+  const cutoff = new Date(
+    asOf.getTime() - GRI_LOOKBACK_HOURS * 3_600_000
+  ).toISOString();
+
   const pageSize = 1000;
-  const out = [];
+  const parentEvents = [];
+
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from('events')
-      .select([
-        'id','category','severity','confidence','created_at','published_at',
-        'source_name','source_domain','source_url','source_title','summary',
-        'classification_provider','classification_model','classification_version',
-        'classification_prompt_version','classification_scored_at','classification_input_hash',
-      ].join(','))
+      .select(
+        [
+          'id',
+          'category',
+          'severity',
+          'confidence',
+          'created_at',
+          'published_at',
+          'source_name',
+          'source_domain',
+          'source_url',
+          'source_title',
+          'summary',
+          'classification_provider',
+          'classification_model',
+          'classification_version',
+          'classification_prompt_version',
+          'classification_scored_at',
+          'classification_input_hash',
+        ].join(',')
+      )
       .gt('created_at', cutoff)
       .lte('created_at', asOf.toISOString())
       .order('created_at', { ascending: true })
       .range(from, from + pageSize - 1);
-    if (error) throw new Error(`events query failed: ${error.message}`);
+
+    if (error) {
+      throw new Error(`events query failed: ${error.message}`);
+    }
+
     const rows = data ?? [];
-    out.push(...rows);
+    parentEvents.push(...rows);
+
     if (rows.length < pageSize) break;
   }
-  const eligible = out.filter(hasCanonicalClassificationProvenance);
-  const excluded = out.length - eligible.length;
+
+  const parentById = new Map(
+    parentEvents.map((row) => [row.id, row])
+  );
+
+  const canonicalByEventId = new Map();
+
+  let directCanonicalCount = 0;
+
+  for (const row of parentEvents) {
+    if (!hasCanonicalClassificationProvenance(row)) continue;
+
+    canonicalByEventId.set(row.id, row);
+    directCanonicalCount++;
+  }
+
+  const eventIds = parentEvents.map((row) => row.id);
+  let reassessmentCount = 0;
+
+  // Query reassessments only for events already inside the canonical
+  // observation window. This preserves the existing time semantics.
+  const idBatchSize = 250;
+
+  for (let i = 0; i < eventIds.length; i += idBatchSize) {
+    const ids = eventIds.slice(i, i + idBatchSize);
+
+    if (ids.length === 0) continue;
+
+    const { data, error } = await supabase
+      .from('gri_event_assessments')
+      .select(
+        [
+          'event_id',
+          'category',
+          'severity',
+          'confidence',
+          'summary',
+          'classification_provider',
+          'classification_model',
+          'classification_version',
+          'classification_prompt_version',
+          'classification_scored_at',
+          'classification_input_hash',
+        ].join(',')
+      )
+      .in('event_id', ids)
+      .eq(
+        'classification_version',
+        CANONICAL_CLASSIFICATION_VERSION
+      )
+      .eq(
+        'classification_prompt_version',
+        CANONICAL_CLASSIFICATION_PROMPT_VERSION
+      );
+
+    if (error) {
+      throw new Error(
+        `GRI reassessment query failed: ${error.message}`
+      );
+    }
+
+    for (const assessment of data ?? []) {
+      const parent = parentById.get(assessment.event_id);
+
+      if (!parent) continue;
+
+      const merged = {
+        ...parent,
+
+        category: assessment.category,
+        severity: assessment.severity,
+        confidence: assessment.confidence,
+        summary: assessment.summary,
+
+        classification_provider:
+          assessment.classification_provider,
+        classification_model:
+          assessment.classification_model,
+        classification_version:
+          assessment.classification_version,
+        classification_prompt_version:
+          assessment.classification_prompt_version,
+        classification_scored_at:
+          assessment.classification_scored_at,
+        classification_input_hash:
+          assessment.classification_input_hash,
+      };
+
+      if (!hasCanonicalClassificationProvenance(merged)) {
+        continue;
+      }
+
+      // Immutable current-contract reassessment supersedes the old
+      // classifier fields for GRI calculation only. The source event
+      // itself remains untouched.
+      canonicalByEventId.set(parent.id, merged);
+      reassessmentCount++;
+    }
+  }
+
+  const eligible = [...canonicalByEventId.values()].sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() -
+      new Date(b.created_at).getTime()
+  );
+
+  const excluded = parentEvents.length - eligible.length;
 
   console.log(
-    `GRI input eligibility: using ${eligible.length} provenance-complete event(s); ` +
-      `excluding ${excluded} legacy/incomplete event(s).`
+    `GRI input eligibility: using ${eligible.length} canonical event(s) ` +
+      `(${directCanonicalCount} direct, ${reassessmentCount} reassessed); ` +
+      `excluding ${excluded} non-canonical event(s).`
   );
 
   return eligible;
