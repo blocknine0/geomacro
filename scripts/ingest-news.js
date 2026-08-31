@@ -933,7 +933,355 @@ function chunk(arr, size) {
   return out;
 }
 
+
+function deterministicReclassificationCategory(article) {
+  const title = stripHtml(article.title);
+  const description = stripHtml(article.description);
+  const blob = `${title} ${description}`;
+
+  if (DENY.test(blob)) {
+    return {
+      category: null,
+      reason: 'global deny',
+      candidates: [],
+    };
+  }
+
+  const candidates = ALLOWED_CATEGORIES.filter((category) => {
+    if (CATEGORY_DENY[category]?.test(blob)) return false;
+    if (!ALLOW[category]?.test(blob)) return false;
+    if (categoryConflict(blob, category)) return false;
+    return true;
+  });
+
+  if (candidates.length !== 1) {
+    return {
+      category: null,
+      reason:
+        candidates.length === 0
+          ? 'no deterministic category'
+          : `ambiguous deterministic categories: ${candidates.join(',')}`,
+      candidates,
+    };
+  }
+
+  return {
+    category: candidates[0],
+    reason: null,
+    candidates,
+  };
+}
+
+
+async function fetchExistingCurrentAssessments() {
+  const eventIds = new Set();
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('gri_event_assessments')
+      .select('event_id')
+      .eq('classification_version', CLASSIFICATION_VERSION)
+      .eq('classification_prompt_version', CLASSIFICATION_PROMPT_VERSION)
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(
+        `failed to load existing GRI reassessments: ${error.message}`
+      );
+    }
+
+    const rows = data ?? [];
+
+    for (const row of rows) {
+      if (row.event_id) eventIds.add(row.event_id);
+    }
+
+    if (rows.length < pageSize) break;
+  }
+
+  return eventIds;
+}
+
+
+async function fetchEventsForReclassification() {
+  const cutoff = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString();
+  const out = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('events')
+      .select(
+        [
+          'id',
+          'source_url',
+          'source_title',
+          'source_name',
+          'source_domain',
+          'description',
+          'summary',
+          'category',
+          'severity',
+          'confidence',
+          'published_at',
+          'created_at',
+          'classification_version',
+          'classification_prompt_version',
+        ].join(',')
+      )
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(
+        `failed to load events for GRI reassessment: ${error.message}`
+      );
+    }
+
+    const rows = data ?? [];
+    out.push(...rows);
+
+    if (rows.length < pageSize) break;
+  }
+
+  return out;
+}
+
+
+async function insertImmutableReassessment(event, assessment, category) {
+  const row = {
+    event_id: event.id,
+
+    category,
+    severity: assessment.severity,
+    confidence: assessment.confidence,
+    narrative: stripHtml(assessment.narrative || event.source_title),
+    summary: stripHtml(
+      assessment.summary ||
+        event.description ||
+        event.summary ||
+        event.source_title
+    ),
+
+    classification_provider: assessment.classificationProvider,
+    classification_model: assessment.classificationModel,
+    classification_version: assessment.classificationVersion,
+    classification_prompt_version:
+      assessment.classificationPromptVersion,
+    classification_scored_at: new Date().toISOString(),
+    classification_input_hash: assessment.classificationInputHash,
+
+    prior_category: event.category,
+    prior_classification_version:
+      event.classification_version || 'legacy-unversioned',
+    prior_classification_prompt_version:
+      event.classification_prompt_version || null,
+
+    created_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('gri_event_assessments')
+    .insert([row]);
+
+  if (!error) {
+    return { inserted: true, duplicate: false };
+  }
+
+  if (
+    String(error.code || '') === '23505' ||
+    /duplicate key|unique constraint/i.test(String(error.message || ''))
+  ) {
+    return { inserted: false, duplicate: true };
+  }
+
+  throw new Error(
+    `GRI reassessment insert failed for ${event.id}: ${error.message}`
+  );
+}
+
+
+async function reclassifyExistingEvents() {
+  console.log('');
+  console.log('============================================================');
+  console.log('GRI immutable existing-event reassessment');
+  console.log(`Classifier: ${CLASSIFICATION_VERSION}`);
+  console.log(`Prompt:     ${CLASSIFICATION_PROMPT_VERSION}`);
+  console.log('Original public.events rows will NOT be modified.');
+  console.log('============================================================');
+  console.log('');
+
+  const existingCurrentAssessments =
+    await fetchExistingCurrentAssessments();
+
+  const events = await fetchEventsForReclassification();
+
+  const candidatesByCategory = new Map(
+    ALLOWED_CATEGORIES.map((category) => [category, []])
+  );
+
+  let alreadyCanonical = 0;
+  let alreadyReassessed = 0;
+  let deterministicRejected = 0;
+
+  for (const event of events) {
+    const directCanonical =
+      event.classification_version === CLASSIFICATION_VERSION &&
+      event.classification_prompt_version ===
+        CLASSIFICATION_PROMPT_VERSION;
+
+    if (directCanonical) {
+      alreadyCanonical++;
+      continue;
+    }
+
+    if (existingCurrentAssessments.has(event.id)) {
+      alreadyReassessed++;
+      continue;
+    }
+
+    const article = {
+      title: stripHtml(event.source_title),
+
+      // Reclassification must never consume a previous model's narrative
+      // or summary as if it were source evidence. Historical `summary`
+      // can contain classifier interpretation, so successor assessment
+      // starts from publisher-grounded title evidence only.
+      //
+      // Raw publisher descriptions can be added later through explicit
+      // source refetch/provenance rather than inheriting old model output.
+      description: '',
+
+      url: event.source_url,
+      publishedAt: event.published_at,
+      source: event.source_name || 'unknown',
+      sourceDomain: event.source_domain || extractDomain(event.source_url),
+      sourceEvent: event,
+    };
+
+    if (!isFresh(article.publishedAt)) {
+      deterministicRejected++;
+      console.log(
+        `  Reassessment skip (stale): "${article.title}"`
+      );
+      continue;
+    }
+
+    const route = deterministicReclassificationCategory(article);
+
+    if (!route.category) {
+      deterministicRejected++;
+      console.log(
+        `  Reassessment skip (${route.reason}): "${article.title}"`
+      );
+      continue;
+    }
+
+    candidatesByCategory.get(route.category).push(article);
+  }
+
+  console.log(
+    `Loaded ${events.length} recent event(s): ` +
+      `${alreadyCanonical} already canonical, ` +
+      `${alreadyReassessed} already reassessed, ` +
+      `${deterministicRejected} deterministically rejected.`
+  );
+
+  let inserted = 0;
+  let llmRejected = 0;
+  let duplicates = 0;
+
+  for (const category of ALLOWED_CATEGORIES) {
+    const articles = candidatesByCategory.get(category) ?? [];
+
+    if (articles.length === 0) {
+      console.log(`Reassessment ${category}: 0 candidate(s).`);
+      continue;
+    }
+
+    console.log(
+      `Reassessment ${category}: ${articles.length} deterministic candidate(s).`
+    );
+
+    const batches = chunk(articles, BATCH_SIZE);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+
+      let assessments;
+
+      try {
+        assessments = await assessWithRetry(batch, category);
+      } catch (error) {
+        console.error(
+          `  ❌ Reassessment classification failed for ${category}: ${error.message}`
+        );
+        continue;
+      }
+
+      for (let i = 0; i < batch.length; i++) {
+        const article = batch[i];
+        const assessment = assessments[i];
+
+        const gated = passesGates(
+          article,
+          assessment,
+          category
+        );
+
+        if (!gated.ok) {
+          llmRejected++;
+          console.log(
+            `  Reassessment rejected (${gated.reason}): "${article.title}"`
+          );
+          continue;
+        }
+
+        const result = await insertImmutableReassessment(
+          article.sourceEvent,
+          assessment,
+          gated.category
+        );
+
+        if (result.duplicate) {
+          duplicates++;
+          console.log(
+            `  Reassessment already exists: "${article.title}"`
+          );
+          continue;
+        }
+
+        inserted++;
+
+        console.log(
+          `  ✅ Reassessed [${gated.category}] "${article.title}" ` +
+            `(prior=${article.sourceEvent.category}, ` +
+            `severity=${assessment.severity}, ` +
+            `confidence=${assessment.confidence})`
+        );
+      }
+
+      if (batchIndex < batches.length - 1) {
+        await delay(BATCH_DELAY_MS);
+      }
+    }
+  }
+
+  console.log('');
+  console.log(
+    `GRI reassessment done. Inserted=${inserted}, ` +
+      `LLM/gate rejected=${llmRejected}, duplicates=${duplicates}.`
+  );
+}
+
+
 async function ingestNews() {
+  if (process.argv.includes('--reclassify-existing')) {
+    return reclassifyExistingEvents();
+  }
+
   console.log('Run node scripts/ingest-news.js');
   console.log(
     `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | minSeverity=${MIN_SEVERITY}`
@@ -976,6 +1324,12 @@ async function ingestNews() {
     console.log(`\nProcessing category: ${category.name}`);
     let categoryInserted = 0;
 
+    // Candidate-level dedupe is scoped to this fetch bucket only.
+    // Global seen state is reserved for successfully admitted events.
+    // Therefore a rejection in one category cannot suppress a later
+    // correct-category evaluation.
+    const seenCandidatesThisCategory = new Set();
+
     let baselineSeverity = null;
     try {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -1007,11 +1361,12 @@ async function ingestNews() {
         if (
           existingUrls.has(article.url) ||
           existingTitles.has(normTitle) ||
-          seenInCurrentRun.has(normTitle)
+          seenInCurrentRun.has(normTitle) ||
+          seenCandidatesThisCategory.has(normTitle)
         ) {
           continue;
         }
-        seenInCurrentRun.add(normTitle);
+        seenCandidatesThisCategory.add(normTitle);
         candidateArticles.push(article);
       }
       if (queryIndex < category.queries.length - 1) {
@@ -1053,8 +1408,6 @@ async function ingestNews() {
       for (let i = 0; i < batch.length; i++) {
         const article = batch[i];
         const assessment = assessments[i];
-        markSeen(article, existingUrls, existingTitles, seenInCurrentRun);
-
         const gated = passesGates(article, assessment, category.name);
         if (!gated.ok) {
           totalRejectedByGate++;
@@ -1113,6 +1466,8 @@ async function ingestNews() {
         }
 
         if (!insertError) {
+          markSeen(article, existingUrls, existingTitles, seenInCurrentRun);
+
           console.log(
             `  ✅ Inserted [${gated.category}]: "${gated.title}" (severity ${assessment.severity}, delta ${delta})`
           );
