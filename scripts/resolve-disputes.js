@@ -135,8 +135,8 @@ async function callGroqWithBackoff(fn, label) {
 
 // ---------------------------------------------------------------------------
 // Evidence gathering — deliberately a DIFFERENT source/provider than the
-// ingestion pipeline's NewsAPI + Guardian, so a dispute isn't just re-asking
-// the same source that may have been wrong in the first place, and so it
+// Guardian-backed ingestion pipeline, so a dispute isn't just re-asking
+// the same provider that may have been wrong in the first place, and so it
 // doesn't compete with ingestion for quota.
 // ---------------------------------------------------------------------------
 async function fetchTavilyEvidence(apiKey, query) {

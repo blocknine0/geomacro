@@ -38,7 +38,7 @@ export const ROADMAP: RoadmapEntry[] = [
     objective: "Automated unstructured global data capturing.",
     scope:
       "High-frequency pooling of news across core pillars with Groq AI validation and relevance-gated classification.",
-    artifacts: ["NewsAPI", "The Guardian", "Groq Pipeline"],
+    artifacts: ["The Guardian", "Groq Pipeline"],
   },
   {
     version: "v0.2",

@@ -4,7 +4,7 @@ import { SectionHeader } from "@/components/section-ui";
 import { useWallet } from "@/hooks/WalletProvider";
 import { preferredNetwork } from "@/lib/arc";
 import { rememberSessionTx } from "@/lib/wallet-tx";
-import type { FeedEvent } from "@/lib/live-feed.functions";
+import type { FeedEvent } from "@/lib/live-feed.types";
 
 export function FeedSection() {
   const { address, onArc, network, connect, switchToArc } = useWallet();
