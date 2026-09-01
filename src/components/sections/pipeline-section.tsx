@@ -86,7 +86,7 @@ const GROUPS: StageGroup[] = [
         id: "01",
         name: "Ingest",
         desc: "Pull live headlines across geopolitics, rare earth, macro and crypto.",
-        meta: "NewsAPI · 4 buckets",
+        meta: "The Guardian · 4 risk domains",
         latency: "~5s",
       },
       {

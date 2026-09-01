@@ -7,7 +7,7 @@ import {
   FEED_CATEGORIES,
   type FeedCategory,
   type FeedEvent,
-} from "@/lib/live-feed.functions";
+} from "@/lib/live-feed.types";
 import { supabaseFeed, type StoredEventRow } from "@/lib/supabase-feed";
 import { formatDistanceToNowStrict } from "date-fns";
 
