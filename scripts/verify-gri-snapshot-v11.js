@@ -17,6 +17,11 @@ const supabase = createClient(url, key, { auth: { persistSession: false, autoRef
 const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.4';
 const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.4';
 
+const GRI_METHOD_VERSION = 'gri-v1.1.0';
+const GRI_PROOF_VERSION = 'gri-proof-v1.1.0';
+const GRI_STORY_CORRELATION_VERSION = 'story-correlation-v1.0.0';
+const GRI_STORY_CORRELATION_PROMPT_VERSION = 'story-match-title-v1.0.0';
+
 function contributionHasCanonicalProvenance(row) {
   if (!row) return false;
 
