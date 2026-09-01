@@ -51,8 +51,8 @@ const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
 
 // Immutable scoring provenance written with every newly classified event.
 // Bump these whenever the classification contract or prompt semantics change.
-const CLASSIFICATION_VERSION = 'event-severity-v1.0.2';
-const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.2';
+const CLASSIFICATION_VERSION = 'event-severity-v1.0.3';
+const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.3';
 
 function sha256Text(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex');
@@ -87,7 +87,7 @@ const CATEGORY_DENY = {
     /\b(anthropic|openai|semiconductor|tsmc|asml|chips act|datacent(?:er|re)|ai model|lawsuit against|blacklisting of)\b/i,
 
   geopolitics:
-    /\b(football|cricket|tennis|film festival|bauhaus|culture wars?|war on woke|war on dei|war on diversity|war on christmas|price war|bidding war)\b/i,
+    /(?:\b(football|cricket|tennis|film festival|bauhaus|culture wars?|war on woke|war on dei|war on diversity|war on christmas|price war|bidding war)\b|^(?![\s\S]*\b(attack|attacked|airstrike|airstrikes|strike|strikes|missile|missiles|drone attack|drone strike|killed|wounded|casualties|combat|battle|invasion|blockade|sanction|sanctions|embargo|deployment|deploys|deployed|military operation|security incident|hostage|evacuation|coup|nuclear|ceasefire|territorial dispute)\b)[\s\S]*\b(shore leave|liberty call|crew rest|crew recreation|rest and recreation|routine port visit|routine port call|sailors? (?:on holiday|on vacation|visiting|touring|staying)|resort(?:s)? (?:prepares? to host|hosting) (?:navy |military )?(?:crew|sailors?)|hotel(?:s)? hosting (?:navy |military )?(?:crew|sailors?))\b)/i,
 
   macro:
     /\b(nft\b|memecoin|crypto winter|households could save|bank holiday getaway)\b/i,
@@ -657,6 +657,13 @@ cross-border geopolitical coercion.
 
 Domestic campaigning, mayoral politics, party messaging, culture wars,
 metaphorical wars, sport and lifestyle are NOT geopolitics.
+Routine military lifestyle/logistics are also NOT geopolitical risk by themselves.
+Examples include shore leave, crew recreation, tourism, resort/hotel hosting,
+routine port visits or human-interest stories about service personnel.
+Military vocabulary alone is insufficient. Such an article is relevant only when
+it reports a material conflict/security development such as an attack, operational
+deployment change, escalation, sanctions, blockade, state coercion, nuclear risk,
+territorial confrontation or another concrete strategic consequence.
 
 MACRO:
 Only material macroeconomic, monetary-policy, sovereign-credit, inflation,

@@ -8,8 +8,8 @@ import { createHash } from "node:crypto";
 
 dotenv.config();
 
-const CLASSIFICATION_VERSION = "event-severity-v1.0.2";
-const CLASSIFICATION_PROMPT_VERSION = "risk-desk-filter-v1.0.2";
+const CLASSIFICATION_VERSION = "event-severity-v1.0.3";
+const CLASSIFICATION_PROMPT_VERSION = "risk-desk-filter-v1.0.3";
 
 const CLUSTERING_VERSION = "story-correlation-v1.0.0";
 const CLUSTERING_PROMPT_VERSION = "story-match-title-v1.0.0";
