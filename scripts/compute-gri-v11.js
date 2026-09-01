@@ -487,15 +487,53 @@ function storedContributionToEngine(row) {
   };
 }
 
-async function loadComparisonSnapshot() {
+async function loadPreviousPublicationSnapshot() {
+  const { data, error } = await supabase
+    .from('gri_snapshots')
+    .select(
+      'id,as_of,display_score,proof_version,story_correlation_version,story_correlation_prompt_version'
+    )
+    .eq('status', 'published')
+    .eq('verification_status', 'verified')
+    .eq('methodology_version', GRI_METHOD_VERSION)
+    .eq('proof_version', GRI_PROOF_VERSION)
+    .eq('story_correlation_version', GRI_STORY_CORRELATION_VERSION)
+    .eq(
+      'story_correlation_prompt_version',
+      GRI_STORY_CORRELATION_PROMPT_VERSION
+    )
+    .lt('as_of', asOf.toISOString())
+    .order('as_of', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `previous publication snapshot query failed: ${error.message}`
+    );
+  }
+
+  if (!data) return null;
+
+  if (!Number.isInteger(Number(data.display_score))) {
+    throw new Error(
+      `previous publication snapshot ${data.id} has invalid display_score`
+    );
+  }
+
+  return {
+    snapshotId: data.id,
+    asOf: data.as_of,
+    displayScore: Number(data.display_score),
+  };
+}
+
+async function loadComparisonContext() {
   // Change attribution is anchored to the closest verified snapshot around
   // T-24h, not simply the latest previous publication.
   //
-  // IMPORTANT:
-  // A historical snapshot is eligible for comparison only when every stored
-  // contribution carries canonical classification provenance. This prevents
-  // a legacy/unversioned -> provenance-complete data transition from being
-  // presented as a real-world GRI movement.
+  // The immediately preceding publication is loaded separately by
+  // loadPreviousPublicationSnapshot().
   const target = new Date(asOf.getTime() - 24 * 3_600_000);
   const earliest = new Date(target.getTime() - 6 * 3_600_000);
   const latest = new Date(target.getTime() + 6 * 3_600_000);
@@ -503,11 +541,12 @@ async function loadComparisonSnapshot() {
   const { data: candidates, error } = await supabase
     .from('gri_snapshots')
     .select(
-      'id,as_of,methodology_version,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,verification_status'
+      'id,as_of,methodology_version,proof_version,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,verification_status'
     )
     .eq('status', 'published')
     .eq('verification_status', 'verified')
     .eq('methodology_version', GRI_METHOD_VERSION)
+    .eq('proof_version', GRI_PROOF_VERSION)
     .gte('as_of', earliest.toISOString())
     .lte('as_of', latest.toISOString())
     .order('as_of', { ascending: true });
@@ -572,14 +611,17 @@ async function loadComparisonSnapshot() {
     ) {
       console.log(
         `Skipping comparison snapshot ${data.id}: stored independent_story_count ` +
-        `${data.independent_story_count} does not match ${storedStoryCount}.`
+          `${data.independent_story_count} does not match ${storedStoryCount}.`
       );
       continue;
     }
 
+    const storedEventCount = Number(data.event_count);
+
     if (
-      Number.isInteger(Number(data.event_count)) &&
-      Number(data.event_count) !== rows.length
+      !Number.isInteger(storedEventCount) ||
+      storedEventCount <= 0 ||
+      storedEventCount !== rows.length
     ) {
       console.log(
         `Skipping comparison snapshot ${data.id}: stored event_count ` +
@@ -588,32 +630,50 @@ async function loadComparisonSnapshot() {
       continue;
     }
 
+    const gapHours =
+      Math.abs(new Date(data.as_of).getTime() - target.getTime()) /
+      3_600_000;
+
     return {
-      snapshotId: data.id,
-      methodologyVersion: data.methodology_version,
-      asOf: data.as_of,
-      rawScore: Number(data.raw_score),
-      displayScore: Number(data.display_score),
-      coverage: Number(data.coverage),
-      activeCategories: data.active_categories ?? [],
-      eventCount: data.event_count,
-      sourceCount: data.source_count,
-      independentStoryCount: data.independent_story_count,
-      weightedConfidence:
-        data.weighted_confidence === null
-          ? null
-          : Number(data.weighted_confidence),
-      categories: Array.isArray(data.category_breakdown)
-        ? data.category_breakdown
-        : [],
-      contributions: rows.map(storedContributionToEngine),
-      inputRows: [],
+      snapshot: {
+        snapshotId: data.id,
+        methodologyVersion: data.methodology_version,
+        asOf: data.as_of,
+        rawScore: Number(data.raw_score),
+        displayScore: Number(data.display_score),
+        coverage: Number(data.coverage),
+        activeCategories: data.active_categories ?? [],
+        eventCount: data.event_count,
+        sourceCount: data.source_count,
+        independentStoryCount: data.independent_story_count,
+        weightedConfidence:
+          data.weighted_confidence === null
+            ? null
+            : Number(data.weighted_confidence),
+        categories: Array.isArray(data.category_breakdown)
+          ? data.category_breakdown
+          : [],
+        contributions: rows.map(storedContributionToEngine),
+        inputRows: [],
+      },
+      targetAsOf: target.toISOString(),
+      status: 'matched',
+      gapHours,
+      reason: null,
     };
   }
 
-  // Fail closed. Until a provenance-complete T-24h reference exists,
-  // no change attribution is published.
-  return null;
+  const noCandidates = orderedCandidates.length === 0;
+
+  return {
+    snapshot: null,
+    targetAsOf: target.toISOString(),
+    status: noCandidates ? 'no_candidate' : 'no_eligible_candidate',
+    gapHours: null,
+    reason: noCandidates
+      ? 'No verified current-contract snapshot exists within the T-24h plus/minus 6 hour window.'
+      : 'Snapshots exist within the T-24h window, but none satisfy the complete current provenance contract.',
+  };
 }
 
 function contributionStorageRows(snapshotId, contributions) {
@@ -850,7 +910,15 @@ async function main() {
   // baseline and performs no historical snapshot query. This allows the
   // complete v1.1 input/story/weight/proof path to be audited without any
   // database mutation or dependency on migration 009 having been applied.
-  const previous = dryRun ? null : await loadComparisonSnapshot();
+  const previousPublication = dryRun
+    ? null
+    : await loadPreviousPublicationSnapshot();
+
+  const comparison = dryRun
+    ? null
+    : await loadComparisonContext();
+
+  const previous = comparison?.snapshot ?? null;
   const attribution = previous ? attributeGriChange(previous, calculation) : null;
   const proof = buildProofArtifacts(calculation, attribution);
   if (!proof.verified) {
@@ -869,6 +937,14 @@ async function main() {
     sources: calculation.sourceCount,
     independentStories: calculation.independentStoryCount,
     activeCategories: calculation.activeCategories,
+    previousPublicationDisplayScore:
+      previousPublication?.displayScore ?? null,
+    comparisonStatus: comparison?.status ?? null,
+    comparisonTargetAsOf: comparison?.targetAsOf ?? null,
+    comparisonGapHours:
+      comparison?.gapHours === null || comparison?.gapHours === undefined
+        ? null
+        : roundNumber(comparison.gapHours, 6),
     previousDisplayScore: previous?.displayScore ?? null,
     change: attribution ? roundNumber(attribution.rawDelta, 4) : null,
     methodologyHash: proof.methodologyHash,
@@ -970,6 +1046,25 @@ async function main() {
     story_correlation_prompt_version:
       GRI_STORY_CORRELATION_PROMPT_VERSION,
     category_breakdown: calculation.categories,
+
+    previous_publication_snapshot_id:
+      previousPublication?.snapshotId ?? null,
+    previous_publication_as_of:
+      previousPublication?.asOf ?? null,
+    previous_publication_display_score:
+      previousPublication?.displayScore ?? null,
+
+    comparison_target_as_of:
+      comparison?.targetAsOf ?? null,
+    comparison_status:
+      comparison?.status ?? null,
+    comparison_gap_hours:
+      comparison?.gapHours === null || comparison?.gapHours === undefined
+        ? null
+        : roundNumber(comparison.gapHours, 6),
+    comparison_reason:
+      comparison?.reason ?? null,
+
     previous_snapshot_id: previous?.snapshotId ?? null,
     previous_as_of: previous?.asOf ?? null,
     previous_raw_score: previous?.rawScore ?? null,

@@ -97,6 +97,133 @@ async function loadContributions(id) {
   return data ?? [];
 }
 
+async function loadExpectedPreviousPublication(snapshot) {
+  const { data, error } = await supabase
+    .from('gri_snapshots')
+    .select(
+      'id,as_of,display_score,proof_version,story_correlation_version,story_correlation_prompt_version'
+    )
+    .eq('status', 'published')
+    .eq('verification_status', 'verified')
+    .eq('methodology_version', GRI_METHOD_VERSION)
+    .eq('proof_version', GRI_PROOF_VERSION)
+    .eq('story_correlation_version', GRI_STORY_CORRELATION_VERSION)
+    .eq(
+      'story_correlation_prompt_version',
+      GRI_STORY_CORRELATION_PROMPT_VERSION
+    )
+    .lt('as_of', snapshot.as_of)
+    .neq('id', snapshot.id)
+    .order('as_of', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `previous publication verification query failed: ${error.message}`
+    );
+  }
+
+  return data ?? null;
+}
+
+async function loadExpectedComparison(snapshot) {
+  const currentAsOf = new Date(snapshot.as_of);
+  const target = new Date(currentAsOf.getTime() - 24 * 3_600_000);
+  const earliest = new Date(target.getTime() - 6 * 3_600_000);
+  const latest = new Date(target.getTime() + 6 * 3_600_000);
+
+  const { data: candidates, error } = await supabase
+    .from('gri_snapshots')
+    .select('*')
+    .eq('status', 'published')
+    .eq('verification_status', 'verified')
+    .eq('methodology_version', GRI_METHOD_VERSION)
+    .eq('proof_version', GRI_PROOF_VERSION)
+    .gte('as_of', earliest.toISOString())
+    .lte('as_of', latest.toISOString())
+    .neq('id', snapshot.id);
+
+  if (error) {
+    throw new Error(
+      `comparison verification query failed: ${error.message}`
+    );
+  }
+
+  const orderedCandidates = (candidates ?? [])
+    .filter((row) => row.raw_score !== null)
+    .sort(
+      (a, b) =>
+        Math.abs(new Date(a.as_of).getTime() - target.getTime()) -
+        Math.abs(new Date(b.as_of).getTime() - target.getTime())
+    );
+
+  for (const candidate of orderedCandidates) {
+    const rows = await loadContributions(candidate.id);
+
+    if (
+      rows.length === 0 ||
+      !rows.every(contributionHasCanonicalProvenance) ||
+      !rows.every(contributionHasCanonicalStoryProvenance)
+    ) {
+      continue;
+    }
+
+    if (
+      candidate.story_correlation_version !==
+        GRI_STORY_CORRELATION_VERSION ||
+      candidate.story_correlation_prompt_version !==
+        GRI_STORY_CORRELATION_PROMPT_VERSION
+    ) {
+      continue;
+    }
+
+    const storyCount = new Set(
+      rows.map((row) => row.story_cluster_id).filter(Boolean)
+    ).size;
+
+    if (
+      Number(candidate.independent_story_count) !== storyCount
+    ) {
+      continue;
+    }
+
+    const eventCount = Number(candidate.event_count);
+
+    if (
+      !Number.isInteger(eventCount) ||
+      eventCount <= 0 ||
+      eventCount !== rows.length
+    ) {
+      continue;
+    }
+
+    return {
+      snapshot: candidate,
+      targetAsOf: target.toISOString(),
+      status: 'matched',
+      gapHours:
+        Math.abs(new Date(candidate.as_of).getTime() - target.getTime()) /
+        3_600_000,
+      reason: null,
+    };
+  }
+
+  const noCandidates = orderedCandidates.length === 0;
+
+  return {
+    snapshot: null,
+    targetAsOf: target.toISOString(),
+    status: noCandidates
+      ? 'no_candidate'
+      : 'no_eligible_candidate',
+    gapHours: null,
+    reason: noCandidates
+      ? 'No verified current-contract snapshot exists within the T-24h plus/minus 6 hour window.'
+      : 'Snapshots exist within the T-24h window, but none satisfy the complete current provenance contract.',
+  };
+}
+
 function contributionRowsToInput(rows) {
   return rows.map((r) => ({
     id: r.event_id,
@@ -218,6 +345,54 @@ async function main() {
     new Date(snapshot.as_of)
   );
 
+  const expectedPreviousPublication =
+    await loadExpectedPreviousPublication(snapshot);
+
+  const expectedComparison =
+    await loadExpectedComparison(snapshot);
+
+  const expectedTargetMs =
+    new Date(snapshot.as_of).getTime() - 24 * 3_600_000;
+
+  const storedTargetMs =
+    Date.parse(String(snapshot.comparison_target_as_of || ''));
+
+  const previousPublicationContinuity =
+    expectedPreviousPublication
+      ? snapshot.previous_publication_snapshot_id ===
+          expectedPreviousPublication.id &&
+        snapshot.previous_publication_as_of ===
+          expectedPreviousPublication.as_of &&
+        Number(snapshot.previous_publication_display_score) ===
+          Number(expectedPreviousPublication.display_score)
+      : snapshot.previous_publication_snapshot_id === null &&
+        snapshot.previous_publication_as_of === null &&
+        snapshot.previous_publication_display_score === null;
+
+  const comparisonTarget =
+    Number.isFinite(storedTargetMs) &&
+    Math.abs(storedTargetMs - expectedTargetMs) <= 1_000;
+
+  const comparisonStatus =
+    snapshot.comparison_status === expectedComparison.status;
+
+  const comparisonSelection =
+    expectedComparison.snapshot
+      ? snapshot.previous_snapshot_id === expectedComparison.snapshot.id
+      : snapshot.previous_snapshot_id === null;
+
+  const comparisonGap =
+    expectedComparison.snapshot
+      ? Number.isFinite(Number(snapshot.comparison_gap_hours)) &&
+        Math.abs(
+          Number(snapshot.comparison_gap_hours) -
+            expectedComparison.gapHours
+        ) <= 0.00001
+      : snapshot.comparison_gap_hours === null;
+
+  const comparisonReason =
+    snapshot.comparison_reason === expectedComparison.reason;
+
   let previous = null;
   let previousClassificationProvenance = true;
   let previousStoryProvenance = true;
@@ -247,6 +422,12 @@ async function main() {
     storyProvenance,
     previousClassificationProvenance,
     previousStoryProvenance,
+    previousPublicationContinuity,
+    comparisonTarget,
+    comparisonStatus,
+    comparisonSelection,
+    comparisonGap,
+    comparisonReason,
     methodologyVersion:
       recalculated.methodologyVersion === snapshot.methodology_version,
     proofVersion:
