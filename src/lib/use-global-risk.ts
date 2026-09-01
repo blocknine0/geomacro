@@ -16,7 +16,10 @@ import {
   GRI_LOOKBACK_HOURS,
   GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
   GRI_METHOD_VERSION,
-} from "@/lib/gri-engine.js";
+  GRI_PROOF_VERSION,
+  GRI_STORY_CORRELATION_PROMPT_VERSION,
+  GRI_STORY_CORRELATION_VERSION,
+} from "@/lib/gri-current-contract";
 
 export type RiskRow = {
   id: string;
@@ -69,6 +72,9 @@ export type GlobalRisk = {
   eventCount: number;
   eventCountPrevious: number | null;
   sourceCount: number | null;
+  independentStoryCount: number;
+  storyCorrelationVersion: string;
+  storyCorrelationPromptVersion: string;
   coverage: number;
   weightedConfidence: number | null;
   methodologyVersion: string;
@@ -99,8 +105,8 @@ const LOOKBACK = GRI_LOOKBACK_HOURS * HOUR;
 
 export const GRI_METHODOLOGY = {
   version: GRI_METHOD_VERSION,
-  definition: `GRI ${GRI_METHOD_VERSION} is a deterministic source-capped, confidence- and recency-weighted severity index over the trailing ${GRI_LOOKBACK_HOURS} hours.`,
-  weighting: `Event weight = confidence × exponential recency decay (${GRI_HALF_LIFE_HOURS}h half-life); each source is capped so article volume cannot dominate. Active domains are equally weighted and missing domains are disclosed as coverage, never zero risk.`,
+  definition: `GRI ${GRI_METHOD_VERSION} is a deterministic source- and story-capped, confidence- and recency-weighted severity index over the trailing ${GRI_LOOKBACK_HOURS} hours.`,
+  weighting: `Event weight = confidence × exponential recency decay (${GRI_HALF_LIFE_HOURS}h half-life). Each source is capped, then articles describing the same underlying development share one story budget based on that story's strongest post-source evidence. Active domains are equally weighted and missing domains are disclosed as coverage, never zero risk.`,
   notProbability: "GRI is an aggregate intelligence signal, not a market probability.",
 } as const;
 
@@ -124,6 +130,9 @@ type SnapshotRow = {
   active_categories: string[] | null;
   event_count: number;
   source_count: number;
+  independent_story_count: number;
+  story_correlation_version: string | null;
+  story_correlation_prompt_version: string | null;
   category_breakdown: unknown;
   previous_as_of: string | null;
   previous_raw_score: number | string | null;
@@ -263,7 +272,7 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
         const snapshotResult = await supabaseFeed
           .from("gri_snapshots")
           .select(
-            "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
+            "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
           )
           .eq("status", "published")
           .eq("methodology_version", GRI_METHOD_VERSION)
@@ -295,6 +304,12 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
         const changeResidual = n(latest.change_residual);
         const proofReady =
           latest.verification_status === "verified" &&
+          latest.proof_version === GRI_PROOF_VERSION &&
+          latest.story_correlation_version === GRI_STORY_CORRELATION_VERSION &&
+          latest.story_correlation_prompt_version === GRI_STORY_CORRELATION_PROMPT_VERSION &&
+          Number.isInteger(Number(latest.independent_story_count)) &&
+          Number(latest.independent_story_count) > 0 &&
+          Number(latest.independent_story_count) <= Number(latest.event_count) &&
           Boolean(
             latest.proof_hash &&
             latest.evidence_hash &&
@@ -369,6 +384,9 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           eventCount: latest.event_count,
           eventCountPrevious: null,
           sourceCount: latest.source_count || null,
+          independentStoryCount: Number(latest.independent_story_count),
+          storyCorrelationVersion: latest.story_correlation_version as string,
+          storyCorrelationPromptVersion: latest.story_correlation_prompt_version as string,
           coverage: n(latest.coverage) ?? 0,
           weightedConfidence: n(latest.weighted_confidence),
           methodologyVersion: latest.methodology_version,

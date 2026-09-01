@@ -147,9 +147,16 @@ function ProofBody({ proof }: { proof: GriProofPackage }) {
           value={s.display_score === null ? "Unavailable" : `${s.display_score}/100`}
         />
         <ProofStat label="Exact raw score" value={fmt(raw, 6)} />
+        <ProofStat label="Evidence articles" value={String(s.event_count)} />
+        <ProofStat label="Independent stories" value={String(s.independent_story_count)} />
+        <ProofStat label="Sources" value={String(s.source_count)} />
         <ProofStat
           label="Coverage"
           value={`${Math.round((numberOrNull(s.coverage) ?? 0) * 100)}%`}
+        />
+        <ProofStat
+          label="Weighted confidence"
+          value={fmt(numberOrNull(s.weighted_confidence), 2)}
         />
         <ProofStat
           label="Verification"
@@ -182,9 +189,10 @@ function ProofBody({ proof }: { proof: GriProofPackage }) {
 
         <TabsContent value="evidence" className="space-y-5 pt-3">
           <div className="rounded-lg border border-border/60 bg-muted/10 p-4 text-sm leading-relaxed text-muted-foreground">
-            Each row is one accepted risk observation used in this exact snapshot. The source proves
-            the underlying observation; classifier metadata proves which scoring system produced
-            severity/confidence; the contribution fields prove how that observation entered the GRI.
+            Each row is one accepted evidence article used in this exact immutable snapshot. Source
+            and classifier metadata prove the input provenance. Story metadata shows which articles
+            refer to the same underlying development. The stored weight chain shows how source
+            capping and story capping produced the article's final GRI contribution.
           </div>
           <ContributionLedger contributions={proof.contributions} />
         </TabsContent>
@@ -415,11 +423,28 @@ function FormulaPanel() {
     <ProofCard icon={Fingerprint} title="Deterministic calculation path">
       <div className="grid gap-3 lg:grid-cols-5">
         {[
-          ["1. Event weight", "(confidence / 100) × 2^(-ageHours / 24)"],
-          ["2. Source cap", "Each source receives at most 1.0 evidence weight per category"],
-          ["3. Category score", "Σ(severity × effective weight) / Σ(effective weight)"],
-          ["4. Domain weight", "Four base weights are 25%; active weights are normalized"],
-          ["5. GRI", "Σ(normalized category weight × category score)"],
+          ["1. Event weight", "raw event weight = (confidence / 100) × 2^(-age hours / 24)"],
+          [
+            "2. Source cap",
+            "Within each category and source, source effective weight = min(1, Σ raw event weight). The capped source budget is allocated proportionally across its evidence articles, producing pre-story event weight.",
+          ],
+          [
+            "3. Story cap",
+            "Evidence articles describing the same underlying development are grouped into one story. Story effective weight = min(1, strongest post-source source weight inside that story). Repeated coverage cannot multiply one development's total risk weight.",
+          ],
+          [
+            "4. Story allocation",
+            "Every evidence article remains in the immutable proof ledger. Final effective event weight = story effective weight × within-story share.",
+          ],
+          [
+            "5. Category score",
+            "Each active category score is the severity-weighted mean using final effective event weights.",
+          ],
+          [
+            "6. Active-domain weight",
+            "Geopolitics, macro, rare earth and crypto each have a 25% base weight. Active categories are renormalized. Missing categories reduce disclosed coverage and are never treated as zero risk.",
+          ],
+          ["7. GRI", "Σ(normalized category weight × category score)"],
         ].map(([title, formula]) => (
           <div key={title} className="rounded-md border border-border/50 bg-background/30 p-3">
             <p className="text-xs font-semibold text-foreground">{title}</p>
@@ -457,7 +482,7 @@ function ContributionLedger({
       title={
         detailed
           ? "Contribution calculation ledger"
-          : `Evidence ledger · ${rows.length} observations`
+          : `Evidence ledger · ${rows.length} evidence articles`
       }
     >
       <div className="space-y-3">
@@ -494,6 +519,7 @@ function EvidenceRow({ row, detailed }: { row: GriContributionProof; detailed: b
           <span>Confidence {fmt(numberOrNull(row.confidence), 2)}%</span>
           <span>Age {fmt(numberOrNull(row.age_hours), 1)}h</span>
           <span>Global share {pct(numberOrNull(row.global_share))}</span>
+          <span>Story {row.story_assignment_decision ?? "unavailable"}</span>
         </div>
       </summary>
       <div className="mt-3 grid gap-3 border-t border-border/50 pt-3 lg:grid-cols-2">
@@ -508,7 +534,39 @@ function EvidenceRow({ row, detailed }: { row: GriContributionProof; detailed: b
             <KV label="Model" value={row.classification_model ?? "legacy / unavailable"} />
             <KV label="Classifier" value={row.classification_version ?? "legacy-unversioned"} />
             <KV label="Prompt" value={row.classification_prompt_version ?? "unavailable"} />
+            <KV label="Story" value={row.story_canonical_label ?? "unavailable"} />
+            <KV label="Story assignment" value={row.story_assignment_decision ?? "unavailable"} />
+            <KV
+              label="Story match confidence"
+              value={
+                numberOrNull(row.story_match_confidence) === null
+                  ? "unavailable"
+                  : `${fmt(numberOrNull(row.story_match_confidence), 2)}%`
+              }
+            />
+            <KV label="Story cluster" value={row.story_cluster_id ?? "unavailable"} />
+            <KV
+              label="Story model"
+              value={
+                row.story_clustering_provider && row.story_clustering_model
+                  ? `${row.story_clustering_provider} / ${row.story_clustering_model}`
+                  : "unavailable"
+              }
+            />
+            <KV label="Story version" value={row.story_clustering_version ?? "unavailable"} />
+            <KV label="Story prompt" value={row.story_clustering_prompt_version ?? "unavailable"} />
           </dl>
+          {row.story_decision_rationale ? (
+            <div className="mt-3 rounded-md border border-border/40 bg-muted/10 p-2.5">
+              <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                Story decision rationale
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {row.story_decision_rationale}
+              </p>
+            </div>
+          ) : null}
+
           {safeUrl(row.source_url) ? (
             <a
               className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
@@ -526,8 +584,16 @@ function EvidenceRow({ row, detailed }: { row: GriContributionProof; detailed: b
               <p>confidenceWeight = {fmt(numberOrNull(row.confidence_weight), 8)}</p>
               <p>decayWeight = {fmt(numberOrNull(row.decay_weight), 8)}</p>
               <p>rawWeight = {fmt(numberOrNull(row.raw_weight), 8)}</p>
-              <p>effectiveEventWeight = {fmt(numberOrNull(row.effective_event_weight), 8)}</p>
               <p>sourceEffectiveWeight = {fmt(numberOrNull(row.source_effective_weight), 8)}</p>
+              <p>preStoryEventWeight = {fmt(numberOrNull(row.pre_story_event_weight), 8)}</p>
+              <p>storyRawWeight = {fmt(numberOrNull(row.story_raw_weight), 8)}</p>
+              <p>
+                storyStrongestSourceWeight ={" "}
+                {fmt(numberOrNull(row.story_strongest_source_weight), 8)}
+              </p>
+              <p>storyEffectiveWeight = {fmt(numberOrNull(row.story_effective_weight), 8)}</p>
+              <p>withinStoryShare = {fmt(numberOrNull(row.within_story_share), 8)}</p>
+              <p>effectiveEventWeight = {fmt(numberOrNull(row.effective_event_weight), 8)}</p>
               <p>categoryEffectiveWeight = {fmt(numberOrNull(row.category_effective_weight), 8)}</p>
               <p>
                 normalizedCategoryWeight = {fmt(numberOrNull(row.normalized_category_weight), 8)}
@@ -546,6 +612,13 @@ function EvidenceRow({ row, detailed }: { row: GriContributionProof; detailed: b
               </p>
               <p className="mt-3">classification scored at</p>
               <p className="mt-1 text-foreground">{formatDate(row.classification_scored_at)}</p>
+
+              <p className="mt-3">story correlation input hash</p>
+              <p className="mt-1 break-all text-foreground">
+                {row.story_clustering_input_hash ?? "unavailable"}
+              </p>
+              <p className="mt-3">story correlation scored at</p>
+              <p className="mt-1 text-foreground">{formatDate(row.story_clustering_scored_at)}</p>
             </>
           )}
         </div>
@@ -589,7 +662,7 @@ function IntegrityPanel({
             ) : (
               <Fingerprint className="h-4 w-4" />
             )}
-            {verified ? "Score and change ledgers reconcile" : "Proof requires review"}
+            {verified ? "Published proof package reconciles" : "Proof requires review"}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
             Published proof packages are immutable. Corrections require a new snapshot or a new
@@ -597,7 +670,14 @@ function IntegrityPanel({
           </p>
         </div>
         <dl className="mt-4 space-y-2 text-xs">
-          <KV label="Proof version" value={s.proof_version ?? "legacy"} />
+          <KV label="Methodology" value={s.methodology_version} />
+          <KV label="Proof version" value={s.proof_version ?? "unavailable"} />
+          <KV label="Independent stories" value={String(s.independent_story_count)} />
+          <KV label="Story correlation" value={s.story_correlation_version ?? "unavailable"} />
+          <KV
+            label="Story correlation prompt"
+            value={s.story_correlation_prompt_version ?? "unavailable"}
+          />
           <KV label="Snapshot published" value={formatDate(s.published_at)} />
           <KV label="Score residual" value={fmt(scoreResidual, 12)} />
           <KV label="Change residual" value={fmt(numberOrNull(s.change_residual), 12)} />

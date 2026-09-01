@@ -1,5 +1,11 @@
 import { getAppSupabase } from "./supabase-app.server";
-import { GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS, GRI_METHOD_VERSION } from "./gri-engine.js";
+import {
+  GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
+  GRI_METHOD_VERSION,
+  GRI_PROOF_VERSION,
+  GRI_STORY_CORRELATION_PROMPT_VERSION,
+  GRI_STORY_CORRELATION_VERSION,
+} from "./gri-current-contract.js";
 
 /** Deterministic Ask Geomacro engine: Supabase stored intelligence only.
  *  No LLM provider is involved (no Groq, no Cerebras, no external search). */
@@ -316,6 +322,7 @@ async function loadPublishedGri() {
   const unavailable = () => ({
     displayScore: null,
     eventCount: 0,
+    independentStoryCount: 0,
     coverage: 0,
     methodologyVersion: GRI_METHOD_VERSION,
     auditPersisted: false,
@@ -327,7 +334,7 @@ async function loadPublishedGri() {
   const { data, error } = await supabase
     .from("gri_snapshots")
     .select(
-      "display_score,event_count,coverage,methodology_version,as_of,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,reconciliation_residual,change_residual",
+      "display_score,event_count,independent_story_count,coverage,methodology_version,as_of,proof_version,story_correlation_version,story_correlation_prompt_version,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,reconciliation_residual,change_residual",
     )
     .eq("status", "published")
     .eq("methodology_version", GRI_METHOD_VERSION)
@@ -361,13 +368,23 @@ async function loadPublishedGri() {
       (Number.isFinite(changeResidual) && Math.abs(changeResidual) <= 1e-7));
   const fresh = ageHours >= -0.25 && ageHours <= GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS;
   const verified =
-    data.verification_status === "verified" && hashesReady && residualsReady && fresh;
+    data.verification_status === "verified" &&
+    data.proof_version === GRI_PROOF_VERSION &&
+    data.story_correlation_version === GRI_STORY_CORRELATION_VERSION &&
+    data.story_correlation_prompt_version === GRI_STORY_CORRELATION_PROMPT_VERSION &&
+    Number.isInteger(Number(data.independent_story_count)) &&
+    Number(data.independent_story_count) > 0 &&
+    Number(data.independent_story_count) <= Number(data.event_count ?? 0) &&
+    hashesReady &&
+    residualsReady &&
+    fresh;
 
   if (!verified) return unavailable();
 
   return {
     displayScore: data.display_score,
     eventCount: Number(data.event_count ?? 0),
+    independentStoryCount: Number(data.independent_story_count ?? 0),
     coverage: Number(data.coverage ?? 0),
     methodologyVersion: String(data.methodology_version ?? GRI_METHOD_VERSION),
     auditPersisted: true,
@@ -460,7 +477,7 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
 
   const why_it_matters = [
     gri !== null
-      ? `The Global Risk Index (${griReading.methodologyVersion}) is ${gri}/100 from ${griReading.eventCount} eligible events with ${Math.round(griReading.coverage * 100)}% domain coverage.`
+      ? `The Global Risk Index (${griReading.methodologyVersion}) is ${gri}/100 from ${griReading.eventCount} eligible evidence rows across ${griReading.independentStoryCount} independent stories with ${Math.round(griReading.coverage * 100)}% domain coverage.`
       : "No qualifying events are available in the canonical GRI window, so the Global Risk Index is unavailable.",
     meanSev !== null && gri !== null
       ? meanSev >= gri

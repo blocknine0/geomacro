@@ -1,5 +1,12 @@
 import { supabaseFeed } from "@/lib/supabase-feed";
-import { GRI_METHOD_VERSION } from "@/lib/gri-engine.js";
+import {
+  GRI_CLASSIFICATION_PROMPT_VERSION,
+  GRI_CLASSIFICATION_VERSION,
+  GRI_METHOD_VERSION,
+  GRI_PROOF_VERSION,
+  GRI_STORY_CORRELATION_PROMPT_VERSION,
+  GRI_STORY_CORRELATION_VERSION,
+} from "@/lib/gri-current-contract";
 
 export type GriProofEventChange = {
   eventId: string;
@@ -80,6 +87,24 @@ export type GriContributionProof = {
   raw_weight: number | string;
   effective_event_weight: number | string;
   source_effective_weight: number | string;
+
+  pre_story_event_weight: number | string | null;
+  story_cluster_id: string | null;
+  story_canonical_label: string | null;
+  story_assignment_decision: string | null;
+  story_match_confidence: number | string | null;
+  story_decision_rationale: string | null;
+  story_clustering_provider: string | null;
+  story_clustering_model: string | null;
+  story_clustering_version: string | null;
+  story_clustering_prompt_version: string | null;
+  story_clustering_scored_at: string | null;
+  story_clustering_input_hash: string | null;
+  story_raw_weight: number | string | null;
+  story_strongest_source_weight: number | string | null;
+  story_effective_weight: number | string | null;
+  within_story_share: number | string | null;
+
   category_effective_weight: number | string;
   normalized_category_weight: number | string;
   within_category_share: number | string;
@@ -149,6 +174,9 @@ export type GriProofPackage = {
     weighted_confidence: number | string | null;
     event_count: number;
     source_count: number;
+    independent_story_count: number;
+    story_correlation_version: string | null;
+    story_correlation_prompt_version: string | null;
     category_breakdown: unknown;
     previous_as_of: string | null;
     previous_raw_score: number | string | null;
@@ -172,7 +200,7 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
   const snapshotResult = await supabaseFeed
     .from("gri_snapshots")
     .select(
-      "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,change_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,event_count,source_count,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,explanation,published_at",
+      "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,change_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,explanation,published_at",
     )
     .eq("id", snapshotId)
     .eq("status", "published")
@@ -181,14 +209,62 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
   if (snapshotResult.error) throw snapshotResult.error;
   if (!snapshotResult.data) throw new Error("Published GRI proof package not found.");
 
+  if (
+    snapshotResult.data.proof_version !== GRI_PROOF_VERSION ||
+    snapshotResult.data.story_correlation_version !== GRI_STORY_CORRELATION_VERSION ||
+    snapshotResult.data.story_correlation_prompt_version !== GRI_STORY_CORRELATION_PROMPT_VERSION ||
+    !Number.isInteger(Number(snapshotResult.data.independent_story_count)) ||
+    Number(snapshotResult.data.independent_story_count) <= 0 ||
+    Number(snapshotResult.data.independent_story_count) > Number(snapshotResult.data.event_count)
+  ) {
+    throw new Error("Published GRI proof package does not match the current v1.1 proof contract.");
+  }
+
   const contributionResult = await supabaseFeed
     .from("gri_contributions")
     .select(
-      "event_id,category,source_key,source_name,source_domain,source_url,source_title,summary,severity,confidence,observed_at,published_at,age_hours,confidence_weight,decay_weight,raw_weight,effective_event_weight,source_effective_weight,category_effective_weight,normalized_category_weight,within_category_share,global_share,contribution_points,classification_provider,classification_model,classification_version,classification_prompt_version,classification_scored_at,classification_input_hash",
+      "event_id,category,source_key,source_name,source_domain,source_url,source_title,summary,severity,confidence,observed_at,published_at,age_hours,confidence_weight,decay_weight,raw_weight,effective_event_weight,source_effective_weight,pre_story_event_weight,story_cluster_id,story_canonical_label,story_assignment_decision,story_match_confidence,story_decision_rationale,story_clustering_provider,story_clustering_model,story_clustering_version,story_clustering_prompt_version,story_clustering_scored_at,story_clustering_input_hash,story_raw_weight,story_strongest_source_weight,story_effective_weight,within_story_share,category_effective_weight,normalized_category_weight,within_category_share,global_share,contribution_points,classification_provider,classification_model,classification_version,classification_prompt_version,classification_scored_at,classification_input_hash",
     )
     .eq("snapshot_id", snapshotId)
     .order("contribution_points", { ascending: false });
   if (contributionResult.error) throw contributionResult.error;
+
+  const contributions = (contributionResult.data ?? []) as GriContributionProof[];
+
+  if (contributions.length !== Number(snapshotResult.data.event_count)) {
+    throw new Error(
+      `GRI proof contribution count mismatch: expected ${snapshotResult.data.event_count}, received ${contributions.length}.`,
+    );
+  }
+
+  for (const row of contributions) {
+    const storyWeights = [
+      numberOrNull(row.pre_story_event_weight),
+      numberOrNull(row.story_raw_weight),
+      numberOrNull(row.story_strongest_source_weight),
+      numberOrNull(row.story_effective_weight),
+      numberOrNull(row.within_story_share),
+      numberOrNull(row.effective_event_weight),
+    ];
+
+    const currentClassification =
+      row.classification_version === GRI_CLASSIFICATION_VERSION &&
+      row.classification_prompt_version === GRI_CLASSIFICATION_PROMPT_VERSION;
+
+    const currentStoryContract =
+      Boolean(row.story_cluster_id) &&
+      Boolean(row.story_canonical_label) &&
+      ["anchor", "matched"].includes(String(row.story_assignment_decision)) &&
+      row.story_clustering_version === GRI_STORY_CORRELATION_VERSION &&
+      row.story_clustering_prompt_version === GRI_STORY_CORRELATION_PROMPT_VERSION &&
+      storyWeights.every((value) => value !== null && value >= 0);
+
+    if (!currentClassification || !currentStoryContract) {
+      throw new Error(
+        `GRI proof contribution ${row.event_id} does not satisfy the current v1.1 provenance contract.`,
+      );
+    }
+  }
 
   let validationRun: GriValidationRun | null = null;
   let validationMetrics: GriValidationMetric[] = [];
@@ -224,7 +300,7 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
           ? (snapshotResult.data.explanation as GriProofExplanation)
           : null,
     },
-    contributions: (contributionResult.data ?? []) as GriContributionProof[],
+    contributions,
     validationRun,
     validationMetrics,
   };
