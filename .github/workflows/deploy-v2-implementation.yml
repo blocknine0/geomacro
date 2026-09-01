@@ -1,6 +1,3 @@
-# `.github/workflows/propose-v2-upgrade.yml`
-
-```yaml
 name: Propose and Approve AgentArena V2 Upgrade
 
 on:
@@ -515,4 +512,3 @@ jobs:
             "WAIT: Do not execute upgrade until the new 48h timelock has elapsed."
           );
           NODE
-```

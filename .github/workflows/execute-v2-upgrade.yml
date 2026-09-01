@@ -1,6 +1,3 @@
-# `.github/workflows/execute-v2-upgrade.yml`
-
-```yaml
 name: Execute AgentArena V2 Upgrade + Initialize Fixed Odds
 
 on:
@@ -404,4 +401,3 @@ jobs:
             enabled
           );
           NODE
-```
