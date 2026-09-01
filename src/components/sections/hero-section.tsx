@@ -25,7 +25,6 @@ import { RiskBadge, riskLevel } from "@/components/foundation/risk";
 import { LastUpdated } from "@/components/foundation/live";
 import { InlineError, UpdatingIndicator } from "@/components/foundation/async-states";
 import { reportError } from "@/lib/user-errors";
-import { GRI_LOOKBACK_HOURS, attributeGriChange, calculateGri } from "@/lib/gri-engine.js";
 import { useGlobalRisk } from "@/lib/use-global-risk";
 
 type Bucket = { t: number; avg: number; count: number };
@@ -248,7 +247,6 @@ export function HeroSection() {
     setWhyOpen(next);
     if (!next || contributors !== null || whyLoading) return;
     setWhyLoading(true);
-    const now = Date.now();
     // Prefer the stored attribution for the exact snapshot currently displayed.
     // This makes "Why N?" reconcile to the published score/hash rather than a
     // fresh client-side re-evaluation a few seconds later.
@@ -257,7 +255,7 @@ export function HeroSection() {
         const { data: snapshot, error: snapshotError } = await supabaseFeed
           .from("gri_snapshots")
           .select("change_attribution")
-          .eq("as_of", riskFeed.data.snapshotAsOf)
+          .eq("id", riskFeed.data.snapshotId)
           .maybeSingle();
         if (
           !snapshotError &&
@@ -291,44 +289,11 @@ export function HeroSection() {
       }
     }
 
-    // Pre-migration/first-snapshot fallback: reproduce the same v1 engine live.
-    const since = new Date(now - (GRI_LOOKBACK_HOURS + 24) * 60 * 60 * 1000).toISOString();
-    try {
-      const { data, error } = await supabaseFeed
-        .from("events")
-        .select(
-          "id,source_title,summary,category,severity,confidence,source_name,source_url,created_at,published_at",
-        )
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(3000);
-      if (error) throw error;
-      const rows = data ?? [];
-      const current = calculateGri(rows, now);
-      const previous = calculateGri(rows, now - 24 * 60 * 60 * 1000);
-      const change = attributeGriChange(previous, current);
-      const top = (change?.eventChanges ?? [])
-        .filter((e) => Math.abs(Number(e.deltaPoints ?? 0)) > 0.000001)
-        .slice(0, 10)
-        .map((e) => ({
-          source_title: (e.sourceTitle as string | null) ?? null,
-          category: (e.category as string | null) ?? null,
-          severity:
-            typeof e.currentSeverity === "number"
-              ? e.currentSeverity
-              : typeof e.previousSeverity === "number"
-                ? e.previousSeverity
-                : null,
-          deltaPoints: Number(e.deltaPoints ?? 0),
-          kind: String(e.kind ?? "reweighted"),
-        }));
-      setContributors(top);
-    } catch (e) {
-      reportError("HeroSection.contributors", e, "loading contributing events");
-      setContributors([]);
-    } finally {
-      setWhyLoading(false);
-    }
+    // Current public GRI surfaces never run a historical client-side
+    // calculator. If persisted attribution is unavailable, for example on
+    // the first snapshot of a methodology series, expose that honestly.
+    setContributors([]);
+    setWhyLoading(false);
   }
 
   const stats = useMemo<HeroStats | null>(() => {

@@ -582,7 +582,7 @@ function ProductPane() {
         {[
           [
             "Global Risk Index",
-            "Versioned aggregate risk score and historical series derived from source-capped, confidence- and recency-weighted event severity.",
+            "Versioned aggregate risk score and historical series derived from source- and story-capped, confidence- and recency-weighted event severity.",
           ],
           [
             "Intelligence",
@@ -641,20 +641,34 @@ function IntelligencePane() {
       </PageSubtitle>
       <Divider />
 
-      <H2>Canonical GRI calculation · v1.0.0</H2>
+      <H2>Canonical GRI calculation · v1.1.0</H2>
       <P>
-        The Global Risk Index is deterministic after event classification. Eligible observations in
-        the trailing 72 hours are weighted by model confidence and exponential recency decay with a
-        24-hour half-life. Evidence from any one source is capped, then category scores are combined
-        across the four equally weighted domains. Missing domains are excluded and disclosed as
-        coverage; they are never converted to zero risk.
+        The Global Risk Index is deterministic after event classification and story assignment.
+        Eligible evidence articles in the trailing 72 hours are weighted by model confidence and
+        exponential recency decay with a 24-hour half-life. Evidence concentration is controlled in
+        two stages: first by source, then by underlying story. Repeated coverage of the same
+        development remains visible in the proof ledger but cannot multiply that development's risk
+        weight. Category scores are then combined across the four equally weighted domains. Missing
+        domains are excluded and disclosed as coverage; they are never converted to zero risk.
       </P>
-      <CodeBlock>{`eventWeight = (confidence / 100) × 2^(-ageHours / 24)
-sourceEffectiveWeight = min(1.0, sum(eventWeight from source))
-categoryScore = weightedMean(severity, source-capped event weights)
+      <CodeBlock>{`rawWeight = (confidence / 100) × 2^(-ageHours / 24)
+
+sourceEffectiveWeight = min(1.0, Σ rawWeight for source/category)
+preStoryEventWeight = sourceEffectiveWeight × articleRawWeight / sourceRawWeight
+
+storyRawWeight = Σ preStoryEventWeight in story
+storyStrongestSourceWeight = max(post-source weight by source inside story)
+storyEffectiveWeight = min(1.0, storyStrongestSourceWeight)
+effectiveEventWeight = storyEffectiveWeight × withinStoryShare
+
+categoryScore = weightedMean(severity, final effectiveEventWeight)
 GRI_raw = Σ(normalized active-category weight × categoryScore)
 GRI_display = round(GRI_raw)
 
+Methodology = gri-v1.1.0
+Proof = gri-proof-v1.1.0
+Classifier = event-severity-v1.0.4
+Story correlation = story-correlation-v1.0.0
 Canonical observation time = created_at
 Canonical lookback = 72h
 No synthetic fallback, zero-fill or forward-fill.`}</CodeBlock>
@@ -664,9 +678,9 @@ No synthetic fallback, zero-fill or forward-fill.`}</CodeBlock>
         Each publication is written as a hidden draft, receives its complete contribution ledger,
         must pass score/change reconciliation, and only then becomes publicly readable. Published
         proof packages are immutable. The public “Verify this GRI” control exposes the exact
-        event/category change ledger, source and classifier provenance,
-        methodology/input/evidence/calculation/change/proof hashes, and the latest empirical
-        validation status on demand.
+        evidence/category change ledger, source, classifier and story-correlation provenance,
+        source/story weight chain, methodology/input/evidence/calculation/change/proof hashes, and
+        the latest empirical validation status on demand.
       </P>
       <P>
         Comparing contribution points between same-version snapshots decomposes the full score move,

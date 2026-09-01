@@ -86,7 +86,9 @@ export function GlobalRiskIndexSection({
                 <Readout label="Previous" value={risk.previous} />
                 <Readout label={`${timeframe} low`} value={series?.low ?? null} />
                 <Readout label={`${timeframe} high`} value={series?.high ?? null} />
-                <Readout label="Events scored" value={risk.eventCount} />
+                <Readout label="Evidence articles" value={risk.eventCount} />
+                <Readout label="Independent stories" value={risk.independentStoryCount} />
+                <Readout label="Sources" value={risk.sourceCount} />
                 <Readout label="Coverage %" value={Math.round(risk.coverage * 100)} />
                 <Readout
                   label="Weighted confidence"
