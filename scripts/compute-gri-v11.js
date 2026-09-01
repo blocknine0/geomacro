@@ -33,8 +33,8 @@ if (!url || !key) {
 }
 const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.3';
-const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.3';
+const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.4';
+const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.4';
 
 function hasCanonicalClassificationProvenance(row) {
   if (!row) return false;

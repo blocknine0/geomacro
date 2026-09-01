@@ -145,8 +145,8 @@ BEGIN
       count(*)::integer,
       count(DISTINCT story_cluster_id)::integer,
       count(*) FILTER (
-        WHERE classification_version IS DISTINCT FROM 'event-severity-v1.0.3'
-           OR classification_prompt_version IS DISTINCT FROM 'risk-desk-filter-v1.0.3'
+        WHERE classification_version IS DISTINCT FROM 'event-severity-v1.0.4'
+           OR classification_prompt_version IS DISTINCT FROM 'risk-desk-filter-v1.0.4'
            OR classification_provider IS NULL
            OR btrim(classification_provider) = ''
            OR classification_model IS NULL
