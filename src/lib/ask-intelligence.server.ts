@@ -318,14 +318,41 @@ async function retrieve(terms: string[], categories: string[]) {
   return { rows: Array.from(merged.values()), recentRows };
 }
 
-async function loadPublishedGri() {
-  const unavailable = () => ({
+export type PublishedGriReading = {
+  displayScore: number | null;
+  eventCount: number;
+  independentStoryCount: number;
+  coverage: number;
+  methodologyVersion: string;
+  auditPersisted: boolean;
+  proofVersion: string | null;
+  verificationStatus: string | null;
+  asOf: string | null;
+  snapshotId: string | null;
+  proofHash: string | null;
+  evidenceHash: string | null;
+  calculationHash: string | null;
+  inputHash: string | null;
+  methodologyHash: string | null;
+};
+
+export async function loadPublishedGri(): Promise<PublishedGriReading> {
+  const unavailable = (): PublishedGriReading => ({
     displayScore: null,
     eventCount: 0,
     independentStoryCount: 0,
     coverage: 0,
     methodologyVersion: GRI_METHOD_VERSION,
     auditPersisted: false,
+    proofVersion: null,
+    verificationStatus: null,
+    asOf: null,
+    snapshotId: null,
+    proofHash: null,
+    evidenceHash: null,
+    calculationHash: null,
+    inputHash: null,
+    methodologyHash: null,
   });
 
   const supabase = getAppSupabase();
@@ -334,7 +361,7 @@ async function loadPublishedGri() {
   const { data, error } = await supabase
     .from("gri_snapshots")
     .select(
-      "display_score,event_count,independent_story_count,coverage,methodology_version,as_of,proof_version,story_correlation_version,story_correlation_prompt_version,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,reconciliation_residual,change_residual",
+      "id,display_score,event_count,independent_story_count,coverage,methodology_version,as_of,proof_version,story_correlation_version,story_correlation_prompt_version,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,reconciliation_residual,change_residual",
     )
     .eq("status", "published")
     .eq("methodology_version", GRI_METHOD_VERSION)
@@ -388,6 +415,15 @@ async function loadPublishedGri() {
     coverage: Number(data.coverage ?? 0),
     methodologyVersion: String(data.methodology_version ?? GRI_METHOD_VERSION),
     auditPersisted: true,
+    proofVersion: String(data.proof_version),
+    verificationStatus: String(data.verification_status),
+    asOf: String(data.as_of),
+    snapshotId: String(data.id),
+    proofHash: String(data.proof_hash),
+    evidenceHash: String(data.evidence_hash),
+    calculationHash: String(data.calculation_hash),
+    inputHash: String(data.input_hash),
+    methodologyHash: String(data.methodology_hash),
   };
 }
 

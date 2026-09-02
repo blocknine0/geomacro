@@ -37,6 +37,7 @@ const required = [
   '002_events_schema_backfill.sql',
   '004_gri_audit_system.sql',
   '010_gri_comparison_continuity.sql',
+  '011_agent_intelligence_commerce.sql',
 ];
 
 for (const migration of required) {

@@ -21,6 +21,8 @@ import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
+import { Route as ApiV1AgentCatalogRouteImport } from './routes/api/v1/agent/catalog'
+import { Route as ApiV1AgentEventsEventIdIntelligenceRouteImport } from './routes/api/v1/agent/events/$eventId/intelligence'
 
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
@@ -82,6 +84,17 @@ const DocsGriArchitectureRoute = DocsGriArchitectureRouteImport.update({
   path: '/docs/gri-architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AgentCatalogRoute = ApiV1AgentCatalogRouteImport.update({
+  id: '/api/v1/agent/catalog',
+  path: '/api/v1/agent/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1AgentEventsEventIdIntelligenceRoute =
+  ApiV1AgentEventsEventIdIntelligenceRouteImport.update({
+    id: '/api/v1/agent/events/$eventId/intelligence',
+    path: '/api/v1/agent/events/$eventId/intelligence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +109,8 @@ export interface FileRoutesByFullPath {
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
+  '/api/v1/agent/catalog': typeof ApiV1AgentCatalogRoute
+  '/api/v1/agent/events/$eventId/intelligence': typeof ApiV1AgentEventsEventIdIntelligenceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +125,8 @@ export interface FileRoutesByTo {
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
+  '/api/v1/agent/catalog': typeof ApiV1AgentCatalogRoute
+  '/api/v1/agent/events/$eventId/intelligence': typeof ApiV1AgentEventsEventIdIntelligenceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +142,8 @@ export interface FileRoutesById {
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
+  '/api/v1/agent/catalog': typeof ApiV1AgentCatalogRoute
+  '/api/v1/agent/events/$eventId/intelligence': typeof ApiV1AgentEventsEventIdIntelligenceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +160,8 @@ export interface FileRouteTypes {
     | '/portfolio'
     | '/roadmap'
     | '/docs/gri-architecture'
+    | '/api/v1/agent/catalog'
+    | '/api/v1/agent/events/$eventId/intelligence'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +176,8 @@ export interface FileRouteTypes {
     | '/portfolio'
     | '/roadmap'
     | '/docs/gri-architecture'
+    | '/api/v1/agent/catalog'
+    | '/api/v1/agent/events/$eventId/intelligence'
   id:
     | '__root__'
     | '/'
@@ -169,6 +192,8 @@ export interface FileRouteTypes {
     | '/portfolio'
     | '/roadmap'
     | '/docs_/gri-architecture'
+    | '/api/v1/agent/catalog'
+    | '/api/v1/agent/events/$eventId/intelligence'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +209,8 @@ export interface RootRouteChildren {
   PortfolioRoute: typeof PortfolioRoute
   RoadmapRoute: typeof RoadmapRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
+  ApiV1AgentCatalogRoute: typeof ApiV1AgentCatalogRoute
+  ApiV1AgentEventsEventIdIntelligenceRoute: typeof ApiV1AgentEventsEventIdIntelligenceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +299,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGriArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/agent/catalog': {
+      id: '/api/v1/agent/catalog'
+      path: '/api/v1/agent/catalog'
+      fullPath: '/api/v1/agent/catalog'
+      preLoaderRoute: typeof ApiV1AgentCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/agent/events/$eventId/intelligence': {
+      id: '/api/v1/agent/events/$eventId/intelligence'
+      path: '/api/v1/agent/events/$eventId/intelligence'
+      fullPath: '/api/v1/agent/events/$eventId/intelligence'
+      preLoaderRoute: typeof ApiV1AgentEventsEventIdIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -288,6 +329,9 @@ const rootRouteChildren: RootRouteChildren = {
   PortfolioRoute: PortfolioRoute,
   RoadmapRoute: RoadmapRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
+  ApiV1AgentCatalogRoute: ApiV1AgentCatalogRoute,
+  ApiV1AgentEventsEventIdIntelligenceRoute:
+    ApiV1AgentEventsEventIdIntelligenceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
