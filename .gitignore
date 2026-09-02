@@ -55,3 +55,6 @@ Thumbs.db
 *.sln
 *.sw?
 *.tmp
+
+# Supabase local temp
+supabase/.temp/

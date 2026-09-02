@@ -1,0 +1,44 @@
+name: Database schema safety
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/db/**'
+      - '.github/workflows/database-schema-safety.yml'
+      - 'package.json'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/db/**'
+      - '.github/workflows/database-schema-safety.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  static-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject destructive migrations and missing baseline
+        run: node scripts/db/check-migration-safety.mjs
+
+  disposable-migration-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start disposable local Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Replay the full migration chain from zero
+        run: supabase db reset --local --no-seed
+      - name: Stop disposable Supabase
+        if: always()
+        run: supabase stop --no-backup

@@ -577,6 +577,24 @@ async function loadComparisonContext() {
     }
 
     const rows = contribRows ?? [];
+    const storedContributions = rows.map(storedContributionToEngine);
+
+    const ledgerRawScore = storedContributions.reduce(
+      (sum, row) => sum + Number(row.contributionPoints ?? 0),
+      0
+    );
+    const storedRawScore = Number(data.raw_score);
+
+    if (
+      !Number.isFinite(ledgerRawScore) ||
+      !Number.isFinite(storedRawScore) ||
+      Math.abs(ledgerRawScore - storedRawScore) > 0.00001
+    ) {
+      console.log(
+        `Skipping comparison snapshot ${data.id}: stored raw_score does not reconcile with contribution ledger.`
+      );
+      continue;
+    }
 
     const canonicalComparison =
       rows.length > 0 &&
@@ -639,7 +657,7 @@ async function loadComparisonContext() {
         snapshotId: data.id,
         methodologyVersion: data.methodology_version,
         asOf: data.as_of,
-        rawScore: Number(data.raw_score),
+        rawScore: ledgerRawScore,
         displayScore: Number(data.display_score),
         coverage: Number(data.coverage),
         activeCategories: data.active_categories ?? [],
@@ -653,7 +671,7 @@ async function loadComparisonContext() {
         categories: Array.isArray(data.category_breakdown)
           ? data.category_breakdown
           : [],
-        contributions: rows.map(storedContributionToEngine),
+        contributions: storedContributions,
         inputRows: [],
       },
       targetAsOf: target.toISOString(),
