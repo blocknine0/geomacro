@@ -38,6 +38,7 @@ const required = [
   '004_gri_audit_system.sql',
   '010_gri_comparison_continuity.sql',
   '011_agent_intelligence_commerce.sql',
+  '012_agent_goat_order_lifecycle.sql',
 ];
 
 for (const migration of required) {

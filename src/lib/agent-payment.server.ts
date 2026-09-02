@@ -56,6 +56,9 @@ export function getAgentPaymentConfig(): AgentPaymentConfig {
   const facilitatorUrl = env("AGENT_X402_FACILITATOR_URL");
   const enabled = env("AGENT_PAYMENT_ENABLED") === "true";
 
+  const railConfigured =
+    rail === "goat-flow" || Boolean(facilitatorUrl);
+
   if (
     capability !== AGENT_CAPABILITIES.EVENT_INTELLIGENCE ||
     !amount ||
@@ -64,7 +67,7 @@ export function getAgentPaymentConfig(): AgentPaymentConfig {
     !network ||
     !rail ||
     !payTo ||
-    !facilitatorUrl
+    !railConfigured
   ) {
     return {
       enabled: false,
