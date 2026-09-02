@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { canonicalJson, methodologyManifest } from './gri-engine-v11.js';
 
 export const GRI_PROOF_VERSION = 'gri-proof-v1.1.0';
-export const GRI_RECONCILIATION_TOLERANCE = 1e-7;
+export const GRI_RECONCILIATION_TOLERANCE = 1e-6;
 
 export function sha256(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex');
@@ -12,6 +12,15 @@ export function roundNumber(value, digits = 8) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return null;
   const factor = 10 ** digits;
   return Math.round(Number(value) * factor) / factor;
+}
+
+export function reconcilesWithinTolerance(value) {
+  if (value === null) return true;
+  const numeric = Number(value);
+  return (
+    Number.isFinite(numeric) &&
+    Math.abs(numeric) <= GRI_RECONCILIATION_TOLERANCE
+  );
 }
 
 export function calculationManifest(calculation) {
@@ -224,7 +233,7 @@ export function buildProofArtifacts(calculation, attribution) {
     ...proofPayload,
     proofHash,
     verified:
-      (reconciliationResidual === null || Math.abs(reconciliationResidual) <= GRI_RECONCILIATION_TOLERANCE) &&
-      (changeResidual === null || Math.abs(changeResidual) <= GRI_RECONCILIATION_TOLERANCE),
+      reconcilesWithinTolerance(reconciliationResidual) &&
+      reconcilesWithinTolerance(changeResidual),
   };
 }

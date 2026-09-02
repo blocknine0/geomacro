@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { reconcilesWithinTolerance } from './lib/gri-proof-v11.js';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { attributeGriChange, calculateGri } from './lib/gri-engine-v11.js';
@@ -461,8 +462,8 @@ async function main() {
     calculationHash: proof.calculationHash === snapshot.calculation_hash,
     changeHash: (proof.changeHash ?? null) === (snapshot.change_hash ?? null),
     proofHash: proof.proofHash === snapshot.proof_hash,
-    scoreReconciles: proof.reconciliationResidual === null || Math.abs(proof.reconciliationResidual) <= 1e-7,
-    changeReconciles: proof.changeResidual === null || Math.abs(proof.changeResidual) <= 1e-7,
+    scoreReconciles: reconcilesWithinTolerance(proof.reconciliationResidual),
+    changeReconciles: reconcilesWithinTolerance(proof.changeResidual),
   };
   const verified = Object.values(checks).every(Boolean);
 

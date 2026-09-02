@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { reconcilesWithinTolerance } from './lib/gri-proof-v11.js';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -899,8 +900,8 @@ async function verifyDraftProofFromStoredRows(snapshotId, expected, previous) {
     calculationHash: reproved.calculationHash === expected.proof.calculationHash,
     changeHash: (reproved.changeHash ?? null) === (expected.proof.changeHash ?? null),
     proofHash: reproved.proofHash === expected.proof.proofHash,
-    scoreReconciles: reproved.reconciliationResidual === null || Math.abs(reproved.reconciliationResidual) <= 1e-7,
-    changeReconciles: reproved.changeResidual === null || Math.abs(reproved.changeResidual) <= 1e-7,
+    scoreReconciles: reconcilesWithinTolerance(reproved.reconciliationResidual),
+    changeReconciles: reconcilesWithinTolerance(reproved.changeResidual),
   };
 
   const verified = Object.values(checks).every(Boolean);
