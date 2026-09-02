@@ -17,7 +17,11 @@
     "gri:verify": "node scripts/verify-gri-snapshot-v11.js",
     "gri:benchmarks": "node scripts/ingest-gri-benchmarks.js",
     "gri:validate": "node scripts/validate-gri.js",
-    "gri:replay": "node scripts/replay-gri-history.js"
+    "gri:replay": "node scripts/replay-gri-history.js",
+    "db:safety": "node scripts/db/check-migration-safety.mjs",
+    "db:target": "node scripts/db/assert-authoritative-supabase.mjs",
+    "db:verify-core": "node scripts/db/verify-core-schema.mjs",
+    "test:app": "vitest run src"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.50",
