@@ -13,8 +13,8 @@
     "economics:verify": "node scripts/ops/verify-market-economics.js",
     "liquidity:fund": "node scripts/ops/fund-liquidity.js",
     "jury:verify": "node scripts/ops/verify-jury.js",
-    "gri:compute": "node scripts/compute-gri.js",
-    "gri:verify": "node scripts/verify-gri-snapshot.js",
+    "gri:compute": "node scripts/compute-gri-v11.js",
+    "gri:verify": "node scripts/verify-gri-snapshot-v11.js",
     "gri:benchmarks": "node scripts/ingest-gri-benchmarks.js",
     "gri:validate": "node scripts/validate-gri.js",
     "gri:replay": "node scripts/replay-gri-history.js"

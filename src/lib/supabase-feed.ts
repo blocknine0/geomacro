@@ -1,18 +1,33 @@
 import { createClient } from "@supabase/supabase-js";
 import type { EventStage } from "./event-stage";
 
-// Public anon key — safe to ship in client code. We read from the
-// Vite-injected env vars first so the same values used by the backend
-// GitHub Actions can be shared without drift, then fall back to the
-// hardcoded published-project defaults so the site keeps working if the
-// env vars are ever unset.
-const SUPABASE_URL =
-  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
-  "https://ldpwajisioljyjtojvfx.supabase.co";
-const SUPABASE_ANON_KEY =
+// Public browser reads must stay on the authoritative Geomacro data project.
+// A stale/mismatched Lovable VITE_* environment previously pointed the client
+// at an empty Cloud database, which made GRI/intelligence appear unavailable.
+// Accept VITE_* overrides only when they target the authoritative project;
+// otherwise fall back to the known public project pair.
+const AUTHORITATIVE_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
+const AUTHORITATIVE_SUPABASE_URL =
+  `https://${AUTHORITATIVE_SUPABASE_PROJECT_REF}.supabase.co`;
+const AUTHORITATIVE_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6ImxkcHdhamlzaW9sanlqdG9qdmZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NjUxNTcsImV4cCI6MjA5NzI0MTE1N30.Hm2LwUWuuyA2O28_woD9m0MJCrV-o48SUKOk5FHANNI";
+
+const configuredUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const configuredAnonKey =
   (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ??
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkcHdhamlzaW9sanlqdG9qdmZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NjUxNTcsImV4cCI6MjA5NzI0MTE1N30.Hm2LwUWuuyA2O28_woD9m0MJCrV-o48SUKOk5FHANNI";
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
+
+const configuredTargetsAuthoritativeProject = Boolean(
+  configuredUrl?.includes(AUTHORITATIVE_SUPABASE_PROJECT_REF),
+);
+
+const SUPABASE_URL = configuredTargetsAuthoritativeProject
+  ? configuredUrl!
+  : AUTHORITATIVE_SUPABASE_URL;
+const SUPABASE_ANON_KEY =
+  configuredTargetsAuthoritativeProject && configuredAnonKey
+    ? configuredAnonKey
+    : AUTHORITATIVE_SUPABASE_ANON_KEY;
 
 export const supabaseFeed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },

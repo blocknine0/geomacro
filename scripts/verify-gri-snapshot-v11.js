@@ -259,20 +259,7 @@ function contributionRowsToInput(rows) {
 }
 
 function storedCalculation(snapshot, rows) {
-  return {
-    snapshotId: snapshot.id,
-    methodologyVersion: snapshot.methodology_version,
-    asOf: snapshot.as_of,
-    rawScore: snapshot.raw_score === null ? null : Number(snapshot.raw_score),
-    displayScore: snapshot.display_score,
-    coverage: Number(snapshot.coverage),
-    activeCategories: snapshot.active_categories ?? [],
-    eventCount: snapshot.event_count,
-    sourceCount: snapshot.source_count,
-    independentStoryCount: snapshot.independent_story_count,
-    weightedConfidence: snapshot.weighted_confidence === null ? null : Number(snapshot.weighted_confidence),
-    categories: Array.isArray(snapshot.category_breakdown) ? snapshot.category_breakdown : [],
-    contributions: rows.map((r) => ({
+  const contributions = rows.map((r) => ({
       eventId: r.event_id,
       category: r.category,
       sourceKey: r.source_key,
@@ -323,7 +310,30 @@ function storedCalculation(snapshot, rows) {
       classificationPromptVersion: r.classification_prompt_version,
       classificationScoredAt: r.classification_scored_at,
       classificationInputHash: r.classification_input_hash,
-    })),
+  }));
+
+  const ledgerRawScore =
+    snapshot.raw_score === null
+      ? null
+      : contributions.reduce(
+          (sum, row) => sum + Number(row.contributionPoints ?? 0),
+          0
+        );
+
+  return {
+    snapshotId: snapshot.id,
+    methodologyVersion: snapshot.methodology_version,
+    asOf: snapshot.as_of,
+    rawScore: ledgerRawScore,
+    displayScore: snapshot.display_score,
+    coverage: Number(snapshot.coverage),
+    activeCategories: snapshot.active_categories ?? [],
+    eventCount: snapshot.event_count,
+    sourceCount: snapshot.source_count,
+    independentStoryCount: snapshot.independent_story_count,
+    weightedConfidence: snapshot.weighted_confidence === null ? null : Number(snapshot.weighted_confidence),
+    categories: Array.isArray(snapshot.category_breakdown) ? snapshot.category_breakdown : [],
+    contributions,
     inputRows: [],
   };
 }
