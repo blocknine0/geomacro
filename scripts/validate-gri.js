@@ -2,10 +2,11 @@
 import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { GRI_METHOD_VERSION, canonicalJson } from '../src/lib/gri-engine.js';
+import { GRI_METHOD_VERSION, canonicalJson } from './lib/gri-engine-v11.js';
 
 dotenv.config();
 const VALIDATION_VERSION = 'gri-validation-v1.1.0';
+const REQUIRED_REPLAY_VERSION = 'gri-replay-v1.1.0';
 const TRAIN_FRACTION = 0.70;
 const HORIZONS = [24, 72, 168];
 const MIN_ALL_SAMPLES = 30;
@@ -174,13 +175,14 @@ async function loadSnapshots() {
 
   const { data: run, error } = await supabase
     .from('gri_replay_runs')
-    .select('id,methodology_version,status,observation_time_rule,lookahead_safe,notes')
+    .select('id,methodology_version,replay_version,status,observation_time_rule,lookahead_safe,notes')
     .eq('id', replayRunId)
     .eq('status', 'published')
     .maybeSingle();
   if (error) throw new Error(`replay run query failed: ${error.message}`);
   if (!run) throw new Error(`published replay run ${replayRunId} not found`);
   if (run.methodology_version !== GRI_METHOD_VERSION) throw new Error('replay methodology does not match current GRI methodology');
+  if (run.replay_version !== REQUIRED_REPLAY_VERSION) throw new Error(`replay version must be ${REQUIRED_REPLAY_VERSION}`);
   const snapshots = await fetchAll(
     'gri_replay_snapshots',
     'as_of,raw_score,display_score',

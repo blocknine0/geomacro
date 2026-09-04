@@ -126,7 +126,10 @@ Risk Gate uses subject-specific risk context rather than treating the global GRI
 
 GRI `gri-v1.0.0` is deterministic after event classification. Eligible observations use severity as the risk signal, confidence and exponential recency decay as evidence weights, a 72-hour lookback, a per-source cap, and equal base weights across the four supported risk domains. Missing domains reduce disclosed coverage rather than being treated as zero risk.
 
-`scripts/compute-gri.js` persists versioned snapshots and exact event-level contribution points after migration `004_gri_audit_system.sql` is applied. Each published snapshot carries methodology, input and calculation hashes plus a mathematically reconciling 24-hour change attribution. See `docs/GRI_METHODOLOGY.md` and `docs/GRI_TRANSPARENCY_REQUIREMENTS.md`.
+`scripts/compute-gri-v11.js` persists versioned snapshots and exact event-level contribution points after migration `004_gri_audit_system.sql` is applied. Each published snapshot carries methodology, input and calculation hashes plus a mathematically reconciling 24-hour change attribution. See `docs/GRI_METHODOLOGY.md` and `docs/GRI_TRANSPARENCY_REQUIREMENTS.md`.
+
+Historical `gri-v1.0.0` engine, proof and publisher/verifier implementations are retained under explicitly versioned `*-v10` / `scripts/legacy/` paths for audit reproducibility only. They are not part of the current publication, replay or validation path.
+
 
 ## Architecture
 

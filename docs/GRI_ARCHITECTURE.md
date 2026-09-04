@@ -1,7 +1,7 @@
 # Global Risk Index architecture and proof system
 
-**Canonical methodology:** `gri-v1.0.0`  
-**Proof envelope:** `gri-proof-v1.0.0`
+**Canonical methodology:** `gri-v1.1.0`
+**Proof envelope:** `gri-proof-v1.1.0`
 
 This document is the repository specification behind the public `/docs/gri-architecture` page.
 
@@ -26,12 +26,21 @@ decayWeight      = 2 ^ (-ageHours_i / 24)
 rawWeight_i      = confidenceWeight * decayWeight
 ```
 
-Within each domain, one source receives at most `1.0` total effective evidence weight:
+Within each domain, one source receives at most `1.0` total effective evidence weight. GRI v1.1 then applies an immutable story-cluster cap so repetition of the same underlying development across multiple publishers cannot create multiple independent evidence budgets:
 
 ```text
-sourceRawWeight        = Σ rawWeight_i
-sourceEffectiveWeight  = min(1.0, sourceRawWeight)
-effectiveEventWeight_i = sourceEffectiveWeight * rawWeight_i / sourceRawWeight
+sourceRawWeight          = Σ rawWeight_i
+sourceEffectiveWeight    = min(1.0, sourceRawWeight)
+preStoryEventWeight_i    = sourceEffectiveWeight
+                           * rawWeight_i / sourceRawWeight
+
+storyRawWeight_s         = Σ preStoryEventWeight_i
+storySourceWeight_s,j    = Σ preStoryEventWeight_i from source j
+storyStrongestSource_s   = max_j(storySourceWeight_s,j)
+storyEffectiveWeight_s   = min(1.0, storyStrongestSource_s)
+
+effectiveEventWeight_i   = storyEffectiveWeight_s
+                           * preStoryEventWeight_i / storyRawWeight_s
 ```
 
 Category score:
@@ -135,7 +144,7 @@ Every complete proof package can expose:
 - change-attribution hash
 - complete proof hash
 
-`node scripts/verify-gri-snapshot.js` independently reconstructs the score from the stored proof ledger and verifies those hashes.
+`node scripts/verify-gri-snapshot-v11.js` independently reconstructs the score from the stored proof ledger and verifies those hashes.
 
 ## 8. UI disclosure rule
 
@@ -180,3 +189,14 @@ Any rule capable of changing the GRI for identical inputs requires a new methodo
 - rounding/display rule
 
 Proof visualization and validation tooling can version independently because they do not change the numeric score.
+
+## Historical methodology reproducibility
+
+The repository retains the previous `gri-v1.0.0` implementation only for historical audit reproduction:
+
+- `src/lib/gri-engine-v10.js`
+- `scripts/lib/gri-proof-v10.js`
+- `scripts/legacy/compute-gri-v10.js`
+- `scripts/legacy/verify-gri-snapshot-v10.js`
+
+These files are not part of the current publication, replay, validation or verification path. Current production truth is `gri-v1.1.0` with proof envelope `gri-proof-v1.1.0`.

@@ -1,4 +1,8 @@
-/**
+// LEGACY AUDIT IMPLEMENTATION.
+// Retained to reproduce historical gri-v1.0.0 artifacts only.
+// Production publication, replay, validation and verification use gri-v1.1.0.
+//
+// /**
  * Geomacro Global Risk Index (GRI) — canonical deterministic engine.
  *
  * Methodology v1.0.0 principles:

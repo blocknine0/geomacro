@@ -4,7 +4,7 @@ import {
   attributeGriChange,
   calculateGri,
   type GriInputRow,
-} from "@/lib/gri-engine.js";
+} from "@/lib/gri-engine-v10.js";
 
 const HOUR = 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 7, 30, 12, 0, 0);

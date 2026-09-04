@@ -13,10 +13,17 @@ import { createClient } from '@supabase/supabase-js';
 import {
   GRI_LOOKBACK_HOURS,
   GRI_METHOD_VERSION,
+  GRI_STORY_CORRELATION_VERSION,
+  GRI_STORY_CORRELATION_PROMPT_VERSION,
   calculateGri,
   canonicalJson,
-} from '../src/lib/gri-engine.js';
-import { buildProofArtifacts, roundNumber, sha256 } from './lib/gri-proof.js';
+} from './lib/gri-engine-v11.js';
+import {
+  GRI_PROOF_VERSION,
+  buildProofArtifacts,
+  roundNumber,
+  sha256,
+} from './lib/gri-proof-v11.js';
 
 dotenv.config();
 
@@ -35,7 +42,7 @@ const cadenceHours = intArg('--cadence-hours', 24);
 const startArg = arg('--start');
 const endArg = arg('--end');
 const dryRun = argv.includes('--dry-run');
-const replayVersion = 'gri-replay-v1.0.0';
+const replayVersion = 'gri-replay-v1.1.0';
 
 const url = process.env.SUPABASE_URL || process.env.APP_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
@@ -48,6 +55,238 @@ const SELECT_FIELDS = [
   'classification_provider','classification_model','classification_version',
   'classification_prompt_version','classification_scored_at','classification_input_hash',
 ].join(',');
+
+function hasCanonicalClassificationProvenance(row) {
+  if (!row) return false;
+
+  const classificationVersion = String(row.classification_version || '').trim();
+  const provider = String(row.classification_provider || '').trim();
+  const model = String(row.classification_model || '').trim();
+  const promptVersion = String(row.classification_prompt_version || '').trim();
+  const inputHash = String(row.classification_input_hash || '').trim();
+  const scoredAt = Date.parse(String(row.classification_scored_at || ''));
+
+  return Boolean(
+    classificationVersion === CANONICAL_CLASSIFICATION_VERSION &&
+      promptVersion === CANONICAL_CLASSIFICATION_PROMPT_VERSION &&
+      provider &&
+      model &&
+      Number.isFinite(scoredAt) &&
+      /^[a-f0-9]{64}$/i.test(inputHash)
+  );
+}
+
+function hasCanonicalStoryProvenance(row) {
+  if (!row) return false;
+
+  const clusterId = String(row.story_cluster_id || '').trim();
+  const label = String(row.story_canonical_label || '').trim();
+  const decision = String(row.story_assignment_decision || '').trim();
+  const rationale = String(row.story_decision_rationale || '').trim();
+  const provider = String(row.story_clustering_provider || '').trim();
+  const model = String(row.story_clustering_model || '').trim();
+  const version = String(row.story_clustering_version || '').trim();
+  const promptVersion = String(row.story_clustering_prompt_version || '').trim();
+  const inputHash = String(row.story_clustering_input_hash || '').trim().toLowerCase();
+  const scoredAt = Date.parse(String(row.story_clustering_scored_at || ''));
+  const matchConfidence = Number(row.story_match_confidence);
+
+  return Boolean(
+    clusterId &&
+      label &&
+      ['anchor', 'matched'].includes(decision) &&
+      rationale &&
+      provider &&
+      model &&
+      version === GRI_STORY_CORRELATION_VERSION &&
+      promptVersion === GRI_STORY_CORRELATION_PROMPT_VERSION &&
+      Number.isFinite(scoredAt) &&
+      Number.isFinite(matchConfidence) &&
+      matchConfidence >= 0 &&
+      matchConfidence <= 100 &&
+      /^[a-f0-9]{64}$/i.test(inputHash)
+  );
+}
+
+async function attachCurrentStoryProvenance(events) {
+  if (events.length === 0) return events;
+
+  const eventIds = events.map((row) => row.id);
+  const assignmentsByEventId = new Map();
+  const batchSize = 250;
+
+  for (let i = 0; i < eventIds.length; i += batchSize) {
+    const ids = eventIds.slice(i, i + batchSize);
+
+    const { data, error } = await supabase
+      .from('gri_story_assignments')
+      .select(
+        [
+          'cluster_id',
+          'event_id',
+          'category',
+          'decision',
+          'match_confidence',
+          'decision_rationale',
+          'clustering_provider',
+          'clustering_model',
+          'clustering_version',
+          'clustering_prompt_version',
+          'clustering_scored_at',
+          'clustering_input_hash',
+        ].join(',')
+      )
+      .in('event_id', ids)
+      .eq('clustering_version', GRI_STORY_CORRELATION_VERSION)
+      .eq(
+        'clustering_prompt_version',
+        GRI_STORY_CORRELATION_PROMPT_VERSION
+      );
+
+    if (error) {
+      throw new Error(
+        `GRI story-assignment query failed: ${error.message}`
+      );
+    }
+
+    for (const assignment of data ?? []) {
+      if (assignmentsByEventId.has(assignment.event_id)) {
+        throw new Error(
+          `GRI v1.1 story provenance rejected: duplicate current-contract ` +
+          `assignment for event ${assignment.event_id}`
+        );
+      }
+
+      assignmentsByEventId.set(
+        assignment.event_id,
+        assignment
+      );
+    }
+  }
+
+  const missingAssignments = eventIds.filter(
+    (id) => !assignmentsByEventId.has(id)
+  );
+
+  if (missingAssignments.length > 0) {
+    throw new Error(
+      `GRI v1.1 calculation blocked: ${missingAssignments.length} canonical ` +
+      `event(s) have no ${GRI_STORY_CORRELATION_VERSION} assignment: ` +
+      missingAssignments.slice(0, 12).join(', ')
+    );
+  }
+
+  const clusterIds = [
+    ...new Set(
+      [...assignmentsByEventId.values()].map(
+        (assignment) => assignment.cluster_id
+      )
+    ),
+  ];
+
+  const clustersById = new Map();
+
+  for (let i = 0; i < clusterIds.length; i += batchSize) {
+    const ids = clusterIds.slice(i, i + batchSize);
+
+    const { data, error } = await supabase
+      .from('gri_story_clusters')
+      .select(
+        [
+          'id',
+          'category',
+          'canonical_label',
+          'clustering_provider',
+          'clustering_model',
+          'clustering_version',
+          'clustering_prompt_version',
+          'clustering_scored_at',
+          'clustering_input_hash',
+        ].join(',')
+      )
+      .in('id', ids);
+
+    if (error) {
+      throw new Error(
+        `GRI story-cluster query failed: ${error.message}`
+      );
+    }
+
+    for (const cluster of data ?? []) {
+      clustersById.set(cluster.id, cluster);
+    }
+  }
+
+  const enriched = events.map((event) => {
+    const assignment = assignmentsByEventId.get(event.id);
+    const cluster = clustersById.get(assignment.cluster_id);
+
+    if (!cluster) {
+      throw new Error(
+        `GRI v1.1 story provenance rejected: cluster ` +
+        `${assignment.cluster_id} for event ${event.id} does not exist`
+      );
+    }
+
+    if (
+      assignment.category !== event.category ||
+      cluster.category !== event.category
+    ) {
+      throw new Error(
+        `GRI v1.1 story/category mismatch for event ${event.id}: ` +
+        `event=${event.category}, assignment=${assignment.category}, ` +
+        `cluster=${cluster.category}`
+      );
+    }
+
+    if (
+      cluster.clustering_version !==
+        GRI_STORY_CORRELATION_VERSION ||
+      cluster.clustering_prompt_version !==
+        GRI_STORY_CORRELATION_PROMPT_VERSION
+    ) {
+      throw new Error(
+        `GRI v1.1 rejected non-current story cluster ${cluster.id}`
+      );
+    }
+
+    const row = {
+      ...event,
+      story_cluster_id: assignment.cluster_id,
+      story_canonical_label: cluster.canonical_label,
+      story_assignment_decision: assignment.decision,
+      story_match_confidence: assignment.match_confidence,
+      story_decision_rationale: assignment.decision_rationale,
+      story_clustering_provider:
+        assignment.clustering_provider,
+      story_clustering_model:
+        assignment.clustering_model,
+      story_clustering_version:
+        assignment.clustering_version,
+      story_clustering_prompt_version:
+        assignment.clustering_prompt_version,
+      story_clustering_scored_at:
+        assignment.clustering_scored_at,
+      story_clustering_input_hash:
+        assignment.clustering_input_hash,
+    };
+
+    if (!hasCanonicalStoryProvenance(row)) {
+      throw new Error(
+        `GRI v1.1 story provenance rejected for event ${event.id}`
+      );
+    }
+
+    return row;
+  });
+
+  console.log(
+    `GRI v1.1 story provenance: ${enriched.length} assigned event(s), ` +
+    `${new Set(enriched.map((row) => row.story_cluster_id)).size} independent story cluster(s).`
+  );
+
+  return enriched;
+}
 
 async function firstEvent(desc = false) {
   const { data, error } = await supabase
@@ -141,7 +380,17 @@ async function cleanup(runId) {
 async function main() {
   const { start, end } = await resolveRange();
   const events = await fetchEvents(start, end);
-  const timed = events
+
+  // Replay v1.1 deliberately uses the same current-contract classification
+  // and immutable story provenance required by live publication.
+  //
+  // This remains retrospective evidence reconstruction, not lookahead-safe
+  // historical publication. Classification/story provenance may have been
+  // generated after the historical as-of timestamp.
+  const canonicalEvents = events.filter(hasCanonicalClassificationProvenance);
+  const enrichedEvents = await attachCurrentStoryProvenance(canonicalEvents);
+
+  const timed = enrichedEvents
     .map((row) => ({ row, t: new Date(row.created_at).getTime() }))
     .filter((x) => Number.isFinite(x.t))
     .sort((a, b) => a.t - b.t);
@@ -181,6 +430,7 @@ async function main() {
   const resultHash = sha256(canonicalJson({
     replayVersion,
     methodologyVersion: GRI_METHOD_VERSION,
+    proofVersion: GRI_PROOF_VERSION,
     evidenceMode: 'retrospective_replay',
     observationTimeRule: 'created_at_retrospective',
     lookaheadSafe: false,
@@ -194,15 +444,17 @@ async function main() {
   console.log(JSON.stringify({
     replayVersion,
     methodologyVersion: GRI_METHOD_VERSION,
+    proofVersion: GRI_PROOF_VERSION,
     evidenceMode: 'retrospective_replay',
     startAt: start.toISOString(),
     endAt: end.toISOString(),
     cadenceHours,
     sourceEvents: events.length,
+    canonicalCurrentContractEvents: enrichedEvents.length,
     snapshots: planned.length,
     scoredSnapshots: scored,
     resultHash,
-    warning: 'Retrospective calibration only. Not a historical live or out-of-sample prediction claim.',
+    warning: 'Retrospective calibration only. Current-contract classifications and story assignments may have been produced after the historical as-of time. This is not historical live or out-of-sample performance.',
   }, null, 2));
   if (dryRun) return;
 
@@ -217,7 +469,7 @@ async function main() {
     lookahead_safe: false,
     snapshot_count: planned.length,
     result_hash: resultHash,
-    notes: 'Retrospective calibration replay. Historical created_at is used as an observation-time proxy; classifications may have been generated later. Never present this run as historical live/OOS performance.',
+    notes: 'Retrospective calibration replay under gri-v1.1.0. Historical created_at is used as an observation-time proxy; current-contract classifications and immutable story assignments may have been generated later. lookahead_safe=false. Never present this run as historical live/OOS performance.',
   }).select('id').single();
   if (runError) throw new Error(`replay run insert failed: ${runError.message}`);
 

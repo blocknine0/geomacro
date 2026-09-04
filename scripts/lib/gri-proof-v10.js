@@ -1,5 +1,9 @@
-import { createHash } from 'node:crypto';
-import { canonicalJson, methodologyManifest } from '../../src/lib/gri-engine.js';
+// LEGACY AUDIT IMPLEMENTATION.
+// Retained to reproduce historical gri-v1.0.0 artifacts only.
+// Production publication, replay, validation and verification use gri-v1.1.0.
+//
+// import { createHash } from 'node:crypto';
+import { canonicalJson, methodologyManifest } from '../../src/lib/gri-engine-v10.js';
 
 export const GRI_PROOF_VERSION = 'gri-proof-v1.0.0';
 export const GRI_RECONCILIATION_TOLERANCE = 1e-7;

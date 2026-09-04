@@ -6,12 +6,12 @@ import {
   GRI_METHOD_VERSION,
   attributeGriChange,
   calculateGri,
-} from '../src/lib/gri-engine.js';
+} from '../../src/lib/gri-engine-v10.js';
 import {
   GRI_PROOF_VERSION,
   buildProofArtifacts,
   roundNumber,
-} from './lib/gri-proof.js';
+} from '../lib/gri-proof-v10.js';
 
 dotenv.config();
 

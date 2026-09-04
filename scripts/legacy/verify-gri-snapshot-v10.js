@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
-import { attributeGriChange, calculateGri } from '../src/lib/gri-engine.js';
-import { buildProofArtifacts, roundNumber } from './lib/gri-proof.js';
+import { attributeGriChange, calculateGri } from '../../src/lib/gri-engine-v10.js';
+import { buildProofArtifacts, roundNumber } from '../lib/gri-proof-v10.js';
 
 dotenv.config();
 const args = process.argv.slice(2);
