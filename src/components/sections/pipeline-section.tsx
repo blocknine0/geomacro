@@ -169,7 +169,7 @@ const GROUPS: StageGroup[] = [
       {
         id: "10",
         name: "Resolve",
-        desc: "Main agent referees the analyst duel and settles the event contract.",
+        desc: "Within the secondary prediction-market application layer, the main agent referees the analyst duel and settles the event contract.",
         meta: "Onchain payout",
         latency: "at T+48h",
       },
@@ -184,8 +184,8 @@ export function PipelineSection() {
         <SectionHeader
           as="h1"
           eyebrow="Data Pipeline"
-          title="From raw wire to a settled onchain contract"
-          desc="Ten deterministic stages across four layers. Every headline flows through the same path, every score is reproducible, every attestation is signed and posted to Arc."
+          title="From real-world events to verifiable risk intelligence"
+          desc="Ten deterministic stages across four layers turn real-world signals into structured, reproducible risk intelligence. Evidence, confidence and attribution remain traceable, with Arc used as a secondary proof and execution layer."
         />
 
         <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">

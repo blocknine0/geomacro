@@ -87,7 +87,7 @@ const NAV_LINKS = [
   { to: "/arena", label: "Analyst Panel" },
   { to: "/pipeline", label: "Data Pipeline" },
   { to: "/onchain", label: "Onchain" },
-  { to: "/bridge", label: "Bridge" },
+  { to: "/bridge-swap", label: "Bridge & Swap" },
   { to: "/roadmap", label: "Roadmap" },
   { to: "/contact", label: "Contact" },
 ] as const;

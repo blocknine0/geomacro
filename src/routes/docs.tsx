@@ -1180,11 +1180,29 @@ function InstitutionalPane() {
         ))}
       </div>
 
+      <H2>Private Pilot</H2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card>
+          <div className="text-sm font-semibold text-foreground">Risk API</div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Machine-readable geopolitical and macro risk intelligence for approved pilot workflows.
+            This is not a generally available public hosted API.
+          </p>
+        </Card>
+        <Card>
+          <div className="text-sm font-semibold text-foreground">Risk Gate</div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Verifiable pre-flight risk context for customer-controlled policy decisions. The first
+            commercial wedge is country and corridor risk.
+          </p>
+        </Card>
+      </div>
+
       <H2>Clearly marked as planned</H2>
       <P>
-        Research exports, structured data access / public API, team access, SSO and workspace
-        permissions are not represented as live capabilities. They remain future institutional
-        capabilities until the required backend infrastructure exists.
+        Self-serve public API access, downloadable research exports, team access, SSO and workspace
+        permissions are not represented as live capabilities. Private Pilot access does not imply
+        general availability, public self-service access or production service guarantees.
       </P>
     </>
   );
@@ -1259,11 +1277,18 @@ Multicall3: 0xcA11bde05977b3631167028862bE2a173976CA11`}</CodeBlock>
         one return shape for both generations.
       </P>
 
-      <H2>Public data API</H2>
+      <H2>Private Pilot machine access</H2>
       <P>
-        Structured public data access is not a live product capability today. The institutional
-        surface marks it as planned. Developers should not depend on undocumented Supabase internals
-        as if they were a stable public API contract.
+        Risk API is a Private Pilot machine-readable delivery direction for approved workflows.
+        Risk Gate is a Private Pilot pre-flight decision-context layer built around subject-specific
+        country, corridor or event risk. Neither status implies a generally available public API.
+      </P>
+
+      <H2>Public data API boundary</H2>
+      <P>
+        Self-serve structured public data access is not a live product capability today. Developers
+        should not depend on undocumented Supabase internals as if they were a stable public API
+        contract.
       </P>
 
       <H2>Repository and license</H2>

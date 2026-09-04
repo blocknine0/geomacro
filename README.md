@@ -80,15 +80,47 @@ Geomacro's commercialization does not depend on turning every intelligence user 
 
 | Layer | Role | Current direction |
 |---|---|---|
-| Public intelligence | Discovery and trust | Global Risk Index, live intelligence, event research, source context, selected market/probability context |
-| Professional intelligence | Recurring subscription product | Deeper analytics, history, alerts, research workflows and advanced Ask Geomacro capabilities |
-| Institutional / enterprise | High-value data and workflow product | Structured exports, partner/API access, persistent monitoring, teams, permissions/SSO, provenance/audit tooling and custom integrations |
-| Prediction / onchain application | Feedback, participation and programmable settlement | HAWK/DOVE markets, V1/V2 routing, USDC settlement, dispute lifecycle, CCTP and swap |
+| Public intelligence | Live | Global Risk Index, live intelligence, event research and source context |
+| Ask Geomacro | Live | Interactive intelligence query surface grounded in Geomacro risk context |
+| Professional intelligence | Commercial direction | Deeper analytics, history, research and advanced intelligence workflows as capabilities ship |
+| Risk API | Private Pilot | Machine-readable geopolitical and macro risk intelligence delivery |
+| Risk Gate | Private Pilot | Verifiable pre-flight risk context for customer-controlled policy decisions |
+| Prediction / onchain application | Secondary | Experimental prediction markets, USDC settlement, dispute lifecycle, CCTP and swap |
 
 Professional and enterprise capabilities are only described as live when they exist in the current product. Planned commercial capabilities are labelled as planned. Pricing is intentionally not hard-coded into the technical repository before product packaging and customer validation are complete.
 
-The repository should therefore be evaluated as both an intelligence system and a programmable application stack—not as a prediction-market-only codebase.
+The repository should therefore be evaluated as both a risk intelligence infrastructure and a programmable execution stack, not as a prediction-market-only codebase.
 
+
+### Commercial product contracts
+
+- [Commercial Intelligence Contract](docs/COMMERCIAL_INTELLIGENCE.md)
+- [Risk Gate v1 Contract](docs/RISK_GATE.md)
+
+Risk API and Risk Gate are **Private Pilot** capabilities. These documents define the commercial, technical and product-truth boundaries without implying general availability.
+
+### Commercial decision-context architecture
+
+The following path defines the Risk API and Risk Gate **Private Pilot** architecture. It does not imply general availability.
+
+```mermaid
+graph LR;
+    EVENTS["Structured real-world events"] --> ENGINE["Shared Geomacro Risk Engine"];
+    ENGINE --> GRI["Global Risk Index - Live"];
+    ENGINE --> COUNTRY["Country Risk Object"];
+    ENGINE --> CORRIDOR["Corridor Risk Object"];
+    ENGINE --> EVENTRISK["Event Risk Object"];
+    COUNTRY --> API["Risk API - Private Pilot"];
+    CORRIDOR --> API;
+    EVENTRISK --> API;
+    COUNTRY --> GATE["Risk Gate - Private Pilot"];
+    CORRIDOR --> GATE;
+    EVENTRISK --> GATE;
+    GATE --> POLICY["Identity + Permissions + Customer Policy"];
+    POLICY --> ACTION["Customer-controlled action"];
+```
+
+Risk Gate uses subject-specific risk context rather than treating the global GRI score as a universal transaction rule. The shared architecture provides provenance, attribution, evidence, confidence, methodology and verification primitives across these risk views.
 
 ### Global Risk Index audit model
 

@@ -16,6 +16,7 @@ import { Route as OnchainRouteImport } from './routes/onchain'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BridgeSwapRouteImport } from './routes/bridge-swap'
 import { Route as BridgeRouteImport } from './routes/bridge'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AboutRouteImport } from './routes/about'
@@ -57,6 +58,11 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BridgeSwapRoute = BridgeSwapRouteImport.update({
+  id: '/bridge-swap',
+  path: '/bridge-swap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BridgeRoute = BridgeRouteImport.update({
   id: '/bridge',
   path: '/bridge',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/bridge': typeof BridgeRoute
+  '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/bridge': typeof BridgeRoute
+  '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/bridge': typeof BridgeRoute
+  '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/bridge'
+    | '/bridge-swap'
     | '/contact'
     | '/docs'
     | '/feed'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/bridge'
+    | '/bridge-swap'
     | '/contact'
     | '/docs'
     | '/feed'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/bridge'
+    | '/bridge-swap'
     | '/contact'
     | '/docs'
     | '/feed'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ArenaRoute: typeof ArenaRoute
   BridgeRoute: typeof BridgeRoute
+  BridgeSwapRoute: typeof BridgeSwapRoute
   ContactRoute: typeof ContactRoute
   DocsRoute: typeof DocsRoute
   FeedRoute: typeof FeedRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bridge-swap': {
+      id: '/bridge-swap'
+      path: '/bridge-swap'
+      fullPath: '/bridge-swap'
+      preLoaderRoute: typeof BridgeSwapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/bridge': {
       id: '/bridge'
       path: '/bridge'
@@ -280,6 +300,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ArenaRoute: ArenaRoute,
   BridgeRoute: BridgeRoute,
+  BridgeSwapRoute: BridgeSwapRoute,
   ContactRoute: ContactRoute,
   DocsRoute: DocsRoute,
   FeedRoute: FeedRoute,

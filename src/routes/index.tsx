@@ -4,10 +4,10 @@ import { HeroSection } from "@/components/sections/hero-section";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Geomacro: Onchain Geopolitical Risk on Arc" },
-      { name: "description", content: "AI-classified geopolitical events published onchain to the Arc testnet. Connect a wallet to verify, subscribe and act." },
-      { property: "og:title", content: "Geomacro: Onchain Geopolitical Risk on Arc" },
-      { property: "og:description", content: "AI-classified geopolitical events published onchain to the Arc testnet." },
+      { title: "Geomacro: Geopolitical + Macro Risk Intelligence" },
+      { name: "description", content: "Geomacro turns global geopolitical and macro events into structured, explainable risk intelligence for professional and machine decision-making." },
+      { property: "og:title", content: "Geomacro: Geopolitical + Macro Risk Intelligence" },
+      { property: "og:description", content: "Structured, explainable geopolitical and macro risk intelligence with evidence, confidence and change attribution." },
       { property: "og:url", content: "https://geomacro.live/" },
     ],
     links: [
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
           applicationCategory: "FinanceApplication",
           operatingSystem: "Web",
           description:
-            "AI-classified geopolitical and macro events published onchain to the Arc network.",
+            "Structured geopolitical and macro risk intelligence for research, professional decision systems and machine workflows.",
           offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         }),
       },
