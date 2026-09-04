@@ -305,3 +305,51 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
     validationMetrics,
   };
 }
+
+
+export type GriHistoryPoint = {
+  id: string;
+  as_of: string;
+  raw_score: number | string | null;
+  display_score: number | null;
+  proof_hash: string | null;
+};
+
+export async function loadLatestGriProofPackage(): Promise<GriProofPackage> {
+  const latest = await supabaseFeed
+    .from("gri_snapshots")
+    .select("id")
+    .eq("status", "published")
+    .eq("methodology_version", GRI_METHOD_VERSION)
+    .eq("proof_version", GRI_PROOF_VERSION)
+    .eq("verification_status", "verified")
+    .order("as_of", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latest.error) throw latest.error;
+  if (!latest.data?.id) {
+    throw new Error("No verified current-contract GRI snapshot is available.");
+  }
+
+  return loadGriProofPackage(latest.data.id);
+}
+
+export async function loadRecentGriHistory(
+  limit = 90,
+): Promise<GriHistoryPoint[]> {
+  const result = await supabaseFeed
+    .from("gri_snapshots")
+    .select("id,as_of,raw_score,display_score,proof_hash")
+    .eq("status", "published")
+    .eq("methodology_version", GRI_METHOD_VERSION)
+    .eq("proof_version", GRI_PROOF_VERSION)
+    .eq("verification_status", "verified")
+    .not("raw_score", "is", null)
+    .order("as_of", { ascending: false })
+    .limit(limit);
+
+  if (result.error) throw result.error;
+
+  return ((result.data ?? []) as GriHistoryPoint[]).reverse();
+}

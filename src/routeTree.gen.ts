@@ -13,6 +13,7 @@ import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as OnchainRouteImport } from './routes/onchain'
+import { Route as GlobalRiskRouteImport } from './routes/global-risk'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -41,6 +42,11 @@ const PipelineRoute = PipelineRouteImport.update({
 const OnchainRoute = OnchainRouteImport.update({
   id: '/onchain',
   path: '/onchain',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GlobalRiskRoute = GlobalRiskRouteImport.update({
+  id: '/global-risk',
+  path: '/global-risk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedRoute = FeedRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
+  '/global-risk': typeof GlobalRiskRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
+  '/global-risk': typeof GlobalRiskRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
+  '/global-risk': typeof GlobalRiskRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/docs'
     | '/feed'
+    | '/global-risk'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/docs'
     | '/feed'
+    | '/global-risk'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/docs'
     | '/feed'
+    | '/global-risk'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DocsRoute: typeof DocsRoute
   FeedRoute: typeof FeedRoute
+  GlobalRiskRoute: typeof GlobalRiskRoute
   OnchainRoute: typeof OnchainRoute
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/onchain'
       fullPath: '/onchain'
       preLoaderRoute: typeof OnchainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/global-risk': {
+      id: '/global-risk'
+      path: '/global-risk'
+      fullPath: '/global-risk'
+      preLoaderRoute: typeof GlobalRiskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feed': {
@@ -304,6 +324,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DocsRoute: DocsRoute,
   FeedRoute: FeedRoute,
+  GlobalRiskRoute: GlobalRiskRoute,
   OnchainRoute: OnchainRoute,
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
