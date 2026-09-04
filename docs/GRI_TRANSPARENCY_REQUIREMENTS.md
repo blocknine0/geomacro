@@ -74,3 +74,19 @@ The calculation/audit backend is now defined. Before calling the GRI institution
 - run calibration and sensitivity analysis on the fixed v1 parameters before making predictive-performance claims.
 
 No methodology parameter should be silently changed. Any change to categories, weights, half-life, source cap, eligibility, observation-time semantics or rounding requires a new GRI methodology version.
+
+## Retrospective replay proof envelope
+
+`gri-replay-v1.1.0` uses the same `gri-v1.1.0` deterministic engine,
+`gri-proof-v1.1.0` proof envelope, current classification contract and
+immutable story-correlation contract as live publication.
+
+Each replay snapshot persists its independent-story count, methodology,
+input, evidence and calculation hashes, proof version, proof hash and
+reconciliation residual. A replay run cannot transition to `published`
+unless its stored snapshot count and v1.1 proof envelopes reconcile.
+
+Replay remains explicitly `lookahead_safe=false`. Historical `created_at`
+is an observation-time proxy, while current-contract classification and
+story provenance may have been produced later. Replay results therefore
+must never be represented as historical live or out-of-sample performance.

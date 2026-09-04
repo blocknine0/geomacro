@@ -21,6 +21,7 @@ import {
 import {
   GRI_PROOF_VERSION,
   buildProofArtifacts,
+  reconcilesWithinTolerance,
   roundNumber,
   sha256,
 } from './lib/gri-proof-v11.js';
@@ -352,11 +353,20 @@ function snapshotStorage(runId, calculation, proof) {
     weighted_confidence: roundNumber(calculation.weightedConfidence, 6),
     event_count: calculation.eventCount,
     source_count: calculation.sourceCount,
+    independent_story_count: calculation.independentStoryCount,
+    story_correlation_version: GRI_STORY_CORRELATION_VERSION,
+    story_correlation_prompt_version:
+      GRI_STORY_CORRELATION_PROMPT_VERSION,
     category_breakdown: calculation.categories,
     methodology_hash: proof.methodologyHash,
     input_hash: proof.inputHash,
     evidence_hash: proof.evidenceHash,
     calculation_hash: proof.calculationHash,
+    proof_version: GRI_PROOF_VERSION,
+    proof_hash: proof.proofHash,
+    reconciliation_residual:
+      roundNumber(proof.reconciliationResidual, 12),
+    proof_verified: proof.verified,
   };
 }
 
@@ -422,10 +432,14 @@ async function main() {
     coverage: roundNumber(calculation.coverage, 6),
     eventCount: calculation.eventCount,
     sourceCount: calculation.sourceCount,
+    independentStoryCount: calculation.independentStoryCount,
     methodologyHash: proof.methodologyHash,
     inputHash: proof.inputHash,
     evidenceHash: proof.evidenceHash,
     calculationHash: proof.calculationHash,
+    proofHash: proof.proofHash,
+    reconciliationResidual:
+      roundNumber(proof.reconciliationResidual, 12),
   }));
   const resultHash = sha256(canonicalJson({
     replayVersion,
@@ -461,6 +475,10 @@ async function main() {
   const { data: run, error: runError } = await supabase.from('gri_replay_runs').insert({
     methodology_version: GRI_METHOD_VERSION,
     replay_version: replayVersion,
+    proof_version: GRI_PROOF_VERSION,
+    story_correlation_version: GRI_STORY_CORRELATION_VERSION,
+    story_correlation_prompt_version:
+      GRI_STORY_CORRELATION_PROMPT_VERSION,
     status: 'draft',
     start_at: start.toISOString(),
     end_at: end.toISOString(),
@@ -475,12 +493,61 @@ async function main() {
 
   try {
     await writeSnapshotRows(planned.map(({ calculation, proof }) => snapshotStorage(run.id, calculation, proof)));
-    const { count, error: countError } = await supabase
-      .from('gri_replay_snapshots')
-      .select('*', { count: 'exact', head: true })
-      .eq('replay_run_id', run.id);
-    if (countError) throw new Error(`replay verification query failed: ${countError.message}`);
-    if (count !== planned.length) throw new Error(`replay row-count mismatch: expected ${planned.length}, stored ${count}`);
+    const { data: storedReplayRows, error: replayVerifyError } =
+      await supabase
+        .from('gri_replay_snapshots')
+        .select(
+          [
+            'as_of',
+            'event_count',
+            'independent_story_count',
+            'story_correlation_version',
+            'story_correlation_prompt_version',
+            'proof_version',
+            'proof_hash',
+            'reconciliation_residual',
+            'proof_verified',
+          ].join(',')
+        )
+        .eq('replay_run_id', run.id);
+
+    if (replayVerifyError) {
+      throw new Error(
+        `replay verification query failed: ${replayVerifyError.message}`
+      );
+    }
+
+    if ((storedReplayRows ?? []).length !== planned.length) {
+      throw new Error(
+        `replay row-count mismatch: expected ${planned.length}, ` +
+        `stored ${(storedReplayRows ?? []).length}`
+      );
+    }
+
+    for (const row of storedReplayRows ?? []) {
+      if (
+        row.proof_version !== GRI_PROOF_VERSION ||
+        !/^[a-f0-9]{64}$/i.test(String(row.proof_hash || '')) ||
+        row.proof_verified !== true ||
+        row.story_correlation_version !==
+          GRI_STORY_CORRELATION_VERSION ||
+        row.story_correlation_prompt_version !==
+          GRI_STORY_CORRELATION_PROMPT_VERSION ||
+        !Number.isInteger(Number(row.independent_story_count)) ||
+        Number(row.independent_story_count) < 0 ||
+        Number(row.independent_story_count) >
+          Number(row.event_count) ||
+        !reconcilesWithinTolerance(
+          row.reconciliation_residual === null
+            ? null
+            : Number(row.reconciliation_residual)
+        )
+      ) {
+        throw new Error(
+          `replay stored proof-envelope verification failed at ${row.as_of}`
+        );
+      }
+    }
 
     const { error: publishError } = await supabase.from('gri_replay_runs').update({
       status: 'published',
