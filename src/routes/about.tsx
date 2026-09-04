@@ -10,13 +10,13 @@ export const Route = createFileRoute("/about")({
       {
         name: "description",
         content:
-          "Geomacro is a testnet demo running on Arc Testnet with test USDC. No personal data collected beyond on-chain wallet addresses.",
+          "Geomacro is geopolitical and macro risk intelligence infrastructure with explainable GRI, structured intelligence, agent-facing services and secondary programmable execution.",
       },
       { property: "og:title", content: "About & Trust · Geomacro" },
       {
         property: "og:description",
         content:
-          "Testnet demo project on Arc Testnet. No real funds. Wallet-only, no personal data collected.",
+          "Explainable geopolitical and macro risk intelligence with verifiable GRI methodology, commercial intelligence services and secondary Arc Testnet execution infrastructure.",
       },
     ],
   }),
@@ -35,14 +35,21 @@ function AboutPage() {
       <section className="mt-10 space-y-6">
         <div className="rounded-lg border border-border/60 bg-card/40 p-6">
           <div className="flex items-center gap-2 text-sm font-mono text-primary">
-            <ShieldCheck className="h-4 w-4" /> Testnet demo, not real funds
+            <ShieldCheck className="h-4 w-4" /> Commercial intelligence, Testnet execution
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Geomacro is a demonstration project. All smart contracts run on{" "}
+            Geomacro's primary product is geopolitical and macro risk intelligence.
+            GRI, structured intelligence, Risk API, Risk Gate and agent-facing intelligence
+            are designed as commercial software services and are not limited to Arc Testnet.
+            Commercial access may use conventional fiat billing, including INR where supported,
+            or production digital-asset payment rails such as USDC as those integrations are
+            enabled and compliant.
+
+            Current prediction-market and programmable smart-contract interactions run on{" "}
             <span className="font-mono text-foreground">Arc Testnet (Chain 5042002)</span> and
-            stakes use <span className="font-mono text-foreground">test USDC</span> with no
-            monetary value. Nothing on this site handles real money. No claim made here
-            should be treated as financial advice.
+            use <span className="font-mono text-foreground">test USDC</span> with no monetary
+            value. These Testnet execution flows are secondary to the intelligence product.
+            Geomacro intelligence should not be treated as financial advice.
           </p>
         </div>
 
@@ -63,7 +70,7 @@ function AboutPage() {
             <Info className="h-4 w-4" /> Transparency
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            The full source code, smart contracts and pipeline configuration are open source.
+            Geomacro publishes auditable implementation details, smart-contract code, methodology documentation and verification infrastructure through its repository. Source availability does not imply unrestricted open-source licensing; use and redistribution are governed by the repository's applicable license terms.
           </p>
           <a
             href={GITHUB_URL}
