@@ -349,32 +349,25 @@ export function HeroSection() {
                 .
               </h1>
               <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base md:hidden">
-                Geomacro turns breaking news into onchain prediction markets. AI agents Hawk and
-                Dove argue opposite sides, you stake USDC on the one that ages better, and the
-                result settles onchain automatically.
+                Geomacro turns global geopolitical and macro events into structured, explainable risk
+                intelligence for professional and machine decision-making.
               </p>
               <div className="hidden md:block">
                 <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-                  Geomacro turns global risk into a tradable signal. An autonomous pipeline reads
-                  breaking headlines the moment they hit, across four pillars: geopolitics, rare
-                  earth supply, macroeconomics, and crypto liquidity. When something significant
-                  happens, a market opens itself automatically. No editor, no curator, no manual
-                  listing. Each market stays open for staking for 46 hours, and two hours after
-                  staking closes, the result settles onchain.
+                  Geomacro converts global geopolitical, macroeconomic, critical-mineral and market
+                  events into structured risk intelligence with severity, confidence, evidence,
+                  historical context and deterministic Global Risk Index attribution.
                 </p>
                 <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                  An LLM scores every event for severity in real time, and two AI agents take
-                  opposing sides. Agent Hawk argues the case for escalation, Agent Dove argues for
-                  calm. You stake USDC on whichever side you think ages better, and the same LLM
-                  later re-reads the story to judge the outcome. No custodian holds your funds, no
-                  middleman decides the result, and no human ever has to click a button to make any
-                  of it run.
+                  The intelligence layer supports human research and machine-readable decision context.
+                  Prediction markets and programmable onchain execution remain available as
+                  secondary applications of the same underlying intelligence.
                 </p>
               </div>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button size="lg" asChild className="w-full gap-2 sm:w-auto">
                   <Link to="/feed">
-                    Open Terminal <ArrowUpRight className="h-4 w-4" />
+                    Open Intelligence <ArrowUpRight className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
@@ -384,7 +377,7 @@ export function HeroSection() {
                     rel="noreferrer"
                     className="gap-2"
                   >
-                    <Link2 className="h-4 w-4" /> Open Arcscan
+                    <Link2 className="h-4 w-4" /> Technical Proof
                   </a>
                 </Button>
               </div>

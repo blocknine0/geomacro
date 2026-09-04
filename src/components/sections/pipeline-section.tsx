@@ -135,20 +135,20 @@ const GROUPS: StageGroup[] = [
   },
   {
     phase: "P3",
-    label: "Forecast Layer",
-    signal: "Falsifiable calls with calibration",
+    label: "Application & Feedback Layer",
+    signal: "Optional forecasting and calibration feedback",
     stages: [
       {
         id: "07",
         name: "Predict",
-        desc: "Write a falsifiable forecast with a 48h resolution deadline.",
+        desc: "Generate a falsifiable forecast as a secondary application of accepted risk intelligence.",
         meta: "Deadline bound",
         latency: "~800ms",
       },
       {
         id: "08",
         name: "Reflect",
-        desc: "Backtest prior calls onchain and adjust analyst calibration.",
+        desc: "Evaluate prior calls and market outcomes to support calibration and feedback.",
         meta: "Track record",
         latency: "rolling",
       },

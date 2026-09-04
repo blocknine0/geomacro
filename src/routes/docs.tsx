@@ -23,13 +23,13 @@ export const Route = createFileRoute("/docs")({
       {
         name: "description",
         content:
-          "Official Geomacro documentation covering the live intelligence system, Global Risk Index, Ask Geomacro, HAWK/DOVE markets, V1/V2 contracts, resolution and tribunal lifecycle, USDC settlement, CCTP, data architecture and current limitations.",
+          "Official Geomacro documentation covering Risk Intelligence, the Global Risk Index, Ask Geomacro, evidence and provenance, data architecture, institutional surfaces, and secondary prediction-market and Arc execution systems.",
       },
       { property: "og:title", content: "Documentation · Geomacro" },
       {
         property: "og:description",
         content:
-          "How Geomacro turns real-world geopolitical and macro events into structured intelligence, risk signals, prediction markets and onchain settlement.",
+          "How Geomacro turns real-world geopolitical and macro events into structured, explainable risk intelligence, with prediction markets and onchain execution as secondary application layers.",
       },
       { property: "og:url", content: "https://geomacro.live/docs" },
     ],
@@ -592,7 +592,7 @@ function ProductPane() {
             "Ask Geomacro",
             "Supabase-first deterministic research over stored Geomacro intelligence. It does not consume Groq/Cerebras on each user question.",
           ],
-          ["Markets / Arena", "HAWK/DOVE markets connected to the events that generated them."],
+          ["Markets / Arena", "Secondary experimental prediction markets connected to the intelligence events that generated them."],
           [
             "Market divergence",
             "Compares onchain stake-implied HAWK probability with stored Geomacro HAWK conviction when both sides are real.",
