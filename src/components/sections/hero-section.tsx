@@ -321,7 +321,7 @@ export function HeroSection() {
   const countDelta =
     stats && stats.countPrev24h !== null ? stats.count24h - stats.countPrev24h : null;
   const riskTrend = riskDelta > 0 ? "Escalating" : riskDelta < 0 ? "Cooling" : "Steady";
-  const windowLabel = "GRI v1";
+  const windowLabel = "gri-v1.1.0";
 
   return (
     <section className="relative overflow-hidden">
@@ -475,7 +475,7 @@ export function HeroSection() {
                         </div>
                         <p className="mt-3 max-w-md text-xs leading-relaxed text-muted-foreground">
                           A deterministic global risk index built from versioned event severity,
-                          confidence, recency decay and source-capped evidence across four domains.
+                          confidence, recency decay and source- and story-capped evidence across four domains.
                         </p>
                       </div>
 
