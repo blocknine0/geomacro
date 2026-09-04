@@ -339,12 +339,12 @@ export function HeroSection() {
                 className="mb-6 gap-2 border-primary/40 bg-primary/5 px-3 py-1 font-mono text-xs text-primary"
               >
                 <Radio className="h-3 w-3" /> <span className="animate-blink-live">LIVE</span> ·{" "}
-                {activeNet.chainName} · Chain {activeNet.chainIdDec}
+                GEOPOLITICAL + MACRO RISK INTELLIGENCE
               </Badge>
               <h1 className="text-[clamp(2rem,4.5vw,4.5rem)] font-semibold leading-[1.05] tracking-tight md:whitespace-nowrap">
-                Financializing{" "}
+                Know what changed.{" "}
                 <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                  Global Risk Narratives
+                  Know why it matters
                 </span>
                 .
               </h1>
