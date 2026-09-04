@@ -83,6 +83,7 @@ function ConnectButton() {
 }
 
 const NAV_LINKS = [
+  { to: "/global-risk", label: "Global Risk Index" },
   { to: "/feed", label: "Active Narratives" },
   { to: "/arena", label: "Analyst Panel" },
   { to: "/pipeline", label: "Data Pipeline" },
@@ -152,7 +153,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <Wordmark height={40} className="shrink-0" />
             </Link>
           </div>
-          <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
+          <nav className="hidden gap-4 text-xs text-muted-foreground md:flex lg:gap-6 lg:text-sm xl:gap-8">
             {navLinks.map((l) => (
               <Link
                 key={l.to}

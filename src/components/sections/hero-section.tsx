@@ -428,7 +428,12 @@ export function HeroSection() {
                     <div className="grid grid-cols-1 gap-6 px-5 py-5 sm:grid-cols-[1.1fr_1fr] sm:px-6 lg:px-8 lg:gap-8">
                       <div>
                         <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
-                          Global Risk Index
+                          <a
+                            href="/global-risk"
+                            className="underline-offset-4 transition hover:underline"
+                          >
+                            Global Risk Index
+                          </a>
                         </div>
                         <div className="mt-2 flex items-baseline gap-3">
                           <div className="font-mono text-5xl tabular-nums text-foreground md:text-6xl">

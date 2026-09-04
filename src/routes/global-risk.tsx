@@ -3,16 +3,53 @@ import { useEffect, useMemo, useState } from "react";
 import {
   type GriHistoryPoint,
   type GriProofPackage,
+  loadGriProofPackage,
   loadLatestGriProofPackage,
   loadRecentGriHistory,
   numberOrNull,
 } from "@/lib/gri-proof-data";
 
+type GlobalRiskSearch = {
+  verify?: string;
+};
+
 export const Route = createFileRoute("/global-risk")({
+  validateSearch: (search: Record<string, unknown>): GlobalRiskSearch => {
+    const verify =
+      typeof search.verify === "string"
+        ? search.verify.trim()
+        : "";
+
+    return verify
+      ? { verify: verify.slice(0, 128) }
+      : {};
+  },
+
+  head: () => ({
+    meta: [
+      { title: "Global Risk Index (GRI) | Geomacro" },
+      {
+        name: "description",
+        content:
+          "Explore Geomacro's verified Global Risk Index with exact change attribution, evidence coverage, methodology, confidence and cryptographic proof.",
+      },
+      {
+        property: "og:title",
+        content: "Global Risk Index (GRI) | Geomacro",
+      },
+      {
+        property: "og:description",
+        content:
+          "A transparent, versioned measure of geopolitical and macro risk with evidence, attribution and verification.",
+      },
+    ],
+  }),
+
   component: GlobalRiskPage,
 });
 
 function GlobalRiskPage() {
+  const { verify } = Route.useSearch();
   const [proof, setProof] = useState<GriProofPackage | null>(null);
   const [history, setHistory] = useState<GriHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +61,9 @@ function GlobalRiskPage() {
     let cancelled = false;
 
     Promise.all([
-      loadLatestGriProofPackage(),
+      verify
+        ? loadGriProofPackage(verify)
+        : loadLatestGriProofPackage(),
       loadRecentGriHistory(90),
     ])
       .then(([nextProof, nextHistory]) => {
@@ -48,7 +87,7 @@ function GlobalRiskPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [verify]);
 
   if (loading) {
     return (
@@ -76,15 +115,23 @@ function GlobalRiskPage() {
     );
   }
 
-  return <GriPage proof={proof} history={history} />;
+  return (
+    <GriPage
+      proof={proof}
+      history={history}
+      pinned={Boolean(verify)}
+    />
+  );
 }
 
 function GriPage({
   proof,
   history,
+  pinned,
 }: {
   proof: GriProofPackage;
   history: GriHistoryPoint[];
+  pinned: boolean;
 }) {
   const s = proof.snapshot;
   const raw = numberOrNull(s.raw_score);
@@ -105,6 +152,19 @@ function GriPage({
 
   return (
     <main className="mx-auto max-w-7xl px-5 pb-24 pt-12 md:px-8 md:pt-16">
+      {pinned ? (
+        <div className="mb-8 rounded-2xl border border-border bg-muted/20 p-4 text-sm">
+          <span className="font-medium">
+            Immutable verification snapshot
+          </span>
+          <span className="ml-2 text-muted-foreground">
+            You are viewing snapshot{" "}
+            <code className="break-all text-foreground">{s.id}</code>.
+            This URL will not automatically switch to the latest GRI.
+          </span>
+        </div>
+      ) : null}
+
       <section className="border-b border-border pb-12">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
           Global Risk Index · Verified intelligence
@@ -401,6 +461,10 @@ function GriPage({
 
         <div className="mt-6 rounded-2xl border border-border">
           <HashRow label="Snapshot ID" value={s.id} />
+          <HashRow
+            label="Permanent verification path"
+            value={`/global-risk?verify=${encodeURIComponent(s.id)}`}
+          />
           <HashRow label="Methodology hash" value={s.methodology_hash} />
           <HashRow label="Input hash" value={s.input_hash} />
           <HashRow label="Evidence hash" value={s.evidence_hash} />
