@@ -2,11 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.3.1";
+const STRUCTURE_VERSION = "live-structure-v1.3.2";
 const COUNTRY_VERSION = "country-attribution-v1.3.0";
 const STORY_VERSION = "story-title-jaccard-v1.3.0";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
-const RELEVANCE_VERSION = "professional-relevance-v1.1.1";
+const RELEVANCE_VERSION = "professional-relevance-v1.1.2";
 
 const BATCH_SIZE = 60;
 const STORY_THRESHOLD = 0.40;
@@ -917,6 +917,18 @@ const LOCAL_SCHOOL_STRIKE_NOISE =
 const MEDIA_COMMENTARY_NOISE =
   /\blegacy media\b|\btake(?:s|n)? a beating from\b/i;
 
+const NON_GEOPOLITICAL_STRIKE_NOISE =
+  /\bbird strike\b|\bstrikes? back\b/i;
+
+const METAPHORICAL_WAR_NOISE =
+  /\bculture war\b|\bcheese war\b/i;
+
+const CORPORATE_COUP_NOISE =
+  /\b(?:brand|brands|agency|agencies|advertising|marketing|campaign|publicis|pepsi)\b.*\bcoup\b|\bcoup\b.*\b(?:brand|brands|agency|agencies|advertising|marketing|campaign|publicis|pepsi)\b/i;
+
+const ELECTION_ARCHIVE_NOISE =
+  /\belection archives?\b|\barchives?\s*[-:|]\s*.*election\b/i;
+
 const FUEL_PRICE_FLUFF =
   /\b(gas prices?|petrol prices?|gasoline prices?)\b/i;
 
@@ -1180,6 +1192,46 @@ function professionalRelevance(
       relevant: false,
       reason:
         "media_commentary_noise",
+    };
+  }
+
+  if (
+    NON_GEOPOLITICAL_STRIKE_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "non_geopolitical_strike_noise",
+    };
+  }
+
+  if (
+    METAPHORICAL_WAR_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "metaphorical_war_noise",
+    };
+  }
+
+  if (
+    CORPORATE_COUP_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "corporate_coup_noise",
+    };
+  }
+
+  if (
+    ELECTION_ARCHIVE_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "election_archive_noise",
     };
   }
 
