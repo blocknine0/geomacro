@@ -2,11 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.3.2";
+const STRUCTURE_VERSION = "live-structure-v1.3.3";
 const COUNTRY_VERSION = "country-attribution-v1.3.0";
 const STORY_VERSION = "story-title-jaccard-v1.3.0";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
-const RELEVANCE_VERSION = "professional-relevance-v1.1.2";
+const RELEVANCE_VERSION = "professional-relevance-v1.1.3";
 
 const BATCH_SIZE = 60;
 const STORY_THRESHOLD = 0.40;
@@ -929,6 +929,18 @@ const CORPORATE_COUP_NOISE =
 const ELECTION_ARCHIVE_NOISE =
   /\belection archives?\b|\barchives?\s*[-:|]\s*.*election\b/i;
 
+const UTILITY_TARIFF_NOISE =
+  /\b(?:electricity|power|utility|utilities|consumer|consumers|subsidy)\b.*\btariff\b|\btariff\b.*\b(?:electricity|power|utility|utilities|consumer|consumers|subsidy)\b/i;
+
+const MEDIA_CONFRONTATION_NOISE =
+  /\b(?:cnn|fox|msnbc|abc|cbs|nbc|newsbusters|host|anchor|pundit)\b.*\bbattles?\b|\bbattles?\b.*\b(?:cnn|fox|msnbc|abc|cbs|nbc|newsbusters|host|anchor|pundit)\b/i;
+
+const LOCAL_ACCIDENT_MILITARY_NOISE =
+  /\b(?:crash|collision|traffic accident|car accident)\b.*\b(?:military desertion|desertion)\b|\b(?:military desertion|desertion)\b.*\b(?:crash|collision|traffic accident|car accident)\b/i;
+
+const LOCAL_ELECTION_NOISE =
+  /\b(?:city councillor|city council|municipal|school board|county commissioner|local council)\b.*\b(?:election|election race|race)\b|\b(?:election|election race)\b.*\b(?:city councillor|city council|municipal|school board|county commissioner|local council)\b/i;
+
 const FUEL_PRICE_FLUFF =
   /\b(gas prices?|petrol prices?|gasoline prices?)\b/i;
 
@@ -1232,6 +1244,46 @@ function professionalRelevance(
       relevant: false,
       reason:
         "election_archive_noise",
+    };
+  }
+
+  if (
+    UTILITY_TARIFF_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "utility_tariff_noise",
+    };
+  }
+
+  if (
+    MEDIA_CONFRONTATION_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "media_confrontation_noise",
+    };
+  }
+
+  if (
+    LOCAL_ACCIDENT_MILITARY_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "local_accident_military_noise",
+    };
+  }
+
+  if (
+    LOCAL_ELECTION_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "local_election_noise",
     };
   }
 
