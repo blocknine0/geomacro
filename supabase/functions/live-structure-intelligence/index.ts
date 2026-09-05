@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const BUCKET = "geomacro-live-intelligence";
 
 const STRUCTURE_VERSION = "live-structure-v1.4.8";
-const COUNTRY_VERSION = "country-attribution-v1.3.1";
+const COUNTRY_VERSION = "country-attribution-v1.4.0";
 const STORY_VERSION = "story-hybrid-overlap-v1.4.2";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
 const RELEVANCE_VERSION = "professional-relevance-v1.2.7";
@@ -1749,40 +1749,179 @@ function mergeCountryHits(
 function supplementalCountryHints(
   value: string,
 ): CountryHit[] {
+  /**
+   * High-precision geopolitical / macro context.
+   *
+   * Registry aliases remain the primary global
+   * country-detection mechanism.
+   *
+   * These hints exist only for entities that are
+   * strongly associated with one sovereign geography
+   * and frequently appear in financial headlines
+   * without the country's canonical name.
+   *
+   * Do NOT add broad organisations or ambiguous words.
+   */
   const hints: {
     iso3: string;
     name: string;
     pattern: RegExp;
   }[] = [
     {
-      iso3: "UKR",
-      name: "Ukraine",
+      iso3: "USA",
+      name: "United States",
       pattern:
-        /\b(?:ukraine|ukrainian|ucraina|oekra[iï]ne|oekraine|kyiv|kiev)\b/i,
+        /(?:\bUS\b|\bUSA\b|\bU\.S\.\b|\bUnited States\b|\bFederal Reserve\b|\bFed Chair\b|\bthe Fed\b|\bWhite House\b|\bUS Treasury\b|\bU\.S\. Treasury\b)/,
     },
     {
-      iso3: "RUS",
-      name: "Russia",
+      iso3: "GBR",
+      name: "United Kingdom",
       pattern:
-        /\b(?:russia|russian|russischer|russo|russi|venemaa|putin)\b/i,
+        /(?:\bUK\b|\bU\.K\.\b|\bUnited Kingdom\b|\bBank of England\b|\bBoE\b|\bDowning Street\b)/,
+    },
+    {
+      iso3: "CHN",
+      name: "China",
+      pattern:
+        /(?:\bChina\b|\bChinese\b|\bPRC\b|\bPBOC\b|\bPeople'?s Bank of China\b|\bXi Jinping\b|\bBeijing\b)/i,
+    },
+    {
+      iso3: "JPN",
+      name: "Japan",
+      pattern:
+        /(?:\bJapan\b|\bJapanese\b|\bBOJ\b|\bBank of Japan\b|\bTokyo\b)/i,
+    },
+    {
+      iso3: "KOR",
+      name: "South Korea",
+      pattern:
+        /(?:\bSouth Korea\b|\bSouth Korean\b|\bRepublic of Korea\b|\bBank of Korea\b|\bSeoul\b)/i,
+    },
+    {
+      iso3: "PRK",
+      name: "North Korea",
+      pattern:
+        /(?:\bNorth Korea\b|\bNorth Korean\b|\bDPRK\b|\bPyongyang\b)/i,
+    },
+    {
+      iso3: "DEU",
+      name: "Germany",
+      pattern:
+        /(?:\bGermany\b|\bGerman\b|\bBundesbank\b|\bBerlin\b)/i,
+    },
+    {
+      iso3: "FRA",
+      name: "France",
+      pattern:
+        /(?:\bFrance\b|\bFrench\b|\bBanque de France\b)/i,
+    },
+    {
+      iso3: "AUS",
+      name: "Australia",
+      pattern:
+        /(?:\bAustralia\b|\bAustralian\b|\bReserve Bank of Australia\b|\bRBA\b|\bCanberra\b)/i,
+    },
+    {
+      iso3: "BRA",
+      name: "Brazil",
+      pattern:
+        /(?:\bBrazil\b|\bBrazilian\b|\bBrasil\b|\bBanco Central do Brasil\b|\bBrasilia\b|\bBrasília\b)/i,
+    },
+    {
+      iso3: "ARG",
+      name: "Argentina",
+      pattern:
+        /(?:\bArgentina\b|\bArgentine\b|\bArgentinian\b|\bBCRA\b|\bBuenos Aires\b)/i,
     },
     {
       iso3: "IND",
       name: "India",
       pattern:
-        /\b(?:india|indian|jaishankar|budgam|jammu(?:\s+and)?\s+kashmir|j-k|rbi)\b/i,
+        /(?:\bIndia\b|\bIndian\b|\bRBI\b|\bReserve Bank of India\b|\bJaishankar\b|\bNew Delhi\b|\bJammu(?:\s+and)?\s+Kashmir\b|\bBudgam\b)/i,
     },
     {
       iso3: "CAN",
       name: "Canada",
       pattern:
-        /\b(?:canada|canadian|alberta|bank of canada)\b/i,
+        /(?:\bCanada\b|\bCanadian\b|\bBank of Canada\b|\bOttawa\b|\bAlberta\b)/i,
     },
     {
-      iso3: "USA",
-      name: "United States",
+      iso3: "RUS",
+      name: "Russia",
       pattern:
-        /\b(?:united states|u\.s\.|u\.s\b|federal reserve|the fed|trump)\b/i,
+        /(?:\bRussia\b|\bRussian\b|\bPutin\b|\bKremlin\b|\bBank of Russia\b|\bMoscow\b)/i,
+    },
+    {
+      iso3: "UKR",
+      name: "Ukraine",
+      pattern:
+        /(?:\bUkraine\b|\bUkrainian\b|\bKyiv\b|\bKiev\b|\bNational Bank of Ukraine\b)/i,
+    },
+    {
+      iso3: "SAU",
+      name: "Saudi Arabia",
+      pattern:
+        /(?:\bSaudi Arabia\b|\bSaudi\b|\bSaudi Aramco\b|\bSAMA\b|\bRiyadh\b)/i,
+    },
+    {
+      iso3: "ARE",
+      name: "United Arab Emirates",
+      pattern:
+        /(?:\bUnited Arab Emirates\b|\bUAE\b|\bEmirati\b|\bCentral Bank of the UAE\b|\bAbu Dhabi\b)/i,
+    },
+    {
+      iso3: "ISR",
+      name: "Israel",
+      pattern:
+        /(?:\bIsrael\b|\bIsraeli\b|\bIDF\b|\bBank of Israel\b)/i,
+    },
+    {
+      iso3: "IRN",
+      name: "Iran",
+      pattern:
+        /(?:\bIran\b|\bIranian\b|\bTehran\b|\bCentral Bank of Iran\b)/i,
+    },
+    {
+      iso3: "PAK",
+      name: "Pakistan",
+      pattern:
+        /(?:\bPakistan\b|\bPakistani\b|\bState Bank of Pakistan\b|\bIslamabad\b)/i,
+    },
+    {
+      iso3: "BGD",
+      name: "Bangladesh",
+      pattern:
+        /(?:\bBangladesh\b|\bBangladeshi\b|\bBangladesh Bank\b|\bDhaka\b)/i,
+    },
+    {
+      iso3: "TUR",
+      name: "Türkiye",
+      pattern:
+        /(?:\bTürkiye\b|\bTurkiye\b|\bTurkey\b|\bTurkish\b|\bCBRT\b|\bCentral Bank of the Republic of Turkey\b|\bAnkara\b|\bErdogan\b|\bErdoğan\b)/i,
+    },
+    {
+      iso3: "EGY",
+      name: "Egypt",
+      pattern:
+        /(?:\bEgypt\b|\bEgyptian\b|\bCentral Bank of Egypt\b|\bCairo\b)/i,
+    },
+    {
+      iso3: "ZAF",
+      name: "South Africa",
+      pattern:
+        /(?:\bSouth Africa\b|\bSouth African\b|\bSARB\b|\bSouth African Reserve Bank\b|\bPretoria\b)/i,
+    },
+    {
+      iso3: "MEX",
+      name: "Mexico",
+      pattern:
+        /(?:\bMexico\b|\bMexican\b|\bBanxico\b|\bBanco de México\b|\bBanco de Mexico\b)/i,
+    },
+    {
+      iso3: "IDN",
+      name: "Indonesia",
+      pattern:
+        /(?:\bIndonesia\b|\bIndonesian\b|\bBank Indonesia\b|\bJakarta\b)/i,
     },
   ];
 
@@ -1795,12 +1934,16 @@ function supplementalCountryHints(
       (hint) => ({
         iso3:
           hint.iso3,
+
         name:
           hint.name,
+
         confidence:
           90,
+
         method:
           "high_precision_context_hint",
+
         mentions:
           1,
       }),
