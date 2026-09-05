@@ -2,11 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.4.5";
-const COUNTRY_VERSION = "country-attribution-v1.3.0";
-const STORY_VERSION = "story-hybrid-overlap-v1.4.1";
+const STRUCTURE_VERSION = "live-structure-v1.4.8";
+const COUNTRY_VERSION = "country-attribution-v1.3.1";
+const STORY_VERSION = "story-hybrid-overlap-v1.4.2";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
-const RELEVANCE_VERSION = "professional-relevance-v1.2.4";
+const RELEVANCE_VERSION = "professional-relevance-v1.2.7";
 
 const BATCH_SIZE = 60;
 const STORY_THRESHOLD = 0.40;
@@ -419,7 +419,7 @@ const LANGUAGE_PACKS:
   it: {
     signals: [
       { canonical: "war", patterns: [/\bguerra\b/i] },
-      { canonical: "military attack", patterns: [/\battacco militare\b/i, /\braid aereo\b/i, /\bbombardamento\b/i] },
+      { canonical: "military attack", patterns: [/\battacco militare\b/i, /\braid aereo\b/i, /\bbombardamento\b/i, /\battacco (?:con )?drone\b/i, /\braid russ[oi]\b/i] },
       { canonical: "armed conflict", patterns: [/\bconflitto armato\b/i, /\bcombattimenti\b/i] },
       { canonical: "massacre", patterns: [/\bmassacro\b/i] },
       { canonical: "war crime", patterns: [/\bcrimine di guerra\b/i, /\bcrimini di guerra\b/i] },
@@ -457,7 +457,7 @@ const LANGUAGE_PACKS:
   nl: {
     signals: [
       { canonical: "war", patterns: [/\boorlog\b/i] },
-      { canonical: "military attack", patterns: [/\bmilitaire aanval\b/i, /\bluchtaanval\b/i, /\braketaanval\b/i] },
+      { canonical: "military attack", patterns: [/\bmilitaire aanval\b/i, /\bluchtaanval\b/i, /\braketaanval\b/i, /\bdroneaanval\b/i] },
       { canonical: "armed conflict", patterns: [/\bgewapend conflict\b/i, /\bgevechten\b/i] },
       { canonical: "massacre", patterns: [/\bbloedbad\b/i] },
       { canonical: "war crime", patterns: [/\boorlogsmisdaad\b/i, /\boorlogsmisdaden\b/i] },
@@ -658,6 +658,7 @@ type EventState = {
   evidenceRefs: string[];
 
   sourceDomains: Set<string>;
+  sourceFamilies: Set<string>;
   clusterTokens: string[];
 
   why: string;
@@ -1580,6 +1581,21 @@ const MEDIA_COMMENTARY_NOISE =
 const MARKET_REACTION_COMMENTARY_NOISE =
   /\b(?:nifty|sensex|stocks?|shares?|equities|equity markets?|stock markets?|market indices?|indexes?|indices)\b.*\b(?:rise|rises|rose|rising|gain|gains|gained|higher|fall|falls|fell|falling|loss|losses|lower|end(?:s|ed)? higher|end(?:s|ed)? lower)\b.*\b(?:fed|federal reserve|rate hike|rate cut|interest rate|rate expectations?|rate concerns?)\b|\b(?:fed|federal reserve|rate hike|rate cut|interest rate|rate expectations?|rate concerns?)\b.*\b(?:nifty|sensex|stocks?|shares?|equities|equity markets?|stock markets?|market indices?|indexes?|indices)\b/i;
 
+const POLITICAL_DATA_REACTION_NOISE =
+  /\b(?:rep\.?|representative|sen\.?|senator|congressman|congresswoman|lawmaker|politician)\b.*\b(?:on|reacts? to|reacted to|responds? to|comment(?:s|ed)? on)\b.*\b(?:jobs report|employment report|payrolls?|cpi|inflation report)\b/i;
+
+const DIPLOMATIC_CONFLICT_REFERENCE =
+  /\b(?:dialogue|negotiations?|negotiating|talks?|diplomac(?:y|tic)|peace talks?|peace process)\b.*\b(?:war|conflict)\b|\b(?:war|conflict)\b.*\b(?:dialogue|negotiations?|negotiating|talks?|diplomac(?:y|tic)|peace talks?|peace process)\b/i;
+
+const KINETIC_CONFLICT_SIGNAL =
+  /\b(?:military attack|drone attack|airstrike|air strike|missile attack|missile strike|bombard(?:ment|ed|ing)?|invasion|armed conflict|fighting|clashes?|massacre|war crimes?|killed|wounded)\b/i;
+
+const DE_DOLLARIZATION_SIGNAL =
+  /\bde[- ]?dollarization\b|\bdedollarization\b/i;
+
+const MONETARY_POLICY_ACTION_SIGNAL =
+  /\b(?:interest rates?|policy rates?|rate hikes?|rate cuts?|monetary policy)\b|\bcentral bank\b.*\b(?:raises?|raised|cuts?|cut|holds?|held|keeps?|kept|sets?|set|decides?|decided|announces?|announced)\b/i;
+
 const NON_GEOPOLITICAL_STRIKE_NOISE =
   /\bbird strike\b|\bstrikes? back\b/i;
 
@@ -1588,6 +1604,9 @@ const METAPHORICAL_WAR_NOISE =
 
 const CORPORATE_COUP_NOISE =
   /\b(?:brand|brands|agency|agencies|advertising|marketing|campaign|publicis|pepsi)\b.*\bcoup\b|\bcoup\b.*\b(?:brand|brands|agency|agencies|advertising|marketing|campaign|publicis|pepsi)\b/i;
+
+const POLITICAL_COUP_METAPHOR_NOISE =
+  /\bwhite house coup\b|\b(?:political|leadership|party|media)\s+coup\b/i;
 
 const ELECTION_ARCHIVE_NOISE =
   /\belection archives?\b|\barchives?\s*[-:|]\s*.*election\b/i;
@@ -1615,6 +1634,61 @@ const GERMAN_WAR_HOMOGRAPH_NOISE =
 
 const FUEL_PRICE_FLUFF =
   /\b(gas prices?|petrol prices?|gasoline prices?)\b/i;
+
+const EDUCATIONAL_FOREX_NOISE =
+  /\bwhat is forex trading\b|\bforex trading (?:guide|course|tutorial|basics|explained)\b/i;
+
+const HOME_INVASION_CRIME_NOISE =
+  /\b(?:arrest|suspect|police|case|charges?)\b.*\bhome invasion\b|\bhome invasion\b.*\b(?:arrest|suspect|police|case|charges?)\b/i;
+
+const ENTERTAINMENT_WAR_NOISE =
+  /\b(?:film|movie|starrer|shooting|actor|actress|director|bollywood|hollywood)\b.*\bwar\b|\bwar\b.*\b(?:film|movie|starrer|shooting|actor|actress|director|bollywood|hollywood)\b/i;
+
+const NON_GOVERNMENT_ELECTION_NOISE =
+  /\b(?:university|campus|student|union|guild|association)\b.*\belection\b|\belection\b.*\b(?:university|campus|student|union|guild|association)\b/i;
+
+const SOLATIUM_SANCTION_NOISE =
+  /\bsanctions?\s+(?:a\s+)?(?:solatium|compensation|relief|grant|payment)\b/i;
+
+const IMMIGRATION_INVASION_METAPHOR_NOISE =
+  /\b(?:ice|immigration|migrant|border agents?|police officers?)\b.*\binvasion\b|\binvasion\b.*\b(?:ice|immigration|migrant|border agents?|police officers?)\b/i;
+
+const VAGUE_WAR_HEADLINE_NOISE =
+  /^(?:the\s+)?brink of war$/i;
+
+const MARKET_DATA_ASSET_COMMENTARY_NOISE =
+  /\b(?:jobs report|jobs print|payrolls?)\b.*\b(?:bonds?|stocks?|nasdaq|s&p|dow|gold)\b|\b(?:bonds?|stocks?|nasdaq|s&p|dow|gold)\b.*\b(?:jobs report|jobs print|payrolls?)\b/i;
+
+const MARKET_POLICY_ASSET_COMMENTARY_NOISE =
+  /\b(?:stocks?|shares?|bonds?|equities)\b.*\b(?:gain|gains|rise|rises|fall|falls|fell|higher|lower)\b.*\b(?:boe|bank of england|ecb|central bank|rates?)\b/i;
+
+const COMMODITY_WAR_COMMENTARY_NOISE =
+  /\b(?:gold|oil|silver)\b.*\b(?:gain|gains|rise|rises|fall|falls|holds?)\b.*\b(?:war comments?|war fears?|geopolitical jitters?|inflation jitters?)\b/i;
+
+const ANALYST_JOBS_OPINION_NOISE =
+  /\b(?:jobs print|jobs report)\b.*\b(?:hides reality|good for bonds|wasn['’]?t really why|fed can['’]?t afford to ignore)\b/i;
+
+function sourceFamily(
+  domain: string | null | undefined,
+) {
+  const value =
+    (domain ?? "")
+      .trim()
+      .toLowerCase();
+
+  if (!value) {
+    return "";
+  }
+
+  if (
+    value === "iheart.com" ||
+    value.endsWith(".iheart.com")
+  ) {
+    return "iheart.com";
+  }
+
+  return value;
+}
 
 function matchCount(
   text: string,
@@ -1670,6 +1744,67 @@ function mergeCountryHits(
         b.iso3,
       ),
   );
+}
+
+function supplementalCountryHints(
+  value: string,
+): CountryHit[] {
+  const hints: {
+    iso3: string;
+    name: string;
+    pattern: RegExp;
+  }[] = [
+    {
+      iso3: "UKR",
+      name: "Ukraine",
+      pattern:
+        /\b(?:ukraine|ukrainian|ucraina|oekra[iï]ne|oekraine|kyiv|kiev)\b/i,
+    },
+    {
+      iso3: "RUS",
+      name: "Russia",
+      pattern:
+        /\b(?:russia|russian|russischer|russo|russi|venemaa|putin)\b/i,
+    },
+    {
+      iso3: "IND",
+      name: "India",
+      pattern:
+        /\b(?:india|indian|jaishankar|budgam|jammu(?:\s+and)?\s+kashmir|j-k|rbi)\b/i,
+    },
+    {
+      iso3: "CAN",
+      name: "Canada",
+      pattern:
+        /\b(?:canada|canadian|alberta|bank of canada)\b/i,
+    },
+    {
+      iso3: "USA",
+      name: "United States",
+      pattern:
+        /\b(?:united states|u\.s\.|u\.s\b|federal reserve|the fed|trump)\b/i,
+    },
+  ];
+
+  return hints
+    .filter(
+      (hint) =>
+        hint.pattern.test(value),
+    )
+    .map(
+      (hint) => ({
+        iso3:
+          hint.iso3,
+        name:
+          hint.name,
+        confidence:
+          90,
+        method:
+          "high_precision_context_hint",
+        mentions:
+          1,
+      }),
+    );
 }
 
 function choosePrimaryCountry(
@@ -1866,6 +2001,19 @@ function professionalRelevance(
   }
 
   if (
+    POLITICAL_DATA_REACTION_NOISE.test(text) &&
+    titleMacro <= 1 &&
+    titleGeo === 0 &&
+    titleRareEarth === 0
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "political_data_reaction_noise",
+    };
+  }
+
+  if (
     MARKET_REACTION_COMMENTARY_NOISE.test(title)
   ) {
     return {
@@ -1902,6 +2050,18 @@ function professionalRelevance(
       relevant: false,
       reason:
         "corporate_coup_noise",
+    };
+  }
+
+  if (
+    POLITICAL_COUP_METAPHOR_NOISE.test(
+      title,
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "political_coup_metaphor_noise",
     };
   }
 
@@ -2002,6 +2162,128 @@ function professionalRelevance(
       relevant: false,
       reason:
         "consumer_price_fluff",
+    };
+  }
+
+  if (
+    EDUCATIONAL_FOREX_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "educational_forex_noise",
+    };
+  }
+
+  if (
+    HOME_INVASION_CRIME_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "home_invasion_crime_noise",
+    };
+  }
+
+  if (
+    ENTERTAINMENT_WAR_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "entertainment_war_noise",
+    };
+  }
+
+  if (
+    NON_GOVERNMENT_ELECTION_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "non_government_election_noise",
+    };
+  }
+
+  if (
+    SOLATIUM_SANCTION_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "solatium_sanction_noise",
+    };
+  }
+
+  if (
+    IMMIGRATION_INVASION_METAPHOR_NOISE.test(
+      title,
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "immigration_invasion_metaphor_noise",
+    };
+  }
+
+  if (
+    VAGUE_WAR_HEADLINE_NOISE.test(
+      title.trim(),
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "vague_war_headline_noise",
+    };
+  }
+
+  if (
+    MARKET_DATA_ASSET_COMMENTARY_NOISE.test(
+      title,
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "market_data_asset_commentary_noise",
+    };
+  }
+
+  if (
+    MARKET_POLICY_ASSET_COMMENTARY_NOISE.test(
+      title,
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "market_policy_asset_commentary_noise",
+    };
+  }
+
+  if (
+    COMMODITY_WAR_COMMENTARY_NOISE.test(
+      title,
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "commodity_war_commentary_noise",
+    };
+  }
+
+  if (
+    ANALYST_JOBS_OPINION_NOISE.test(
+      title,
+    )
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "analyst_jobs_opinion_noise",
     };
   }
 
@@ -3005,6 +3287,32 @@ Deno.serve(async (req) => {
                   .map(String)
               : [],
           ),
+
+        sourceFamilies:
+          new Set(
+            Array.isArray(
+              payload
+                .source_families,
+            )
+              ? payload
+                  .source_families
+                  .map(String)
+              : Array.isArray(
+                  payload
+                    .source_domains,
+                )
+              ? payload
+                  .source_domains
+                  .map(
+                    (value: unknown) =>
+                      sourceFamily(
+                        String(value),
+                      ),
+                  )
+                  .filter(Boolean)
+              : [],
+          ),
+
         clusterTokens:
           Array.isArray(
             payload
@@ -3172,15 +3480,86 @@ Deno.serve(async (req) => {
           eventDomain,
         );
 
-      const eventRule =
+      const descriptionRule =
+        ruleFor(
+          signalDescription,
+          eventDomain,
+        );
+
+      const fullRule =
+        ruleFor(
+          signalAnalysisText,
+          eventDomain,
+        );
+
+      let eventRule =
         titleRule.id.endsWith(
           "_development",
         )
-          ? ruleFor(
-              signalAnalysisText,
-              eventDomain,
-            )
+          ? fullRule
           : titleRule;
+
+      // A generic "war/conflict" headline can hide
+      // a more specific event in the description.
+      //
+      // Example:
+      // "LIVE Ukraine War"
+      // description: security-service HQ hit by
+      // a drone attack.
+      if (
+        eventDomain ===
+          "geopolitics" &&
+        titleRule.id ===
+          "conflict" &&
+        descriptionRule.id ===
+          "military_attack"
+      ) {
+        eventRule =
+          descriptionRule;
+      }
+
+      // Discussion, diplomacy or negotiation about
+      // an existing conflict is not itself a new
+      // kinetic conflict event.
+      if (
+        eventDomain ===
+          "geopolitics" &&
+        eventRule.id ===
+          "conflict" &&
+        DIPLOMATIC_CONFLICT_REFERENCE.test(
+          analysisText,
+        ) &&
+        !KINETIC_CONFLICT_SIGNAL.test(
+          analysisText,
+        )
+      ) {
+        eventRule =
+          ruleFor(
+            "",
+            "geopolitics",
+          );
+      }
+
+      // De-dollarization / reserve-system analysis
+      // is relevant macro intelligence, but a
+      // central-bank mention alone must not convert
+      // it into monetary policy.
+      if (
+        eventDomain ===
+          "macro" &&
+        DE_DOLLARIZATION_SIGNAL.test(
+          record.t,
+        ) &&
+        !MONETARY_POLICY_ACTION_SIGNAL.test(
+          analysisText,
+        )
+      ) {
+        eventRule =
+          ruleFor(
+            "",
+            "macro",
+          );
+      }
 
       const trend =
         direction(
@@ -3188,15 +3567,25 @@ Deno.serve(async (req) => {
         );
 
       const titleGeography =
-        detectCountries(
-          record.t,
-          countryIndex,
+        mergeCountryHits(
+          detectCountries(
+            record.t,
+            countryIndex,
+          ),
+          supplementalCountryHints(
+            record.t,
+          ),
         );
 
       const descriptionGeography =
-        detectCountries(
-          record.x ?? "",
-          countryIndex,
+        mergeCountryHits(
+          detectCountries(
+            record.x ?? "",
+            countryIndex,
+          ),
+          supplementalCountryHints(
+            record.x ?? "",
+          ),
         );
 
       const geography =
@@ -3334,6 +3723,10 @@ Deno.serve(async (req) => {
           evidenceRefs: [],
           sourceDomains:
             new Set<string>(),
+
+          sourceFamilies:
+            new Set<string>(),
+
           clusterTokens:
             titleTokens,
           why:
@@ -3382,6 +3775,17 @@ Deno.serve(async (req) => {
         selected
           .sourceDomains
           .add(record.h);
+
+        const family =
+          sourceFamily(
+            record.h,
+          );
+
+        if (family) {
+          selected
+            .sourceFamilies
+            .add(family);
+        }
       }
 
       for (
@@ -3442,7 +3846,7 @@ Deno.serve(async (req) => {
 
       const sourceCount =
         selected
-          .sourceDomains
+          .sourceFamilies
           .size;
 
       const severityText =
@@ -3621,7 +4025,7 @@ Deno.serve(async (req) => {
 
               independent_source_count:
                 event
-                  .sourceDomains
+                  .sourceFamilies
                   .size,
 
               evidence_refs:
@@ -3733,6 +4137,14 @@ Deno.serve(async (req) => {
                   ...event
                     .sourceDomains,
                 ].sort(),
+
+                source_families: [
+                  ...event
+                    .sourceFamilies,
+                ].sort(),
+
+                corroboration_basis:
+                  "independent_editorial_source_family",
 
                 cluster_tokens:
                   event
