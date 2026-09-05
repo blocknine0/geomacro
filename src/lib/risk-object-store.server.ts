@@ -274,6 +274,107 @@ getLatestCompatibleCountryRiskObject(
 
 
 export async function
+getLatestCompatibleCountryRiskObjectAtOrBefore(
+  countryIso3: string,
+  atOrBefore: string,
+): Promise<
+  GeomacroRiskObject | null
+> {
+  const db =
+    requireRiskSupabase();
+
+  const iso3 =
+    countryIso3
+      .trim()
+      .toUpperCase();
+
+  if (
+    !/^[A-Z]{3}$/.test(iso3)
+  ) {
+    throw new Error(
+      "countryIso3 must be ISO3",
+    );
+  }
+
+  const boundary =
+    new Date(
+      atOrBefore,
+    );
+
+  if (
+    Number.isNaN(
+      boundary.getTime(),
+    )
+  ) {
+    throw new Error(
+      "Invalid atOrBefore timestamp",
+    );
+  }
+
+  const result =
+    await db
+      .from(
+        "geomacro_risk_objects",
+      )
+      .select(
+        "object_id,payload,generated_at,expires_at",
+      )
+      .eq(
+        "subject_type",
+        "country",
+      )
+      .eq(
+        "subject_id",
+        iso3,
+      )
+      .eq(
+        "schema_version",
+        GRO_SCHEMA_VERSION,
+      )
+      .eq(
+        "methodology_version",
+        COUNTRY_RISK_METHOD_VERSION,
+      )
+      .lte(
+        "generated_at",
+        boundary.toISOString(),
+      )
+      .order(
+        "generated_at",
+        {
+          ascending: false,
+        },
+      )
+      .limit(1)
+      .maybeSingle();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (!result.data) {
+    return null;
+  }
+
+  const row =
+    result.data as RiskObjectRow;
+
+  if (
+    !isCompatibleCountryRiskObject(
+      row.payload,
+      iso3,
+    )
+  ) {
+    throw new Error(
+      `Stored GRO payload contract mismatch: ${row.object_id}`,
+    );
+  }
+
+  return row.payload;
+}
+
+
+export async function
 getRiskObjectByObjectId(
   objectId: string,
 ): Promise<
