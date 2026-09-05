@@ -28,6 +28,12 @@ const SOURCE_ID =
 //
 const INDICATORS = [
   {
+    id: "SP.POP.TOTL",
+    metric: "population_total",
+    unit: "persons",
+  },
+
+  {
     id: "FP.CPI.TOTL.ZG",
     metric: "inflation_consumer_prices_annual_pct",
     unit: "percent",
