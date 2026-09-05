@@ -2,11 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.3.3";
+const STRUCTURE_VERSION = "live-structure-v1.3.4";
 const COUNTRY_VERSION = "country-attribution-v1.3.0";
 const STORY_VERSION = "story-title-jaccard-v1.3.0";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
-const RELEVANCE_VERSION = "professional-relevance-v1.1.3";
+const RELEVANCE_VERSION = "professional-relevance-v1.1.4";
 
 const BATCH_SIZE = 60;
 const STORY_THRESHOLD = 0.40;
@@ -873,7 +873,7 @@ const MACRO_RELEVANCE = [
   /\brecession\b/i,
   /\bsovereign debt\b/i,
   /\bbond yield/i,
-  /\bfiscal\b/i,
+  /\bfiscal (?:policy|deficit|spending|stimulus|consolidation|balance|outlook|framework|rules?|reform|risk|pressure|space)\b/i,
   /\btrade balance\b/i,
   /\bcurrent account\b/i,
   /\bforeign exchange\b/i,
@@ -940,6 +940,15 @@ const LOCAL_ACCIDENT_MILITARY_NOISE =
 
 const LOCAL_ELECTION_NOISE =
   /\b(?:city councillor|city council|municipal|school board|county commissioner|local council)\b.*\b(?:election|election race|race)\b|\b(?:election|election race)\b.*\b(?:city councillor|city council|municipal|school board|county commissioner|local council)\b/i;
+
+const LOCAL_VOTER_ROLL_NOISE =
+  /\b(?:voter|voters|electoral|election)\b.*\b(?:roll revision|voter roll|voter list|untraceable voters|names missing)\b|\b(?:roll revision|voter roll|voter list|untraceable voters|names missing)\b.*\b(?:voter|voters|electoral|election)\b/i;
+
+const RETAIL_MARKETING_MACRO_NOISE =
+  /\b(?:consumer loyalty|grocery shopping|retailers?|right buyers?)\b/i;
+
+const GERMAN_WAR_HOMOGRAPH_NOISE =
+  /\bwar der\b|\bwar die\b|\bwar das\b|\bwar ein(?:e|er|es)?\b/i;
 
 const FUEL_PRICE_FLUFF =
   /\b(gas prices?|petrol prices?|gasoline prices?)\b/i;
@@ -1121,6 +1130,7 @@ function resolveDomain(
 function professionalRelevance(
   title: string,
   text: string,
+  language: string | null | undefined,
   decision:
     ReturnType<
       typeof resolveDomain
@@ -1284,6 +1294,43 @@ function professionalRelevance(
       relevant: false,
       reason:
         "local_election_noise",
+    };
+  }
+
+  if (
+    LOCAL_VOTER_ROLL_NOISE.test(text)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "local_voter_roll_noise",
+    };
+  }
+
+  if (
+    RETAIL_MARKETING_MACRO_NOISE.test(text) &&
+    titleMacro <= 1 &&
+    titleGeo === 0 &&
+    titleRareEarth === 0
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "retail_marketing_macro_noise",
+    };
+  }
+
+  if (
+    language?.toLowerCase() === "de" &&
+    GERMAN_WAR_HOMOGRAPH_NOISE.test(title) &&
+    titleGeo <= 1 &&
+    titleMacro === 0 &&
+    titleRareEarth === 0
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "cross_language_war_homograph_noise",
     };
   }
 
@@ -2409,6 +2456,7 @@ Deno.serve(async (req) => {
         professionalRelevance(
           record.t,
           analysisText,
+          record.l,
           domainDecision,
         );
 
