@@ -2,11 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.3.4";
+const STRUCTURE_VERSION = "live-structure-v1.4.3";
 const COUNTRY_VERSION = "country-attribution-v1.3.0";
-const STORY_VERSION = "story-title-jaccard-v1.3.0";
+const STORY_VERSION = "story-semantic-augmented-jaccard-v1.4.0";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
-const RELEVANCE_VERSION = "professional-relevance-v1.1.4";
+const RELEVANCE_VERSION = "professional-relevance-v1.2.3";
 
 const BATCH_SIZE = 60;
 const STORY_THRESHOLD = 0.40;
@@ -37,6 +37,567 @@ type Evidence = {
   q?: string[];
   g?: string | null;
 };
+
+type SemanticPhrase = {
+  canonical: string;
+  patterns: RegExp[];
+};
+
+type LanguagePack = {
+  signals: SemanticPhrase[];
+};
+
+function unicodeSemanticPattern(
+  source: string,
+) {
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])(?:${source})(?![\\p{L}\\p{N}])`,
+    "iu",
+  );
+}
+
+function normalizeLanguage(
+  value: string | null | undefined,
+) {
+  const raw =
+    (value ?? "en")
+      .trim()
+      .toLowerCase();
+
+  if (!raw) {
+    return "en";
+  }
+
+  return raw
+    .split(/[-_]/)[0];
+}
+
+const LANGUAGE_PACKS:
+  Record<string, LanguagePack> = {
+  de: {
+    signals: [
+      { canonical: "war", patterns: [/\bkrieg\b/i, /\bkrieges\b/i] },
+      { canonical: "military attack", patterns: [/\bangriff\b/i, /\bangriffe\b/i, /\bdrohnenangriff/i, /\bluftangriff/i, /\braketenangriff/i] },
+      { canonical: "armed conflict", patterns: [/\bbewaffneter konflikt\b/i, /\bkämpfe\b/i, /\bkaempfe\b/i] },
+      { canonical: "massacre", patterns: [/\bmassaker\b/i] },
+      { canonical: "war crime", patterns: [/\bkriegsverbrechen\b/i] },
+      { canonical: "ceasefire", patterns: [/\bwaffenstillstand\b/i] },
+      { canonical: "sanctions", patterns: [/\bsanktionen?\b/i] },
+      { canonical: "export control", patterns: [/\bexportkontrolle\b/i, /\bausfuhrkontrolle\b/i] },
+      { canonical: "export ban", patterns: [/\bexportverbot\b/i, /\bausfuhrverbot\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\bwahl\b/i, /\bwahlen\b/i] },
+      { canonical: "referendum", patterns: [/\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\bstaatsstreich\b/i, /\bputsch\b/i] },
+      { canonical: "mass protest", patterns: [/\bmassenprotest/i, /\bmassendemonstration/i] },
+      { canonical: "state of emergency", patterns: [/\bnotstand\b/i, /\bausnahmezustand\b/i] },
+      { canonical: "government collapse", patterns: [/\bregierungskrise\b/i, /\bzusammenbruch der regierung\b/i] },
+      { canonical: "tariff", patterns: [/\bzoll\b/i, /\bzölle\b/i, /\bzoelle\b/i] },
+      { canonical: "nato", patterns: [/\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\bzinssatz\b/i, /\bleitzins\b/i, /\bzinsen\b/i] },
+      { canonical: "central bank", patterns: [/\bzentralbank\b/i] },
+      { canonical: "inflation", patterns: [/\binflation\b/i] },
+      { canonical: "gdp", patterns: [/\bbruttoinlandsprodukt\b/i] },
+      { canonical: "unemployment", patterns: [/\barbeitslosigkeit\b/i, /\barbeitslosenquote\b/i] },
+      { canonical: "recession", patterns: [/\brezession\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bstaatsschulden\b/i] },
+      { canonical: "default", patterns: [/\bstaatsbankrott\b/i, /\bzahlungsausfall\b/i] },
+      { canonical: "debt crisis", patterns: [/\bschuldenkrise\b/i] },
+      { canonical: "bond yield", patterns: [/\banleiherendite/i] },
+      { canonical: "employment", patterns: [/\bbeschäftigung\b/i, /\bbeschaeftigung\b/i] },
+      { canonical: "fiscal policy", patterns: [/\bfiskalpolitik\b/i] },
+      { canonical: "currency", patterns: [/\bwährung\b/i, /\bwaehrung\b/i] },
+      { canonical: "rare earth", patterns: [/\bseltene erden\b/i] },
+      { canonical: "critical mineral", patterns: [/\bkritische mineral/i] },
+    ],
+  },
+
+  fr: {
+    signals: [
+      { canonical: "war", patterns: [/\bguerre\b/i] },
+      { canonical: "military attack", patterns: [/\battaque militaire\b/i, /\bfrappe militaire\b/i, /\bfrappe aérienne\b/i, /\bfrappe aerienne\b/i] },
+      { canonical: "armed conflict", patterns: [/\bconflit armé\b/i, /\bconflit arme\b/i, /\bcombats\b/i] },
+      { canonical: "massacre", patterns: [/\bmassacre\b/i] },
+      { canonical: "war crime", patterns: [/\bcrime de guerre\b/i, /\bcrimes de guerre\b/i] },
+      { canonical: "ceasefire", patterns: [/\bcessez-le-feu\b/i] },
+      { canonical: "sanctions", patterns: [/\bsanctions?\b/i] },
+      { canonical: "export control", patterns: [/\bcontrôle des exportations\b/i, /\bcontrole des exportations\b/i] },
+      { canonical: "export ban", patterns: [/\binterdiction d['’]exportation\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\bélections?\b/i, /\belections?\b/i] },
+      { canonical: "referendum", patterns: [/\bréférendum\b/i, /\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\bcoup d['’]état\b/i, /\bcoup d['’]etat\b/i] },
+      { canonical: "mass protest", patterns: [/\bmanifestations de masse\b/i, /\bmanifestation massive\b/i] },
+      { canonical: "state of emergency", patterns: [/\bétat d['’]urgence\b/i, /\betat d['’]urgence\b/i] },
+      { canonical: "government collapse", patterns: [/\bchute du gouvernement\b/i, /\beffondrement du gouvernement\b/i] },
+      { canonical: "tariff", patterns: [/\bdroits? de douane\b/i, /\btarifs? douaniers?\b/i] },
+      { canonical: "nato", patterns: [/\botan\b/i, /\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\btaux d['’]intérêt\b/i, /\btaux directeur\b/i] },
+      { canonical: "central bank", patterns: [/\bbanque centrale\b/i] },
+      { canonical: "inflation", patterns: [/\binflation\b/i] },
+      { canonical: "gdp", patterns: [/\bpib\b/i] },
+      { canonical: "unemployment", patterns: [/\bchômage\b/i, /\bchomage\b/i] },
+      { canonical: "recession", patterns: [/\brécession\b/i, /\brecession\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bdette souveraine\b/i] },
+      { canonical: "default", patterns: [/\bdéfaut souverain\b/i, /\bdefaut souverain\b/i] },
+      { canonical: "debt crisis", patterns: [/\bcrise de la dette\b/i] },
+      { canonical: "bond yield", patterns: [/\brendement obligataire\b/i] },
+      { canonical: "employment", patterns: [/\bemploi\b/i] },
+      { canonical: "fiscal policy", patterns: [/\bpolitique budgétaire\b/i, /\bpolitique budgetaire\b/i] },
+      { canonical: "currency", patterns: [/\bdevise\b/i, /\bmonnaie\b/i] },
+      { canonical: "rare earth", patterns: [/\bterres rares\b/i] },
+      { canonical: "critical mineral", patterns: [/\bminéraux critiques\b/i, /\bmineraux critiques\b/i] },
+    ],
+  },
+
+  es: {
+    signals: [
+      { canonical: "war", patterns: [/\bguerra\b/i] },
+      { canonical: "military attack", patterns: [/\bataque militar\b/i, /\bataque aéreo\b/i, /\bataque aereo\b/i, /\bbombardeo\b/i] },
+      { canonical: "armed conflict", patterns: [/\bconflicto armado\b/i, /\bcombates\b/i] },
+      { canonical: "massacre", patterns: [/\bmasacre\b/i] },
+      { canonical: "war crime", patterns: [/\bcrimen(?:es)? de guerra\b/i] },
+      { canonical: "ceasefire", patterns: [/\balto el fuego\b/i] },
+      { canonical: "sanctions", patterns: [/\bsanciones?\b/i] },
+      { canonical: "export control", patterns: [/\bcontrol(?:es)? de exportación\b/i, /\bcontrol(?:es)? de exportacion\b/i] },
+      { canonical: "export ban", patterns: [/\bprohibición de exportación\b/i, /\bprohibicion de exportacion\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\belecciones?\b/i] },
+      { canonical: "referendum", patterns: [/\breferéndum\b/i, /\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\bgolpe de estado\b/i] },
+      { canonical: "mass protest", patterns: [/\bprotestas masivas\b/i] },
+      { canonical: "state of emergency", patterns: [/\bestado de emergencia\b/i] },
+      { canonical: "government collapse", patterns: [/\bcaída del gobierno\b/i, /\bcaida del gobierno\b/i] },
+      { canonical: "tariff", patterns: [/\barancel(?:es)?\b/i] },
+      { canonical: "nato", patterns: [/\botan\b/i, /\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\btasa de interés\b/i, /\btasa de interes\b/i, /\btipo de interés\b/i, /\btipo de interes\b/i] },
+      { canonical: "central bank", patterns: [/\bbanco central\b/i] },
+      { canonical: "inflation", patterns: [/\binflación\b/i, /\binflacion\b/i] },
+      { canonical: "gdp", patterns: [/\bpib\b/i] },
+      { canonical: "unemployment", patterns: [/\bdesempleo\b/i] },
+      { canonical: "recession", patterns: [/\brecesión\b/i, /\brecesion\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bdeuda soberana\b/i] },
+      { canonical: "default", patterns: [/\bimpago soberano\b/i, /\bdefault soberano\b/i] },
+      { canonical: "debt crisis", patterns: [/\bcrisis de deuda\b/i] },
+      { canonical: "bond yield", patterns: [/\brendimiento de los bonos\b/i, /\brentabilidad de los bonos\b/i] },
+      { canonical: "employment", patterns: [/\bempleo\b/i] },
+      { canonical: "fiscal policy", patterns: [/\bpolítica fiscal\b/i, /\bpolitica fiscal\b/i, /\bdéficit fiscal\b/i, /\bdeficit fiscal\b/i] },
+      { canonical: "currency", patterns: [/\bmoneda\b/i, /\bdivisa\b/i] },
+      { canonical: "rare earth", patterns: [/\btierras raras\b/i] },
+      { canonical: "critical mineral", patterns: [/\bminerales críticos\b/i, /\bminerales criticos\b/i] },
+    ],
+  },
+
+  pt: {
+    signals: [
+      { canonical: "war", patterns: [/\bguerra\b/i] },
+      { canonical: "military attack", patterns: [/\bataque militar\b/i, /\bataque aéreo\b/i, /\bataque aereo\b/i, /\bbombardeio\b/i] },
+      { canonical: "armed conflict", patterns: [/\bconflito armado\b/i, /\bcombates\b/i] },
+      { canonical: "massacre", patterns: [/\bmassacre\b/i] },
+      { canonical: "war crime", patterns: [/\bcrime(?:s)? de guerra\b/i] },
+      { canonical: "ceasefire", patterns: [/\bcessar-fogo\b/i, /\bcessar fogo\b/i] },
+      { canonical: "sanctions", patterns: [/\bsanções?\b/i, /\bsancoes?\b/i] },
+      { canonical: "export control", patterns: [/\bcontrole de exportações\b/i, /\bcontrole de exportacoes\b/i] },
+      { canonical: "export ban", patterns: [/\bproibição de exportação\b/i, /\bproibicao de exportacao\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\beleições?\b/i, /\beleicoes?\b/i] },
+      { canonical: "referendum", patterns: [/\breferendo\b/i] },
+      { canonical: "coup", patterns: [/\bgolpe de estado\b/i] },
+      { canonical: "mass protest", patterns: [/\bprotestos em massa\b/i, /\bprotestos massivos\b/i] },
+      { canonical: "state of emergency", patterns: [/\bestado de emergência\b/i, /\bestado de emergencia\b/i] },
+      { canonical: "government collapse", patterns: [/\bqueda do governo\b/i, /\bcolapso do governo\b/i] },
+      { canonical: "tariff", patterns: [/\btarifas?\b/i] },
+      { canonical: "nato", patterns: [/\botan\b/i, /\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\btaxa de juros\b/i] },
+      { canonical: "central bank", patterns: [/\bbanco central\b/i] },
+      { canonical: "inflation", patterns: [/\binflação\b/i, /\binflacao\b/i] },
+      { canonical: "gdp", patterns: [/\bpib\b/i] },
+      { canonical: "unemployment", patterns: [/\bdesemprego\b/i] },
+      { canonical: "recession", patterns: [/\brecessão\b/i, /\brecessao\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bdívida soberana\b/i, /\bdivida soberana\b/i] },
+      { canonical: "default", patterns: [/\bcalote soberano\b/i, /\bdefault soberano\b/i] },
+      { canonical: "debt crisis", patterns: [/\bcrise da dívida\b/i, /\bcrise da divida\b/i] },
+      { canonical: "bond yield", patterns: [/\brendimento dos títulos\b/i, /\brendimento dos titulos\b/i] },
+      { canonical: "employment", patterns: [/\bemprego\b/i] },
+      { canonical: "fiscal policy", patterns: [/\bpolítica fiscal\b/i, /\bpolitica fiscal\b/i] },
+      { canonical: "currency", patterns: [/\bmoeda\b/i, /\bcâmbio\b/i, /\bcambio\b/i] },
+      { canonical: "rare earth", patterns: [/\bterras raras\b/i] },
+      { canonical: "critical mineral", patterns: [/\bminerais críticos\b/i, /\bminerais criticos\b/i] },
+    ],
+  },
+
+  ro: {
+    signals: [
+      { canonical: "war", patterns: [/\brăzboi\b/i, /\brazboi\b/i] },
+      { canonical: "military attack", patterns: [/\batac militar\b/i, /\batac aerian\b/i, /\bbombardament\b/i] },
+      { canonical: "armed conflict", patterns: [/\bconflict armat\b/i, /\blupte\b/i] },
+      { canonical: "massacre", patterns: [/\bmasacru\b/i, /\bmasacrul\b/i] },
+      { canonical: "war crime", patterns: [/\bcrimă de război\b/i, /\bcrima de razboi\b/i, /\bcrime de război\b/i, /\bcrime de razboi\b/i] },
+      { canonical: "ceasefire", patterns: [/\bîncetarea focului\b/i, /\bincetarea focului\b/i] },
+      { canonical: "sanctions", patterns: [/\bsancțiuni\b/i, /\bsanctiuni\b/i] },
+      { canonical: "export control", patterns: [/\bcontrolul exporturilor\b/i] },
+      { canonical: "export ban", patterns: [/\binterdicție de export\b/i, /\binterdictie de export\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\balegeri\b/i] },
+      { canonical: "referendum", patterns: [/\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\blovitură de stat\b/i, /\blovitura de stat\b/i] },
+      { canonical: "mass protest", patterns: [/\bproteste masive\b/i] },
+      { canonical: "state of emergency", patterns: [/\bstare de urgență\b/i, /\bstare de urgenta\b/i] },
+      { canonical: "government collapse", patterns: [/\bcăderea guvernului\b/i, /\bcaderea guvernului\b/i] },
+      { canonical: "tariff", patterns: [/\btarife vamale\b/i] },
+      { canonical: "nato", patterns: [/\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\brata dobânzii\b/i, /\brata dobanzii\b/i] },
+      { canonical: "central bank", patterns: [/\bbanca centrală\b/i, /\bbanca centrala\b/i] },
+      { canonical: "inflation", patterns: [/\binflație\b/i, /\binflatie\b/i] },
+      { canonical: "gdp", patterns: [/\bpib\b/i] },
+      { canonical: "unemployment", patterns: [/\bșomaj\b/i, /\bsomaj\b/i] },
+      { canonical: "recession", patterns: [/\brecesiune\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bdatorie suverană\b/i, /\bdatorie suverana\b/i] },
+      { canonical: "default", patterns: [/\bincapacitate de plată\b/i, /\bincapacitate de plata\b/i] },
+      { canonical: "debt crisis", patterns: [/\bcriza datoriilor\b/i] },
+      { canonical: "bond yield", patterns: [/\brandamentul obligațiunilor\b/i, /\brandamentul obligatiunilor\b/i] },
+      { canonical: "employment", patterns: [/\bocuparea forței de muncă\b/i, /\bocuparea fortei de munca\b/i] },
+      { canonical: "fiscal policy", patterns: [/\bpolitică fiscală\b/i, /\bpolitica fiscala\b/i] },
+      { canonical: "currency", patterns: [/\bmonedă\b/i, /\bmoneda\b/i] },
+      { canonical: "rare earth", patterns: [/\bpământuri rare\b/i, /\bpamanturi rare\b/i] },
+      { canonical: "critical mineral", patterns: [/\bminerale critice\b/i] },
+    ],
+  },
+
+  et: {
+    signals: [
+      { canonical: "war", patterns: [/\bsõda\b/i, /\bsõja\b/i] },
+      { canonical: "military attack", patterns: [/\brünnak\b/i, /\bründas\b/i, /\bdroonirünnak\b/i, /\bõhurünnak\b/i] },
+      { canonical: "armed conflict", patterns: [/\brelvakonflikt\b/i, /\blahingud\b/i] },
+      { canonical: "massacre", patterns: [/\bveresaun\b/i] },
+      { canonical: "war crime", patterns: [/\bsõjakuritegu\b/i, /\bsõjakuriteod\b/i] },
+      { canonical: "ceasefire", patterns: [/\brelvarahu\b/i] },
+      { canonical: "sanctions", patterns: [/\bsanktsioon/i] },
+      { canonical: "export control", patterns: [/\bekspordikontroll\b/i] },
+      { canonical: "export ban", patterns: [/\bekspordikeeld\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\bvalimised\b/i] },
+      { canonical: "referendum", patterns: [/\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\briigipööre\b/i] },
+      { canonical: "mass protest", patterns: [/\bmassiprotest/i] },
+      { canonical: "state of emergency", patterns: [/\berakorraline seisukord\b/i] },
+      { canonical: "government collapse", patterns: [/\bvalitsuse kokkuvarisemine\b/i] },
+      { canonical: "tariff", patterns: [/\btollimaks\b/i, /\btariif\b/i] },
+      { canonical: "nato", patterns: [/\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\bintressimäär\b/i] },
+      { canonical: "central bank", patterns: [/\bkeskpank\b/i] },
+      { canonical: "inflation", patterns: [/\binflatsioon\b/i] },
+      { canonical: "gdp", patterns: [/\bskp\b/i] },
+      { canonical: "unemployment", patterns: [/\btöötus\b/i] },
+      { canonical: "recession", patterns: [/\bmajanduslangus\b/i] },
+      { canonical: "sovereign debt", patterns: [/\briigivõlg\b/i] },
+      { canonical: "default", patterns: [/\bmaksejõuetus\b/i] },
+      { canonical: "debt crisis", patterns: [/\bvõlakriis\b/i] },
+      { canonical: "bond yield", patterns: [/\bvõlakirjade tootlus\b/i] },
+      { canonical: "employment", patterns: [/\btööhõive\b/i] },
+      { canonical: "currency", patterns: [/\bvaluuta\b/i] },
+      { canonical: "rare earth", patterns: [/\bharuldased muldmetallid\b/i] },
+      { canonical: "critical mineral", patterns: [/\bkriitilised mineraalid\b/i] },
+    ],
+  },
+
+  uk: {
+    signals: [
+      { canonical: "war", patterns: [unicodeSemanticPattern("війна|війни|війні|війну")] },
+      { canonical: "military attack", patterns: [unicodeSemanticPattern("атака|атаки|удар|удари|обстріл|обстріли|дронова атака|авіаудар|ракетний удар")] },
+      { canonical: "armed conflict", patterns: [unicodeSemanticPattern("збройний конфлікт|бойові дії|бої")] },
+      { canonical: "massacre", patterns: [unicodeSemanticPattern("масакр[\\p{L}]*|різанин[\\p{L}]*")] },
+      { canonical: "war crime", patterns: [unicodeSemanticPattern("воєнн[\\p{L}]* злочин[\\p{L}]*")] },
+      { canonical: "ceasefire", patterns: [unicodeSemanticPattern("припинення вогню")] },
+      { canonical: "sanctions", patterns: [unicodeSemanticPattern("санкц[\\p{L}]*")] },
+      { canonical: "export control", patterns: [unicodeSemanticPattern("експортн[\\p{L}]* контрол[\\p{L}]*")] },
+      { canonical: "export ban", patterns: [unicodeSemanticPattern("заборон[\\p{L}]* експорт[\\p{L}]*")] },
+      { canonical: "embargo", patterns: [unicodeSemanticPattern("ембарго")] },
+      { canonical: "election", patterns: [unicodeSemanticPattern("вибори|виборів")] },
+      { canonical: "referendum", patterns: [unicodeSemanticPattern("референдум[\\p{L}]*")] },
+      { canonical: "coup", patterns: [unicodeSemanticPattern("державний переворот")] },
+      { canonical: "mass protest", patterns: [unicodeSemanticPattern("масов[\\p{L}]* протест[\\p{L}]*")] },
+      { canonical: "state of emergency", patterns: [unicodeSemanticPattern("надзвичайн[\\p{L}]* стан")] },
+      { canonical: "government collapse", patterns: [unicodeSemanticPattern("падінн[\\p{L}]* уряд[\\p{L}]*|розпад[\\p{L}]* уряд[\\p{L}]*")] },
+      { canonical: "tariff", patterns: [unicodeSemanticPattern("тариф[\\p{L}]*|мит[оа][\\p{L}]*")] },
+      { canonical: "nato", patterns: [unicodeSemanticPattern("нато"), /\bnato\b/i] },
+      { canonical: "interest rate", patterns: [unicodeSemanticPattern("облікова ставка|процентна ставка")] },
+      { canonical: "central bank", patterns: [unicodeSemanticPattern("центральний банк")] },
+      { canonical: "inflation", patterns: [unicodeSemanticPattern("інфляц[\\p{L}]*")] },
+      { canonical: "gdp", patterns: [unicodeSemanticPattern("ввп")] },
+      { canonical: "unemployment", patterns: [unicodeSemanticPattern("безробіт[\\p{L}]*")] },
+      { canonical: "recession", patterns: [unicodeSemanticPattern("рецес[\\p{L}]*")] },
+      { canonical: "sovereign debt", patterns: [unicodeSemanticPattern("суверенн[\\p{L}]* борг[\\p{L}]*|державн[\\p{L}]* борг[\\p{L}]*")] },
+      { canonical: "default", patterns: [unicodeSemanticPattern("дефолт[\\p{L}]*")] },
+      { canonical: "debt crisis", patterns: [unicodeSemanticPattern("боргов[\\p{L}]* криз[\\p{L}]*")] },
+      { canonical: "bond yield", patterns: [unicodeSemanticPattern("дохідніст[\\p{L}]* облігац[\\p{L}]*")] },
+      { canonical: "employment", patterns: [unicodeSemanticPattern("зайнятіст[\\p{L}]*")] },
+      { canonical: "fiscal policy", patterns: [unicodeSemanticPattern("фіскальна політика")] },
+      { canonical: "currency", patterns: [unicodeSemanticPattern("валют[\\p{L}]*")] },
+      { canonical: "rare earth", patterns: [unicodeSemanticPattern("рідкісноземель[\\p{L}]*")] },
+      { canonical: "critical mineral", patterns: [unicodeSemanticPattern("критичні мінерали")] },
+    ],
+  },
+
+  ru: {
+    signals: [
+      { canonical: "war", patterns: [unicodeSemanticPattern("война|войны|войне|войну")] },
+      { canonical: "military attack", patterns: [unicodeSemanticPattern("атака|атаки|удар|удары|обстрел|обстрелы|авиаудар|ракетный удар")] },
+      { canonical: "armed conflict", patterns: [unicodeSemanticPattern("вооруженн[\\p{L}]* конфликт[\\p{L}]*|боевые действия|бои")] },
+      { canonical: "massacre", patterns: [unicodeSemanticPattern("массов[\\p{L}]* убийств[\\p{L}]*|резн[\\p{L}]*")] },
+      { canonical: "war crime", patterns: [unicodeSemanticPattern("военн[\\p{L}]* преступлен[\\p{L}]*")] },
+      { canonical: "ceasefire", patterns: [unicodeSemanticPattern("прекращение огня")] },
+      { canonical: "sanctions", patterns: [unicodeSemanticPattern("санкц[\\p{L}]*")] },
+      { canonical: "export control", patterns: [unicodeSemanticPattern("экспортн[\\p{L}]* контрол[\\p{L}]*")] },
+      { canonical: "export ban", patterns: [unicodeSemanticPattern("запрет[\\p{L}]* экспорт[\\p{L}]*")] },
+      { canonical: "embargo", patterns: [unicodeSemanticPattern("эмбарго")] },
+      { canonical: "election", patterns: [unicodeSemanticPattern("выборы|выборов")] },
+      { canonical: "referendum", patterns: [unicodeSemanticPattern("референдум[\\p{L}]*")] },
+      { canonical: "coup", patterns: [unicodeSemanticPattern("государственный переворот")] },
+      { canonical: "mass protest", patterns: [unicodeSemanticPattern("массов[\\p{L}]* протест[\\p{L}]*")] },
+      { canonical: "state of emergency", patterns: [unicodeSemanticPattern("чрезвычайн[\\p{L}]* положен[\\p{L}]*")] },
+      { canonical: "government collapse", patterns: [unicodeSemanticPattern("крах[\\p{L}]* правительств[\\p{L}]*|паден[\\p{L}]* правительств[\\p{L}]*")] },
+      { canonical: "tariff", patterns: [unicodeSemanticPattern("тариф[\\p{L}]*|пошлин[\\p{L}]*")] },
+      { canonical: "nato", patterns: [unicodeSemanticPattern("нато"), /\bnato\b/i] },
+      { canonical: "interest rate", patterns: [unicodeSemanticPattern("ключевая ставка|процентная ставка")] },
+      { canonical: "central bank", patterns: [unicodeSemanticPattern("центральный банк")] },
+      { canonical: "inflation", patterns: [unicodeSemanticPattern("инфляц[\\p{L}]*")] },
+      { canonical: "gdp", patterns: [unicodeSemanticPattern("ввп")] },
+      { canonical: "unemployment", patterns: [unicodeSemanticPattern("безработ[\\p{L}]*")] },
+      { canonical: "recession", patterns: [unicodeSemanticPattern("рецесс[\\p{L}]*")] },
+      { canonical: "sovereign debt", patterns: [unicodeSemanticPattern("суверенн[\\p{L}]* долг[\\p{L}]*|государственн[\\p{L}]* долг[\\p{L}]*")] },
+      { canonical: "default", patterns: [unicodeSemanticPattern("дефолт[\\p{L}]*")] },
+      { canonical: "debt crisis", patterns: [unicodeSemanticPattern("долгов[\\p{L}]* кризис[\\p{L}]*")] },
+      { canonical: "bond yield", patterns: [unicodeSemanticPattern("доходност[\\p{L}]* облигац[\\p{L}]*")] },
+      { canonical: "employment", patterns: [unicodeSemanticPattern("занятост[\\p{L}]*")] },
+      { canonical: "fiscal policy", patterns: [unicodeSemanticPattern("фискальная политика")] },
+      { canonical: "currency", patterns: [unicodeSemanticPattern("валют[\\p{L}]*")] },
+      { canonical: "rare earth", patterns: [unicodeSemanticPattern("редкоземель[\\p{L}]*")] },
+      { canonical: "critical mineral", patterns: [unicodeSemanticPattern("критические минералы")] },
+    ],
+  },
+
+  pl: {
+    signals: [
+      { canonical: "war", patterns: [/\bwojna\b/i, /\bwojny\b/i] },
+      { canonical: "military attack", patterns: [/\batak militarny\b/i, /\bnalot\b/i, /\batak rakietowy\b/i] },
+      { canonical: "armed conflict", patterns: [/\bkonflikt zbrojny\b/i, /\bwalki\b/i] },
+      { canonical: "massacre", patterns: [/\bmasakra\b/i] },
+      { canonical: "war crime", patterns: [/\bzbrodnia wojenna\b/i, /\bzbrodnie wojenne\b/i] },
+      { canonical: "ceasefire", patterns: [/\bzawieszenie broni\b/i] },
+      { canonical: "sanctions", patterns: [/\bsankcj/i] },
+      { canonical: "export control", patterns: [/\bkontrola eksportu\b/i] },
+      { canonical: "export ban", patterns: [/\bzakaz eksportu\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\bwybory\b/i] },
+      { canonical: "referendum", patterns: [/\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\bzamach stanu\b/i] },
+      { canonical: "mass protest", patterns: [/\bmasowe protesty\b/i] },
+      { canonical: "state of emergency", patterns: [/\bstan wyjątkowy\b/i] },
+      { canonical: "government collapse", patterns: [/\bupadek rządu\b/i] },
+      { canonical: "tariff", patterns: [/\bcło\b/i, /\bcla\b/i] },
+      { canonical: "nato", patterns: [/\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\bstopa procentowa\b/i] },
+      { canonical: "central bank", patterns: [/\bbank centralny\b/i] },
+      { canonical: "inflation", patterns: [/\binflacj/i] },
+      { canonical: "gdp", patterns: [/\bpkb\b/i] },
+      { canonical: "unemployment", patterns: [/\bbezroboci/i] },
+      { canonical: "recession", patterns: [/\brecesj/i] },
+      { canonical: "sovereign debt", patterns: [/\bdług publiczny\b/i, /\bdług państwowy\b/i] },
+      { canonical: "default", patterns: [/\bniewypłacalność państwa\b/i] },
+      { canonical: "debt crisis", patterns: [/\bkryzys zadłużenia\b/i] },
+      { canonical: "bond yield", patterns: [/\brentowność obligacji\b/i] },
+      { canonical: "employment", patterns: [/\bzatrudnienie\b/i] },
+      { canonical: "currency", patterns: [/\bwalut/i] },
+      { canonical: "rare earth", patterns: [/\bmetale ziem rzadkich\b/i] },
+      { canonical: "critical mineral", patterns: [/\bminerały krytyczne\b/i] },
+    ],
+  },
+
+  it: {
+    signals: [
+      { canonical: "war", patterns: [/\bguerra\b/i] },
+      { canonical: "military attack", patterns: [/\battacco militare\b/i, /\braid aereo\b/i, /\bbombardamento\b/i] },
+      { canonical: "armed conflict", patterns: [/\bconflitto armato\b/i, /\bcombattimenti\b/i] },
+      { canonical: "massacre", patterns: [/\bmassacro\b/i] },
+      { canonical: "war crime", patterns: [/\bcrimine di guerra\b/i, /\bcrimini di guerra\b/i] },
+      { canonical: "ceasefire", patterns: [/\bcessate il fuoco\b/i] },
+      { canonical: "sanctions", patterns: [/\bsanzion/i] },
+      { canonical: "export control", patterns: [/\bcontrollo delle esportazioni\b/i] },
+      { canonical: "export ban", patterns: [/\bdivieto di esportazione\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\belezioni\b/i] },
+      { canonical: "referendum", patterns: [/\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\bcolpo di stato\b/i] },
+      { canonical: "mass protest", patterns: [/\bproteste di massa\b/i] },
+      { canonical: "state of emergency", patterns: [/\bstato di emergenza\b/i] },
+      { canonical: "government collapse", patterns: [/\bcaduta del governo\b/i] },
+      { canonical: "tariff", patterns: [/\bdazi\b/i] },
+      { canonical: "nato", patterns: [/\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\btasso di interesse\b/i] },
+      { canonical: "central bank", patterns: [/\bbanca centrale\b/i] },
+      { canonical: "inflation", patterns: [/\binflazione\b/i] },
+      { canonical: "gdp", patterns: [/\bpil\b/i] },
+      { canonical: "unemployment", patterns: [/\bdisoccupazione\b/i] },
+      { canonical: "recession", patterns: [/\brecessione\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bdebito sovrano\b/i] },
+      { canonical: "default", patterns: [/\bdefault sovrano\b/i] },
+      { canonical: "debt crisis", patterns: [/\bcrisi del debito\b/i] },
+      { canonical: "bond yield", patterns: [/\brendimento obbligazionario\b/i] },
+      { canonical: "employment", patterns: [/\boccupazione\b/i] },
+      { canonical: "fiscal policy", patterns: [/\bpolitica fiscale\b/i] },
+      { canonical: "currency", patterns: [/\bvaluta\b/i] },
+      { canonical: "rare earth", patterns: [/\bterre rare\b/i] },
+      { canonical: "critical mineral", patterns: [/\bminerali critici\b/i] },
+    ],
+  },
+
+  nl: {
+    signals: [
+      { canonical: "war", patterns: [/\boorlog\b/i] },
+      { canonical: "military attack", patterns: [/\bmilitaire aanval\b/i, /\bluchtaanval\b/i, /\braketaanval\b/i] },
+      { canonical: "armed conflict", patterns: [/\bgewapend conflict\b/i, /\bgevechten\b/i] },
+      { canonical: "massacre", patterns: [/\bbloedbad\b/i] },
+      { canonical: "war crime", patterns: [/\boorlogsmisdaad\b/i, /\boorlogsmisdaden\b/i] },
+      { canonical: "ceasefire", patterns: [/\bstaakt-het-vuren\b/i] },
+      { canonical: "sanctions", patterns: [/\bsancties\b/i] },
+      { canonical: "export control", patterns: [/\bexportcontrole\b/i] },
+      { canonical: "export ban", patterns: [/\bexportverbod\b/i] },
+      { canonical: "embargo", patterns: [/\bembargo\b/i] },
+      { canonical: "election", patterns: [/\bverkiezingen\b/i] },
+      { canonical: "referendum", patterns: [/\breferendum\b/i] },
+      { canonical: "coup", patterns: [/\bstaatsgreep\b/i] },
+      { canonical: "mass protest", patterns: [/\bmassaprotest/i] },
+      { canonical: "state of emergency", patterns: [/\bnoodtoestand\b/i] },
+      { canonical: "government collapse", patterns: [/\bval van de regering\b/i] },
+      { canonical: "tariff", patterns: [/\binvoerheffing\b/i, /\btarief\b/i] },
+      { canonical: "nato", patterns: [/\bnavo\b/i, /\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\brente\b/i] },
+      { canonical: "central bank", patterns: [/\bcentrale bank\b/i] },
+      { canonical: "inflation", patterns: [/\binflatie\b/i] },
+      { canonical: "gdp", patterns: [/\bbbp\b/i] },
+      { canonical: "unemployment", patterns: [/\bwerkloosheid\b/i] },
+      { canonical: "recession", patterns: [/\brecessie\b/i] },
+      { canonical: "sovereign debt", patterns: [/\bstaatsschuld\b/i] },
+      { canonical: "default", patterns: [/\bstaatsbankroet\b/i] },
+      { canonical: "debt crisis", patterns: [/\bschuldencrisis\b/i] },
+      { canonical: "bond yield", patterns: [/\bobligatierendement\b/i] },
+      { canonical: "employment", patterns: [/\bwerkgelegenheid\b/i] },
+      { canonical: "currency", patterns: [/\bvaluta\b/i] },
+      { canonical: "rare earth", patterns: [/\bzeldzame aardmetalen\b/i] },
+      { canonical: "critical mineral", patterns: [/\bkritieke mineralen\b/i] },
+    ],
+  },
+
+  tr: {
+    signals: [
+      { canonical: "war", patterns: [/\bsavaş\b/i, /\bsavas\b/i] },
+      { canonical: "military attack", patterns: [/\baskeri saldırı\b/i, /\baskeri saldiri\b/i, /\bhava saldırısı\b/i, /\bhava saldirisi\b/i] },
+      { canonical: "armed conflict", patterns: [/\bsilahlı çatışma\b/i, /\bsilahli catisma\b/i] },
+      { canonical: "massacre", patterns: [/\bkatliam\b/i] },
+      { canonical: "war crime", patterns: [/\bsavaş suçu\b/i, /\bsavas sucu\b/i] },
+      { canonical: "ceasefire", patterns: [/\bateşkes\b/i, /\bateskes\b/i] },
+      { canonical: "sanctions", patterns: [/\byaptırım/i, /\byaptirim/i] },
+      { canonical: "export control", patterns: [/\bihracat kontrolü\b/i, /\bihracat kontrolu\b/i] },
+      { canonical: "export ban", patterns: [/\bihracat yasağı\b/i, /\bihracat yasagi\b/i] },
+      { canonical: "embargo", patterns: [/\bambargo\b/i] },
+      { canonical: "election", patterns: [/\bseçim\b/i, /\bsecim\b/i] },
+      { canonical: "referendum", patterns: [/\breferandum\b/i] },
+      { canonical: "coup", patterns: [/\bdarbe\b/i] },
+      { canonical: "mass protest", patterns: [/\bkitlesel protestolar\b/i] },
+      { canonical: "state of emergency", patterns: [/\bolağanüstü hal\b/i, /\bolaganustu hal\b/i] },
+      { canonical: "government collapse", patterns: [/\bhükümetin çöküşü\b/i, /\bhukumetin cokusu\b/i] },
+      { canonical: "tariff", patterns: [/\bgümrük tarifesi\b/i, /\bgumruk tarifesi\b/i] },
+      { canonical: "nato", patterns: [/\bnato\b/i] },
+      { canonical: "interest rate", patterns: [/\bfaiz oranı\b/i, /\bfaiz orani\b/i] },
+      { canonical: "central bank", patterns: [/\bmerkez bankası\b/i, /\bmerkez bankasi\b/i] },
+      { canonical: "inflation", patterns: [/\benflasyon\b/i] },
+      { canonical: "gdp", patterns: [/\bgsyh\b/i] },
+      { canonical: "unemployment", patterns: [/\bişsizlik\b/i, /\bissizlik\b/i] },
+      { canonical: "recession", patterns: [/\bresesyon\b/i] },
+      { canonical: "sovereign debt", patterns: [/\begemen borç\b/i, /\bkamu borcu\b/i] },
+      { canonical: "default", patterns: [/\btemerrüt\b/i, /\btemerrut\b/i] },
+      { canonical: "debt crisis", patterns: [/\bborç krizi\b/i, /\bborc krizi\b/i] },
+      { canonical: "bond yield", patterns: [/\btahvil getirisi\b/i] },
+      { canonical: "employment", patterns: [/\bistihdam\b/i] },
+      { canonical: "currency", patterns: [/\bdöviz\b/i, /\bdoviz\b/i] },
+      { canonical: "rare earth", patterns: [/\bnadir toprak\b/i] },
+      { canonical: "critical mineral", patterns: [/\bkritik mineral\b/i] },
+    ],
+  },
+};
+
+function semanticSignalText(
+  value: string,
+  language:
+    string | null | undefined,
+) {
+  const lang =
+    normalizeLanguage(language);
+
+  // English remains the canonical
+  // deterministic lexical layer.
+  if (lang === "en") {
+    return value;
+  }
+
+  const pack =
+    LANGUAGE_PACKS[lang];
+
+  // Unsupported language:
+  // never feed arbitrary foreign text
+  // into English regexes.
+  if (!pack) {
+    return "";
+  }
+
+  const canonical:
+    string[] = [];
+
+  for (
+    const signal of
+      pack.signals
+  ) {
+    if (
+      signal.patterns.some(
+        (pattern) =>
+          pattern.test(value),
+      )
+    ) {
+      canonical.push(
+        signal.canonical,
+      );
+    }
+  }
+
+  return [
+    ...new Set(canonical),
+  ].join(" ");
+}
+
+function multilingualStoryTokens(
+  rawTitle: string,
+  language:
+    string | null | undefined,
+  signalTitle: string,
+) {
+  const raw =
+    tokens(rawTitle);
+
+  const semantic =
+    tokens(signalTitle)
+      .map(
+        (token) =>
+          `sem_${token}`,
+      );
+
+  return [
+    ...new Set([
+      ...raw,
+      ...semantic,
+    ]),
+  ].slice(0, 28);
+}
 
 type CountryRow = {
   iso3: string;
@@ -160,6 +721,8 @@ const RULES: Rule[] = [
       /\bfighting\b/i,
       /\bclashes\b/i,
       /\bceasefire\b/i,
+      /\bmassacre\b/i,
+      /\bwar crimes?\b/i,
     ],
     channels: [
       "security",
@@ -828,18 +1391,25 @@ function detectCountries(
 
 const GEO_RELEVANCE = [
   /(?<!trade )(?<!secretary of )\bwar\b/i,
+  /\barmed conflict\b/i,
   /\bclashes?\b/i,
   /\bceasefire\b/i,
   /\bmissile/i,
   /\bairstrike/i,
   /\bdrone attack/i,
-  /\bmilitary\b/i,
+  /\bmilitary attack/i,
   /\binvasion/i,
+  /\bbombard/i,
+  /\bmassacre\b/i,
+  /\bwar crimes?\b/i,
   /\bsanction/i,
   /\bexport control/i,
   /\bexport ban/i,
   /\bembargo/i,
   /\bcoup\b/i,
+  /\bmass protest/i,
+  /\bstate of emergency\b/i,
+  /\bgovernment collapse\b/i,
   /\belection/i,
   /\breferendum/i,
   /\bnato\b/i,
@@ -847,7 +1417,6 @@ const GEO_RELEVANCE = [
   /\btariff/i,
   /\btrade war\b/i,
   /\bborder (?:clash|conflict|tension)/i,
-  /\bstrikes?\b/i,
 ];
 
 const MACRO_RELEVANCE = [
@@ -869,6 +1438,12 @@ const MACRO_RELEVANCE = [
   /\bgross domestic product\b/i,
   /\bunemployment\b/i,
   /\bpayroll/i,
+  /\bemployment\b/i,
+  /\bjobs report\b/i,
+  /\bsovereign debt\b/i,
+  /\bdebt crisis\b/i,
+  /\bfiscal crisis\b/i,
+  /\bbond yield/i,
   /\bpmi\b/i,
   /\brecession\b/i,
   /\bsovereign debt\b/i,
@@ -1029,7 +1604,7 @@ function choosePrimaryCountry(
 
 function resolveDomain(
   text: string,
-  ingestTopics: string[] | undefined,
+  _ingestTopics: string[] | undefined,
 ) {
   const scores = {
     geopolitics:
@@ -1076,30 +1651,14 @@ function resolveDomain(
   );
 
   if (ranked[0].score === 0) {
-    const valid = [
-      ...new Set(
-        (ingestTopics ?? [])
-          .filter(
-            (x) =>
-              x ===
-                "geopolitics" ||
-              x === "macro" ||
-              x ===
-                "rare_earth",
-          ),
-      ),
-    ];
-
     return {
       domain:
-        valid.length === 1
-          ? valid[0] as Domain
-          : "multi" as Domain,
+        "multi" as Domain,
 
       scores,
 
       method:
-        "ingest_topic_fallback",
+        "no_verified_professional_signal",
     };
   }
 
@@ -1130,6 +1689,7 @@ function resolveDomain(
 function professionalRelevance(
   title: string,
   text: string,
+  signalTitle: string,
   language: string | null | undefined,
   decision:
     ReturnType<
@@ -1147,19 +1707,19 @@ function professionalRelevance(
 
   const titleGeo =
     matchCount(
-      title,
+      signalTitle,
       GEO_RELEVANCE,
     );
 
   const titleMacro =
     matchCount(
-      title,
+      signalTitle,
       MACRO_RELEVANCE,
     );
 
   const titleRareEarth =
     matchCount(
-      title,
+      signalTitle,
       RARE_EARTH_RELEVANCE,
     );
 
@@ -2422,15 +2982,35 @@ Deno.serve(async (req) => {
           record.x ?? "",
         ].join(" ");
 
+      const signalTitle =
+        semanticSignalText(
+          record.t,
+          record.l,
+        );
+
+      const signalDescription =
+        semanticSignalText(
+          record.x ?? "",
+          record.l,
+        );
+
+      const signalAnalysisText =
+        [
+          signalTitle,
+          signalDescription,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
       const titleDomainDecision =
         resolveDomain(
-          record.t,
+          signalTitle,
           record.q,
         );
 
       const fullDomainDecision =
         resolveDomain(
-          analysisText,
+          signalAnalysisText,
           record.q,
         );
 
@@ -2456,6 +3036,7 @@ Deno.serve(async (req) => {
         professionalRelevance(
           record.t,
           analysisText,
+          signalTitle,
           record.l,
           domainDecision,
         );
@@ -2489,7 +3070,7 @@ Deno.serve(async (req) => {
 
       const titleRule =
         ruleFor(
-          record.t,
+          signalTitle,
           eventDomain,
         );
 
@@ -2498,14 +3079,14 @@ Deno.serve(async (req) => {
           "_development",
         )
           ? ruleFor(
-              analysisText,
+              signalAnalysisText,
               eventDomain,
             )
           : titleRule;
 
       const trend =
         direction(
-          analysisText,
+          signalAnalysisText,
         );
 
       const titleGeography =
@@ -2539,7 +3120,11 @@ Deno.serve(async (req) => {
       }
 
       const titleTokens =
-        tokens(record.t);
+        multilingualStoryTokens(
+          record.t,
+          record.l,
+          signalTitle,
+        );
 
       const key =
         bucketKey(
@@ -2762,10 +3347,17 @@ Deno.serve(async (req) => {
           .sourceDomains
           .size;
 
+      const severityText =
+        normalizeLanguage(
+          record.l,
+        ) === "en"
+          ? analysisText
+          : signalAnalysisText;
+
       const severityResult =
         severity(
           eventRule,
-          analysisText,
+          severityText,
           selected.direction,
           sourceCount,
         );
