@@ -23,6 +23,7 @@ import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
+import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
 
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
@@ -94,6 +95,11 @@ const DocsGriArchitectureRoute = DocsGriArchitectureRouteImport.update({
   path: '/docs/gri-architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRiskGateRoute = ApiRiskGateRouteImport.update({
+  id: '/api/risk-gate',
+  path: '/api/risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/risk-gate': typeof ApiRiskGateRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/risk-gate': typeof ApiRiskGateRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRoutesById {
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/risk-gate': typeof ApiRiskGateRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/api/risk-gate'
     | '/docs/gri-architecture'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/api/risk-gate'
     | '/docs/gri-architecture'
   id:
     | '__root__'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/api/risk-gate'
     | '/docs_/gri-architecture'
   fileRoutesById: FileRoutesById
 }
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
   RoadmapRoute: typeof RoadmapRoute
+  ApiRiskGateRoute: typeof ApiRiskGateRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
 }
 
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGriArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/risk-gate': {
+      id: '/api/risk-gate'
+      path: '/api/risk-gate'
+      fullPath: '/api/risk-gate'
+      preLoaderRoute: typeof ApiRiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -329,6 +349,7 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
   RoadmapRoute: RoadmapRoute,
+  ApiRiskGateRoute: ApiRiskGateRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
 }
 export const routeTree = rootRouteImport
