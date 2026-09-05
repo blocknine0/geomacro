@@ -2,14 +2,16 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.4.3";
+const STRUCTURE_VERSION = "live-structure-v1.4.5";
 const COUNTRY_VERSION = "country-attribution-v1.3.0";
-const STORY_VERSION = "story-semantic-augmented-jaccard-v1.4.0";
+const STORY_VERSION = "story-hybrid-overlap-v1.4.1";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
-const RELEVANCE_VERSION = "professional-relevance-v1.2.3";
+const RELEVANCE_VERSION = "professional-relevance-v1.2.4";
 
 const BATCH_SIZE = 60;
 const STORY_THRESHOLD = 0.40;
+const STORY_OVERLAP_THRESHOLD = 0.55;
+const STORY_MIN_SHARED_TOKENS = 4;
 const RECENT_EVENT_HOURS = 72;
 
 type Domain =
@@ -1116,6 +1118,89 @@ function jaccard(
   );
 }
 
+function storyComparableTokens(
+  values: string[],
+) {
+  return [
+    ...new Set(
+      values
+        .map((value) =>
+          value.startsWith("sem_")
+            ? value.slice(4)
+            : value
+        )
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function storySimilarity(
+  left: string[],
+  right: string[],
+) {
+  const a =
+    storyComparableTokens(left);
+
+  const b =
+    storyComparableTokens(right);
+
+  if (!a.length || !b.length) {
+    return {
+      matched: false,
+      jaccardScore: 0,
+      overlapCoefficient: 0,
+      sharedTokens: 0,
+      rankScore: 0,
+    };
+  }
+
+  const leftSet =
+    new Set(a);
+
+  const rightSet =
+    new Set(b);
+
+  let sharedTokens = 0;
+
+  for (const token of leftSet) {
+    if (rightSet.has(token)) {
+      sharedTokens++;
+    }
+  }
+
+  const jaccardScore =
+    jaccard(a, b);
+
+  const overlapCoefficient =
+    sharedTokens /
+    Math.min(
+      leftSet.size,
+      rightSet.size,
+    );
+
+  const matched =
+    jaccardScore >=
+      STORY_THRESHOLD ||
+    (
+      sharedTokens >=
+        STORY_MIN_SHARED_TOKENS &&
+      overlapCoefficient >=
+        STORY_OVERLAP_THRESHOLD
+    );
+
+  return {
+    matched,
+    jaccardScore,
+    overlapCoefficient,
+    sharedTokens,
+    rankScore:
+      Math.max(
+        jaccardScore,
+        overlapCoefficient,
+      ),
+  };
+}
+
 async function sha256(value: string) {
   const digest =
     await crypto.subtle.digest(
@@ -1492,6 +1577,9 @@ const LOCAL_SCHOOL_STRIKE_NOISE =
 const MEDIA_COMMENTARY_NOISE =
   /\blegacy media\b|\btake(?:s|n)? a beating from\b/i;
 
+const MARKET_REACTION_COMMENTARY_NOISE =
+  /\b(?:nifty|sensex|stocks?|shares?|equities|equity markets?|stock markets?|market indices?|indexes?|indices)\b.*\b(?:rise|rises|rose|rising|gain|gains|gained|higher|fall|falls|fell|falling|loss|losses|lower|end(?:s|ed)? higher|end(?:s|ed)? lower)\b.*\b(?:fed|federal reserve|rate hike|rate cut|interest rate|rate expectations?|rate concerns?)\b|\b(?:fed|federal reserve|rate hike|rate cut|interest rate|rate expectations?|rate concerns?)\b.*\b(?:nifty|sensex|stocks?|shares?|equities|equity markets?|stock markets?|market indices?|indexes?|indices)\b/i;
+
 const NON_GEOPOLITICAL_STRIKE_NOISE =
   /\bbird strike\b|\bstrikes? back\b/i;
 
@@ -1774,6 +1862,16 @@ function professionalRelevance(
       relevant: false,
       reason:
         "media_commentary_noise",
+    };
+  }
+
+  if (
+    MARKET_REACTION_COMMENTARY_NOISE.test(title)
+  ) {
+    return {
+      relevant: false,
+      reason:
+        "market_reaction_commentary_noise",
     };
   }
 
@@ -3151,21 +3249,21 @@ Deno.serve(async (req) => {
         const candidate of
           candidates
       ) {
-        const score =
-          jaccard(
+        const match =
+          storySimilarity(
             titleTokens,
             candidate
               .clusterTokens,
           );
 
         if (
-          score >=
-            STORY_THRESHOLD &&
-          score >
+          match.matched &&
+          match.rankScore >
             similarity
         ) {
           similarity =
-            score;
+            match.rankScore;
+
           selected =
             candidate;
         }
@@ -3613,8 +3711,14 @@ Deno.serve(async (req) => {
                   methodology:
                     STORY_VERSION,
 
-                  threshold:
+                  jaccard_threshold:
                     STORY_THRESHOLD,
+
+                  overlap_threshold:
+                    STORY_OVERLAP_THRESHOLD,
+
+                  minimum_shared_tokens:
+                    STORY_MIN_SHARED_TOKENS,
                 },
 
                 severity:
