@@ -321,7 +321,7 @@ export function HeroSection() {
   const countDelta =
     stats && stats.countPrev24h !== null ? stats.count24h - stats.countPrev24h : null;
   const riskTrend = riskDelta > 0 ? "Escalating" : riskDelta < 0 ? "Cooling" : "Steady";
-  const windowLabel = "GRI v1";
+  const windowLabel = "gri-v1.1.0";
 
   return (
     <section className="relative overflow-hidden">
@@ -339,42 +339,35 @@ export function HeroSection() {
                 className="mb-6 gap-2 border-primary/40 bg-primary/5 px-3 py-1 font-mono text-xs text-primary"
               >
                 <Radio className="h-3 w-3" /> <span className="animate-blink-live">LIVE</span> ·{" "}
-                {activeNet.chainName} · Chain {activeNet.chainIdDec}
+                GEOPOLITICAL + MACRO RISK INTELLIGENCE
               </Badge>
               <h1 className="text-[clamp(2rem,4.5vw,4.5rem)] font-semibold leading-[1.05] tracking-tight md:whitespace-nowrap">
-                Financializing{" "}
+                Know what changed.{" "}
                 <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                  Global Risk Narratives
+                  Know why it matters
                 </span>
                 .
               </h1>
               <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base md:hidden">
-                Geomacro turns breaking news into onchain prediction markets. AI agents Hawk and
-                Dove argue opposite sides, you stake USDC on the one that ages better, and the
-                result settles onchain automatically.
+                Geomacro turns global geopolitical and macro events into structured, explainable risk
+                intelligence for professional and machine decision-making.
               </p>
               <div className="hidden md:block">
                 <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-                  Geomacro turns global risk into a tradable signal. An autonomous pipeline reads
-                  breaking headlines the moment they hit, across four pillars: geopolitics, rare
-                  earth supply, macroeconomics, and crypto liquidity. When something significant
-                  happens, a market opens itself automatically. No editor, no curator, no manual
-                  listing. Each market stays open for staking for 46 hours, and two hours after
-                  staking closes, the result settles onchain.
+                  Geomacro converts global geopolitical, macroeconomic, critical-mineral and market
+                  events into structured risk intelligence with severity, confidence, evidence,
+                  historical context and deterministic Global Risk Index attribution.
                 </p>
                 <p className="mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                  An LLM scores every event for severity in real time, and two AI agents take
-                  opposing sides. Agent Hawk argues the case for escalation, Agent Dove argues for
-                  calm. You stake USDC on whichever side you think ages better, and the same LLM
-                  later re-reads the story to judge the outcome. No custodian holds your funds, no
-                  middleman decides the result, and no human ever has to click a button to make any
-                  of it run.
+                  The intelligence layer supports human research and machine-readable decision context.
+                  Prediction markets and programmable onchain execution remain available as
+                  secondary applications of the same underlying intelligence.
                 </p>
               </div>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button size="lg" asChild className="w-full gap-2 sm:w-auto">
                   <Link to="/feed">
-                    Open Terminal <ArrowUpRight className="h-4 w-4" />
+                    Open Intelligence <ArrowUpRight className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
@@ -384,7 +377,7 @@ export function HeroSection() {
                     rel="noreferrer"
                     className="gap-2"
                   >
-                    <Link2 className="h-4 w-4" /> Open Arcscan
+                    <Link2 className="h-4 w-4" /> Technical Proof
                   </a>
                 </Button>
               </div>
@@ -435,7 +428,12 @@ export function HeroSection() {
                     <div className="grid grid-cols-1 gap-6 px-5 py-5 sm:grid-cols-[1.1fr_1fr] sm:px-6 lg:px-8 lg:gap-8">
                       <div>
                         <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
-                          Global Risk Index
+                          <a
+                            href="/global-risk"
+                            className="underline-offset-4 transition hover:underline"
+                          >
+                            Global Risk Index
+                          </a>
                         </div>
                         <div className="mt-2 flex items-baseline gap-3">
                           <div className="font-mono text-5xl tabular-nums text-foreground md:text-6xl">
@@ -477,7 +475,7 @@ export function HeroSection() {
                         </div>
                         <p className="mt-3 max-w-md text-xs leading-relaxed text-muted-foreground">
                           A deterministic global risk index built from versioned event severity,
-                          confidence, recency decay and source-capped evidence across four domains.
+                          confidence, recency decay and source- and story-capped evidence across four domains.
                         </p>
                       </div>
 

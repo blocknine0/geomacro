@@ -2,10 +2,17 @@
 import dotenv from 'dotenv';
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { GRI_METHOD_VERSION, canonicalJson } from '../src/lib/gri-engine.js';
+import {
+  GRI_METHOD_VERSION,
+  GRI_STORY_CORRELATION_VERSION,
+  GRI_STORY_CORRELATION_PROMPT_VERSION,
+  canonicalJson,
+} from './lib/gri-engine-v11.js';
+import { GRI_PROOF_VERSION } from './lib/gri-proof-v11.js';
 
 dotenv.config();
 const VALIDATION_VERSION = 'gri-validation-v1.1.0';
+const REQUIRED_REPLAY_VERSION = 'gri-replay-v1.1.0';
 const TRAIN_FRACTION = 0.70;
 const HORIZONS = [24, 72, 168];
 const MIN_ALL_SAMPLES = 30;
@@ -174,18 +181,47 @@ async function loadSnapshots() {
 
   const { data: run, error } = await supabase
     .from('gri_replay_runs')
-    .select('id,methodology_version,status,observation_time_rule,lookahead_safe,notes')
+    .select('id,methodology_version,replay_version,proof_version,story_correlation_version,story_correlation_prompt_version,status,observation_time_rule,lookahead_safe,notes')
     .eq('id', replayRunId)
     .eq('status', 'published')
     .maybeSingle();
   if (error) throw new Error(`replay run query failed: ${error.message}`);
   if (!run) throw new Error(`published replay run ${replayRunId} not found`);
   if (run.methodology_version !== GRI_METHOD_VERSION) throw new Error('replay methodology does not match current GRI methodology');
+  if (run.replay_version !== REQUIRED_REPLAY_VERSION) throw new Error(`replay version must be ${REQUIRED_REPLAY_VERSION}`);
+  if (run.proof_version !== GRI_PROOF_VERSION) throw new Error(`replay proof version must be ${GRI_PROOF_VERSION}`);
+  if (run.story_correlation_version !== GRI_STORY_CORRELATION_VERSION) throw new Error(`replay story correlation version must be ${GRI_STORY_CORRELATION_VERSION}`);
+  if (run.story_correlation_prompt_version !== GRI_STORY_CORRELATION_PROMPT_VERSION) throw new Error(`replay story correlation prompt version must be ${GRI_STORY_CORRELATION_PROMPT_VERSION}`);
   const snapshots = await fetchAll(
     'gri_replay_snapshots',
-    'as_of,raw_score,display_score',
+    'as_of,raw_score,display_score,independent_story_count,story_correlation_version,story_correlation_prompt_version,proof_version,proof_hash,reconciliation_residual,proof_verified',
     (q) => q.eq('replay_run_id', replayRunId).not('raw_score', 'is', null).order('as_of', { ascending: true }),
   );
+  for (const snapshot of snapshots) {
+    if (
+      snapshot.proof_version !== GRI_PROOF_VERSION ||
+      snapshot.proof_verified !== true ||
+      snapshot.story_correlation_version !==
+        GRI_STORY_CORRELATION_VERSION ||
+      snapshot.story_correlation_prompt_version !==
+        GRI_STORY_CORRELATION_PROMPT_VERSION ||
+      !/^[a-f0-9]{64}$/i.test(String(snapshot.proof_hash || '')) ||
+      !Number.isInteger(Number(snapshot.independent_story_count)) ||
+      Number(snapshot.independent_story_count) < 0 ||
+      (
+        snapshot.reconciliation_residual !== null &&
+        (
+          !Number.isFinite(Number(snapshot.reconciliation_residual)) ||
+          Math.abs(Number(snapshot.reconciliation_residual)) > 0.000001
+        )
+      )
+    ) {
+      throw new Error(
+        `replay snapshot proof envelope invalid at ${snapshot.as_of}`
+      );
+    }
+  }
+
   return {
     snapshots,
     evidenceMode: 'retrospective_replay',

@@ -86,7 +86,7 @@ Migration `004_gri_audit_system.sql` creates:
 - `gri_contributions`: exact event-level weights and contribution points for each snapshot.
 - event classification provenance fields: provider, model, classification version, prompt version, scoring timestamp, and prompt/input hash.
 
-`node scripts/compute-gri.js` computes and persists a snapshot. `--dry-run` prints the calculation without writing. `--as-of <ISO>` supports reproducibility checks.
+`node scripts/compute-gri-v11.js` computes and persists a snapshot. `--dry-run` prints the calculation without writing. `--as-of <ISO>` supports reproducibility checks.
 
 Live GRI publication is deliberately decoupled from news ingestion. The dedicated `publish-gri.yml` workflow is the only canonical live publisher, so an ingestion retry cannot create a competing publication path.
 

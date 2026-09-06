@@ -1,8 +1,8 @@
 # GRI Transparency and Change Attribution
 
-## Implemented baseline: `gri-v1.0.0`
+## Implemented baseline: `gri-v1.1.0`
 
-Geomacro now has one versioned deterministic aggregation engine in `src/lib/gri-engine.js`. The previous rolling 24-hour simple mean is no longer the canonical methodology.
+Geomacro now has one versioned deterministic aggregation engine in `scripts/lib/gri-engine-v11.js`. The previous rolling 24-hour simple mean is no longer the canonical methodology.
 
 Every GRI v1 calculation is derived from eligible stored event records using:
 
@@ -11,6 +11,7 @@ Every GRI v1 calculation is derived from eligible stored event records using:
 - exponential recency decay with a 24-hour half-life;
 - a 72-hour hard lookback;
 - a per-source evidence cap;
+- an immutable story-cluster evidence cap that prevents cross-publisher repetition of one underlying development from multiplying its influence;
 - equal base weights across geopolitics, macro, rare earth / critical minerals, and crypto;
 - explicit coverage instead of converting missing domains into zero risk;
 - `created_at` as the observation timestamp, preventing late ingestion from backdating what the system knew.
@@ -19,7 +20,7 @@ The exact formula is documented in `docs/GRI_METHODOLOGY.md`. GRI v1 is explicit
 
 ## Audit records
 
-Migration `004_gri_audit_system.sql` introduces persisted `gri_snapshots` and `gri_contributions` tables.
+Migration `004_gri_audit_system.sql` introduces persisted `gri_snapshots` and `gri_contributions` tables. Migrations `007_gri_story_correlation.sql` and `009_gri_v11_story_cap.sql` add immutable story provenance and the v1.1 story-aware audit contract.
 
 A published snapshot records:
 
@@ -55,7 +56,7 @@ This separates two different questions:
 
 ## Publication workflow
 
-`node scripts/compute-gri.js` computes the canonical snapshot. It supports:
+`node scripts/compute-gri-v11.js` computes the canonical snapshot. It supports:
 
 - `--dry-run` for calculation inspection without a write;
 - `--as-of <ISO>` for reproducibility checks.
@@ -73,3 +74,19 @@ The calculation/audit backend is now defined. Before calling the GRI institution
 - run calibration and sensitivity analysis on the fixed v1 parameters before making predictive-performance claims.
 
 No methodology parameter should be silently changed. Any change to categories, weights, half-life, source cap, eligibility, observation-time semantics or rounding requires a new GRI methodology version.
+
+## Retrospective replay proof envelope
+
+`gri-replay-v1.1.0` uses the same `gri-v1.1.0` deterministic engine,
+`gri-proof-v1.1.0` proof envelope, current classification contract and
+immutable story-correlation contract as live publication.
+
+Each replay snapshot persists its independent-story count, methodology,
+input, evidence and calculation hashes, proof version, proof hash and
+reconciliation residual. A replay run cannot transition to `published`
+unless its stored snapshot count and v1.1 proof envelopes reconcile.
+
+Replay remains explicitly `lookahead_safe=false`. Historical `created_at`
+is an observation-time proxy, while current-contract classification and
+story provenance may have been produced later. Replay results therefore
+must never be represented as historical live or out-of-sample performance.

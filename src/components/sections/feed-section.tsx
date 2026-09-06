@@ -60,8 +60,8 @@ export function FeedSection() {
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 md:py-24">
       <SectionHeader
         eyebrow="GLOBAL TERMINAL FEED"
-        title="The signal layer behind every prediction market"
-        desc="A real-time intelligence stream financializing Geopolitics, Rare Earth supply chains, Macroeconomics and Crypto liquidity. Every card carries an automatically scored stage, severity and confidence metric, mapping global volatility before you take an onchain position."
+        title="The live signal layer behind Geomacro risk intelligence"
+        desc="A real-time intelligence stream across geopolitics, critical-mineral supply chains, macroeconomics and crypto liquidity. Each event carries structured stage, severity and confidence context for monitoring, research and downstream intelligence workflows."
       />
       <div className="mt-12">
         <LiveNewsFeed onPublish={publishLiveEvent} publishingId={publishing} />

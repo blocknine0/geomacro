@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Briefcase, Terminal, Mail, ExternalLink } from "lucide-react";
+import { Briefcase, Terminal, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -8,13 +8,13 @@ export const Route = createFileRoute("/contact")({
       {
         name: "description",
         content:
-          "Get in touch with the Geomacro team for partnerships, technical questions, or general enquiries.",
+          "Discuss founding intelligence partnerships, private pilots, technical integrations, or strategic collaboration with Geomacro.",
       },
       { property: "og:title", content: "Contact · Geomacro" },
       {
         property: "og:description",
         content:
-          "Get in touch with the Geomacro team for partnerships, technical questions, or general enquiries.",
+          "Discuss founding intelligence partnerships, private pilots, technical integrations, or strategic collaboration with Geomacro.",
       },
     ],
   }),
@@ -23,29 +23,29 @@ export const Route = createFileRoute("/contact")({
 
 const X_URL = "https://x.com/GeomacroLive";
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
-const EMAIL = "mailto:team.geomacro@gmail.com";
+const EMAIL = "mailto:contact@geomacro.live";
 
 const sections = [
   {
     icon: Briefcase,
-    title: "Business and Partnerships",
-    text: "Interested in integrating Geomacro data, building on top of the API, or exploring partnership opportunities.",
-    cta: "Reach us on X",
-    href: X_URL,
+    title: "Founding Intelligence Partner",
+    text: "Explore a founding pilot around country or corridor risk, institutional intelligence workflows, Risk API Private Pilot access, or Risk Gate evaluation.",
+    cta: "Discuss a pilot",
+    href: EMAIL,
   },
   {
     icon: Terminal,
     title: "Technical and Developer Questions",
-    text: "Questions about the smart contract, the news pipeline, or the GitHub repo.",
+    text: "Questions about the risk architecture, intelligence pipeline, onchain systems, or the GitHub repository.",
     cta: "View on GitHub",
     href: GITHUB_URL,
   },
   {
-    icon: Mail,
-    title: "General Enquiries",
-    text: "Anything else, feedback, press, or just curious about the project.",
-    cta: "Email us",
-    href: EMAIL,
+    icon: ExternalLink,
+    title: "Official Geomacro X",
+    text: "Follow product updates, public research, announcements, and ongoing Geomacro development.",
+    cta: "Follow on X",
+    href: X_URL,
   },
 ];
 
@@ -55,7 +55,7 @@ function ContactPage() {
       <div className="max-w-2xl">
         <h1 className="font-mono text-3xl tracking-tight">Get in touch</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          For business partnerships, integration questions, or general enquiries about Geomacro.
+          For founding intelligence partnerships, private pilots, technical integrations, or strategic conversations about Geomacro.
         </p>
       </div>
 
@@ -85,7 +85,7 @@ function ContactPage() {
       </div>
 
       <p className="mt-12 text-center text-xs text-muted-foreground">
-        Geomacro is an early-stage project built by a small team. We read every message.
+        Geomacro is founder-led and primarily built by its founder, with technical support and assistance on selected external conversations.
       </p>
     </main>
   );

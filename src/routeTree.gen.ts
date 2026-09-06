@@ -13,14 +13,17 @@ import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as OnchainRouteImport } from './routes/onchain'
+import { Route as GlobalRiskRouteImport } from './routes/global-risk'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BridgeSwapRouteImport } from './routes/bridge-swap'
 import { Route as BridgeRouteImport } from './routes/bridge'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
+import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
 
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
@@ -42,6 +45,11 @@ const OnchainRoute = OnchainRouteImport.update({
   path: '/onchain',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GlobalRiskRoute = GlobalRiskRouteImport.update({
+  id: '/global-risk',
+  path: '/global-risk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedRoute = FeedRouteImport.update({
   id: '/feed',
   path: '/feed',
@@ -55,6 +63,11 @@ const DocsRoute = DocsRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BridgeSwapRoute = BridgeSwapRouteImport.update({
+  id: '/bridge-swap',
+  path: '/bridge-swap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BridgeRoute = BridgeRouteImport.update({
@@ -82,19 +95,27 @@ const DocsGriArchitectureRoute = DocsGriArchitectureRouteImport.update({
   path: '/docs/gri-architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRiskGateRoute = ApiRiskGateRouteImport.update({
+  id: '/api/risk-gate',
+  path: '/api/risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/bridge': typeof BridgeRoute
+  '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
+  '/global-risk': typeof GlobalRiskRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/risk-gate': typeof ApiRiskGateRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRoutesByTo {
@@ -102,13 +123,16 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/bridge': typeof BridgeRoute
+  '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
+  '/global-risk': typeof GlobalRiskRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/risk-gate': typeof ApiRiskGateRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRoutesById {
@@ -117,13 +141,16 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/bridge': typeof BridgeRoute
+  '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
+  '/global-risk': typeof GlobalRiskRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/risk-gate': typeof ApiRiskGateRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
 }
 export interface FileRouteTypes {
@@ -133,13 +160,16 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/bridge'
+    | '/bridge-swap'
     | '/contact'
     | '/docs'
     | '/feed'
+    | '/global-risk'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/api/risk-gate'
     | '/docs/gri-architecture'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -147,13 +177,16 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/bridge'
+    | '/bridge-swap'
     | '/contact'
     | '/docs'
     | '/feed'
+    | '/global-risk'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/api/risk-gate'
     | '/docs/gri-architecture'
   id:
     | '__root__'
@@ -161,13 +194,16 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/bridge'
+    | '/bridge-swap'
     | '/contact'
     | '/docs'
     | '/feed'
+    | '/global-risk'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
     | '/roadmap'
+    | '/api/risk-gate'
     | '/docs_/gri-architecture'
   fileRoutesById: FileRoutesById
 }
@@ -176,13 +212,16 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ArenaRoute: typeof ArenaRoute
   BridgeRoute: typeof BridgeRoute
+  BridgeSwapRoute: typeof BridgeSwapRoute
   ContactRoute: typeof ContactRoute
   DocsRoute: typeof DocsRoute
   FeedRoute: typeof FeedRoute
+  GlobalRiskRoute: typeof GlobalRiskRoute
   OnchainRoute: typeof OnchainRoute
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
   RoadmapRoute: typeof RoadmapRoute
+  ApiRiskGateRoute: typeof ApiRiskGateRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
 }
 
@@ -216,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnchainRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/global-risk': {
+      id: '/global-risk'
+      path: '/global-risk'
+      fullPath: '/global-risk'
+      preLoaderRoute: typeof GlobalRiskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feed': {
       id: '/feed'
       path: '/feed'
@@ -235,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bridge-swap': {
+      id: '/bridge-swap'
+      path: '/bridge-swap'
+      fullPath: '/bridge-swap'
+      preLoaderRoute: typeof BridgeSwapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bridge': {
@@ -272,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGriArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/risk-gate': {
+      id: '/api/risk-gate'
+      path: '/api/risk-gate'
+      fullPath: '/api/risk-gate'
+      preLoaderRoute: typeof ApiRiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -280,13 +340,16 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ArenaRoute: ArenaRoute,
   BridgeRoute: BridgeRoute,
+  BridgeSwapRoute: BridgeSwapRoute,
   ContactRoute: ContactRoute,
   DocsRoute: DocsRoute,
   FeedRoute: FeedRoute,
+  GlobalRiskRoute: GlobalRiskRoute,
   OnchainRoute: OnchainRoute,
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
   RoadmapRoute: RoadmapRoute,
+  ApiRiskGateRoute: ApiRiskGateRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
 }
 export const routeTree = rootRouteImport
