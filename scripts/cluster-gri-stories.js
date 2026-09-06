@@ -19,7 +19,7 @@ const MATCH_THRESHOLD = 90;
 const MAX_CLUSTER_CANDIDATES = 40;
 
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
-const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "llama3.1-8b";
+const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "gpt-oss-120b";
 
 const supabaseUrl =
   process.env.SUPABASE_URL || process.env.APP_SUPABASE_URL;

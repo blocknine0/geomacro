@@ -221,7 +221,7 @@ async function callCerebrasJuror(cerebrasApiKey, prompt) {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cerebrasApiKey}` },
     body: JSON.stringify({
-      model: "llama3.1-8b",
+      model: process.env.CEREBRAS_MODEL || "gpt-oss-120b",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
       max_tokens: 200,
