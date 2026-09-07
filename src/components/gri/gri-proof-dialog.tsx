@@ -26,6 +26,7 @@ import {
   numberOrNull,
   type GriContributionProof,
   type GriProofPackage,
+  type GriSourceDispositionProof,
 } from "@/lib/gri-proof-data";
 import { cn } from "@/lib/utils";
 
@@ -194,6 +195,7 @@ function ProofBody({ proof }: { proof: GriProofPackage }) {
             refer to the same underlying development. The stored weight chain shows how source
             capping and story capping produced the article's final GRI contribution.
           </div>
+          <SourceDispositionAudit proof={proof} />
           <ContributionLedger contributions={proof.contributions} />
         </TabsContent>
 
@@ -462,6 +464,342 @@ function FormulaPanel() {
   );
 }
 
+function SourceDispositionAudit({
+  proof,
+}: {
+  proof: GriProofPackage;
+}) {
+  const candidateCount = numberOrNull(
+    proof.snapshot.candidate_event_count,
+  );
+
+  if (
+    proof.snapshot.proof_version !== "gri-proof-v1.2.0"
+  ) {
+    return (
+      <ProofCard
+        icon={FileCheck2}
+        title="Source disposition audit"
+      >
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Source disposition auditing was introduced in GRI proof
+          v1.2. Historical proof packages remain verifiable under
+          their original proof contract, but do not contain this
+          candidate-source ledger.
+        </p>
+      </ProofCard>
+    );
+  }
+
+  const dispositions = [...proof.dispositions].sort((a, b) => {
+    if (a.disposition === b.disposition) {
+      return String(a.event_id).localeCompare(
+        String(b.event_id),
+      );
+    }
+
+    return a.disposition === "included" ? -1 : 1;
+  });
+
+  const included = dispositions.filter(
+    (row) => row.disposition === "included",
+  );
+
+  const excluded = dispositions.filter(
+    (row) => row.disposition !== "included",
+  );
+
+  const coverageMatches =
+    candidateCount !== null &&
+    Number.isInteger(candidateCount) &&
+    candidateCount === dispositions.length &&
+    included.length === proof.contributions.length;
+
+  return (
+    <ProofCard
+      icon={FileCheck2}
+      title="Source disposition audit"
+    >
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ProofStat
+          label="Candidate evidence"
+          value={
+            candidateCount === null
+              ? "Unavailable"
+              : String(candidateCount)
+          }
+        />
+        <ProofStat
+          label="Counted in GRI"
+          value={String(included.length)}
+        />
+        <ProofStat
+          label="Not counted"
+          value={String(excluded.length)}
+        />
+        <ProofStat
+          label="Candidate coverage"
+          value={coverageMatches ? "Complete" : "Review required"}
+          verified={coverageMatches}
+        />
+      </div>
+
+      <div className="mt-4 rounded-lg border border-border/60 bg-muted/10 p-4 text-sm leading-relaxed text-muted-foreground">
+        This ledger accounts for the complete candidate evidence
+        universe considered for this snapshot. Every candidate is
+        recorded as either counted in the GRI or excluded under the
+        published disposition contract. Included rows must match the
+        contribution ledger exactly.
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {dispositions.map((row) => (
+          <DispositionRow
+            key={row.event_id}
+            row={row}
+          />
+        ))}
+      </div>
+    </ProofCard>
+  );
+}
+
+function DispositionRow({
+  row,
+}: {
+  row: GriSourceDispositionProof;
+}) {
+  const included = row.disposition === "included";
+
+  const dispositionLabel = included
+    ? "Counted"
+    : row.disposition ===
+        "excluded_noncanonical_classification"
+      ? "Not counted: noncanonical classification"
+      : `Not counted: ${row.disposition}`;
+
+  return (
+    <details className="group rounded-md border border-border/50 bg-background/30 p-3">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+              <span>
+                {row.category?.replace("_", " ") ??
+                  "uncategorized"}
+              </span>
+              <span>·</span>
+              <span>
+                {row.source_domain ??
+                  row.source_name ??
+                  "source unavailable"}
+              </span>
+            </div>
+
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {row.source_title ?? row.event_id}
+            </p>
+          </div>
+
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2.5 py-1 font-mono text-[9px] font-semibold uppercase",
+              included
+                ? "bg-emerald-500/10 text-emerald-300"
+                : "bg-amber-500/10 text-amber-300",
+            )}
+          >
+            {included ? "Counted" : "Not counted"}
+          </span>
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
+          <span>{dispositionLabel}</span>
+          <span>
+            Classification{" "}
+            {row.classification_source ?? "unavailable"}
+          </span>
+          {included &&
+          numberOrNull(row.contribution_points) !== null ? (
+            <span>
+              Contribution{" "}
+              {fmt(
+                numberOrNull(row.contribution_points),
+                8,
+              )}{" "}
+              pts
+            </span>
+          ) : null}
+        </div>
+      </summary>
+
+      <div className="mt-3 grid gap-3 border-t border-border/50 pt-3 lg:grid-cols-2">
+        <div>
+          {row.summary ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {row.summary}
+            </p>
+          ) : null}
+
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <KV
+              label="Disposition"
+              value={row.disposition}
+            />
+            <KV
+              label="Disposition version"
+              value={row.disposition_version}
+            />
+            <KV
+              label="Observed"
+              value={formatDate(row.observed_at)}
+            />
+            <KV
+              label="Published"
+              value={formatDate(row.published_at)}
+            />
+            <KV
+              label="Provider"
+              value={
+                row.classification_provider ??
+                "unavailable"
+              }
+            />
+            <KV
+              label="Model"
+              value={
+                row.classification_model ??
+                "unavailable"
+              }
+            />
+            <KV
+              label="Classifier"
+              value={
+                row.classification_version ??
+                "unavailable"
+              }
+            />
+            <KV
+              label="Prompt"
+              value={
+                row.classification_prompt_version ??
+                "unavailable"
+              }
+            />
+            <KV
+              label="Classification source"
+              value={
+                row.classification_source ??
+                "unavailable"
+              }
+            />
+            <KV
+              label="Story cluster"
+              value={
+                row.story_cluster_id ??
+                (included ? "unavailable" : "not applicable")
+              }
+            />
+          </dl>
+
+          {safeUrl(row.source_url) ? (
+            <a
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+              href={row.source_url as string}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open original source{" "}
+              <ExternalLink
+                className="h-3 w-3"
+                aria-hidden
+              />
+            </a>
+          ) : null}
+        </div>
+
+        <div className="rounded-md border border-border/40 bg-muted/10 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+          <p>classification input hash</p>
+          <p className="mt-1 break-all text-foreground">
+            {row.classification_input_hash ??
+              "unavailable"}
+          </p>
+
+          <p className="mt-3">classification scored at</p>
+          <p className="mt-1 text-foreground">
+            {formatDate(
+              row.classification_scored_at,
+            )}
+          </p>
+
+          {included ? (
+            <>
+              <p className="mt-3">
+                rawWeight ={" "}
+                {fmt(
+                  numberOrNull(row.raw_weight),
+                  8,
+                )}
+              </p>
+              <p>
+                sourceEffectiveWeight ={" "}
+                {fmt(
+                  numberOrNull(
+                    row.source_effective_weight,
+                  ),
+                  8,
+                )}
+              </p>
+              <p>
+                preStoryEventWeight ={" "}
+                {fmt(
+                  numberOrNull(
+                    row.pre_story_event_weight,
+                  ),
+                  8,
+                )}
+              </p>
+              <p>
+                storyEffectiveWeight ={" "}
+                {fmt(
+                  numberOrNull(
+                    row.story_effective_weight,
+                  ),
+                  8,
+                )}
+              </p>
+              <p>
+                effectiveEventWeight ={" "}
+                {fmt(
+                  numberOrNull(
+                    row.effective_event_weight,
+                  ),
+                  8,
+                )}
+              </p>
+              <p className="mt-2 text-foreground">
+                contribution ={" "}
+                {fmt(
+                  numberOrNull(
+                    row.contribution_points,
+                  ),
+                  8,
+                )}{" "}
+                GRI points
+              </p>
+            </>
+          ) : (
+            <p className="mt-3">
+              No contribution weight is assigned because this
+              candidate was excluded before GRI aggregation.
+            </p>
+          )}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function ContributionLedger({
   contributions,
   detailed = false,
@@ -641,6 +979,7 @@ function IntegrityPanel({
     ["Methodology hash", s.methodology_hash],
     ["Calculation input hash", s.input_hash],
     ["Evidence/provenance hash", s.evidence_hash],
+    ["Source disposition hash", s.disposition_hash],
     ["Calculation hash", s.calculation_hash],
     ["Change-attribution hash", s.change_hash],
     ["Complete proof hash", s.proof_hash],
@@ -673,6 +1012,14 @@ function IntegrityPanel({
           <KV label="Methodology" value={s.methodology_version} />
           <KV label="Proof version" value={s.proof_version ?? "unavailable"} />
           <KV label="Independent stories" value={String(s.independent_story_count)} />
+          <KV
+            label="Candidate evidence"
+            value={
+              s.candidate_event_count === null
+                ? "legacy / unavailable"
+                : String(s.candidate_event_count)
+            }
+          />
           <KV label="Story correlation" value={s.story_correlation_version ?? "unavailable"} />
           <KV
             label="Story correlation prompt"

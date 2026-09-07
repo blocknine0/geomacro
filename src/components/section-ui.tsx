@@ -41,15 +41,21 @@ export function SectionHeader({
   eyebrow,
   title,
   desc,
+  as = "h2",
 }: {
   eyebrow: string;
   title: string;
   desc?: string;
+  as?: "h1" | "h2";
 }) {
+  const Heading = as;
+
   return (
     <div className="max-w-2xl">
       <div className="font-mono text-xs uppercase tracking-widest text-primary">{eyebrow}</div>
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">{title}</h2>
+      <Heading className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+        {title}
+      </Heading>
       {desc && <p className="mt-3 text-muted-foreground">{desc}</p>}
     </div>
   );

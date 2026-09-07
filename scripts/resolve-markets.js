@@ -285,7 +285,7 @@ async function callCerebrasJudge(cerebrasApiKey, event) {
       "Authorization": `Bearer ${cerebrasApiKey}`,
     },
     body: JSON.stringify({
-      model: "llama3.1-8b",
+      model: process.env.CEREBRAS_MODEL || "gpt-oss-120b",
       messages: [{ role: "user", content: buildJudgePrompt(event) }],
       temperature: 0.1,
       max_tokens: 150,

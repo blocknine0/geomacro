@@ -7,7 +7,22 @@
  */
 
 export const GRI_METHOD_VERSION = "gri-v1.1.0";
-export const GRI_PROOF_VERSION = "gri-proof-v1.1.0";
+
+export const LEGACY_GRI_PROOF_VERSION = "gri-proof-v1.1.0";
+export const GRI_PROOF_VERSION = "gri-proof-v1.2.0";
+
+export const SUPPORTED_GRI_PROOF_VERSIONS = [
+  LEGACY_GRI_PROOF_VERSION,
+  GRI_PROOF_VERSION,
+] as const;
+
+export function isSupportedGriProofVersion(
+  value: unknown,
+): value is (typeof SUPPORTED_GRI_PROOF_VERSIONS)[number] {
+  return SUPPORTED_GRI_PROOF_VERSIONS.includes(
+    value as (typeof SUPPORTED_GRI_PROOF_VERSIONS)[number],
+  );
+}
 
 export const GRI_CLASSIFICATION_VERSION = "event-severity-v1.0.4";
 export const GRI_CLASSIFICATION_PROMPT_VERSION = "risk-desk-filter-v1.0.4";

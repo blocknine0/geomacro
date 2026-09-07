@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 import { reconcilesWithinTolerance } from './lib/gri-proof-v11.js';
+import {
+  GRI_DISPOSITION,
+  buildSourceDisposition,
+  dispositionHash,
+  dispositionStorageRowToCanonical,
+  verifyDispositionCoverage,
+} from './lib/gri-disposition-v11.js';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -322,6 +329,7 @@ async function fetchAllEvents() {
   );
 
   const canonicalByEventId = new Map();
+  const classificationSourceByEventId = new Map();
 
   let directCanonicalCount = 0;
 
@@ -329,6 +337,7 @@ async function fetchAllEvents() {
     if (!hasCanonicalClassificationProvenance(row)) continue;
 
     canonicalByEventId.set(row.id, row);
+    classificationSourceByEventId.set(row.id, 'direct');
     directCanonicalCount++;
   }
 
@@ -412,6 +421,10 @@ async function fetchAllEvents() {
       // classifier fields for GRI calculation only. The source event
       // itself remains untouched.
       canonicalByEventId.set(parent.id, merged);
+      classificationSourceByEventId.set(
+        parent.id,
+        'reassessment'
+      );
       reassessmentCount++;
     }
   }
@@ -430,7 +443,81 @@ async function fetchAllEvents() {
       `excluding ${excluded} non-canonical event(s).`
   );
 
-  return attachCurrentStoryProvenance(eligible);
+  return {
+    candidates: parentEvents,
+    eligible: await attachCurrentStoryProvenance(eligible),
+    classificationSourceByEventId,
+  };
+}
+
+function buildDispositionLedger({
+  candidates,
+  eligible,
+  calculation,
+  classificationSourceByEventId,
+}) {
+  const eligibleByEventId = new Map(
+    eligible.map((row) => [String(row.id), row])
+  );
+
+  const contributionByEventId = new Map(
+    calculation.contributions.map((row) => [
+      String(row.eventId),
+      row,
+    ])
+  );
+
+  const dispositions = candidates.map((candidate) => {
+    const eventId = String(candidate.id);
+    const eligibleEvent = eligibleByEventId.get(eventId);
+
+    if (!eligibleEvent) {
+      return buildSourceDisposition({
+        event: candidate,
+        disposition:
+          GRI_DISPOSITION.EXCLUDED_NONCANONICAL_CLASSIFICATION,
+      });
+    }
+
+    const contribution =
+      contributionByEventId.get(eventId);
+
+    if (!contribution) {
+      throw new Error(
+        `GRI disposition invariant failed: eligible event ${eventId} ` +
+          `has no contribution row`
+      );
+    }
+
+    return buildSourceDisposition({
+      event: eligibleEvent,
+      disposition: GRI_DISPOSITION.INCLUDED,
+      classificationSource:
+        classificationSourceByEventId.get(eventId) ?? null,
+      contribution,
+    });
+  });
+
+  const coverage = verifyDispositionCoverage({
+    candidateEventIds: candidates.map((row) =>
+      String(row.id)
+    ),
+    dispositions,
+    contributionEventIds: calculation.contributions.map(
+      (row) => String(row.eventId)
+    ),
+  });
+
+  console.log(
+    `GRI source disposition: ${coverage.candidateCount} candidate event(s), ` +
+      `${coverage.includedCount} included, ` +
+      `${coverage.excludedCount} excluded.`
+  );
+
+  return {
+    dispositions,
+    coverage,
+  };
 }
 
 function storedContributionToEngine(row) {
@@ -497,7 +584,6 @@ async function loadPreviousPublicationSnapshot() {
     .eq('status', 'published')
     .eq('verification_status', 'verified')
     .eq('methodology_version', GRI_METHOD_VERSION)
-    .eq('proof_version', GRI_PROOF_VERSION)
     .eq('story_correlation_version', GRI_STORY_CORRELATION_VERSION)
     .eq(
       'story_correlation_prompt_version',
@@ -547,7 +633,6 @@ async function loadComparisonContext() {
     .eq('status', 'published')
     .eq('verification_status', 'verified')
     .eq('methodology_version', GRI_METHOD_VERSION)
-    .eq('proof_version', GRI_PROOF_VERSION)
     .gte('as_of', earliest.toISOString())
     .lte('as_of', latest.toISOString())
     .order('as_of', { ascending: true });
@@ -748,6 +833,68 @@ function contributionStorageRows(snapshotId, contributions) {
   }));
 }
 
+function dispositionStorageRows(snapshotId, dispositions) {
+  return dispositions.map((row) => ({
+    snapshot_id: snapshotId,
+    event_id: row.eventId,
+    disposition_version: row.dispositionVersion,
+    disposition: row.disposition,
+    classification_source: row.classificationSource,
+
+    category: row.category,
+
+    source_name: row.sourceName,
+    source_domain: row.sourceDomain,
+    source_url: row.sourceUrl,
+    source_title: row.sourceTitle,
+    summary: row.summary,
+
+    observed_at: row.observedAt,
+    published_at: row.publishedAt,
+
+    classification_provider: row.classificationProvider,
+    classification_model: row.classificationModel,
+    classification_version: row.classificationVersion,
+    classification_prompt_version:
+      row.classificationPromptVersion,
+    classification_scored_at: row.classificationScoredAt,
+    classification_input_hash: row.classificationInputHash,
+
+    story_cluster_id: row.storyClusterId,
+
+    raw_weight: roundNumber(row.rawWeight, 10),
+    source_effective_weight:
+      roundNumber(row.sourceEffectiveWeight, 10),
+    pre_story_event_weight:
+      roundNumber(row.preStoryEventWeight, 10),
+    story_effective_weight:
+      roundNumber(row.storyEffectiveWeight, 10),
+    effective_event_weight:
+      roundNumber(row.effectiveEventWeight, 10),
+    contribution_points:
+      roundNumber(row.contributionPoints, 8),
+  }));
+}
+
+async function insertDispositions(snapshotId, dispositions) {
+  const rows =
+    dispositionStorageRows(snapshotId, dispositions);
+
+  const chunkSize = 500;
+
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const { error } = await supabase
+      .from('gri_source_dispositions')
+      .insert(rows.slice(i, i + chunkSize));
+
+    if (error) {
+      throw new Error(
+        `source disposition insert failed: ${error.message}`
+      );
+    }
+  }
+}
+
 async function insertContributions(snapshotId, contributions) {
   const rows = contributionStorageRows(snapshotId, contributions);
   const chunkSize = 500;
@@ -842,6 +989,121 @@ async function verifyStoredLedger(
   };
 }
 
+async function verifyStoredDispositionLedger(
+  snapshotId,
+  expectedCandidateCount,
+  expectedContributionEventIds
+) {
+  const { data, error } = await supabase
+    .from('gri_source_dispositions')
+    .select(
+      'event_id,disposition_version,disposition,classification_source,story_cluster_id,raw_weight,source_effective_weight,pre_story_event_weight,story_effective_weight,effective_event_weight,contribution_points'
+    )
+    .eq('snapshot_id', snapshotId);
+
+  if (error) {
+    throw new Error(
+      `stored disposition verification failed: ${error.message}`
+    );
+  }
+
+  const rows = data ?? [];
+
+  const ids = rows.map((row) => String(row.event_id));
+  const uniqueIds = new Set(ids);
+
+  if (uniqueIds.size !== rows.length) {
+    throw new Error(
+      'stored disposition verification failed: duplicate event_id'
+    );
+  }
+
+  if (rows.length !== expectedCandidateCount) {
+    throw new Error(
+      `stored disposition candidate coverage failed: ` +
+        `expected=${expectedCandidateCount}, stored=${rows.length}`
+    );
+  }
+
+  const invalidContractRows = rows.filter((row) => {
+    if (
+      row.disposition_version !==
+      'gri-disposition-v1.0.0'
+    ) {
+      return true;
+    }
+
+    if (
+      row.disposition !== 'included' &&
+      row.disposition !==
+        'excluded_noncanonical_classification'
+    ) {
+      return true;
+    }
+
+    if (row.disposition === 'included') {
+      return Boolean(
+        !['direct', 'reassessment'].includes(
+          row.classification_source
+        ) ||
+          !row.story_cluster_id ||
+          row.raw_weight === null ||
+          row.source_effective_weight === null ||
+          row.pre_story_event_weight === null ||
+          row.story_effective_weight === null ||
+          row.effective_event_weight === null ||
+          row.contribution_points === null
+      );
+    }
+
+    return Boolean(
+      row.story_cluster_id !== null ||
+        row.raw_weight !== null ||
+        row.source_effective_weight !== null ||
+        row.pre_story_event_weight !== null ||
+        row.story_effective_weight !== null ||
+        row.effective_event_weight !== null ||
+        row.contribution_points !== null
+    );
+  });
+
+  if (invalidContractRows.length > 0) {
+    throw new Error(
+      `stored disposition verification failed: ` +
+        `${invalidContractRows.length} invalid contract row(s)`
+    );
+  }
+
+  const includedIds = rows
+    .filter((row) => row.disposition === 'included')
+    .map((row) => String(row.event_id))
+    .sort();
+
+  const expectedIncludedIds = [
+    ...expectedContributionEventIds,
+  ]
+    .map(String)
+    .sort();
+
+  if (
+    includedIds.length !== expectedIncludedIds.length ||
+    includedIds.some(
+      (id, index) => id !== expectedIncludedIds[index]
+    )
+  ) {
+    throw new Error(
+      'stored disposition verification failed: included event IDs do not exactly match contribution ledger'
+    );
+  }
+
+  return {
+    storedCandidateCount: rows.length,
+    storedIncludedCount: includedIds.length,
+    storedExcludedCount:
+      rows.length - includedIds.length,
+  };
+}
+
 function contributionRowsToInput(rows) {
   return rows.map((r) => ({
     id: r.event_id,
@@ -882,11 +1144,51 @@ async function verifyDraftProofFromStoredRows(snapshotId, expected, previous) {
     .select('*')
     .eq('snapshot_id', snapshotId)
     .order('event_id', { ascending: true });
-  if (error) throw new Error(`stored proof verification query failed: ${error.message}`);
 
-  const recalculated = calculateGri(contributionRowsToInput(rows ?? []), new Date(expected.asOf));
-  const reAttribution = previous ? attributeGriChange(previous, recalculated) : null;
-  const reproved = buildProofArtifacts(recalculated, reAttribution);
+  if (error) {
+    throw new Error(
+      `stored proof verification query failed: ${error.message}`
+    );
+  }
+
+  const {
+    data: dispositionRows,
+    error: dispositionError,
+  } = await supabase
+    .from('gri_source_dispositions')
+    .select('*')
+    .eq('snapshot_id', snapshotId)
+    .order('event_id', { ascending: true });
+
+  if (dispositionError) {
+    throw new Error(
+      `stored disposition proof query failed: ${dispositionError.message}`
+    );
+  }
+
+  const recalculated = calculateGri(
+    contributionRowsToInput(rows ?? []),
+    new Date(expected.asOf)
+  );
+
+  const reAttribution = previous
+    ? attributeGriChange(previous, recalculated)
+    : null;
+
+  const storedDispositionHash = dispositionHash(
+    (dispositionRows ?? []).map(
+      dispositionStorageRowToCanonical
+    )
+  );
+
+  const reproved = buildProofArtifacts(
+    recalculated,
+    reAttribution,
+    {
+      proofVersion: GRI_PROOF_VERSION,
+      dispositionHash: storedDispositionHash,
+    }
+  );
 
   const checks = {
     methodologyVersion: recalculated.methodologyVersion === expected.calculation.methodologyVersion,
@@ -897,8 +1199,17 @@ async function verifyDraftProofFromStoredRows(snapshotId, expected, previous) {
     methodologyHash: reproved.methodologyHash === expected.proof.methodologyHash,
     inputHash: reproved.inputHash === expected.proof.inputHash,
     evidenceHash: reproved.evidenceHash === expected.proof.evidenceHash,
-    calculationHash: reproved.calculationHash === expected.proof.calculationHash,
-    changeHash: (reproved.changeHash ?? null) === (expected.proof.changeHash ?? null),
+    calculationHash:
+      reproved.calculationHash ===
+      expected.proof.calculationHash,
+
+    dispositionHash:
+      reproved.dispositionHash ===
+      expected.proof.dispositionHash,
+
+    changeHash:
+      (reproved.changeHash ?? null) ===
+      (expected.proof.changeHash ?? null),
     proofHash: reproved.proofHash === expected.proof.proofHash,
     scoreReconciles: reconcilesWithinTolerance(reproved.reconciliationResidual),
     changeReconciles: reconcilesWithinTolerance(reproved.changeResidual),
@@ -914,16 +1225,54 @@ async function verifyDraftProofFromStoredRows(snapshotId, expected, previous) {
 
 async function cleanupDraft(snapshotId) {
   try {
-    await supabase.from('gri_contributions').delete().eq('snapshot_id', snapshotId);
-    await supabase.from('gri_snapshots').delete().eq('id', snapshotId).eq('status', 'draft');
+    await supabase
+      .from('gri_source_dispositions')
+      .delete()
+      .eq('snapshot_id', snapshotId);
+
+    await supabase
+      .from('gri_contributions')
+      .delete()
+      .eq('snapshot_id', snapshotId);
+
+    await supabase
+      .from('gri_snapshots')
+      .delete()
+      .eq('id', snapshotId)
+      .eq('status', 'draft');
   } catch {
     // The draft is invisible to public RLS even if cleanup itself fails.
   }
 }
 
 async function main() {
-  const events = await fetchAllEvents();
-  const calculation = calculateGri(events, asOf);
+  const {
+    candidates,
+    eligible,
+    classificationSourceByEventId,
+  } = await fetchAllEvents();
+
+  const calculation = calculateGri(eligible, asOf);
+
+  const {
+    dispositions,
+    coverage: dispositionCoverage,
+  } = buildDispositionLedger({
+    candidates,
+    eligible,
+    calculation,
+    classificationSourceByEventId,
+  });
+
+  // Keep these values live in the publication pipeline. They will be
+  // cryptographically bound and persisted in the next Phase 4 step.
+  if (
+    dispositions.length !== dispositionCoverage.candidateCount
+  ) {
+    throw new Error(
+      'GRI disposition invariant failed after ledger construction'
+    );
+  }
 
   // Pre-migration/operator dry-run deliberately behaves as a methodology
   // baseline and performs no historical snapshot query. This allows the
@@ -939,7 +1288,17 @@ async function main() {
 
   const previous = comparison?.snapshot ?? null;
   const attribution = previous ? attributeGriChange(previous, calculation) : null;
-  const proof = buildProofArtifacts(calculation, attribution);
+  const sourceDispositionHash =
+    dispositionHash(dispositions);
+
+  const proof = buildProofArtifacts(
+    calculation,
+    attribution,
+    {
+      proofVersion: GRI_PROOF_VERSION,
+      dispositionHash: sourceDispositionHash,
+    }
+  );
   if (!proof.verified) {
     throw new Error(`GRI proof reconciliation failed before publication: score residual=${proof.reconciliationResidual}, change residual=${proof.changeResidual}`);
   }
@@ -1053,6 +1412,9 @@ async function main() {
     input_hash: proof.inputHash,
     evidence_hash: proof.evidenceHash,
     calculation_hash: proof.calculationHash,
+    disposition_hash: proof.dispositionHash,
+    candidate_event_count:
+      dispositionCoverage.candidateCount,
     raw_score: roundNumber(calculation.rawScore, 6),
     display_score: calculation.displayScore,
     coverage: roundNumber(calculation.coverage, 6),
@@ -1108,14 +1470,47 @@ async function main() {
   if (snapshotError) throw new Error(`GRI draft snapshot insert failed: ${snapshotError.message}`);
 
   try {
-    await insertContributions(inserted.id, calculation.contributions);
+    await insertContributions(
+      inserted.id,
+      calculation.contributions
+    );
+
+    await insertDispositions(
+      inserted.id,
+      dispositions
+    );
+
     const ledger = await verifyStoredLedger(
       inserted.id,
       snapshotRow.raw_score,
       calculation.independentStoryCount
     );
-    if (ledger.storedContributionCount !== calculation.contributions.length) {
-      throw new Error(`stored contribution count mismatch: expected ${calculation.contributions.length}, got ${ledger.storedContributionCount}`);
+
+    if (
+      ledger.storedContributionCount !==
+      calculation.contributions.length
+    ) {
+      throw new Error(
+        `stored contribution count mismatch: expected ${calculation.contributions.length}, got ${ledger.storedContributionCount}`
+      );
+    }
+
+    const dispositionLedger =
+      await verifyStoredDispositionLedger(
+        inserted.id,
+        dispositionCoverage.candidateCount,
+        calculation.contributions.map(
+          (row) => String(row.eventId)
+        )
+      );
+
+    if (
+      dispositionLedger.storedIncludedCount !==
+      calculation.contributions.length
+    ) {
+      throw new Error(
+        `stored disposition included-count mismatch: expected ${calculation.contributions.length}, got ${dispositionLedger.storedIncludedCount}`
+      );
     }
 
     // Critical publication gate: recompute the complete proof package from the

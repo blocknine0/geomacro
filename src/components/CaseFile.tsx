@@ -1,8 +1,8 @@
 import React from "react";
-import { useDisputeStatus, JUROR_ROLE_ORDER, JUROR_ROLE_LABEL } from "./useDisputeStatus";
-import { JURY_THRESHOLD } from "./dispute-config";
-import { weiToUsdc } from "./agent-arena";
-import { ARC_TESTNET } from "./arc";
+import { useDisputeStatus, JUROR_ROLE_ORDER, JUROR_ROLE_LABEL } from "@/lib/useDisputeStatus";
+import { JURY_THRESHOLD } from "@/lib/dispute-config";
+import { weiToUsdc } from "@/lib/agent-arena";
+import { ARC_TESTNET } from "@/lib/arc";
 
 /**
  * CaseFile.tsx (v2 — corrected)

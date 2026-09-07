@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson, methodologyManifest } from './gri-engine-v11.js';
 
-export const GRI_PROOF_VERSION = 'gri-proof-v1.1.0';
+export const LEGACY_GRI_PROOF_VERSION = 'gri-proof-v1.1.0';
+export const GRI_PROOF_VERSION = 'gri-proof-v1.2.0';
 export const GRI_RECONCILIATION_TOLERANCE = 1e-6;
 
 export function sha256(value) {
@@ -120,7 +121,11 @@ function topAbsolute(rows, key, limit = 8) {
     .slice(0, limit);
 }
 
-export function buildDeterministicExplanation(calculation, attribution) {
+export function buildDeterministicExplanation(
+  calculation,
+  attribution,
+  proofVersion = GRI_PROOF_VERSION
+) {
   const topCurrentEvents = [...calculation.contributions]
     .sort((a, b) => Math.abs(b.contributionPoints) - Math.abs(a.contributionPoints))
     .slice(0, 10)
@@ -150,7 +155,7 @@ export function buildDeterministicExplanation(calculation, attribution) {
 
   if (!attribution) {
     return {
-      explanationVersion: GRI_PROOF_VERSION,
+      explanationVersion: proofVersion,
       baseline: true,
       why: {
         direction: 'baseline',
@@ -164,7 +169,7 @@ export function buildDeterministicExplanation(calculation, attribution) {
 
   const direction = attribution.rawDelta > 0 ? 'increased' : attribution.rawDelta < 0 ? 'decreased' : 'unchanged';
   return {
-    explanationVersion: GRI_PROOF_VERSION,
+    explanationVersion: proofVersion,
     baseline: false,
     why: {
       direction,
@@ -203,25 +208,66 @@ export function buildDeterministicExplanation(calculation, attribution) {
   };
 }
 
-export function buildProofArtifacts(calculation, attribution) {
+export function buildProofArtifacts(
+  calculation,
+  attribution,
+  {
+    proofVersion = GRI_PROOF_VERSION,
+    dispositionHash = null,
+  } = {}
+) {
+  if (
+    proofVersion !== GRI_PROOF_VERSION &&
+    proofVersion !== LEGACY_GRI_PROOF_VERSION
+  ) {
+    throw new Error(
+      `Unsupported GRI proof version: ${proofVersion}`
+    );
+  }
+
+  if (
+    proofVersion === GRI_PROOF_VERSION &&
+    !/^[a-f0-9]{64}$/.test(String(dispositionHash ?? ''))
+  ) {
+    throw new Error(
+      `${GRI_PROOF_VERSION} requires a valid disposition hash`
+    );
+  }
+
+  if (
+    proofVersion === LEGACY_GRI_PROOF_VERSION &&
+    dispositionHash !== null
+  ) {
+    throw new Error(
+      `${LEGACY_GRI_PROOF_VERSION} must not include a disposition hash`
+    );
+  }
+
   const methodologyHash = sha256(canonicalJson(methodologyManifest()));
   const inputHash = sha256(canonicalJson(inputManifest(calculation)));
   const evidenceHash = sha256(canonicalJson(evidenceManifest(calculation)));
   const calculationHash = sha256(canonicalJson(calculationManifest(calculation)));
   const changeHash = attribution ? sha256(canonicalJson(attribution)) : null;
-  const explanation = buildDeterministicExplanation(calculation, attribution);
+  const explanation = buildDeterministicExplanation(
+    calculation,
+    attribution,
+    proofVersion
+  );
   const contributionSum = calculation.contributions.reduce((sum, c) => sum + c.contributionPoints, 0);
   const reconciliationResidual = calculation.rawScore === null ? null : calculation.rawScore - contributionSum;
   const changeResidual = attribution?.residual ?? null;
 
   const proofPayload = {
-    proofVersion: GRI_PROOF_VERSION,
+    proofVersion,
     methodologyVersion: calculation.methodologyVersion,
     asOf: calculation.asOf,
     methodologyHash,
     inputHash,
     evidenceHash,
     calculationHash,
+    ...(proofVersion === GRI_PROOF_VERSION
+      ? { dispositionHash }
+      : {}),
     changeHash,
     reconciliationResidual: roundNumber(reconciliationResidual, 12),
     changeResidual: roundNumber(changeResidual, 12),

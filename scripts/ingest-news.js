@@ -32,7 +32,7 @@ const QUERY_DELAY_MS = Number(process.env.NEWS_QUERY_DELAY_MS || 800);
 const NEWS_MAX_RETRIES = Number(process.env.NEWS_MAX_RETRIES || 3);
 
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
-const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'llama3.1-8b';
+const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
 const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
 const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 2);
 const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 1500);

@@ -1,9 +1,18 @@
 #!/usr/bin/env node
-import { reconcilesWithinTolerance } from './lib/gri-proof-v11.js';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { attributeGriChange, calculateGri } from './lib/gri-engine-v11.js';
-import { buildProofArtifacts, roundNumber } from './lib/gri-proof-v11.js';
+import {
+  GRI_PROOF_VERSION,
+  LEGACY_GRI_PROOF_VERSION,
+  buildProofArtifacts,
+  reconcilesWithinTolerance,
+  roundNumber,
+} from './lib/gri-proof-v11.js';
+import {
+  dispositionHash,
+  dispositionStorageRowToCanonical,
+} from './lib/gri-disposition-v11.js';
 
 dotenv.config();
 const args = process.argv.slice(2);
@@ -19,7 +28,6 @@ const CANONICAL_CLASSIFICATION_VERSION = 'event-severity-v1.0.4';
 const CANONICAL_CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.4';
 
 const GRI_METHOD_VERSION = 'gri-v1.1.0';
-const GRI_PROOF_VERSION = 'gri-proof-v1.1.0';
 const GRI_STORY_CORRELATION_VERSION = 'story-correlation-v1.0.0';
 const GRI_STORY_CORRELATION_PROMPT_VERSION = 'story-match-title-v1.0.0';
 
@@ -98,6 +106,22 @@ async function loadContributions(id) {
   return data ?? [];
 }
 
+async function loadDispositions(snapshotId) {
+  const { data, error } = await supabase
+    .from('gri_source_dispositions')
+    .select('*')
+    .eq('snapshot_id', snapshotId)
+    .order('event_id', { ascending: true });
+
+  if (error) {
+    throw new Error(
+      `source disposition query failed: ${error.message}`
+    );
+  }
+
+  return data ?? [];
+}
+
 async function loadExpectedPreviousPublication(snapshot) {
   const { data, error } = await supabase
     .from('gri_snapshots')
@@ -107,7 +131,6 @@ async function loadExpectedPreviousPublication(snapshot) {
     .eq('status', 'published')
     .eq('verification_status', 'verified')
     .eq('methodology_version', GRI_METHOD_VERSION)
-    .eq('proof_version', GRI_PROOF_VERSION)
     .eq('story_correlation_version', GRI_STORY_CORRELATION_VERSION)
     .eq(
       'story_correlation_prompt_version',
@@ -140,7 +163,6 @@ async function loadExpectedComparison(snapshot) {
     .eq('status', 'published')
     .eq('verification_status', 'verified')
     .eq('methodology_version', GRI_METHOD_VERSION)
-    .eq('proof_version', GRI_PROOF_VERSION)
     .gte('as_of', earliest.toISOString())
     .lte('as_of', latest.toISOString())
     .neq('id', snapshot.id);
@@ -343,6 +365,22 @@ async function main() {
   const snapshot = await loadSnapshot(snapshotId);
   const rows = await loadContributions(snapshot.id);
 
+  const isLegacyProof =
+    snapshot.proof_version === LEGACY_GRI_PROOF_VERSION;
+
+  const isCurrentProof =
+    snapshot.proof_version === GRI_PROOF_VERSION;
+
+  if (!isLegacyProof && !isCurrentProof) {
+    throw new Error(
+      `unsupported GRI proof version: ${snapshot.proof_version}`
+    );
+  }
+
+  const dispositionRows = isCurrentProof
+    ? await loadDispositions(snapshot.id)
+    : [];
+
   const classificationProvenance =
     rows.length > 0 &&
     rows.every(contributionHasCanonicalProvenance);
@@ -426,7 +464,56 @@ async function main() {
   const attribution = previous
     ? attributeGriChange(previous, recalculated)
     : null;
-  const proof = buildProofArtifacts(recalculated, attribution);
+  let storedDispositionHash = null;
+  let dispositionCoverage = true;
+  let dispositionIncludedMatchesContributions = true;
+
+  if (isCurrentProof) {
+    const canonicalDispositions =
+      dispositionRows.map(
+        dispositionStorageRowToCanonical
+      );
+
+    storedDispositionHash =
+      dispositionHash(canonicalDispositions);
+
+    dispositionCoverage =
+      Number(snapshot.candidate_event_count) ===
+        dispositionRows.length &&
+      Number(snapshot.candidate_event_count) >=
+        Number(snapshot.event_count);
+
+    const includedIds = dispositionRows
+      .filter(
+        (row) => row.disposition === 'included'
+      )
+      .map((row) => String(row.event_id))
+      .sort();
+
+    const contributionIds = rows
+      .map((row) => String(row.event_id))
+      .sort();
+
+    dispositionIncludedMatchesContributions =
+      includedIds.length === contributionIds.length &&
+      includedIds.every(
+        (id, index) =>
+          id === contributionIds[index]
+      );
+  }
+
+  const proof = buildProofArtifacts(
+    recalculated,
+    attribution,
+    isCurrentProof
+      ? {
+          proofVersion: GRI_PROOF_VERSION,
+          dispositionHash: storedDispositionHash,
+        }
+      : {
+          proofVersion: LEGACY_GRI_PROOF_VERSION,
+        }
+  );
 
   const checks = {
     classificationProvenance,
@@ -442,7 +529,24 @@ async function main() {
     methodologyVersion:
       recalculated.methodologyVersion === snapshot.methodology_version,
     proofVersion:
-      snapshot.proof_version === GRI_PROOF_VERSION,
+      isLegacyProof || isCurrentProof,
+
+    dispositionCoverage:
+      isLegacyProof || dispositionCoverage,
+
+    dispositionIncludedMatchesContributions:
+      isLegacyProof ||
+      dispositionIncludedMatchesContributions,
+
+    dispositionHash:
+      isLegacyProof ||
+      (
+        typeof snapshot.disposition_hash === 'string' &&
+        snapshot.disposition_hash ===
+          storedDispositionHash &&
+        proof.dispositionHash ===
+          snapshot.disposition_hash
+      ),
     storyCorrelationVersion:
       snapshot.story_correlation_version ===
         GRI_STORY_CORRELATION_VERSION,

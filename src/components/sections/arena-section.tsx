@@ -2,7 +2,6 @@ import { notify } from "@/lib/notify";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
 import {
   Bot,
   Clock,
@@ -19,6 +18,7 @@ import { InlineError } from "@/components/foundation/async-states";
 import { EmptyState } from "@/components/foundation/async-states";
 import { RiskBadge, ProbabilityBadge } from "@/components/foundation/risk";
 import { Status } from "@/components/foundation/data";
+import DisputeTribunal from "@/components/DisputeTribunal";
 import { TechnicalDisclosure, TestnetNotice } from "@/components/foundation/onchain";
 import {
   Dialog,
@@ -850,13 +850,22 @@ export function ArenaSection() {
             )}
           </div>
           <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-            {m.eventId && (
-              <Button asChild size="sm" className="tap-target flex-1 gap-1.5 sm:flex-none">
-                <Link to="/event/$eventId" params={{ eventId: m.eventId }}>
-                  View event
-                </Link>
+            {m.sourceUrl ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="tap-target flex-1 gap-1.5 sm:flex-none"
+              >
+                <a
+                  href={m.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open source
+                </a>
               </Button>
-            )}
+            ) : null}
             {canClaim && (
               <Button
                 size="sm"
@@ -880,13 +889,11 @@ export function ArenaSection() {
                   {m.marketAddress.toLowerCase() === AGENT_ARENA_ADDRESS.toLowerCase() &&
                     ((displayWinnerSide === "HAWK" && myDove > 0) ||
                       (displayWinnerSide === "DOVE" && myHawk > 0)) && (
-                      <Link
-                        to="/dispute/$marketId"
-                        params={{ marketId: m.id }}
-                        className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-accent"
-                      >
-                        Think this is wrong? Raise a dispute →
-                      </Link>
+                      <div className="w-full">
+                        <DisputeTribunal
+                          marketId={m.id}
+                        />
+                      </div>
                     )}
                 </div>
               ) : !isStakingOpen ? (
