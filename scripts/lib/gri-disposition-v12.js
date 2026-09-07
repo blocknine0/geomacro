@@ -186,8 +186,8 @@ export function dispositionStorageRowToCanonical(row) {
     sourceTitle: row.source_title ?? null,
     summary: row.summary ?? null,
 
-    observedAt: row.observed_at ?? null,
-    publishedAt: row.published_at ?? null,
+    observedAt: isoOrNull(row.observed_at),
+    publishedAt: isoOrNull(row.published_at),
 
     classificationProvider:
       row.classification_provider ?? null,
@@ -198,7 +198,7 @@ export function dispositionStorageRowToCanonical(row) {
     classificationPromptVersion:
       row.classification_prompt_version ?? null,
     classificationScoredAt:
-      row.classification_scored_at ?? null,
+      isoOrNull(row.classification_scored_at),
     classificationInputHash:
       row.classification_input_hash ?? null,
 
