@@ -48,17 +48,15 @@ jobs:
           GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
 
-          # Keep the multi-source validation inside the free Groq
-          # request budget. Four articles per classifier request cuts
-          # request pressure in half versus the legacy default of two.
-          GROQ_BATCH_SIZE: "4"
+          # CI smoke workload: keep external-provider usage bounded while
+          # still exercising discovery, classification fallback and gates.
+          GROQ_BATCH_SIZE: "1"
           GROQ_MAX_REQUESTS_PER_RUN: "30"
-          GROQ_MAX_WAIT_MS: "900000"
+          GROQ_MAX_WAIT_MS: "60000"
 
-          # Token-volume ceiling. Batch size reduces request count;
-          # this cap prevents that optimization from increasing the
-          # total articles/tokens consumed per category.
-          MAX_CANDIDATES_PER_CATEGORY: "12"
+          # Two candidates per category keeps the workflow deterministic
+          # enough for CI without changing production ingestion limits.
+          MAX_CANDIDATES_PER_CATEGORY: "2"
 
           GDELT_MIN_INTERVAL_MS: "6000"
 
