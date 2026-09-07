@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react";
-import { readMarketFullDetails, readMyStake, weiToUsdc } from "./agent-arena";
-import { raiseDisputeOnContract } from "./agent-arena-v2";
-import { computeDisputeBondWei, losingSide, canDispute } from "./dispute-bond";
-import { useDisputeStatus, JUROR_ROLE_ORDER, JUROR_ROLE_LABEL, JuryVoteRow } from "./useDisputeStatus";
-import { JURY_THRESHOLD } from "./dispute-config";
+import { readMarketFullDetails, readMyStake, weiToUsdc } from "@/lib/agent-arena";
+import { raiseDisputeOnContract } from "@/lib/agent-arena-v2";
+import { computeDisputeBondWei, losingSide, canDispute } from "@/lib/dispute-bond";
+import { useDisputeStatus, JUROR_ROLE_ORDER, JUROR_ROLE_LABEL, JuryVoteRow } from "@/lib/useDisputeStatus";
+import { JURY_THRESHOLD } from "@/lib/dispute-config";
 import { useWallet } from "@/hooks/WalletProvider";
-import { ARC_TESTNET } from "./arc";
+import { ARC_TESTNET } from "@/lib/arc";
 
 /**
  * DisputeTribunal.tsx (v2 — corrected against real AgentArenaV2.sol +
@@ -58,7 +58,7 @@ function JurorCard({ role, vote }: { role: string; vote: JuryVoteRow | undefined
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <span className="dt-mono" style={{ fontSize: 13 }}>{JUROR_ROLE_LABEL[role] ?? role}</span>
+        <span className="dt-mono" style={{ fontSize: 13 }}>{JUROR_ROLE_LABEL[role as keyof typeof JUROR_ROLE_LABEL] ?? role}</span>
         <span className="dt-mono dt-stamp" style={{ color, fontWeight: 600 }}>
           {voted ? `VOTED: ${vote.verdict}` : "PENDING"}
         </span>

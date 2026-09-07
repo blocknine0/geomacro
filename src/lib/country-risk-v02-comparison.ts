@@ -207,7 +207,10 @@ compareCountryRiskV01V02(
       : null;
 
   const reconstructed =
-    comparisonAvailable
+    comparisonAvailable &&
+    eventReweightingEffect !== null &&
+    macroEffect !== null &&
+    geopoliticsEffect !== null
       ? round(
           eventReweightingEffect +
             macroEffect +
@@ -217,7 +220,9 @@ compareCountryRiskV01V02(
       : null;
 
   const reconciliationDelta =
-    comparisonAvailable
+    comparisonAvailable &&
+    totalDelta !== null &&
+    reconstructed !== null
       ? round(
           totalDelta -
             reconstructed,

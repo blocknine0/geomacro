@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 type EmptyValueProps = {
   label?: string;
   className?: string;
@@ -40,5 +42,25 @@ export function Status({
     >
       {label}
     </span>
+  );
+}
+
+
+type MetricProps = {
+  label: string;
+  value: ReactNode;
+  className?: string;
+};
+
+export function Metric({
+  label,
+  value,
+  className = "",
+}: MetricProps) {
+  return (
+    <div className={className}>
+      <p className="type-meta text-muted-foreground">{label}</p>
+      <div className="mt-1 type-metric text-foreground">{value}</div>
+    </div>
   );
 }
