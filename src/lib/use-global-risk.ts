@@ -84,6 +84,8 @@ export type GlobalRisk = {
   proofHash: string | null;
   evidenceHash: string | null;
   calculationHash: string;
+  dispositionHash: string;
+  candidateEventCount: number;
   inputHash: string;
   methodologyHash: string;
   changeHash: string | null;
@@ -118,6 +120,8 @@ type SnapshotRow = {
   input_hash: string;
   evidence_hash: string | null;
   calculation_hash: string;
+  disposition_hash: string | null;
+  candidate_event_count: number | null;
   proof_version: string | null;
   proof_hash: string | null;
   verification_status: string | null;
@@ -272,7 +276,7 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
         const snapshotResult = await supabaseFeed
           .from("gri_snapshots")
           .select(
-            "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
+            "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,disposition_hash,candidate_event_count,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,active_categories,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,change_hash,change_attribution,explanation,status",
           )
           .eq("status", "published")
           .eq("methodology_version", GRI_METHOD_VERSION)
@@ -302,6 +306,9 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           : Number.POSITIVE_INFINITY;
         const reconciliationResidual = n(latest.reconciliation_residual);
         const changeResidual = n(latest.change_residual);
+        const candidateEventCount =
+          Number(latest.candidate_event_count);
+
         const proofReady =
           latest.verification_status === "verified" &&
           latest.proof_version === GRI_PROOF_VERSION &&
@@ -310,6 +317,11 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           Number.isInteger(Number(latest.independent_story_count)) &&
           Number(latest.independent_story_count) > 0 &&
           Number(latest.independent_story_count) <= Number(latest.event_count) &&
+          Number.isInteger(candidateEventCount) &&
+          candidateEventCount >= Number(latest.event_count) &&
+          /^[a-f0-9]{64}$/.test(
+            String(latest.disposition_hash ?? ""),
+          ) &&
           Boolean(
             latest.proof_hash &&
             latest.evidence_hash &&
@@ -396,6 +408,9 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
           proofHash: latest.proof_hash,
           evidenceHash: latest.evidence_hash,
           calculationHash: latest.calculation_hash,
+          dispositionHash: latest.disposition_hash as string,
+          candidateEventCount:
+            Number(latest.candidate_event_count),
           inputHash: latest.input_hash,
           methodologyHash: latest.methodology_hash,
           changeHash: latest.change_hash,

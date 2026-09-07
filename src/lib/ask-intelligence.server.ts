@@ -334,7 +334,7 @@ async function loadPublishedGri() {
   const { data, error } = await supabase
     .from("gri_snapshots")
     .select(
-      "display_score,event_count,independent_story_count,coverage,methodology_version,as_of,proof_version,story_correlation_version,story_correlation_prompt_version,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,reconciliation_residual,change_residual",
+      "display_score,event_count,independent_story_count,coverage,methodology_version,as_of,proof_version,story_correlation_version,story_correlation_prompt_version,verification_status,proof_hash,evidence_hash,calculation_hash,input_hash,methodology_hash,disposition_hash,candidate_event_count,reconciliation_residual,change_residual",
     )
     .eq("status", "published")
     .eq("methodology_version", GRI_METHOD_VERSION)
@@ -354,12 +354,18 @@ async function loadPublishedGri() {
     : Number.POSITIVE_INFINITY;
   const reconciliationResidual = Number(data.reconciliation_residual);
   const changeResidual = data.change_residual === null ? null : Number(data.change_residual);
+  const candidateEventCount =
+    Number(data.candidate_event_count);
+
   const hashesReady = Boolean(
     data.proof_hash &&
     data.evidence_hash &&
     data.calculation_hash &&
     data.input_hash &&
-    data.methodology_hash,
+    data.methodology_hash &&
+    /^[a-f0-9]{64}$/.test(
+      String(data.disposition_hash ?? ""),
+    ),
   );
   const residualsReady =
     Number.isFinite(reconciliationResidual) &&
@@ -375,6 +381,8 @@ async function loadPublishedGri() {
     Number.isInteger(Number(data.independent_story_count)) &&
     Number(data.independent_story_count) > 0 &&
     Number(data.independent_story_count) <= Number(data.event_count ?? 0) &&
+    Number.isInteger(candidateEventCount) &&
+    candidateEventCount >= Number(data.event_count ?? 0) &&
     hashesReady &&
     residualsReady &&
     fresh;

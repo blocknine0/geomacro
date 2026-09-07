@@ -19,7 +19,7 @@ import {
   canonicalJson,
 } from './lib/gri-engine-v11.js';
 import {
-  GRI_PROOF_VERSION,
+  LEGACY_GRI_PROOF_VERSION,
   buildProofArtifacts,
   reconcilesWithinTolerance,
   roundNumber,
@@ -362,7 +362,7 @@ function snapshotStorage(runId, calculation, proof) {
     input_hash: proof.inputHash,
     evidence_hash: proof.evidenceHash,
     calculation_hash: proof.calculationHash,
-    proof_version: GRI_PROOF_VERSION,
+    proof_version: LEGACY_GRI_PROOF_VERSION,
     proof_hash: proof.proofHash,
     reconciliation_residual:
       roundNumber(proof.reconciliationResidual, 12),
@@ -420,7 +420,13 @@ async function main() {
     while (left < active.length && active[left].t < minT) left += 1;
     const windowRows = active.slice(left).map((x) => x.row);
     const calculation = calculateGri(windowRows, new Date(t));
-    const proof = buildProofArtifacts(calculation, null);
+    const proof = buildProofArtifacts(
+      calculation,
+      null,
+      {
+        proofVersion: LEGACY_GRI_PROOF_VERSION,
+      }
+    );
     if (!proof.verified) throw new Error(`Replay proof failed at ${calculation.asOf}`);
     planned.push({ calculation, proof });
   }
@@ -444,7 +450,7 @@ async function main() {
   const resultHash = sha256(canonicalJson({
     replayVersion,
     methodologyVersion: GRI_METHOD_VERSION,
-    proofVersion: GRI_PROOF_VERSION,
+    proofVersion: LEGACY_GRI_PROOF_VERSION,
     evidenceMode: 'retrospective_replay',
     observationTimeRule: 'created_at_retrospective',
     lookaheadSafe: false,
@@ -458,7 +464,7 @@ async function main() {
   console.log(JSON.stringify({
     replayVersion,
     methodologyVersion: GRI_METHOD_VERSION,
-    proofVersion: GRI_PROOF_VERSION,
+    proofVersion: LEGACY_GRI_PROOF_VERSION,
     evidenceMode: 'retrospective_replay',
     startAt: start.toISOString(),
     endAt: end.toISOString(),
@@ -475,7 +481,7 @@ async function main() {
   const { data: run, error: runError } = await supabase.from('gri_replay_runs').insert({
     methodology_version: GRI_METHOD_VERSION,
     replay_version: replayVersion,
-    proof_version: GRI_PROOF_VERSION,
+    proof_version: LEGACY_GRI_PROOF_VERSION,
     story_correlation_version: GRI_STORY_CORRELATION_VERSION,
     story_correlation_prompt_version:
       GRI_STORY_CORRELATION_PROMPT_VERSION,
@@ -526,7 +532,7 @@ async function main() {
 
     for (const row of storedReplayRows ?? []) {
       if (
-        row.proof_version !== GRI_PROOF_VERSION ||
+        row.proof_version !== LEGACY_GRI_PROOF_VERSION ||
         !/^[a-f0-9]{64}$/i.test(String(row.proof_hash || '')) ||
         row.proof_verified !== true ||
         row.story_correlation_version !==

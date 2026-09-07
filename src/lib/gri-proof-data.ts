@@ -4,6 +4,7 @@ import {
   GRI_CLASSIFICATION_VERSION,
   GRI_METHOD_VERSION,
   GRI_PROOF_VERSION,
+  isSupportedGriProofVersion,
   GRI_STORY_CORRELATION_PROMPT_VERSION,
   GRI_STORY_CORRELATION_VERSION,
 } from "@/lib/gri-current-contract";
@@ -118,6 +119,46 @@ export type GriContributionProof = {
   classification_input_hash: string | null;
 };
 
+export type GriSourceDispositionProof = {
+  event_id: string;
+  disposition_version: string;
+  disposition:
+    | "included"
+    | "excluded_noncanonical_classification"
+    | string;
+  classification_source:
+    | "direct"
+    | "reassessment"
+    | null;
+
+  category: string | null;
+
+  source_name: string | null;
+  source_domain: string | null;
+  source_url: string | null;
+  source_title: string | null;
+  summary: string | null;
+
+  observed_at: string | null;
+  published_at: string | null;
+
+  classification_provider: string | null;
+  classification_model: string | null;
+  classification_version: string | null;
+  classification_prompt_version: string | null;
+  classification_scored_at: string | null;
+  classification_input_hash: string | null;
+
+  story_cluster_id: string | null;
+
+  raw_weight: number | string | null;
+  source_effective_weight: number | string | null;
+  pre_story_event_weight: number | string | null;
+  story_effective_weight: number | string | null;
+  effective_event_weight: number | string | null;
+  contribution_points: number | string | null;
+};
+
 export type GriValidationMetric = {
   benchmark_key: string;
   horizon_hours: number;
@@ -162,6 +203,8 @@ export type GriProofPackage = {
     input_hash: string;
     evidence_hash: string | null;
     calculation_hash: string;
+    disposition_hash: string | null;
+    candidate_event_count: number | null;
     change_hash: string | null;
     proof_version: string | null;
     proof_hash: string | null;
@@ -186,6 +229,7 @@ export type GriProofPackage = {
     published_at: string | null;
   };
   contributions: GriContributionProof[];
+  dispositions: GriSourceDispositionProof[];
   validationRun: GriValidationRun | null;
   validationMetrics: GriValidationMetric[];
 };
@@ -200,7 +244,7 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
   const snapshotResult = await supabaseFeed
     .from("gri_snapshots")
     .select(
-      "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,change_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,explanation,published_at",
+      "id,as_of,methodology_version,methodology_hash,input_hash,evidence_hash,calculation_hash,disposition_hash,candidate_event_count,change_hash,proof_version,proof_hash,verification_status,reconciliation_residual,change_residual,raw_score,display_score,coverage,weighted_confidence,event_count,source_count,independent_story_count,story_correlation_version,story_correlation_prompt_version,category_breakdown,previous_as_of,previous_raw_score,previous_display_score,change_points,explanation,published_at",
     )
     .eq("id", snapshotId)
     .eq("status", "published")
@@ -209,8 +253,11 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
   if (snapshotResult.error) throw snapshotResult.error;
   if (!snapshotResult.data) throw new Error("Published GRI proof package not found.");
 
+  const proofVersion =
+    snapshotResult.data.proof_version;
+
   if (
-    snapshotResult.data.proof_version !== GRI_PROOF_VERSION ||
+    !isSupportedGriProofVersion(proofVersion) ||
     snapshotResult.data.story_correlation_version !== GRI_STORY_CORRELATION_VERSION ||
     snapshotResult.data.story_correlation_prompt_version !== GRI_STORY_CORRELATION_PROMPT_VERSION ||
     !Number.isInteger(Number(snapshotResult.data.independent_story_count)) ||
@@ -230,6 +277,69 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
   if (contributionResult.error) throw contributionResult.error;
 
   const contributions = (contributionResult.data ?? []) as GriContributionProof[];
+
+  let dispositions: GriSourceDispositionProof[] = [];
+
+  if (proofVersion === GRI_PROOF_VERSION) {
+    const dispositionResult = await supabaseFeed
+      .from("gri_source_dispositions")
+      .select(
+        "event_id,disposition_version,disposition,classification_source,category,source_name,source_domain,source_url,source_title,summary,observed_at,published_at,classification_provider,classification_model,classification_version,classification_prompt_version,classification_scored_at,classification_input_hash,story_cluster_id,raw_weight,source_effective_weight,pre_story_event_weight,story_effective_weight,effective_event_weight,contribution_points",
+      )
+      .eq("snapshot_id", snapshotId)
+      .order("event_id", { ascending: true });
+
+    if (dispositionResult.error) {
+      throw dispositionResult.error;
+    }
+
+    dispositions =
+      (dispositionResult.data ?? []) as GriSourceDispositionProof[];
+
+    const candidateCount =
+      Number(snapshotResult.data.candidate_event_count);
+
+    if (
+      !Number.isInteger(candidateCount) ||
+      candidateCount < Number(snapshotResult.data.event_count) ||
+      dispositions.length !== candidateCount
+    ) {
+      throw new Error(
+        `GRI disposition coverage mismatch: expected ${snapshotResult.data.candidate_event_count}, received ${dispositions.length}.`,
+      );
+    }
+
+    if (
+      !snapshotResult.data.disposition_hash ||
+      !/^[a-f0-9]{64}$/.test(
+        String(snapshotResult.data.disposition_hash),
+      )
+    ) {
+      throw new Error(
+        "GRI proof v1.2 is missing a valid disposition hash.",
+      );
+    }
+
+    const includedIds = dispositions
+      .filter((row) => row.disposition === "included")
+      .map((row) => String(row.event_id))
+      .sort();
+
+    const contributionIds = contributions
+      .map((row) => String(row.event_id))
+      .sort();
+
+    if (
+      includedIds.length !== contributionIds.length ||
+      includedIds.some(
+        (id, index) => id !== contributionIds[index],
+      )
+    ) {
+      throw new Error(
+        "GRI disposition included set does not match the contribution ledger.",
+      );
+    }
+  }
 
   if (contributions.length !== Number(snapshotResult.data.event_count)) {
     throw new Error(
@@ -301,6 +411,7 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
           : null,
     },
     contributions,
+    dispositions,
     validationRun,
     validationMetrics,
   };
@@ -343,7 +454,6 @@ export async function loadRecentGriHistory(
     .select("id,as_of,raw_score,display_score,proof_hash")
     .eq("status", "published")
     .eq("methodology_version", GRI_METHOD_VERSION)
-    .eq("proof_version", GRI_PROOF_VERSION)
     .eq("verification_status", "verified")
     .not("raw_score", "is", null)
     .order("as_of", { ascending: false })
