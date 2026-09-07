@@ -27,9 +27,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           # Optional repository variables; empty/unset values fall back to script defaults.
-          # Dedicated high-throughput admission classifier.
-          # Keep heavier reasoning workflows on their existing models.
-          GROQ_MODEL: "llama-3.1-8b-instant"
+          GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
           GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
           GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
