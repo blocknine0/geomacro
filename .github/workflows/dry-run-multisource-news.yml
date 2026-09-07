@@ -37,7 +37,9 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
 
-          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          # Dedicated high-throughput admission classifier.
+          # Keep heavier reasoning workflows on their existing models.
+          GROQ_MODEL: "llama-3.1-8b-instant"
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
 
           # Keep the multi-source validation inside the free Groq
