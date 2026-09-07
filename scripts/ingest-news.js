@@ -1989,7 +1989,7 @@ async function fetchGdeltArticles(query) {
     mode: 'ArtList',
     maxrecords: '25',
     format: 'json',
-    sort: 'DateDesc',
+    sort: 'HybridRel',
     startdatetime: gdeltTimestamp(start),
     enddatetime: gdeltTimestamp(end),
   });
@@ -2124,14 +2124,37 @@ async function fetchArticlesFromApis(query, categoryName) {
 
     const data = await response.json();
 
-    if (!data.response?.results?.length) {
-      console.log(
-        `   🔍 Guardian raw response for "${query}": ${JSON.stringify(data).slice(0, 300)}`
+    const guardianResponse =
+      data?.response;
+
+    if (
+      guardianResponse?.status !== 'ok' ||
+      !Array.isArray(
+        guardianResponse?.results
+      )
+    ) {
+      const payloadPreview =
+        JSON.stringify(data).slice(0, 300);
+
+      const error = new Error(
+        `Guardian API invalid response for "${query}": ${payloadPreview}`
       );
+
+      error.status =
+        Number(response?.status) || null;
+
+      throw error;
     }
 
     const guardianResults =
-      data.response?.results || [];
+      guardianResponse.results;
+
+    if (!guardianResults.length) {
+      console.log(
+        `   🔍 Guardian valid empty response for "${query}": ` +
+          `${JSON.stringify(data).slice(0, 300)}`
+      );
+    }
 
     if (guardianResults.length) {
       articles.push(
