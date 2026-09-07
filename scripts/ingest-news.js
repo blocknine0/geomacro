@@ -43,7 +43,39 @@ const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN |
 const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 2);
 const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 1500);
 const GROQ_MAX_WAIT_MS = Number(process.env.GROQ_MAX_WAIT_MS || 90 * 1000);
-const MAX_CANDIDATES_PER_CATEGORY = Number(process.env.MAX_CANDIDATES_PER_CATEGORY || 18);
+const MAX_CANDIDATES_PER_CATEGORY = Number(
+  process.env.MAX_CANDIDATES_PER_CATEGORY || 18
+);
+
+/*
+ * Classification capacity must fit inside the configured Groq request
+ * budget even when every GRI category has candidates.
+ *
+ * Reserve 20% of the request budget for retries / ungrounded solo checks.
+ */
+const CLASSIFICATION_REQUEST_RESERVE = Math.max(
+  2,
+  Math.ceil(GROQ_MAX_REQUESTS_PER_RUN * 0.2)
+);
+
+const CLASSIFICATION_REQUEST_BUDGET = Math.max(
+  1,
+  GROQ_MAX_REQUESTS_PER_RUN -
+    CLASSIFICATION_REQUEST_RESERVE
+);
+
+const SAFE_CANDIDATES_PER_CATEGORY = Math.max(
+  1,
+  Math.min(
+    MAX_CANDIDATES_PER_CATEGORY,
+    Math.floor(
+      (
+        CLASSIFICATION_REQUEST_BUDGET *
+        BATCH_SIZE
+      ) / ALLOWED_CATEGORIES.length
+    )
+  )
+);
 
 let groqRequestsThisRun = 0;
 let groqRemainingRequests = Infinity;
@@ -1535,7 +1567,11 @@ async function ingestNews() {
     );
   }
   console.log(
-    `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | minSeverity=${MIN_SEVERITY}`
+    `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | ` +
+      `batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | ` +
+      `safeCandidatesPerCategory=${SAFE_CANDIDATES_PER_CATEGORY} | ` +
+      `requestReserve=${CLASSIFICATION_REQUEST_RESERVE} | ` +
+      `minSeverity=${MIN_SEVERITY}`
   );
 
   let existingEvents = [];
@@ -1697,7 +1733,7 @@ async function ingestNews() {
 
     if (
       candidateArticles.length >
-      MAX_CANDIDATES_PER_CATEGORY
+      SAFE_CANDIDATES_PER_CATEGORY
     ) {
       const guardianCandidates =
         candidateArticles.filter(
@@ -1729,13 +1765,13 @@ async function ingestNews() {
         Math.max(
           1,
           Math.floor(
-            MAX_CANDIDATES_PER_CATEGORY / 3
+            SAFE_CANDIDATES_PER_CATEGORY / 3
           )
         )
       );
 
       const remainingLimit =
-        MAX_CANDIDATES_PER_CATEGORY - gdeltLimit;
+        SAFE_CANDIDATES_PER_CATEGORY - gdeltLimit;
 
       const primaryCandidates = [
         ...guardianCandidates,
@@ -1761,7 +1797,7 @@ async function ingestNews() {
         `  Balanced candidate cap: ` +
           `${primaryCandidates.length} primary + ` +
           `${Math.min(gdeltCandidates.length, gdeltLimit)} GDELT-discovered ` +
-          `= ${candidateArticles.length}/${MAX_CANDIDATES_PER_CATEGORY}.`
+          `= ${candidateArticles.length}/${SAFE_CANDIDATES_PER_CATEGORY}.`
       );
     }
 
@@ -1903,10 +1939,18 @@ async function ingestNews() {
       }
     }
 
-    console.log(`Inserted ${categoryInserted} events for ${category.name}.`);
+    console.log(
+      dryRun
+        ? `Would insert ${categoryInserted} event(s) for ${category.name}.`
+        : `Inserted ${categoryInserted} event(s) for ${category.name}.`
+    );
   }
 
-  console.log(`\nDone. Total unique inserted: ${totalInserted} events.`);
+  console.log(
+    dryRun
+      ? `\nDone. Total unique would-insert: ${totalInserted} event(s).`
+      : `\nDone. Total unique inserted: ${totalInserted} event(s).`
+  );
   console.log(`Rejected by gate: ${totalRejectedByGate}. Groq requests this run: ${groqRequestsThisRun}.`);
 }
 
