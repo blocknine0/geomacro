@@ -146,6 +146,68 @@ function safeCandidatesPerCategory() {
 }
 
 let groqRequestsThisRun = 0;
+
+/*
+ * Provider circuit breakers are per-process/per-ingestion-run.
+ *
+ * A provider that has demonstrated a terminal quota/billing/model failure
+ * is not called repeatedly for every remaining batch. This prevents a
+ * degraded upstream provider from turning one outage into dozens of wasted
+ * requests while still making the ingestion run fail closed.
+ */
+const classifierHealth = {
+  groqCircuitOpen: false,
+  groqCircuitReason: null,
+
+  cerebrasCircuitOpen: false,
+  cerebrasCircuitReason: null,
+
+  batchesAttempted: 0,
+  batchesCompleted: 0,
+  batchesFailed: 0,
+
+  articlesAttempted: 0,
+  articlesClassified: 0,
+
+  degraded: false,
+};
+
+function openClassifierCircuit(provider, reason) {
+  const message = String(
+    reason?.message || reason || 'unknown provider failure'
+  );
+
+  if (provider === 'groq') {
+    classifierHealth.groqCircuitOpen = true;
+    classifierHealth.groqCircuitReason = message;
+  }
+
+  if (provider === 'cerebras') {
+    classifierHealth.cerebrasCircuitOpen = true;
+    classifierHealth.cerebrasCircuitReason = message;
+  }
+}
+
+function classifierUnavailableError(message) {
+  const error = new Error(message);
+  error.isClassifierUnavailable = true;
+  return error;
+}
+
+function isTerminalCerebrasFailure(error) {
+  const message = String(error?.message || '');
+
+  return Boolean(
+    error?.isQuotaExhausted ||
+    error?.isBudgetExhausted ||
+    Number(error?.status) === 401 ||
+    Number(error?.status) === 402 ||
+    Number(error?.status) === 429 ||
+    /payment required|quota|billing|invalid api key|401|402|429/i.test(
+      message
+    )
+  );
+}
 let groqRemainingRequests = Infinity;
 let groqRemainingTokens = Infinity;
 let groqResetRequestsMs = null;
@@ -901,25 +963,92 @@ async function checkArticlesBatchRelevance(articles, category) {
   let classificationProvider = 'groq';
   let classificationModel = GROQ_MODEL;
   const classificationInputHash = sha256Text(prompt);
-  try {
-    const chatCompletion = await callGroqWithBackoff(async () => {
-      const request = groq.chat.completions.create(groqPayload);
-      if (typeof request.withResponse === 'function') {
-        return await request.withResponse();
+
+  if (!classifierHealth.groqCircuitOpen) {
+    try {
+      const chatCompletion = await callGroqWithBackoff(
+        async () => {
+          const request =
+            groq.chat.completions.create(groqPayload);
+
+          if (
+            typeof request.withResponse === 'function'
+          ) {
+            return await request.withResponse();
+          }
+
+          const data = await request;
+          return {
+            data,
+            response: null,
+          };
+        },
+        `batch-classify (${articles.length} articles)`
+      );
+
+      rawContent =
+        chatCompletion.choices[0].message.content;
+    } catch (e) {
+      if (
+        !e.isQuotaExhausted &&
+        !e.isBudgetExhausted &&
+        !e.isModelMissing
+      ) {
+        throw e;
       }
-      const data = await request;
-      return { data, response: null };
-    }, `batch-classify (${articles.length} articles)`);
-    rawContent = chatCompletion.choices[0].message.content;
-  } catch (e) {
-    if (!e.isQuotaExhausted && !e.isBudgetExhausted && !e.isModelMissing) throw e;
-    if (!process.env.CEREBRAS_API_KEY) throw e;
+
+      openClassifierCircuit('groq', e);
+
+      console.log(
+        `  ⚠️ Groq circuit opened for this run: ${e.message}`
+      );
+    }
+  }
+
+  if (!rawContent) {
+    if (
+      !process.env.CEREBRAS_API_KEY ||
+      classifierHealth.cerebrasCircuitOpen
+    ) {
+      classifierHealth.degraded = true;
+
+      throw classifierUnavailableError(
+        'No healthy classification provider remains for this ingestion run.'
+      );
+    }
+
     console.log(
-      `  ↪ Groq unavailable (${e.isModelMissing ? 'model missing' : 'quota'}) — falling back to Cerebras ${CEREBRAS_MODEL}.`
+      `  ↪ Using Cerebras fallback ${CEREBRAS_MODEL}.`
     );
-    rawContent = await callCerebras(process.env.CEREBRAS_API_KEY, prompt);
-    classificationProvider = 'cerebras';
-    classificationModel = CEREBRAS_MODEL;
+
+    try {
+      rawContent = await callCerebras(
+        process.env.CEREBRAS_API_KEY,
+        prompt
+      );
+
+      classificationProvider = 'cerebras';
+      classificationModel = CEREBRAS_MODEL;
+    } catch (e) {
+      if (isTerminalCerebrasFailure(e)) {
+        openClassifierCircuit(
+          'cerebras',
+          e
+        );
+
+        classifierHealth.degraded = true;
+
+        console.log(
+          `  ⚠️ Cerebras circuit opened for this run: ${e.message}`
+        );
+
+        throw classifierUnavailableError(
+          `All classification providers unavailable: ${e.message}`
+        );
+      }
+
+      throw e;
+    }
   }
 
   const attachProvenance = (assessment) => ({
@@ -1333,10 +1462,38 @@ async function fetchGdeltArticles(query) {
     }
 
     /*
-     * GDELT explicitly requires at least five seconds between DOC API
-     * requests. Never reuse the generic 2s/4s retry schedule here.
+     * GDELT may throttle substantially longer than its nominal minimum
+     * request interval. Respect Retry-After when supplied; otherwise use
+     * exponential cooldown so repeated 429s do not hammer the endpoint.
      */
-    await delay(GDELT_MIN_INTERVAL_MS);
+    const retryAfterHeader =
+      response.headers?.get?.('retry-after');
+
+    const retryAfterMs =
+      retryAfterHeader &&
+      Number.isFinite(
+        Number(retryAfterHeader)
+      )
+        ? Number(retryAfterHeader) * 1000
+        : null;
+
+    const exponentialCooldown =
+      Math.min(
+        Math.max(
+          GDELT_MIN_INTERVAL_MS * 2,
+          12000
+        ) *
+          2 ** attempt,
+        60000
+      );
+
+    const cooldown =
+      retryAfterMs &&
+      retryAfterMs > 0
+        ? retryAfterMs
+        : exponentialCooldown;
+
+    await delay(cooldown);
   }
 
   if (!response?.ok) {
@@ -2449,6 +2606,37 @@ async function ingestNews() {
       2
     )
   );
+
+  console.log('');
+  console.log(
+    '=== CLASSIFIER HEALTH ==='
+  );
+  console.log(
+    JSON.stringify(
+      classifierHealth,
+      null,
+      2
+    )
+  );
+
+  const classifierCompletionRatio =
+    classifierHealth.articlesAttempted > 0
+      ? classifierHealth.articlesClassified /
+        classifierHealth.articlesAttempted
+      : 1;
+
+  if (
+    classifierHealth.degraded ||
+    classifierCompletionRatio < 1
+  ) {
+    console.error(
+      `❌ CLASSIFIER_DEGRADED: classified ` +
+        `${classifierHealth.articlesClassified}/` +
+        `${classifierHealth.articlesAttempted} attempted article(s).`
+    );
+
+    process.exitCode = 1;
+  }
 }
 
 ingestNews().catch(console.error);
