@@ -42,4 +42,10 @@ jobs:
 
           GDELT_MIN_INTERVAL_MS: "6000"
 
+          RELIEFWEB_ENABLED: "false"
+          RELIEFWEB_APP_NAME: ${{ vars.RELIEFWEB_APP_NAME }}
+
+          GDACS_ENABLED: "true"
+          GDACS_MAX_CANDIDATES: "3"
+
         run: node scripts/ingest-news.js --dry-run

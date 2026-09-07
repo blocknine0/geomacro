@@ -35,6 +35,29 @@ const GDELT_MIN_INTERVAL_MS = Number(
   process.env.GDELT_MIN_INTERVAL_MS || 5500
 );
 
+const RELIEFWEB_APP_NAME =
+  String(
+    process.env.RELIEFWEB_APP_NAME || ''
+  ).trim();
+
+const RELIEFWEB_ENABLED =
+  String(
+    process.env.RELIEFWEB_ENABLED || ''
+  ).toLowerCase() === 'true' &&
+  Boolean(RELIEFWEB_APP_NAME);
+
+const GDACS_ENABLED =
+  String(
+    process.env.GDACS_ENABLED || 'true'
+  ).toLowerCase() !== 'false';
+
+const GDACS_MAX_CANDIDATES = Math.max(
+  1,
+  Number(
+    process.env.GDACS_MAX_CANDIDATES || 3
+  )
+);
+
 let gdeltLastRequestAt = 0;
 
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
@@ -190,6 +213,11 @@ const GUARDIAN_SECTIONS = {
   rare_earth: 'business|environment|world',
   crypto: 'technology|business',
 };
+
+const RELIEFWEB_DISCOVERY_QUERIES = Object.freeze({
+  geopolitics:
+    'conflict war attack ceasefire displacement sanctions military humanitarian crisis',
+});
 
 const GDELT_DISCOVERY_QUERIES = Object.freeze({
   geopolitics:
@@ -991,6 +1019,220 @@ function normalizeGdeltSeenDate(value) {
     : null;
 }
 
+async function fetchGdacsArticles() {
+  const endpoint =
+    'https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH';
+
+  const response = await fetch(endpoint, {
+    headers: {
+      'user-agent':
+        'Geomacro/1.0 (+https://geomacro.live)',
+      accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `GDACS HTTP ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+
+  const features = Array.isArray(data.features)
+    ? data.features
+    : [];
+
+  return features
+    .map((feature) => {
+      const properties =
+        feature?.properties || {};
+
+      const alertLevel =
+        String(
+          properties.alertlevel || ''
+        )
+          .trim()
+          .toLowerCase();
+
+      const isCurrent =
+        String(
+          properties.iscurrent || ''
+        ).toLowerCase() === 'true' ||
+        properties.iscurrent === true;
+
+      const reportUrl =
+        String(
+          properties.url?.report || ''
+        ).trim();
+
+      const eventName =
+        String(
+          properties.name ||
+          properties.description ||
+          properties.eventname ||
+          ''
+        ).trim();
+
+      const country =
+        String(
+          properties.country || ''
+        ).trim();
+
+      const eventType =
+        String(
+          properties.eventtype || ''
+        ).trim();
+
+      const title = stripHtml(
+        [
+          eventName,
+          country
+            ? `in ${country}`
+            : '',
+          alertLevel
+            ? `(${alertLevel.toUpperCase()} GDACS alert)`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+      );
+
+      const publishedAt =
+        properties.datemodified ||
+        properties.todate ||
+        properties.fromdate ||
+        new Date().toISOString();
+
+      return {
+        title,
+        description: stripHtml(
+          properties.description ||
+          properties.htmldescription ||
+          ''
+        ),
+        url: reportUrl,
+        publishedAt,
+        source: 'GDACS',
+        sourceDomain: 'gdacs.org',
+        discoveryProvider: 'gdacs',
+
+        gdacsAlertLevel: alertLevel,
+        gdacsEventType: eventType,
+        gdacsIsCurrent: isCurrent,
+      };
+    })
+    .filter(
+      (article) =>
+        article.title &&
+        article.url &&
+        article.gdacsIsCurrent &&
+        ['orange', 'red'].includes(
+          article.gdacsAlertLevel
+        ) &&
+        isFresh(article.publishedAt)
+    )
+    .sort(
+      (a, b) =>
+        Date.parse(b.publishedAt || 0) -
+        Date.parse(a.publishedAt || 0)
+    )
+    .slice(0, GDACS_MAX_CANDIDATES);
+}
+
+async function fetchReliefWebArticles(query) {
+  const endpoint =
+    `https://api.reliefweb.int/v2/reports?appname=${encodeURIComponent(
+      RELIEFWEB_APP_NAME
+    )}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      limit: 25,
+      preset: 'latest',
+      query: {
+        value: query,
+        fields: ['title'],
+        operator: 'OR',
+      },
+      fields: {
+        include: [
+          'title',
+          'url',
+          'origin',
+          'date.created',
+          'source.name',
+          'source.shortname',
+          'source.homepage',
+          'primary_country.name',
+        ],
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `ReliefWeb HTTP ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+
+  return (data.data || [])
+    .map((item) => {
+      const fields = item.fields || {};
+      const sources = Array.isArray(fields.source)
+        ? fields.source
+        : [];
+
+      const primarySource = sources[0] || {};
+
+      /*
+       * ReliefWeb is discovery infrastructure.
+       * Prefer the information partner's original report URL.
+       * If origin is absent, use that partner's homepage.
+       * Never count reliefweb.int itself as the evidence publisher.
+       */
+      const originalUrl =
+        String(fields.origin || '').trim() ||
+        String(primarySource.homepage || '').trim();
+
+      const sourceDomain =
+        extractDomain(originalUrl);
+
+      const sourceName =
+        String(
+          primarySource.shortname ||
+          primarySource.name ||
+          ''
+        ).trim() ||
+        normalizePublisherName(sourceDomain);
+
+      return {
+        title: stripHtml(fields.title || ''),
+        description: '',
+        url: originalUrl,
+        publishedAt:
+          fields.date?.created ||
+          new Date().toISOString(),
+        source: sourceName,
+        sourceDomain,
+        discoveryProvider: 'reliefweb',
+      };
+    })
+    .filter(
+      (article) =>
+        article.title &&
+        article.url &&
+        article.sourceDomain &&
+        article.sourceDomain !== 'reliefweb.int'
+    );
+}
+
 async function waitForGdeltRateLimit() {
   const elapsed = Date.now() - gdeltLastRequestAt;
   const waitMs = GDELT_MIN_INTERVAL_MS - elapsed;
@@ -1659,6 +1901,131 @@ async function ingestNews() {
       if (queryIndex < category.queries.length - 1) {
         await delay(QUERY_DELAY_MS);
       }
+    }
+
+    /*
+     * Bounded GDACS disaster-intelligence pass.
+     *
+     * Only current Orange/Red alerts are admitted. GDACS is an
+     * authoritative disaster-alert source, not a general news publisher.
+     * The canonical classifier still decides whether an alert belongs in
+     * the current GRI category contract.
+     */
+    if (
+      category.name === 'geopolitics' &&
+      GDACS_ENABLED
+    ) {
+      try {
+        const gdacsArticles =
+          await fetchGdacsArticles();
+
+        let gdacsAcceptedCandidates = 0;
+
+        for (const article of gdacsArticles) {
+          const normTitle =
+            normalizeTitle(article.title);
+
+          if (
+            existingUrls.has(article.url) ||
+            existingTitles.has(normTitle) ||
+            seenInCurrentRun.has(normTitle) ||
+            seenCandidatesThisCategory.has(normTitle)
+          ) {
+            continue;
+          }
+
+          seenCandidatesThisCategory.add(
+            normTitle
+          );
+
+          candidateArticles.push(article);
+          gdacsAcceptedCandidates++;
+        }
+
+        console.log(
+          `  GDACS discovery: ${gdacsArticles.length} high-severity current event(s), ` +
+            `${gdacsAcceptedCandidates} new candidate(s) admitted.`
+        );
+      } catch (e) {
+        console.log(
+          `  GDACS discovery failed (${e.message}).`
+        );
+      }
+    }
+
+    /*
+     * Bounded ReliefWeb discovery pass.
+     *
+     * ReliefWeb is used only for humanitarian/conflict corroboration.
+     * Original information-partner provenance remains the downstream
+     * source identity.
+     */
+    const reliefWebQuery =
+      RELIEFWEB_DISCOVERY_QUERIES[category.name];
+
+    if (
+      reliefWebQuery &&
+      RELIEFWEB_ENABLED
+    ) {
+      try {
+        const reliefWebArticles =
+          await fetchReliefWebArticles(
+            reliefWebQuery
+          );
+
+        let reliefWebAcceptedCandidates = 0;
+
+        for (const article of reliefWebArticles) {
+          const normTitle =
+            normalizeTitle(article.title);
+
+          if (
+            !article.title ||
+            !isFresh(article.publishedAt)
+          ) {
+            continue;
+          }
+
+          if (
+            DENY.test(
+              `${article.title} ${article.description}`
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            existingUrls.has(article.url) ||
+            existingTitles.has(normTitle) ||
+            seenInCurrentRun.has(normTitle) ||
+            seenCandidatesThisCategory.has(normTitle)
+          ) {
+            continue;
+          }
+
+          seenCandidatesThisCategory.add(normTitle);
+          candidateArticles.push(article);
+          reliefWebAcceptedCandidates++;
+        }
+
+        console.log(
+          `  ReliefWeb discovery: ${reliefWebArticles.length} fetched, ` +
+            `${reliefWebAcceptedCandidates} new candidate(s) admitted for ${category.name}.`
+        );
+      } catch (e) {
+        console.log(
+          `  ReliefWeb discovery failed for ${category.name} (${e.message}).`
+        );
+      }
+    }
+
+    if (
+      reliefWebQuery &&
+      !RELIEFWEB_ENABLED
+    ) {
+      console.log(
+        '  ReliefWeb discovery skipped: approved RELIEFWEB_APP_NAME not configured/enabled.'
+      );
     }
 
     /*
