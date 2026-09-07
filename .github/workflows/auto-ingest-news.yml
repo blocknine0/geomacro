@@ -25,9 +25,14 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           # Optional repository variables; empty/unset values fall back to script defaults.
           GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
+          MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
+          CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
           GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
           GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}

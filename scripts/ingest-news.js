@@ -18,8 +18,14 @@ const groq = new Groq({
   fetch: fetch
 });
 
-if (!process.env.CEREBRAS_API_KEY) {
-  console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq quota/model fails mid-run.");
+if (
+  !process.env.GEMINI_API_KEY &&
+  !process.env.MISTRAL_API_KEY &&
+  !process.env.CEREBRAS_API_KEY
+) {
+  console.warn(
+    "⚠️ No secondary classifier key configured — Groq is the only active classifier provider."
+  );
 }
 
 const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 2);
@@ -103,8 +109,52 @@ function providerTelemetry(
     amount;
 }
 
-const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
-const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
+const GROQ_MODEL =
+  process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+
+const GEMINI_MODEL =
+  process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+
+const MISTRAL_MODEL =
+  process.env.MISTRAL_MODEL || 'mistral-small-2603';
+
+const CEREBRAS_MODEL =
+  process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
+
+const SUPPORTED_CLASSIFIER_PROVIDERS =
+  new Set([
+    'groq',
+    'gemini',
+    'mistral',
+    'cerebras',
+  ]);
+
+const CLASSIFIER_PROVIDER_ORDER =
+  [
+    ...new Set(
+      String(
+        process.env.CLASSIFIER_PROVIDER_ORDER ||
+          'groq,gemini,mistral,cerebras'
+      )
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+
+if (CLASSIFIER_PROVIDER_ORDER.length === 0) {
+  throw new Error(
+    'CLASSIFIER_PROVIDER_ORDER must contain at least one provider.'
+  );
+}
+
+for (const provider of CLASSIFIER_PROVIDER_ORDER) {
+  if (!SUPPORTED_CLASSIFIER_PROVIDERS.has(provider)) {
+    throw new Error(
+      `Unsupported classifier provider in CLASSIFIER_PROVIDER_ORDER: ${provider}`
+    );
+  }
+}
 const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
 const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 2);
 const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 1500);
@@ -159,8 +209,21 @@ const classifierHealth = {
   groqCircuitOpen: false,
   groqCircuitReason: null,
 
+  geminiCircuitOpen: false,
+  geminiCircuitReason: null,
+
+  mistralCircuitOpen: false,
+  mistralCircuitReason: null,
+
   cerebrasCircuitOpen: false,
   cerebrasCircuitReason: null,
+
+  providerStats: {
+    groq: { attempted: 0, succeeded: 0, failed: 0 },
+    gemini: { attempted: 0, succeeded: 0, failed: 0 },
+    mistral: { attempted: 0, succeeded: 0, failed: 0 },
+    cerebras: { attempted: 0, succeeded: 0, failed: 0 },
+  },
 
   batchesAttempted: 0,
   batchesCompleted: 0,
@@ -177,15 +240,73 @@ function openClassifierCircuit(provider, reason) {
     reason?.message || reason || 'unknown provider failure'
   );
 
-  if (provider === 'groq') {
-    classifierHealth.groqCircuitOpen = true;
-    classifierHealth.groqCircuitReason = message;
-  }
+  const fields = {
+    groq: ['groqCircuitOpen', 'groqCircuitReason'],
+    gemini: ['geminiCircuitOpen', 'geminiCircuitReason'],
+    mistral: ['mistralCircuitOpen', 'mistralCircuitReason'],
+    cerebras: ['cerebrasCircuitOpen', 'cerebrasCircuitReason'],
+  }[provider];
 
-  if (provider === 'cerebras') {
-    classifierHealth.cerebrasCircuitOpen = true;
-    classifierHealth.cerebrasCircuitReason = message;
+  if (!fields) return;
+
+  classifierHealth[fields[0]] = true;
+  classifierHealth[fields[1]] = message;
+}
+
+function classifierCircuitOpen(provider) {
+  return Boolean(
+    classifierHealth[`${provider}CircuitOpen`]
+  );
+}
+
+function classifierApiKey(provider) {
+  switch (provider) {
+    case 'groq':
+      return process.env.GROQ_API_KEY;
+    case 'gemini':
+      return process.env.GEMINI_API_KEY;
+    case 'mistral':
+      return process.env.MISTRAL_API_KEY;
+    case 'cerebras':
+      return process.env.CEREBRAS_API_KEY;
+    default:
+      return null;
   }
+}
+
+function classifierModel(provider) {
+  switch (provider) {
+    case 'groq':
+      return GROQ_MODEL;
+    case 'gemini':
+      return GEMINI_MODEL;
+    case 'mistral':
+      return MISTRAL_MODEL;
+    case 'cerebras':
+      return CEREBRAS_MODEL;
+    default:
+      return 'unknown';
+  }
+}
+
+function classifierProviderTelemetry(
+  provider,
+  field
+) {
+  const stats =
+    classifierHealth.providerStats[provider];
+
+  if (!stats || !(field in stats)) return;
+
+  stats[field]++;
+}
+
+function hasHealthyClassifierProvider() {
+  return CLASSIFIER_PROVIDER_ORDER.some(
+    (provider) =>
+      Boolean(classifierApiKey(provider)) &&
+      !classifierCircuitOpen(provider)
+  );
 }
 
 function classifierUnavailableError(message) {
@@ -194,16 +315,48 @@ function classifierUnavailableError(message) {
   return error;
 }
 
-function isTerminalCerebrasFailure(error) {
-  const message = String(error?.message || '');
+function isFallbackEligibleClassifierFailure(error) {
+  const status = Number(
+    error?.status ??
+      error?.response?.status
+  );
 
-  return Boolean(
+  const code = String(
+    error?.code || ''
+  );
+
+  const message = String(
+    error?.message ||
+      error?.error?.message ||
+      ''
+  );
+
+  if (
     error?.isQuotaExhausted ||
     error?.isBudgetExhausted ||
-    Number(error?.status) === 401 ||
-    Number(error?.status) === 402 ||
-    Number(error?.status) === 429 ||
-    /payment required|quota|billing|invalid api key|401|402|429/i.test(
+    error?.isModelMissing ||
+    error?.isMalformedResponse
+  ) {
+    return true;
+  }
+
+  if (
+    [401, 402, 403, 404, 408, 429].includes(status)
+  ) {
+    return true;
+  }
+
+  if (
+    Number.isFinite(status) &&
+    status >= 500 &&
+    status <= 599
+  ) {
+    return true;
+  }
+
+  return (
+    /ETIMEDOUT|ECONNRESET|ENOTFOUND|EAI_AGAIN/i.test(code) ||
+    /timeout|timed out|network|socket|fetch failed|connection reset/i.test(
       message
     )
   );
@@ -768,6 +921,193 @@ async function callCerebras(cerebrasApiKey, prompt) {
   return data.choices[0].message.content;
 }
 
+
+async function callOpenAICompatibleClassifier(
+  provider,
+  apiKey,
+  model,
+  prompt
+) {
+  const endpoint =
+    provider === 'gemini'
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+      : 'https://api.mistral.ai/v1/chat/completions';
+
+  const body = {
+    model,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    max_tokens: 900,
+    response_format: {
+      type: 'json_object',
+    },
+  };
+
+  if (provider === 'gemini') {
+    body.reasoning_effort = 'low';
+  }
+
+  if (provider === 'mistral') {
+    body.temperature = 0.2;
+  }
+
+  const response = await fetch(
+    endpoint,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const rawBody =
+    await response.text();
+
+  if (!response.ok) {
+    const error = new Error(
+      `${provider} HTTP ${response.status}: ` +
+        rawBody.slice(0, 500)
+    );
+
+    error.status = response.status;
+
+    if (response.status === 429) {
+      error.isQuotaExhausted = true;
+    }
+
+    if (response.status === 402) {
+      error.isBudgetExhausted = true;
+    }
+
+    if (response.status === 404) {
+      error.isModelMissing = true;
+    }
+
+    throw error;
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(rawBody);
+  } catch {
+    throw new Error(
+      `${provider} returned a non-JSON API envelope.`
+    );
+  }
+
+  const content =
+    data?.choices?.[0]?.message?.content;
+
+  if (
+    typeof content === 'string' &&
+    content.trim()
+  ) {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    const joined = content
+      .map((part) => {
+        if (typeof part === 'string') {
+          return part;
+        }
+
+        return (
+          part?.text ||
+          part?.content ||
+          ''
+        );
+      })
+      .join('')
+      .trim();
+
+    if (joined) {
+      return joined;
+    }
+  }
+
+  throw new Error(
+    `${provider} returned no usable completion content.`
+  );
+}
+
+
+async function callClassifierProviderRaw(
+  provider,
+  prompt,
+  groqPayload,
+  articleCount
+) {
+  if (provider === 'groq') {
+    const chatCompletion =
+      await callGroqWithQuotaWait(
+        async () => {
+          const request =
+            groq.chat.completions.create(
+              groqPayload
+            );
+
+          if (
+            typeof request.withResponse ===
+            'function'
+          ) {
+            return await request.withResponse();
+          }
+
+          const data = await request;
+
+          return {
+            data,
+            response: null,
+          };
+        },
+        `batch-classify (${articleCount} articles)`
+      );
+
+    return (
+      chatCompletion?.choices?.[0]
+        ?.message?.content
+    );
+  }
+
+  if (provider === 'gemini') {
+    return callOpenAICompatibleClassifier(
+      'gemini',
+      process.env.GEMINI_API_KEY,
+      GEMINI_MODEL,
+      prompt
+    );
+  }
+
+  if (provider === 'mistral') {
+    return callOpenAICompatibleClassifier(
+      'mistral',
+      process.env.MISTRAL_API_KEY,
+      MISTRAL_MODEL,
+      prompt
+    );
+  }
+
+  if (provider === 'cerebras') {
+    return callCerebras(
+      process.env.CEREBRAS_API_KEY,
+      prompt
+    );
+  }
+
+  throw new Error(
+    `Unsupported classifier provider: ${provider}`
+  );
+}
+
 function buildClassifyPrompt(articles, category) {
   const articlesBlock = articles
     .map(
@@ -984,127 +1324,184 @@ async function callGroqWithQuotaWait(
   }
 }
 
-async function checkArticlesBatchRelevance(articles, category) {
-  const prompt = buildClassifyPrompt(articles, category);
+async function checkArticlesBatchRelevance(
+  articles,
+  category
+) {
+  const prompt =
+    buildClassifyPrompt(
+      articles,
+      category
+    );
+
   const groqPayload = {
-    messages: [{ role: 'user', content: prompt }],
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
     model: GROQ_MODEL,
     temperature: 0.2,
     max_tokens: 900,
-    response_format: { type: 'json_object' },
+    response_format: {
+      type: 'json_object',
+    },
   };
-  if (GROQ_MODEL.includes('gpt-oss') || GROQ_MODEL.includes('o1') || GROQ_MODEL.includes('o3')) {
+
+  if (
+    GROQ_MODEL.includes('gpt-oss') ||
+    GROQ_MODEL.includes('o1') ||
+    GROQ_MODEL.includes('o3')
+  ) {
     groqPayload.reasoning_effort = 'low';
   }
 
-  let rawContent;
-  let classificationProvider = 'groq';
-  let classificationModel = GROQ_MODEL;
-  const classificationInputHash = sha256Text(prompt);
+  const classificationInputHash =
+    sha256Text(prompt);
 
-  if (!classifierHealth.groqCircuitOpen) {
-    try {
-      const chatCompletion = await callGroqWithQuotaWait(
-        async () => {
-          const request =
-            groq.chat.completions.create(groqPayload);
+  let providerWasAttempted = false;
 
-          if (
-            typeof request.withResponse === 'function'
-          ) {
-            return await request.withResponse();
-          }
+  for (
+    const provider of
+      CLASSIFIER_PROVIDER_ORDER
+  ) {
+    const apiKey =
+      classifierApiKey(provider);
 
-          const data = await request;
-          return {
-            data,
-            response: null,
-          };
-        },
-        `batch-classify (${articles.length} articles)`
-      );
-
-      rawContent =
-        chatCompletion.choices[0].message.content;
-    } catch (e) {
-      if (
-        !e.isQuotaExhausted &&
-        !e.isBudgetExhausted &&
-        !e.isModelMissing
-      ) {
-        throw e;
-      }
-
-      openClassifierCircuit('groq', e);
-
-      console.log(
-        `  ⚠️ Groq circuit opened for this run: ${e.message}`
-      );
-    }
-  }
-
-  if (!rawContent) {
     if (
-      !process.env.CEREBRAS_API_KEY ||
-      classifierHealth.cerebrasCircuitOpen
+      !apiKey ||
+      classifierCircuitOpen(provider)
     ) {
-      classifierHealth.degraded = true;
+      continue;
+    }
 
-      throw classifierUnavailableError(
-        'No healthy classification provider remains for this ingestion run.'
+    providerWasAttempted = true;
+
+    const model =
+      classifierModel(provider);
+
+    if (
+      provider !==
+      CLASSIFIER_PROVIDER_ORDER[0]
+    ) {
+      console.log(
+        `  ↪ Using ${provider} fallback ${model}.`
       );
     }
 
-    console.log(
-      `  ↪ Using Cerebras fallback ${CEREBRAS_MODEL}.`
-    );
-
-    try {
-      rawContent = await callCerebras(
-        process.env.CEREBRAS_API_KEY,
-        prompt
+    /*
+     * One controlled retry is allowed only for malformed model output.
+     * Transport/quota/auth/model failures move immediately to the next
+     * configured provider after opening that provider's circuit.
+     */
+    for (
+      let outputAttempt = 0;
+      outputAttempt < 2;
+      outputAttempt++
+    ) {
+      classifierProviderTelemetry(
+        provider,
+        'attempted'
       );
 
-      classificationProvider = 'cerebras';
-      classificationModel = CEREBRAS_MODEL;
-    } catch (e) {
-      if (isTerminalCerebrasFailure(e)) {
-        openClassifierCircuit(
-          'cerebras',
-          e
+      try {
+        const rawContent =
+          await callClassifierProviderRaw(
+            provider,
+            prompt,
+            groqPayload,
+            articles.length
+          );
+
+        let parsed;
+
+        try {
+          parsed =
+            parseAssessments(
+              rawContent,
+              articles
+            );
+        } catch (parseError) {
+          const malformed =
+            new Error(
+              `${provider} returned malformed classification JSON: ` +
+                parseError.message
+            );
+
+          malformed.isMalformedResponse =
+            true;
+
+          throw malformed;
+        }
+
+        classifierProviderTelemetry(
+          provider,
+          'succeeded'
         );
 
-        classifierHealth.degraded = true;
-
-        console.log(
-          `  ⚠️ Cerebras circuit opened for this run: ${e.message}`
+        return parsed.map(
+          (assessment) => ({
+            ...assessment,
+            classificationProvider:
+              provider,
+            classificationModel:
+              model,
+            classificationVersion:
+              CLASSIFICATION_VERSION,
+            classificationPromptVersion:
+              CLASSIFICATION_PROMPT_VERSION,
+            classificationInputHash,
+          })
+        );
+      } catch (error) {
+        classifierProviderTelemetry(
+          provider,
+          'failed'
         );
 
-        throw classifierUnavailableError(
-          `All classification providers unavailable: ${e.message}`
-        );
+        if (
+          error?.isMalformedResponse &&
+          outputAttempt === 0
+        ) {
+          console.log(
+            `  ↻ ${provider} malformed-output retry.`
+          );
+
+          continue;
+        }
+
+        if (
+          isFallbackEligibleClassifierFailure(
+            error
+          )
+        ) {
+          openClassifierCircuit(
+            provider,
+            error
+          );
+
+          console.log(
+            `  ⚠️ ${provider} circuit opened for this run: ${error.message}`
+          );
+
+          break;
+        }
+
+        throw error;
       }
-
-      throw e;
     }
   }
 
-  const attachProvenance = (assessment) => ({
-    ...assessment,
-    classificationProvider,
-    classificationModel,
-    classificationVersion: CLASSIFICATION_VERSION,
-    classificationPromptVersion: CLASSIFICATION_PROMPT_VERSION,
-    classificationInputHash,
-  });
+  classifierHealth.degraded = true;
 
-  try {
-    return parseAssessments(rawContent, articles).map(attachProvenance);
-  } catch (parseErr) {
-    console.error(`  ❌ Failed to parse batch response: ${parseErr.message}`);
-    return articles.map((a) => attachProvenance(emptyAssessment(a)));
-  }
+  throw classifierUnavailableError(
+    providerWasAttempted
+      ? 'No healthy classification provider remains for this ingestion run.'
+      : 'No configured classification provider has an API key.'
+  );
 }
+
 
 async function assessWithRetry(articles, category) {
   /*
@@ -2122,7 +2519,9 @@ async function ingestNews() {
     );
   }
   console.log(
-    `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | ` +
+    `Classifier chain=${CLASSIFIER_PROVIDER_ORDER.join(' -> ')} | ` +
+      `Groq=${GROQ_MODEL} | Gemini=${GEMINI_MODEL} | ` +
+      `Mistral=${MISTRAL_MODEL} | Cerebras=${CEREBRAS_MODEL} | ` +
       `batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | ` +
       `safeCandidatesPerCategory=${safeCandidatesPerCategory()} | ` +
       `requestReserve=${CLASSIFICATION_REQUEST_RESERVE} | ` +
@@ -2558,8 +2957,7 @@ async function ingestNews() {
         assessments = await assessWithRetry(batch, category.name);
       } catch (batchErr) {
         const noHealthyClassifier =
-          classifierHealth.groqCircuitOpen &&
-          classifierHealth.cerebrasCircuitOpen;
+          !hasHealthyClassifierProvider();
 
         if (
           batchErr.isBudgetExhausted ||
