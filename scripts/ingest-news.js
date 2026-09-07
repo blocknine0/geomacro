@@ -219,14 +219,14 @@ const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
 
 // Immutable scoring provenance written with every newly classified event.
 // Bump these whenever the classification contract or prompt semantics change.
-const CLASSIFICATION_VERSION = 'event-severity-v1.0.4';
-const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.4';
+const CLASSIFICATION_VERSION = 'event-severity-v1.0.5';
+const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.5';
 
 function sha256Text(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex');
 }
 
-const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth', 'crypto'];
+const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth'];
 
 const GEOPOLITICS_ANCHOR =
   /\b(war|warfare|armed conflict|armed clashes?|military|military attacks?|airstrikes?|missiles?|troops?|ceasefires?|nato|blockade|coup|junta|invasion|militias?|drone strikes?|drone attacks?|artillery|offensive|frontline|occupation|mobilization|nuclear weapons?|nuclear strike|nuclear facility|nuclear test|nuclear doctrine|hezbollah|houthi|irgc|idf|pla|battlefield|conscription|border clash|naval clash|cross-border fire|exchange(?:s|d)? fire|retaliat(?:e|es|ed|ion|ory)|territorial dispute|west bank|gaza|taiwan strait|south china sea|red sea shipping|strait of hormuz|sanctions?|embargo)\b/i;
@@ -237,6 +237,7 @@ const MACRO_ANCHOR =
 const RARE_EARTH_ANCHOR =
   /\b(rare[- ]earths?|ree\b|rare[- ]earth elements?|critical minerals?|strategic minerals?|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnets?|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka)\b/i;
 
+// Exclusion-only detector. Crypto is not an active Geomacro intelligence domain.
 const CRYPTO_ANCHOR =
   /\b(bitcoin|btc\b|ethereum|ether\b|eth\b|cryptocurrenc(?:y|ies)|crypto\b|blockchain|stablecoins?|usdc\b|usdt\b|tether|depeg|defi\b|decentralized finance|digital assets?|tokeni[sz](?:e|ed|ation)|solana|xrp\b|ripple|binance|coinbase|kraken|mica\b|cbdc\b|tornado cash|crypto mixers?|on[- ]chain|onchain|web3)\b/i;
 
@@ -244,7 +245,6 @@ const ALLOW = {
   geopolitics: GEOPOLITICS_ANCHOR,
   macro: MACRO_ANCHOR,
   rare_earth: RARE_EARTH_ANCHOR,
-  crypto: CRYPTO_ANCHOR,
 };
 
 const DENY =
@@ -260,8 +260,6 @@ const CATEGORY_DENY = {
   macro:
     /\b(nft\b|memecoin|crypto winter|households could save|bank holiday getaway)\b/i,
 
-  crypto:
-    /\b(price prediction|how to buy|best wallet|gold etf|bond etf|equity etf|stock etf)\b/i,
 };
 
 
@@ -276,37 +274,27 @@ const CATEGORY_DENY = {
  * Cross-domain ambiguity fails closed instead of choosing a category.
  */
 function categoryConflict(blob, category) {
-  const hasMacro = MACRO_ANCHOR.test(blob);
   const hasRareEarth = RARE_EARTH_ANCHOR.test(blob);
   const hasCrypto = CRYPTO_ANCHOR.test(blob);
 
   switch (category) {
     case 'geopolitics':
-      // Critical-mineral and crypto-native stories belong to their own
-      // dedicated GRI domains, never geopolitics.
+      // Critical-mineral evidence belongs to rare_earth.
+      // Crypto-native material is excluded from the intelligence taxonomy.
       if (hasRareEarth) return 'rare_earth';
-      if (hasCrypto) return 'crypto';
+      if (hasCrypto) return 'excluded_crypto';
       return null;
 
     case 'macro':
-      // This permanently prevents crypto-native evidence being admitted
-      // into macro, even when the story also mentions markets/regulators.
+      // Crypto-native market/regulatory material must never leak into macro.
       if (hasRareEarth) return 'rare_earth';
-      if (hasCrypto) return 'crypto';
+      if (hasCrypto) return 'excluded_crypto';
       return null;
 
     case 'rare_earth':
-      // Explicit critical-mineral evidence owns this domain.
-      // Crypto-native evidence makes the story ambiguous and is rejected.
-      if (hasCrypto) return 'crypto';
-      return null;
-
-    case 'crypto':
-      // Crypto must remain crypto-native. A story whose evidence is also
-      // explicitly macro-native is treated as cross-domain ambiguous rather
-      // than being silently assigned based on ingestion order.
-      if (hasRareEarth) return 'rare_earth';
-      if (hasMacro) return 'macro';
+      // Explicit mineral evidence owns this domain; crypto-native material
+      // remains outside the active Geomacro taxonomy.
+      if (hasCrypto) return 'excluded_crypto';
       return null;
 
     default:
@@ -318,7 +306,6 @@ const GUARDIAN_SECTIONS = {
   geopolitics: 'world|politics',
   macro: 'business|world|money',
   rare_earth: 'business|environment|world',
-  crypto: 'technology|business',
 };
 
 const RELIEFWEB_DISCOVERY_QUERIES = Object.freeze({
@@ -333,8 +320,6 @@ const GDELT_DISCOVERY_QUERIES = Object.freeze({
     '("interest rate" OR inflation OR recession OR "sovereign debt" OR tariff OR "bond yield")',
   rare_earth:
     '("rare earth" OR "critical minerals" OR lithium OR cobalt OR nickel OR gallium OR germanium)',
-  crypto:
-    '(bitcoin OR ethereum OR stablecoin OR cryptocurrency OR "digital asset")',
 });
 
 const CATEGORIES = [
@@ -466,32 +451,7 @@ const CATEGORIES = [
       'deep sea nodules Clarion-Clipperton ISA mining permit',
     ],
   },
-  {
-    name: 'crypto',
-    queries: [
-      'SEC crypto enforcement lawsuit exchange',
-      'CFTC crypto derivatives enforcement',
-      'US stablecoin legislation Congress Circle Tether',
-      'MiCA stablecoin license ESMA enforcement',
-      'UK FCA crypto stablecoin regulation',
 
-      'China digital yuan crypto ban enforcement',
-      'Hong Kong Singapore crypto license MAS SFC',
-      'Japan FSA South Korea FSC crypto exchange rule',
-      'India crypto tax CBDC digital rupee policy',
-      'UAE VARA crypto license enforcement',
-      'Nigeria Brazil crypto remittance regulation central bank',
-
-      'USDC USDT stablecoin depeg reserve attestation',
-      'Tether Circle reserve audit regulator',
-      'bitcoin ethereum spot ETF approval denial flow',
-      'crypto exchange insolvency withdrawal halt bankruptcy',
-      'cross-chain bridge exploit hack funds drained',
-      'OFAC sanctioned mixer Tornado Cash protocol',
-      'major chain outage validator halt finality',
-      'CBDC pilot launch ban private stablecoin',
-    ],
-  },
 ];
 
 function normalizeTitle(title) {
@@ -871,23 +831,14 @@ Generic mining, refining, export controls, sanctions, defence supply chains,
 AI, semiconductors and datacentres WITHOUT an explicit mineral-domain anchor
 are NOT rare_earth.
 
-CRYPTO:
-Only material crypto-native risk.
+EXCLUDED CRYPTO-NATIVE MATERIAL:
+Crypto is not an active Geomacro intelligence category.
 
-It requires explicit crypto-native evidence such as Bitcoin, Ethereum,
-cryptocurrency, blockchain, stablecoins, USDC, USDT, DeFi, digital assets,
-Coinbase, Binance, Kraken, MiCA, CBDC, Tornado Cash or on-chain systems.
+If Bitcoin, Ethereum, cryptocurrency, blockchain, stablecoins, USDC, USDT,
+DeFi, crypto exchanges, token markets, CBDCs or other explicitly crypto-native
+material is central to the article, return relevant=false, category=none.
 
-SEC, CFTC, OFAC, ETF, hack, exploit, reserve, regulation or enforcement
-BY THEMSELVES do NOT make an article crypto.
-
-Gold ETFs, stock ETFs, generic cyber incidents, bank reserves and ordinary
-corporate SEC matters are NOT crypto.
-
-MACRO <-> CRYPTO RULE:
-If the same article is materially both macro-native and crypto-native,
-do not guess which domain owns it.
-Return relevant=false, category=none.
+Do not reassign crypto-native material into geopolitics, macro or rare_earth.
 Geomacro rejects cross-domain ambiguity instead of allowing category drift.
 
 GENERAL REJECTION RULES

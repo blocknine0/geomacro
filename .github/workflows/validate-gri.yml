@@ -46,4 +46,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/validate-gri.js
+        run: node scripts/validate-gri-v12.js

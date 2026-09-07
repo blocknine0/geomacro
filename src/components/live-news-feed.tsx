@@ -15,7 +15,6 @@ const CATEGORY_LABELS: Record<FeedCategory, string> = {
   geopolitics: "Geopolitics",
   "rare-earth": "Rare Earth",
   macro: "Macro",
-  crypto: "Crypto",
 };
 
 // DB stores `rare_earth`; UI uses `rare-earth`.

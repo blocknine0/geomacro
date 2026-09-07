@@ -136,18 +136,6 @@ const CATEGORY_HINTS: Record<string, string[]> = {
     "bank",
     "growth",
   ],
-  crypto: [
-    "crypto",
-    "bitcoin",
-    "btc",
-    "ethereum",
-    "eth",
-    "stablecoin",
-    "token",
-    "liquidity",
-    "defi",
-    "exchange",
-  ],
 };
 
 export type EventRow = {
