@@ -6,6 +6,32 @@ const dir = path.resolve('supabase/migrations');
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
 const errors = [];
 
+const migrationVersions = new Map();
+
+for (const file of files) {
+  const match = file.match(/^(\d+)_/);
+
+  if (!match) {
+    errors.push(
+      `${file}: migration filename must start with a numeric version prefix`
+    );
+    continue;
+  }
+
+  const version = match[1];
+  const existing = migrationVersions.get(version) ?? [];
+  existing.push(file);
+  migrationVersions.set(version, existing);
+}
+
+for (const [version, versionFiles] of migrationVersions.entries()) {
+  if (versionFiles.length > 1) {
+    errors.push(
+      `duplicate migration version ${version}: ${versionFiles.join(', ')}`
+    );
+  }
+}
+
 function stripSqlComments(sql) {
   return sql
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
