@@ -2743,4 +2743,7 @@ async function ingestNews() {
   }
 }
 
-ingestNews().catch(console.error);
+ingestNews().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
