@@ -21,7 +21,8 @@
     "db:safety": "node scripts/db/check-migration-safety.mjs",
     "db:target": "node scripts/db/assert-authoritative-supabase.mjs",
     "db:verify-core": "node scripts/db/verify-core-schema.mjs",
-    "test:app": "vitest run src"
+    "test:app": "vitest run src",
+    "gri:replay-published": "node scripts/replay-published-gri-v11.js"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.50",
