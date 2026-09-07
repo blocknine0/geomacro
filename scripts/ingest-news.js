@@ -1069,14 +1069,53 @@ async function checkArticlesBatchRelevance(articles, category) {
 }
 
 async function assessWithRetry(articles, category) {
-  const assessments = await checkArticlesBatchRelevance(articles, category);
-  for (let i = 0; i < articles.length; i++) {
-    if (!assessments[i]?.ungrounded) continue;
-    console.log(`  ↻ Solo retry: "${articles[i].title}"`);
-    const solo = await checkArticlesBatchRelevance([articles[i]], category);
-    assessments[i] = solo[0];
+  /*
+   * One call to this function is one logical classification batch.
+   * Provider retries/fallbacks and solo grounding retries are internal
+   * implementation details and must not double-count the logical batch.
+   */
+  classifierHealth.batchesAttempted++;
+  classifierHealth.articlesAttempted += articles.length;
+
+  try {
+    const assessments =
+      await checkArticlesBatchRelevance(
+        articles,
+        category
+      );
+
+    for (
+      let i = 0;
+      i < articles.length;
+      i++
+    ) {
+      if (!assessments[i]?.ungrounded) {
+        continue;
+      }
+
+      console.log(
+        `  ↻ Solo retry: "${articles[i].title}"`
+      );
+
+      const solo =
+        await checkArticlesBatchRelevance(
+          [articles[i]],
+          category
+        );
+
+      assessments[i] = solo[0];
+    }
+
+    classifierHealth.batchesCompleted++;
+    classifierHealth.articlesClassified +=
+      assessments.length;
+
+    return assessments;
+  } catch (error) {
+    classifierHealth.batchesFailed++;
+    classifierHealth.degraded = true;
+    throw error;
   }
-  return assessments;
 }
 
 async function fetchWithBackoff(fn, label) {
@@ -2076,7 +2115,13 @@ async function ingestNews() {
   let stopRun = false;
 
   for (const category of CATEGORIES) {
-    if (stopRun) break;
+    if (stopRun) {
+      console.log(
+        'Skipping remaining categories because no healthy classification path remains.'
+      );
+      break;
+    }
+
     console.log(`\nProcessing category: ${category.name}`);
     let categoryInserted = 0;
 
@@ -2465,13 +2510,25 @@ async function ingestNews() {
       try {
         assessments = await assessWithRetry(batch, category.name);
       } catch (batchErr) {
-        if (batchErr.isBudgetExhausted || batchErr.isQuotaExhausted) {
+        const noHealthyClassifier =
+          classifierHealth.groqCircuitOpen &&
+          classifierHealth.cerebrasCircuitOpen;
+
+        if (
+          batchErr.isBudgetExhausted ||
+          batchErr.isQuotaExhausted ||
+          batchErr.isClassifierUnavailable ||
+          noHealthyClassifier
+        ) {
           console.error(
-            `  🛑 ${batchErr.message} — stopping this run early (remaining articles will be picked up next run).`
+            `  🛑 ${batchErr.message} — stopping classification for this run. Remaining articles will be picked up next run.`
           );
+
+          classifierHealth.degraded = true;
           stopRun = true;
           break;
         }
+
         console.error(
           `  ❌ Batch ${batchIndex + 1}/${batches.length} classification failed for ${category.name} (${batchErr.message}) — skipping this batch, continuing with the rest of the run.`
         );
