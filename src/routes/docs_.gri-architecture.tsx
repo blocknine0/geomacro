@@ -44,9 +44,9 @@ function GriArchitecturePage() {
         ← Documentation
       </a>
       <div className="mt-5 flex flex-wrap gap-2">
-        <Badge>GRI gri-v1.1.0</Badge>
-        <Badge>Proof gri-proof-v1.1.0</Badge>
-        <Badge>Classifier event-severity-v1.0.4</Badge>
+        <Badge>GRI gri-v1.2.0</Badge>
+        <Badge>Proof gri-proof-v1.2.0</Badge>
+        <Badge>Classifier event-severity-v1.0.5</Badge>
         <Badge>Story correlation story-correlation-v1.0.0</Badge>
       </div>
       <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
@@ -203,7 +203,6 @@ function GriArchitecturePage() {
           <Metric label="Geo contribution" value="20.771103" />
           <Metric label="Macro contribution" value="15.000000" />
           <Metric label="Rare earth contribution" value="13.750000" />
-          <Metric label="Crypto contribution" value="10.000000" />
         </div>
         <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-5">
           <p className="font-mono text-xs text-muted-foreground">

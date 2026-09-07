@@ -665,9 +665,9 @@ categoryScore = weightedMean(severity, final effectiveEventWeight)
 GRI_raw = Σ(normalized active-category weight × categoryScore)
 GRI_display = round(GRI_raw)
 
-Methodology = gri-v1.1.0
-Proof = gri-proof-v1.1.0
-Classifier = event-severity-v1.0.4
+Methodology = gri-v1.2.0
+Proof = gri-proof-v1.2.0
+Classifier = event-severity-v1.0.5
 Story correlation = story-correlation-v1.0.0
 Canonical observation time = created_at
 Canonical lookback = 72h

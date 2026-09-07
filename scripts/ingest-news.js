@@ -18,8 +18,14 @@ const groq = new Groq({
   fetch: fetch
 });
 
-if (!process.env.CEREBRAS_API_KEY) {
-  console.warn("⚠️ CEREBRAS_API_KEY missing — no fallback if Groq quota/model fails mid-run.");
+if (
+  !process.env.GEMINI_API_KEY &&
+  !process.env.MISTRAL_API_KEY &&
+  !process.env.CEREBRAS_API_KEY
+) {
+  console.warn(
+    "⚠️ No secondary classifier key configured — Groq is the only active classifier provider."
+  );
 }
 
 const BATCH_SIZE = Number(process.env.GROQ_BATCH_SIZE || 2);
@@ -31,15 +37,347 @@ const MAX_BACKOFF_MS = 60 * 1000;
 const QUERY_DELAY_MS = Number(process.env.NEWS_QUERY_DELAY_MS || 800);
 const NEWS_MAX_RETRIES = Number(process.env.NEWS_MAX_RETRIES || 3);
 
-const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
-const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
+const GDELT_MIN_INTERVAL_MS = Number(
+  process.env.GDELT_MIN_INTERVAL_MS || 5500
+);
+
+const RELIEFWEB_APP_NAME =
+  String(
+    process.env.RELIEFWEB_APP_NAME || ''
+  ).trim();
+
+const RELIEFWEB_ENABLED =
+  String(
+    process.env.RELIEFWEB_ENABLED || ''
+  ).toLowerCase() === 'true' &&
+  Boolean(RELIEFWEB_APP_NAME);
+
+const GDACS_ENABLED =
+  String(
+    process.env.GDACS_ENABLED || 'true'
+  ).toLowerCase() !== 'false';
+
+const GDACS_MAX_CANDIDATES = Math.max(
+  1,
+  Number(
+    process.env.GDACS_MAX_CANDIDATES || 3
+  )
+);
+
+let gdeltLastRequestAt = 0;
+
+const providerHealth = {
+  guardian: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+  gdelt: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+  gdacs: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+  reliefweb: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+};
+
+function providerTelemetry(
+  provider,
+  field,
+  amount = 1
+) {
+  if (!providerHealth[provider]) return;
+
+  providerHealth[provider][field] =
+    (providerHealth[provider][field] || 0) +
+    amount;
+}
+
+const GROQ_MODEL =
+  process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+
+const GEMINI_MODEL =
+  process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+
+const GEMINI_MODEL_ORDER = [
+  ...new Set(
+    String(
+      process.env.GEMINI_MODEL_ORDER ||
+        [
+          GEMINI_MODEL,
+          'gemini-3.7-flash',
+          'gemini-3.6-flash',
+          'gemini-3.5-flash-lite',
+        ].join(',')
+    )
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  ),
+];
+
+const MISTRAL_MODEL =
+  process.env.MISTRAL_MODEL || 'mistral-small-2603';
+
+const CEREBRAS_MODEL =
+  process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
+
+const SUPPORTED_CLASSIFIER_PROVIDERS =
+  new Set([
+    'groq',
+    'gemini',
+    'mistral',
+    'cerebras',
+  ]);
+
+const CLASSIFIER_PROVIDER_ORDER =
+  [
+    ...new Set(
+      String(
+        process.env.CLASSIFIER_PROVIDER_ORDER ||
+          'groq,gemini,mistral,cerebras'
+      )
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+
+if (CLASSIFIER_PROVIDER_ORDER.length === 0) {
+  throw new Error(
+    'CLASSIFIER_PROVIDER_ORDER must contain at least one provider.'
+  );
+}
+
+for (const provider of CLASSIFIER_PROVIDER_ORDER) {
+  if (!SUPPORTED_CLASSIFIER_PROVIDERS.has(provider)) {
+    throw new Error(
+      `Unsupported classifier provider in CLASSIFIER_PROVIDER_ORDER: ${provider}`
+    );
+  }
+}
 const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
 const GROQ_MIN_REMAINING_REQUESTS = Number(process.env.GROQ_MIN_REMAINING_REQUESTS || 2);
 const GROQ_MIN_REMAINING_TOKENS = Number(process.env.GROQ_MIN_REMAINING_TOKENS || 1500);
 const GROQ_MAX_WAIT_MS = Number(process.env.GROQ_MAX_WAIT_MS || 90 * 1000);
-const MAX_CANDIDATES_PER_CATEGORY = Number(process.env.MAX_CANDIDATES_PER_CATEGORY || 18);
+const MAX_CANDIDATES_PER_CATEGORY = Number(
+  process.env.MAX_CANDIDATES_PER_CATEGORY || 18
+);
+
+/*
+ * Classification capacity must fit inside the configured Groq request
+ * budget even when every GRI category has candidates.
+ *
+ * Reserve 20% of the request budget for retries / ungrounded solo checks.
+ */
+const CLASSIFICATION_REQUEST_RESERVE = Math.max(
+  2,
+  Math.ceil(GROQ_MAX_REQUESTS_PER_RUN * 0.2)
+);
+
+const CLASSIFICATION_REQUEST_BUDGET = Math.max(
+  1,
+  GROQ_MAX_REQUESTS_PER_RUN -
+    CLASSIFICATION_REQUEST_RESERVE
+);
+
+function safeCandidatesPerCategory() {
+  return Math.max(
+    1,
+    Math.min(
+      MAX_CANDIDATES_PER_CATEGORY,
+      Math.floor(
+        (
+          CLASSIFICATION_REQUEST_BUDGET *
+          BATCH_SIZE
+        ) / ALLOWED_CATEGORIES.length
+      )
+    )
+  );
+}
 
 let groqRequestsThisRun = 0;
+
+/*
+ * Provider circuit breakers are per-process/per-ingestion-run.
+ *
+ * A provider that has demonstrated a terminal quota/billing/model failure
+ * is not called repeatedly for every remaining batch. This prevents a
+ * degraded upstream provider from turning one outage into dozens of wasted
+ * requests while still making the ingestion run fail closed.
+ */
+const classifierHealth = {
+  groqCircuitOpen: false,
+  groqCircuitReason: null,
+
+  geminiCircuitOpen: false,
+  geminiCircuitReason: null,
+
+  mistralCircuitOpen: false,
+  mistralCircuitReason: null,
+
+  cerebrasCircuitOpen: false,
+  cerebrasCircuitReason: null,
+
+  providerStats: {
+    groq: { attempted: 0, succeeded: 0, failed: 0 },
+    gemini: { attempted: 0, succeeded: 0, failed: 0 },
+    mistral: { attempted: 0, succeeded: 0, failed: 0 },
+    cerebras: { attempted: 0, succeeded: 0, failed: 0 },
+  },
+
+  batchesAttempted: 0,
+  batchesCompleted: 0,
+  batchesFailed: 0,
+
+  articlesAttempted: 0,
+  articlesClassified: 0,
+
+  degraded: false,
+};
+
+function openClassifierCircuit(provider, reason) {
+  const message = String(
+    reason?.message || reason || 'unknown provider failure'
+  );
+
+  const fields = {
+    groq: ['groqCircuitOpen', 'groqCircuitReason'],
+    gemini: ['geminiCircuitOpen', 'geminiCircuitReason'],
+    mistral: ['mistralCircuitOpen', 'mistralCircuitReason'],
+    cerebras: ['cerebrasCircuitOpen', 'cerebrasCircuitReason'],
+  }[provider];
+
+  if (!fields) return;
+
+  classifierHealth[fields[0]] = true;
+  classifierHealth[fields[1]] = message;
+}
+
+function classifierCircuitOpen(provider) {
+  return Boolean(
+    classifierHealth[`${provider}CircuitOpen`]
+  );
+}
+
+function classifierApiKey(provider) {
+  switch (provider) {
+    case 'groq':
+      return process.env.GROQ_API_KEY;
+    case 'gemini':
+      return process.env.GEMINI_API_KEY;
+    case 'mistral':
+      return process.env.MISTRAL_API_KEY;
+    case 'cerebras':
+      return process.env.CEREBRAS_API_KEY;
+    default:
+      return null;
+  }
+}
+
+function classifierModel(provider) {
+  switch (provider) {
+    case 'groq':
+      return GROQ_MODEL;
+    case 'gemini':
+      return GEMINI_MODEL;
+    case 'mistral':
+      return MISTRAL_MODEL;
+    case 'cerebras':
+      return CEREBRAS_MODEL;
+    default:
+      return 'unknown';
+  }
+}
+
+function classifierProviderTelemetry(
+  provider,
+  field
+) {
+  const stats =
+    classifierHealth.providerStats[provider];
+
+  if (!stats || !(field in stats)) return;
+
+  stats[field]++;
+}
+
+function hasHealthyClassifierProvider() {
+  return CLASSIFIER_PROVIDER_ORDER.some(
+    (provider) =>
+      Boolean(classifierApiKey(provider)) &&
+      !classifierCircuitOpen(provider)
+  );
+}
+
+function classifierUnavailableError(message) {
+  const error = new Error(message);
+  error.isClassifierUnavailable = true;
+  return error;
+}
+
+function isFallbackEligibleClassifierFailure(error) {
+  const status = Number(
+    error?.status ??
+      error?.response?.status
+  );
+
+  const code = String(
+    error?.code || ''
+  );
+
+  const message = String(
+    error?.message ||
+      error?.error?.message ||
+      ''
+  );
+
+  if (
+    error?.isQuotaExhausted ||
+    error?.isBudgetExhausted ||
+    error?.isModelMissing ||
+    error?.isMalformedResponse
+  ) {
+    return true;
+  }
+
+  if (
+    [401, 402, 403, 404, 408, 429].includes(status)
+  ) {
+    return true;
+  }
+
+  if (
+    Number.isFinite(status) &&
+    status >= 500 &&
+    status <= 599
+  ) {
+    return true;
+  }
+
+  return (
+    /ETIMEDOUT|ECONNRESET|ENOTFOUND|EAI_AGAIN/i.test(code) ||
+    /timeout|timed out|network|socket|fetch failed|connection reset/i.test(
+      message
+    )
+  );
+}
 let groqRemainingRequests = Infinity;
 let groqRemainingTokens = Infinity;
 let groqResetRequestsMs = null;
@@ -51,24 +389,25 @@ const MIN_SEVERITY = Number(process.env.MIN_SEVERITY || 30);
 
 // Immutable scoring provenance written with every newly classified event.
 // Bump these whenever the classification contract or prompt semantics change.
-const CLASSIFICATION_VERSION = 'event-severity-v1.0.4';
-const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.4';
+const CLASSIFICATION_VERSION = 'event-severity-v1.0.5';
+const CLASSIFICATION_PROMPT_VERSION = 'risk-desk-filter-v1.0.5';
 
 function sha256Text(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex');
 }
 
-const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth', 'crypto'];
+const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth'];
 
 const GEOPOLITICS_ANCHOR =
-  /\b(war|warfare|armed conflict|armed clashes?|military|military attacks?|airstrikes?|missiles?|troops?|ceasefires?|nato|blockade|coup|junta|invasion|militias?|drone strikes?|drone attacks?|artillery|offensive|frontline|occupation|mobilization|nuclear weapons?|nuclear strike|nuclear facility|nuclear test|nuclear doctrine|hezbollah|houthi|irgc|idf|pla|battlefield|conscription|border clash|naval clash|cross-border fire|exchange(?:s|d)? fire|retaliat(?:e|es|ed|ion|ory)|territorial dispute|west bank|gaza|taiwan strait|south china sea|red sea shipping|strait of hormuz|sanctions?|embargo)\b/i;
+  /\b(war|warfare|armed conflict|armed clashes?|military|military attacks?|airstrikes?|missiles?|troops?|ceasefires?|nato|blockade|coup|junta|invasion|militias?|drone strikes?|drone attacks?|artillery|ground fighting|offensive|frontline|occupation|mobilization|nuclear weapons?|nuclear strike|nuclear facility|nuclear test|nuclear doctrine|hezbollah|houthi|irgc|idf|pla|battlefield|conscription|border clash|naval clash|cross-border fire|exchange(?:s|d)? fire|retaliat(?:e|es|ed|ion|ory)|territorial dispute|west bank|gaza|taiwan strait|south china sea|red sea shipping|strait of hormuz|sanctions?|embargo)\b/i;
 
 const MACRO_ANCHOR =
-  /\b(federal reserve|the fed|fed\b|central banks?|bank of england|boe\b|ecb\b|boj\b|rbi\b|pboc\b|imf\b|world bank|inflation|cpi\b|pce\b|interest rates?|rate cuts?|rate hikes?|monetary policy|sovereign debt|sovereign default|bond yields?|treasur(?:y|ies)|yield curve|recession|stagflation|economic downturn|economic slowdown|economic contraction|gdp\b|unemployment|payrolls?|house prices?|home prices?|property prices?|shop prices?|retail prices?|consumer prices?|price rises?|cost of living|financial hit|economic impact|economic cost|household costs?|household finances?|currency devaluation|devaluation|fiscal deficit|trade deficit|stimulus|liquidity|credit crunch|bank failure|opec\b|brent\b|wti\b|oil prices?|wholesale gas|gas stor(?:age|es)|lng\b|energy shock|energy crisis|tariffs?)\b/i;
+  /\b(federal reserve|the fed|fed\b|central banks?|bank of england|boe\b|ecb\b|boj\b|rbi\b|pboc\b|imf\b|world bank|inflation|cpi\b|pce\b|interest rates?|rate cuts?|rate hikes?|monetary policy|sovereign debt|sovereign default|bond markets?|bond yields?|treasur(?:y|ies)|yield curve|recession|stagflation|economic downturn|economic slowdown|economic contraction|gdp\b|unemployment|payrolls?|house prices?|home prices?|property prices?|shop prices?|retail prices?|consumer prices?|price rises?|cost of living|financial hit|economic impact|economic cost|household costs?|household finances?|currency devaluation|devaluation|fiscal deficit|trade deficit|stimulus|liquidity|credit crunch|bank failure|opec\b|brent\b|wti\b|oil prices?|wholesale gas|gas stor(?:age|es)|lng\b|energy shock|energy crisis|tariffs?)\b/i;
 
 const RARE_EARTH_ANCHOR =
   /\b(rare[- ]earths?|ree\b|rare[- ]earth elements?|critical minerals?|strategic minerals?|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnets?|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka)\b/i;
 
+// Exclusion-only detector. Crypto is not an active Geomacro intelligence domain.
 const CRYPTO_ANCHOR =
   /\b(bitcoin|btc\b|ethereum|ether\b|eth\b|cryptocurrenc(?:y|ies)|crypto\b|blockchain|stablecoins?|usdc\b|usdt\b|tether|depeg|defi\b|decentralized finance|digital assets?|tokeni[sz](?:e|ed|ation)|solana|xrp\b|ripple|binance|coinbase|kraken|mica\b|cbdc\b|tornado cash|crypto mixers?|on[- ]chain|onchain|web3)\b/i;
 
@@ -76,7 +415,6 @@ const ALLOW = {
   geopolitics: GEOPOLITICS_ANCHOR,
   macro: MACRO_ANCHOR,
   rare_earth: RARE_EARTH_ANCHOR,
-  crypto: CRYPTO_ANCHOR,
 };
 
 const DENY =
@@ -92,8 +430,6 @@ const CATEGORY_DENY = {
   macro:
     /\b(nft\b|memecoin|crypto winter|households could save|bank holiday getaway)\b/i,
 
-  crypto:
-    /\b(price prediction|how to buy|best wallet|gold etf|bond etf|equity etf|stock etf)\b/i,
 };
 
 
@@ -108,37 +444,27 @@ const CATEGORY_DENY = {
  * Cross-domain ambiguity fails closed instead of choosing a category.
  */
 function categoryConflict(blob, category) {
-  const hasMacro = MACRO_ANCHOR.test(blob);
   const hasRareEarth = RARE_EARTH_ANCHOR.test(blob);
   const hasCrypto = CRYPTO_ANCHOR.test(blob);
 
   switch (category) {
     case 'geopolitics':
-      // Critical-mineral and crypto-native stories belong to their own
-      // dedicated GRI domains, never geopolitics.
+      // Critical-mineral evidence belongs to rare_earth.
+      // Crypto-native material is excluded from the intelligence taxonomy.
       if (hasRareEarth) return 'rare_earth';
-      if (hasCrypto) return 'crypto';
+      if (hasCrypto) return 'excluded_crypto';
       return null;
 
     case 'macro':
-      // This permanently prevents crypto-native evidence being admitted
-      // into macro, even when the story also mentions markets/regulators.
+      // Crypto-native market/regulatory material must never leak into macro.
       if (hasRareEarth) return 'rare_earth';
-      if (hasCrypto) return 'crypto';
+      if (hasCrypto) return 'excluded_crypto';
       return null;
 
     case 'rare_earth':
-      // Explicit critical-mineral evidence owns this domain.
-      // Crypto-native evidence makes the story ambiguous and is rejected.
-      if (hasCrypto) return 'crypto';
-      return null;
-
-    case 'crypto':
-      // Crypto must remain crypto-native. A story whose evidence is also
-      // explicitly macro-native is treated as cross-domain ambiguous rather
-      // than being silently assigned based on ingestion order.
-      if (hasRareEarth) return 'rare_earth';
-      if (hasMacro) return 'macro';
+      // Explicit mineral evidence owns this domain; crypto-native material
+      // remains outside the active Geomacro taxonomy.
+      if (hasCrypto) return 'excluded_crypto';
       return null;
 
     default:
@@ -150,8 +476,126 @@ const GUARDIAN_SECTIONS = {
   geopolitics: 'world|politics',
   macro: 'business|world|money',
   rare_earth: 'business|environment|world',
-  crypto: 'technology|business',
 };
+
+const GUARDIAN_QUERY_BUDGET_PER_CATEGORY = (() => {
+  const parsed = Number(
+    process.env.GUARDIAN_QUERY_BUDGET_PER_CATEGORY ||
+      10
+  );
+
+  return (
+    Number.isFinite(parsed) &&
+    parsed > 0
+  )
+    ? Math.floor(parsed)
+    : 10;
+})();
+
+const GUARDIAN_QUERY_ROTATION_HOURS = (() => {
+  const parsed = Number(
+    process.env.GUARDIAN_QUERY_ROTATION_HOURS ||
+      2
+  );
+
+  return (
+    Number.isFinite(parsed) &&
+    parsed > 0
+  )
+    ? Math.floor(parsed)
+    : 2;
+})();
+
+/*
+ * Freeze the rotation clock once per ingestion process.
+ *
+ * Scheduled reruns within the same rotation window therefore select the
+ * same Guardian query chunk instead of skipping coverage due to retries.
+ */
+const GUARDIAN_ROTATION_RUN_MS =
+  Date.now();
+
+function guardianQueryPlan(queries) {
+  const allQueries =
+    Array.isArray(queries)
+      ? queries
+      : [];
+
+  if (!allQueries.length) {
+    return {
+      queries: [],
+      totalQueries: 0,
+      budget: 0,
+      totalChunks: 0,
+      chunkIndex: 0,
+      startIndex: 0,
+      endIndex: 0,
+    };
+  }
+
+  const budget = Math.min(
+    GUARDIAN_QUERY_BUDGET_PER_CATEGORY,
+    allQueries.length
+  );
+
+  const totalChunks =
+    Math.ceil(
+      allQueries.length / budget
+    );
+
+  const guardianRotationSlot =
+    Math.floor(
+      GUARDIAN_ROTATION_RUN_MS /
+        (
+          GUARDIAN_QUERY_ROTATION_HOURS *
+          60 *
+          60 *
+          1000
+        )
+    );
+
+  const chunkIndex =
+    guardianRotationSlot %
+    totalChunks;
+
+  const startIndex =
+    chunkIndex * budget;
+
+  const endIndex =
+    Math.min(
+      startIndex + budget,
+      allQueries.length
+    );
+
+  return {
+    queries:
+      allQueries.slice(
+        startIndex,
+        endIndex
+      ),
+    totalQueries:
+      allQueries.length,
+    budget,
+    totalChunks,
+    chunkIndex,
+    startIndex,
+    endIndex,
+  };
+}
+
+const RELIEFWEB_DISCOVERY_QUERIES = Object.freeze({
+  geopolitics:
+    'conflict war attack ceasefire displacement sanctions military humanitarian crisis',
+});
+
+const GDELT_DISCOVERY_QUERIES = Object.freeze({
+  geopolitics:
+    '(war OR military OR missile OR sanctions OR ceasefire OR coup OR blockade)',
+  macro:
+    '("interest rate" OR inflation OR recession OR "sovereign debt" OR tariff OR "bond yield")',
+  rare_earth:
+    '("rare earth" OR "critical minerals" OR lithium OR cobalt OR nickel OR gallium OR germanium)',
+});
 
 const CATEGORIES = [
   {
@@ -282,32 +726,7 @@ const CATEGORIES = [
       'deep sea nodules Clarion-Clipperton ISA mining permit',
     ],
   },
-  {
-    name: 'crypto',
-    queries: [
-      'SEC crypto enforcement lawsuit exchange',
-      'CFTC crypto derivatives enforcement',
-      'US stablecoin legislation Congress Circle Tether',
-      'MiCA stablecoin license ESMA enforcement',
-      'UK FCA crypto stablecoin regulation',
 
-      'China digital yuan crypto ban enforcement',
-      'Hong Kong Singapore crypto license MAS SFC',
-      'Japan FSA South Korea FSC crypto exchange rule',
-      'India crypto tax CBDC digital rupee policy',
-      'UAE VARA crypto license enforcement',
-      'Nigeria Brazil crypto remittance regulation central bank',
-
-      'USDC USDT stablecoin depeg reserve attestation',
-      'Tether Circle reserve audit regulator',
-      'bitcoin ethereum spot ETF approval denial flow',
-      'crypto exchange insolvency withdrawal halt bankruptcy',
-      'cross-chain bridge exploit hack funds drained',
-      'OFAC sanctioned mixer Tornado Cash protocol',
-      'major chain outage validator halt finality',
-      'CBDC pilot launch ban private stablecoin',
-    ],
-  },
 ];
 
 function normalizeTitle(title) {
@@ -624,6 +1043,247 @@ async function callCerebras(cerebrasApiKey, prompt) {
   return data.choices[0].message.content;
 }
 
+
+async function callOpenAICompatibleClassifier(
+  provider,
+  apiKey,
+  model,
+  prompt
+) {
+  const endpoint =
+    provider === 'gemini'
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+      : 'https://api.mistral.ai/v1/chat/completions';
+
+  const body = {
+    model,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    max_tokens: 900,
+    response_format: {
+      type: 'json_object',
+    },
+  };
+
+  if (provider === 'gemini') {
+    body.reasoning_effort = 'low';
+  }
+
+  if (provider === 'mistral') {
+    body.temperature = 0.2;
+  }
+
+  const response = await fetch(
+    endpoint,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const rawBody =
+    await response.text();
+
+  if (!response.ok) {
+    const error = new Error(
+      `${provider} HTTP ${response.status}: ` +
+        rawBody.slice(0, 500)
+    );
+
+    error.status = response.status;
+
+    if (response.status === 429) {
+      error.isQuotaExhausted = true;
+    }
+
+    if (response.status === 402) {
+      error.isBudgetExhausted = true;
+    }
+
+    if (response.status === 404) {
+      error.isModelMissing = true;
+    }
+
+    throw error;
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(rawBody);
+  } catch {
+    throw new Error(
+      `${provider} returned a non-JSON API envelope.`
+    );
+  }
+
+  const content =
+    data?.choices?.[0]?.message?.content;
+
+  if (
+    typeof content === 'string' &&
+    content.trim()
+  ) {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    const joined = content
+      .map((part) => {
+        if (typeof part === 'string') {
+          return part;
+        }
+
+        return (
+          part?.text ||
+          part?.content ||
+          ''
+        );
+      })
+      .join('')
+      .trim();
+
+    if (joined) {
+      return joined;
+    }
+  }
+
+  throw new Error(
+    `${provider} returned no usable completion content.`
+  );
+}
+
+
+function isGeminiModelFallbackFailure(error) {
+  const status = Number(
+    error?.status ??
+      error?.response?.status
+  );
+
+  return Boolean(
+    error?.isQuotaExhausted ||
+    error?.isModelMissing ||
+    [408, 429, 500, 502, 503, 504].includes(status)
+  );
+}
+
+async function callGeminiWithModelFallback(
+  apiKey,
+  prompt
+) {
+  let lastError = null;
+
+  for (const model of GEMINI_MODEL_ORDER) {
+    try {
+      const rawContent =
+        await callOpenAICompatibleClassifier(
+          'gemini',
+          apiKey,
+          model,
+          prompt
+        );
+
+      return {
+        rawContent,
+        model,
+      };
+    } catch (error) {
+      lastError = error;
+
+      if (!isGeminiModelFallbackFailure(error)) {
+        throw error;
+      }
+
+      console.log(
+        `  ↪ Gemini model ${model} unavailable; trying next Gemini model.`
+      );
+    }
+  }
+
+  throw (
+    lastError ||
+    new Error(
+      'No configured Gemini model is currently available.'
+    )
+  );
+}
+
+async function callClassifierProviderRaw(
+  provider,
+  prompt,
+  groqPayload,
+  articleCount
+) {
+  if (provider === 'groq') {
+    const chatCompletion =
+      await callGroqWithQuotaWait(
+        async () => {
+          const request =
+            groq.chat.completions.create(
+              groqPayload
+            );
+
+          if (
+            typeof request.withResponse ===
+            'function'
+          ) {
+            return await request.withResponse();
+          }
+
+          const data = await request;
+
+          return {
+            data,
+            response: null,
+          };
+        },
+        `batch-classify (${articleCount} articles)`
+      );
+
+    return (
+      chatCompletion?.choices?.[0]
+        ?.message?.content
+    );
+  }
+
+  if (provider === 'gemini') {
+    return callOpenAICompatibleClassifier(
+      'gemini',
+      process.env.GEMINI_API_KEY,
+      GEMINI_MODEL,
+      prompt
+    );
+  }
+
+  if (provider === 'mistral') {
+    return callOpenAICompatibleClassifier(
+      'mistral',
+      process.env.MISTRAL_API_KEY,
+      MISTRAL_MODEL,
+      prompt
+    );
+  }
+
+  if (provider === 'cerebras') {
+    return callCerebras(
+      process.env.CEREBRAS_API_KEY,
+      prompt
+    );
+  }
+
+  throw new Error(
+    `Unsupported classifier provider: ${provider}`
+  );
+}
+
 function buildClassifyPrompt(articles, category) {
   const articlesBlock = articles
     .map(
@@ -687,23 +1347,14 @@ Generic mining, refining, export controls, sanctions, defence supply chains,
 AI, semiconductors and datacentres WITHOUT an explicit mineral-domain anchor
 are NOT rare_earth.
 
-CRYPTO:
-Only material crypto-native risk.
+EXCLUDED CRYPTO-NATIVE MATERIAL:
+Crypto is not an active Geomacro intelligence category.
 
-It requires explicit crypto-native evidence such as Bitcoin, Ethereum,
-cryptocurrency, blockchain, stablecoins, USDC, USDT, DeFi, digital assets,
-Coinbase, Binance, Kraken, MiCA, CBDC, Tornado Cash or on-chain systems.
+If Bitcoin, Ethereum, cryptocurrency, blockchain, stablecoins, USDC, USDT,
+DeFi, crypto exchanges, token markets, CBDCs or other explicitly crypto-native
+material is central to the article, return relevant=false, category=none.
 
-SEC, CFTC, OFAC, ETF, hack, exploit, reserve, regulation or enforcement
-BY THEMSELVES do NOT make an article crypto.
-
-Gold ETFs, stock ETFs, generic cyber incidents, bank reserves and ordinary
-corporate SEC matters are NOT crypto.
-
-MACRO <-> CRYPTO RULE:
-If the same article is materially both macro-native and crypto-native,
-do not guess which domain owns it.
-Return relevant=false, category=none.
+Do not reassign crypto-native material into geopolitics, macro or rare_earth.
 Geomacro rejects cross-domain ambiguity instead of allowing category drift.
 
 GENERAL REJECTION RULES
@@ -762,70 +1413,335 @@ function parseAssessments(rawContent, articles) {
   });
 }
 
-async function checkArticlesBatchRelevance(articles, category) {
-  const prompt = buildClassifyPrompt(articles, category);
-  const groqPayload = {
-    messages: [{ role: 'user', content: prompt }],
-    model: GROQ_MODEL,
-    temperature: 0.2,
-    max_tokens: 900,
-    response_format: { type: 'json_object' },
-  };
-  if (GROQ_MODEL.includes('gpt-oss') || GROQ_MODEL.includes('o1') || GROQ_MODEL.includes('o3')) {
-    groqPayload.reasoning_effort = 'low';
+function parseGroqRetryMs(error) {
+  const message = String(
+    error?.message || ''
+  );
+
+  /*
+   * Groq quota errors currently expose human-readable reset durations,
+   * for example:
+   *   "Please try again in 9m23.328s"
+   *   "Please try again in 42.5s"
+   *
+   * Parse only bounded durations. Unknown formats fail closed.
+   */
+  const match = message.match(
+    /please try again in\s+(?:(\d+)m)?\s*([\d.]+)s/i
+  );
+
+  if (!match) {
+    return null;
   }
 
-  let rawContent;
-  let classificationProvider = 'groq';
-  let classificationModel = GROQ_MODEL;
-  const classificationInputHash = sha256Text(prompt);
+  const minutes =
+    Number(match[1] || 0);
+
+  const seconds =
+    Number(match[2] || 0);
+
+  if (
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(seconds)
+  ) {
+    return null;
+  }
+
+  return (
+    minutes * 60 * 1000 +
+    seconds * 1000
+  );
+}
+
+async function callGroqWithQuotaWait(
+  fn,
+  label
+) {
   try {
-    const chatCompletion = await callGroqWithBackoff(async () => {
-      const request = groq.chat.completions.create(groqPayload);
-      if (typeof request.withResponse === 'function') {
-        return await request.withResponse();
-      }
-      const data = await request;
-      return { data, response: null };
-    }, `batch-classify (${articles.length} articles)`);
-    rawContent = chatCompletion.choices[0].message.content;
-  } catch (e) {
-    if (!e.isQuotaExhausted && !e.isBudgetExhausted && !e.isModelMissing) throw e;
-    if (!process.env.CEREBRAS_API_KEY) throw e;
-    console.log(
-      `  ↪ Groq unavailable (${e.isModelMissing ? 'model missing' : 'quota'}) — falling back to Cerebras ${CEREBRAS_MODEL}.`
+    return await callGroqWithBackoff(
+      fn,
+      label
     );
-    rawContent = await callCerebras(process.env.CEREBRAS_API_KEY, prompt);
-    classificationProvider = 'cerebras';
-    classificationModel = CEREBRAS_MODEL;
-  }
+  } catch (error) {
+    if (!error?.isQuotaExhausted) {
+      throw error;
+    }
 
-  const attachProvenance = (assessment) => ({
-    ...assessment,
-    classificationProvider,
-    classificationModel,
-    classificationVersion: CLASSIFICATION_VERSION,
-    classificationPromptVersion: CLASSIFICATION_PROMPT_VERSION,
-    classificationInputHash,
-  });
+    const retryMs =
+      parseGroqRetryMs(error);
 
-  try {
-    return parseAssessments(rawContent, articles).map(attachProvenance);
-  } catch (parseErr) {
-    console.error(`  ❌ Failed to parse batch response: ${parseErr.message}`);
-    return articles.map((a) => attachProvenance(emptyAssessment(a)));
+    if (
+      !retryMs ||
+      retryMs <= 0 ||
+      retryMs > GROQ_MAX_WAIT_MS
+    ) {
+      throw error;
+    }
+
+    const boundedWait =
+      Math.ceil(retryMs) + 1500;
+
+    console.log(
+      `  ⏳ Groq quota reset is within the allowed wait window. ` +
+      `Waiting ${Math.ceil(boundedWait / 1000)}s before one retry for ${label}.`
+    );
+
+    await delay(boundedWait);
+
+    /*
+     * Exactly one post-reset retry.
+     * If quota is still unavailable, propagate the error and let the
+     * provider circuit/fail-closed contract take over.
+     */
+    return await callGroqWithBackoff(
+      fn,
+      `${label} post-reset retry`
+    );
   }
 }
 
-async function assessWithRetry(articles, category) {
-  const assessments = await checkArticlesBatchRelevance(articles, category);
-  for (let i = 0; i < articles.length; i++) {
-    if (!assessments[i]?.ungrounded) continue;
-    console.log(`  ↻ Solo retry: "${articles[i].title}"`);
-    const solo = await checkArticlesBatchRelevance([articles[i]], category);
-    assessments[i] = solo[0];
+async function checkArticlesBatchRelevance(
+  articles,
+  category
+) {
+  const prompt =
+    buildClassifyPrompt(
+      articles,
+      category
+    );
+
+  const groqPayload = {
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    model: GROQ_MODEL,
+    temperature: 0.2,
+    max_tokens: 900,
+    response_format: {
+      type: 'json_object',
+    },
+  };
+
+  if (
+    GROQ_MODEL.includes('gpt-oss') ||
+    GROQ_MODEL.includes('o1') ||
+    GROQ_MODEL.includes('o3')
+  ) {
+    groqPayload.reasoning_effort = 'low';
   }
-  return assessments;
+
+  const classificationInputHash =
+    sha256Text(prompt);
+
+  let providerWasAttempted = false;
+
+  for (
+    const provider of
+      CLASSIFIER_PROVIDER_ORDER
+  ) {
+    const apiKey =
+      classifierApiKey(provider);
+
+    if (
+      !apiKey ||
+      classifierCircuitOpen(provider)
+    ) {
+      continue;
+    }
+
+    providerWasAttempted = true;
+
+    const model =
+      classifierModel(provider);
+
+    if (
+      provider !==
+      CLASSIFIER_PROVIDER_ORDER[0]
+    ) {
+      console.log(
+        `  ↪ Using ${provider} fallback ${model}.`
+      );
+    }
+
+    /*
+     * One controlled retry is allowed only for malformed model output.
+     * Transport/quota/auth/model failures move immediately to the next
+     * configured provider after opening that provider's circuit.
+     */
+    for (
+      let outputAttempt = 0;
+      outputAttempt < 2;
+      outputAttempt++
+    ) {
+      classifierProviderTelemetry(
+        provider,
+        'attempted'
+      );
+
+      try {
+        const providerResult =
+          provider === 'gemini'
+            ? await callGeminiWithModelFallback(
+                process.env.GEMINI_API_KEY,
+                prompt
+              )
+            : {
+                rawContent:
+                  await callClassifierProviderRaw(
+                    provider,
+                    prompt,
+                    groqPayload,
+                    articles.length
+                  ),
+                model,
+              };
+
+        const rawContent =
+          providerResult?.rawContent;
+
+        const actualModel =
+          providerResult?.model || model;
+
+        let parsed;
+
+        try {
+          parsed =
+            parseAssessments(
+              rawContent,
+              articles
+            );
+        } catch (parseError) {
+          const malformed =
+            new Error(
+              `${provider} returned malformed classification JSON: ` +
+                parseError.message
+            );
+
+          malformed.isMalformedResponse =
+            true;
+
+          throw malformed;
+        }
+
+        classifierProviderTelemetry(
+          provider,
+          'succeeded'
+        );
+
+        return parsed.map(
+          (assessment) => ({
+            ...assessment,
+            classificationProvider:
+              provider,
+            classificationModel:
+              actualModel,
+            classificationVersion:
+              CLASSIFICATION_VERSION,
+            classificationPromptVersion:
+              CLASSIFICATION_PROMPT_VERSION,
+            classificationInputHash,
+          })
+        );
+      } catch (error) {
+        classifierProviderTelemetry(
+          provider,
+          'failed'
+        );
+
+        if (
+          error?.isMalformedResponse &&
+          outputAttempt === 0
+        ) {
+          console.log(
+            `  ↻ ${provider} malformed-output retry.`
+          );
+
+          continue;
+        }
+
+        if (
+          isFallbackEligibleClassifierFailure(
+            error
+          )
+        ) {
+          openClassifierCircuit(
+            provider,
+            error
+          );
+
+          console.log(
+            `  ⚠️ ${provider} circuit opened for this run: ${error.message}`
+          );
+
+          break;
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  classifierHealth.degraded = true;
+
+  throw classifierUnavailableError(
+    providerWasAttempted
+      ? 'No healthy classification provider remains for this ingestion run.'
+      : 'No configured classification provider has an API key.'
+  );
+}
+
+
+async function assessWithRetry(articles, category) {
+  /*
+   * One call to this function is one logical classification batch.
+   * Provider retries/fallbacks and solo grounding retries are internal
+   * implementation details and must not double-count the logical batch.
+   */
+  classifierHealth.batchesAttempted++;
+  classifierHealth.articlesAttempted += articles.length;
+
+  try {
+    const assessments =
+      await checkArticlesBatchRelevance(
+        articles,
+        category
+      );
+
+    for (
+      let i = 0;
+      i < articles.length;
+      i++
+    ) {
+      if (!assessments[i]?.ungrounded) {
+        continue;
+      }
+
+      console.log(
+        `  ↻ Solo retry: "${articles[i].title}"`
+      );
+
+      const solo =
+        await checkArticlesBatchRelevance(
+          [articles[i]],
+          category
+        );
+
+      assessments[i] = solo[0];
+    }
+
+    classifierHealth.batchesCompleted++;
+    classifierHealth.articlesClassified +=
+      assessments.length;
+
+    return assessments;
+  } catch (error) {
+    classifierHealth.batchesFailed++;
+    classifierHealth.degraded = true;
+    throw error;
+  }
 }
 
 async function fetchWithBackoff(fn, label) {
@@ -857,12 +1773,445 @@ async function fetchWithBackoff(fn, label) {
   }
 }
 
+function normalizePublisherName(domain) {
+  const normalized = String(domain || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, '');
+
+  if (!normalized) return 'unknown';
+
+  const parts = normalized.split('.').filter(Boolean);
+
+  const commonSecondLevelSuffixes = new Set([
+    'co.uk',
+    'org.uk',
+    'ac.uk',
+    'com.au',
+    'net.au',
+    'org.au',
+    'co.nz',
+    'co.jp',
+    'co.in',
+    'com.br',
+    'com.mx',
+    'com.sg',
+  ]);
+
+  if (
+    parts.length >= 3 &&
+    commonSecondLevelSuffixes.has(
+      parts.slice(-2).join('.')
+    )
+  ) {
+    return parts[parts.length - 3]
+      .replace(/[-_]+/g, ' ')
+      .trim();
+  }
+
+  if (parts.length >= 2) {
+    return parts[parts.length - 2]
+      .replace(/[-_]+/g, ' ')
+      .trim();
+  }
+
+  return normalized;
+}
+
+function gdeltTimestamp(date) {
+  const iso = date.toISOString();
+
+  return (
+    iso.slice(0, 4) +
+    iso.slice(5, 7) +
+    iso.slice(8, 10) +
+    iso.slice(11, 13) +
+    iso.slice(14, 16) +
+    iso.slice(17, 19)
+  );
+}
+
+function normalizeGdeltSeenDate(value) {
+  const raw = String(value || '').trim();
+
+  if (!raw) return null;
+
+  const compact = raw.match(
+    /^(\d{4})(\d{2})(\d{2})T?(\d{2})(\d{2})(\d{2})Z?$/
+  );
+
+  if (compact) {
+    const [, y, m, d, hh, mm, ss] = compact;
+
+    const iso =
+      `${y}-${m}-${d}T${hh}:${mm}:${ss}Z`;
+
+    return Number.isFinite(Date.parse(iso))
+      ? iso
+      : null;
+  }
+
+  const parsed = Date.parse(raw);
+
+  return Number.isFinite(parsed)
+    ? new Date(parsed).toISOString()
+    : null;
+}
+
+async function fetchGdacsArticles() {
+  const endpoint =
+    'https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH';
+
+  const response = await fetch(endpoint, {
+    headers: {
+      'user-agent':
+        'Geomacro/1.0 (+https://geomacro.live)',
+      accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `GDACS HTTP ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+
+  const features = Array.isArray(data.features)
+    ? data.features
+    : [];
+
+  return features
+    .map((feature) => {
+      const properties =
+        feature?.properties || {};
+
+      const alertLevel =
+        String(
+          properties.alertlevel || ''
+        )
+          .trim()
+          .toLowerCase();
+
+      const isCurrent =
+        String(
+          properties.iscurrent || ''
+        ).toLowerCase() === 'true' ||
+        properties.iscurrent === true;
+
+      const reportUrl =
+        String(
+          properties.url?.report || ''
+        ).trim();
+
+      const eventName =
+        String(
+          properties.name ||
+          properties.description ||
+          properties.eventname ||
+          ''
+        ).trim();
+
+      const country =
+        String(
+          properties.country || ''
+        ).trim();
+
+      const eventType =
+        String(
+          properties.eventtype || ''
+        ).trim();
+
+      const title = stripHtml(
+        [
+          eventName,
+          country
+            ? `in ${country}`
+            : '',
+          alertLevel
+            ? `(${alertLevel.toUpperCase()} GDACS alert)`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+      );
+
+      const publishedAt =
+        properties.datemodified ||
+        properties.todate ||
+        properties.fromdate ||
+        new Date().toISOString();
+
+      return {
+        title,
+        description: stripHtml(
+          properties.description ||
+          properties.htmldescription ||
+          ''
+        ),
+        url: reportUrl,
+        publishedAt,
+        source: 'GDACS',
+        sourceDomain: 'gdacs.org',
+        discoveryProvider: 'gdacs',
+
+        gdacsAlertLevel: alertLevel,
+        gdacsEventType: eventType,
+        gdacsIsCurrent: isCurrent,
+      };
+    })
+    .filter(
+      (article) =>
+        article.title &&
+        article.url &&
+        article.gdacsIsCurrent &&
+        ['orange', 'red'].includes(
+          article.gdacsAlertLevel
+        ) &&
+        isFresh(article.publishedAt)
+    )
+    .sort(
+      (a, b) =>
+        Date.parse(b.publishedAt || 0) -
+        Date.parse(a.publishedAt || 0)
+    )
+    .slice(0, GDACS_MAX_CANDIDATES);
+}
+
+async function fetchReliefWebArticles(query) {
+  const endpoint =
+    `https://api.reliefweb.int/v2/reports?appname=${encodeURIComponent(
+      RELIEFWEB_APP_NAME
+    )}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      limit: 25,
+      preset: 'latest',
+      query: {
+        value: query,
+        fields: ['title'],
+        operator: 'OR',
+      },
+      fields: {
+        include: [
+          'title',
+          'url',
+          'origin',
+          'date.created',
+          'source.name',
+          'source.shortname',
+          'source.homepage',
+          'primary_country.name',
+        ],
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `ReliefWeb HTTP ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+
+  return (data.data || [])
+    .map((item) => {
+      const fields = item.fields || {};
+      const sources = Array.isArray(fields.source)
+        ? fields.source
+        : [];
+
+      const primarySource = sources[0] || {};
+
+      /*
+       * ReliefWeb is discovery infrastructure.
+       * Prefer the information partner's original report URL.
+       * If origin is absent, use that partner's homepage.
+       * Never count reliefweb.int itself as the evidence publisher.
+       */
+      const originalUrl =
+        String(fields.origin || '').trim() ||
+        String(primarySource.homepage || '').trim();
+
+      const sourceDomain =
+        extractDomain(originalUrl);
+
+      const sourceName =
+        String(
+          primarySource.shortname ||
+          primarySource.name ||
+          ''
+        ).trim() ||
+        normalizePublisherName(sourceDomain);
+
+      return {
+        title: stripHtml(fields.title || ''),
+        description: '',
+        url: originalUrl,
+        publishedAt:
+          fields.date?.created ||
+          new Date().toISOString(),
+        source: sourceName,
+        sourceDomain,
+        discoveryProvider: 'reliefweb',
+      };
+    })
+    .filter(
+      (article) =>
+        article.title &&
+        article.url &&
+        article.sourceDomain &&
+        article.sourceDomain !== 'reliefweb.int'
+    );
+}
+
+async function waitForGdeltRateLimit() {
+  const elapsed = Date.now() - gdeltLastRequestAt;
+  const waitMs = GDELT_MIN_INTERVAL_MS - elapsed;
+
+  if (waitMs > 0) {
+    await delay(waitMs);
+  }
+}
+
+async function fetchGdeltArticles(query) {
+  providerTelemetry('gdelt', 'calls');
+
+  await waitForGdeltRateLimit();
+
+  const start = new Date(Date.now() - MAX_ARTICLE_AGE_MS);
+  const end = new Date();
+
+  const params = new URLSearchParams({
+    query,
+    mode: 'ArtList',
+    maxrecords: '25',
+    format: 'json',
+    sort: 'HybridRel',
+    startdatetime: gdeltTimestamp(start),
+    enddatetime: gdeltTimestamp(end),
+  });
+
+  const url =
+    `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+
+  let response = null;
+
+  for (
+    let attempt = 0;
+    attempt <= NEWS_MAX_RETRIES;
+    attempt++
+  ) {
+    await waitForGdeltRateLimit();
+
+    response = await fetch(url);
+    gdeltLastRequestAt = Date.now();
+
+    if (response.status !== 429) {
+      break;
+    }
+
+    providerTelemetry('gdelt', 'rateLimited');
+
+    if (attempt >= NEWS_MAX_RETRIES) {
+      throw new Error(
+        `GDELT rate limit hit after ${attempt + 1} attempt(s)`
+      );
+    }
+
+    /*
+     * GDELT may throttle substantially longer than its nominal minimum
+     * request interval. Respect Retry-After when supplied; otherwise use
+     * exponential cooldown so repeated 429s do not hammer the endpoint.
+     */
+    const retryAfterHeader =
+      response.headers?.get?.('retry-after');
+
+    const retryAfterMs =
+      retryAfterHeader &&
+      Number.isFinite(
+        Number(retryAfterHeader)
+      )
+        ? Number(retryAfterHeader) * 1000
+        : null;
+
+    const exponentialCooldown =
+      Math.min(
+        Math.max(
+          GDELT_MIN_INTERVAL_MS * 2,
+          12000
+        ) *
+          2 ** attempt,
+        60000
+      );
+
+    const cooldown =
+      retryAfterMs &&
+      retryAfterMs > 0
+        ? retryAfterMs
+        : exponentialCooldown;
+
+    await delay(cooldown);
+  }
+
+  if (!response?.ok) {
+    throw new Error(
+      `GDELT HTTP ${response?.status} ${response?.statusText}`
+    );
+  }
+
+  const data = await response.json();
+
+  return (data.articles || [])
+    .map((article) => {
+      const articleUrl = String(article.url || '').trim();
+      const sourceDomain =
+        extractDomain(articleUrl) ||
+        String(article.domain || '').trim().toLowerCase();
+
+      /*
+       * GDELT is discovery infrastructure, not the evidence publisher.
+       * Preserve the original article URL/domain as source provenance so
+       * downstream GRI source caps measure independent publishers rather
+       * than counting GDELT itself as a source.
+       */
+      return {
+        title: stripHtml(article.title || ''),
+        description: '',
+        url: articleUrl,
+        publishedAt:
+          normalizeGdeltSeenDate(article.seendate) ||
+          normalizeGdeltSeenDate(
+            article.socialimage_lastupdate
+          ) ||
+          new Date().toISOString(),
+        source: normalizePublisherName(sourceDomain),
+        sourceDomain,
+        discoveryProvider: 'gdelt',
+      };
+    })
+    .filter(
+      (article) =>
+        article.title &&
+        article.url &&
+        article.sourceDomain
+    );
+}
+
 async function fetchArticlesFromApis(query, categoryName) {
   const fromDate = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString().slice(0, 10);
-  const fromIso = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString();
   const articles = [];
 
   // Guardian is one source, not the sole primary source.
+  providerTelemetry('guardian', 'calls');
+
   try {
     const sectionFilter = GUARDIAN_SECTIONS[categoryName];
     const sectionParam = sectionFilter ? `&section=${encodeURIComponent(sectionFilter)}` : '';
@@ -880,32 +2229,70 @@ async function fetchArticlesFromApis(query, categoryName) {
 
     const data = await response.json();
 
-    if (!data.response?.results?.length) {
+    const guardianResponse =
+      data?.response;
+
+    if (
+      guardianResponse?.status !== 'ok' ||
+      !Array.isArray(
+        guardianResponse?.results
+      )
+    ) {
+      const payloadPreview =
+        JSON.stringify(data).slice(0, 300);
+
+      const error = new Error(
+        `Guardian API invalid response for "${query}": ${payloadPreview}`
+      );
+
+      error.status =
+        Number(response?.status) || null;
+
+      throw error;
+    }
+
+    const guardianResults =
+      guardianResponse.results;
+
+    if (!guardianResults.length) {
       console.log(
-        `   🔍 Guardian raw response for "${query}": ${JSON.stringify(data).slice(0, 300)}`
+        `   🔍 Guardian valid empty response for "${query}": ` +
+          `${JSON.stringify(data).slice(0, 300)}`
       );
     }
 
-    if (data.response?.results?.length) {
+    if (guardianResults.length) {
       articles.push(
-        ...data.response.results.map((a) => ({
+        ...guardianResults.map((a) => ({
           title: stripHtml(a.webTitle),
           description: stripHtml(a.fields?.trailText || ''),
           url: a.webUrl,
           publishedAt: a.webPublicationDate || new Date().toISOString(),
           source: 'guardian',
           sourceDomain: extractDomain(a.webUrl),
+          discoveryProvider: 'guardian',
         }))
       );
     }
+
+    providerTelemetry('guardian', 'success');
+    providerTelemetry(
+      'guardian',
+      'candidates',
+      guardianResults.length
+    );
   } catch (e) {
+    providerTelemetry('guardian', 'failed');
+
+    if (
+      Number(e?.status) === 429 ||
+      /429|rate limit/i.test(String(e?.message || ''))
+    ) {
+      providerTelemetry('guardian', 'rateLimited');
+    }
+
     console.log(`   Guardian failed for query "${query}" (${e.message}).`);
   }
-
-  // Guardian is currently the canonical news provider for this ingestion path.
-  // Keep this ingestion path limited to providers that are reliable under scheduled use.
-  // made scheduled ingestion unreliable. Additional source diversity will be
-  // added through rate-limit-friendly and official/free providers separately.
 
   // Remove exact duplicate URLs while preserving genuinely distinct publishers.
   const uniqueArticles = new Map();
@@ -1227,6 +2614,7 @@ async function reclassifyExistingEvents() {
   let inserted = 0;
   let llmRejected = 0;
   let duplicates = 0;
+  let classificationFailures = 0;
 
   for (const category of ALLOWED_CATEGORIES) {
     const articles = candidatesByCategory.get(category) ?? [];
@@ -1250,6 +2638,7 @@ async function reclassifyExistingEvents() {
       try {
         assessments = await assessWithRetry(batch, category);
       } catch (error) {
+        classificationFailures++;
         console.error(
           `  ❌ Reassessment classification failed for ${category}: ${error.message}`
         );
@@ -1307,19 +2696,50 @@ async function reclassifyExistingEvents() {
   console.log('');
   console.log(
     `GRI reassessment done. Inserted=${inserted}, ` +
-      `LLM/gate rejected=${llmRejected}, duplicates=${duplicates}.`
+      `LLM/gate rejected=${llmRejected}, duplicates=${duplicates}, ` +
+      `classification failures=${classificationFailures}.`
   );
+
+  if (classificationFailures > 0) {
+    throw new Error(
+      `GRI reassessment incomplete: ${classificationFailures} classification batch(es) failed.`
+    );
+  }
 }
 
 
 async function ingestNews() {
-  if (process.argv.includes('--reclassify-existing')) {
+  const dryRun =
+    process.argv.includes('--dry-run');
+
+  const reclassifyExisting =
+    process.argv.includes('--reclassify-existing');
+
+  if (dryRun && reclassifyExisting) {
+    throw new Error(
+      '--dry-run and --reclassify-existing cannot be combined because reclassification has its own immutable write path.'
+    );
+  }
+
+  if (reclassifyExisting) {
     return reclassifyExistingEvents();
   }
 
   console.log('Run node scripts/ingest-news.js');
+
+  if (dryRun) {
+    console.log(
+      '🧪 DRY RUN: classification and gates will run, but no event rows will be inserted.'
+    );
+  }
   console.log(
-    `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | minSeverity=${MIN_SEVERITY}`
+    `Classifier chain=${CLASSIFIER_PROVIDER_ORDER.join(' -> ')} | ` +
+      `Groq=${GROQ_MODEL} | Gemini=${GEMINI_MODEL_ORDER.join(' -> ')} | ` +
+      `Mistral=${MISTRAL_MODEL} | Cerebras=${CEREBRAS_MODEL} | ` +
+      `batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | ` +
+      `safeCandidatesPerCategory=${safeCandidatesPerCategory()} | ` +
+      `requestReserve=${CLASSIFICATION_REQUEST_RESERVE} | ` +
+      `minSeverity=${MIN_SEVERITY}`
   );
 
   let existingEvents = [];
@@ -1355,7 +2775,13 @@ async function ingestNews() {
   let stopRun = false;
 
   for (const category of CATEGORIES) {
-    if (stopRun) break;
+    if (stopRun) {
+      console.log(
+        'Skipping remaining categories because no healthy classification path remains.'
+      );
+      break;
+    }
+
     console.log(`\nProcessing category: ${category.name}`);
     let categoryInserted = 0;
 
@@ -1387,12 +2813,51 @@ async function ingestNews() {
     }
 
     let candidateArticles = [];
-    for (const [queryIndex, query] of category.queries.entries()) {
-      const fetched = await fetchArticlesFromApis(query, category.name);
+
+    const guardianPlan =
+      guardianQueryPlan(
+        category.queries
+      );
+
+    console.log(
+      `  Guardian query budget: ` +
+        `${guardianPlan.queries.length}/${guardianPlan.totalQueries} ` +
+        `queries this run ` +
+        `(chunk ${guardianPlan.chunkIndex + 1}/${guardianPlan.totalChunks}, ` +
+        `max ${GUARDIAN_QUERY_BUDGET_PER_CATEGORY}/category).`
+    );
+
+    for (
+      const [queryIndex, query] of
+        guardianPlan.queries.entries()
+    ) {
+      const fetched =
+        await fetchArticlesFromApis(
+          query,
+          category.name
+        );
+
       for (const article of fetched) {
-        const normTitle = normalizeTitle(article.title);
-        if (!article.title || !isFresh(article.publishedAt)) continue;
-        if (DENY.test(`${article.title} ${article.description}`)) continue;
+        const normTitle =
+          normalizeTitle(
+            article.title
+          );
+
+        if (
+          !article.title ||
+          !isFresh(article.publishedAt)
+        ) {
+          continue;
+        }
+
+        if (
+          DENY.test(
+            `${article.title} ${article.description}`
+          )
+        ) {
+          continue;
+        }
+
         if (
           existingUrls.has(article.url) ||
           existingTitles.has(normTitle) ||
@@ -1401,25 +2866,354 @@ async function ingestNews() {
         ) {
           continue;
         }
-        seenCandidatesThisCategory.add(normTitle);
-        candidateArticles.push(article);
+
+        seenCandidatesThisCategory.add(
+          normTitle
+        );
+
+        candidateArticles.push(
+          article
+        );
       }
-      if (queryIndex < category.queries.length - 1) {
-        await delay(QUERY_DELAY_MS);
+
+      if (
+        queryIndex <
+        guardianPlan.queries.length - 1
+      ) {
+        await delay(
+          QUERY_DELAY_MS
+        );
+      }
+    }
+
+    /*
+     * Bounded GDACS disaster-intelligence pass.
+     *
+     * Only current Orange/Red alerts are admitted. GDACS is an
+     * authoritative disaster-alert source, not a general news publisher.
+     * The canonical classifier still decides whether an alert belongs in
+     * the current GRI category contract.
+     */
+    if (
+      category.name === 'geopolitics' &&
+      GDACS_ENABLED
+    ) {
+      try {
+        providerTelemetry('gdacs', 'calls');
+
+        const gdacsArticles =
+          await fetchGdacsArticles();
+
+        providerTelemetry('gdacs', 'success');
+        providerTelemetry(
+          'gdacs',
+          'candidates',
+          gdacsArticles.length
+        );
+
+        let gdacsAcceptedCandidates = 0;
+
+        for (const article of gdacsArticles) {
+          const normTitle =
+            normalizeTitle(article.title);
+
+          if (
+            existingUrls.has(article.url) ||
+            existingTitles.has(normTitle) ||
+            seenInCurrentRun.has(normTitle) ||
+            seenCandidatesThisCategory.has(normTitle)
+          ) {
+            continue;
+          }
+
+          seenCandidatesThisCategory.add(
+            normTitle
+          );
+
+          candidateArticles.push(article);
+          gdacsAcceptedCandidates++;
+        }
+
+        console.log(
+          `  GDACS discovery: ${gdacsArticles.length} high-severity current event(s), ` +
+            `${gdacsAcceptedCandidates} new candidate(s) admitted.`
+        );
+      } catch (e) {
+        providerTelemetry('gdacs', 'failed');
+
+        if (
+          Number(e?.status) === 429 ||
+          /429|rate limit/i.test(String(e?.message || ''))
+        ) {
+          providerTelemetry('gdacs', 'rateLimited');
+        }
+
+        console.log(
+          `  GDACS discovery failed (${e.message}).`
+        );
+      }
+    }
+
+    /*
+     * Bounded ReliefWeb discovery pass.
+     *
+     * ReliefWeb is used only for humanitarian/conflict corroboration.
+     * Original information-partner provenance remains the downstream
+     * source identity.
+     */
+    const reliefWebQuery =
+      RELIEFWEB_DISCOVERY_QUERIES[category.name];
+
+    if (
+      reliefWebQuery &&
+      RELIEFWEB_ENABLED
+    ) {
+      try {
+        providerTelemetry('reliefweb', 'calls');
+
+        const reliefWebArticles =
+          await fetchReliefWebArticles(
+            reliefWebQuery
+          );
+
+        providerTelemetry('reliefweb', 'success');
+        providerTelemetry(
+          'reliefweb',
+          'candidates',
+          reliefWebArticles.length
+        );
+
+        let reliefWebAcceptedCandidates = 0;
+
+        for (const article of reliefWebArticles) {
+          const normTitle =
+            normalizeTitle(article.title);
+
+          if (
+            !article.title ||
+            !isFresh(article.publishedAt)
+          ) {
+            continue;
+          }
+
+          if (
+            DENY.test(
+              `${article.title} ${article.description}`
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            existingUrls.has(article.url) ||
+            existingTitles.has(normTitle) ||
+            seenInCurrentRun.has(normTitle) ||
+            seenCandidatesThisCategory.has(normTitle)
+          ) {
+            continue;
+          }
+
+          seenCandidatesThisCategory.add(normTitle);
+          candidateArticles.push(article);
+          reliefWebAcceptedCandidates++;
+        }
+
+        console.log(
+          `  ReliefWeb discovery: ${reliefWebArticles.length} fetched, ` +
+            `${reliefWebAcceptedCandidates} new candidate(s) admitted for ${category.name}.`
+        );
+      } catch (e) {
+        providerTelemetry('reliefweb', 'failed');
+
+        if (
+          Number(e?.status) === 429 ||
+          /429|rate limit/i.test(String(e?.message || ''))
+        ) {
+          providerTelemetry('reliefweb', 'rateLimited');
+        }
+
+        console.log(
+          `  ReliefWeb discovery failed for ${category.name} (${e.message}).`
+        );
+      }
+    }
+
+    if (
+      reliefWebQuery &&
+      !RELIEFWEB_ENABLED
+    ) {
+      console.log(
+        '  ReliefWeb discovery skipped: approved RELIEFWEB_APP_NAME not configured/enabled.'
+      );
+    }
+
+    /*
+     * Bounded GDELT discovery pass.
+     *
+     * GDELT is intentionally NOT called for every Guardian query. The DOC
+     * API enforces a low request cadence, so each GRI category gets exactly
+     * one compact discovery query per ingestion run.
+     *
+     * GDELT is discovery infrastructure only. Original publisher URL/domain
+     * remains the evidence source used by downstream GRI source caps.
+     */
+    const gdeltQuery =
+      GDELT_DISCOVERY_QUERIES[category.name];
+
+    if (gdeltQuery) {
+      try {
+        const gdeltArticles =
+          await fetchGdeltArticles(gdeltQuery);
+
+        providerTelemetry('gdelt', 'success');
+        providerTelemetry(
+          'gdelt',
+          'candidates',
+          gdeltArticles.length
+        );
+
+        let gdeltAcceptedCandidates = 0;
+
+        for (const article of gdeltArticles) {
+          const normTitle =
+            normalizeTitle(article.title);
+
+          if (
+            !article.title ||
+            !isFresh(article.publishedAt)
+          ) {
+            continue;
+          }
+
+          if (
+            DENY.test(
+              `${article.title} ${article.description}`
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            existingUrls.has(article.url) ||
+            existingTitles.has(normTitle) ||
+            seenInCurrentRun.has(normTitle) ||
+            seenCandidatesThisCategory.has(normTitle)
+          ) {
+            continue;
+          }
+
+          seenCandidatesThisCategory.add(normTitle);
+          candidateArticles.push(article);
+          gdeltAcceptedCandidates++;
+        }
+
+        console.log(
+          `  GDELT discovery: ${gdeltArticles.length} fetched, ` +
+            `${gdeltAcceptedCandidates} new candidate(s) admitted for ${category.name}.`
+        );
+      } catch (e) {
+        providerTelemetry('gdelt', 'failed');
+
+        console.log(
+          `  GDELT discovery failed for ${category.name} (${e.message}).`
+        );
       }
     }
 
     candidateArticles.sort(
-      (a, b) => Date.parse(b.publishedAt || 0) - Date.parse(a.publishedAt || 0)
+      (a, b) =>
+        Date.parse(b.publishedAt || 0) -
+        Date.parse(a.publishedAt || 0)
     );
-    if (candidateArticles.length > MAX_CANDIDATES_PER_CATEGORY) {
-      console.log(
-        `  Capping ${category.name} candidates ${candidateArticles.length} → ${MAX_CANDIDATES_PER_CATEGORY} newest.`
+
+    if (
+      candidateArticles.length >
+      safeCandidatesPerCategory()
+    ) {
+      const guardianCandidates =
+        candidateArticles.filter(
+          (article) =>
+            article.discoveryProvider === 'guardian'
+        );
+
+      const gdeltCandidates =
+        candidateArticles.filter(
+          (article) =>
+            article.discoveryProvider === 'gdelt'
+        );
+
+      const otherCandidates =
+        candidateArticles.filter(
+          (article) =>
+            !['guardian', 'gdelt'].includes(
+              article.discoveryProvider
+            )
+        );
+
+      /*
+       * Reserve up to one third of classification capacity for
+       * independently discovered publishers without allowing GDELT
+       * to crowd out the canonical Guardian lane.
+       */
+      const gdeltLimit = Math.min(
+        gdeltCandidates.length,
+        Math.max(
+          1,
+          Math.floor(
+            safeCandidatesPerCategory() / 3
+          )
+        )
       );
-      candidateArticles = candidateArticles.slice(0, MAX_CANDIDATES_PER_CATEGORY);
+
+      const remainingLimit =
+        safeCandidatesPerCategory() - gdeltLimit;
+
+      const primaryCandidates = [
+        ...guardianCandidates,
+        ...otherCandidates,
+      ]
+        .sort(
+          (a, b) =>
+            Date.parse(b.publishedAt || 0) -
+            Date.parse(a.publishedAt || 0)
+        )
+        .slice(0, remainingLimit);
+
+      candidateArticles = [
+        ...primaryCandidates,
+        ...gdeltCandidates.slice(0, gdeltLimit),
+      ].sort(
+        (a, b) =>
+          Date.parse(b.publishedAt || 0) -
+          Date.parse(a.publishedAt || 0)
+      );
+
+      console.log(
+        `  Balanced candidate cap: ` +
+          `${primaryCandidates.length} primary + ` +
+          `${Math.min(gdeltCandidates.length, gdeltLimit)} GDELT-discovered ` +
+          `= ${candidateArticles.length}/${safeCandidatesPerCategory()}.`
+      );
     }
 
-    console.log(`  ${candidateArticles.length} new unique candidate article(s) to classify.`);
+    const providerCounts =
+      candidateArticles.reduce(
+        (acc, article) => {
+          const provider =
+            article.discoveryProvider || 'unknown';
+
+          acc[provider] =
+            (acc[provider] || 0) + 1;
+
+          return acc;
+        },
+        {}
+      );
+
+    console.log(
+      `  ${candidateArticles.length} new unique candidate article(s) to classify. ` +
+        `Providers=${JSON.stringify(providerCounts)}`
+    );
 
     const batches = chunk(candidateArticles, BATCH_SIZE);
     for (const [batchIndex, batch] of batches.entries()) {
@@ -1427,13 +3221,24 @@ async function ingestNews() {
       try {
         assessments = await assessWithRetry(batch, category.name);
       } catch (batchErr) {
-        if (batchErr.isBudgetExhausted || batchErr.isQuotaExhausted) {
+        const noHealthyClassifier =
+          !hasHealthyClassifierProvider();
+
+        if (
+          batchErr.isBudgetExhausted ||
+          batchErr.isQuotaExhausted ||
+          batchErr.isClassifierUnavailable ||
+          noHealthyClassifier
+        ) {
           console.error(
-            `  🛑 ${batchErr.message} — stopping this run early (remaining articles will be picked up next run).`
+            `  🛑 ${batchErr.message} — stopping classification for this run. Remaining articles will be picked up next run.`
           );
+
+          classifierHealth.degraded = true;
           stopRun = true;
           break;
         }
+
         console.error(
           `  ❌ Batch ${batchIndex + 1}/${batches.length} classification failed for ${category.name} (${batchErr.message}) — skipping this batch, continuing with the rest of the run.`
         );
@@ -1475,6 +3280,28 @@ async function ingestNews() {
           market_created: false,
           created_at: new Date().toISOString(),
         };
+
+        if (dryRun) {
+          markSeen(
+            article,
+            existingUrls,
+            existingTitles,
+            seenInCurrentRun
+          );
+
+          console.log(
+            `  🧪 WOULD INSERT [${gated.category}] ` +
+              `"${gated.title}" ` +
+              `(severity=${assessment.severity}, ` +
+              `confidence=${assessment.confidence}, ` +
+              `publisher=${article.sourceDomain || article.source}, ` +
+              `discovery=${article.discoveryProvider || 'unknown'})`
+          );
+
+          categoryInserted++;
+          totalInserted++;
+          continue;
+        }
 
         let { error: insertError } = await supabase.from('events').insert([eventRow]);
 
@@ -1518,11 +3345,68 @@ async function ingestNews() {
       }
     }
 
-    console.log(`Inserted ${categoryInserted} events for ${category.name}.`);
+    console.log(
+      dryRun
+        ? `Would insert ${categoryInserted} event(s) for ${category.name}.`
+        : `Inserted ${categoryInserted} event(s) for ${category.name}.`
+    );
   }
 
-  console.log(`\nDone. Total unique inserted: ${totalInserted} events.`);
-  console.log(`Rejected by gate: ${totalRejectedByGate}. Groq requests this run: ${groqRequestsThisRun}.`);
+  console.log(
+    dryRun
+      ? `\nDone. Total unique would-insert: ${totalInserted} event(s).`
+      : `\nDone. Total unique inserted: ${totalInserted} event(s).`
+  );
+  console.log(
+    `Rejected by gate: ${totalRejectedByGate}. ` +
+      `Groq requests this run: ${groqRequestsThisRun}.`
+  );
+
+  console.log('');
+  console.log(
+    '=== PROVIDER HEALTH ==='
+  );
+  console.log(
+    JSON.stringify(
+      providerHealth,
+      null,
+      2
+    )
+  );
+
+  console.log('');
+  console.log(
+    '=== CLASSIFIER HEALTH ==='
+  );
+  console.log(
+    JSON.stringify(
+      classifierHealth,
+      null,
+      2
+    )
+  );
+
+  const classifierCompletionRatio =
+    classifierHealth.articlesAttempted > 0
+      ? classifierHealth.articlesClassified /
+        classifierHealth.articlesAttempted
+      : 1;
+
+  if (
+    classifierHealth.degraded ||
+    classifierCompletionRatio < 1
+  ) {
+    console.error(
+      `❌ CLASSIFIER_DEGRADED: classified ` +
+        `${classifierHealth.articlesClassified}/` +
+        `${classifierHealth.articlesAttempted} attempted article(s).`
+    );
+
+    process.exitCode = 1;
+  }
 }
 
-ingestNews().catch(console.error);
+ingestNews().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

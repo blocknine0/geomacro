@@ -1,0 +1,80 @@
+name: Dry Run Multi-Source News
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - feat/gri-multi-source-ingestion
+    paths:
+      - "scripts/ingest-news.js"
+      - ".github/workflows/dry-run-multisource-news.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-save --ignore-scripts
+
+      - name: Run multi-source ingestion dry-run
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+
+          GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
+          GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+          MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
+          CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}
+          GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+
+          # CI smoke workload: keep external-provider usage bounded while
+          # still exercising discovery, classification fallback and gates.
+          GROQ_BATCH_SIZE: "1"
+          GROQ_MAX_REQUESTS_PER_RUN: "30"
+          GROQ_MAX_WAIT_MS: "60000"
+
+          # Two candidates per category keeps the workflow deterministic
+          # enough for CI without changing production ingestion limits.
+          MAX_CANDIDATES_PER_CATEGORY: "2"
+
+          GDELT_MIN_INTERVAL_MS: "6000"
+
+          RELIEFWEB_ENABLED: "false"
+          RELIEFWEB_APP_NAME: ${{ vars.RELIEFWEB_APP_NAME }}
+
+          GDACS_ENABLED: "true"
+          GDACS_MAX_CANDIDATES: "3"
+
+        run: node scripts/ingest-news.js --dry-run
+
+      - name: Report current GRI source diversity
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          GRI_DIVERSITY_LOOKBACK_HOURS: "72"
+          GRI_MIN_SOURCE_DOMAINS: "3"
+          GRI_MAX_SINGLE_SOURCE_SHARE: "0.70"
+
+        run: npm run gri:source-diversity

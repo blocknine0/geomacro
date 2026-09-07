@@ -1,6 +1,6 @@
 import type { EventStage } from "./event-stage";
 
-export const FEED_CATEGORIES = ["geopolitics", "rare-earth", "macro", "crypto"] as const;
+export const FEED_CATEGORIES = ["geopolitics", "rare-earth", "macro"] as const;
 
 export type FeedCategory = (typeof FEED_CATEGORIES)[number];
 

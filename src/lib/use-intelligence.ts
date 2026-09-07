@@ -157,6 +157,7 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
           .select(
             "id, source_title, summary, category, severity, delta, source_name, created_at, published_at, market_created, market_resolved",
           )
+          .in("category", ["geopolitics", "macro", "rare_earth"])
           .gte("created_at", since)
           .order("created_at", { ascending: false })
           .limit(500);

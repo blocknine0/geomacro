@@ -34,15 +34,15 @@ jobs:
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
-        run: node scripts/cluster-gri-stories.js
+        run: node scripts/cluster-gri-stories-v12.js
 
       - name: Compute, reconcile and publish immutable GRI v1.1 snapshot
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/compute-gri-v11.js
+        run: node scripts/compute-gri-v12.js
       - name: Independently verify the latest published proof package
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/verify-gri-snapshot-v11.js
+        run: node scripts/verify-gri-snapshot-v12.js

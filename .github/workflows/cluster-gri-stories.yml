@@ -34,4 +34,4 @@ jobs:
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
 
-        run: node scripts/cluster-gri-stories.js
+        run: node scripts/cluster-gri-stories-v12.js
