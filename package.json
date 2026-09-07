@@ -22,7 +22,9 @@
     "db:target": "node scripts/db/assert-authoritative-supabase.mjs",
     "db:verify-core": "node scripts/db/verify-core-schema.mjs",
     "test:app": "vitest run src",
-    "gri:replay-published": "node scripts/replay-published-gri-v11.js"
+    "gri:replay-published": "node scripts/replay-published-gri-v11.js",
+    "gri:source-diversity": "node scripts/check-gri-source-diversity.js",
+    "gri:source-diversity:enforce": "node scripts/check-gri-source-diversity.js --enforce"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.50",

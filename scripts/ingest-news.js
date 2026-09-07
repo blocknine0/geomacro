@@ -60,6 +60,49 @@ const GDACS_MAX_CANDIDATES = Math.max(
 
 let gdeltLastRequestAt = 0;
 
+const providerHealth = {
+  guardian: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+  gdelt: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+  gdacs: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+  reliefweb: {
+    calls: 0,
+    success: 0,
+    failed: 0,
+    rateLimited: 0,
+    candidates: 0,
+  },
+};
+
+function providerTelemetry(
+  provider,
+  field,
+  amount = 1
+) {
+  if (!providerHealth[provider]) return;
+
+  providerHealth[provider][field] =
+    (providerHealth[provider][field] || 0) +
+    amount;
+}
+
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
 const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
@@ -1245,6 +1288,8 @@ async function waitForGdeltRateLimit() {
 }
 
 async function fetchGdeltArticles(query) {
+  providerTelemetry('gdelt', 'calls');
+
   await waitForGdeltRateLimit();
 
   const start = new Date(Date.now() - MAX_ARTICLE_AGE_MS);
@@ -1278,6 +1323,8 @@ async function fetchGdeltArticles(query) {
     if (response.status !== 429) {
       break;
     }
+
+    providerTelemetry('gdelt', 'rateLimited');
 
     if (attempt >= NEWS_MAX_RETRIES) {
       throw new Error(
@@ -1341,6 +1388,8 @@ async function fetchArticlesFromApis(query, categoryName) {
   const articles = [];
 
   // Guardian is one source, not the sole primary source.
+  providerTelemetry('guardian', 'calls');
+
   try {
     const sectionFilter = GUARDIAN_SECTIONS[categoryName];
     const sectionParam = sectionFilter ? `&section=${encodeURIComponent(sectionFilter)}` : '';
@@ -1364,9 +1413,12 @@ async function fetchArticlesFromApis(query, categoryName) {
       );
     }
 
-    if (data.response?.results?.length) {
+    const guardianResults =
+      data.response?.results || [];
+
+    if (guardianResults.length) {
       articles.push(
-        ...data.response.results.map((a) => ({
+        ...guardianResults.map((a) => ({
           title: stripHtml(a.webTitle),
           description: stripHtml(a.fields?.trailText || ''),
           url: a.webUrl,
@@ -1377,7 +1429,23 @@ async function fetchArticlesFromApis(query, categoryName) {
         }))
       );
     }
+
+    providerTelemetry('guardian', 'success');
+    providerTelemetry(
+      'guardian',
+      'candidates',
+      guardianResults.length
+    );
   } catch (e) {
+    providerTelemetry('guardian', 'failed');
+
+    if (
+      Number(e?.status) === 429 ||
+      /429|rate limit/i.test(String(e?.message || ''))
+    ) {
+      providerTelemetry('guardian', 'rateLimited');
+    }
+
     console.log(`   Guardian failed for query "${query}" (${e.message}).`);
   }
 
@@ -1918,8 +1986,17 @@ async function ingestNews() {
       GDACS_ENABLED
     ) {
       try {
+        providerTelemetry('gdacs', 'calls');
+
         const gdacsArticles =
           await fetchGdacsArticles();
+
+        providerTelemetry('gdacs', 'success');
+        providerTelemetry(
+          'gdacs',
+          'candidates',
+          gdacsArticles.length
+        );
 
         let gdacsAcceptedCandidates = 0;
 
@@ -1949,6 +2026,15 @@ async function ingestNews() {
             `${gdacsAcceptedCandidates} new candidate(s) admitted.`
         );
       } catch (e) {
+        providerTelemetry('gdacs', 'failed');
+
+        if (
+          Number(e?.status) === 429 ||
+          /429|rate limit/i.test(String(e?.message || ''))
+        ) {
+          providerTelemetry('gdacs', 'rateLimited');
+        }
+
         console.log(
           `  GDACS discovery failed (${e.message}).`
         );
@@ -1970,10 +2056,19 @@ async function ingestNews() {
       RELIEFWEB_ENABLED
     ) {
       try {
+        providerTelemetry('reliefweb', 'calls');
+
         const reliefWebArticles =
           await fetchReliefWebArticles(
             reliefWebQuery
           );
+
+        providerTelemetry('reliefweb', 'success');
+        providerTelemetry(
+          'reliefweb',
+          'candidates',
+          reliefWebArticles.length
+        );
 
         let reliefWebAcceptedCandidates = 0;
 
@@ -2015,6 +2110,15 @@ async function ingestNews() {
             `${reliefWebAcceptedCandidates} new candidate(s) admitted for ${category.name}.`
         );
       } catch (e) {
+        providerTelemetry('reliefweb', 'failed');
+
+        if (
+          Number(e?.status) === 429 ||
+          /429|rate limit/i.test(String(e?.message || ''))
+        ) {
+          providerTelemetry('reliefweb', 'rateLimited');
+        }
+
         console.log(
           `  ReliefWeb discovery failed for ${category.name} (${e.message}).`
         );
@@ -2047,6 +2151,13 @@ async function ingestNews() {
       try {
         const gdeltArticles =
           await fetchGdeltArticles(gdeltQuery);
+
+        providerTelemetry('gdelt', 'success');
+        providerTelemetry(
+          'gdelt',
+          'candidates',
+          gdeltArticles.length
+        );
 
         let gdeltAcceptedCandidates = 0;
 
@@ -2088,6 +2199,8 @@ async function ingestNews() {
             `${gdeltAcceptedCandidates} new candidate(s) admitted for ${category.name}.`
         );
       } catch (e) {
+        providerTelemetry('gdelt', 'failed');
+
         console.log(
           `  GDELT discovery failed for ${category.name} (${e.message}).`
         );
@@ -2320,7 +2433,22 @@ async function ingestNews() {
       ? `\nDone. Total unique would-insert: ${totalInserted} event(s).`
       : `\nDone. Total unique inserted: ${totalInserted} event(s).`
   );
-  console.log(`Rejected by gate: ${totalRejectedByGate}. Groq requests this run: ${groqRequestsThisRun}.`);
+  console.log(
+    `Rejected by gate: ${totalRejectedByGate}. ` +
+      `Groq requests this run: ${groqRequestsThisRun}.`
+  );
+
+  console.log('');
+  console.log(
+    '=== PROVIDER HEALTH ==='
+  );
+  console.log(
+    JSON.stringify(
+      providerHealth,
+      null,
+      2
+    )
+  );
 }
 
 ingestNews().catch(console.error);

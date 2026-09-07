@@ -49,3 +49,14 @@ jobs:
           GDACS_MAX_CANDIDATES: "3"
 
         run: node scripts/ingest-news.js --dry-run
+
+      - name: Report current GRI source diversity
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+          GRI_DIVERSITY_LOOKBACK_HOURS: "72"
+          GRI_MIN_SOURCE_DOMAINS: "3"
+          GRI_MAX_SINGLE_SOURCE_SHARE: "0.70"
+
+        run: npm run gri:source-diversity
