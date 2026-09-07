@@ -2960,31 +2960,15 @@ Deno.serve(async (req) => {
         countryRows as CountryRow[],
       );
 
-    const {
-      data: manifests,
-      error: manifestError,
-    } = await db
-      .from(
-        "live_fragment_manifest",
-      )
-      .select(
-        "id,object_path,item_count,period_end,verified_at",
-      )
-      .eq(
-        "verification_method",
-        "storage-readback-sha256",
-      )
-      .order(
-        "period_end",
-        {
-          ascending: true,
-        },
-      )
-      .limit(30);
-
-    if (manifestError) {
-      throw manifestError;
-    }
+    /*
+     * Preserve chronological FIFO processing while preventing starvation.
+     *
+     * A fixed query over only the oldest manifests can permanently hide
+     * newer pending fragments after those oldest manifests are complete.
+     * Page through every verified manifest until the first genuinely
+     * unhandled fragment is found.
+     */
+    const manifestPageSize = 30;
 
     let manifest:
       any = null;
@@ -2992,73 +2976,122 @@ Deno.serve(async (req) => {
     let handledBefore = 0;
 
     for (
-      const candidate of
-        manifests ?? []
+      let manifestFrom = 0;
+      !manifest;
+      manifestFrom += manifestPageSize
     ) {
       const {
-        count:
-          structuredCount,
-        error:
-          structuredCountError,
+        data: manifests,
+        error: manifestError,
       } = await db
         .from(
-          "live_structured_event_evidence",
+          "live_fragment_manifest",
         )
-        .select("*", {
-          count: "exact",
-          head: true,
-        })
+        .select(
+          "id,object_path,item_count,period_end,verified_at",
+        )
         .eq(
-          "fragment_id",
-          candidate.id,
+          "verification_method",
+          "storage-readback-sha256",
+        )
+        .order(
+          "period_end",
+          {
+            ascending: true,
+          },
+        )
+        .range(
+          manifestFrom,
+          manifestFrom +
+            manifestPageSize -
+            1,
         );
 
-      if (
-        structuredCountError
-      ) {
-        throw structuredCountError;
+      if (manifestError) {
+        throw manifestError;
       }
 
-      const {
-        count:
-          excludedCount,
-        error:
-          excludedCountError,
-      } = await db
-        .from(
-          "live_structuring_exclusions",
-        )
-        .select("*", {
-          count: "exact",
-          head: true,
-        })
-        .eq(
-          "fragment_id",
-          candidate.id,
-        );
-
-      if (
-        excludedCountError
+      for (
+        const candidate of
+          manifests ?? []
       ) {
-        throw excludedCountError;
+        const {
+          count:
+            structuredCount,
+          error:
+            structuredCountError,
+        } = await db
+          .from(
+            "live_structured_event_evidence",
+          )
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq(
+            "fragment_id",
+            candidate.id,
+          );
+
+        if (
+          structuredCountError
+        ) {
+          throw structuredCountError;
+        }
+
+        const {
+          count:
+            excludedCount,
+          error:
+            excludedCountError,
+        } = await db
+          .from(
+            "live_structuring_exclusions",
+          )
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq(
+            "fragment_id",
+            candidate.id,
+          );
+
+        if (
+          excludedCountError
+        ) {
+          throw excludedCountError;
+        }
+
+        const handled =
+          (structuredCount ?? 0) +
+          (excludedCount ?? 0);
+
+        if (
+          handled <
+          Number(
+            candidate.item_count,
+          )
+        ) {
+          manifest =
+            candidate;
+
+          handledBefore =
+            handled;
+
+          break;
+        }
       }
 
-      const handled =
-        (structuredCount ?? 0) +
-        (excludedCount ?? 0);
+      if (manifest) {
+        break;
+      }
 
       if (
-        handled <
-        Number(
-          candidate.item_count,
-        )
+        !manifests ||
+        manifests.length <
+          manifestPageSize
       ) {
-        manifest =
-          candidate;
-
-        handledBefore =
-          handled;
-
         break;
       }
     }

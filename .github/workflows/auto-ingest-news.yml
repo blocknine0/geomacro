@@ -54,3 +54,27 @@ jobs:
           MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
           MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
         run: node scripts/ingest-news.js
+
+      - name: Export admitted events for structured intelligence
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/export-admitted-events-for-structure.mjs
+
+      - name: Structure fresh Geomacro intelligence
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "${LIVE_STRUCTURE_TOKEN:-}" ]; then
+            echo "::error::LIVE_STRUCTURE_TOKEN is required for the structured-intelligence handoff."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS -X POST \
+            "${SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+            -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+            -H "Content-Type: application/json"
+
+          echo

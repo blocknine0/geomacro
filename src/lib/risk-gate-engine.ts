@@ -289,6 +289,48 @@ evaluateRiskGate(
 
   if (
     gro.verification.status ===
+      "STALE"
+  ) {
+    decision =
+      strongerDecision(
+        decision,
+        "REQUIRE_APPROVAL",
+      );
+
+    reasons.add(
+      "risk_object_stale",
+    );
+  }
+
+  if (
+    gro.verification.status ===
+      "INCOMPLETE"
+  ) {
+    decision =
+      strongerDecision(
+        decision,
+        "REQUIRE_APPROVAL",
+      );
+
+    reasons.add(
+      "risk_object_incomplete",
+    );
+  }
+
+  if (
+    gro.verification.status ===
+      "EXPIRED"
+  ) {
+    decision =
+      "PAUSE";
+
+    reasons.add(
+      "risk_object_expired",
+    );
+  }
+
+  if (
+    gro.verification.status ===
       "UNVERIFIABLE"
   ) {
     decision =
