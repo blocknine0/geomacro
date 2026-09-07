@@ -9,7 +9,21 @@
  * - This contract does not imply custody, execution or trade submission.
  */
 
-export const GRO_SCHEMA_VERSION = "gro-1.0" as const;
+export const LEGACY_GRO_SCHEMA_VERSION =
+  "gro-1.0" as const;
+
+export const GRO_SCHEMA_VERSION =
+  "gro-1.1" as const;
+
+export type GroSchemaVersion =
+  | typeof LEGACY_GRO_SCHEMA_VERSION
+  | typeof GRO_SCHEMA_VERSION;
+
+export const GRO_CANONICALIZATION_VERSION =
+  "geomacro-canonical-json-v1" as const;
+
+export const GRO_SIGNATURE_SCHEME =
+  "Ed25519" as const;
 
 export const COUNTRY_RISK_METHOD_VERSION =
   "country-risk-v0.1.0-pilot" as const;
@@ -111,15 +125,26 @@ export type RiskIntegrity = {
   calculation_hash: string;
 
   /**
-   * Cryptographic issuer signing is intentionally
-   * not represented as implemented yet.
+   * Hash of the canonical signed payload with
+   * payload_hash/signature themselves set to null.
    */
-  signature: null;
-  signature_scheme: null;
+  payload_hash: string | null;
+
+  canonicalization:
+    | typeof GRO_CANONICALIZATION_VERSION
+    | null;
+
+  signature: string | null;
+
+  signature_scheme:
+    | typeof GRO_SIGNATURE_SCHEME
+    | null;
+
+  signing_key_id: string | null;
 };
 
 export type GeomacroRiskObject = {
-  schema_version: typeof GRO_SCHEMA_VERSION;
+  schema_version: GroSchemaVersion;
 
   object_id: string;
 

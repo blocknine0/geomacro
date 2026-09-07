@@ -4,6 +4,7 @@ import {
 
 import {
   GRO_SCHEMA_VERSION,
+  LEGACY_GRO_SCHEMA_VERSION,
   COUNTRY_RISK_METHOD_VERSION,
   type GeomacroRiskObject,
 } from "./risk-object-contract";
@@ -30,8 +31,12 @@ function isCompatibleCountryRiskObject(
     value as Partial<GeomacroRiskObject>;
 
   return Boolean(
-    object.schema_version ===
-      GRO_SCHEMA_VERSION &&
+    (
+      object.schema_version ===
+        GRO_SCHEMA_VERSION ||
+      object.schema_version ===
+        LEGACY_GRO_SCHEMA_VERSION
+    ) &&
     object.methodology_version ===
       COUNTRY_RISK_METHOD_VERSION &&
     object.subject?.type ===
@@ -117,6 +122,21 @@ persistRiskObject(
         .integrity
         .calculation_hash,
 
+    payload_hash:
+      object.integrity.payload_hash,
+
+    signature:
+      object.integrity.signature,
+
+    signature_scheme:
+      object.integrity.signature_scheme,
+
+    signing_key_id:
+      object.integrity.signing_key_id,
+
+    canonicalization:
+      object.integrity.canonicalization,
+
     generated_at:
       object.generated_at,
 
@@ -154,7 +174,7 @@ persistRiskObject(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,calculation_hash",
+        "object_id,calculation_hash,payload_hash,signature,signature_scheme,signing_key_id,canonicalization",
       )
       .eq(
         "object_id",
@@ -166,12 +186,31 @@ persistRiskObject(
     throw existing.error;
   }
 
+  const existingRow =
+    existing.data as unknown as {
+      object_id: string;
+      calculation_hash: string;
+      payload_hash: string | null;
+      signature: string | null;
+      signature_scheme: string | null;
+      signing_key_id: string | null;
+      canonicalization: string | null;
+    } | null;
+
   if (
-    existing.data &&
-    existing.data
-      .calculation_hash ===
-      object.integrity
-        .calculation_hash
+    existingRow &&
+    existingRow.calculation_hash ===
+      object.integrity.calculation_hash &&
+    existingRow.payload_hash ===
+      object.integrity.payload_hash &&
+    existingRow.signature ===
+      object.integrity.signature &&
+    existingRow.signature_scheme ===
+      object.integrity.signature_scheme &&
+    existingRow.signing_key_id ===
+      object.integrity.signing_key_id &&
+    existingRow.canonicalization ===
+      object.integrity.canonicalization
   ) {
     return;
   }
@@ -219,9 +258,12 @@ getLatestCompatibleCountryRiskObject(
         "subject_id",
         iso3,
       )
-      .eq(
+      .in(
         "schema_version",
-        GRO_SCHEMA_VERSION,
+        [
+          GRO_SCHEMA_VERSION,
+          LEGACY_GRO_SCHEMA_VERSION,
+        ],
       )
       .eq(
         "methodology_version",
@@ -327,9 +369,12 @@ getLatestCompatibleCountryRiskObjectAtOrBefore(
         "subject_id",
         iso3,
       )
-      .eq(
+      .in(
         "schema_version",
-        GRO_SCHEMA_VERSION,
+        [
+          GRO_SCHEMA_VERSION,
+          LEGACY_GRO_SCHEMA_VERSION,
+        ],
       )
       .eq(
         "methodology_version",

@@ -1060,11 +1060,21 @@ export async function buildCountryRiskObject(
       calculation_hash:
         calculationHash,
 
+      payload_hash:
+        null,
+
+      canonicalization:
+        null,
+
       signature:
         null,
 
       signature_scheme:
         null,
+
+      signing_key_id:
+        null,
+
     },
 
     provenance: {

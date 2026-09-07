@@ -1,3 +1,7 @@
+import {
+  verifyRiskObjectSignature,
+} from "./risk-object-signing.server";
+
 /**
  * Geomacro Risk Gate service boundary.
  *
@@ -174,6 +178,17 @@ evaluateCountryRiskGate(
   if (!riskObject) {
     throw new Error(
       `No compatible country risk object found for ${countryIso3}`,
+    );
+  }
+
+  const signatureCheck =
+    verifyRiskObjectSignature(
+      riskObject,
+    );
+
+  if (!signatureCheck.valid) {
+    throw new Error(
+      `Risk object signature verification failed: ${signatureCheck.reason}`,
     );
   }
 
