@@ -29,12 +29,17 @@ jobs:
           # Optional repository variables; empty/unset values fall back to script defaults.
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
-          GROQ_BATCH_SIZE: ${{ vars.GROQ_BATCH_SIZE }}
           GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
           GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
           GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
           GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
-          GROQ_MAX_WAIT_MS: ${{ vars.GROQ_MAX_WAIT_MS }}
+          GROQ_MAX_WAIT_MS: "900000"
+
+          # Production classifier contract.
+          # Keep request batching efficient without allowing batch-size
+          # changes to inflate daily token consumption.
+          GROQ_BATCH_SIZE: "4"
+          MAX_CANDIDATES_PER_CATEGORY: "12"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
           NEWS_MAX_RETRIES: ${{ vars.NEWS_MAX_RETRIES }}
           MAX_CANDIDATES_PER_CATEGORY: ${{ vars.MAX_CANDIDATES_PER_CATEGORY }}

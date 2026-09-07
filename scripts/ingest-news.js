@@ -946,6 +946,93 @@ function parseAssessments(rawContent, articles) {
   });
 }
 
+function parseGroqRetryMs(error) {
+  const message = String(
+    error?.message || ''
+  );
+
+  /*
+   * Groq quota errors currently expose human-readable reset durations,
+   * for example:
+   *   "Please try again in 9m23.328s"
+   *   "Please try again in 42.5s"
+   *
+   * Parse only bounded durations. Unknown formats fail closed.
+   */
+  const match = message.match(
+    /please try again in\s+(?:(\d+)m)?\s*([\d.]+)s/i
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const minutes =
+    Number(match[1] || 0);
+
+  const seconds =
+    Number(match[2] || 0);
+
+  if (
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(seconds)
+  ) {
+    return null;
+  }
+
+  return (
+    minutes * 60 * 1000 +
+    seconds * 1000
+  );
+}
+
+async function callGroqWithQuotaWait(
+  fn,
+  label
+) {
+  try {
+    return await callGroqWithBackoff(
+      fn,
+      label
+    );
+  } catch (error) {
+    if (!error?.isQuotaExhausted) {
+      throw error;
+    }
+
+    const retryMs =
+      parseGroqRetryMs(error);
+
+    if (
+      !retryMs ||
+      retryMs <= 0 ||
+      retryMs > GROQ_MAX_WAIT_MS
+    ) {
+      throw error;
+    }
+
+    const boundedWait =
+      Math.ceil(retryMs) + 1500;
+
+    console.log(
+      `  ⏳ Groq quota reset is within the allowed wait window. ` +
+      `Waiting ${Math.ceil(boundedWait / 1000)}s before one retry for ${label}.`
+    );
+
+    await delay(boundedWait);
+
+    /*
+     * Exactly one post-reset retry.
+     * If quota is still unavailable, propagate the error and let the
+     * provider circuit/fail-closed contract take over.
+     */
+    return await callGroqWithBackoff(
+      fn,
+      `${label} post-reset retry`
+    );
+  }
+}
+
 async function checkArticlesBatchRelevance(articles, category) {
   const prompt = buildClassifyPrompt(articles, category);
   const groqPayload = {
@@ -966,7 +1053,7 @@ async function checkArticlesBatchRelevance(articles, category) {
 
   if (!classifierHealth.groqCircuitOpen) {
     try {
-      const chatCompletion = await callGroqWithBackoff(
+      const chatCompletion = await callGroqWithQuotaWait(
         async () => {
           const request =
             groq.chat.completions.create(groqPayload);
