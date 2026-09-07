@@ -31,6 +31,12 @@ const MAX_BACKOFF_MS = 60 * 1000;
 const QUERY_DELAY_MS = Number(process.env.NEWS_QUERY_DELAY_MS || 800);
 const NEWS_MAX_RETRIES = Number(process.env.NEWS_MAX_RETRIES || 3);
 
+const GDELT_MIN_INTERVAL_MS = Number(
+  process.env.GDELT_MIN_INTERVAL_MS || 5500
+);
+
+let gdeltLastRequestAt = 0;
+
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'gpt-oss-120b';
 const GROQ_MAX_REQUESTS_PER_RUN = Number(process.env.GROQ_MAX_REQUESTS_PER_RUN || 30);
@@ -152,6 +158,17 @@ const GUARDIAN_SECTIONS = {
   rare_earth: 'business|environment|world',
   crypto: 'technology|business',
 };
+
+const GDELT_DISCOVERY_QUERIES = Object.freeze({
+  geopolitics:
+    '(war OR military OR missile OR sanctions OR ceasefire OR coup OR blockade)',
+  macro:
+    '("interest rate" OR inflation OR recession OR "sovereign debt" OR tariff OR "bond yield")',
+  rare_earth:
+    '("rare earth" OR "critical minerals" OR lithium OR cobalt OR nickel OR gallium OR germanium)',
+  crypto:
+    '(bitcoin OR ethereum OR stablecoin OR cryptocurrency OR "digital asset")',
+});
 
 const CATEGORIES = [
   {
@@ -857,9 +874,194 @@ async function fetchWithBackoff(fn, label) {
   }
 }
 
+function normalizePublisherName(domain) {
+  const normalized = String(domain || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, '');
+
+  if (!normalized) return 'unknown';
+
+  const parts = normalized.split('.').filter(Boolean);
+
+  const commonSecondLevelSuffixes = new Set([
+    'co.uk',
+    'org.uk',
+    'ac.uk',
+    'com.au',
+    'net.au',
+    'org.au',
+    'co.nz',
+    'co.jp',
+    'co.in',
+    'com.br',
+    'com.mx',
+    'com.sg',
+  ]);
+
+  if (
+    parts.length >= 3 &&
+    commonSecondLevelSuffixes.has(
+      parts.slice(-2).join('.')
+    )
+  ) {
+    return parts[parts.length - 3]
+      .replace(/[-_]+/g, ' ')
+      .trim();
+  }
+
+  if (parts.length >= 2) {
+    return parts[parts.length - 2]
+      .replace(/[-_]+/g, ' ')
+      .trim();
+  }
+
+  return normalized;
+}
+
+function gdeltTimestamp(date) {
+  const iso = date.toISOString();
+
+  return (
+    iso.slice(0, 4) +
+    iso.slice(5, 7) +
+    iso.slice(8, 10) +
+    iso.slice(11, 13) +
+    iso.slice(14, 16) +
+    iso.slice(17, 19)
+  );
+}
+
+function normalizeGdeltSeenDate(value) {
+  const raw = String(value || '').trim();
+
+  if (!raw) return null;
+
+  const compact = raw.match(
+    /^(\d{4})(\d{2})(\d{2})T?(\d{2})(\d{2})(\d{2})Z?$/
+  );
+
+  if (compact) {
+    const [, y, m, d, hh, mm, ss] = compact;
+
+    const iso =
+      `${y}-${m}-${d}T${hh}:${mm}:${ss}Z`;
+
+    return Number.isFinite(Date.parse(iso))
+      ? iso
+      : null;
+  }
+
+  const parsed = Date.parse(raw);
+
+  return Number.isFinite(parsed)
+    ? new Date(parsed).toISOString()
+    : null;
+}
+
+async function waitForGdeltRateLimit() {
+  const elapsed = Date.now() - gdeltLastRequestAt;
+  const waitMs = GDELT_MIN_INTERVAL_MS - elapsed;
+
+  if (waitMs > 0) {
+    await delay(waitMs);
+  }
+}
+
+async function fetchGdeltArticles(query) {
+  await waitForGdeltRateLimit();
+
+  const start = new Date(Date.now() - MAX_ARTICLE_AGE_MS);
+  const end = new Date();
+
+  const params = new URLSearchParams({
+    query,
+    mode: 'ArtList',
+    maxrecords: '25',
+    format: 'json',
+    sort: 'DateDesc',
+    startdatetime: gdeltTimestamp(start),
+    enddatetime: gdeltTimestamp(end),
+  });
+
+  const url =
+    `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+
+  let response = null;
+
+  for (
+    let attempt = 0;
+    attempt <= NEWS_MAX_RETRIES;
+    attempt++
+  ) {
+    await waitForGdeltRateLimit();
+
+    response = await fetch(url);
+    gdeltLastRequestAt = Date.now();
+
+    if (response.status !== 429) {
+      break;
+    }
+
+    if (attempt >= NEWS_MAX_RETRIES) {
+      throw new Error(
+        `GDELT rate limit hit after ${attempt + 1} attempt(s)`
+      );
+    }
+
+    /*
+     * GDELT explicitly requires at least five seconds between DOC API
+     * requests. Never reuse the generic 2s/4s retry schedule here.
+     */
+    await delay(GDELT_MIN_INTERVAL_MS);
+  }
+
+  if (!response?.ok) {
+    throw new Error(
+      `GDELT HTTP ${response?.status} ${response?.statusText}`
+    );
+  }
+
+  const data = await response.json();
+
+  return (data.articles || [])
+    .map((article) => {
+      const articleUrl = String(article.url || '').trim();
+      const sourceDomain =
+        extractDomain(articleUrl) ||
+        String(article.domain || '').trim().toLowerCase();
+
+      /*
+       * GDELT is discovery infrastructure, not the evidence publisher.
+       * Preserve the original article URL/domain as source provenance so
+       * downstream GRI source caps measure independent publishers rather
+       * than counting GDELT itself as a source.
+       */
+      return {
+        title: stripHtml(article.title || ''),
+        description: '',
+        url: articleUrl,
+        publishedAt:
+          normalizeGdeltSeenDate(article.seendate) ||
+          normalizeGdeltSeenDate(
+            article.socialimage_lastupdate
+          ) ||
+          new Date().toISOString(),
+        source: normalizePublisherName(sourceDomain),
+        sourceDomain,
+        discoveryProvider: 'gdelt',
+      };
+    })
+    .filter(
+      (article) =>
+        article.title &&
+        article.url &&
+        article.sourceDomain
+    );
+}
+
 async function fetchArticlesFromApis(query, categoryName) {
   const fromDate = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString().slice(0, 10);
-  const fromIso = new Date(Date.now() - MAX_ARTICLE_AGE_MS).toISOString();
   const articles = [];
 
   // Guardian is one source, not the sole primary source.
@@ -895,17 +1097,13 @@ async function fetchArticlesFromApis(query, categoryName) {
           publishedAt: a.webPublicationDate || new Date().toISOString(),
           source: 'guardian',
           sourceDomain: extractDomain(a.webUrl),
+          discoveryProvider: 'guardian',
         }))
       );
     }
   } catch (e) {
     console.log(`   Guardian failed for query "${query}" (${e.message}).`);
   }
-
-  // Guardian is currently the canonical news provider for this ingestion path.
-  // Keep this ingestion path limited to providers that are reliable under scheduled use.
-  // made scheduled ingestion unreliable. Additional source diversity will be
-  // added through rate-limit-friendly and official/free providers separately.
 
   // Remove exact duplicate URLs while preserving genuinely distinct publishers.
   const uniqueArticles = new Map();
@@ -1313,11 +1511,29 @@ async function reclassifyExistingEvents() {
 
 
 async function ingestNews() {
-  if (process.argv.includes('--reclassify-existing')) {
+  const dryRun =
+    process.argv.includes('--dry-run');
+
+  const reclassifyExisting =
+    process.argv.includes('--reclassify-existing');
+
+  if (dryRun && reclassifyExisting) {
+    throw new Error(
+      '--dry-run and --reclassify-existing cannot be combined because reclassification has its own immutable write path.'
+    );
+  }
+
+  if (reclassifyExisting) {
     return reclassifyExistingEvents();
   }
 
   console.log('Run node scripts/ingest-news.js');
+
+  if (dryRun) {
+    console.log(
+      '🧪 DRY RUN: classification and gates will run, but no event rows will be inserted.'
+    );
+  }
   console.log(
     `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | minSeverity=${MIN_SEVERITY}`
   );
@@ -1409,17 +1625,164 @@ async function ingestNews() {
       }
     }
 
-    candidateArticles.sort(
-      (a, b) => Date.parse(b.publishedAt || 0) - Date.parse(a.publishedAt || 0)
-    );
-    if (candidateArticles.length > MAX_CANDIDATES_PER_CATEGORY) {
-      console.log(
-        `  Capping ${category.name} candidates ${candidateArticles.length} → ${MAX_CANDIDATES_PER_CATEGORY} newest.`
-      );
-      candidateArticles = candidateArticles.slice(0, MAX_CANDIDATES_PER_CATEGORY);
+    /*
+     * Bounded GDELT discovery pass.
+     *
+     * GDELT is intentionally NOT called for every Guardian query. The DOC
+     * API enforces a low request cadence, so each GRI category gets exactly
+     * one compact discovery query per ingestion run.
+     *
+     * GDELT is discovery infrastructure only. Original publisher URL/domain
+     * remains the evidence source used by downstream GRI source caps.
+     */
+    const gdeltQuery =
+      GDELT_DISCOVERY_QUERIES[category.name];
+
+    if (gdeltQuery) {
+      try {
+        const gdeltArticles =
+          await fetchGdeltArticles(gdeltQuery);
+
+        let gdeltAcceptedCandidates = 0;
+
+        for (const article of gdeltArticles) {
+          const normTitle =
+            normalizeTitle(article.title);
+
+          if (
+            !article.title ||
+            !isFresh(article.publishedAt)
+          ) {
+            continue;
+          }
+
+          if (
+            DENY.test(
+              `${article.title} ${article.description}`
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            existingUrls.has(article.url) ||
+            existingTitles.has(normTitle) ||
+            seenInCurrentRun.has(normTitle) ||
+            seenCandidatesThisCategory.has(normTitle)
+          ) {
+            continue;
+          }
+
+          seenCandidatesThisCategory.add(normTitle);
+          candidateArticles.push(article);
+          gdeltAcceptedCandidates++;
+        }
+
+        console.log(
+          `  GDELT discovery: ${gdeltArticles.length} fetched, ` +
+            `${gdeltAcceptedCandidates} new candidate(s) admitted for ${category.name}.`
+        );
+      } catch (e) {
+        console.log(
+          `  GDELT discovery failed for ${category.name} (${e.message}).`
+        );
+      }
     }
 
-    console.log(`  ${candidateArticles.length} new unique candidate article(s) to classify.`);
+    candidateArticles.sort(
+      (a, b) =>
+        Date.parse(b.publishedAt || 0) -
+        Date.parse(a.publishedAt || 0)
+    );
+
+    if (
+      candidateArticles.length >
+      MAX_CANDIDATES_PER_CATEGORY
+    ) {
+      const guardianCandidates =
+        candidateArticles.filter(
+          (article) =>
+            article.discoveryProvider === 'guardian'
+        );
+
+      const gdeltCandidates =
+        candidateArticles.filter(
+          (article) =>
+            article.discoveryProvider === 'gdelt'
+        );
+
+      const otherCandidates =
+        candidateArticles.filter(
+          (article) =>
+            !['guardian', 'gdelt'].includes(
+              article.discoveryProvider
+            )
+        );
+
+      /*
+       * Reserve up to one third of classification capacity for
+       * independently discovered publishers without allowing GDELT
+       * to crowd out the canonical Guardian lane.
+       */
+      const gdeltLimit = Math.min(
+        gdeltCandidates.length,
+        Math.max(
+          1,
+          Math.floor(
+            MAX_CANDIDATES_PER_CATEGORY / 3
+          )
+        )
+      );
+
+      const remainingLimit =
+        MAX_CANDIDATES_PER_CATEGORY - gdeltLimit;
+
+      const primaryCandidates = [
+        ...guardianCandidates,
+        ...otherCandidates,
+      ]
+        .sort(
+          (a, b) =>
+            Date.parse(b.publishedAt || 0) -
+            Date.parse(a.publishedAt || 0)
+        )
+        .slice(0, remainingLimit);
+
+      candidateArticles = [
+        ...primaryCandidates,
+        ...gdeltCandidates.slice(0, gdeltLimit),
+      ].sort(
+        (a, b) =>
+          Date.parse(b.publishedAt || 0) -
+          Date.parse(a.publishedAt || 0)
+      );
+
+      console.log(
+        `  Balanced candidate cap: ` +
+          `${primaryCandidates.length} primary + ` +
+          `${Math.min(gdeltCandidates.length, gdeltLimit)} GDELT-discovered ` +
+          `= ${candidateArticles.length}/${MAX_CANDIDATES_PER_CATEGORY}.`
+      );
+    }
+
+    const providerCounts =
+      candidateArticles.reduce(
+        (acc, article) => {
+          const provider =
+            article.discoveryProvider || 'unknown';
+
+          acc[provider] =
+            (acc[provider] || 0) + 1;
+
+          return acc;
+        },
+        {}
+      );
+
+    console.log(
+      `  ${candidateArticles.length} new unique candidate article(s) to classify. ` +
+        `Providers=${JSON.stringify(providerCounts)}`
+    );
 
     const batches = chunk(candidateArticles, BATCH_SIZE);
     for (const [batchIndex, batch] of batches.entries()) {
@@ -1475,6 +1838,28 @@ async function ingestNews() {
           market_created: false,
           created_at: new Date().toISOString(),
         };
+
+        if (dryRun) {
+          markSeen(
+            article,
+            existingUrls,
+            existingTitles,
+            seenInCurrentRun
+          );
+
+          console.log(
+            `  🧪 WOULD INSERT [${gated.category}] ` +
+              `"${gated.title}" ` +
+              `(severity=${assessment.severity}, ` +
+              `confidence=${assessment.confidence}, ` +
+              `publisher=${article.sourceDomain || article.source}, ` +
+              `discovery=${article.discoveryProvider || 'unknown'})`
+          );
+
+          categoryInserted++;
+          totalInserted++;
+          continue;
+        }
 
         let { error: insertError } = await supabase.from('events').insert([eventRow]);
 
