@@ -78,4 +78,85 @@ describe('shared source discovery hardening', () => {
       'sourceDomain'
     );
   });
+
+  it('bounds Guardian queries per category with deterministic rotation', () => {
+    expect(source).toContain(
+      'GUARDIAN_QUERY_BUDGET_PER_CATEGORY'
+    );
+
+    expect(source).toContain(
+      'GUARDIAN_QUERY_ROTATION_HOURS'
+    );
+
+    expect(source).toContain(
+      'GUARDIAN_ROTATION_RUN_MS'
+    );
+
+    expect(source).toContain(
+      'Math.ceil('
+    );
+
+    expect(source).toContain(
+      'allQueries.slice('
+    );
+  });
+
+  it('executes only the selected Guardian query plan', () => {
+    const ingestionLoop = between(
+      'let candidateArticles = [];',
+      '/*\n     * Bounded GDACS'
+    );
+
+    expect(ingestionLoop).toContain(
+      'guardianQueryPlan('
+    );
+
+    expect(ingestionLoop).toContain(
+      'guardianPlan.queries.entries()'
+    );
+
+    expect(ingestionLoop).not.toContain(
+      'category.queries.entries()'
+    );
+  });
+
+  it('wires Guardian query budget into ingestion workflows', () => {
+    const envExample = readFileSync(
+      new URL(
+        '../../.env.example',
+        import.meta.url
+      ),
+      'utf8'
+    );
+
+    expect(envExample).toContain(
+      'GUARDIAN_QUERY_BUDGET_PER_CATEGORY=10'
+    );
+
+    expect(envExample).toContain(
+      'GUARDIAN_QUERY_ROTATION_HOURS=2'
+    );
+
+    for (const workflowPath of [
+      '../../.github/workflows/auto-ingest-news.yml',
+      '../../.github/workflows/dry-run-multisource-news.yml',
+    ]) {
+      const workflow = readFileSync(
+        new URL(
+          workflowPath,
+          import.meta.url
+        ),
+        'utf8'
+      );
+
+      expect(workflow).toContain(
+        'GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}'
+      );
+
+      expect(workflow).toContain(
+        'GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}'
+      );
+    }
+  });
+
 });

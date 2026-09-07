@@ -478,6 +478,111 @@ const GUARDIAN_SECTIONS = {
   rare_earth: 'business|environment|world',
 };
 
+const GUARDIAN_QUERY_BUDGET_PER_CATEGORY = (() => {
+  const parsed = Number(
+    process.env.GUARDIAN_QUERY_BUDGET_PER_CATEGORY ||
+      10
+  );
+
+  return (
+    Number.isFinite(parsed) &&
+    parsed > 0
+  )
+    ? Math.floor(parsed)
+    : 10;
+})();
+
+const GUARDIAN_QUERY_ROTATION_HOURS = (() => {
+  const parsed = Number(
+    process.env.GUARDIAN_QUERY_ROTATION_HOURS ||
+      2
+  );
+
+  return (
+    Number.isFinite(parsed) &&
+    parsed > 0
+  )
+    ? Math.floor(parsed)
+    : 2;
+})();
+
+/*
+ * Freeze the rotation clock once per ingestion process.
+ *
+ * Scheduled reruns within the same rotation window therefore select the
+ * same Guardian query chunk instead of skipping coverage due to retries.
+ */
+const GUARDIAN_ROTATION_RUN_MS =
+  Date.now();
+
+function guardianQueryPlan(queries) {
+  const allQueries =
+    Array.isArray(queries)
+      ? queries
+      : [];
+
+  if (!allQueries.length) {
+    return {
+      queries: [],
+      totalQueries: 0,
+      budget: 0,
+      totalChunks: 0,
+      chunkIndex: 0,
+      startIndex: 0,
+      endIndex: 0,
+    };
+  }
+
+  const budget = Math.min(
+    GUARDIAN_QUERY_BUDGET_PER_CATEGORY,
+    allQueries.length
+  );
+
+  const totalChunks =
+    Math.ceil(
+      allQueries.length / budget
+    );
+
+  const guardianRotationSlot =
+    Math.floor(
+      GUARDIAN_ROTATION_RUN_MS /
+        (
+          GUARDIAN_QUERY_ROTATION_HOURS *
+          60 *
+          60 *
+          1000
+        )
+    );
+
+  const chunkIndex =
+    guardianRotationSlot %
+    totalChunks;
+
+  const startIndex =
+    chunkIndex * budget;
+
+  const endIndex =
+    Math.min(
+      startIndex + budget,
+      allQueries.length
+    );
+
+  return {
+    queries:
+      allQueries.slice(
+        startIndex,
+        endIndex
+      ),
+    totalQueries:
+      allQueries.length,
+    budget,
+    totalChunks,
+    chunkIndex,
+    startIndex,
+    endIndex,
+  };
+}
+
 const RELIEFWEB_DISCOVERY_QUERIES = Object.freeze({
   geopolitics:
     'conflict war attack ceasefire displacement sanctions military humanitarian crisis',
@@ -2708,12 +2813,51 @@ async function ingestNews() {
     }
 
     let candidateArticles = [];
-    for (const [queryIndex, query] of category.queries.entries()) {
-      const fetched = await fetchArticlesFromApis(query, category.name);
+
+    const guardianPlan =
+      guardianQueryPlan(
+        category.queries
+      );
+
+    console.log(
+      `  Guardian query budget: ` +
+        `${guardianPlan.queries.length}/${guardianPlan.totalQueries} ` +
+        `queries this run ` +
+        `(chunk ${guardianPlan.chunkIndex + 1}/${guardianPlan.totalChunks}, ` +
+        `max ${GUARDIAN_QUERY_BUDGET_PER_CATEGORY}/category).`
+    );
+
+    for (
+      const [queryIndex, query] of
+        guardianPlan.queries.entries()
+    ) {
+      const fetched =
+        await fetchArticlesFromApis(
+          query,
+          category.name
+        );
+
       for (const article of fetched) {
-        const normTitle = normalizeTitle(article.title);
-        if (!article.title || !isFresh(article.publishedAt)) continue;
-        if (DENY.test(`${article.title} ${article.description}`)) continue;
+        const normTitle =
+          normalizeTitle(
+            article.title
+          );
+
+        if (
+          !article.title ||
+          !isFresh(article.publishedAt)
+        ) {
+          continue;
+        }
+
+        if (
+          DENY.test(
+            `${article.title} ${article.description}`
+          )
+        ) {
+          continue;
+        }
+
         if (
           existingUrls.has(article.url) ||
           existingTitles.has(normTitle) ||
@@ -2722,11 +2866,23 @@ async function ingestNews() {
         ) {
           continue;
         }
-        seenCandidatesThisCategory.add(normTitle);
-        candidateArticles.push(article);
+
+        seenCandidatesThisCategory.add(
+          normTitle
+        );
+
+        candidateArticles.push(
+          article
+        );
       }
-      if (queryIndex < category.queries.length - 1) {
-        await delay(QUERY_DELAY_MS);
+
+      if (
+        queryIndex <
+        guardianPlan.queries.length - 1
+      ) {
+        await delay(
+          QUERY_DELAY_MS
+        );
       }
     }
 
