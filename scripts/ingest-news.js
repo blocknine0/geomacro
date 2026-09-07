@@ -87,18 +87,20 @@ const CLASSIFICATION_REQUEST_BUDGET = Math.max(
     CLASSIFICATION_REQUEST_RESERVE
 );
 
-const SAFE_CANDIDATES_PER_CATEGORY = Math.max(
-  1,
-  Math.min(
-    MAX_CANDIDATES_PER_CATEGORY,
-    Math.floor(
-      (
-        CLASSIFICATION_REQUEST_BUDGET *
-        BATCH_SIZE
-      ) / ALLOWED_CATEGORIES.length
+function safeCandidatesPerCategory() {
+  return Math.max(
+    1,
+    Math.min(
+      MAX_CANDIDATES_PER_CATEGORY,
+      Math.floor(
+        (
+          CLASSIFICATION_REQUEST_BUDGET *
+          BATCH_SIZE
+        ) / ALLOWED_CATEGORIES.length
+      )
     )
-  )
-);
+  );
+}
 
 let groqRequestsThisRun = 0;
 let groqRemainingRequests = Infinity;
@@ -1811,7 +1813,7 @@ async function ingestNews() {
   console.log(
     `Groq model=${GROQ_MODEL} | Cerebras fallback=${CEREBRAS_MODEL} | ` +
       `batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | ` +
-      `safeCandidatesPerCategory=${SAFE_CANDIDATES_PER_CATEGORY} | ` +
+      `safeCandidatesPerCategory=${safeCandidatesPerCategory()} | ` +
       `requestReserve=${CLASSIFICATION_REQUEST_RESERVE} | ` +
       `minSeverity=${MIN_SEVERITY}`
   );
@@ -2100,7 +2102,7 @@ async function ingestNews() {
 
     if (
       candidateArticles.length >
-      SAFE_CANDIDATES_PER_CATEGORY
+      safeCandidatesPerCategory()
     ) {
       const guardianCandidates =
         candidateArticles.filter(
@@ -2132,13 +2134,13 @@ async function ingestNews() {
         Math.max(
           1,
           Math.floor(
-            SAFE_CANDIDATES_PER_CATEGORY / 3
+            safeCandidatesPerCategory() / 3
           )
         )
       );
 
       const remainingLimit =
-        SAFE_CANDIDATES_PER_CATEGORY - gdeltLimit;
+        safeCandidatesPerCategory() - gdeltLimit;
 
       const primaryCandidates = [
         ...guardianCandidates,
@@ -2164,7 +2166,7 @@ async function ingestNews() {
         `  Balanced candidate cap: ` +
           `${primaryCandidates.length} primary + ` +
           `${Math.min(gdeltCandidates.length, gdeltLimit)} GDELT-discovered ` +
-          `= ${candidateArticles.length}/${SAFE_CANDIDATES_PER_CATEGORY}.`
+          `= ${candidateArticles.length}/${safeCandidatesPerCategory()}.`
       );
     }
 
