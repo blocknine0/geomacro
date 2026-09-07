@@ -40,6 +40,12 @@ jobs:
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
 
+          # Keep the multi-source validation inside the free Groq
+          # request budget. Four articles per classifier request cuts
+          # request pressure in half versus the legacy default of two.
+          GROQ_BATCH_SIZE: "4"
+          GROQ_MAX_REQUESTS_PER_RUN: "30"
+
           GDELT_MIN_INTERVAL_MS: "6000"
 
           RELIEFWEB_ENABLED: "false"
