@@ -229,10 +229,10 @@ function sha256Text(value) {
 const ALLOWED_CATEGORIES = ['geopolitics', 'macro', 'rare_earth'];
 
 const GEOPOLITICS_ANCHOR =
-  /\b(war|warfare|armed conflict|armed clashes?|military|military attacks?|airstrikes?|missiles?|troops?|ceasefires?|nato|blockade|coup|junta|invasion|militias?|drone strikes?|drone attacks?|artillery|offensive|frontline|occupation|mobilization|nuclear weapons?|nuclear strike|nuclear facility|nuclear test|nuclear doctrine|hezbollah|houthi|irgc|idf|pla|battlefield|conscription|border clash|naval clash|cross-border fire|exchange(?:s|d)? fire|retaliat(?:e|es|ed|ion|ory)|territorial dispute|west bank|gaza|taiwan strait|south china sea|red sea shipping|strait of hormuz|sanctions?|embargo)\b/i;
+  /\b(war|warfare|armed conflict|armed clashes?|military|military attacks?|airstrikes?|missiles?|troops?|ceasefires?|nato|blockade|coup|junta|invasion|militias?|drone strikes?|drone attacks?|artillery|ground fighting|offensive|frontline|occupation|mobilization|nuclear weapons?|nuclear strike|nuclear facility|nuclear test|nuclear doctrine|hezbollah|houthi|irgc|idf|pla|battlefield|conscription|border clash|naval clash|cross-border fire|exchange(?:s|d)? fire|retaliat(?:e|es|ed|ion|ory)|territorial dispute|west bank|gaza|taiwan strait|south china sea|red sea shipping|strait of hormuz|sanctions?|embargo)\b/i;
 
 const MACRO_ANCHOR =
-  /\b(federal reserve|the fed|fed\b|central banks?|bank of england|boe\b|ecb\b|boj\b|rbi\b|pboc\b|imf\b|world bank|inflation|cpi\b|pce\b|interest rates?|rate cuts?|rate hikes?|monetary policy|sovereign debt|sovereign default|bond yields?|treasur(?:y|ies)|yield curve|recession|stagflation|economic downturn|economic slowdown|economic contraction|gdp\b|unemployment|payrolls?|house prices?|home prices?|property prices?|shop prices?|retail prices?|consumer prices?|price rises?|cost of living|financial hit|economic impact|economic cost|household costs?|household finances?|currency devaluation|devaluation|fiscal deficit|trade deficit|stimulus|liquidity|credit crunch|bank failure|opec\b|brent\b|wti\b|oil prices?|wholesale gas|gas stor(?:age|es)|lng\b|energy shock|energy crisis|tariffs?)\b/i;
+  /\b(federal reserve|the fed|fed\b|central banks?|bank of england|boe\b|ecb\b|boj\b|rbi\b|pboc\b|imf\b|world bank|inflation|cpi\b|pce\b|interest rates?|rate cuts?|rate hikes?|monetary policy|sovereign debt|sovereign default|bond markets?|bond yields?|treasur(?:y|ies)|yield curve|recession|stagflation|economic downturn|economic slowdown|economic contraction|gdp\b|unemployment|payrolls?|house prices?|home prices?|property prices?|shop prices?|retail prices?|consumer prices?|price rises?|cost of living|financial hit|economic impact|economic cost|household costs?|household finances?|currency devaluation|devaluation|fiscal deficit|trade deficit|stimulus|liquidity|credit crunch|bank failure|opec\b|brent\b|wti\b|oil prices?|wholesale gas|gas stor(?:age|es)|lng\b|energy shock|energy crisis|tariffs?)\b/i;
 
 const RARE_EARTH_ANCHOR =
   /\b(rare[- ]earths?|ree\b|rare[- ]earth elements?|critical minerals?|strategic minerals?|neodymium|praseodymium|dysprosium|terbium|ndfeb|permanent magnets?|gallium|germanium|antimony|tungsten|graphite|lithium|cobalt|nickel|lynas|mp materials|iluka)\b/i;
@@ -2003,6 +2003,7 @@ async function reclassifyExistingEvents() {
   let inserted = 0;
   let llmRejected = 0;
   let duplicates = 0;
+  let classificationFailures = 0;
 
   for (const category of ALLOWED_CATEGORIES) {
     const articles = candidatesByCategory.get(category) ?? [];
@@ -2026,6 +2027,7 @@ async function reclassifyExistingEvents() {
       try {
         assessments = await assessWithRetry(batch, category);
       } catch (error) {
+        classificationFailures++;
         console.error(
           `  ❌ Reassessment classification failed for ${category}: ${error.message}`
         );
@@ -2083,8 +2085,15 @@ async function reclassifyExistingEvents() {
   console.log('');
   console.log(
     `GRI reassessment done. Inserted=${inserted}, ` +
-      `LLM/gate rejected=${llmRejected}, duplicates=${duplicates}.`
+      `LLM/gate rejected=${llmRejected}, duplicates=${duplicates}, ` +
+      `classification failures=${classificationFailures}.`
   );
+
+  if (classificationFailures > 0) {
+    throw new Error(
+      `GRI reassessment incomplete: ${classificationFailures} classification batch(es) failed.`
+    );
+  }
 }
 
 
