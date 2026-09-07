@@ -115,6 +115,23 @@ const GROQ_MODEL =
 const GEMINI_MODEL =
   process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
+const GEMINI_MODEL_ORDER = [
+  ...new Set(
+    String(
+      process.env.GEMINI_MODEL_ORDER ||
+        [
+          GEMINI_MODEL,
+          'gemini-3.7-flash',
+          'gemini-3.6-flash',
+          'gemini-3.5-flash-lite',
+        ].join(',')
+    )
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  ),
+];
+
 const MISTRAL_MODEL =
   process.env.MISTRAL_MODEL || 'mistral-small-2603';
 
@@ -1040,6 +1057,60 @@ async function callOpenAICompatibleClassifier(
 }
 
 
+function isGeminiModelFallbackFailure(error) {
+  const status = Number(
+    error?.status ??
+      error?.response?.status
+  );
+
+  return Boolean(
+    error?.isQuotaExhausted ||
+    error?.isModelMissing ||
+    [408, 429, 500, 502, 503, 504].includes(status)
+  );
+}
+
+async function callGeminiWithModelFallback(
+  apiKey,
+  prompt
+) {
+  let lastError = null;
+
+  for (const model of GEMINI_MODEL_ORDER) {
+    try {
+      const rawContent =
+        await callOpenAICompatibleClassifier(
+          'gemini',
+          apiKey,
+          model,
+          prompt
+        );
+
+      return {
+        rawContent,
+        model,
+      };
+    } catch (error) {
+      lastError = error;
+
+      if (!isGeminiModelFallbackFailure(error)) {
+        throw error;
+      }
+
+      console.log(
+        `  ↪ Gemini model ${model} unavailable; trying next Gemini model.`
+      );
+    }
+  }
+
+  throw (
+    lastError ||
+    new Error(
+      'No configured Gemini model is currently available.'
+    )
+  );
+}
+
 async function callClassifierProviderRaw(
   provider,
   prompt,
@@ -1406,13 +1477,28 @@ async function checkArticlesBatchRelevance(
       );
 
       try {
+        const providerResult =
+          provider === 'gemini'
+            ? await callGeminiWithModelFallback(
+                process.env.GEMINI_API_KEY,
+                prompt
+              )
+            : {
+                rawContent:
+                  await callClassifierProviderRaw(
+                    provider,
+                    prompt,
+                    groqPayload,
+                    articles.length
+                  ),
+                model,
+              };
+
         const rawContent =
-          await callClassifierProviderRaw(
-            provider,
-            prompt,
-            groqPayload,
-            articles.length
-          );
+          providerResult?.rawContent;
+
+        const actualModel =
+          providerResult?.model || model;
 
         let parsed;
 
@@ -1446,7 +1532,7 @@ async function checkArticlesBatchRelevance(
             classificationProvider:
               provider,
             classificationModel:
-              model,
+              actualModel,
             classificationVersion:
               CLASSIFICATION_VERSION,
             classificationPromptVersion:
@@ -2520,7 +2606,7 @@ async function ingestNews() {
   }
   console.log(
     `Classifier chain=${CLASSIFIER_PROVIDER_ORDER.join(' -> ')} | ` +
-      `Groq=${GROQ_MODEL} | Gemini=${GEMINI_MODEL} | ` +
+      `Groq=${GROQ_MODEL} | Gemini=${GEMINI_MODEL_ORDER.join(' -> ')} | ` +
       `Mistral=${MISTRAL_MODEL} | Cerebras=${CEREBRAS_MODEL} | ` +
       `batch=${BATCH_SIZE} | maxReq=${GROQ_MAX_REQUESTS_PER_RUN} | ` +
       `safeCandidatesPerCategory=${safeCandidatesPerCategory()} | ` +

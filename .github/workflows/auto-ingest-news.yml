@@ -31,6 +31,7 @@ jobs:
           # Optional repository variables; empty/unset values fall back to script defaults.
           GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
+          GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
           MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
           CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
