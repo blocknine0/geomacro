@@ -41,7 +41,7 @@ describe("public intelligence routing contract", () => {
     expect(gri).toContain("private-pilot commercial");
     expect(askEngine).toContain("No LLM provider is involved");
     expect(askEngine).toContain("It never computes a private fallback score");
-    expect(askUi).toContain("does not perform external web search");
+    expect(askUi).toContain("does not search the web or add uncited outside evidence");
   });
 
   it("separates broader pipeline streams from the current three-domain GRI", () => {
