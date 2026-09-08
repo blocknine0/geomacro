@@ -140,12 +140,23 @@ if (
 
 
 if (
-  observation
-    .commercial_eligibility_status !==
+  observation.provenance
+    .commercial_status !==
     "REVIEW_REQUIRED"
 ) {
   throw new Error(
-    "UCDP Dyadic commercial gate lost",
+    "UCDP Dyadic source-policy review state was not preserved",
+  );
+}
+
+
+if (
+  observation
+    .commercial_eligibility_status !==
+    "UNVERIFIED"
+) {
+  throw new Error(
+    "Review-required UCDP evidence must persist as DB-valid UNVERIFIED",
   );
 }
 
@@ -204,6 +215,10 @@ console.log({
     observation
       .commercial_eligibility_status,
 
+  source_policy_status:
+    observation.provenance
+      .commercial_status,
+
   raw_hash:
     observation.raw_hash,
 
@@ -222,6 +237,10 @@ console.log(
 
 console.log(
   "PASS: UCDP DYADIC HASHES ARE DETERMINISTIC",
+);
+
+console.log(
+  "PASS: REVIEW_REQUIRED MAPS TO DB-VALID UNVERIFIED",
 );
 
 console.log(
