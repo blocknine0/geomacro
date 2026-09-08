@@ -44,8 +44,15 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - name: Resolve dependencies
+        run: bun install
+
+      - name: Capture resolved lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolved-bun-lockfile
+          path: bun.lock
+          retention-days: 1
 
       - name: App tests
         run: bun run test:app
@@ -58,3 +65,6 @@ jobs:
 
       - name: Production build
         run: bun run build
+
+      - name: Require committed lockfile consistency
+        run: git diff --exit-code -- bun.lock
