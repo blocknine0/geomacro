@@ -107,6 +107,7 @@ const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/global-risk", label: "Global Risk Index" },
   { to: "/risk-gate", label: "Risk Gate" },
+  { to: "/ask-geomacro", label: "Ask Geomacro" },
   { to: "/data-api", label: "Data & API" },
   { to: "/research", label: "Research" },
   { to: "/institutional", label: "For Institutions" },
@@ -131,7 +132,7 @@ function TechnicalProofMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="inline-flex items-center gap-1 transition hover:text-foreground">
+        <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap transition hover:text-foreground">
           Technical Proof <ChevronDown className="h-3.5 w-3.5" aria-hidden />
         </button>
       </DropdownMenuTrigger>
@@ -177,7 +178,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <div className="flex min-w-0 items-center gap-2">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation menu">
+                  <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
@@ -205,12 +206,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             </div>
 
-            <nav aria-label="Primary" className="hidden items-center gap-4 text-xs text-muted-foreground md:flex lg:gap-5 lg:text-sm">
+            <nav aria-label="Primary" className="hidden items-center gap-3 text-xs text-muted-foreground lg:flex xl:gap-4">
               {PRIMARY_NAV.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className="transition hover:text-foreground"
+                  className="whitespace-nowrap transition hover:text-foreground"
                   activeProps={{ className: "text-foreground" }}
                 >
                   {item.label}
@@ -223,7 +224,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               {address && (
                 <Link
                   to="/portfolio"
-                  className="hidden text-sm text-muted-foreground transition hover:text-foreground xl:inline-flex"
+                  className="hidden text-sm text-muted-foreground transition hover:text-foreground 2xl:inline-flex"
                   activeProps={{ className: "text-foreground" }}
                 >
                   Portfolio
@@ -253,6 +254,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <div className="mt-3 flex flex-col gap-2">
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Global Risk Index</Link>
+                  <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
                   <Link to="/risk-gate" className="hover:text-foreground">Risk Gate</Link>
                   <Link to="/data-api" className="hover:text-foreground">Data & API</Link>
                 </div>
