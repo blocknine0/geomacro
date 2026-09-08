@@ -48,8 +48,7 @@ function allowedOrigin(request: Request) {
       url.origin === "https://geomacro.live" ||
       url.origin === "https://www.geomacro.live" ||
       url.hostname === "localhost" ||
-      url.hostname === "127.0.0.1" ||
-      url.hostname.endsWith(".lovable.app")
+      url.hostname === "127.0.0.1"
     );
   } catch {
     return false;
