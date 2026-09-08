@@ -4,6 +4,7 @@
   <url><loc>https://geomacro.live/intelligence</loc><changefreq>hourly</changefreq><priority>0.95</priority></url>
   <url><loc>https://geomacro.live/global-risk</loc><changefreq>hourly</changefreq><priority>0.95</priority></url>
   <url><loc>https://geomacro.live/risk-gate</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://geomacro.live/demo</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://geomacro.live/ask-geomacro</loc><changefreq>hourly</changefreq><priority>0.9</priority></url>
   <url><loc>https://geomacro.live/data-api</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://geomacro.live/institutional</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
