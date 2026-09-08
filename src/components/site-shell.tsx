@@ -39,9 +39,7 @@ function isWalletRoute(pathname: string) {
     pathname === "/arena" ||
     pathname === "/onchain" ||
     pathname === "/bridge-swap" ||
-    pathname === "/portfolio" ||
-    pathname === "/tx-history" ||
-    pathname.startsWith("/event/")
+    pathname === "/portfolio"
   );
 }
 
