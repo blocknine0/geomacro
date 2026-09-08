@@ -38,7 +38,7 @@ describe("public intelligence routing contract", () => {
     const askUi = read("src/components/home/ask-geomacro.tsx");
 
     expect(gri).toContain("not a guarantee of future market outcomes");
-    expect(gri).toContain("Private-pilot commercial");
+    expect(gri).toContain("private-pilot commercial");
     expect(askEngine).toContain("No LLM provider is involved");
     expect(askEngine).toContain("It never computes a private fallback score");
     expect(askUi).toContain("does not perform external web search");
