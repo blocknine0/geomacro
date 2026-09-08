@@ -1,0 +1,33 @@
+name: Agentic Commerce Demo Validation
+
+on:
+  push:
+    branches:
+      - feat/agentic-commerce-demo
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentic-demo-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-test-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Frozen dependency install
+        run: bun install --frozen-lockfile
+      - name: App tests
+        run: bun run test:app
+      - name: Risk Gate phase-1 static contract
+        run: node scripts/test-risk-gate-phase1.mjs
+      - name: Risk Gate country/corridor API static contract
+        run: node scripts/test-risk-gate-corridor-api-static.mjs
+      - name: Production build
+        run: bun run build
