@@ -96,6 +96,9 @@ export type UcdpDyadicObservationInput = {
 
     methodology_status:
       "EVIDENCE_ONLY_NOT_IN_GRO_V02";
+
+    commercial_status:
+      "REVIEW_REQUIRED";
   };
 
   rawPayload:
@@ -104,8 +107,13 @@ export type UcdpDyadicObservationInput = {
   qualityStatus:
     "VERIFIED";
 
+  /**
+   * Registry/source-policy REVIEW_REQUIRED maps to the DB-valid
+   * observation state UNVERIFIED. The evidence remains excluded
+   * from commercial GRO calculation until rights review completes.
+   */
   commercialEligibilityStatus:
-    "REVIEW_REQUIRED";
+    "UNVERIFIED";
 };
 
 
@@ -239,6 +247,9 @@ export function mapUcdpDyadicEvidenceToObservationInput(
 
       methodology_status:
         input.evidence.methodology_status,
+
+      commercial_status:
+        "REVIEW_REQUIRED",
     },
 
     rawPayload:
@@ -248,6 +259,6 @@ export function mapUcdpDyadicEvidenceToObservationInput(
       "VERIFIED",
 
     commercialEligibilityStatus:
-      "REVIEW_REQUIRED",
+      "UNVERIFIED",
   };
 }
