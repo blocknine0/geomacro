@@ -1,0 +1,117 @@
+name: Risk Gate Staging Load
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/load-test-risk-gate-staging.ts'
+      - 'docs/RISK_GATE_STAGING_LOAD_TEST.md'
+      - '.github/workflows/risk-gate-staging-load.yml'
+  workflow_dispatch:
+    inputs:
+      requests:
+        description: 'Total synthetic requests (max 2000)'
+        required: true
+        default: '60'
+        type: string
+      concurrency:
+        description: 'Concurrent workers (max 25)'
+        required: true
+        default: '5'
+        type: string
+      mode:
+        description: 'country, corridor, or mixed'
+        required: true
+        default: 'country'
+        type: choice
+        options:
+          - country
+          - corridor
+          - mixed
+      country_iso3:
+        description: 'Country ISO3 for country/mixed mode'
+        required: true
+        default: 'USA'
+        type: string
+      corridor_origin_iso3:
+        description: 'Origin ISO3 for corridor/mixed mode'
+        required: false
+        default: 'USA'
+        type: string
+      corridor_destination_iso3:
+        description: 'Destination ISO3 for corridor/mixed mode'
+        required: false
+        default: 'CHN'
+        type: string
+      allow_429:
+        description: 'Treat rate-limit 429s as expected saturation evidence'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  harness-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Verify committed lockfile and install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify production guard and bounded configuration
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
+
+  staging-load:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+
+    env:
+      RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+      RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+      RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
+      RISK_GATE_LOAD_TEST_REQUESTS: ${{ inputs.requests }}
+      RISK_GATE_LOAD_TEST_CONCURRENCY: ${{ inputs.concurrency }}
+      RISK_GATE_LOAD_TEST_MODE: ${{ inputs.mode }}
+      RISK_GATE_LOAD_TEST_COUNTRY_ISO3: ${{ inputs.country_iso3 }}
+      RISK_GATE_LOAD_TEST_CORRIDOR_ORIGIN_ISO3: ${{ inputs.corridor_origin_iso3 }}
+      RISK_GATE_LOAD_TEST_CORRIDOR_DESTINATION_ISO3: ${{ inputs.corridor_destination_iso3 }}
+      RISK_GATE_LOAD_TEST_ALLOW_429: ${{ inputs.allow_429 }}
+      RISK_GATE_LOAD_TEST_TIMEOUT_MS: '10000'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Verify committed lockfile and install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run bounded staging HTTP load
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts
+
+      - name: Upload staging resilience evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-gate-staging-http-load
+          path: artifacts/risk-gate-staging-http-load.json
+          if-no-files-found: warn
+          retention-days: 30
