@@ -1,24 +1,13 @@
 import {
+  corridorSubjectId,
+} from "./corridor-risk-engine";
+
+import {
   verifyRiskObjectSignature,
 } from "./risk-object-signing.server";
 
-/**
- * Geomacro Risk Gate service boundary.
- *
- * Responsibilities:
- * - validate the externally supplied Risk Gate request
- * - load the latest compatible persisted GRO
- * - evaluate customer policy against that GRO
- * - return machine-readable decision context
- *
- * Product boundary:
- * - this service provides external-world risk context
- * - customer / agent policy determines the decision
- * - this service never authorizes or submits execution
- */
-
 import {
-  getLatestCompatibleCountryRiskObjectAtOrBefore,
+  getLatestCompatibleCorridorRiskObjectAtOrBefore,
 } from "./risk-object-store.server";
 
 import {
@@ -32,10 +21,14 @@ import type {
 } from "./risk-gate-contract";
 
 
-export type CountryRiskGateServiceInput = {
+export type CorridorRiskGateServiceInput = {
   request_id: string;
 
-  country_iso3: string;
+  origin_country_iso3:
+    string;
+
+  destination_country_iso3:
+    string;
 
   action_context?: {
     action_type?: string;
@@ -49,57 +42,43 @@ export type CountryRiskGateServiceInput = {
     >;
   };
 
-  policy: RiskGatePolicy;
+  policy:
+    RiskGatePolicy;
 
-  /**
-   * Evaluation clock.
-   *
-   * Defaults to current time.
-   * Can be frozen for deterministic testing.
-   */
   evaluated_at?: string;
 };
 
 
-export type CountryRiskGateServiceResult = {
-  request: RiskGateRequest;
+export type CorridorRiskGateServiceResult = {
+  request:
+    RiskGateRequest;
 
-  response: RiskGateResponse;
+  response:
+    RiskGateResponse;
 
   context: {
-    country_iso3: string;
+    corridor_id:
+      string;
 
-    risk_object_id: string;
+    origin_country_iso3:
+      string;
 
-    methodology_version: string;
+    destination_country_iso3:
+      string;
 
-    evaluated_at: string;
+    risk_object_id:
+      string;
 
-    execution_authorized: false;
+    methodology_version:
+      string;
+
+    evaluated_at:
+      string;
+
+    execution_authorized:
+      false;
   };
 };
-
-
-function normalizeCountryIso3(
-  value: string,
-) {
-  const iso3 =
-    value
-      .trim()
-      .toUpperCase();
-
-  if (
-    !/^[A-Z]{3}$/.test(
-      iso3,
-    )
-  ) {
-    throw new Error(
-      "country_iso3 must be ISO3",
-    );
-  }
-
-  return iso3;
-}
 
 
 function requireNonEmptyString(
@@ -141,17 +120,12 @@ function normalizeEvaluationTime(
 }
 
 
-/**
- * Evaluate the latest persisted country GRO
- * against a caller-supplied policy.
- *
- * No execution capability exists here.
- */
 export async function
-evaluateCountryRiskGate(
-  input: CountryRiskGateServiceInput,
+evaluateCorridorRiskGate(
+  input:
+    CorridorRiskGateServiceInput,
 ): Promise<
-  CountryRiskGateServiceResult
+  CorridorRiskGateServiceResult
 > {
   const requestId =
     requireNonEmptyString(
@@ -159,10 +133,17 @@ evaluateCountryRiskGate(
       "request_id",
     );
 
-  const countryIso3 =
-    normalizeCountryIso3(
-      input.country_iso3,
+  const corridorId =
+    corridorSubjectId(
+      input.origin_country_iso3,
+      input.destination_country_iso3,
     );
+
+  const [
+    originIso3,
+    destinationIso3,
+  ] =
+    corridorId.split(">");
 
   const evaluatedAt =
     normalizeEvaluationTime(
@@ -170,14 +151,14 @@ evaluateCountryRiskGate(
     );
 
   const riskObject =
-    await getLatestCompatibleCountryRiskObjectAtOrBefore(
-      countryIso3,
+    await getLatestCompatibleCorridorRiskObjectAtOrBefore(
+      corridorId,
       evaluatedAt.toISOString(),
     );
 
   if (!riskObject) {
     throw new Error(
-      `No compatible country risk object found for ${countryIso3}`,
+      `No compatible corridor risk object found for ${corridorId}`,
     );
   }
 
@@ -186,43 +167,66 @@ evaluateCountryRiskGate(
       riskObject,
     );
 
-  if (!signatureCheck.valid) {
+  if (
+    !signatureCheck.valid
+  ) {
     throw new Error(
-      `Risk object signature verification failed: ${signatureCheck.reason}`,
+      `Corridor risk object signature verification failed: ${signatureCheck.reason}`,
     );
   }
 
   if (
     riskObject.subject.type !==
-      "country" ||
+      "corridor" ||
     riskObject.subject.id !==
-      countryIso3
+      corridorId
   ) {
     throw new Error(
-      "Risk object subject mismatch",
+      "Corridor risk object subject mismatch",
     );
   }
 
-  const request: RiskGateRequest = {
-    request_id:
-      requestId,
+  const context =
+    riskObject
+      .corridor_context;
 
-    subject: {
-      type: "country",
-      id: countryIso3,
-    },
+  if (
+    !context ||
+    context.origin_country_iso3 !==
+      originIso3 ||
+    context.destination_country_iso3 !==
+      destinationIso3
+  ) {
+    throw new Error(
+      "Corridor risk object endpoint context mismatch",
+    );
+  }
 
-    action_context:
-      input.action_context,
+  const request:
+    RiskGateRequest = {
+      request_id:
+        requestId,
 
-    policy:
-      input.policy,
-  };
+      subject: {
+        type:
+          "corridor",
+
+        id:
+          corridorId,
+      },
+
+      action_context:
+        input.action_context,
+
+      policy:
+        input.policy,
+    };
 
   const response =
     evaluateRiskGate(
       request,
       riskObject,
+      evaluatedAt,
     );
 
   if (
@@ -240,8 +244,14 @@ evaluateCountryRiskGate(
     response,
 
     context: {
-      country_iso3:
-        countryIso3,
+      corridor_id:
+        corridorId,
+
+      origin_country_iso3:
+        originIso3,
+
+      destination_country_iso3:
+        destinationIso3,
 
       risk_object_id:
         riskObject.object_id,

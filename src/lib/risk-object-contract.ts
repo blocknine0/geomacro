@@ -9,10 +9,33 @@
  * - This contract does not imply custody, execution or trade submission.
  */
 
-export const GRO_SCHEMA_VERSION = "gro-1.0" as const;
+export const LEGACY_GRO_SCHEMA_VERSION =
+  "gro-1.0" as const;
+
+export const GRO_SCHEMA_VERSION =
+  "gro-1.1" as const;
+
+export type GroSchemaVersion =
+  | typeof LEGACY_GRO_SCHEMA_VERSION
+  | typeof GRO_SCHEMA_VERSION;
+
+export const GRO_CANONICALIZATION_VERSION =
+  "geomacro-canonical-json-v1" as const;
+
+export const GRO_SIGNATURE_SCHEME =
+  "Ed25519" as const;
 
 export const COUNTRY_RISK_METHOD_VERSION =
   "country-risk-v0.1.0-pilot" as const;
+
+export const CORRIDOR_RISK_METHOD_VERSION =
+  "corridor-endpoint-max-v0.1.0-pilot" as const;
+
+export const CORRIDOR_RISK_OBJECT_TTL_HOURS = 3;
+
+export type RiskMethodologyVersion =
+  | typeof COUNTRY_RISK_METHOD_VERSION
+  | typeof CORRIDOR_RISK_METHOD_VERSION;
 
 export const COUNTRY_RISK_LOOKBACK_HOURS = 72;
 export const COUNTRY_RISK_HALF_LIFE_HOURS = 24;
@@ -22,6 +45,29 @@ export type RiskSubjectType =
   | "country"
   | "corridor"
   | "event";
+
+export type CorridorRiskContext = {
+  origin_country_iso3: string;
+  destination_country_iso3: string;
+
+  /**
+   * Pilot composition rule:
+   * corridor score is the higher of the two
+   * signed endpoint country GRO scores.
+   */
+  composition:
+    "max_endpoint_score_v1";
+
+  dominant_endpoint:
+    | "origin"
+    | "destination";
+
+  source_risk_object_ids:
+    [string, string];
+
+  source_calculation_hashes:
+    [string, string];
+};
 
 export type RiskVerificationStatus =
   | "VERIFIED"
@@ -111,15 +157,26 @@ export type RiskIntegrity = {
   calculation_hash: string;
 
   /**
-   * Cryptographic issuer signing is intentionally
-   * not represented as implemented yet.
+   * Hash of the canonical signed payload with
+   * payload_hash/signature themselves set to null.
    */
-  signature: null;
-  signature_scheme: null;
+  payload_hash: string | null;
+
+  canonicalization:
+    | typeof GRO_CANONICALIZATION_VERSION
+    | null;
+
+  signature: string | null;
+
+  signature_scheme:
+    | typeof GRO_SIGNATURE_SCHEME
+    | null;
+
+  signing_key_id: string | null;
 };
 
 export type GeomacroRiskObject = {
-  schema_version: typeof GRO_SCHEMA_VERSION;
+  schema_version: GroSchemaVersion;
 
   object_id: string;
 
@@ -162,7 +219,14 @@ export type GeomacroRiskObject = {
   };
 
   methodology_version:
-    typeof COUNTRY_RISK_METHOD_VERSION;
+    RiskMethodologyVersion;
+
+  /**
+   * Present only when subject.type === "corridor".
+   * Country GROs remain byte-for-byte compatible
+   * with the existing gro-1.1 payload shape.
+   */
+  corridor_context?: CorridorRiskContext;
 
   generated_at: string;
   expires_at: string;

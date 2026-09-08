@@ -4,7 +4,9 @@ import {
 
 import {
   GRO_SCHEMA_VERSION,
+  LEGACY_GRO_SCHEMA_VERSION,
   COUNTRY_RISK_METHOD_VERSION,
+  CORRIDOR_RISK_METHOD_VERSION,
   type GeomacroRiskObject,
 } from "./risk-object-contract";
 
@@ -30,8 +32,12 @@ function isCompatibleCountryRiskObject(
     value as Partial<GeomacroRiskObject>;
 
   return Boolean(
-    object.schema_version ===
-      GRO_SCHEMA_VERSION &&
+    (
+      object.schema_version ===
+        GRO_SCHEMA_VERSION ||
+      object.schema_version ===
+        LEGACY_GRO_SCHEMA_VERSION
+    ) &&
     object.methodology_version ===
       COUNTRY_RISK_METHOD_VERSION &&
     object.subject?.type ===
@@ -117,6 +123,21 @@ persistRiskObject(
         .integrity
         .calculation_hash,
 
+    payload_hash:
+      object.integrity.payload_hash,
+
+    signature:
+      object.integrity.signature,
+
+    signature_scheme:
+      object.integrity.signature_scheme,
+
+    signing_key_id:
+      object.integrity.signing_key_id,
+
+    canonicalization:
+      object.integrity.canonicalization,
+
     generated_at:
       object.generated_at,
 
@@ -154,7 +175,7 @@ persistRiskObject(
         "geomacro_risk_objects",
       )
       .select(
-        "object_id,calculation_hash",
+        "object_id,calculation_hash,payload_hash,signature,signature_scheme,signing_key_id,canonicalization",
       )
       .eq(
         "object_id",
@@ -166,12 +187,31 @@ persistRiskObject(
     throw existing.error;
   }
 
+  const existingRow =
+    existing.data as unknown as {
+      object_id: string;
+      calculation_hash: string;
+      payload_hash: string | null;
+      signature: string | null;
+      signature_scheme: string | null;
+      signing_key_id: string | null;
+      canonicalization: string | null;
+    } | null;
+
   if (
-    existing.data &&
-    existing.data
-      .calculation_hash ===
-      object.integrity
-        .calculation_hash
+    existingRow &&
+    existingRow.calculation_hash ===
+      object.integrity.calculation_hash &&
+    existingRow.payload_hash ===
+      object.integrity.payload_hash &&
+    existingRow.signature ===
+      object.integrity.signature &&
+    existingRow.signature_scheme ===
+      object.integrity.signature_scheme &&
+    existingRow.signing_key_id ===
+      object.integrity.signing_key_id &&
+    existingRow.canonicalization ===
+      object.integrity.canonicalization
   ) {
     return;
   }
@@ -219,9 +259,12 @@ getLatestCompatibleCountryRiskObject(
         "subject_id",
         iso3,
       )
-      .eq(
+      .in(
         "schema_version",
-        GRO_SCHEMA_VERSION,
+        [
+          GRO_SCHEMA_VERSION,
+          LEGACY_GRO_SCHEMA_VERSION,
+        ],
       )
       .eq(
         "methodology_version",
@@ -327,9 +370,12 @@ getLatestCompatibleCountryRiskObjectAtOrBefore(
         "subject_id",
         iso3,
       )
-      .eq(
+      .in(
         "schema_version",
-        GRO_SCHEMA_VERSION,
+        [
+          GRO_SCHEMA_VERSION,
+          LEGACY_GRO_SCHEMA_VERSION,
+        ],
       )
       .eq(
         "methodology_version",
@@ -408,4 +454,221 @@ getRiskObjectByObjectId(
   return (
     result.data as RiskObjectRow
   ).payload as GeomacroRiskObject;
+}
+
+
+function isCompatibleCorridorRiskObject(
+  value: unknown,
+  corridorId: string,
+): value is GeomacroRiskObject {
+  if (
+    !value ||
+    typeof value !== "object"
+  ) {
+    return false;
+  }
+
+  const object =
+    value as Partial<
+      GeomacroRiskObject
+    >;
+
+  return Boolean(
+    object.schema_version ===
+      GRO_SCHEMA_VERSION &&
+    object.methodology_version ===
+      CORRIDOR_RISK_METHOD_VERSION &&
+    object.subject?.type ===
+      "corridor" &&
+    object.subject?.id ===
+      corridorId,
+  );
+}
+
+
+export async function
+getLatestCompatibleCorridorRiskObject(
+  corridorId: string,
+  before?: string,
+): Promise<
+  GeomacroRiskObject | null
+> {
+  const db =
+    requireRiskSupabase();
+
+  const id =
+    corridorId.trim();
+
+  if (!id) {
+    throw new Error(
+      "corridorId is required",
+    );
+  }
+
+  let query =
+    db
+      .from(
+        "geomacro_risk_objects",
+      )
+      .select(
+        "object_id,payload,generated_at,expires_at",
+      )
+      .eq(
+        "subject_type",
+        "corridor",
+      )
+      .eq(
+        "subject_id",
+        id,
+      )
+      .eq(
+        "schema_version",
+        GRO_SCHEMA_VERSION,
+      )
+      .eq(
+        "methodology_version",
+        CORRIDOR_RISK_METHOD_VERSION,
+      )
+      .order(
+        "generated_at",
+        {
+          ascending: false,
+        },
+      )
+      .limit(1);
+
+  if (before) {
+    query =
+      query.lt(
+        "generated_at",
+        before,
+      );
+  }
+
+  const result =
+    await query
+      .maybeSingle();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (!result.data) {
+    return null;
+  }
+
+  const row =
+    result.data as
+      RiskObjectRow;
+
+  if (
+    !isCompatibleCorridorRiskObject(
+      row.payload,
+      id,
+    )
+  ) {
+    throw new Error(
+      `Stored corridor GRO payload contract mismatch: ${row.object_id}`,
+    );
+  }
+
+  return row.payload;
+}
+
+
+export async function
+getLatestCompatibleCorridorRiskObjectAtOrBefore(
+  corridorId: string,
+  atOrBefore: string,
+): Promise<
+  GeomacroRiskObject | null
+> {
+  const db =
+    requireRiskSupabase();
+
+  const id =
+    corridorId.trim();
+
+  if (!id) {
+    throw new Error(
+      "corridorId is required",
+    );
+  }
+
+  const boundary =
+    new Date(
+      atOrBefore,
+    );
+
+  if (
+    Number.isNaN(
+      boundary.getTime(),
+    )
+  ) {
+    throw new Error(
+      "Invalid atOrBefore timestamp",
+    );
+  }
+
+  const result =
+    await db
+      .from(
+        "geomacro_risk_objects",
+      )
+      .select(
+        "object_id,payload,generated_at,expires_at",
+      )
+      .eq(
+        "subject_type",
+        "corridor",
+      )
+      .eq(
+        "subject_id",
+        id,
+      )
+      .eq(
+        "schema_version",
+        GRO_SCHEMA_VERSION,
+      )
+      .eq(
+        "methodology_version",
+        CORRIDOR_RISK_METHOD_VERSION,
+      )
+      .lte(
+        "generated_at",
+        boundary.toISOString(),
+      )
+      .order(
+        "generated_at",
+        {
+          ascending: false,
+        },
+      )
+      .limit(1)
+      .maybeSingle();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (!result.data) {
+    return null;
+  }
+
+  const row =
+    result.data as
+      RiskObjectRow;
+
+  if (
+    !isCompatibleCorridorRiskObject(
+      row.payload,
+      id,
+    )
+  ) {
+    throw new Error(
+      `Stored corridor GRO payload contract mismatch: ${row.object_id}`,
+    );
+  }
+
+  return row.payload;
 }

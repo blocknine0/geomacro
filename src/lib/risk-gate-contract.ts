@@ -67,7 +67,9 @@ export type RiskGateRequest = {
   request_id: string;
 
   subject: {
-    type: "country";
+    type:
+      | "country"
+      | "corridor";
     id: string;
   };
 
@@ -100,6 +102,8 @@ export type RiskGateReasonCode =
   | "commercial_verification_required"
   | "positive_delta_requires_review"
   | "hard_stop_driver_triggered"
+  | "risk_object_stale"
+  | "risk_object_incomplete"
   | "risk_object_expired"
   | "risk_object_unverifiable";
 

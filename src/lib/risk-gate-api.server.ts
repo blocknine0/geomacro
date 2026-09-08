@@ -10,8 +10,11 @@ import {
 
 import {
   evaluateCountryRiskGate,
-  type CountryRiskGateServiceInput,
 } from "./risk-gate-service.server";
+
+import {
+  evaluateCorridorRiskGate,
+} from "./corridor-risk-gate-service.server";
 
 import type {
   RiskGatePolicy,
@@ -35,27 +38,55 @@ type RateLimitRow = {
 };
 
 
-export type ExternalRiskGateBody = {
-  request_id: string;
+type ExternalRiskGateActionContext = {
+  action_type?: string;
+  amount?: number;
+  currency?: string;
+  destination?: string;
 
-  country_iso3: string;
+  metadata?: Record<
+    string,
+    unknown
+  >;
+};
+
+
+type ExternalRiskGateBase = {
+  request_id: string;
 
   evaluated_at?: string;
 
-  action_context?: {
-    action_type?: string;
-    amount?: number;
-    currency?: string;
-    destination?: string;
-
-    metadata?: Record<
-      string,
-      unknown
-    >;
-  };
+  action_context?:
+    ExternalRiskGateActionContext;
 
   policy: RiskGatePolicy;
 };
+
+
+export type ExternalCountryRiskGateBody =
+  ExternalRiskGateBase & {
+    subject_type: "country";
+    subject_id: string;
+    country_iso3: string;
+  };
+
+
+export type ExternalCorridorRiskGateBody =
+  ExternalRiskGateBase & {
+    subject_type: "corridor";
+    subject_id: string;
+
+    origin_country_iso3:
+      string;
+
+    destination_country_iso3:
+      string;
+  };
+
+
+export type ExternalRiskGateBody =
+  | ExternalCountryRiskGateBody
+  | ExternalCorridorRiskGateBody;
 
 
 export class RiskGateApiError
@@ -218,59 +249,230 @@ parseExternalRiskGateBody(
       256,
     );
 
-  const countryIso3 =
-    requiredString(
-      value.country_iso3,
-      "country_iso3",
-      3,
-    )
-      .toUpperCase();
-
-  if (
-    !/^[A-Z]{3}$/.test(
-      countryIso3,
-    )
-  ) {
-    throw new RiskGateApiError(
-      400,
-      "INVALID_REQUEST",
-      "country_iso3 must be ISO3 format",
-    );
-  }
-
-  let evaluatedAt:
-    string | undefined;
-
-  if (
-    value.evaluated_at !==
-      undefined
-  ) {
-    evaluatedAt =
+  const parseIso3 = (
+    raw: unknown,
+    field: string,
+  ) => {
+    const iso3 =
       requiredString(
-        value.evaluated_at,
-        "evaluated_at",
-        64,
-      );
+        raw,
+        field,
+        3,
+      ).toUpperCase();
 
     if (
-      !Number.isFinite(
-        new Date(
-          evaluatedAt,
-        ).getTime(),
+      !/^[A-Z]{3}$/.test(
+        iso3,
       )
     ) {
       throw new RiskGateApiError(
         400,
         "INVALID_REQUEST",
-        "evaluated_at must be a valid timestamp",
+        `${field} must be ISO3 format`,
       );
     }
+
+    return iso3;
+  };
+
+  let parsedSubject:
+    | {
+        subject_type:
+          "country";
+
+        subject_id:
+          string;
+
+        country_iso3:
+          string;
+      }
+    | {
+        subject_type:
+          "corridor";
+
+        subject_id:
+          string;
+
+        origin_country_iso3:
+          string;
+
+        destination_country_iso3:
+          string;
+      };
+
+  /*
+   * Legacy country form remains supported:
+   *
+   * { "country_iso3": "USA" }
+   *
+   * New subject-aware forms:
+   *
+   * {
+   *   "subject": {
+   *     "type": "country",
+   *     "country_iso3": "USA"
+   *   }
+   * }
+   *
+   * {
+   *   "subject": {
+   *     "type": "corridor",
+   *     "origin_country_iso3": "USA",
+   *     "destination_country_iso3": "CHN"
+   *   }
+   * }
+   */
+  if (
+    value.subject !==
+      undefined
+  ) {
+    if (
+      value.country_iso3 !==
+      undefined
+    ) {
+      throw new RiskGateApiError(
+        400,
+        "INVALID_REQUEST",
+        "Provide either country_iso3 or subject, not both",
+      );
+    }
+
+    if (
+      !isRecord(
+        value.subject,
+      )
+    ) {
+      throw new RiskGateApiError(
+        400,
+        "INVALID_REQUEST",
+        "subject must be an object",
+      );
+    }
+
+    const subject =
+      value.subject;
+
+    const type =
+      requiredString(
+        subject.type,
+        "subject.type",
+        32,
+      ).toLowerCase();
+
+    if (
+      type === "country"
+    ) {
+      const iso3 =
+        parseIso3(
+          subject.country_iso3,
+          "subject.country_iso3",
+        );
+
+      parsedSubject = {
+        subject_type:
+          "country",
+
+        subject_id:
+          iso3,
+
+        country_iso3:
+          iso3,
+      };
+    } else if (
+      type === "corridor"
+    ) {
+      const origin =
+        parseIso3(
+          subject
+            .origin_country_iso3,
+          "subject.origin_country_iso3",
+        );
+
+      const destination =
+        parseIso3(
+          subject
+            .destination_country_iso3,
+          "subject.destination_country_iso3",
+        );
+
+      if (
+        origin ===
+        destination
+      ) {
+        throw new RiskGateApiError(
+          400,
+          "INVALID_REQUEST",
+          "Corridor origin and destination must be different countries",
+        );
+      }
+
+      parsedSubject = {
+        subject_type:
+          "corridor",
+
+        subject_id:
+          `${origin}>${destination}`,
+
+        origin_country_iso3:
+          origin,
+
+        destination_country_iso3:
+          destination,
+      };
+    } else {
+      throw new RiskGateApiError(
+        400,
+        "INVALID_REQUEST",
+        "subject.type must be country or corridor",
+      );
+    }
+  } else {
+    const iso3 =
+      parseIso3(
+        value.country_iso3,
+        "country_iso3",
+      );
+
+    parsedSubject = {
+      subject_type:
+        "country",
+
+      subject_id:
+        iso3,
+
+      country_iso3:
+        iso3,
+    };
+  }
+
+  const evaluatedAt =
+    value.evaluated_at ===
+      undefined
+      ? undefined
+      : requiredString(
+          value.evaluated_at,
+          "evaluated_at",
+          64,
+        );
+
+  if (
+    evaluatedAt &&
+    Number.isNaN(
+      new Date(
+        evaluatedAt,
+      ).getTime(),
+    )
+  ) {
+    throw new RiskGateApiError(
+      400,
+      "INVALID_REQUEST",
+      "evaluated_at must be a valid timestamp",
+    );
   }
 
   let actionContext:
-    ExternalRiskGateBody[
-      "action_context"
-    ];
+    ExternalRiskGateActionContext |
+    undefined;
 
   if (
     value.action_context !==
@@ -363,7 +565,8 @@ parseExternalRiskGateBody(
   }
 
   const policy =
-    value.policy as RiskGatePolicy;
+    value.policy as
+      RiskGatePolicy;
 
   requiredString(
     policy.policy_id,
@@ -378,11 +581,10 @@ parseExternalRiskGateBody(
   );
 
   return {
+    ...parsedSubject,
+
     request_id:
       requestId,
-
-    country_iso3:
-      countryIso3,
 
     evaluated_at:
       evaluatedAt,
@@ -391,7 +593,7 @@ parseExternalRiskGateBody(
       actionContext,
 
     policy,
-  };
+  } as ExternalRiskGateBody;
 }
 
 
@@ -582,8 +784,9 @@ persistAudit(
     request_id: string;
 
     subject_type:
-      "country" | "unknown";
-
+      | "country"
+      | "corridor"
+      | "unknown";
     subject_id: string;
 
     risk_object_id?:
@@ -789,28 +992,44 @@ handleExternalRiskGateRequest(
         requestPayload,
       );
 
-    const serviceInput:
-      CountryRiskGateServiceInput = {
-        request_id:
-          parsed.request_id,
-
-        country_iso3:
-          parsed.country_iso3,
-
-        evaluated_at:
-          parsed.evaluated_at,
-
-        action_context:
-          parsed.action_context,
-
-        policy:
-          parsed.policy,
-      };
-
     const result =
-      await evaluateCountryRiskGate(
-        serviceInput,
-      );
+      parsed.subject_type ===
+        "corridor"
+        ? await evaluateCorridorRiskGate({
+            request_id:
+              parsed.request_id,
+
+            origin_country_iso3:
+              parsed.origin_country_iso3,
+
+            destination_country_iso3:
+              parsed.destination_country_iso3,
+
+            evaluated_at:
+              parsed.evaluated_at,
+
+            action_context:
+              parsed.action_context,
+
+            policy:
+              parsed.policy,
+          })
+        : await evaluateCountryRiskGate({
+            request_id:
+              parsed.request_id,
+
+            country_iso3:
+              parsed.country_iso3,
+
+            evaluated_at:
+              parsed.evaluated_at,
+
+            action_context:
+              parsed.action_context,
+
+            policy:
+              parsed.policy,
+          });
 
     if (
       result.response
@@ -841,11 +1060,10 @@ handleExternalRiskGateRequest(
           parsed.request_id,
 
         subject_type:
-          "country",
+          parsed.subject_type,
 
         subject_id:
-          parsed.country_iso3,
-
+          parsed.subject_id,
         risk_object_id:
           result.context
             .risk_object_id,
@@ -958,20 +1176,31 @@ handleExternalRiskGateRequest(
               : `rejected_${randomUUID()}`
           );
 
-        const subjectId =
-          parsed?.country_iso3 ??
-          (
-            isRecord(
-              requestPayload,
-            ) &&
-            typeof requestPayload
-              .country_iso3 ===
-              "string"
-              ? requestPayload
-                  .country_iso3
-              : "UNKNOWN"
-          );
+        const auditSubject:
+          {
+            subject_type:
+              | "country"
+              | "corridor"
+              | "unknown";
 
+            subject_id:
+              string;
+          } =
+          parsed
+            ? {
+                subject_type:
+                  parsed.subject_type,
+
+                subject_id:
+                  parsed.subject_id,
+              }
+            : {
+                subject_type:
+                  "unknown",
+
+                subject_id:
+                  "UNKNOWN",
+              };
         await persistAudit({
           client_id:
             clientId,
@@ -980,13 +1209,12 @@ handleExternalRiskGateRequest(
             requestId,
 
           subject_type:
-            parsed
-              ? "country"
-              : "unknown",
+            auditSubject
+              .subject_type,
 
           subject_id:
-            subjectId,
-
+            auditSubject
+              .subject_id,
           policy_id:
             parsed?.policy
               .policy_id ??

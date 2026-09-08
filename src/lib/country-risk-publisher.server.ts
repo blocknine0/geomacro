@@ -1,4 +1,9 @@
 import {
+  signRiskObject,
+  verifyRiskObjectSignature,
+} from "./risk-object-signing.server";
+
+import {
   buildCountryRiskObject,
   type CountryRiskEventInput,
 } from "./country-risk-engine";
@@ -401,7 +406,7 @@ async function generateInternal(
       previous,
     );
 
-  const object =
+  const unsignedObject =
     await buildCountryRiskObject({
       country_iso3:
         iso3,
@@ -418,6 +423,13 @@ async function generateInternal(
       as_of:
         asOf.toISOString(),
     });
+
+  const object =
+    publish
+      ? signRiskObject(
+          unsignedObject,
+        )
+      : unsignedObject;
 
   if (publish) {
     await persistRiskObject(
@@ -443,6 +455,17 @@ async function generateInternal(
     ) {
       throw new Error(
         "Published GRO read-back calculation hash mismatch",
+      );
+    }
+
+    const signatureCheck =
+      verifyRiskObjectSignature(
+        readBack,
+      );
+
+    if (!signatureCheck.valid) {
+      throw new Error(
+        `Published GRO signature verification failed: ${signatureCheck.reason}`,
       );
     }
   }
@@ -474,8 +497,8 @@ async function generateInternal(
 /**
  * Safe default.
  *
- * Generates the exact object that would be published,
- * but performs no GRO database write.
+ * Generates the calculation-equivalent unsigned GRO
+ * preview, but performs no database write or issuer signing.
  */
 export async function
 dryRunCountryRiskObject(
