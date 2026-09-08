@@ -1,16 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArenaSection } from "@/components/sections/arena-section";
+import { TechnicalProofBanner } from "@/components/technical-proof-banner";
 
 export const Route = createFileRoute("/arena")({
   head: () => ({
     meta: [
-      { title: "Intelligence Panel · Geomacro" },
-      { name: "description", content: "Event-driven prediction markets on Arc Testnet. Two AI analysts publish opposing macro briefings on every breaking story; take a position in USDC and the contract settles in 48 hours." },
-      { property: "og:title", content: "Intelligence Panel · Geomacro" },
-      { property: "og:description", content: "Event-driven prediction markets settled in USDC on Arc Testnet, priced by opposing AI analyst briefings." },
+      { title: "Prediction Markets · Technical Proof · Geomacro" },
+      {
+        name: "description",
+        content:
+          "Secondary Arc Testnet application showing how Geomacro intelligence can connect to prediction-market and programmable-finance workflows.",
+      },
+      { property: "og:title", content: "Prediction Markets · Technical Proof · Geomacro" },
+      {
+        property: "og:description",
+        content:
+          "A secondary testnet application and feedback layer built on top of Geomacro risk intelligence.",
+      },
       { property: "og:url", content: "https://geomacro.live/arena" },
     ],
     links: [{ rel: "canonical", href: "https://geomacro.live/arena" }],
   }),
-  component: ArenaSection,
+  component: ArenaTechnicalProofPage,
 });
+
+function ArenaTechnicalProofPage() {
+  return (
+    <>
+      <TechnicalProofBanner
+        title="Prediction Markets"
+        description="This Arc Testnet surface is a secondary application and feedback layer. It is preserved as technical proof and is not Geomacro's primary commercial identity."
+      />
+      <ArenaSection />
+    </>
+  );
+}
