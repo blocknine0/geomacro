@@ -18,7 +18,7 @@ import { useGlobalRisk } from "@/lib/use-global-risk";
 
 const TITLE = "Institutional Risk Intelligence · Geomacro";
 const DESCRIPTION =
-  "Explainable geopolitical and macro risk intelligence for treasury, payments, strategy, supply-chain and machine workflows, with controlled Private Pilot access to Risk Gate.";
+  "Geopolitical and macro risk intelligence for treasury, payments, strategy and supply-chain teams, with controlled Private Pilot access to Risk Gate and API delivery.";
 
 const USE_CASES = [
   {
@@ -29,17 +29,17 @@ const USE_CASES = [
   {
     icon: Building2,
     title: "Risk and strategy",
-    body: "Track current risk, evidence, confidence and mathematically attributable changes instead of relying on an unexplained headline score.",
+    body: "Track current risk, evidence, confidence and the exact drivers behind a change instead of relying on a headline score.",
   },
   {
     icon: RouteIcon,
     title: "Supply chain and commodities",
-    body: "Connect geopolitical, macro and strategic-resource signals to sourcing, exposure and operational monitoring decisions.",
+    body: "Use geopolitical, macro and critical-mineral risk to support sourcing, exposure and operational monitoring decisions.",
   },
   {
     icon: Bot,
-    title: "AI and agent platforms",
-    body: "Give automated financial workflows signed external risk context before a programmable action proceeds.",
+    title: "Software and agent platforms",
+    body: "Add signed external risk context to automated financial workflows before they act.",
   },
 ] as const;
 
@@ -90,11 +90,10 @@ function InstitutionalPage() {
             FOUNDING PILOT · EARLY ACCESS
           </Badge>
           <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
-            Explainable global risk intelligence for operational decisions.
+            Explainable geopolitical and macro risk intelligence for operational decisions.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Geomacro gives research, risk, treasury and machine workflows a shared view of what
-            changed, how risk moved, which evidence supports it and when a decision should be reviewed.
+            Geomacro gives research, risk and treasury teams one place to see what changed, how risk moved, what evidence supports the change and where confidence is limited.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" className="gap-2">
@@ -108,8 +107,7 @@ function InstitutionalPage() {
             </Button>
           </div>
           <p className="mt-5 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Geomacro is early-stage. Risk API and Risk Gate are Private Pilot capabilities; there is
-            no generally available institutional SLA or automated enterprise onboarding yet.
+            Geomacro is early-stage. Risk API and Risk Gate are still Private Pilot. There is no general institutional SLA or automated enterprise onboarding today.
           </p>
         </div>
       </section>
@@ -119,8 +117,7 @@ function InstitutionalPage() {
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Live workspace preview</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">The same current intelligence, presented for professional review.</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            This preview reads the public Geomacro data models already used elsewhere in the product.
-            It does not invent institutional-only scores for display.
+            This preview uses the same public Geomacro data as the rest of the product. It does not create special institutional-only scores for display.
           </p>
         </div>
 
@@ -138,7 +135,7 @@ function InstitutionalPage() {
               <RiskChart buckets={series} label="Verified GRI, last 7 days" height={190} className="mt-6" />
             ) : (
               <div className="mt-6 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-                Verified historical chart appears when enough current-contract snapshots are available.
+                The historical chart appears when enough current-methodology snapshots are available.
               </div>
             )}
 
@@ -188,9 +185,9 @@ function InstitutionalPage() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Professional risk table</p>
-              <h2 className="mt-2 text-2xl font-semibold">Scored events in one review surface.</h2>
+              <h2 className="mt-2 text-2xl font-semibold">Current scored events in one review table.</h2>
             </div>
-            <p className="max-w-xl text-sm text-muted-foreground">Only recorded values are shown. Missing movement or severity remains unavailable rather than estimated.</p>
+            <p className="max-w-xl text-sm text-muted-foreground">Only recorded values are shown. Missing movement or severity stays unavailable rather than being estimated.</p>
           </div>
 
           <div className="mt-7 overflow-x-auto rounded-2xl border border-border/70 bg-background/30">
@@ -226,7 +223,7 @@ function InstitutionalPage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Applied workflows</p>
-        <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight">One intelligence fabric, different operational questions.</h2>
+        <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight">Different teams, the same evidence trail.</h2>
         <div className="mt-8 grid gap-5 md:grid-cols-2">
           {USE_CASES.map(({ icon: Icon, title, body }) => (
             <article key={title} className="rounded-2xl border border-border/70 bg-card/40 p-6">
@@ -242,20 +239,20 @@ function InstitutionalPage() {
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Private Pilot workflow</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight">External risk context before an action proceeds.</h2>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">Check risk before the action moves forward.</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Risk Gate combines a verified country or directional corridor Risk Object with a customer-supplied policy. Geomacro returns decision context; the customer controls execution.
+              Risk Gate combines a verified country or corridor Risk Object with the customer's own policy. Geomacro returns a recommendation; the customer controls execution.
             </p>
             <Button asChild className="mt-6 gap-2"><Link to="/risk-gate">Review Risk Gate <ArrowRight className="h-4 w-4" /></Link></Button>
           </div>
           <ol className="space-y-3">
             {[
-              "A customer or agent proposes an action.",
-              "Geomacro loads and verifies current subject-specific risk context.",
+              "The customer or agent submits an action for review.",
+              "Geomacro verifies the current country or corridor risk context.",
               "Evidence, confidence, freshness and issuer integrity are checked.",
-              "The customer's policy is evaluated.",
-              "CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE or REROUTE is returned.",
-              "Any downstream execution remains customer-controlled.",
+              "The customer's policy is applied.",
+              "Risk Gate returns CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE or REROUTE.",
+              "Any execution after that remains under the customer's control.",
             ].map((step, index) => (
               <li key={step} className="flex gap-3 rounded-xl border border-border/70 bg-background/30 p-4 text-sm">
                 <span className="font-mono text-[10px] text-primary">{String(index + 1).padStart(2, "0")}</span>
@@ -268,9 +265,9 @@ function InstitutionalPage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="grid gap-5 lg:grid-cols-3">
-          <TrustCard icon={ShieldCheck} title="Explainable by design" text="Evidence, confidence, attribution, methodology and integrity context remain inspectable rather than hidden behind one scalar." />
-          <TrustCard icon={Workflow} title="Machine-readable" text="Signed Risk Objects and Private Pilot APIs are designed for software consumers as well as human analysts." />
-          <TrustCard icon={CheckCircle2} title="Boundaries disclosed" text="Private Pilot, planned and Technical Proof capabilities are labelled separately; external audit and production SLA are not claimed." />
+          <TrustCard icon={ShieldCheck} title="Evidence stays visible" text="Scores are shown with evidence, confidence, attribution, methodology and integrity details instead of being presented as a black box." />
+          <TrustCard icon={Workflow} title="For people and software" text="Signed Risk Objects and Private Pilot APIs can be reviewed by analysts or consumed by software systems." />
+          <TrustCard icon={CheckCircle2} title="Limits are stated plainly" text="Private Pilot, planned and Technical Proof capabilities are labelled separately. External audit and production SLA are not claimed." />
         </div>
       </section>
 
@@ -281,7 +278,7 @@ function InstitutionalPage() {
             <div>
               <h2 className="text-2xl font-semibold">Bring one real country, corridor or treasury workflow.</h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Early pilots are intentionally narrow so methodology, controls and business value can be validated before broader enterprise packaging.
+                Early pilots stay narrow so the methodology, controls and business value can be tested before anything is packaged for wider enterprise use.
               </p>
             </div>
             <Button asChild size="lg" className="shrink-0"><Link to="/contact">Discuss a pilot</Link></Button>
