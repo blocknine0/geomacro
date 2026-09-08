@@ -10,48 +10,206 @@ Do not deploy the paid x402 route publicly until all of the following are true:
 
 - Product CI passes on the exact commit being deployed.
 - Database schema safety passes, including disposable zero-to-current migration replay.
+- Risk Object Key Lifecycle CI passes on the exact commit being deployed.
 - `035_agentic_demo_feedback.sql` has been reviewed and applied to the authoritative application Supabase project.
 - `CIRCLE_X402_SELLER_ADDRESS` is configured with a dedicated Arc Testnet EVM address.
 - Geomacro Risk Object signing and verification-key lifecycle configuration is healthy.
 - `HISTORICAL_SUPABASE_URL` and `HISTORICAL_SUPABASE_SERVICE_ROLE_KEY` are configured if structural evidence is expected in the demo runtime.
-- an isolated staging hostname exists. Do not use `geomacro.live` for load or paid E2E testing.
+- an isolated staging hostname/runtime exists. Do not use `geomacro.live` for load or paid E2E testing.
 
-## 2. Database deployment
-
-Before any database operation, verify the intended target:
+## 2. Checkout the exact PR branch
 
 ```bash
+cd /workspaces/geomacro
+git fetch origin
+git checkout feat/agentic-commerce-demo-current-main
+git pull --ff-only origin feat/agentic-commerce-demo-current-main
+bun install --frozen-lockfile
+```
+
+Before continuing, confirm the branch and head:
+
+```bash
+git status --short --branch
+git rev-parse HEAD
+```
+
+## 3. Authoritative database migration
+
+Never apply migrations by pasting the SQL directly into the production SQL editor when the repository is already using migration history. Supabase recommends linking the CLI and deploying through `db push` so migration history remains synchronized.
+
+### 3.1 Authenticate and link
+
+```bash
+supabase login
+supabase link --project-ref <AUTHORITATIVE_PROJECT_REF>
+```
+
+The project ref is visible in the Supabase dashboard URL for the intended Geomacro application project.
+
+### 3.2 Load only the non-secret project URL for the repository target guard
+
+```bash
+export APP_SUPABASE_URL="https://<AUTHORITATIVE_PROJECT_REF>.supabase.co"
 bun run db:target
 ```
 
-The target guard fails closed unless the configured Supabase URL resolves to the authoritative project ref expected by the repository.
+`db:target` must print a successful authoritative-target check. Stop immediately if it reports a mismatch.
 
-Then use the repository's reviewed Supabase deployment path to apply pending migrations. Do not paste service-role keys into shell history, PRs, issues, screenshots, logs, or chat.
+### 3.3 Compare migration history
 
-After deployment, verify that `agentic_demo_feedback` exists with RLS enabled and that anonymous/authenticated roles do not have direct table privileges.
-
-## 3. x402 seller configuration
-
-Set the server-only environment variable:
-
-```text
-CIRCLE_X402_SELLER_ADDRESS=0x...
+```bash
+supabase migration list
 ```
 
-Requirements:
+The remote history should already contain the production baseline and earlier migrations. Do not repair migration history merely to make the output look clean; investigate any unexpected divergence first.
 
-- valid 20-byte EVM address
-- dedicated to this Arc Testnet x402 technical proof
-- not silently reused from unrelated treasury, market, or protocol contracts
-- no private key is stored in this variable
+### 3.4 Dry-run the deployment
 
-The paid route fails with HTTP 503 when this variable is missing or invalid.
+```bash
+supabase db push --dry-run
+```
 
-## 4. Isolated staging verification
+For this PR, the expected new application migration is:
 
-Deploy the branch to an isolated HTTPS staging host with the same server-side data and signing dependencies required by the demo.
+```text
+035_agentic_demo_feedback.sql
+```
 
-Run the unpaid contract check first:
+If the dry run proposes unrelated or unexpected migrations, stop and investigate before applying anything.
+
+### 3.5 Apply the pending migration
+
+```bash
+supabase db push
+```
+
+Do **not** use `--include-seed` on the production database.
+
+### 3.6 Verify migration state
+
+```bash
+supabase migration list
+```
+
+Then verify through the application database that `public.agentic_demo_feedback` exists, has RLS enabled, and is not directly writable by `anon` or `authenticated` roles.
+
+## 4. Circle CLI testnet wallet setup
+
+Use Circle CLI's **testnet** wallet session. Do not paste private keys into commands, chat, screenshots, GitHub issues, or environment files committed to git.
+
+### 4.1 Login to the Circle testnet wallet session
+
+```bash
+circle wallet login <YOUR_CIRCLE_EMAIL> --testnet
+```
+
+Complete the email OTP flow when prompted.
+
+Check the session:
+
+```bash
+circle wallet status --type agent
+```
+
+### 4.2 List Arc Testnet agent wallets
+
+```bash
+circle wallet list --chain ARC-TESTNET --type agent
+```
+
+Use one existing testnet agent wallet as the **buyer/agent wallet**. Record its public `0x...` address locally as:
+
+```bash
+export GEOMACRO_X402_AGENT_WALLET_ADDRESS="0xBUYER_ADDRESS"
+```
+
+This is a public wallet address, not a private key.
+
+### 4.3 Create a dedicated seller wallet if needed
+
+If every existing wallet is already used for another purpose, create an additional testnet agent wallet:
+
+```bash
+circle wallet create --type agent --testnet
+circle wallet list --chain ARC-TESTNET --type agent
+```
+
+Choose the new address as the dedicated Geomacro x402 seller/pay-to address and record it locally:
+
+```bash
+export CIRCLE_X402_SELLER_ADDRESS="0xSELLER_ADDRESS"
+```
+
+Do not silently reuse the AgentArena treasury, market contract, protocol-fee address, or another unrelated application address.
+
+## 5. Fund the buyer and Gateway balance
+
+### 5.1 Fund the Arc Testnet buyer wallet from Circle's testnet faucet
+
+```bash
+circle wallet fund \
+  --address "$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
+  --chain ARC-TESTNET
+```
+
+On testnet, Circle CLI's `wallet fund` uses the Circle faucet when `--method` and `--amount` are omitted.
+
+Check the wallet balance:
+
+```bash
+circle wallet balance \
+  --address "$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
+  --chain ARC-TESTNET
+```
+
+### 5.2 Deposit USDC into Circle Gateway
+
+Circle's current CLI requires a minimum Gateway deposit of `0.5` USDC. For this technical proof, use the direct method:
+
+```bash
+circle gateway deposit \
+  --amount 0.5 \
+  --address "$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
+  --chain ARC-TESTNET \
+  --method direct
+```
+
+Check the Gateway balance:
+
+```bash
+circle gateway balance \
+  --address "$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
+  --chain ARC-TESTNET
+```
+
+Do not continue to the paid E2E until the Gateway available balance is sufficient for the `0.001 USDC` test call.
+
+## 6. Configure the staging runtime
+
+The staging runtime must run this PR branch, not the stale Lovable preview and not the production `geomacro.live` deployment.
+
+Required server-side variables include the same application/readiness dependencies used by Risk Gate, plus:
+
+```text
+CIRCLE_X402_SELLER_ADDRESS=0xSELLER_ADDRESS
+HISTORICAL_SUPABASE_URL=...
+HISTORICAL_SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+Risk Object signing/verification variables must also be configured exactly as documented in `.env.example`.
+
+Never expose server-only credentials with a `VITE_` prefix.
+
+### Preferred isolation
+
+Use a separate staging/preview Supabase environment with its own API credentials. Supabase Branching is suitable when available: each branch has an isolated database/API environment. Production data is not copied by default and should not be copied merely for convenience.
+
+If the staging database has no validated demo Risk Objects, create explicit non-production staging fixtures rather than silently querying or load-testing the production database.
+
+## 7. Unpaid x402 contract verification
+
+Run the guarded repository harness first. This stage performs no payment:
 
 ```bash
 GEOMACRO_X402_BASE_URL=https://<staging-host> \
@@ -59,7 +217,7 @@ GEOMACRO_X402_EXPECTED_HOST=<staging-host> \
 bun run agentic:x402:e2e
 ```
 
-This stage performs **no payment**. It requires:
+A pass requires:
 
 - HTTP 402
 - `PAYMENT-REQUIRED`
@@ -68,50 +226,104 @@ This stage performs **no payment**. It requires:
 - Arc Testnet USDC `0x3600000000000000000000000000000000000000`
 - atomic test price `1000` = `0.001 USDC`
 - Gateway verification contract `0x0077777d7EBA4688BDeF3E311b846F25870A19B9`
-- Gateway-compatible timeout of at least 604900 seconds
+- Gateway-compatible timeout of at least `604900` seconds
 
-## 5. Real Arc Testnet payment E2E
+You can also inspect the requirements manually with Circle CLI:
 
-Only run this after the unpaid check passes and the Circle CLI wallet has Arc Testnet USDC available.
+```bash
+circle services inspect \
+  https://<staging-host>/api/agent/risk \
+  -X POST \
+  -H 'content-type: application/json' \
+  -d '{"subject":{"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"},"policy_preset":"cautious","action_type":"agent_payment","amount_usdc":10000}'
+```
+
+## 8. Real Arc Testnet payment E2E
+
+Only run this after the unpaid check passes and the buyer's Gateway balance is funded.
+
+### 8.1 Guarded repository E2E
 
 ```bash
 GEOMACRO_X402_BASE_URL=https://<staging-host> \
 GEOMACRO_X402_EXPECTED_HOST=<staging-host> \
-GEOMACRO_X402_AGENT_WALLET_ADDRESS=0x... \
+GEOMACRO_X402_AGENT_WALLET_ADDRESS="$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
 GEOMACRO_X402_E2E_ACK=ARC_TESTNET_USDC \
 bun run agentic:x402:e2e
 ```
 
-The explicit acknowledgement is required because this stage authorizes one real Arc Testnet payment capped at `0.001 USDC`.
+The explicit acknowledgement authorizes one Arc Testnet payment capped at `0.001 USDC`. The harness refuses `geomacro.live` and `www.geomacro.live` as payment targets.
 
-The harness refuses `geomacro.live` and `www.geomacro.live` as payment targets.
+### 8.2 Equivalent manual Circle CLI payment
 
-A pass requires the paid response to preserve:
+```bash
+circle services pay \
+  https://<staging-host>/api/agent/risk \
+  --address "$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
+  --chain ARC-TESTNET \
+  --max-amount 0.001 \
+  -X POST \
+  -H 'content-type: application/json' \
+  -d '{"subject":{"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"},"policy_preset":"cautious","action_type":"agent_payment","amount_usdc":10000}' \
+  --output json
+```
+
+A pass requires a successful paid resource response that still contains:
 
 ```text
 execution_authorized=false
 ```
 
-and identify the payment provider as:
+and identifies the payment provider as:
 
 ```text
 circle_gateway_x402
 ```
 
-## 6. Resilience and security gates
+If Circle CLI reports a payment failure, inspect its payment debug logs under:
+
+```text
+~/.circle-cli/payments/
+```
+
+## 9. Verify Gateway balance after payment
+
+```bash
+circle gateway balance \
+  --address "$GEOMACRO_X402_AGENT_WALLET_ADDRESS" \
+  --chain ARC-TESTNET
+```
+
+The buyer's available Gateway balance should reflect the test payment after the relevant Gateway accounting/settlement state updates.
+
+Seller receipts are Gateway-settled/batched; do not claim an immediate one-transaction-per-call onchain settlement.
+
+## 10. Feedback endpoint verification
+
+After migration 035 is present in the staging/application database, submit one non-sensitive test feedback entry through `/demo` and verify:
+
+- row inserted successfully;
+- no IP address is stored;
+- no raw wallet address is stored;
+- no raw payment payload is stored;
+- no raw request body is stored.
+
+## 11. Resilience and security gates
 
 After x402 E2E passes:
 
 1. configure the existing Risk Gate staging load harness against the isolated staging URL and staging API key;
-2. run the agreed HTTP resilience profile;
-3. preserve request counts, p50/p95/p99 latency, status distribution, error rate, and limitations;
-4. run the scoped pre-demo security review;
-5. fix and re-test all critical/high findings;
-6. preserve evidence for launch-readiness reporting.
+2. keep `RISK_GATE_LOAD_TEST_ACK=STAGING_ONLY` enabled as required by the harness;
+3. run the agreed HTTP resilience profile;
+4. preserve request counts, p50/p95/p99 latency, status distribution, error rate, and limitations;
+5. run dependency-failure cases relevant to the staging runtime;
+6. run the scoped pre-demo security review;
+7. fix and re-test all critical/high findings;
+8. preserve evidence for launch-readiness reporting.
 
 Never interpret staging results as a production SLA unless a later production SLO/SLA program establishes one.
 
-## 7. Public-launch decision
+## 12. Public-launch decision
 
 Only after the launch gates pass should the team decide to:
 
