@@ -80,27 +80,27 @@ const GROUPS: StageGroup[] = [
   {
     phase: "P1",
     label: "Ingestion Layer",
-    signal: "Raw wire to structured event",
+    signal: "Source evidence to canonical event",
     stages: [
       {
         id: "01",
         name: "Ingest",
-        desc: "Pull live headlines across geopolitics, rare earth, macro and crypto.",
-        meta: "The Guardian · 4 risk domains",
+        desc: "Collect live source evidence across geopolitical, macro, critical-mineral and separate research streams.",
+        meta: "Multi-source evidence intake",
         latency: "~5s",
       },
       {
         id: "02",
         name: "Normalize",
-        desc: "Reshape vendor payloads into one canonical event schema.",
-        meta: "Zod schema",
+        desc: "Reshape supported source payloads into one canonical event schema with provenance fields preserved.",
+        meta: "Canonical schema",
         latency: "<50ms",
       },
       {
         id: "03",
         name: "Dedupe",
-        desc: "Rolling djb2 hash plus URL fingerprint to suppress duplicates.",
-        meta: "djb2 + URL",
+        desc: "Apply content and URL fingerprints to suppress obvious duplicate records before downstream scoring.",
+        meta: "Content + URL fingerprints",
         latency: "<10ms",
       },
     ],
@@ -108,27 +108,27 @@ const GROUPS: StageGroup[] = [
   {
     phase: "P2",
     label: "Intelligence Layer",
-    signal: "LLM classification and risk scoring",
+    signal: "Relevance, classification and event risk",
     stages: [
       {
         id: "04",
         name: "Prefilter",
-        desc: "Drop anything outside the four tracked narrative classes.",
-        meta: "Heuristic gate",
+        desc: "Apply relevance gates so unsupported or low-value material does not enter the accepted intelligence set.",
+        meta: "Relevance gate",
         latency: "<5ms",
       },
       {
         id: "05",
         name: "Classify",
-        desc: "Route survivors to llama-3.3-70b for category and stage tagging.",
-        meta: "Groq · 70B",
+        desc: "Route accepted evidence through the versioned classification layer for category, structure and provenance-aware metadata.",
+        meta: "Versioned classifier",
         latency: "~1.2s",
       },
       {
         id: "06",
         name: "Score",
-        desc: "Assign event severity and confidence; the versioned GRI engine computes contribution deterministically downstream.",
-        meta: "0-100 scale",
+        desc: "Assign event severity and confidence. The separate versioned GRI engine then computes eligible contribution deterministically.",
+        meta: "Event risk · 0–100",
         latency: "<200ms",
       },
     ],
@@ -136,42 +136,42 @@ const GROUPS: StageGroup[] = [
   {
     phase: "P3",
     label: "Application & Feedback Layer",
-    signal: "Optional forecasting and calibration feedback",
+    signal: "Optional forecasting and calibration research",
     stages: [
       {
         id: "07",
         name: "Predict",
-        desc: "Generate a falsifiable forecast as a secondary application of accepted risk intelligence.",
-        meta: "Deadline bound",
+        desc: "Generate falsifiable forecasts only as a secondary application of accepted risk intelligence, separate from the GRI calculation.",
+        meta: "Secondary application",
         latency: "~800ms",
       },
       {
         id: "08",
         name: "Reflect",
-        desc: "Evaluate prior calls and market outcomes to support calibration and feedback.",
-        meta: "Track record",
+        desc: "Evaluate prior calls and secondary market outcomes as calibration feedback without redefining the primary intelligence product.",
+        meta: "Calibration feedback",
         latency: "rolling",
       },
     ],
   },
   {
     phase: "P4",
-    label: "Settlement Layer",
-    signal: "Onchain attestation and market settlement",
+    label: "Technical Proof Layer",
+    signal: "Optional Arc attestation and testnet settlement",
     stages: [
       {
         id: "09",
         name: "Attest",
-        desc: "SHA-256 the event payload, sign the digest, post the attestation to Arc.",
-        meta: "Arc · SHA-256",
+        desc: "Hash selected payloads and preserve an optional Arc Testnet attestation path as technical proof.",
+        meta: "Arc Testnet · SHA-256",
         latency: "~3s",
       },
       {
         id: "10",
         name: "Resolve",
-        desc: "Within the secondary prediction-market application layer, the main agent referees the analyst duel and settles the event contract.",
-        meta: "Onchain payout",
-        latency: "at T+48h",
+        desc: "Within the secondary prediction-market application, resolve and settle testnet event contracts after the defined lifecycle completes.",
+        meta: "Secondary testnet layer",
+        latency: "lifecycle dependent",
       },
     ],
   },
@@ -184,18 +184,18 @@ export function PipelineSection() {
         <SectionHeader
           as="h1"
           eyebrow="Data Pipeline"
-          title="From real-world events to verifiable risk intelligence"
-          desc="Ten deterministic stages across four layers turn real-world signals into structured, reproducible risk intelligence. Evidence, confidence and attribution remain traceable, with Arc used as a secondary proof and execution layer."
+          title="From source evidence to verifiable risk intelligence"
+          desc="The pipeline combines evidence intake, structured classification and event-level risk scoring. The current public GRI v1.2 calculation uses three scoring domains only: geopolitics, macro and rare-earth / critical-mineral risk. Other research and testnet streams remain separate."
         />
 
         <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           <span className="inline-flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
-            Live
+            Live technical view
           </span>
           <span>10 stages</span>
-          <span>4 layers</span>
-          <span>End-to-end &lt; 10s typical</span>
+          <span>4 implementation layers</span>
+          <span>GRI scoring · 3 domains</span>
         </div>
 
         <div className="mt-6 space-y-px overflow-hidden rounded-2xl border border-border/60 bg-border/60">
