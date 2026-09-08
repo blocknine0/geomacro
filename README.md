@@ -1,779 +1,484 @@
 # Geomacro
 
-**Global geopolitical and macro risk intelligence infrastructure, with prediction and onchain markets as an application and feedback layer.**
+**Geopolitical and macro risk intelligence for human and machine decisions.**
 
 [![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://www.geomacro.live)
 [![Arc Testnet](https://img.shields.io/badge/Network-Arc_Testnet-2775CA?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
-[![USDC](https://img.shields.io/badge/Settlement-USDC-2775CA?style=for-the-badge)](https://www.circle.com/usdc)
+[![USDC](https://img.shields.io/badge/Technical_Rails-USDC-2775CA?style=for-the-badge)](https://www.circle.com/usdc)
 [![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)](LICENSE.txt)
 
 **Live product:** https://www.geomacro.live
 
 ---
 
-Geomacro ingests real-world geopolitical, macroeconomic, critical-mineral, commodity, and crypto events and converts them into structured, machine-readable risk intelligence for research, monitoring, professional decision-making, and downstream applications.
+Geomacro converts real-world geopolitical, macroeconomic and critical-mineral developments into structured, explainable and machine-readable risk intelligence.
 
-**The intelligence layer is the core product.** Prediction markets, onchain probabilities, USDC settlement, CCTP and swap flows are application and feedback layers built on top of that intelligence infrastructure; they are not the primary company identity.
+The core product is the **intelligence and decision-context layer**:
 
-The product architecture deliberately separates intelligence from transaction execution:
-
-- public intelligence, research, risk signals, source context and market discovery are readable without a wallet;
-- wallet connection is deferred until an explicit onchain action is required;
-- Supabase provides the structured application read model and historical intelligence store;
-- Arc contract state remains authoritative for financial state;
-- V1 and V2 market history are both preserved;
-- historical and current markets are routed using their own contract address;
-- new market creation uses the current V2 proxy.
-
-Commercially, Geomacro is being built around three layers: an accessible public intelligence funnel; recurring professional intelligence products with deeper analytics, research/history, alerts and advanced Ask Geomacro workflows; and institutional/enterprise delivery through structured data exports, partner/API access, monitoring, persistent alerts, team workspaces, permissions/SSO, provenance/audit tooling and custom integrations as those capabilities ship. Current vs planned capabilities are intentionally distinguished in the product and documentation.
-
-> **Current deployment**
->
-> - **Network:** Arc Testnet
-> - **Chain ID:** `5042002`
-> - **V2 proxy:** `0x2F874FB07084a22D2bB314D0762Af57Cb1856868`
-> - **V2 implementation:** `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c`
-> - **V2 deployment block:** `56797869`
-> - **V1 legacy contract:** `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe`
-
-V2 is the current contract path for new markets.
-
-V1 remains part of the application architecture for historical markets, positions, lifecycle state, claims, analytics, reconciliation, and backward compatibility.
-
----
-
-## Mermaid compatibility
-
-The diagrams in this README intentionally use conservative Mermaid syntax for GitHub rendering: quoted labels, no HTML line breaks inside nodes, and no experimental diagram features.
-
----
-
-## Contents
-
-- [Commercial product architecture](#commercial-product-architecture)
-- [Architecture](#architecture)
-- [Event lifecycle](#event-lifecycle)
-- [V1 and V2 routing](#v1-and-v2-routing)
-- [V2 market lifecycle](#v2-market-lifecycle)
-- [Resolution and dispute model](#resolution-and-dispute-model)
-- [Contract security model](#contract-security-model)
-- [Protocol economics](#protocol-economics)
-- [Crosschain and swap](#crosschain-and-swap)
-- [Data model](#data-model)
-- [Automation](#automation)
-- [Resilience](#resilience)
-- [Technology stack](#technology-stack)
-- [Repository structure](#repository-structure)
-- [Local development](#local-development)
-- [Configuration](#configuration)
-- [Product surfaces](#product-surfaces)
-- [Engineering principles](#engineering-principles)
-- [Current status](#current-status)
-- [Roadmap](#roadmap)
-- [Arc and USDC](#arc-and-usdc)
-
----
-
-## Commercial product architecture
-
-Geomacro's commercialization does not depend on turning every intelligence user into a market participant. The intelligence product is designed to stand on its own.
-
-| Layer | Role | Current direction |
-|---|---|---|
-| Public intelligence | Live | Global Risk Index, live intelligence, event research and source context |
-| Ask Geomacro | Live | Interactive intelligence query surface grounded in Geomacro risk context |
-| Professional intelligence | Commercial direction | Deeper analytics, history, research and advanced intelligence workflows as capabilities ship |
-| Risk API | Private Pilot | Machine-readable geopolitical and macro risk intelligence delivery |
-| Risk Gate | Private Pilot | Verifiable pre-flight risk context for customer-controlled policy decisions |
-| Prediction / onchain application | Secondary | Experimental prediction markets, USDC settlement, dispute lifecycle, CCTP and swap |
-
-Professional and enterprise capabilities are only described as live when they exist in the current product. Planned commercial capabilities are labelled as planned. Pricing is intentionally not hard-coded into the technical repository before product packaging and customer validation are complete.
-
-The repository should therefore be evaluated as both a risk intelligence infrastructure and a programmable execution stack, not as a prediction-market-only codebase.
-
-
-### Commercial product contracts
-
-- [Commercial Intelligence Contract](docs/COMMERCIAL_INTELLIGENCE.md)
-- [Risk Gate v1 Contract](docs/RISK_GATE.md)
-
-Risk API and Risk Gate are **Private Pilot** capabilities. These documents define the commercial, technical and product-truth boundaries without implying general availability.
-
-### Commercial decision-context architecture
-
-The following path defines the Risk API and Risk Gate **Private Pilot** architecture. It does not imply general availability.
-
-```mermaid
-graph LR;
-    EVENTS["Structured real-world events"] --> ENGINE["Shared Geomacro Risk Engine"];
-    ENGINE --> GRI["Global Risk Index - Live"];
-    ENGINE --> COUNTRY["Country Risk Object"];
-    ENGINE --> CORRIDOR["Corridor Risk Object"];
-    ENGINE --> EVENTRISK["Event Risk Object"];
-    COUNTRY --> API["Risk API - Private Pilot"];
-    CORRIDOR --> API;
-    EVENTRISK --> API;
-    COUNTRY --> GATE["Risk Gate - Private Pilot"];
-    CORRIDOR --> GATE;
-    EVENTRISK --> GATE;
-    GATE --> POLICY["Identity + Permissions + Customer Policy"];
-    POLICY --> ACTION["Customer-controlled action"];
+```text
+real-world evidence
+        ↓
+structured observations
+        ↓
+classification + provenance
+        ↓
+risk calculation + attribution
+        ↓
+Global Risk Index / subject-specific Risk Objects
+        ↓
+research / API / Risk Gate / customer decision systems
 ```
 
-Risk Gate uses subject-specific risk context rather than treating the global GRI score as a universal transaction rule. The shared architecture provides provenance, attribution, evidence, confidence, methodology and verification primitives across these risk views.
+Prediction markets, USDC settlement, Circle CCTP and swap flows remain working application and technical-proof layers. They are not the primary company identity.
 
-### Global Risk Index audit model
+Geomacro is currently a **live, pre-revenue product with Private Pilot institutional infrastructure**. Risk API and Risk Gate must not be described as generally available production services until the documented security, source-rights, operational and customer-validation gates are completed.
 
-GRI `gri-v1.0.0` is deterministic after event classification. Eligible observations use severity as the risk signal, confidence and exponential recency decay as evidence weights, a 72-hour lookback, a per-source cap, and equal base weights across the four supported risk domains. Missing domains reduce disclosed coverage rather than being treated as zero risk.
+## Current product status
 
-`scripts/compute-gri-v11.js` persists versioned snapshots and exact event-level contribution points after migration `004_gri_audit_system.sql` is applied. Each published snapshot carries methodology, input and calculation hashes plus a mathematically reconciling 24-hour change attribution. See `docs/GRI_METHODOLOGY.md` and `docs/GRI_TRANSPARENCY_REQUIREMENTS.md`.
+| Product layer | Status | Current scope |
+|---|---|---|
+| Public risk intelligence | Live | Event intelligence, source context, Global Risk Index and research surfaces |
+| Global Risk Index | Live | Deterministic `gri-v1.2.0` publication with versioned proof and attribution |
+| Ask Geomacro | Live | Interactive intelligence surface grounded in Geomacro context |
+| Country Risk Object | Private Pilot | Versioned, persisted and cryptographically signed country risk context |
+| Corridor Risk Object | Private Pilot | Directional endpoint-composed corridor pilot built from signed country Risk Objects |
+| Risk API | Private Pilot | Authenticated machine-readable country/corridor risk delivery |
+| Risk Gate | Private Pilot | Fail-closed pre-flight policy evaluation with immutable audit records |
+| Event Risk Object | Product direction | Not represented as a current production contract |
+| Prediction/onchain markets | Secondary application | Arc Testnet market, dispute, claim and settlement implementation |
+| CCTP / Swap | Secondary technical layer | Circle CCTP V2 and Circle App Kit testnet implementation |
 
-Historical `gri-v1.0.0` engine, proof and publisher/verifier implementations are retained under explicitly versioned `*-v10` / `scripts/legacy/` paths for audit reproducibility only. They are not part of the current publication, replay or validation path.
+Pricing is intentionally not hard-coded into the repository before pilot packaging and customer validation are complete.
 
+---
+
+## Product principles
+
+1. **Explain the risk, not only the score.** Risk outputs should expose evidence, confidence, freshness, methodology and change attribution.
+2. **Keep machine outputs verifiable.** Versioned schemas, hashes, provenance and signatures are part of the decision-context contract.
+3. **Separate risk from customer policy.** Geomacro supplies external risk context. The customer controls identity, permissions, policy and execution.
+4. **Fail closed on uncertainty.** Stale, expired, unverifiable or commercially ineligible context must never silently become a trusted `CONTINUE` decision.
+5. **Preserve source rights.** Public availability is not equivalent to commercial reuse permission.
+6. **Treat Arc/Circle as execution and technical rails, not the company definition.** The intelligence layer is designed to stand on its own.
+7. **Keep deployed truth distinct from roadmap intent.** Private Pilot, planned and live capabilities are labelled separately.
+
+---
+
+## Current deployment
+
+### Arc Testnet market layer
+
+- **Network:** Arc Testnet
+- **Chain ID:** `5042002`
+- **V2 proxy:** `0x2F874FB07084a22D2bB314D0762Af57Cb1856868`
+- **V2 implementation:** `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c`
+- **V2 deployment block:** `56797869`
+- **V1 legacy contract:** `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe`
+
+V2 is the current path for new markets. V1 remains supported for historical markets, positions, claims, reconciliation and backward compatibility.
+
+Arc contract state is authoritative for financial state in the onchain application layer. Supabase is the structured application read model and intelligence persistence layer.
+
+---
 
 ## Architecture
 
+### Intelligence-first architecture
+
 ```mermaid
 graph LR;
-    NEWS["NewsAPI / The Guardian"] --> INGEST["Ingest and deduplicate"];
-    INGEST --> CLASSIFY["Classify and score"];
-    CLASSIFY --> EVENTS["Supabase events"];
+    SOURCES["External evidence sources"] --> INGEST["Ingest + normalize"];
+    INGEST --> PROV["Quality + source-rights + provenance"];
+    PROV --> STRUCT["Structured observations / events"];
+    STRUCT --> CLASSIFY["Classification + severity + confidence"];
+    CLASSIFY --> RISK["Versioned risk engines"];
 
-    EVENTS --> BRIEF["HAWK / DOVE briefings"];
-    EVENTS --> CREATE["Create eligible markets"];
-    CREATE --> V2["AgentArena V2 proxy"];
+    RISK --> GRI["Global Risk Index - Live"];
+    RISK --> COUNTRY["Country GRO - Private Pilot"];
+    COUNTRY --> CORRIDOR["Corridor GRO - Private Pilot"];
 
-    EVENTS --> ROUTER["Per-market contract routing"];
-    ROUTER --> V1["AgentArena V1 legacy"];
-    ROUTER --> V2;
+    GRI --> HUMAN["Research + professional intelligence"];
+    COUNTRY --> API["Risk API - Private Pilot"];
+    CORRIDOR --> API;
+    COUNTRY --> GATE["Risk Gate - Private Pilot"];
+    CORRIDOR --> GATE;
 
-    V1 --> PRODUCT["Frontend, automation and analytics"];
-    V2 --> PRODUCT;
+    GATE --> POLICY["Customer identity + permissions + policy"];
+    POLICY --> ACTION["Customer-controlled action"];
 
-    V2 --> RESOLVE["Tentative resolution"];
-    RESOLVE --> DISPUTE["Dispute review when challenged"];
-    DISPUTE --> FINALIZE["Finalization"];
-    FINALIZE --> CLAIM["Claim and settlement"];
+    STRUCT --> MARKET["Prediction/onchain application"];
+    MARKET --> ARC["Arc Testnet + USDC"];
 ```
 
 ### Responsibility boundaries
 
 | Layer | Responsibility |
 |---|---|
-| Intelligence | Ingestion, classification, severity, briefings, market questions, tentative resolution |
-| Supabase | Structured read model, event metadata, market routing metadata, position mirror, dispute/jury transparency |
-| GitHub Actions | Scheduled lifecycle automation, reconciliation, monitoring, and recovery |
-| Arc | Authoritative financial state for markets, stakes, disputes, finalization, and claims |
-| Frontend | Public intelligence, market discovery, V1/V2 transaction routing, wallet flows, lifecycle transparency |
-
-The application therefore treats Supabase as a structured read and routing layer while treating Arc as the source of truth for financial state.
+| Evidence/data | Source acquisition, provenance, quality and commercial-eligibility metadata |
+| Intelligence | Event structuring, classification, severity, confidence, historical context and attribution |
+| GRI | Global three-domain deterministic risk aggregation and proof |
+| Risk Objects | Subject-specific machine-readable risk context |
+| Risk Gate | Risk verification plus customer-supplied policy evaluation, never execution authorization |
+| Supabase | Structured read model, risk/audit persistence and application transparency |
+| Arc | Authoritative financial state for the secondary onchain market layer |
+| GitHub Actions | Scheduled ingestion, calculation, reconciliation, monitoring and lifecycle automation |
+| Frontend/API | Human and machine delivery surfaces |
 
 ---
 
-## Event lifecycle
+## Global Risk Index
 
-Geomacro starts from the underlying real-world event rather than from a manually created market.
+### Current public contract
+
+- **Methodology:** `gri-v1.2.0`
+- **Proof envelope:** `gri-proof-v1.2.0`
+- **Classifier:** `event-severity-v1.0.5`
+- **Story correlation:** `story-correlation-v1.0.0`
+- **Lookback:** 72 hours
+- **Recency half-life:** 24 hours
+- **Maximum public snapshot age:** 3 hours
+
+The canonical code contract is `src/lib/gri-current-contract.ts`. Current compute, verify and validation commands route to the v1.2 stack.
+
+### Three current scoring domains
+
+GRI v1.2 uses three equal-base-weight domains:
+
+- geopolitics `1/3`
+- macro `1/3`
+- rare earth / critical minerals `1/3`
+
+Crypto data can exist elsewhere in Geomacro, but crypto is **not a current GRI v1.2 scoring domain**.
+
+Missing domains are excluded rather than converted to zero risk. Active weights are renormalized and coverage is disclosed separately.
+
+### Evidence weighting
+
+For eligible observation `i`:
+
+```text
+ageHours_i       = (asOf - observedAt_i) / 1 hour
+confidenceWeight = confidence_i / 100
+decayWeight      = 2 ^ (-ageHours_i / 24)
+rawWeight_i      = confidenceWeight * decayWeight
+```
+
+GRI then applies:
+
+1. a per-source evidence cap so one publisher cannot dominate through volume;
+2. a story-level cap so repetition of the same underlying development across publishers cannot multiply that development into several independent evidence budgets;
+3. a weighted category score;
+4. normalized active-category weights;
+5. exact event contribution accounting.
+
+```text
+GRI_raw     = Σ(normalized active-category weight × categoryScore)
+GRI_display = round(GRI_raw)
+```
+
+### Change attribution and proof
+
+Every published snapshot persists versioned calculation/proof data. The contribution ledger is designed to reconcile the published raw score and the change from the previous comparable snapshot.
+
+```text
+GRI_change = Σ(current event contribution - previous event contribution)
+```
+
+Change records distinguish added, removed, rescored and reweighted effects. Source/story concentration changes can alter contribution even when event severity is unchanged.
+
+Historical v1.0 and v1.1 implementations remain in explicitly versioned paths for reproducibility and compatibility. They are not the current public publication contract.
+
+See:
+
+- [`docs/GRI_METHODOLOGY.md`](docs/GRI_METHODOLOGY.md)
+- [`docs/GRI_ARCHITECTURE.md`](docs/GRI_ARCHITECTURE.md)
+- [`docs/GRI_TRANSPARENCY_REQUIREMENTS.md`](docs/GRI_TRANSPARENCY_REQUIREMENTS.md)
+
+---
+
+## Geomacro Risk Objects
+
+A Geomacro Risk Object, or **GRO**, is the machine-readable subject-specific risk primitive used by the Private Pilot architecture.
+
+A GRO is designed to carry:
+
+- subject identity;
+- current and previous risk state;
+- delta and attribution;
+- confidence;
+- evidence summary;
+- commercial-eligibility state;
+- methodology/schema version;
+- generated and expiry timestamps;
+- calculation/integrity data;
+- issuer signing metadata and signature.
+
+Current GRO schemas and signing contracts are versioned in code. Documentation examples must not override the implemented schema.
+
+### Signing
+
+Current Private Pilot GRO signing uses Ed25519 issuer signatures. The implementation canonicalizes the signable payload, hashes it, signs it server-side and verifies the signature before delivery. Private signing keys must never be committed or exposed to the browser.
+
+Signing implementation is meaningful integrity proof, but it is **not an external security certification**.
+
+---
+
+## Risk Gate
+
+Risk Gate is a **Private Pilot** pre-flight decision-context layer.
+
+The core flow is:
+
+```text
+Signed Geomacro Risk Object
+        ↓
+schema + signature + freshness checks
+        ↓
+customer identity + permissions + policy
+        ↓
+CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
+        ↓
+customer-controlled execution
+```
+
+The current Risk Gate contract deliberately returns:
+
+```text
+execution_authorized = false
+```
+
+Geomacro does not custody funds, sign customer wallet transactions, submit customer trades or replace sanctions/compliance screening.
+
+### Current implemented Private Pilot controls
+
+- authenticated bearer API clients;
+- SHA-256 API-key storage rather than plaintext key storage;
+- timing-safe hash comparison;
+- enabled/disabled client state;
+- database-backed request rate limiting;
+- explicit JSON and subject validation;
+- country and directional corridor requests;
+- signed Risk Object verification;
+- fail-closed policy evaluation;
+- immutable request/response audit records;
+- no-store API responses;
+- explicit `execution_authorized=false` enforcement.
+
+The external live-preflight boundary is being hardened so callers cannot select arbitrary historical risk state for a current action, malformed/oversized payloads are bounded, and malformed policy contracts fail as client errors rather than becoming ambiguous server failures.
+
+### Country risk
+
+Country Risk Objects are current Private Pilot infrastructure. Country methodology remains explicitly versioned as a pilot until source coverage, methodology validation and design-partner testing support stronger claims.
+
+### Corridor risk
+
+The current corridor implementation is a **directional endpoint-composed pilot**. It composes the origin and destination country Risk Objects under a versioned pilot rule.
+
+It is **not** a full model of:
+
+- maritime paths;
+- ports and vessels;
+- intermediary jurisdictions;
+- counterparty-specific exposure;
+- sanctions screening for a particular entity/transaction;
+- complete logistics or supply-chain routes.
+
+Those must not be implied until separately implemented and validated.
+
+See [`docs/RISK_GATE.md`](docs/RISK_GATE.md).
+
+---
+
+## Commercial source eligibility
+
+Commercial delivery must use only sources and derived intelligence eligible for the intended use.
+
+Geomacro tracks source/data state separately from intelligence quality because a technically good source can still be commercially restricted.
+
+The intended source-policy decision includes whether a source permits:
+
+- analysis;
+- derived intelligence;
+- raw storage;
+- redistribution;
+- customer-facing evidence/citations;
+- machine-readable commercial delivery.
+
+A missing commercial status must fail closed. A new source is not considered commercially verified merely because it is public or technically accessible.
+
+The product commercializes structured/derived risk intelligence, not unrestricted copies of third-party raw datasets.
+
+---
+
+## Historical data
+
+Historical research and backfill infrastructure is maintained separately in `blocknine0/geomacro-historical-data`.
+
+The historical repository is used for broader data ingestion, provenance-preserving archives and calibration/research pipelines. Historical replay must distinguish retrospective reconstruction from true historical live/out-of-sample operation.
+
+The main product repository should consume curated historical outputs through explicit interfaces rather than duplicating the Python historical-ingestion architecture.
+
+---
+
+## Secondary prediction and onchain application
+
+Geomacro retains a substantial Arc Testnet prediction/onchain implementation as an application and feedback layer.
+
+### Event-to-market path
 
 ```mermaid
 graph LR;
-    EVENT["Real-world event"] --> INTEL["Structured intelligence"];
-    INTEL --> RISK["Risk assessment"];
-    RISK --> ELIGIBLE{"Market eligible?"};
-
-    ELIGIBLE -->|No| READ["Intelligence only"];
-    ELIGIBLE -->|Yes| MARKET["V2 market"];
-
-    MARKET --> POSITION["HAWK / DOVE positions"];
-    POSITION --> RESOLUTION["Tentative resolution"];
-
-    RESOLUTION --> CHALLENGE{"Disputed?"};
-    CHALLENGE -->|No| FINAL["Finalize"];
-    CHALLENGE -->|Yes| JURY["Five-juror review"];
-
+    EVENT["Structured event intelligence"] --> ELIGIBLE{"Market eligible?"};
+    ELIGIBLE -->|No| INTEL["Intelligence only"];
+    ELIGIBLE -->|Yes| MARKET["AgentArena V2 market"];
+    MARKET --> RESOLVE["Tentative resolution"];
+    RESOLVE --> DISPUTE{"Eligible dispute?"};
+    DISPUTE -->|No| FINAL["Finalize"];
+    DISPUTE -->|Yes| JURY["Five-role review"];
     JURY --> FINAL;
     FINAL --> CLAIM["Claim / settlement"];
 ```
 
-This architecture keeps risk intelligence, market state, resolution, and settlement connected to the same event identity.
-
----
-
-## V1 and V2 routing
-
-Geomacro maintains explicit dual-contract compatibility.
+### V1/V2 routing
 
 | Version | Purpose | Address |
 |---|---|---|
 | V1 | Legacy markets, historical positions and claims | `0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe` |
 | V2 proxy | Current market contract | `0x2F874FB07084a22D2bB314D0762Af57Cb1856868` |
-| V2 implementation | Upgrade implementation | `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c` |
+| V2 implementation | Current implementation | `0x96DDb29e27bdc3edf0c27bf885840Ebf8151DA7c` |
 
-The application and automation layer route each market using `events.market_address`.
+Application and automation route each market using its associated `market_address`. New creation targets V2 while legacy V1 history remains readable and claimable.
 
-### Routing rules
+### Disputes
 
-- **New market creation:** targets the V2 proxy.
-- **Existing market reads:** use the contract associated with that market.
-- **Existing market actions:** use the market-specific contract address.
-- **Historical V1 markets:** remain readable and claimable.
-- **Current V2 markets:** use the current proxy path.
-- **Legacy records without `market_address`:** use the V1 compatibility fallback where required.
-- **Position transaction verification:** accepts either canonical V1 or V2 as a valid Arena destination and validates the transaction contents.
-- **Lifecycle reconciliation:** preserves both V1 and V2.
-- **Stake reconciliation:** preserves both V1 and V2.
-- **Historical backfills:** scan or route across both contract generations where applicable.
-- **Dispute and jury functionality:** belongs to the V2 architecture.
+V2 separates tentative AI-assisted resolution from finalization. A dispute exists only when an eligible participant actually challenges a tentative result.
 
-```mermaid
-graph TD;
-    RECORD["Event or market record"] --> ADDRESS{"market_address"};
+Current design:
 
-    ADDRESS -->|V1| V1["V1 contract and V1 ABI"];
-    ADDRESS -->|V2| V2["V2 proxy and V2 ABI"];
-    ADDRESS -->|Missing legacy mapping| FALLBACK["V1 compatibility fallback"];
+- jury size: 5;
+- supermajority threshold: 4 of 5;
+- differentiated roles rather than identical repeated model calls;
+- onchain vote state authoritative;
+- Supabase used for reasoning/evidence transparency where available.
 
-    V1 --> NORMAL["Normalized market state"];
-    V2 --> NORMAL;
-    FALLBACK --> NORMAL;
+### V2 security architecture
 
-    NORMAL --> APP["Frontend, automation and analytics"];
-```
+The current contract source includes:
 
-The V1 and V2 `getMarketFullDetails()` return shapes differ:
+- UUPS upgradeability;
+- 48-hour upgrade timelock;
+- multisig-governed upgrade controls;
+- guardian emergency-pause support;
+- owner pause controls;
+- restricted recovery/unpause behavior;
+- fixed-odds funded-liquidity support.
 
-- **V1:** 7 fields
-- **V2:** 9 fields, including dispute-specific state
+External production smart-contract review and full production-readiness testing remain launch requirements before larger-scale economic activity.
 
-The application therefore selects the correct ABI and contract address before normalizing the result into the frontend data model.
+### Protocol economics
 
-New market creation targets V2 while historical V1 lifecycle state, positions, claims, and analytics remain accessible.
+Current V2 source includes:
 
----
+- base winner fee initialized at 200 bps with a 300 bps ceiling;
+- fixed-odds winner fee of 150 bps on profit;
+- default 500 bps losing-stake treasury allocation in the fixed-odds path;
+- dispute bond based on losing-side stake with configured floor/cap behavior.
 
-## V2 market lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> OPEN
-    OPEN --> LOCKED
-    LOCKED --> AI_RESOLVED
-    AI_RESOLVED --> DISPUTED
-    AI_RESOLVED --> FINALIZED
-    DISPUTED --> FINALIZED
-    FINALIZED --> CLAIMED
-    CLAIMED --> [*]
-```
-
-| State | Meaning |
-|---|---|
-| `OPEN` | Market exists and staking remains open |
-| `LOCKED` | Staking has ended; resolution is pending |
-| `AI_RESOLVED` | Tentative AI-assisted outcome is available |
-| `DISPUTED` | An eligible challenge has been raised |
-| `FINALIZED` | Outcome is final; claim processing may proceed |
-
-Supabase mirrors user-facing lifecycle state, while the contract remains authoritative for financial state.
-
-### Fixed-odds funded liquidity
-
-Fixed-odds funded liquidity is implemented as part of the **V2 proxy architecture** rather than as a separate application contract generation.
-
-The upgradeable contract uses OpenZeppelin initializer/reinitializer semantics to extend V2 storage and economics while keeping the V2 proxy as the application-facing contract address.
-
-The current fixed-odds path includes:
-
-- funded market liquidity;
-- deterministic winner-side payout logic;
-- a protocol fee applied to profit;
-- treasury accounting;
-- compatibility with the existing V2 market lifecycle.
+These are protocol/application economics, not Geomacro institutional intelligence pricing.
 
 ---
 
-## Resolution and dispute model
+## Circle CCTP and Swap
 
-V2 separates tentative AI-assisted resolution from finalization.
-
-A dispute is created only when an eligible participant actually challenges the tentative outcome. Markets that are never challenged do not fabricate tribunal or jury records.
-
-```mermaid
-graph TD;
-    TENTATIVE["Tentative outcome"] --> ELIGIBLE{"Eligible challenge?"};
-
-    ELIGIBLE -->|No| FINALIZE["Finalize after dispute window"];
-    ELIGIBLE -->|Yes| DISPUTED["Disputed market"];
-
-    DISPUTED --> J1["Fact-Checker"];
-    DISPUTED --> J2["Hawk Re-arguer"];
-    DISPUTED --> J3["Dove Re-arguer"];
-    DISPUTED --> J4["Evidence Skeptic"];
-    DISPUTED --> J5["Domain Specialist"];
-
-    J1 --> TALLY["Onchain vote tally"];
-    J2 --> TALLY;
-    J3 --> TALLY;
-    J4 --> TALLY;
-    J5 --> TALLY;
-
-    TALLY --> THRESHOLD{"Four matching votes?"};
-
-    THRESHOLD -->|Uphold| UPHOLD["Uphold tentative outcome"];
-    THRESHOLD -->|Overturn| OVERTURN["Overturn tentative outcome"];
-
-    UPHOLD --> FINAL["Finalized"];
-    OVERTURN --> FINAL;
-```
-
-### Eligibility
-
-A dispute requires:
-
-1. the market to be in the dispute-eligible V2 lifecycle state;
-2. the dispute window to remain open;
-3. the caller to hold real stake on the losing side of the tentative outcome;
-4. the required bond to be supplied.
-
-### Bond
-
-```text
-bond = 8% of caller's losing-side stake
-minimum = 1 native USDC unit
-maximum = 40 native USDC units
-```
-
-The V2 source defines:
-
-- `DISPUTE_BOND_BPS = 800`
-- `DISPUTE_BOND_FLOOR = 1 * 10**18`
-- `DISPUTE_BOND_CAP = 40 * 10**18`
-
-The deployed V2 contract uses Arc's native-gas denomination for the dispute transaction.
-
-### Juror roles
-
-| Role | Purpose |
-|---|---|
-| Fact-Checker | Evaluate factual claims and available evidence |
-| Hawk Re-arguer | Construct the strongest escalation case |
-| Dove Re-arguer | Construct the strongest de-escalation case |
-| Evidence Skeptic | Challenge evidence quality and unsupported assumptions |
-| Domain Specialist | Apply category-specific context |
-
-The design intentionally uses differentiated review roles rather than treating repeated model calls as independent evidence.
-
-### Decision rule
-
-- Jury size: **5**
-- Decision threshold: **4 of 5**
-- Juror votes are submitted independently
-- Onchain vote state is authoritative
-- Supabase provides a public transparency mirror for reasoning, evidence metadata, timestamps, and transaction references where available
-
-> Dispute automation is implemented and scheduled. It activates only when a real V2 market enters the onchain disputed state.
-
----
-
-## Contract security model
-
-### Proxy
-
-- `AgentArenaProxy` is the application-facing V2 address.
-- `AgentArenaV2` is the implementation.
-- Frontend and backend configuration should target the proxy rather than the implementation.
-- The implementation uses OpenZeppelin UUPS upgradeability.
-
-### Treasury and upgrades
-
-The V2 source includes:
-
-- **48-hour upgrade timelock**
-- multisig-governed upgrade controls
-- explicit upgrade staging
-- separate implementation deployment and upgrade-proposal workflows
-
-The repository includes:
-
-```text
-deploy-v2-implementation.yml
-propose-v2-upgrade.yml
-execute-v2-upgrade.yml
-fund-v2-liquidity.yml
-```
-
-### Guardian and pause controls
-
-The V2 security architecture includes:
-
-- guardian-based emergency pause support;
-- owner pause support;
-- restricted unpause behavior;
-- multisig involvement in protocol recovery;
-- a configured self-heal delay;
-- scheduled anomaly monitoring.
-
-The current source defines:
-
-```text
-UPGRADE_TIMELOCK = 48 hours
-AUTO_UNPAUSE_DELAY = 6 hours
-```
-
-### Jury threshold
-
-```text
-JURY_SIZE = 5
-JURY_THRESHOLD = 4
-```
-
-### Fee ceiling
-
-The V2 winner fee is initialized at **2%** and constrained by a hard **3%** ceiling.
-
-```text
-winnerFeeBps = 200
-MAX_WINNER_FEE_BPS = 300
-```
-
-### Operational security
-
-Production deployment should still undergo appropriate external smart-contract review, infrastructure review, privileged-key review, and operational readiness testing before larger-scale economic activity.
-
----
-
-## Protocol economics
-
-The current V2 contract contains protocol-level fee, funded-liquidity, and dispute economics.
-
-### Base winner fee
-
-- Initial fee: **200 bps (2%)**
-- Maximum fee: **300 bps (3%)**
-- Fees route according to configured treasury logic
-
-### Fixed-odds winner fee
-
-The funded fixed-odds path uses a separate **1.5% winner fee on profit** (`fixedOddsWinnerFeeBps = 150`).
-
-This is intentionally separate from the legacy/base pool-style V2 `winnerFeeBps = 200`, so activating fixed odds does not retroactively change the fee math for markets created before `initializeFixedOddsV2()`. Fixed-odds markets also route **5% of losing stake** to treasury by default (`lossTreasuryBps = 500`).
-
-### Dispute economics
-
-The dispute bond is proportional to the caller's losing-side stake:
-
-```text
-8%
-minimum 1 USDC
-maximum 40 USDC
-```
-
-If a dispute overturns the tentative outcome:
-
-- the disputer receives the bond back;
-- the contract may pay an additional reward from the available dispute reserve, subject to contract limits.
-
-If a dispute is rejected:
-
-- rejected-bond value is allocated between treasury and dispute-reserve logic according to the deployed contract rules.
-
-The current source defines a **50% treasury share** for rejected dispute bonds.
-
-Commercial packaging and pricing are documented as a product layer rather than embedded in protocol economics. The technical fee model below applies only to the onchain application layer.
-
----
-
-## Crosschain and swap
-
-### CCTP V2 bridge
+### CCTP V2
 
 The Bridge surface integrates Circle CCTP V2 testnet infrastructure for native USDC movement toward Arc.
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant Wallet
-    participant SourceChain
-    participant CircleIris
-    participant Arc
-
-    User->>Wallet: Select source chain and amount
-    Wallet->>SourceChain: Approve and burn USDC
-    SourceChain-->>Wallet: Burn transaction confirmed
-    Wallet->>CircleIris: Request attestation
-    CircleIris-->>Wallet: Pending or complete
-    Wallet->>Arc: Submit message and attestation
-    Arc-->>User: Native USDC available
-```
-
-Configured CCTP testnet sources include:
-
-- Ethereum Sepolia
-- Base Sepolia
-- Avalanche Fuji
-- Arbitrum Sepolia
-- OP Sepolia
-- Polygon Amoy
-- Unichain Sepolia
-- Linea Sepolia
+Configured testnet source networks include Ethereum Sepolia, Base Sepolia, Avalanche Fuji, Arbitrum Sepolia, OP Sepolia, Polygon Amoy, Unichain Sepolia and Linea Sepolia.
 
 ### Swap
 
-The Swap surface uses Circle App Kit for supported same-chain swap flows on Arc Testnet.
+The Swap surface uses Circle App Kit for supported Arc Testnet swap flows.
 
-Both Bridge and Swap expose transaction state, errors, and technical details while deferring wallet access until the user initiates an action.
+Current implementation uses Circle App Kit `1.13.0`, `@circle-fin/adapter-ethers-v6` `1.11.1` and ethers `6.17.0` as pinned in `package.json`.
+
+Circle/Arc technology is technical implementation proof and an optional programmable-finance delivery rail. It does not change the core identity of Geomacro as risk intelligence infrastructure.
 
 ---
 
-## Data model
+## Data and audit model
 
-Supabase is the structured application data layer and public transparency mirror.
+Supabase is the structured product read model and trusted persistence layer. Service-role credentials remain server-side.
 
-It is not a replacement for authoritative onchain financial state.
+Important current data families include:
 
-### Relationships
+- structured events and evidence;
+- GRI snapshots, contributions and proof metadata;
+- story-correlation provenance;
+- external source registry and commercial-eligibility metadata;
+- country intelligence state;
+- Geomacro Risk Objects;
+- Risk Gate API clients, rate-limit state and immutable audit records;
+- prediction-market lifecycle and position mirrors;
+- dispute/jury transparency;
+- transaction history.
 
-```mermaid
-erDiagram
-    EVENTS ||--o{ POSITIONS : has
-    EVENTS ||--o| MARKET_DISPUTES : may_have
-    MARKET_DISPUTES ||--o{ JURY_VOTES : contains
-
-    EVENTS {
-        uuid id
-        text market_address
-        text market_question
-        text ai_tentative_winner
-        boolean market_resolved
-    }
-
-    POSITIONS {
-        uuid id
-        uuid market_id
-        text wallet_address
-        text side
-        numeric staked_amount_raw
-    }
-
-    MARKET_DISPUTES {
-        uuid id
-        uuid event_id
-        text market_id
-        text disputer_address
-        boolean resolved
-    }
-
-    JURY_VOTES {
-        bigint id
-        text market_id
-        text juror_role
-        text verdict
-        text tx_hash
-    }
-```
-
-### Operational data flow
-
-```mermaid
-graph LR;
-    NEWS["News sources"] --> INGEST["auto-ingest-news"];
-    INGEST --> DB["Supabase"];
-
-    DB --> BRIEF["Generate briefings"];
-    DB --> CREATE["Create markets"];
-
-    CREATE --> V2["V2 proxy"];
-    V2 --> RESOLVE["Resolve markets"];
-
-    RESOLVE --> DISPUTE{"Disputed?"};
-    DISPUTE -->|Yes| JURY["Resolve disputes"];
-    DISPUTE -->|No| FINALIZE["Finalize markets"];
-    JURY --> FINALIZE;
-
-    V2 --> LIFECYCLE["Sync lifecycle"];
-    V2 --> STAKES["Sync stakes"];
-
-    LIFECYCLE --> DB;
-    STAKES --> DB;
-```
-
-### Core tables
-
-**`events`**
-
-Stores structured event intelligence and market lifecycle metadata, including:
-
-- `market_address`
-- market question
-- tentative resolution
-- dispute-window state
-- final resolution state
-
-`market_address` is also the main application-level routing key between legacy V1 markets and current V2 markets.
-
-**`positions`**
-
-Stores the application mirror of wallet positions, including:
-
-- market
-- wallet
-- side
-- raw stake amount
-- status
-- resolved outcome
-- payout
-- claim state
-
-**`market_disputes`**
-
-Stores the public dispute case record, including:
-
-- event/market identity
-- disputer
-- bond
-- vote totals
-- verdict
-- timestamps
-
-**`jury_votes`**
-
-Stores the transparency record for individual juror submissions, including:
-
-- role
-- verdict
-- reasoning
-- evidence metadata where available
-- transaction hash
-- vote time
-
-**`tx_history`**
-
-Stores transaction-history data used by Bridge / Swap transaction-history surfaces.
-
-### RLS
-
-Public dispute and jury records are readable through RLS-controlled access.
-
-Trusted writes use server-side credentials.
-
-Service-role credentials are never exposed to the browser.
-
-### Migrations
-
-```text
-supabase/migrations/
-├── 001_ai_jury_dispute_system.sql
-├── 002_events_schema_backfill.sql
-└── 003_tx_history.sql
-```
-
-The live schema has also evolved through direct operational SQL changes.
-
-A fresh deployment should reconcile the current live schema with repository migrations before assuming the migration directory represents every historical schema transition.
+Repository migrations are the deployable schema contract. Do not assume an old short migration list represents the current schema.
 
 ---
 
 ## Automation
 
-The market and intelligence lifecycle is operated through scheduled GitHub Actions.
+Automation is separated by responsibility so ingestion, calculation, publication, market lifecycle and recovery can retry independently.
 
-Jobs are separated by responsibility so ingestion, market creation, resolution, dispute handling, finalization, reconciliation, monitoring, and recovery can fail and retry independently.
+Representative workflows include:
 
-```mermaid
-graph LR;
-    INGEST["Ingest events"] --> BRIEF["Generate briefings"];
-    BRIEF --> CREATE["Create eligible V2 markets"];
-    CREATE --> RESOLVE["Tentative resolution"];
+- live news ingestion;
+- GRI story clustering, validation and publication;
+- market creation/resolution/finalization;
+- dispute handling;
+- stake/lifecycle reconciliation;
+- database schema safety checks;
+- security monitoring and recovery;
+- V2 deployment/upgrade operations;
+- historical-data ingestion in the separate repository.
 
-    RESOLVE --> DISPUTE{"Disputed?"};
-    DISPUTE -->|Yes| JURY["Resolve dispute"];
-    DISPUTE -->|No| FINALIZE["Finalize"];
-
-    JURY --> FINALIZE;
-
-    CREATE --> STAKES["Sync stakes"];
-    FINALIZE --> LIFE["Sync lifecycle"];
-
-    MONITOR["Security monitor"] --> RECOVERY["Recovery path"];
-```
-
-| Workflow | Role |
-|---|---|
-| `auto-ingest-news.yml` | Ingest and classify external events |
-| `Auto-generate-briefings.yml` | Generate / cache HAWK and DOVE briefings |
-| `auto-create-markets.yml` | Create eligible V2 markets |
-| `auto-resolve-markets.yml` | Post tentative AI-assisted outcomes |
-| `auto-resolve-disputes.yml` | Process real V2 disputes |
-| `auto-finalize-markets.yml` | Finalize eligible markets |
-| `sync-lifecycle.yml` | Reconcile V1 / V2 lifecycle state |
-| `sync-stakes.yml` | Reconcile V1 / V2 stake events into positions |
-| `security-monitor.yml` | Monitor configured protocol anomalies |
-| `auto-recovery.yml` | Recovery operations |
-| `debug-schema.yml` | Manual schema diagnostics |
-| `deploy-v2-implementation.yml` | Deploy a new V2 implementation |
-| `propose-v2-upgrade.yml` | Propose/approve a specific deployed V2 implementation |
-| `execute-v2-upgrade.yml` | Execute the timelocked V2 upgrade and atomically call `initializeFixedOddsV2()` |
-| `fund-v2-liquidity.yml` | Fund the V2 underwriting reserve after upgrade initialization |
-
-Scheduled jobs are designed around reconciliation and retry safety rather than manual state editing.
+Scheduled operations should be deterministic where practical, observable and retry-safe.
 
 ---
 
-## Resilience
+## Resilience and security
 
-### RPC
+Current implementation includes meaningful safety architecture but is **not represented as fully audited production infrastructure**.
 
-Backend lifecycle jobs can rotate across multiple RPC endpoints.
+### Existing controls
 
-Premium credentials remain server-side.
+- multi-endpoint RPC failover for supported backend operations;
+- scheduled reconciliation rather than relying on one receipt poll;
+- explicit V1/V2 routing;
+- service-role isolation from browser code;
+- Risk Object issuer signatures;
+- Risk Gate authentication/rate limiting/auditing;
+- fail-closed Risk Gate execution boundary;
+- GRI freshness and proof validation;
+- guardian/multisig/timelock controls in the V2 market layer.
 
-Typical providers include:
+### Required before Institutional Early Access claims
 
-```text
-Alchemy
-QuickNode
-GetBlock
-dRPC
-Arc public RPC fallback
-```
+- complete focused security review of externally reachable Risk Gate/API surfaces;
+- API-key lifecycle review and rotation/revocation procedure;
+- signing-key lifecycle and compromise procedure;
+- malformed/oversized/abuse-path tests;
+- auth/rate-limit/audit-backend failure tests;
+- load and stress/resilience testing;
+- documented latency/error/recovery evidence;
+- remediation and re-test of critical/high findings;
+- commercially eligible source path verified;
+- scoped external security review.
 
-Compatible reads can be batched with Multicall3:
+Do not use unsupported claims such as "unhackable" or imply third-party certification where none exists.
 
-```text
-0xcA11bde05977b3631167028862bE2a173976CA11
-```
-
-### Dual-contract resilience
-
-Historical state is not discarded when the application advances to V2.
-
-Compatibility behavior includes:
-
-- V1 lifecycle reads
-- V1 claim routing
-- V1/V2 stake reconciliation
-- V1/V2 transaction verification
-- per-market address routing
-- dual-contract historical backfills
-- missing-address legacy fallback where required
-
-### Transaction reconciliation
-
-User-facing transaction submission does not depend entirely on a single RPC receipt poll.
-
-The application records transaction hashes promptly and scheduled reconciliation scripts provide a backstop for:
-
-- stake synchronization
-- lifecycle synchronization
-- position recovery
-- transaction-hash backfill
-- anomaly monitoring
-
-### AI providers
-
-The automation layer uses Groq as a primary provider in several paths, with Cerebras configured as an independent fallback where supported.
-
-Dispute evidence can additionally use Tavily.
-
-If fresh evidence retrieval is unavailable, the system should report the limitation rather than invent external evidence.
+See [`SECURITY.md`](SECURITY.md).
 
 ---
 
@@ -783,23 +488,18 @@ If fresh evidence retrieval is unavailable, the system should report the limitat
 |---|---|
 | Frontend | Vite 7, TanStack Start, React 19, Tailwind CSS v4 |
 | UI | shadcn/ui, Radix primitives |
-| Shared frontend states | Foundation async, data, risk, and onchain components |
-| Chain client | ethers v6, Multicall3 |
 | Data | Supabase / PostgreSQL |
+| Risk/API | TypeScript/Node server modules, deterministic versioned contracts |
 | AI | Groq, Cerebras |
-| Dispute evidence | Tavily |
-| News ingestion | NewsAPI, The Guardian |
-| Validation | Zod |
-| Authentication | Sign-In with Ethereum |
-| Automation | GitHub Actions |
+| Evidence retrieval | Source-specific pipelines, Tavily in selected dispute flows |
+| Chain client | ethers v6, Multicall3 |
 | Contracts | Solidity 0.8.20, OpenZeppelin upgradeable contracts |
-| Proxy model | UUPS / ERC1967-style proxy |
-| Network | Arc Testnet |
-| Settlement | Native USDC |
-| Crosschain USDC | Circle CCTP V2 |
-| Swap | Circle App Kit |
 | Contract tooling | Foundry |
-| Production runtime | Nitro / Cloudflare-compatible output |
+| Network | Arc Testnet |
+| Stablecoin/crosschain | Native USDC, Circle CCTP V2 |
+| Swap | Circle App Kit |
+| Automation | GitHub Actions |
+| Runtime | Nitro / Cloudflare-compatible output |
 
 ---
 
@@ -807,56 +507,24 @@ If fresh evidence retrieval is unavailable, the system should report the limitat
 
 ```text
 geomacro/
-├── contracts/
-│   ├── AgentArena.sol
-│   ├── AgentArenaV2.sol
-│   ├── AgentArenaProxy.sol
-│   └── MultisigTreasury.sol
-├── script/
-│   ├── Deploy.s.sol
-│   └── DeployAgentArenaV2Implementation.s.sol
-├── test/
-│   ├── AgentArena.t.sol
-│   └── AgentArenaV2FixedOdds.t.sol
-├── scripts/
-│   ├── ingest-news.js
-│   ├── generate-briefings.js
-│   ├── create-markets.js
-│   ├── resolve-markets.js
-│   ├── resolve-disputes.js
-│   ├── finalize-markets.js
-│   ├── sync-lifecycle.js
-│   ├── sync-stakes.js
-│   ├── anomaly-monitor.js
-│   ├── backfill-positions.js
-│   ├── backfill-tx-hashes.js
-│   ├── ops/
-│   │   ├── verify-market-economics.js
-│   │   ├── fund-liquidity.js
-│   │   └── verify-jury.js
-│   └── lib/
-│       └── dual-contract.js
-├── supabase/
-│   └── migrations/
+├── contracts/                 # V1/V2 market smart contracts and proxy/treasury code
+├── script/                    # Foundry deployment/upgrade scripts
+├── test/                      # Solidity tests
+├── scripts/                   # ingestion, GRI, risk, lifecycle and ops scripts
+├── supabase/migrations/       # versioned database schema
 ├── src/
-│   ├── components/
-│   │   └── foundation/
-│   │       ├── async-states.tsx
-│   │       ├── data.tsx
-│   │       ├── onchain.tsx
-│   │       └── risk.tsx
-│   ├── routes/
-│   ├── lib/
-│   │   └── notify.ts
+│   ├── components/            # product/UI surfaces
+│   ├── routes/                # app and API routes
+│   ├── lib/                   # GRI, GRO, Risk Gate, data and product logic
 │   └── hooks/
-├── .github/
-│   └── workflows/
-├── docs/
-├── foundry.toml
+├── docs/                      # methodology, architecture and product contracts
+├── .github/workflows/         # scheduled and deployment automation
+├── SECURITY.md
+├── LICENSE.txt
 └── package.json
 ```
 
-> `contracts/AgentArenaV2.sol` is the canonical V2 implementation source used by Foundry, deployment scripts, and upgrade workflows. The duplicate root-level `AgentArenaV2.sol` was removed to prevent source drift.
+`contracts/AgentArenaV2.sol` is the canonical V2 implementation source used by Foundry and deployment/upgrade tooling.
 
 ---
 
@@ -870,206 +538,192 @@ cp .env.example .env.local
 bun run dev
 ```
 
-Production build:
+Useful validation commands:
 
 ```bash
 bun run build
-```
-
-Contract development:
-
-```bash
+bun run test:app
+bun run db:safety
+bun run db:verify-core
+bun run gri:compute
+bun run gri:verify
+bun run gri:validate
 forge build
 forge test
 ```
 
-Do not commit:
+Some operational commands require server-side environment variables and should not be run against production infrastructure casually.
 
-- private keys
-- service-role credentials
-- jury signer keys
-- guardian keys
-- privileged RPC credentials
+Never commit:
+
+- `.env` files containing real values;
+- service-role credentials;
+- API keys;
+- wallet/private keys;
+- GRO issuer signing private keys;
+- juror/guardian/owner private keys;
+- privileged RPC credentials.
 
 ---
 
 ## Configuration
 
-| Variable | Purpose |
+Representative configuration families include:
+
+| Variable family | Purpose |
 |---|---|
-| `NEWSAPI_KEY` | NewsAPI ingestion |
-| `GUARDIAN_API_KEY` | The Guardian API |
-| `GROQ_API_KEY` | Classification / briefing / resolution / selected juror roles |
-| `CEREBRAS_API_KEY` | Secondary model provider / fallback |
-| `TAVILY_API_KEY` | Dispute evidence retrieval |
-| `APP_SUPABASE_URL` | Public app Supabase project URL |
-| `APP_SUPABASE_ANON_KEY` | Public RLS-controlled reads |
-| `SUPABASE_URL` | Server-side Supabase URL used by ingestion jobs |
-| `SUPABASE_SERVICE_ROLE_KEY` | Trusted server-side writes |
-| `CONTRACT_ADDRESS` | Current V2 proxy |
-| `OLD_CONTRACT_ADDRESS` | V1 legacy contract |
-| `OWNER_PRIVATE_KEY` | Trusted automation signer where required |
-| `JURY_PRIVATE_KEY_1..5` | Dedicated juror signers |
-| `GUARDIAN_PRIVATE_KEY` | Protocol guardian signer |
-| `ARC_RPC_URL..ARC_RPC_URL_5` | Backend RPC pool |
-| `DEPLOY_BLOCK` | Event scan start block |
-| `MULTICALL3_ADDRESS` | Multicall3 address |
-| `VITE_ARC_NETWORK` | Frontend Arc network |
-| `VITE_CIRCLE_KIT_KEY` | Circle App Kit configuration |
+| `NEWSAPI_KEY`, `GUARDIAN_API_KEY` | selected live evidence ingestion |
+| `GROQ_API_KEY`, `CEREBRAS_API_KEY` | model-backed classification/intelligence workflows |
+| `TAVILY_API_KEY` | selected dispute evidence retrieval |
+| `APP_SUPABASE_*` | public RLS-controlled application reads |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | trusted server-side data operations |
+| GRO signing/verification key configuration | issuer signing and verification-key registry |
+| Risk Gate API-client configuration | Private Pilot authentication/rate controls |
+| `CONTRACT_ADDRESS`, `OLD_CONTRACT_ADDRESS` | V2/V1 market routing |
+| owner/jury/guardian signer variables | privileged onchain automation |
+| `ARC_RPC_URL*` | backend Arc RPC pool |
+| `VITE_ARC_NETWORK`, `VITE_CIRCLE_KIT_KEY` | client Arc/Circle configuration |
 
-### News-ingestion controls
-
-`scripts/ingest-news.js` uses The Guardian as the primary source and NewsAPI as fallback, then applies freshness, deduplication, precision-oriented allow/deny gates, LLM relevance classification, severity/confidence thresholds, and Groq quota-aware throttling before trusted Supabase insertion. Its runtime knobs (model selection, batch size, quota headroom, article age, candidate cap, and thresholds) are documented in `.env.example`. See `docs/NEWS_INGESTION.md` for the operational contract. Newly accepted events also carry classification provider/model/version/prompt provenance used by the GRI audit layer.
-
-Deployment-specific values are consumed by deployment and automation tooling and should remain outside client-visible configuration.
+Use `.env.example` as a variable-name template only. Real credentials belong in protected environment/secret stores.
 
 ---
 
 ## Product surfaces
 
-The current product exposes:
+Current public product direction centers on:
 
-- Global Risk Index and intelligence
-- intelligence discovery
-- event detail
-- market probability context
-- V1 / V2 market state
-- HAWK / DOVE participation
-- portfolio
-- claim lifecycle
-- tentative-resolution visibility
-- tribunal / dispute lifecycle visibility
-- CCTP Bridge
-- Swap
-- transaction history
-- technical transaction disclosures
-- wallet network-state handling
+- live Risk Intelligence;
+- Global Risk Index;
+- GRI proof/change attribution;
+- Ask Geomacro;
+- research and historical context;
+- Risk API and Risk Gate as clearly labelled Private Pilot surfaces;
+- institutional use cases and technical documentation.
 
-The live application is the canonical reference for what is currently exposed to users:
+Prediction/onchain markets, Bridge/Swap, portfolio/claims and legacy contract surfaces remain secondary applications or technical proof and should not displace the primary intelligence identity in commercial navigation or messaging.
+
+The live application remains the canonical user-facing reference:
 
 **https://www.geomacro.live**
 
 ---
 
-## Engineering principles
+## Current implementation status
 
-1. **Preserve event identity.** Intelligence, market state, resolution, and settlement remain linked to the same event.
-2. **Use contract state for financial truth.** Supabase is the read model and transparency layer.
-3. **Preserve V1 history.** Protocol upgrades must not orphan historical markets, positions, or claims.
-4. **Route by market identity.** Existing-market actions use that market's contract address.
-5. **Use V2 for new market creation.**
-6. **Do not fabricate missing data.** Missing values remain unavailable.
-7. **Treat AI output as challengeable.** Tentative resolution is not assumed to be infallible.
-8. **Keep privileged credentials server-side.**
-9. **Make scheduled operations retry-safe.**
-10. **Request wallet access only at action boundaries.**
-11. **Expose lifecycle and transaction state explicitly.**
-12. **Keep documentation consistent with the current implementation.**
+### Intelligence and GRI
 
----
+- [x] Structured event ingestion/classification foundation
+- [x] Severity/confidence and model provenance
+- [x] Current public `gri-v1.2.0` three-domain engine
+- [x] Source concentration cap
+- [x] Story-level concentration cap
+- [x] Immutable/versioned GRI proof architecture
+- [x] Change-attribution ledger
+- [x] Current snapshot verification and validation tooling
+- [x] Public GRI/read-model surfaces
 
-## Current status
+### Risk Objects and Risk Gate
 
-### Implemented
+- [x] Versioned GRO contract
+- [x] Country Risk Object Private Pilot
+- [x] Ed25519 signing and verification
+- [x] Persisted/read-back Risk Objects
+- [x] Directional endpoint-composed corridor Risk Object pilot
+- [x] Fail-closed Risk Gate policy engine
+- [x] Agent/wallet pre-flight adapter
+- [x] Authenticated external country/corridor API foundation
+- [x] Database-backed rate limiting
+- [x] Immutable Risk Gate audit records
+- [x] `execution_authorized=false` boundary
+- [ ] Full commercial source-rights verification
+- [ ] Independent country/corridor methodology validation
+- [ ] Production SLA/operational guarantees
+- [ ] Full route/logistics/counterparty corridor model
+- [ ] General availability
 
-- [x] Event ingestion from NewsAPI and The Guardian
-- [x] Event classification and severity scoring
-- [x] Structured Supabase intelligence model
-- [x] HAWK / DOVE briefing generation
-- [x] Automated market creation
-- [x] V1 legacy market support
+### Secondary onchain implementation
+
+- [x] V1 legacy market compatibility
 - [x] Active V2 proxy for new markets
-- [x] Per-market `market_address` routing
-- [x] V1 / V2 lifecycle routing
-- [x] V1 / V2 stake reconciliation
-- [x] V1 / V2 transaction verification
-- [x] Historical dual-contract backfill support
-- [x] Automated tentative resolution
-- [x] V2 dispute contract path
-- [x] Five-role juror automation
-- [x] Scheduled dispute runner
-- [x] Supabase dispute and jury transparency tables
-- [x] Automated finalization
-- [x] Portfolio and claim lifecycle
-- [x] Historical V1 claim compatibility
-- [x] Multi-endpoint RPC failover
-- [x] Multicall3 batching
-- [x] Guardian / multisig security architecture
-- [x] 48-hour upgrade timelock
+- [x] V1/V2 routing and reconciliation
+- [x] tentative resolution/dispute/finalization/claim lifecycle
+- [x] five-role juror architecture
+- [x] guardian/multisig/timelock controls
+- [x] funded fixed-odds V2 path
 - [x] CCTP V2 Bridge surface
 - [x] Circle App Kit Swap surface
-- [x] Supabase transaction history
-- [x] Shared foundation UI for async, data, risk, and onchain states
-- [x] Explicit wallet action boundaries
-- [x] Wrong-network handling
-- [x] Transaction progress feedback
-- [x] Vite client production build
-- [x] SSR production build
-- [x] Nitro / Cloudflare production bundle
-
-### Operational note
-
-A tribunal record exists only when a real eligible V2 participant raises an onchain dispute.
-
-An undisputed finalized market correctly has no jury case or jury-vote history.
-
-The repository currently preserves historical V1 compatibility while directing new market creation to V2.
 
 ---
 
-## Roadmap
+## Commercialization roadmap
 
-The current priority is production hardening rather than a protocol rewrite.
+The immediate priority is **proof and production hardening, not feature count**.
 
-- [ ] External production smart-contract security review
-- [ ] Expand V2 dispute and failure-recovery test coverage
-- [ ] Reconcile any remaining historical unmapped position records
-- [ ] Capture the current Supabase schema as a reproducible migration baseline
-- [ ] Improve RPC / synchronization / DB-onchain discrepancy monitoring
-- [ ] Harden CCTP and Swap recovery paths
-- [ ] Improve production transaction monitoring and alerting
-- [ ] Improve wallet and onboarding UX
-- [ ] Expand sustained funded-liquidity testing
-- [ ] Measure repeat market participation and claim behavior
-- [ ] Complete production-readiness review before mainnet economic activity
-- [ ] Validate professional and institutional intelligence models separately from protocol implementation
+### P0 source of truth and data rights
+
+- [ ] Finish public/repository current-contract consistency checks
+- [ ] Verify every source currently marked commercially `VERIFIED` with evidence-backed policy metadata
+- [ ] Keep unverified/restricted data out of paid Risk API/Risk Gate delivery
+- [ ] Complete historical-data secret/history review
+
+### P0 Risk Gate security and resilience
+
+- [ ] Complete abuse/error regression tests
+- [ ] Review authentication and API-key lifecycle
+- [ ] Review issuer signing-key lifecycle
+- [ ] Verify audit-backend and dependency-failure behavior
+- [ ] Add structured health/dependency visibility
+- [ ] Run load/stress/resilience tests
+- [ ] Fix and re-test critical/high findings
+- [ ] Obtain scoped external security review before Early Access launch claims
+
+### P1 product validation
+
+- [ ] Validate one country/corridor workflow with real design partners
+- [ ] Define Institutional Early Access scope, support and permitted-use boundaries
+- [ ] Define pilot pricing
+- [ ] Collect willingness-to-pay evidence
+- [ ] Convert a design partner into a controlled paid pilot
+
+### P1 launch assets
+
+Permanent commercial demo and reusable investor/customer decks should be produced **after** the product/source-of-truth, security evidence and pilot package are stable.
 
 ---
 
-## Arc and USDC
+## Arc, USDC and programmable finance
 
-Geomacro separates information risk from settlement-asset risk.
+Arc and Circle infrastructure remain strategically useful because Geomacro can supply external-world risk context to systems that already have programmable financial execution rails.
 
-A participant expressing a view on geopolitical or macro risk should not also need unnecessary volatility exposure from the asset used to settle that position.
-
-USDC provides a stable economic denomination for participation and settlement.
-
-Arc provides the execution environment for the programmable market layer, while Circle infrastructure provides the stablecoin and crosschain components used by the product.
-
-```mermaid
-graph LR;
-    EVENT["Real-world event"] --> INTEL["Risk intelligence"];
-    INTEL --> MARKET["HAWK / DOVE market"];
-    MARKET --> USDC["USDC-denominated participation"];
-    CCTP["Circle CCTP V2"] --> USDC;
-    USDC --> ARC["Arc settlement"];
-```
-
-Geomacro's target architecture connects:
+The target integration model is:
 
 ```text
-real-world intelligence
+real-world geopolitical / macro change
         ↓
-structured event data
+Geomacro intelligence
         ↓
-AI-assisted scenario analysis
+signed country / corridor Risk Object
         ↓
-probability and risk signals
+Risk Gate
         ↓
-programmable prediction markets
+customer policy
         ↓
-USDC-denominated settlement on Arc
+customer-controlled USDC / financial action
+        ↓
+optional Arc / Circle execution rail
 ```
+
+This is different from making Arc settlement the definition of the company. Geomacro's risk intelligence should remain useful to institutions, professionals and machine systems whether or not a specific customer action ultimately settles on Arc.
+
+The existing prediction-market, CCTP and swap implementations provide concrete programmable-finance technical proof while the commercial product remains intelligence-first.
+
+---
+
+## Intellectual property and security reporting
+
+This repository is governed by the proprietary [`LICENSE.txt`](LICENSE.txt).
+
+Security issues should be reported privately as described in [`SECURITY.md`](SECURITY.md), not through public issues or social media.
 
 ---
 
