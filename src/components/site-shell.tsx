@@ -49,9 +49,9 @@ function ConnectButton() {
     useWallet();
   const executionContext = isWalletRoute(pathname);
 
-  // Public intelligence, GRI, Research, Docs and institutional surfaces are
-  // intentionally wallet-free. Preserve a connected user's state, but do not
-  // make wallet connection a primary CTA on pages that do not require it.
+  // Public intelligence, GRI, Research, Docs, institutions and the browser
+  // demo are intentionally wallet-free. Preserve a connected user's state,
+  // but do not turn wallet connection into a prerequisite for research.
   if (!address && !executionContext) return null;
 
   if (!address) {
@@ -130,6 +130,7 @@ const PRIMARY_NAV = [
 ] as const;
 
 const TECHNICAL_NAV = [
+  { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and Circle x402 access" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
   { to: "/arena", label: "Prediction Markets", description: "Testnet application and feedback layer" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
@@ -155,7 +156,7 @@ function TechnicalProofMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          Secondary testnet and implementation proof
+          Testable implementation proof
         </DropdownMenuLabel>
         {TECHNICAL_NAV.map((item) => (
           <DropdownMenuItem key={item.to} asChild>
@@ -305,6 +306,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Technical Proof</p>
                 <div className="mt-3 flex flex-col gap-2">
+                  <Link to="/demo" className="hover:text-foreground">Agentic Commerce Demo</Link>
                   <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
                   <Link to="/arena" className="hover:text-foreground">Prediction Markets</Link>
                   <Link to="/onchain" className="hover:text-foreground">Arc / Onchain</Link>
@@ -329,7 +331,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span>Public intelligence · Private Pilot Risk Gate · Technical proof labelled separately</span>
+              <span>Public intelligence · Private Pilot Risk Gate · Testable technical proof</span>
               <details>
                 <summary className="cursor-pointer">Arc technical context</summary>
                 <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>
