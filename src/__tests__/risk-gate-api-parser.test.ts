@@ -15,6 +15,28 @@ const policy = {
 
   policy_version:
     "1.0",
+
+  continue_max_score:
+    35,
+
+  reduce_limit_max_score:
+    55,
+
+  require_approval_max_score:
+    75,
+
+  minimum_confidence_for_auto_continue:
+    0.8,
+
+  require_commercial_verification_for_continue:
+    true,
+
+  max_positive_delta_for_auto_continue:
+    10,
+
+  hard_stop_driver_contributions: {
+    sanctions: 20,
+  },
 };
 
 
@@ -22,7 +44,7 @@ describe(
   "Risk Gate external API parser",
   () => {
     it(
-      "preserves legacy country_iso3 requests",
+      "preserves legacy country_iso3 request shape with a valid policy contract",
       () => {
         const parsed =
           parseExternalRiskGateBody({
@@ -134,6 +156,33 @@ describe(
             destination_country_iso3:
               "CHN",
           });
+      },
+    );
+
+
+    it(
+      "rejects an incomplete customer policy contract",
+      () => {
+        expect(
+          () =>
+            parseExternalRiskGateBody({
+              request_id:
+                "incomplete-policy",
+
+              country_iso3:
+                "USA",
+
+              policy: {
+                policy_id:
+                  "api-parser-test",
+
+                policy_version:
+                  "1.0",
+              },
+            }),
+        ).toThrow(
+          "policy.continue_max_score must be a finite number",
+        );
       },
     );
 
