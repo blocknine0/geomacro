@@ -3,8 +3,8 @@ import {
 } from "@tanstack/react-router";
 
 import {
-  handleExternalRiskGateRequest,
-} from "../lib/risk-gate-api.server";
+  handleIdempotentExternalRiskGateRequest,
+} from "../lib/risk-gate-idempotency.server";
 
 
 export const Route =
@@ -17,7 +17,7 @@ export const Route =
           request,
         }) => {
           return (
-            handleExternalRiskGateRequest(
+            handleIdempotentExternalRiskGateRequest(
               request,
             )
           );
