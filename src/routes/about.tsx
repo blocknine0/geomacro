@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Github, ShieldCheck, Info, Lock } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Github, Info, Lock, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 
@@ -10,13 +11,13 @@ export const Route = createFileRoute("/about")({
       {
         name: "description",
         content:
-          "Geomacro is geopolitical and macro risk intelligence infrastructure with explainable GRI, structured intelligence, agent-facing services and secondary programmable execution.",
+          "Geomacro builds explainable geopolitical and macro risk intelligence for professionals, institutions and machine workflows.",
       },
       { property: "og:title", content: "About & Trust · Geomacro" },
       {
         property: "og:description",
         content:
-          "Explainable geopolitical and macro risk intelligence with verifiable GRI methodology, commercial intelligence services and secondary Arc Testnet execution infrastructure.",
+          "Explainable geopolitical and macro risk intelligence with versioned methodology, structured evidence, Risk Gate Private Pilot and secondary Arc/Circle technical proof.",
       },
     ],
   }),
@@ -25,61 +26,63 @@ export const Route = createFileRoute("/about")({
 
 function AboutPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="font-mono text-3xl tracking-tight">About & Trust</h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        This page is maintained by the Geomacro project to answer common questions about what
-        the app does, what it doesn't do and how data is handled.
-      </p>
+    <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <section className="max-w-3xl">
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">About Geomacro</p>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk intelligence built to be inspected, not just consumed.</h1>
+        <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
+          Geomacro turns geopolitical and macro developments into structured risk intelligence with evidence, confidence, versioned methodology and machine-readable decision context. The primary product is intelligence; prediction markets and Arc/Circle execution flows are secondary technical-proof layers.
+        </p>
+      </section>
 
-      <section className="mt-10 space-y-6">
-        <div className="rounded-lg border border-border/60 bg-card/40 p-6">
-          <div className="flex items-center gap-2 text-sm font-mono text-primary">
-            <ShieldCheck className="h-4 w-4" /> Commercial intelligence, Testnet execution
-          </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Geomacro's primary product is geopolitical and macro risk intelligence.
-            GRI, structured intelligence, Risk API, Risk Gate and agent-facing intelligence
-            are designed as commercial software services and are not limited to Arc Testnet.
-            Commercial access may use conventional fiat billing, including INR where supported,
-            or production digital-asset payment rails such as USDC as those integrations are
-            enabled and compliant.
+      <section className="mt-12 grid gap-5 md:grid-cols-2">
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <ShieldCheck className="h-5 w-5 text-primary" />
+          <h2 className="mt-3 text-xl font-semibold">Current product status</h2>
+          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
+            <li><span className="font-medium text-foreground">Live:</span> public risk intelligence and Global Risk Index surfaces.</li>
+            <li><span className="font-medium text-foreground">Private Pilot:</span> Risk Gate, signed Risk Objects and scoped API delivery.</li>
+            <li><span className="font-medium text-foreground">Technical Proof:</span> Arc Testnet, USDC, prediction-market and programmable-finance implementation.</li>
+          </ul>
+        </article>
 
-            Current prediction-market and programmable smart-contract interactions run on{" "}
-            <span className="font-mono text-foreground">Arc Testnet (Chain 5042002)</span> and
-            use <span className="font-mono text-foreground">test USDC</span> with no monetary
-            value. These Testnet execution flows are secondary to the intelligence product.
-            Geomacro intelligence should not be treated as financial advice.
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <Info className="h-5 w-5 text-primary" />
+          <h2 className="mt-3 text-xl font-semibold">Transparency standard</h2>
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+            Geomacro documents methodology versions, provenance, confidence, change attribution and verification infrastructure. Public source code visibility does not imply unrestricted open-source licensing; use and redistribution remain governed by the repository licence.
           </p>
-        </div>
-
-        <div className="rounded-lg border border-border/60 bg-card/40 p-6">
-          <div className="flex items-center gap-2 text-sm font-mono text-primary">
-            <Lock className="h-4 w-4" /> Privacy
-          </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            We do not collect personal data. The app interacts with your wallet only to read
-            your address and request signatures for on-chain transactions you initiate. Wallet
-            addresses and transaction history are already public on the Arc Testnet ledger;
-            we don't ask for, store or transmit any additional personal information.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-border/60 bg-card/40 p-6">
-          <div className="flex items-center gap-2 text-sm font-mono text-primary">
-            <Info className="h-4 w-4" /> Transparency
-          </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Geomacro publishes auditable implementation details, smart-contract code, methodology documentation and verification infrastructure through its repository. Source availability does not imply unrestricted open-source licensing; use and redistribution are governed by the repository's applicable license terms.
-          </p>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-2 rounded-md border border-border/60 px-3 py-2 text-sm font-mono transition hover:text-foreground hover:border-foreground/40"
-          >
-            <Github className="h-4 w-4" /> View on GitHub
+          <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+            <Github className="h-4 w-4" /> View technical implementation
           </a>
+        </article>
+
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <Lock className="h-5 w-5 text-primary" />
+          <h2 className="mt-3 text-xl font-semibold">Privacy and customer data</h2>
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+            Public intelligence browsing is designed to require minimal user information. Wallet interactions occur only when a user chooses a technical onchain flow. Private Pilot services may process authenticated client identifiers and the minimum operational context required to evaluate and audit a request; sensitive customer payload retention is deliberately minimized in the Risk Gate audit design.
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <h2 className="text-xl font-semibold">Important boundaries</h2>
+          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
+            <li>Geomacro intelligence is not financial, legal or investment advice.</li>
+            <li>Risk Gate does not autonomously authorize or execute a customer's transaction.</li>
+            <li>Independent external security review and full production SLA should not be inferred until completed.</li>
+            <li>Testnet USDC and testnet market activity have no represented real-money settlement claim.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section className="mt-12 rounded-2xl border border-border/70 bg-card/45 p-6 sm:p-8">
+        <h2 className="text-2xl font-semibold">Explore Geomacro</h2>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Button asChild><Link to="/intelligence">Risk Intelligence</Link></Button>
+          <Button asChild variant="outline"><Link to="/global-risk">Global Risk Index</Link></Button>
+          <Button asChild variant="outline"><Link to="/risk-gate">Risk Gate</Link></Button>
+          <Button asChild variant="outline"><Link to="/docs">Documentation</Link></Button>
         </div>
       </section>
     </main>
