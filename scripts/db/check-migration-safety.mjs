@@ -182,9 +182,89 @@ function collectConstraintChanges(
 
 /*
  * ------------------------------------------------------------
+ * Runtime DELETE policy
+ *
+ * DELETE executed while applying a migration is always forbidden.
+ *
+ * A server-only stored function may need bounded runtime deletion for
+ * retention/release semantics. Such an exception is deliberately narrow:
+ * the migration filename and exact target table must both be allowlisted,
+ * and every DELETE must be inside a CREATE FUNCTION body. Unknown DELETE
+ * syntax fails closed.
+ *
+ * Do not add an allowlist entry merely to make CI green. It is a reviewed
+ * data-lifecycle exception and must identify the smallest possible target.
+ * ------------------------------------------------------------
+ */
+
+const runtimeDeleteAllowlist =
+  new Map([
+    [
+      '033_risk_gate_request_idempotency.sql',
+      new Set([
+        'public.risk_gate_idempotency_keys',
+      ]),
+    ],
+  ]);
+
+
+function splitStoredFunctionBodies(
+  rawSql,
+) {
+  const bodies = [];
+
+  const functionRegex =
+    /\bcreate\s+(?:or\s+replace\s+)?function\b[\s\S]*?\bas\s+(\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$)([\s\S]*?)\1\s*;/gi;
+
+  const outside =
+    rawSql.replace(
+      functionRegex,
+      (whole, _tag, body) => {
+        bodies.push(
+          body,
+        );
+
+        return ' '.repeat(
+          whole.length,
+        );
+      },
+    );
+
+  return {
+    outside,
+    bodies,
+  };
+}
+
+
+function collectDeleteTargets(
+  sql,
+) {
+  const regex =
+    new RegExp(
+      String.raw`\bdelete\s+from\s+(${qualifiedSqlIdentifier})(?=\s|;|$)`,
+      'gi',
+    );
+
+  return [
+    ...sql.matchAll(
+      regex,
+    ),
+  ].map(
+    (match) =>
+      normalizeIdentifier(
+        match[1],
+      ),
+  );
+}
+
+
+/*
+ * ------------------------------------------------------------
  * Always-forbidden destructive SQL
  *
- * Constraint replacement is handled separately below.
+ * Constraint replacement and narrowly-allowlisted stored-function DELETE
+ * behavior are handled separately below.
  * ------------------------------------------------------------
  */
 
@@ -207,11 +287,6 @@ const destructive = [
   [
     /\balter\s+table\b[^;]*\bdrop\s+column\b/i,
     'ALTER TABLE ... DROP COLUMN',
-  ],
-
-  [
-    /\bdelete\s+from\b/i,
-    'DELETE FROM',
   ],
 ];
 
@@ -249,6 +324,102 @@ for (const file of files) {
     ) {
       errors.push(
         `${file}: forbidden ${label}`,
+      );
+    }
+  }
+
+
+  /*
+   * DELETE policy.
+   */
+  const {
+    outside,
+    bodies,
+  } =
+    splitStoredFunctionBodies(
+      raw,
+    );
+
+  const outsideSql =
+    stripSqlComments(
+      outside,
+    );
+
+  if (
+    /\bdelete\s+from\b/i.test(
+      outsideSql,
+    )
+  ) {
+    errors.push(
+      `${file}: forbidden migration-time DELETE FROM`,
+    );
+  }
+
+  const allowedRuntimeDeleteTargets =
+    runtimeDeleteAllowlist.get(
+      file,
+    ) ?? new Set();
+
+  const observedRuntimeDeleteTargets =
+    new Set();
+
+  for (const body of bodies) {
+    const bodySql =
+      stripSqlComments(
+        body,
+      );
+
+    const genericDeleteCount =
+      [
+        ...bodySql.matchAll(
+          /\bdelete\s+from\b/gi,
+        ),
+      ].length;
+
+    const targets =
+      collectDeleteTargets(
+        bodySql,
+      );
+
+    if (
+      genericDeleteCount !==
+        targets.length
+    ) {
+      errors.push(
+        `${file}: unrecognized stored-function DELETE FROM syntax`,
+      );
+
+      continue;
+    }
+
+    for (const target of targets) {
+      observedRuntimeDeleteTargets.add(
+        target,
+      );
+
+      if (
+        !allowedRuntimeDeleteTargets.has(
+          target,
+        )
+      ) {
+        errors.push(
+          `${file}: forbidden stored-function DELETE FROM ${target}`,
+        );
+      }
+    }
+  }
+
+  for (
+    const allowedTarget
+    of allowedRuntimeDeleteTargets
+  ) {
+    if (
+      !observedRuntimeDeleteTargets.has(
+        allowedTarget,
+      )
+    ) {
+      errors.push(
+        `${file}: stale runtime DELETE allowlist entry for ${allowedTarget}`,
       );
     }
   }
@@ -375,5 +546,5 @@ if (
 
 
 console.log(
-  `✅ ${files.length} migration(s) passed destructive-SQL, constraint-replacement, and baseline checks.`,
+  `✅ ${files.length} migration(s) passed destructive-SQL, runtime-delete, constraint-replacement, and baseline checks.`,
 );
