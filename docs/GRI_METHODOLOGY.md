@@ -1,95 +1,179 @@
-# Global Risk Index — methodology v1.0.0
+# Global Risk Index — methodology v1.2.0
 
-Geomacro's GRI is deterministic **after event classification**. Event severity and confidence are model-produced inputs with source/model provenance; the aggregate index itself contains no LLM call and no discretionary adjustment.
+Geomacro's Global Risk Index (GRI) is deterministic **after event classification and current-contract story assignment**. Event severity and confidence are model-produced inputs with source/model provenance; the aggregate index itself contains no LLM call and no discretionary manual adjustment.
 
-## What GRI v1 measures
+## What GRI v1.2 measures
 
-GRI v1 is a **weighted intensity index of qualifying Geomacro risk observations**, not a census of every world event and not a claim that an empty feed means zero global risk. The upstream ingestion pipeline already applies relevance, confidence and minimum-severity gates before an event reaches `public.events`. GRI v1 therefore answers: *given the risk observations Geomacro has accepted, how severe is the current cross-domain risk surface after confidence, recency and source concentration are accounted for?*
+GRI v1.2 is a **weighted intensity index of qualifying Geomacro risk observations**. It is not a census of every world event and does not treat an empty or missing feed as proof of zero global risk.
 
-This distinction is deliberate. Until historical calibration supports a defensible event-frequency baseline, Geomacro does not turn missing/quiet observations into a synthetic low-risk score. Coverage, event count, source count and weighted confidence are published alongside the index.
+The current public methodology uses three supported domains:
 
-## Canonical formula
+- geopolitics
+- macroeconomics
+- rare earth / critical-mineral risk
 
-Eligible events are observations created in the trailing **72 hours** with a supported category, severity in `[0,100]`, and confidence in `(0,100]`.
+Each domain has an equal base weight of `1/3`. If a domain has no eligible evidence, it is excluded rather than treated as zero; active category weights are renormalized and coverage is disclosed separately.
+
+Crypto remains part of the broader Geomacro product/data architecture but is **not a current GRI v1.2 scoring domain**.
+
+## Canonical observation eligibility
+
+Eligible observations must:
+
+- belong to a supported GRI v1.2 category;
+- have severity in `[0,100]`;
+- have confidence in `(0,100]`;
+- fall within the trailing **72-hour** observation window;
+- carry the current classification provenance contract;
+- carry a valid current-contract story-cluster assignment and clustering provenance.
+
+The current classification contract is versioned separately from the GRI formula. The current public application contract is defined in `src/lib/gri-current-contract.ts`.
+
+## Event evidence weight
 
 For event `i`:
 
 ```text
-ageHours_i        = (asOf - created_at_i) / 1 hour
+ageHours_i        = (asOf - observed_at_i) / 1 hour
 confidenceWeight  = confidence_i / 100
 decayWeight       = 2 ^ (-ageHours_i / 24)
 rawWeight_i       = confidenceWeight * decayWeight
 ```
 
-The 24-hour term is an exponential **half-life**, not a 24-hour cutoff. Events leave the canonical window after 72 hours.
+`created_at` / `observed_at` represents when Geomacro knew the observation. `published_at` remains source provenance and cannot backdate a historical snapshot.
 
-### Source cap
+The 24-hour term is an exponential **half-life**, not a cutoff. Observations leave the canonical window after 72 hours.
 
-Within a category, events are grouped by source domain (falling back to source name/URL host). A single source receives at most `1.0` total evidence weight:
+## Source concentration cap
+
+Within a category, observations are grouped by stable source identity. One source receives at most `1.0` total evidence weight:
 
 ```text
 sourceRawWeight        = sum(rawWeight_i for source)
 sourceEffectiveWeight  = min(1.0, sourceRawWeight)
-effectiveEventWeight_i = sourceEffectiveWeight * rawWeight_i / sourceRawWeight
+postSourceWeight_i     = sourceEffectiveWeight * rawWeight_i / sourceRawWeight
 ```
 
-This prevents a publisher producing many articles from dominating a category merely through volume.
+This prevents one publisher from dominating the index merely by publishing many articles.
 
-### Category score
+## Story concentration cap
+
+GRI v1.2 adds a second concentration control at the underlying-development level.
+
+After source capping, events are grouped by immutable story cluster. For each story, post-source event weights are summed within each source. The story evidence budget is based on the strongest constituent source total and is capped at `1.0`. Member events share that story budget in proportion to their post-source-cap weights.
+
+Conceptually:
+
+```text
+many articles
+    -> source cap
+    -> story grouping
+    -> story cap
+    -> effective evidence weight
+```
+
+This prevents multiple publishers repeating one underlying development from multiplying that single development into several independent evidence budgets.
+
+The current story-correlation contract is versioned. Missing, duplicated or incompatible current-contract story assignments block the canonical v1.2 calculation rather than silently falling back.
+
+## Category score
+
+For category `c`:
 
 ```text
 categoryScore_c =
-  sum(severity_i * effectiveEventWeight_i) / sum(effectiveEventWeight_i)
+  sum(severity_i * effectiveEventWeight_i)
+  / sum(effectiveEventWeight_i)
 ```
 
-The four v1 domains have equal base weights: geopolitics `0.25`, macro `0.25`, rare earth / critical minerals `0.25`, crypto `0.25`.
+where `effectiveEventWeight_i` is the weight after both source and story concentration controls.
 
-If a domain has no eligible evidence it is **excluded**, never treated as zero risk. Active category weights are renormalized to sum to `1.0`. Coverage is separately reported as the sum of active base weights.
-
-### Global score
+The three v1.2 domains have equal base weights:
 
 ```text
-GRI_raw = sum(normalizedCategoryWeight_c * categoryScore_c)
+geopolitics  = 1/3
+macro        = 1/3
+rare_earth   = 1/3
+```
+
+If a domain has no eligible evidence, it is excluded and the remaining active category weights are renormalized to sum to `1.0`. Missing coverage is disclosed rather than converted into synthetic low risk.
+
+## Global score
+
+```text
+GRI_raw = sum(activeNormalizedCategoryWeight_c * categoryScore_c)
 GRI_display = round(GRI_raw)
 ```
 
-The database stores the higher-precision raw score and the integer display score.
+The persisted snapshot keeps the higher-precision raw score as well as the integer display score.
 
 ## Why a score moved
 
-Every event receives an exact `contribution_points` value:
+GRI is designed to expose change attribution rather than only a static number.
 
-```text
-globalShare_i = normalizedCategoryWeight_c
-              * effectiveEventWeight_i / categoryEffectiveWeight_c
-
-contributionPoints_i = globalShare_i * severity_i
-```
-
-The event contributions sum to the raw GRI. For two snapshots:
+Each eligible observation receives a deterministic contribution to the global score. Across two snapshots:
 
 ```text
 GRI_change = sum(currentContribution_i - previousContribution_i)
 ```
 
-This gives an exact mathematical decomposition for a move such as `83 → 63`. Each event is labelled as added, removed, rescored, or reweighted; category-level deltas are also stored. A residual near floating-point zero is recorded as an integrity check.
+This supports mathematically reconciling change attribution for added, removed, rescored or reweighted observations and for category-level movement, subject only to explicitly documented floating-point/rounding tolerance.
 
-## Time semantics
+Story/source concentration changes can also alter an observation's contribution even when its severity is unchanged. Attribution must therefore preserve the exact effective weights used by that snapshot.
 
-`created_at` is the canonical observation time because it records when Geomacro knew the event. `published_at` remains provenance. A late-ingested article therefore cannot rewrite an earlier historical snapshot by backdating itself.
+## Provenance and reproducibility
+
+Current publication requires explicit provenance for both event classification and story correlation. A canonical observation must retain enough metadata to identify the provider/model, version, prompt version, scoring timestamp and input hash used by the relevant upstream decision.
+
+The same validated inputs, as-of time and methodology version must produce the same GRI result.
+
+Historical methodology/proof implementations remain versioned separately for audit reproducibility. They must not be silently substituted into the current public calculation path.
 
 ## Audit records
 
-Migration `004_gri_audit_system.sql` creates:
+The GRI audit system persists versioned snapshots and contribution-level proof material, including:
 
-- `gri_snapshots`: methodology version/hash, input hash, calculation hash, raw/display score, coverage, confidence, category breakdown, and 24h comparison attribution.
-- `gri_contributions`: exact event-level weights and contribution points for each snapshot.
-- event classification provenance fields: provider, model, classification version, prompt version, scoring timestamp, and prompt/input hash.
+- methodology version and methodology hash;
+- input/data integrity hashes;
+- calculation/proof hashes;
+- raw and display score;
+- coverage and confidence metadata;
+- category breakdown;
+- exact contribution-level attribution;
+- previous-snapshot comparison/change attribution;
+- classification and story-correlation provenance.
 
-`node scripts/compute-gri-v11.js` computes and persists a snapshot. `--dry-run` prints the calculation without writing. `--as-of <ISO>` supports reproducibility checks.
+The current canonical commands are:
 
-Live GRI publication is deliberately decoupled from news ingestion. The dedicated `publish-gri.yml` workflow is the only canonical live publisher, so an ingestion retry cannot create a competing publication path.
+```bash
+bun run gri:compute
+bun run gri:verify
+bun run gri:validate
+```
+
+These route to the current v1.2 compute, proof and validation stack. Explicit `:v11` commands are retained for historical/compatibility work and are not the canonical current publication path.
+
+`--dry-run` and explicit `--as-of <ISO>` modes remain useful for reproducibility checks where supported by the underlying script.
+
+## Publication and freshness
+
+Live GRI publication is deliberately separated from news ingestion. The dedicated publication workflow is the canonical live publisher, so an ingestion retry does not create an uncontrolled competing publication path.
+
+The public read model also enforces a maximum acceptable snapshot age. Freshness is a publication/read-model safety rule and is disclosed separately from the score formula itself.
 
 ## Versioning rule
 
-Do not silently change weights, half-life, source cap, eligibility, category set, timestamp semantics, or rounding. Any such change requires a new methodology version and a documented migration/calibration note.
+Do not silently change any of the following under the same methodology version:
+
+- category set or base weights;
+- lookback window;
+- half-life;
+- source concentration rule/cap;
+- story concentration rule/cap;
+- eligibility rules;
+- timestamp semantics;
+- normalization;
+- rounding;
+- contribution/change-attribution semantics.
+
+Any material change requires a new methodology version, matching code/tests/documentation, and a documented calibration or migration note.
