@@ -249,7 +249,7 @@ export function buildObservation({
   rawPayload,
   qualityStatus = "VERIFIED",
   commercialEligibilityStatus =
-    "VERIFIED",
+    "UNVERIFIED",
 }) {
   const canonical = {
     source_id:
