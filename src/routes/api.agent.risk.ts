@@ -11,7 +11,7 @@ import {
   circleX402PaymentResponseHeader,
   isCircleX402Configured,
   persistSettlementTelemetry,
-  verifyAndSettleCircleX402,
+  settleCircleX402,
 } from "../lib/circle-x402.server";
 
 const MAX_BODY_BYTES = 8 * 1024;
@@ -157,7 +157,7 @@ export const Route = createFileRoute("/api/agent/risk")({
         }
 
         try {
-          const settlement = await verifyAndSettleCircleX402(request);
+          const settlement = await settleCircleX402(request);
           const result = {
             ...prepared,
             payment: {
@@ -191,7 +191,6 @@ export const Route = createFileRoute("/api/agent/risk")({
           const message =
             error instanceof Error ? error.message : "Circle x402 payment failed.";
           const paymentFailure =
-            message.startsWith("PAYMENT_VERIFICATION_FAILED") ||
             message.startsWith("PAYMENT_SETTLEMENT_FAILED") ||
             message.startsWith("PAYMENT_SIGNATURE_");
 
