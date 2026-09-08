@@ -1,0 +1,47 @@
+name: Risk Gate Core Resilience
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/risk-gate-api.server.ts'
+      - 'src/lib/risk-gate-engine.ts'
+      - 'src/lib/risk-gate-contract.ts'
+      - 'src/__tests__/risk-gate-**'
+      - 'scripts/stress-risk-gate-core.ts'
+      - '.github/workflows/risk-gate-core-resilience.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-resilience:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      # The main branch lockfile refresh is isolated in PR #94. Until that
+      # lands, this branch resolves dependencies normally. Product CI remains
+      # the reproducible frozen-lockfile gate.
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run Risk Gate app tests
+        run: bun run test:app
+
+      - name: Run 30k-per-path core resilience baseline
+        run: bun x tsx scripts/stress-risk-gate-core.ts --iterations 30000
+
+      - name: Upload resilience evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-gate-core-resilience
+          path: artifacts/risk-gate-core-resilience.json
+          retention-days: 30
