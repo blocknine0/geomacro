@@ -12,12 +12,14 @@ describe("public intelligence routing contract", () => {
     const intelligence = read("src/routes/intelligence.tsx");
     const askWorkspace = read("src/components/ask/ask-workspace.tsx");
     const eventRoute = read("src/routes/event.$eventId.tsx");
+    const eventWorkspace = read("src/components/intelligence/event-detail-workspace.tsx");
 
     expect(intelligence).toContain('to="/event/$eventId"');
     expect(askWorkspace).toContain('to="/event/$eventId"');
     expect(eventRoute).toContain('createFileRoute("/event/$eventId")');
-    expect(eventRoute).toContain("No wallet is required to read this page");
-    expect(eventRoute).toContain("Event severity is not a market probability");
+    expect(eventRoute).toContain("EventDetailWorkspace");
+    expect(eventWorkspace).toContain("No wallet is required to read this page");
+    expect(eventWorkspace).toContain("Event severity is not a market probability");
   });
 
   it("keeps research and event reading out of wallet execution context", () => {
