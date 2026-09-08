@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   CheckCircle2,
-  ExternalLink,
   Fingerprint,
   RefreshCw,
   ShieldCheck,
@@ -251,7 +250,7 @@ function Section({
   eyebrow: string;
   title: string;
   copy: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="border-b border-border/70 py-10 last:border-0 sm:py-12">
