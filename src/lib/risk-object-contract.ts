@@ -28,6 +28,15 @@ export const GRO_SIGNATURE_SCHEME =
 export const COUNTRY_RISK_METHOD_VERSION =
   "country-risk-v0.1.0-pilot" as const;
 
+export const CORRIDOR_RISK_METHOD_VERSION =
+  "corridor-endpoint-max-v0.1.0-pilot" as const;
+
+export const CORRIDOR_RISK_OBJECT_TTL_HOURS = 3;
+
+export type RiskMethodologyVersion =
+  | typeof COUNTRY_RISK_METHOD_VERSION
+  | typeof CORRIDOR_RISK_METHOD_VERSION;
+
 export const COUNTRY_RISK_LOOKBACK_HOURS = 72;
 export const COUNTRY_RISK_HALF_LIFE_HOURS = 24;
 export const COUNTRY_RISK_OBJECT_TTL_HOURS = 3;
@@ -36,6 +45,29 @@ export type RiskSubjectType =
   | "country"
   | "corridor"
   | "event";
+
+export type CorridorRiskContext = {
+  origin_country_iso3: string;
+  destination_country_iso3: string;
+
+  /**
+   * Pilot composition rule:
+   * corridor score is the higher of the two
+   * signed endpoint country GRO scores.
+   */
+  composition:
+    "max_endpoint_score_v1";
+
+  dominant_endpoint:
+    | "origin"
+    | "destination";
+
+  source_risk_object_ids:
+    [string, string];
+
+  source_calculation_hashes:
+    [string, string];
+};
 
 export type RiskVerificationStatus =
   | "VERIFIED"
@@ -187,7 +219,14 @@ export type GeomacroRiskObject = {
   };
 
   methodology_version:
-    typeof COUNTRY_RISK_METHOD_VERSION;
+    RiskMethodologyVersion;
+
+  /**
+   * Present only when subject.type === "corridor".
+   * Country GROs remain byte-for-byte compatible
+   * with the existing gro-1.1 payload shape.
+   */
+  corridor_context?: CorridorRiskContext;
 
   generated_at: string;
   expires_at: string;

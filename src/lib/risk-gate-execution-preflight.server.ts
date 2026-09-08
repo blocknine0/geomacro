@@ -45,3 +45,46 @@ runCountryRiskGatedExecution<
     execute,
   });
 }
+
+
+import {
+  evaluateCorridorRiskGate,
+  type CorridorRiskGateServiceInput,
+  type CorridorRiskGateServiceResult,
+} from "./corridor-risk-gate-service.server";
+
+
+/**
+ * Corridor-aware autonomous agent / wallet guard.
+ *
+ * Caller execution remains unreachable unless the
+ * corridor Risk Gate returns CONTINUE.
+ *
+ * Geomacro still does not sign or broadcast the
+ * transaction here.
+ */
+export async function
+runCorridorRiskGatedExecution<
+  TResult,
+>(
+  input:
+    CorridorRiskGateServiceInput,
+
+  execute:
+    (
+      evaluated:
+        CorridorRiskGateServiceResult,
+    ) => Promise<TResult>,
+) {
+  return withRiskGatePreflight<
+    CorridorRiskGateServiceResult,
+    TResult
+  >({
+    evaluate: () =>
+      evaluateCorridorRiskGate(
+        input,
+      ),
+
+    execute,
+  });
+}

@@ -67,7 +67,9 @@ export type RiskGateRequest = {
   request_id: string;
 
   subject: {
-    type: "country";
+    type:
+      | "country"
+      | "corridor";
     id: string;
   };
 
