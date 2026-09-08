@@ -2,7 +2,9 @@ name: Product CI
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - chore/product-ci
     paths:
       - 'src/**'
       - 'scripts/**'
