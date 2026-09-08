@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 const TITLE = "About & Trust · Geomacro";
 const DESCRIPTION =
-  "How Geomacro builds explainable geopolitical and macro risk intelligence, what is live, what remains Private Pilot, and which trust boundaries are still explicit.";
+  "How Geomacro builds geopolitical and macro risk intelligence, what is live today, what remains Private Pilot, and what the product does not claim.";
 const URL = "https://geomacro.live/about";
 
 export const Route = createFileRoute("/about")({
@@ -30,9 +30,9 @@ function AboutPage() {
     <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <section className="max-w-3xl">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">About Geomacro</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk intelligence built to be inspected, not just consumed.</h1>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">We show the evidence behind the risk view.</h1>
         <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-          Geomacro turns geopolitical and macro developments into structured risk intelligence with evidence, confidence, versioned methodology and machine-readable decision context. The primary product is intelligence; prediction markets and Arc/Circle execution flows are secondary technical-proof layers.
+          Geomacro tracks geopolitical and macro risk and shows the evidence, confidence and methodology behind its scores. Risk intelligence is the product. Prediction markets and Arc/Circle flows are kept as separate technical proof.
         </p>
       </section>
 
@@ -49,9 +49,9 @@ function AboutPage() {
 
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
           <Info className="h-5 w-5 text-primary" />
-          <h2 className="mt-3 text-xl font-semibold">Transparency standard</h2>
+          <h2 className="mt-3 text-xl font-semibold">How we document the system</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Geomacro documents methodology versions, provenance, confidence, change attribution and verification infrastructure. Public source-code visibility does not imply unrestricted open-source licensing; use and redistribution remain governed by the repository licence.
+            Methodology versions, provenance, confidence, change attribution and verification details are documented so a risk result can be checked. The repository is publicly viewable, but that does not make the code unrestricted open source; the repository licence still applies.
           </p>
           <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
             <Github className="h-4 w-4" /> View technical implementation
@@ -62,17 +62,17 @@ function AboutPage() {
           <Lock className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-xl font-semibold">Privacy and customer data</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Public intelligence browsing is designed to require minimal user information. Wallet interactions occur only when a user chooses a technical onchain flow. Private Pilot Risk Gate requests create server-side audit records for traceability; payload minimization, retention policy and customer-data handling are still explicit production-hardening gates. Pilot users should avoid sending unnecessary personal or confidential information in free-form request metadata.
+            Browsing public intelligence requires very little user information. Wallet interaction appears only in the separate technical onchain flows. Private Pilot Risk Gate requests create server-side audit records, and payload minimization, retention policy and customer-data handling still need further production hardening. Pilot users should not put unnecessary personal or confidential information into free-form request metadata.
           </p>
         </article>
 
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
-          <h2 className="text-xl font-semibold">Important boundaries</h2>
+          <h2 className="text-xl font-semibold">What Geomacro does not claim</h2>
           <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
             <li>Geomacro intelligence is not financial, legal or investment advice.</li>
-            <li>Risk Gate does not autonomously authorize or execute a customer's transaction.</li>
-            <li>Independent external security review and full production SLA should not be inferred until completed.</li>
-            <li>Testnet USDC and testnet market activity have no represented real-money settlement claim.</li>
+            <li>Risk Gate does not authorize or execute a customer's transaction.</li>
+            <li>There is no claim of an independent external security review or production SLA until those are completed.</li>
+            <li>Testnet USDC and testnet market activity are not represented as real-money settlement.</li>
           </ul>
         </article>
       </section>
