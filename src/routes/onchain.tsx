@@ -1,16 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { OnchainSection } from "@/components/sections/onchain-section";
+import { TechnicalProofBanner } from "@/components/technical-proof-banner";
 
 export const Route = createFileRoute("/onchain")({
   head: () => ({
     meta: [
-      { title: "Onchain · Geomacro" },
-      { name: "description", content: "Arc Testnet and mainnet network info, faucet links and wallet activity for the Geomacro oracle." },
-      { property: "og:title", content: "Onchain · Geomacro" },
-      { property: "og:description", content: "Arc network details and wallet activity for Geomacro." },
+      { title: "Arc / Onchain · Technical Proof · Geomacro" },
+      {
+        name: "description",
+        content:
+          "Secondary Arc network and programmable-finance technical proof for Geomacro, separate from the primary risk-intelligence product.",
+      },
+      { property: "og:title", content: "Arc / Onchain · Technical Proof · Geomacro" },
+      {
+        property: "og:description",
+        content:
+          "Arc network, wallet and programmable-finance implementation used as secondary technical proof for Geomacro.",
+      },
       { property: "og:url", content: "https://geomacro.live/onchain" },
     ],
     links: [{ rel: "canonical", href: "https://geomacro.live/onchain" }],
   }),
-  component: OnchainSection,
+  component: OnchainTechnicalProofPage,
 });
+
+function OnchainTechnicalProofPage() {
+  return (
+    <>
+      <TechnicalProofBanner
+        title="Arc / Onchain"
+        description="This surface demonstrates Geomacro's programmable-finance implementation on Arc. It is a secondary technical-proof layer rather than the core intelligence product."
+      />
+      <OnchainSection />
+    </>
+  );
+}

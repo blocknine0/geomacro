@@ -1,100 +1,76 @@
-import { SectionHeader } from "@/components/section-ui";
-import { ROADMAP, type RoadmapStatus } from "@/lib/roadmap";
+import { CheckCircle2, CircleDot, FlaskConical } from "lucide-react";
 
-const STATUS_META: Record<RoadmapStatus, { label: string; dot: string; text: string; ring: string }> = {
-  shipped: {
-    label: "Shipped",
-    dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]",
-    text: "text-emerald-300",
-    ring: "border-emerald-500/30",
+const PHASES = [
+  {
+    status: "SHIPPED",
+    tone: "text-emerald-300",
+    title: "Intelligence foundation",
+    body: "Live event intelligence, versioned Global Risk Index, explainable drivers, evidence/confidence surfaces and Arc/Circle technical proof.",
+    items: ["Live intelligence", "GRI v1.2", "Change attribution", "Arc Testnet technical proof"],
   },
-  "in-progress": {
-    label: "In progress",
-    dot: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)] animate-pulse",
-    text: "text-amber-300",
-    ring: "border-amber-500/30",
+  {
+    status: "IN PROGRESS",
+    tone: "text-amber-300",
+    title: "Commercial hardening",
+    body: "Turn the working system into a defensible Private Pilot with source-rights controls, signed Risk Objects, Risk Gate, security evidence and reproducible CI.",
+    items: ["Risk Gate Private Pilot", "Commercial source rights", "Security & resilience", "Website / repo source of truth"],
   },
-  next: {
-    label: "Next",
-    dot: "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.6)]",
-    text: "text-sky-300",
-    ring: "border-sky-500/30",
+  {
+    status: "NEXT",
+    tone: "text-sky-300",
+    title: "Institutional Early Access",
+    body: "Run controlled pilots with financial, treasury, payments, risk and agent teams. Validate decision usefulness, integration requirements and willingness to pay.",
+    items: ["Design partners", "Staging load evidence", "Pilot package & pricing", "First paid pilot"],
   },
-  research: {
-    label: "Research",
-    dot: "bg-muted-foreground/60",
-    text: "text-muted-foreground",
-    ring: "border-border/60",
+  {
+    status: "LATER",
+    tone: "text-muted-foreground",
+    title: "Production expansion",
+    body: "Expand coverage, enterprise controls and programmable integrations only after security, reliability, legal and customer validation gates are met.",
+    items: ["Production SLA", "Broader data coverage", "Enterprise workflows", "Controlled mainnet integrations"],
   },
-};
+] as const;
 
 export function RoadmapSection() {
-  const shipped = ROADMAP.filter((m) => m.status === "shipped").length;
-  const inProgress = ROADMAP.filter((m) => m.status === "in-progress").length;
-  const next = ROADMAP.filter((m) => m.status === "next").length;
-
   return (
-    <section className="mx-auto max-w-7xl px-4 pb-20 pt-12 sm:px-6 sm:pt-16 md:pb-32 md:pt-24">
-      <SectionHeader
-        eyebrow="Protocol Roadmap"
-        title="Versioned milestones from ingestion to mainnet settlement"
-        desc="A reproducible build path. Every milestone ships with verifiable artifacts. No private roadmap, no surprise scope, no marketing-only phases."
-      />
+    <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+      <div className="max-w-4xl">
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Current roadmap</p>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">From working intelligence to trusted commercial infrastructure.</h1>
+        <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
+          Geomacro prioritizes reliability, explainability, security and real customer validation before broader production expansion. The roadmap reflects current product gates rather than a feature wishlist.
+        </p>
+      </div>
 
-      <p className="mt-3 text-xs italic text-muted-foreground">
-        Timelines for v0.7 onward depend on Circle's Arc mainnet launch.
-      </p>
-
-      <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/60 sm:grid-cols-4">
-        {[
-          { k: "Total", v: ROADMAP.length.toString().padStart(2, "0") },
-          { k: "Shipped", v: shipped.toString().padStart(2, "0") },
-          { k: "In progress", v: inProgress.toString().padStart(2, "0") },
-          { k: "Queued", v: next.toString().padStart(2, "0") },
-        ].map((s) => (
-          <div key={s.k} className="bg-background px-5 py-4">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{s.k}</div>
-            <div className="mt-1 font-mono text-2xl text-foreground">{s.v}</div>
-          </div>
+      <div className="mt-12 grid gap-5 lg:grid-cols-2">
+        {PHASES.map((phase, index) => (
+          <article key={phase.title} className="rounded-2xl border border-border/70 bg-card/50 p-6 sm:p-7">
+            <div className="flex items-center justify-between gap-4">
+              <span className={`font-mono text-[10px] uppercase tracking-[0.16em] ${phase.tone}`}>{phase.status}</span>
+              {index === 0 ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+              ) : index === 1 ? (
+                <CircleDot className="h-5 w-5 text-amber-300" />
+              ) : (
+                <FlaskConical className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+            <h2 className="mt-4 text-2xl font-semibold">{phase.title}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{phase.body}</p>
+            <div className="mt-5 flex flex-wrap gap-2 border-t border-border/50 pt-4">
+              {phase.items.map((item) => (
+                <span key={item} className="rounded-full border border-border/70 bg-background/30 px-3 py-1.5 text-xs text-muted-foreground">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </article>
         ))}
       </div>
 
-      <ol className="relative mt-10 space-y-3 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-border/60 sm:before:left-4">
-        {ROADMAP.map((m) => {
-          const meta = STATUS_META[m.status];
-          return (
-            <li key={m.version} className="relative pl-10 sm:pl-12">
-              <span
-                className={`absolute left-[7px] top-5 size-2.5 rounded-full ring-4 ring-background sm:left-[11px] ${meta.dot}`}
-                aria-hidden
-              />
-              <article className={`group rounded-xl border ${meta.ring} bg-card/40 p-5 transition-colors hover:bg-card/60 sm:p-6`}>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <span className="font-mono text-xs tracking-[0.16em] text-primary">{m.version}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{m.quarter}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{m.layer} layer</span>
-                  <span className={`ml-auto inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] ${meta.text}`}>
-                    <span className={`size-1.5 rounded-full ${meta.dot}`} aria-hidden />
-                    {meta.label}
-                  </span>
-                </div>
-                <h3 className="mt-3 text-base font-medium text-foreground sm:text-lg">{m.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{m.scope}</p>
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-border/40 pt-3">
-                  {m.artifacts.map((a) => (
-                    <span
-                      key={a}
-                      className="rounded-md border border-border/60 bg-background px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
-                    >
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            </li>
-          );
-        })}
-      </ol>
+      <div className="mt-10 rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-relaxed text-muted-foreground">
+        <span className="font-medium text-foreground">Launch gate:</span> Early Access remains conditional on scoped security/resilience validation, remediation of critical/high findings, source-rights review for paid delivery and a controlled staging test. Full production launch requires a broader readiness review.
+      </div>
     </section>
   );
 }
