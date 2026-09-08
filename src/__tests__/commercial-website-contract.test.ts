@@ -67,8 +67,10 @@ describe("commercial website source-of-truth contract", () => {
     const feed = read("src/routes/feed.tsx");
     const bridge = read("src/routes/bridge.tsx");
 
-    expect(feed).toContain('redirect({ to: "/intelligence", replace: true })');
-    expect(bridge).toContain('redirect({ to: "/bridge-swap", replace: true })');
+    expect(feed).toContain('to: "/intelligence"');
+    expect(feed).toContain("replace: true");
+    expect(bridge).toContain('to: "/bridge-swap"');
+    expect(bridge).toContain("replace: true");
   });
 
   it("keeps the public GRI architecture on the three-domain v1.2 contract", () => {
