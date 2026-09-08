@@ -1,0 +1,36 @@
+name: Agentic Demo Lock Sync
+
+on:
+  push:
+    branches:
+      - feat/agentic-commerce-demo
+    paths:
+      - package.json
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-bun-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/agentic-commerce-demo
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Refresh lockfile deterministically
+        run: bun install
+      - name: Commit refreshed lockfile
+        run: |
+          if git diff --quiet -- bun.lock; then
+            echo "bun.lock already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bun.lock
+          git commit -m "chore(agentic-demo): refresh bun lockfile"
+          git push origin HEAD:feat/agentic-commerce-demo
