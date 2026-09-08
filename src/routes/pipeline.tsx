@@ -9,7 +9,7 @@ export const Route = createFileRoute("/pipeline")({
       {
         name: "description",
         content:
-          "Technical view of how Geomacro turns source evidence into structured intelligence, risk signals and downstream application artifacts.",
+          "Technical view of how Geomacro turns source evidence into structured intelligence, risk signals and downstream application artifacts. Current public GRI v1.2 scoring uses geopolitics, macro and rare-earth / critical-mineral risk.",
       },
       { property: "og:title", content: "Intelligence Pipeline · Technical Detail · Geomacro" },
       {
@@ -29,7 +29,7 @@ function PipelineTechnicalPage() {
     <>
       <TechnicalProofBanner
         title="Intelligence Pipeline"
-        description="This page exposes implementation detail behind the intelligence system. Public commercial surfaces explain the product first; this route keeps deeper pipeline mechanics available for technical review."
+        description="This page exposes implementation detail behind the broader ingestion and processing system. The current public GRI v1.2 score uses three domains only: geopolitics, macro and rare-earth / critical-mineral risk. Other research or technical data streams must not be read as additional GRI scoring domains."
       />
       <PipelineSection />
     </>
