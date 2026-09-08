@@ -138,8 +138,9 @@ const TECHNICAL_NAV = [
   { to: "/bridge-swap", label: "Bridge & Swap", description: "Circle / Arc testnet implementation" },
 ] as const;
 
-const COMPANY_NAV = [
-  { to: "/about", label: "About" },
+const REFERENCE_NAV = [
+  { to: "/docs", label: "Documentation" },
+  { to: "/about", label: "About & Trust" },
   { to: "/roadmap", label: "Roadmap" },
   { to: "/contact", label: "Contact" },
 ] as const;
@@ -154,9 +155,9 @@ function TechnicalProofMenu() {
           Technical Proof <ChevronDown className="h-3.5 w-3.5" aria-hidden />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          Secondary application layer
+          Secondary testnet and implementation proof
         </DropdownMenuLabel>
         {TECHNICAL_NAV.map((item) => (
           <DropdownMenuItem key={item.to} asChild>
@@ -171,15 +172,40 @@ function TechnicalProofMenu() {
   );
 }
 
+function MobileGroup({
+  title,
+  items,
+}: {
+  title: string;
+  items: ReadonlyArray<{ to: string; label: string }>;
+}) {
+  return (
+    <div>
+      <p className="px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+        {title}
+      </p>
+      <div className="mt-1 flex flex-col gap-0.5">
+        {items.map((item) => (
+          <SheetClose asChild key={item.to}>
+            <Link
+              to={item.to}
+              className="rounded-md px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              activeProps={{ className: "rounded-md px-3 py-2.5 text-sm bg-muted text-foreground" }}
+            >
+              {item.label}
+            </Link>
+          </SheetClose>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SiteShell({ children }: { children: ReactNode }) {
   const { network, address } = useWallet();
   const activeNet = network ?? preferredNetwork();
-  const mobileLinks = [
-    ...PRIMARY_NAV,
-    ...TECHNICAL_NAV.map(({ to, label }) => ({ to, label })),
-    ...(address ? [{ to: "/portfolio" as const, label: "Portfolio" }] : []),
-    ...COMPANY_NAV,
-  ];
+  const technicalMobile = TECHNICAL_NAV.map(({ to, label }) => ({ to, label }));
+  const accountMobile = address ? [{ to: "/portfolio" as const, label: "Portfolio" }] : [];
 
   return (
     <div className="relative min-h-screen text-foreground">
@@ -191,31 +217,24 @@ export function SiteShell({ children }: { children: ReactNode }) {
       </a>
       <AnimatedBackground />
       <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 border-b border-border/60 bg-background/75 backdrop-blur-xl">
+        <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-2">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu">
+                  <Button variant="ghost" size="icon" className="xl:hidden" aria-label="Open navigation menu">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 overflow-y-auto">
+                <SheetContent side="left" className="w-[86vw] max-w-sm overflow-y-auto">
                   <SheetHeader>
                     <SheetTitle><Wordmark height={26} /></SheetTitle>
                   </SheetHeader>
-                  <nav className="mt-6 flex flex-col gap-1">
-                    {mobileLinks.map((item) => (
-                      <SheetClose asChild key={item.to}>
-                        <Link
-                          to={item.to}
-                          className="rounded-md px-3 py-2.5 text-base text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                          activeProps={{ className: "rounded-md px-3 py-2.5 text-base bg-muted text-foreground" }}
-                        >
-                          {item.label}
-                        </Link>
-                      </SheetClose>
-                    ))}
+                  <nav className="mt-7 space-y-6" aria-label="Mobile navigation">
+                    <MobileGroup title="Intelligence products" items={PRIMARY_NAV} />
+                    <MobileGroup title="Reference" items={REFERENCE_NAV} />
+                    <MobileGroup title="Technical proof" items={technicalMobile} />
+                    {accountMobile.length > 0 ? <MobileGroup title="Account" items={accountMobile} /> : null}
                   </nav>
                 </SheetContent>
               </Sheet>
@@ -224,7 +243,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             </div>
 
-            <nav aria-label="Primary" className="hidden items-center gap-3 text-xs text-muted-foreground lg:flex xl:gap-4">
+            <nav aria-label="Primary" className="hidden items-center gap-2.5 text-xs text-muted-foreground xl:flex 2xl:gap-4">
               {PRIMARY_NAV.map((item) => (
                 <Link
                   key={item.to}
@@ -258,7 +277,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         </main>
 
         <footer className="border-t border-border/60 bg-background/30">
-          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:grid-cols-[1.2fr_2fr]">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:grid-cols-[1.15fr_2fr]">
             <div>
               <Wordmark height={30} />
               <p className="mt-3 max-w-sm text-sm leading-relaxed">
@@ -282,13 +301,14 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <div className="mt-3 flex flex-col gap-2">
                   <Link to="/institutional" className="hover:text-foreground">For Institutions</Link>
                   <Link to="/research" className="hover:text-foreground">Research</Link>
-                  <Link to="/docs" className="hover:text-foreground">Docs</Link>
+                  <Link to="/docs" className="hover:text-foreground">Documentation</Link>
                 </div>
               </div>
               <div>
                 <p className="font-medium text-foreground">Technical Proof</p>
                 <div className="mt-3 flex flex-col gap-2">
-                  <Link to="/arena" className="hover:text-foreground">Markets</Link>
+                  <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
+                  <Link to="/arena" className="hover:text-foreground">Prediction Markets</Link>
                   <Link to="/onchain" className="hover:text-foreground">Arc / Onchain</Link>
                   <Link to="/bridge-swap" className="hover:text-foreground">Bridge & Swap</Link>
                   <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
@@ -299,7 +319,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Company</p>
                 <div className="mt-3 flex flex-col gap-2">
-                  <Link to="/about" className="hover:text-foreground">About</Link>
+                  <Link to="/about" className="hover:text-foreground">About & Trust</Link>
                   <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
                   <Link to="/contact" className="hover:text-foreground">Contact</Link>
                   <a href="https://x.com/GeomacroLive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
