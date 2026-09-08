@@ -1,0 +1,60 @@
+name: Product CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - '.github/workflows/product-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - '.github/workflows/product-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: App tests
+        run: bun run test:app
+
+      - name: Risk Gate phase-1 static contract
+        run: node scripts/test-risk-gate-phase1.mjs
+
+      - name: Risk Gate country/corridor API static contract
+        run: node scripts/test-risk-gate-corridor-api-static.mjs
+
+      - name: Production build
+        run: bun run build
