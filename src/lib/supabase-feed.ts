@@ -11,9 +11,11 @@ import type { EventStage } from "./event-stage";
  * same-origin, read-only server proxy. The proxy uses APP_SUPABASE_ANON_KEY,
  * applies a table allowlist and rejects writes.
  *
- * The URL/key below only satisfy supabase-js client construction. They are not
- * trusted for public PostgREST authorization because those requests are
- * rewritten before they leave the browser.
+ * Realtime is deliberately disabled on this public client. The two historical
+ * realtime consumers (Arena refresh and jury/dispute status) already have
+ * polling fallbacks. Avoiding a browser WebSocket removes the final dependency
+ * on hosting-injected Supabase credentials without changing any transaction or
+ * settlement logic.
  */
 const AUTHORITATIVE_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const AUTHORITATIVE_SUPABASE_URL =
@@ -60,16 +62,37 @@ async function publicReadFetch(
     });
   }
 
-  // Non-PostgREST traffic is not part of the public read contract. This keeps
-  // supabase-js construction compatible while allowing callers to migrate away
-  // from direct realtime/auth transport explicitly.
   return fetch(request);
 }
 
-export const supabaseFeed = createClient(clientUrl, clientKey, {
+const rawPublicClient = createClient(clientUrl, clientKey, {
   auth: { persistSession: false, autoRefreshToken: false },
   global: { fetch: publicReadFetch },
 });
+
+const noRealtimeChannel = {
+  on() {
+    return noRealtimeChannel;
+  },
+  subscribe() {
+    return noRealtimeChannel;
+  },
+  unsubscribe() {
+    return Promise.resolve("ok" as const);
+  },
+};
+
+/**
+ * Preserve the normal Supabase query-builder API while making `.channel()` a
+ * no-op on this read-only browser client. Existing polling remains active.
+ */
+export const supabaseFeed = new Proxy(rawPublicClient, {
+  get(target, prop, receiver) {
+    if (prop === "channel") return () => noRealtimeChannel;
+    if (prop === "removeChannel") return () => Promise.resolve("ok" as const);
+    return Reflect.get(target, prop, receiver);
+  },
+}) as typeof rawPublicClient;
 
 export type StoredEventRow = {
   id: string;
