@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
-  ArrowRight,
   CheckCircle2,
   CircleDollarSign,
   Code2,
@@ -17,17 +16,17 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/demo")({
   head: () => ({
     meta: [
-      { title: "Live Agentic Commerce Demo | Geomacro" },
+      { title: "Agentic Commerce Demo | Geomacro" },
       {
         name: "description",
         content:
           "Test Geomacro's signed geopolitical risk pre-flight, structural evidence context and Circle x402 USDC agent-access path on Arc Testnet.",
       },
-      { property: "og:title", content: "Live Agentic Commerce Demo | Geomacro" },
+      { property: "og:title", content: "Agentic Commerce Demo | Geomacro" },
       {
         property: "og:description",
         content:
-          "Run a live Risk Gate pre-flight and inspect the machine-readable response, structural context and Circle x402 access path.",
+          "Run a Risk Gate pre-flight and inspect the machine-readable response, structural context and Circle x402 access path.",
       },
       { property: "og:url", content: "https://geomacro.live/demo" },
     ],
@@ -173,7 +172,7 @@ function AgenticCommerceDemoPage() {
       <section className="max-w-4xl">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="border-primary/35 bg-primary/5 text-primary">
-            LIVE DEMO
+            TECHNICAL DEMO
           </Badge>
           <Badge variant="outline">PUBLIC SANDBOX</Badge>
           <Badge variant="outline">CIRCLE x402 · ARC TESTNET</Badge>
@@ -182,7 +181,7 @@ function AgenticCommerceDemoPage() {
           See what an agent receives before it moves money.
         </h1>
         <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Pick a country or corridor, choose a sample policy and run a real pre-flight against Geomacro's signed Risk Gate data. The browser sandbox is free. A separate machine endpoint uses Circle x402 and USDC for pay-per-call access on Arc Testnet.
+          Pick a country or corridor, choose a sample policy and run a Risk Gate pre-flight against Geomacro's signed risk data. The browser sandbox is free. A separate machine endpoint uses Circle x402 and USDC for pay-per-call access on Arc Testnet.
         </p>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">
           This demo does not move funds. Structural observations are shown as evidence context and are not silently added to GRI v1.2. The current corridor model compares the two endpoints; it is not full logistics, route or counterparty analysis.
@@ -228,7 +227,7 @@ function AgenticCommerceDemoPage() {
             </Field>
             <Button onClick={() => void runDemo()} disabled={loading || !Number(amount)} className="mt-1 h-11 gap-2">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              {loading ? "Running pre-flight" : "Run live pre-flight"}
+              {loading ? "Running pre-flight" : "Run pre-flight"}
             </Button>
           </div>
         </div>
@@ -378,8 +377,17 @@ function ResultPanel({ result }: { result: DemoResult }) {
 
 function AgentEndpoint({ requestBody }: { requestBody: unknown }) {
   const body = JSON.stringify(requestBody, null, 2);
-  const curl = `curl -i -X POST https://geomacro.live/api/agent/risk \\\n  -H 'content-type: application/json' \\\n  -d '${JSON.stringify(requestBody)}'`;
-  const circleCli = `circle services pay https://geomacro.live/api/agent/risk \\\n  --chain ARC-TESTNET \\\n  -X POST \\\n  --max-amount 0.001 \\\n  -H 'content-type: application/json' \\\n  -d '${JSON.stringify(requestBody)}' \\\n  --output json`;
+  const curl = `curl -i -X POST https://geomacro.live/api/agent/risk \\
+  -H 'content-type: application/json' \\
+  -d '${JSON.stringify(requestBody)}'`;
+  const circleCli = `circle services pay https://geomacro.live/api/agent/risk \\
+  --address "$AGENT_WALLET_ADDRESS" \\
+  --chain ARC-TESTNET \\
+  -X POST \\
+  --max-amount 0.001 \\
+  -H 'content-type: application/json' \\
+  -d '${JSON.stringify(requestBody)}' \\
+  --output json`;
 
   return (
     <section className="mt-14 border-t border-border pt-12">
@@ -388,7 +396,7 @@ function AgentEndpoint({ requestBody }: { requestBody: unknown }) {
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Agent access</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight">The same risk resource, priced per call.</h2>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            The machine endpoint uses HTTP 402, Circle Gateway batching and USDC on Arc Testnet. An unpaid valid request receives payment requirements; an x402-aware agent pays and retries the same call.
+            The machine endpoint uses HTTP 402, Circle Gateway batching and USDC on Arc Testnet. An unpaid valid request receives payment requirements; an x402-aware agent can pay and retry the same call.
           </p>
           <div className="mt-5 rounded-xl border border-border/60 bg-card/45 p-4 text-sm">
             <div className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4 text-primary" /><span className="font-medium">0.001 USDC per test call</span></div>
@@ -409,22 +417,22 @@ function AgentEndpoint({ requestBody }: { requestBody: unknown }) {
 }
 
 function CircleProof() {
-  const repo = "https://github.com/blocknine0/geomacro/blob/feat/agentic-commerce-demo";
+  const repo = "https://github.com/blocknine0/geomacro/blob/main";
   return (
     <section className="mt-14 border-t border-border pt-12">
       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Circle / Arc code proof</p>
-      <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">What is actually implemented.</h2>
+      <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">What is implemented in the source of truth.</h2>
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
           ["CCTP V2", "USDC burn-and-mint, Iris attestation and Arc Testnet receive flow.", `${repo}/src/lib/cctp.ts`],
           ["Circle App Kit", "Arc Testnet quotes, token rates, swaps and status recovery.", `${repo}/src/lib/swap.ts`],
           ["Circle x402", "Gateway payment requirements, verification, settlement and paid resource delivery.", `${repo}/src/lib/circle-x402.server.ts`],
           ["Risk Gate", "Signed external risk context before customer-controlled execution.", `${repo}/src/lib/risk-gate-engine.ts`],
-        ].map(([title, body, href]) => (
+        ].map(([title, cardBody, href]) => (
           <a key={title} href={href} target="_blank" rel="noreferrer" className="rounded-2xl border border-border/70 bg-card/45 p-5 transition hover:border-primary/40">
             <Code2 className="h-5 w-5 text-primary" />
             <p className="mt-3 font-medium">{title}</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">{body}</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{cardBody}</p>
             <span className="mt-4 inline-flex items-center gap-1 text-xs text-primary">Open code <ExternalLink className="h-3 w-3" /></span>
           </a>
         ))}
@@ -463,9 +471,9 @@ function FeedbackPanel({ requestId }: { requestId: string | null }) {
           missing_capability: missing,
         }),
       });
-      const body = (await response.json()) as { ok?: boolean; message?: string; error?: string };
-      if (!response.ok || !body.ok) throw new Error(body.error ?? "Feedback could not be saved.");
-      setStatus(body.message ?? "Thanks for the feedback.");
+      const responseBody = (await response.json()) as { ok?: boolean; message?: string; error?: string };
+      if (!response.ok || !responseBody.ok) throw new Error(responseBody.error ?? "Feedback could not be saved.");
+      setStatus(responseBody.message ?? "Thanks for the feedback.");
       setValuable("");
       setFriction("");
       setMissing("");
