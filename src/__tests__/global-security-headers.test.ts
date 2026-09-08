@@ -77,7 +77,12 @@ describe("global server security headers", () => {
   });
 
   it("does not wrap protocol switching responses", () => {
-    const switching = new Response(null, { status: 101 });
+    // WHATWG Response constructors intentionally reject status 101 even
+    // though a server adapter can encounter an upgrade response before it is
+    // converted into a Fetch Response. Use the smallest Response-shaped stub
+    // required to exercise our early-return branch instead of constructing an
+    // invalid Fetch Response.
+    const switching = { status: 101 } as Response;
     expect(secureServerResponse(switching, "https://geomacro.live/")).toBe(switching);
   });
 });
