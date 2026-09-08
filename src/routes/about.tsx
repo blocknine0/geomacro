@@ -3,23 +3,24 @@ import { Github, Info, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
+const TITLE = "About & Trust · Geomacro";
+const DESCRIPTION =
+  "How Geomacro builds explainable geopolitical and macro risk intelligence, what is live, what remains Private Pilot, and which trust boundaries are still explicit.";
+const URL = "https://geomacro.live/about";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About & Trust · Geomacro" },
-      {
-        name: "description",
-        content:
-          "Geomacro builds explainable geopolitical and macro risk intelligence for professionals, institutions and machine workflows.",
-      },
-      { property: "og:title", content: "About & Trust · Geomacro" },
-      {
-        property: "og:description",
-        content:
-          "Explainable geopolitical and macro risk intelligence with versioned methodology, structured evidence, Risk Gate Private Pilot and secondary Arc/Circle technical proof.",
-      },
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: URL },
+      { property: "og:image", content: "https://geomacro.live/og-image-v2.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: URL }],
   }),
   component: AboutPage,
 });
@@ -40,7 +41,7 @@ function AboutPage() {
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-xl font-semibold">Current product status</h2>
           <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
-            <li><span className="font-medium text-foreground">Live:</span> public risk intelligence and Global Risk Index surfaces.</li>
+            <li><span className="font-medium text-foreground">Live:</span> public risk intelligence, Global Risk Index and Ask Geomacro.</li>
             <li><span className="font-medium text-foreground">Private Pilot:</span> Risk Gate, signed Risk Objects and scoped API delivery.</li>
             <li><span className="font-medium text-foreground">Technical Proof:</span> Arc Testnet, USDC, prediction-market and programmable-finance implementation.</li>
           </ul>
@@ -50,7 +51,7 @@ function AboutPage() {
           <Info className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-xl font-semibold">Transparency standard</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Geomacro documents methodology versions, provenance, confidence, change attribution and verification infrastructure. Public source code visibility does not imply unrestricted open-source licensing; use and redistribution remain governed by the repository licence.
+            Geomacro documents methodology versions, provenance, confidence, change attribution and verification infrastructure. Public source-code visibility does not imply unrestricted open-source licensing; use and redistribution remain governed by the repository licence.
           </p>
           <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
             <Github className="h-4 w-4" /> View technical implementation
