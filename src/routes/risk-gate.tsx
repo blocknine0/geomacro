@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 const TITLE = "Risk Gate Private Pilot · Geomacro";
 const DESCRIPTION =
-  "Pre-flight country and directional corridor risk context for financial workflows and autonomous agents. Risk Gate is available as a controlled Private Pilot.";
+  "Country and corridor risk checks for treasury, payment and agent workflows. Risk Gate returns a signed, policy-aware recommendation before execution.";
 const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE", "REROUTE"] as const;
 
 export const Route = createFileRoute("/risk-gate")({
@@ -49,12 +49,10 @@ function RiskGatePage() {
           PRIVATE PILOT
         </Badge>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-          External risk context before a financial action proceeds.
+          Check geopolitical risk before a financial action moves forward.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Risk Gate evaluates current country or directional corridor risk, verifies a signed
-          Geomacro Risk Object and applies the customer's policy to return a machine-readable
-          recommendation before execution.
+          Risk Gate checks the current country or corridor risk, verifies the signed Geomacro Risk Object and applies the customer's policy. It returns a recommendation; the customer keeps control of execution.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
@@ -67,16 +65,15 @@ function RiskGatePage() {
           </Button>
         </div>
         <p className="mt-5 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-          Current corridor risk is an endpoint-composed pilot. Event-specific Risk Objects are part
-          of the broader architecture direction and are not represented here as a live Private Pilot contract.
+          The current corridor model compares the risk at the two endpoints. It is a pilot model, not full route, logistics or counterparty analysis. Event-specific Risk Objects are not part of the live Private Pilot contract yet.
         </p>
       </section>
 
       <section className="mt-14 grid gap-5 lg:grid-cols-3">
         {[
-          ["1", "Requested action", "A treasury workflow, payment system or agent submits a supported country/corridor context and customer policy."],
-          ["2", "Verified risk context", "Geomacro checks the subject Risk Object, signature, methodology, freshness and required risk inputs."],
-          ["3", "Policy recommendation", "Risk Gate evaluates the supplied policy and returns a decision for the customer's own control system."],
+          ["1", "Action to review", "A treasury system, payment workflow or agent sends the country or corridor context and the customer's policy."],
+          ["2", "Risk checked", "Geomacro verifies the Risk Object, signature, methodology, freshness and required risk inputs."],
+          ["3", "Recommendation returned", "Risk Gate applies the supplied policy and returns a decision for the customer's own control system."],
         ].map(([step, title, body]) => (
           <article key={step} className="rounded-2xl border border-border/70 bg-card/50 p-6">
             <span className="font-mono text-xs text-primary">STEP {step}</span>
@@ -89,12 +86,10 @@ function RiskGatePage() {
       <section className="mt-14 rounded-2xl border border-border/70 bg-card/50 p-6 sm:p-8">
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Decision contract</p>
-            <h2 className="mt-3 text-2xl font-semibold">Risk recommendation, not transaction authorization.</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Control boundary</p>
+            <h2 className="mt-3 text-2xl font-semibold">A recommendation, not permission to move money.</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Geomacro supplies external geopolitical and macro risk context and evaluates the
-              customer's policy contract. It does not custody funds, sign the customer's wallet or
-              make the customer's final fiduciary/compliance decision.
+              Geomacro provides external geopolitical and macro risk context and evaluates the customer's policy. It does not hold funds, sign the customer's wallet or make the customer's final compliance or fiduciary decision.
             </p>
             <div className="mt-5 rounded-xl border border-border/60 bg-background/30 p-4 font-mono text-xs">
               execution_authorized = false
@@ -115,31 +110,28 @@ function RiskGatePage() {
           <KeyRound className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-lg font-semibold">Signed Risk Objects</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Versioned GRO payloads use canonical hashing and Ed25519 issuer signing so downstream
-            systems can verify integrity instead of trusting an opaque score.
+            Each Risk Object is versioned and signed with Ed25519 so the receiving system can verify what it received and who issued it.
           </p>
         </article>
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
           <RouteIcon className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-lg font-semibold">Country + directional corridor</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            The current API foundation supports country subjects and endpoint-composed directional corridors.
-            It does not claim full physical-route or counterparty modelling.
+            The current API supports country subjects and directional corridors built from their endpoints. It does not claim full physical-route or counterparty modelling.
           </p>
         </article>
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-lg font-semibold">Fail-closed controls</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Authentication, validation, rate limiting, signature/freshness checks and immutable audit
-            are part of the Private Pilot boundary. Unverifiable context does not silently become approval.
+            Authentication, validation, rate limits, signature checks, freshness checks and audit records are part of the Private Pilot. If the risk context cannot be verified, Risk Gate does not quietly treat it as approval.
           </p>
         </article>
       </section>
 
       <section className="mt-14 grid gap-5 lg:grid-cols-2">
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
-          <h2 className="text-xl font-semibold">Implemented Private Pilot foundation</h2>
+          <h2 className="text-xl font-semibold">What works in the Private Pilot</h2>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
             <li>• signed GRO creation and verification</li>
             <li>• authenticated country and directional corridor API</li>
@@ -150,7 +142,7 @@ function RiskGatePage() {
           </ul>
         </article>
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
-          <h2 className="text-xl font-semibold">Still explicit launch gates</h2>
+          <h2 className="text-xl font-semibold">What still has to be completed before production</h2>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
             <li>• independent externally reachable surface security review</li>
             <li>• real staging HTTP/database load evidence</li>
