@@ -39,7 +39,11 @@ describe("Agentic Commerce public demo contract", () => {
     expect(x402).toContain('"0x0077777d7EBA4688BDeF3E311b846F25870A19B9"');
     expect(x402).toContain('"0.001"');
     expect(x402).toContain('"1000"');
+    expect(x402).toContain("604900");
+    expect(x402).toContain('"https://gateway-api-testnet.circle.com"');
     expect(x402).toContain("BatchFacilitatorClient");
+    expect(x402).toContain("facilitator.settle");
+    expect(x402).not.toContain("facilitator.verify");
     expect(x402).toContain("PAYMENT-REQUIRED");
     expect(x402).toContain("payment-signature");
     expect(x402).toContain("PAYMENT-RESPONSE");
@@ -55,7 +59,7 @@ describe("Agentic Commerce public demo contract", () => {
     expect(service).toContain("execution_authorized !== false");
     expect(freeRoute).toContain("runAgenticPreflightDemo");
     expect(paidRoute).toContain("runAgenticPreflightDemo");
-    expect(paidRoute).toContain("verifyAndSettleCircleX402");
+    expect(paidRoute).toContain("settleCircleX402");
     expect(paidRoute).toContain("we do not recompute a second Risk Gate result");
   });
 
