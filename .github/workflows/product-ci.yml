@@ -65,10 +65,3 @@ jobs:
 
       - name: Production build
         run: bun run build
-
-      # TEMPORARY branch-only diagnostic. Base64 keeps the exact generated
-      # bytes on one log line so they can be committed without hand-editing.
-      # Remove this step immediately after routeTree.gen.ts is reconciled.
-      - name: Capture generated route tree
-        run: |
-          echo "ROUTE_TREE_BASE64=$(base64 -w0 src/routeTree.gen.ts)"
