@@ -11,7 +11,16 @@ export type DocsManifestEntry = {
   next: string | null;
 };
 
-export const DOCS_MANIFEST = manifestJson as DocsManifestEntry[];
+const TITLE_OVERRIDES: Record<string, string> = {
+  "17-orthogonal-event-residual": "Story Correlation and Evidence Caps",
+  "18-gro-v0-2-phase-2-methodology-freeze": "Signed Risk Object Contract",
+  "40-middle-east-validation": "Regional Validation",
+};
+
+export const DOCS_MANIFEST = (manifestJson as DocsManifestEntry[]).map((entry) => ({
+  ...entry,
+  title: TITLE_OVERRIDES[entry.slug] ?? entry.title,
+}));
 export const DOCS_PAGE_COUNT = DOCS_MANIFEST.length;
 
 const rawFiles = import.meta.glob("../content/docs/*.md", {
