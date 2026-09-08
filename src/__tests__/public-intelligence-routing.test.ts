@@ -10,14 +10,16 @@ describe("public intelligence routing contract", () => {
     expect(existsSync(join(ROOT, "src/routes/event.$eventId.tsx"))).toBe(true);
 
     const intelligence = read("src/routes/intelligence.tsx");
-    const ask = read("src/components/home/ask-geomacro.tsx");
+    const askWorkspace = read("src/components/ask/ask-workspace.tsx");
     const eventRoute = read("src/routes/event.$eventId.tsx");
+    const eventWorkspace = read("src/components/intelligence/event-detail-workspace.tsx");
 
     expect(intelligence).toContain('to="/event/$eventId"');
-    expect(ask).toContain('to="/event/$eventId"');
+    expect(askWorkspace).toContain('to="/event/$eventId"');
     expect(eventRoute).toContain('createFileRoute("/event/$eventId")');
-    expect(eventRoute).toContain("No wallet is required to read this page");
-    expect(eventRoute).toContain("Event severity is not a market probability");
+    expect(eventRoute).toContain("EventDetailWorkspace");
+    expect(eventWorkspace).toContain("No wallet is required to read this page");
+    expect(eventWorkspace).toContain("Event severity is not a market probability");
   });
 
   it("keeps research and event reading out of wallet execution context", () => {
@@ -33,15 +35,16 @@ describe("public intelligence routing contract", () => {
   });
 
   it("keeps GRI and Ask Geomacro truth boundaries explicit", () => {
-    const gri = read("src/routes/global-risk.tsx");
+    const griWorkspace = read("src/components/gri/global-risk-workspace.tsx");
+    const homeGri = read("src/components/home/gri-section.tsx");
     const askEngine = read("src/lib/ask-intelligence.server.ts");
-    const askUi = read("src/components/home/ask-geomacro.tsx");
+    const askWorkspace = read("src/components/ask/ask-workspace.tsx");
 
-    expect(gri).toContain("not a guarantee of future market outcomes");
-    expect(gri).toContain("private-pilot commercial");
-    expect(askEngine).toContain("No LLM provider is involved");
-    expect(askEngine).toContain("It never computes a private fallback score");
-    expect(askUi).toContain("does not search the web or add uncited outside evidence");
+    expect(griWorkspace).toContain("full verification workspace");
+    expect(griWorkspace).toContain("not a market probability");
+    expect(homeGri).toContain("compact preview");
+    expect(askEngine).toContain("No LLM provider, external search or private fallback score");
+    expect(askWorkspace).toContain("does not search the open web at question time");
   });
 
   it("separates broader pipeline streams from the current three-domain GRI", () => {

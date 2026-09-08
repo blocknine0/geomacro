@@ -1,14 +1,13 @@
 /**
  * Read model for the /intelligence workspace.
  *
- * Everything is derived from the existing Supabase `events` table using the
- * columns the pipeline already writes (severity, delta, category, timestamps).
- * No schema change, no new backend, no fabricated numbers: when a surface
- * cannot be computed from real rows it reports `null` so the UI can show an
- * honest unavailable state.
+ * Public browser surfaces deliberately read through a same-origin server
+ * function. That keeps production independent of stale hosting VITE_* values
+ * while preserving the existing events table as the source of truth.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { supabaseFeed } from "@/lib/supabase-feed";
+import { useServerFn } from "@tanstack/react-start";
+import { getPublicIntelligence } from "@/lib/public-intelligence.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
 
 export type IntelEvent = {
@@ -22,8 +21,6 @@ export type IntelEvent = {
   sourceName: string | null;
   createdAt: string;
   publishedAt: string | null;
-  marketCreated: boolean;
-  marketResolved: boolean;
 };
 
 export type IntelStatus = "loading" | "ready" | "updating" | "error";
@@ -58,7 +55,12 @@ export const SORT_LABELS: Record<IntelSort, string> = {
 };
 
 function num(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const parsed = Number(v);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function median(values: number[]): number | null {
@@ -135,6 +137,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 }
 
 export function useIntelligence(refreshMs = 5 * 60 * 1000) {
+  const loadPublicIntelligence = useServerFn(getPublicIntelligence);
   const [data, setData] = useState<Intelligence | null>(null);
   const [status, setStatus] = useState<IntelStatus>("loading");
   const [error, setError] = useState<UserError | null>(null);
@@ -151,31 +154,19 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
       setStatus(hasData.current ? "updating" : "loading");
       try {
         const now = Date.now();
-        const since = new Date(now - 30 * DAY).toISOString();
-        const { data: rows, error: rowsError } = await supabaseFeed
-          .from("events")
-          .select(
-            "id, source_title, summary, category, severity, delta, source_name, created_at, published_at, market_created, market_resolved",
-          )
-          .in("category", ["geopolitics", "macro", "rare_earth"])
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(500);
-        if (rowsError) throw rowsError;
+        const rows = await loadPublicIntelligence({ data: {} });
         if (cancelled) return;
 
-        const mapped: IntelEvent[] = (rows ?? []).map((r: Record<string, unknown>) => ({
+        const mapped: IntelEvent[] = rows.map((r) => ({
           id: String(r.id),
-          title: (r.source_title as string | null) ?? "Untitled event",
-          summary: (r.summary as string | null) ?? null,
-          category: (r.category as string | null) ?? null,
+          title: r.source_title ?? "Untitled event",
+          summary: r.summary ?? null,
+          category: r.category ?? null,
           severity: num(r.severity),
           delta: num(r.delta),
-          sourceName: (r.source_name as string | null) ?? null,
+          sourceName: r.source_name ?? null,
           createdAt: String(r.created_at),
-          publishedAt: (r.published_at as string | null) ?? null,
-          marketCreated: Boolean(r.market_created),
-          marketResolved: Boolean(r.market_resolved),
+          publishedAt: r.published_at ?? null,
         }));
 
         if (mapped.length === 0) {
@@ -204,7 +195,7 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [reloadKey, refreshMs]);
+  }, [loadPublicIntelligence, reloadKey, refreshMs]);
 
   return useMemo(
     () => ({ data, status, error, updatedAt, retry }),
