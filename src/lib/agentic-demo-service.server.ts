@@ -14,6 +14,22 @@ import type { GeomacroRiskObject } from "./risk-object-contract";
 export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
 export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
 
+export type AgenticDemoRunOptions = {
+  mode?: "PUBLIC_SANDBOX" | "X402_PAID";
+  recordTelemetry?: boolean;
+  payment?: {
+    required: boolean;
+    provider?: "circle_gateway_x402";
+    asset?: "USDC";
+    network?: "eip155:5042002";
+    amount_atomic?: string;
+    amount_usdc?: string;
+    payer?: string | null;
+    settlement_reference?: string | null;
+    note?: string;
+  };
+};
+
 function assertSupportedDemoSubject(input: AgenticDemoRequest) {
   if (input.subject.type === "country") {
     if (!DEMO_ALLOWED_COUNTRIES.includes(input.subject.country_iso3 as (typeof DEMO_ALLOWED_COUNTRIES)[number])) {
@@ -88,13 +104,14 @@ async function recordDemoTelemetry(input: {
   status: "delivered" | "delivery_failed";
   httpStatus: number;
   responseCode: string;
+  externalAgentId: string;
 }) {
   try {
     const db = requireRiskSupabase();
     await db.from("agent_api_requests").insert({
       id: input.requestId,
       capability: "risk_preflight_demo",
-      external_agent_id: "public_demo",
+      external_agent_id: input.externalAgentId,
       status: input.status,
       http_status: input.httpStatus,
       response_code: input.responseCode,
@@ -106,12 +123,17 @@ async function recordDemoTelemetry(input: {
   }
 }
 
-export async function runAgenticPreflightDemo(raw: unknown) {
+export async function runAgenticPreflightDemo(
+  raw: unknown,
+  options: AgenticDemoRunOptions = {},
+) {
   const parsed = agenticDemoRequestSchema.parse(raw);
   assertSupportedDemoSubject(parsed);
 
   const requestId = randomUUID();
   const policy = demoPolicyFromPreset(parsed.policy_preset);
+  const mode = options.mode ?? "PUBLIC_SANDBOX";
+  const shouldRecordTelemetry = options.recordTelemetry ?? true;
   const actionContext = {
     action_type: parsed.action_type,
     amount: parsed.amount_usdc,
@@ -145,24 +167,29 @@ export async function runAgenticPreflightDemo(raw: unknown) {
       loadGriContext(),
     ]);
 
-    await recordDemoTelemetry({
-      requestId,
-      status: "delivered",
-      httpStatus: 200,
-      responseCode: "DEMO_DELIVERED",
-    });
+    if (shouldRecordTelemetry) {
+      await recordDemoTelemetry({
+        requestId,
+        status: "delivered",
+        httpStatus: 200,
+        responseCode: mode === "X402_PAID" ? "X402_DEMO_DELIVERED" : "DEMO_DELIVERED",
+        externalAgentId: mode === "X402_PAID" ? "x402_agent" : "public_demo",
+      });
+    }
 
     return {
       ok: true as const,
       demo_version: "agentic-commerce-demo-v1",
       request_id: requestId,
       client_request_id: parsed.client_request_id ?? null,
-      mode: "PUBLIC_SANDBOX" as const,
-      payment: {
-        required: false,
-        note:
-          "The browser sandbox is free so builders can test the risk workflow. The separate agent endpoint demonstrates Circle x402 / USDC pay-per-call access on Arc Testnet.",
-      },
+      mode,
+      payment:
+        options.payment ??
+        ({
+          required: false,
+          note:
+            "The browser sandbox is free so builders can test the risk workflow. The separate agent endpoint demonstrates Circle x402 / USDC pay-per-call access on Arc Testnet.",
+        } as const),
       action_context: actionContext,
       policy_preset: parsed.policy_preset,
       policy,
@@ -178,12 +205,15 @@ export async function runAgenticPreflightDemo(raw: unknown) {
       },
     };
   } catch (error) {
-    await recordDemoTelemetry({
-      requestId,
-      status: "delivery_failed",
-      httpStatus: 503,
-      responseCode: "DEMO_FAILED_CLOSED",
-    });
+    if (shouldRecordTelemetry) {
+      await recordDemoTelemetry({
+        requestId,
+        status: "delivery_failed",
+        httpStatus: 503,
+        responseCode: "DEMO_FAILED_CLOSED",
+        externalAgentId: mode === "X402_PAID" ? "x402_agent" : "public_demo",
+      });
+    }
     throw error;
   }
 }
