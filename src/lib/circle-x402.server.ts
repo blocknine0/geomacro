@@ -11,8 +11,13 @@ export const CIRCLE_X402_GATEWAY_WALLET =
   "0x0077777d7EBA4688BDeF3E311b846F25870A19B9" as const;
 export const CIRCLE_X402_PRICE_USDC = "0.001" as const;
 export const CIRCLE_X402_PRICE_ATOMIC = "1000" as const;
+export const CIRCLE_X402_MAX_TIMEOUT_SECONDS = 604900 as const;
+export const CIRCLE_X402_FACILITATOR_URL =
+  "https://gateway-api-testnet.circle.com" as const;
 
-const facilitator = new BatchFacilitatorClient();
+const facilitator = new BatchFacilitatorClient({
+  url: CIRCLE_X402_FACILITATOR_URL,
+});
 
 export type CircleX402Settlement = {
   payer: string | null;
@@ -42,7 +47,9 @@ function paymentRequirements() {
     asset: CIRCLE_X402_ASSET,
     amount: CIRCLE_X402_PRICE_ATOMIC,
     payTo,
-    maxTimeoutSeconds: 345600,
+    // Circle Gateway batching requires a multi-day authorization validity
+    // window. Match GatewayEvmScheme's 7-day-plus-buffer contract.
+    maxTimeoutSeconds: CIRCLE_X402_MAX_TIMEOUT_SECONDS,
     extra: {
       name: "GatewayWalletBatched",
       version: "1",
@@ -57,7 +64,7 @@ function encodeHeader(value: unknown) {
 
 function decodePaymentHeader(header: string) {
   if (header.length > 64 * 1024) {
-    throw new Error("payment-signature header is too large");
+    throw new Error("PAYMENT_SIGNATURE_HEADER_TOO_LARGE");
   }
 
   let json: string;
@@ -172,7 +179,7 @@ export async function persistSettlementTelemetry(input: {
   }
 }
 
-export async function verifyAndSettleCircleX402(
+export async function settleCircleX402(
   request: Request,
 ): Promise<CircleX402Settlement> {
   const header = request.headers.get("payment-signature");
@@ -181,17 +188,8 @@ export async function verifyAndSettleCircleX402(
   const requirements = paymentRequirements();
   const paymentPayload = decodePaymentHeader(header);
 
-  const verify = await facilitator.verify(
-    paymentPayload as Parameters<typeof facilitator.verify>[0],
-    requirements as Parameters<typeof facilitator.verify>[1],
-  );
-
-  if (!verify.isValid) {
-    throw new Error(
-      `PAYMENT_VERIFICATION_FAILED:${verify.invalidReason ?? "unknown"}`,
-    );
-  }
-
+  // Circle recommends settle() directly for production flows. It validates the
+  // payment and guarantees batched settlement without a separate verify call.
   const settled = await facilitator.settle(
     paymentPayload as Parameters<typeof facilitator.settle>[0],
     requirements as Parameters<typeof facilitator.settle>[1],
@@ -204,7 +202,7 @@ export async function verifyAndSettleCircleX402(
   }
 
   return {
-    payer: settled.payer ?? verify.payer ?? null,
+    payer: settled.payer ?? null,
     settlement_reference: settled.transaction ?? null,
     amount_atomic: CIRCLE_X402_PRICE_ATOMIC,
     amount_usdc: CIRCLE_X402_PRICE_USDC,
