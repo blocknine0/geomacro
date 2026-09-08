@@ -94,12 +94,23 @@ if (
 
 
 if (
-  observation
-    .commercial_eligibility_status !==
+  observation.provenance
+    .commercial_status !==
     "REVIEW_REQUIRED"
 ) {
   throw new Error(
-    "Sanctions commercial gate lost during observation mapping",
+    "Sanctions source-policy review state was not preserved in provenance",
+  );
+}
+
+
+if (
+  observation
+    .commercial_eligibility_status !==
+    "UNVERIFIED"
+) {
+  throw new Error(
+    "Review-required sanctions evidence must persist as DB-valid UNVERIFIED",
   );
 }
 
@@ -155,6 +166,10 @@ console.log({
     observation
       .commercial_eligibility_status,
 
+  source_policy_status:
+    observation.provenance
+      .commercial_status,
+
   raw_hash:
     observation.raw_hash,
 
@@ -172,7 +187,7 @@ console.log(
 );
 
 console.log(
-  "PASS: SANCTIONS COMMERCIAL GATE PRESERVED",
+  "PASS: REVIEW_REQUIRED MAPS TO DB-VALID UNVERIFIED",
 );
 
 console.log(
