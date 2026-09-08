@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   ChevronDown,
@@ -34,9 +34,27 @@ import {
 import { preferredNetwork } from "@/lib/arc";
 import { shortAddr } from "@/components/section-ui";
 
+function isWalletRoute(pathname: string) {
+  return (
+    pathname === "/arena" ||
+    pathname === "/onchain" ||
+    pathname === "/bridge-swap" ||
+    pathname === "/portfolio" ||
+    pathname === "/tx-history" ||
+    pathname.startsWith("/event/")
+  );
+}
+
 function ConnectButton() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { address, onArc, network, connect, switchToArc, connecting, error, disconnect, isSignedIn } =
     useWallet();
+  const executionContext = isWalletRoute(pathname);
+
+  // Public intelligence, GRI, Research, Docs and institutional surfaces are
+  // intentionally wallet-free. Preserve a connected user's state, but do not
+  // make wallet connection a primary CTA on pages that do not require it.
+  if (!address && !executionContext) return null;
 
   if (!address) {
     return (
@@ -49,7 +67,7 @@ function ConnectButton() {
           className="gap-2 border border-border/50 px-3 text-muted-foreground hover:text-foreground sm:h-10 sm:px-4"
         >
           <Wallet className="h-4 w-4" />
-          <span className="hidden sm:inline">{connecting ? "Connecting…" : "Connect wallet"}</span>
+          <span className="hidden sm:inline">{connecting ? "Connecting…" : "Connect testnet wallet"}</span>
           <span className="sm:hidden">{connecting ? "…" : "Connect"}</span>
         </Button>
         {error && (
@@ -63,7 +81,7 @@ function ConnectButton() {
 
   return (
     <div className="flex items-center gap-2">
-      {!onArc && (
+      {executionContext && !onArc && (
         <Button variant="outline" size="sm" onClick={() => void switchToArc()} className="gap-1">
           <Zap className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Switch to Arc</span>
@@ -78,7 +96,7 @@ function ConnectButton() {
               className="cursor-pointer gap-1.5 px-2 py-1 font-mono text-[10px] sm:px-3 sm:py-1.5 sm:text-xs"
             >
               <span className={`h-1.5 w-1.5 rounded-full ${onArc ? "bg-primary" : "bg-muted-foreground"}`} />
-              <span className="hidden md:inline">{network ? network.chainName : "Wrong network"} · </span>
+              <span className="hidden md:inline">{executionContext ? `${network ? network.chainName : "Wrong network"} · ` : "Wallet · "}</span>
               {shortAddr(address)}
             </Badge>
           </button>
@@ -87,7 +105,7 @@ function ConnectButton() {
           <DropdownMenuLabel className="font-mono text-xs font-normal">
             {shortAddr(address)}
             <span className="mt-1 block text-[10px] text-muted-foreground">
-              {isSignedIn ? "Signed in with wallet" : "Not signed in"}
+              {isSignedIn ? "Signed in with wallet" : "Wallet connected"}
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -220,7 +238,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <TechnicalProofMenu />
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-[44px] items-center justify-end gap-2">
               {address && (
                 <Link
                   to="/portfolio"
