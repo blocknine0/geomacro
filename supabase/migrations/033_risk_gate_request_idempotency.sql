@@ -118,7 +118,7 @@ begin
 
   perform pg_advisory_xact_lock(
     hashtext(
-      new.client_id || E'\x00' || new.request_id
+      new.client_id || chr(31) || new.request_id
     )
   );
 
