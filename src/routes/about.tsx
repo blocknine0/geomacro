@@ -62,7 +62,7 @@ function AboutPage() {
           <Lock className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-xl font-semibold">Privacy and customer data</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Public intelligence browsing is designed to require minimal user information. Wallet interactions occur only when a user chooses a technical onchain flow. Private Pilot services may process authenticated client identifiers and the minimum operational context required to evaluate and audit a request; sensitive customer payload retention is deliberately minimized in the Risk Gate audit design.
+            Public intelligence browsing is designed to require minimal user information. Wallet interactions occur only when a user chooses a technical onchain flow. Private Pilot Risk Gate requests create server-side audit records for traceability; payload minimization, retention policy and customer-data handling are still explicit production-hardening gates. Pilot users should avoid sending unnecessary personal or confidential information in free-form request metadata.
           </p>
         </article>
 
