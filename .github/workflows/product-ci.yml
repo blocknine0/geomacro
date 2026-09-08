@@ -41,10 +41,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Bun
+      # Pin the exact Bun version that produced and validated the committed
+      # lockfile. Do not float on "latest": lockfile semantics can change
+      # between Bun releases and create false/intermittent CI failures.
+      - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
 
-      - name: Install locked dependencies
+      # This is intentionally frozen. package.json dependency/override changes
+      # must be accompanied by a regenerated bun.lock in the same PR.
+      - name: Verify committed lockfile and install dependencies
         run: bun install --frozen-lockfile
 
       - name: App tests
