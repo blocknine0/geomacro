@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const TITLE = "Risk Gate Private Pilot · Geomacro";
 const DESCRIPTION =
   "Country and corridor risk checks for treasury, payment and agent workflows. Risk Gate returns a signed, policy-aware recommendation before execution.";
-const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE", "REROUTE"] as const;
+const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE"] as const;
 
 export const Route = createFileRoute("/risk-gate")({
   head: () => ({
@@ -45,9 +45,12 @@ function RiskGatePage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <section className="max-w-4xl">
-        <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[11px] text-amber-300">
-          PRIVATE PILOT
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[11px] text-amber-300">
+            PRIVATE PILOT
+          </Badge>
+          <Badge variant="outline" className="font-mono text-[11px]">LIVE PUBLIC DEMO AVAILABLE</Badge>
+        </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
           Check geopolitical risk before a financial action moves forward.
         </h1>
@@ -56,9 +59,12 @@ function RiskGatePage() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
-            <Link to="/contact">Request Private Pilot <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/demo">Run live demo <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild size="lg" variant="outline">
+            <Link to="/contact">Request Private Pilot</Link>
+          </Button>
+          <Button asChild size="lg" variant="ghost">
             <Link to="/docs/$slug" params={{ slug: "22-machine-readable-risk-objects" }}>
               Read Risk Object docs
             </Link>
