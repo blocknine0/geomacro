@@ -14,10 +14,23 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Risk Gate"');
     expect(shell).toContain('label: "Ask Geomacro"');
     expect(shell).toContain('label: "Data & API"');
+    expect(shell).toContain('label: "Research"');
     expect(shell).toContain('label: "For Institutions"');
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(shell).toContain('label: "Bridge & Swap"');
+    expect(shell).toContain('title="Intelligence products"');
+    expect(shell).toContain('title="Technical proof"');
+  });
+
+  it("keeps public intelligence surfaces wallet-free by default", () => {
+    const shell = read("src/components/site-shell.tsx");
+
+    expect(shell).toContain("if (!address && !executionContext) return null");
+    expect(shell).toContain('pathname === "/arena"');
+    expect(shell).toContain('pathname === "/onchain"');
+    expect(shell).toContain('pathname === "/bridge-swap"');
+    expect(shell).not.toContain('pathname === "/intelligence" ||');
   });
 
   it("keeps Risk Gate within the verified Private Pilot scope", () => {
@@ -30,6 +43,16 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).not.toContain("country, corridor and event risk");
   });
 
+  it("keeps Data & API availability explicit", () => {
+    const route = read("src/routes/data-api.tsx");
+
+    expect(route).toContain("LIVE · PUBLIC");
+    expect(route).toContain("PRIVATE PILOT");
+    expect(route).toContain("COMMERCIAL DIRECTION");
+    expect(route).toContain("country + directional endpoint-composed corridor");
+    expect(route).toContain("customer retains execution control");
+  });
+
   it("keeps Arc, Circle and market routes explicitly technical proof", () => {
     for (const path of [
       "src/routes/arena.tsx",
@@ -38,6 +61,14 @@ describe("commercial website source-of-truth contract", () => {
     ]) {
       expect(read(path)).toContain("TechnicalProofBanner");
     }
+  });
+
+  it("redirects superseded public routes to the canonical product surface", () => {
+    const feed = read("src/routes/feed.tsx");
+    const bridge = read("src/routes/bridge.tsx");
+
+    expect(feed).toContain('redirect({ to: "/intelligence", replace: true })');
+    expect(bridge).toContain('redirect({ to: "/bridge-swap", replace: true })');
   });
 
   it("keeps the public GRI architecture on the three-domain v1.2 contract", () => {
@@ -62,5 +93,6 @@ describe("commercial website source-of-truth contract", () => {
     expect(sitemap).toContain("https://geomacro.live/ask-geomacro");
     expect(sitemap).toContain("https://geomacro.live/data-api");
     expect(sitemap).toContain("https://geomacro.live/docs/51-summary");
+    expect(sitemap).not.toContain("https://geomacro.live/feed</loc>");
   });
 });
