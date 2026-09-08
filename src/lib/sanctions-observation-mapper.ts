@@ -72,6 +72,10 @@ export type SanctionsObservationInput = {
     methodology_status:
       "EVIDENCE_ONLY_NOT_IN_GRO_V02";
 
+    /**
+     * Source-policy review state. This is intentionally more
+     * descriptive than the persisted observation eligibility enum.
+     */
     commercial_status:
       "REVIEW_REQUIRED";
 
@@ -85,8 +89,14 @@ export type SanctionsObservationInput = {
   qualityStatus:
     "VERIFIED";
 
+  /**
+   * `live_external_observations.commercial_eligibility_status`
+   * accepts UNVERIFIED / VERIFIED / DERIVED_ONLY / BLOCKED.
+   * A registry/policy state of REVIEW_REQUIRED therefore maps to
+   * persisted observation state UNVERIFIED until review completes.
+   */
   commercialEligibilityStatus:
-    "REVIEW_REQUIRED";
+    "UNVERIFIED";
 };
 
 
@@ -187,6 +197,6 @@ export function mapSanctionsEvidenceToObservationInput(
       "VERIFIED",
 
     commercialEligibilityStatus:
-      "REVIEW_REQUIRED",
+      "UNVERIFIED",
   };
 }
