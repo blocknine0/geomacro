@@ -1,25 +1,37 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LiquiditySection } from "@/components/sections/liquidity-section";
+import { TechnicalProofBanner } from "@/components/technical-proof-banner";
 
 export const Route = createFileRoute("/bridge-swap")({
   head: () => ({
     meta: [
-      { title: "Bridge & Swap on Arc · Geomacro" },
+      { title: "Bridge & Swap · Circle / Arc Technical Proof · Geomacro" },
       {
         name: "description",
         content:
-          "Secondary execution layer for Geomacro. Bridge native USDC with Circle CCTP and swap supported assets on Arc Testnet.",
+          "Secondary Circle and Arc Testnet implementation showing USDC bridge and supported swap flows alongside the Geomacro intelligence product.",
       },
-      {
-        property: "og:title",
-        content: "Bridge & Swap on Arc · Geomacro",
-      },
+      { property: "og:title", content: "Bridge & Swap · Circle / Arc Technical Proof · Geomacro" },
       {
         property: "og:description",
         content:
-          "Secondary execution layer using USDC, Circle CCTP and programmable asset execution on Arc Testnet.",
+          "Circle CCTP and Arc Testnet bridge/swap implementation preserved as secondary technical proof for Geomacro.",
       },
+      { property: "og:url", content: "https://geomacro.live/bridge-swap" },
     ],
+    links: [{ rel: "canonical", href: "https://geomacro.live/bridge-swap" }],
   }),
-  component: LiquiditySection,
+  component: BridgeSwapTechnicalProofPage,
 });
+
+function BridgeSwapTechnicalProofPage() {
+  return (
+    <>
+      <TechnicalProofBanner
+        title="Circle / Arc Bridge & Swap"
+        description="This Testnet implementation demonstrates Circle and Arc integration. It is technical proof and not the primary Geomacro commercial product."
+      />
+      <LiquiditySection />
+    </>
+  );
+}
