@@ -21,6 +21,28 @@ const SOURCE_ID =
   "world_bank_indicators"
 
 //
+// World Bank indicator codes may be published through more than one
+// API source/catalogue. Commercial provenance must therefore identify
+// the exact dataset rather than assuming an indicator code uniquely
+// identifies a licence context.
+//
+// Source 2 is World Development Indicators (WDI). Keep the API query
+// pinned to this source and retain the dataset/terms reference in every
+// normalized observation.
+//
+const WORLD_BANK_API_SOURCE_ID =
+  "2"
+
+const WORLD_BANK_DATASET_NAME =
+  "World Development Indicators"
+
+const WORLD_BANK_DATASET_LICENCE =
+  "CC BY 4.0"
+
+const WORLD_BANK_DATASET_TERMS_URL =
+  "https://www.worldbank.org/ext/en/legal/terms-conditions/datasets"
+
+//
 // Current commercially useful macro indicators.
 // This is not historical backfill.
 // We only persist the latest available observation
@@ -102,18 +124,6 @@ if (registry.error) {
   throw registry.error
 }
 
-const registryByName =
-  new Map(
-    (registry.data ?? []).map(
-      row => [
-        row.country_name
-          .trim()
-          .toLowerCase(),
-        row.iso3,
-      ]
-    )
-  )
-
 //
 // World Bank ISO2 -> ISO3 mapping.
 // Get from WB country endpoint instead of hardcoding.
@@ -164,12 +174,12 @@ let skipped = 0
 
 for (const indicator of INDICATORS) {
   console.log(
-    `Fetching ${indicator.id}...`
+    `Fetching ${indicator.id} from WDI source ${WORLD_BANK_API_SOURCE_ID}...`
   )
 
   const url =
     `https://api.worldbank.org/v2/country/all/indicator/${indicator.id}` +
-    `?format=json&per_page=20000&mrnev=1`
+    `?format=json&source=${WORLD_BANK_API_SOURCE_ID}&per_page=20000&mrnev=1`
 
   const response =
     await fetch(url)
@@ -178,6 +188,8 @@ for (const indicator of INDICATORS) {
     console.log({
       indicator:
         indicator.id,
+      source_id:
+        WORLD_BANK_API_SOURCE_ID,
       status:
         response.status,
     })
@@ -250,7 +262,7 @@ for (const indicator of INDICATORS) {
         SOURCE_ID,
 
       source_record_id:
-        `${indicator.id}:${iso3}:${year}`,
+        `${WORLD_BANK_API_SOURCE_ID}:${indicator.id}:${iso3}:${year}`,
 
       category:
         "MACRO",
@@ -280,6 +292,12 @@ for (const indicator of INDICATORS) {
         provider:
           "World Bank",
 
+        dataset:
+          WORLD_BANK_DATASET_NAME,
+
+        world_bank_api_source_id:
+          WORLD_BANK_API_SOURCE_ID,
+
         indicator_id:
           indicator.id,
 
@@ -292,10 +310,13 @@ for (const indicator of INDICATORS) {
           null,
 
         source_note:
-          "Latest available World Bank indicator observation",
+          "Latest available World Development Indicators observation from the explicitly pinned World Bank API source",
 
         licence:
-          "CC BY 4.0",
+          WORLD_BANK_DATASET_LICENCE,
+
+        licence_reference:
+          WORLD_BANK_DATASET_TERMS_URL,
 
         retrieved_at:
           new Date().toISOString(),
@@ -326,6 +347,11 @@ for (const indicator of INDICATORS) {
       quality_status:
         "VERIFIED",
 
+      //
+      // This status is explicit because the adapter is pinned to the
+      // reviewed WDI source contract above. New World Bank datasets
+      // must not inherit this status automatically.
+      //
       commercial_eligibility_status:
         "VERIFIED",
     })
@@ -370,6 +396,12 @@ for (const indicator of INDICATORS) {
 console.log({
   source:
     SOURCE_ID,
+
+  dataset:
+    WORLD_BANK_DATASET_NAME,
+
+  world_bank_api_source_id:
+    WORLD_BANK_API_SOURCE_ID,
 
   attempted_observations:
     inserted,
