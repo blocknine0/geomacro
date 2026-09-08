@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AskGeomacroSection } from "@/components/home/ask-geomacro";
 import { GlobalRiskIndexSection } from "@/components/home/gri-section";
 import { useGlobalRisk } from "@/lib/use-global-risk";
 import { GRI_METHOD_VERSION } from "@/lib/gri-current-contract";
@@ -75,10 +76,10 @@ export function CommercialHome() {
                 <Link to="/intelligence">Explore intelligence <ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link to="/risk-gate">See Risk Gate</Link>
+                <Link to="/ask-geomacro">Ask Geomacro</Link>
               </Button>
               <Button asChild size="lg" variant="ghost">
-                <Link to="/institutional">For institutions</Link>
+                <Link to="/risk-gate">See Risk Gate</Link>
               </Button>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
@@ -115,6 +116,8 @@ export function CommercialHome() {
         updatedAt={risk.updatedAt}
         retry={risk.retry}
       />
+
+      <AskGeomacroSection />
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="max-w-3xl">
