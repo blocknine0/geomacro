@@ -26,13 +26,14 @@ Geomacro
   |     +-- Roadmap
   |
   +-- Technical Proof
+        +-- Agentic Commerce Demo · public test sandbox
         +-- Data Pipeline
         +-- Prediction Markets
         +-- Arc / Onchain
         +-- Bridge & Swap
 ```
 
-Prediction markets, Arc, Circle and wallet execution are secondary Technical Proof. They must never lead the primary commercial navigation or homepage identity.
+Prediction markets, Arc, Circle and wallet execution are secondary Technical Proof. The Agentic Commerce Demo is also a technical demonstration of the Private Pilot architecture, not a claim that Risk Gate is generally available in production. These surfaces must never displace the primary intelligence-first identity.
 
 ## Status vocabulary
 
@@ -68,11 +69,13 @@ Desktop primary navigation should only render when it fits without compression; 
 - Technical proof
 - Account, only when relevant
 
+The Agentic Commerce Demo belongs under Technical Proof and is also linked directly from Risk Gate. Do not add a second top-level primary product identity solely for the demo.
+
 ### Wallet rule
 
-A disconnected visitor should not see wallet connection as a primary action on public intelligence, GRI, Risk Gate, Data/API, Research, Institutional, About, Roadmap, Contact or Docs pages.
+A disconnected visitor should not see wallet connection as a primary action on public intelligence, GRI, Risk Gate, Data/API, Research, Institutional, About, Roadmap, Contact, Docs or the free `/demo` browser sandbox.
 
-Wallet connection belongs to explicit testnet/execution surfaces such as Prediction Markets, Arc/Onchain, Bridge & Swap, Portfolio and transaction flows. A user who is already connected may still see compact wallet state elsewhere.
+Wallet connection belongs to explicit testnet/execution surfaces such as Prediction Markets, Arc/Onchain, Bridge & Swap, Portfolio and transaction flows. A user who is already connected may still see compact wallet state elsewhere. Agent x402 payment happens through the machine endpoint and Circle-compatible agent tooling; the browser demo itself remains wallet-free.
 
 ## Route contracts
 
@@ -118,11 +121,38 @@ Wallet connection belongs to explicit testnet/execution surfaces such as Predict
 
 **Job:** explain the first commercial B2B decision product and convert appropriate visitors into Private Pilot conversations.
 
-**Keep:** PRIVATE PILOT label, country + directional corridor current scope, signed GRO/pre-flight architecture, customer-policy separation, decision outputs, implemented controls, limitations and pilot CTA.
+**Keep:** PRIVATE PILOT label, country + directional corridor current scope, signed GRO/pre-flight architecture, customer-policy separation, implemented decision outputs, controls, limitations, live-demo link and pilot CTA.
 
-**Primary CTA:** request/discuss Private Pilot.
+**Primary CTAs:** run the public demo or discuss a Private Pilot.
 
-**Do not:** claim GA, production SLA, full logistics-route modelling, autonomous transaction authorization or event-specific Risk Objects as current pilot scope.
+**Do not:** claim GA, production SLA, full logistics-route modelling, autonomous transaction authorization or event-specific Risk Objects as current pilot scope. Current implemented decision outputs are `CONTINUE`, `REDUCE_LIMIT`, `REQUIRE_APPROVAL` and `PAUSE`; do not add conceptual outputs to the public list until the contract actually supports them.
+
+### `/demo` — Agentic Commerce Demo · Technical Proof
+
+**Job:** let external builders, agent projects, reviewers and prospective design partners test the Risk Gate resource without a sales call, inspect the machine response and give specific feedback.
+
+**Keep:**
+
+1. a free wallet-free browser pre-flight;
+2. a small allowlisted country/corridor set while coverage is being validated;
+3. current signed Risk Object output;
+4. current GRI context when verifiable;
+5. structural evidence shown separately from GRI v1.2;
+6. exact `execution_authorized=false` boundary;
+7. Circle x402 / USDC paid machine-access instructions;
+8. links to CCTP, Circle App Kit, x402 and Risk Gate code proof;
+9. privacy-minimized tester feedback;
+10. machine-readable OpenAPI discovery at `/openapi.yaml`.
+
+**Machine endpoints:**
+
+- `POST /api/demo/preflight` — free public sandbox endpoint;
+- `POST /api/agent/risk` — x402-paid test endpoint;
+- `POST /api/demo/feedback` — tester feedback endpoint.
+
+**Commercial boundary:** the x402 price is a testnet demo price, not institutional pricing. Structural evidence is `EVIDENCE_ONLY_NOT_IN_GRI_V1_2` until a separately versioned methodology intentionally incorporates it. The demo is not an SLA, security certification, compliance decision or autonomous payment authorization.
+
+**Do not call the x402 path live** until seller configuration, migration, deployment and an end-to-end 402 → USDC payment → paid response test have all passed.
 
 ### `/ask-geomacro` — Ask Geomacro
 
@@ -187,6 +217,8 @@ Wallet connection belongs to explicit testnet/execution surfaces such as Predict
 
 **Keep order:** commercial/source-of-truth hardening → data/GRI → Risk Objects/Risk Gate → security/resilience → Early Access/commercial package → permanent demo/deck → design partners/paid pilots → broader production expansion.
 
+Grant-specific/public technical demos may be shipped earlier when narrowly scoped and accurately labelled. They do not replace the later permanent commercial demo gate.
+
 **Do not:** present planned capabilities as already live.
 
 ### `/contact` — Contact
@@ -236,6 +268,7 @@ Redirect-only routes must not appear in the sitemap as canonical pages.
 
 - Homepage: concise commercial overview; roughly one decision per section.
 - Product pages: enough detail to understand value, status, workflow and next action without reading Docs.
+- Demo: interactive proof first, code/machine integration second, feedback last; do not turn it into another homepage.
 - Institutional: workflow and buyer detail, not methodology dump.
 - Research: methodology map, not the complete specification.
 - Docs: deepest detail and canonical technical reference.
@@ -249,11 +282,15 @@ Redirect-only routes must not appear in the sitemap as canonical pages.
 
 ### Institutional buyer
 
-`Home → For Institutions → Risk Gate / Data & API → Contact`
+`Home → For Institutions → Risk Gate → Demo / Data & API → Contact`
 
 ### Developer / agent builder
 
-`Home → Data & API → Risk Gate → Docs → Contact`
+`Home → Data & API / Risk Gate → Demo → /openapi.yaml → Docs → Contact`
+
+### Circle / ecosystem technical reviewer
+
+`Demo → free pre-flight → x402 endpoint → Circle code proof → CCTP / App Kit / GitHub`
 
 ### Technical due diligence
 
@@ -269,11 +306,13 @@ Before a commercial website release:
 
 1. every primary nav target builds and is reachable;
 2. mobile navigation contains the same commercial products in grouped form;
-3. no public-intelligence route requires wallet connection;
+3. no public-intelligence or free demo route requires wallet connection;
 4. all redirect-only routes are excluded from sitemap canonical URLs;
 5. GRI pages use the current three-domain v1.2 contract;
 6. Risk Gate remains labelled Private Pilot until production gates are satisfied;
-7. Arc/Circle/markets remain labelled Technical Proof;
+7. Arc/Circle/markets/demo remain truthfully labelled Technical Proof where applicable;
 8. contact identity is `contact@geomacro.live`;
 9. canonical/OG metadata use `https://geomacro.live`;
-10. Product CI tests and production build pass.
+10. `/openapi.yaml` matches the implemented agent endpoints and decision contract;
+11. x402 is not described as live before its seller env and paid end-to-end test are complete;
+12. Product CI/app validation and production build pass.
