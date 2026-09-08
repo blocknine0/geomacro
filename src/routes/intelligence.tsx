@@ -17,7 +17,7 @@ import { useGlobalRisk } from "@/lib/use-global-risk";
 
 const TITLE = "Risk Intelligence · Geomacro";
 const DESCRIPTION =
-  "Live geopolitical and macro risk intelligence with scored events, evidence context, current GRI and professional filtering for human and machine decisions.";
+  "Follow current geopolitical and macro risk with scored events, evidence, timestamps, the current GRI and filters for professional research.";
 
 export const Route = createFileRoute("/intelligence")({
   head: () => ({
@@ -80,11 +80,9 @@ function IntelligencePage() {
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Follow the geopolitical and macro developments currently shaping risk. Scores, movement,
-          source context and timestamps come from Geomacro's stored intelligence rather than a
-          separate display-only ranking model.
+          Follow the geopolitical and macro developments currently shaping risk. Each event keeps its recorded score, movement, source context and timestamp so you can inspect the underlying record rather than a separate display-only ranking.
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">Reading intelligence never requires a wallet.</p>
+        <p className="mt-3 text-sm text-muted-foreground">You do not need a wallet to read or research this intelligence.</p>
       </header>
 
       <section className="mt-8 grid gap-3 rounded-2xl border border-border/70 bg-card/40 p-4 sm:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
@@ -134,7 +132,7 @@ function IntelligencePage() {
         <section className="mt-8 rounded-2xl border border-border/70 bg-card/40 p-6">
           <h2 className="font-medium">Intelligence temporarily unavailable</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {intel.error?.message ?? "The current intelligence read model could not be loaded."}
+            {intel.error?.message ?? "The current intelligence feed could not be loaded."}
           </p>
           <Button type="button" variant="outline" onClick={intel.retry} className="mt-4">Retry</Button>
         </section>
@@ -180,7 +178,7 @@ function IntelligencePage() {
                   {series && series.length > 1 ? (
                     <RiskChart buckets={series} label="Verified GRI, last 7 days" height={150} className="mt-5" />
                   ) : (
-                    <p className="mt-4 text-xs text-muted-foreground">Verified history is shown when enough snapshots are available.</p>
+                    <p className="mt-4 text-xs text-muted-foreground">Verified history appears when enough snapshots are available.</p>
                   )}
                   <dl className="mt-5 grid grid-cols-2 gap-3 text-xs">
                     <Metric label="Evidence" value={String(globalRisk.data.eventCount)} />
@@ -212,7 +210,7 @@ function IntelligencePage() {
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Ask Geomacro</p>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Query the same stored intelligence and canonical GRI through a grounded research interface.
+                Ask a question using the same stored intelligence and current verified GRI shown here.
               </p>
               <Button asChild variant="outline" className="mt-4 w-full gap-2">
                 <Link to="/ask-geomacro">Ask a question <ArrowRight className="h-4 w-4" /></Link>
