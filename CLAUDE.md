@@ -14,6 +14,24 @@ Before changing product language or architecture, read:
 
 Do not describe a Private Pilot or planned capability as generally available or production-ready.
 
+## Public copy and editorial standard
+
+Public-facing Geomacro copy must read like it was written and reviewed by a serious founder, analyst or product team, not generated from a template.
+
+- Use short, natural sentences and concrete nouns and verbs.
+- Explain the idea before using Geomacro-specific or technical terminology.
+- Prefer plain English such as "check country risk before a payment moves forward" over abstract phrases such as "decision-ready context" or "commercial wedge".
+- Avoid stacked buzzwords, investor jargon, slogans that say little, repeated three-part constructions and overly symmetrical card copy.
+- Do not use AI-style filler such as "unlock", "revolutionize", "seamless", "powerful", "cutting-edge", "next-generation" or similar hype unless a specific factual claim requires the word.
+- Do not foreground "AI" merely because a model is used internally. Name model-derived interpretation only where it helps a user understand provenance or system behavior.
+- Keep status labels factual: Live, Private Pilot, Planned/Commercial Direction and Technical Proof must reflect the implemented product state.
+- Make limitations sound like normal product disclosures, not defensive legal boilerplate. Keep them specific and accurate.
+- Buyer pages should start from the user's workflow or problem, not Geomacro's architecture.
+- Technical documentation may remain precise and technical. Do not simplify code contracts, security boundaries, methodology or proof language so far that technical truth is lost.
+- Never invent traction, customers, certifications, audits, partnerships, performance, coverage or production readiness to make copy sound stronger.
+
+When revising public copy, read it once without the surrounding UI. If it sounds generic enough to belong to any AI startup, rewrite it until it is specific to Geomacro and the actual workflow being described.
+
 ## Build and validation
 
 - Install dependencies: `bun install`
