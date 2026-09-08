@@ -1,0 +1,49 @@
+name: Risk Object Key Lifecycle CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/risk-object-signing.server.ts'
+      - 'src/lib/risk-object-signing-readiness.server.ts'
+      - 'src/lib/risk-gate-readiness.server.ts'
+      - 'src/routes/api.risk-object-keys.ts'
+      - 'src/routes/api.risk-gate-readiness.ts'
+      - 'src/routes/api.health.ts'
+      - 'src/__tests__/risk-object-**'
+      - '.env.example'
+      - '.github/workflows/risk-object-key-lifecycle-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  key-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      # PR #94 owns the shared frozen-lockfile refresh. This focused security
+      # workflow remains secret-free and validates behavior/build independently.
+      - name: Install dependencies
+        run: bun install
+
+      - name: Signing and lifecycle tests
+        run: >-
+          bun x vitest run
+          src/__tests__/risk-object-signing.test.ts
+          src/__tests__/risk-object-key-lifecycle.test.ts
+          src/__tests__/risk-object-signing-readiness.test.ts
+
+      - name: Full app tests
+        run: bun run test:app
+
+      - name: Production build
+        run: bun run build

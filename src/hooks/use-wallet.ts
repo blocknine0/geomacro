@@ -6,7 +6,11 @@ import {
   preferredNetwork,
   type ArcNetwork,
 } from "@/lib/arc";
-import { buildSiweMessage, verifySiwe } from "@/lib/siwe.functions";
+import {
+  buildSiweMessage,
+  issueSiweChallenge,
+  verifySiwe,
+} from "@/lib/siwe.functions";
 import { fetchNativeBalance } from "@/lib/balance";
 
 const SESSION_KEY = (addr: string) => `geomacro.siwe-session.${addr.toLowerCase()}`;
@@ -79,6 +83,7 @@ export function useWalletInternal() {
   // while this is false — that race is what caused repeated sign-in popups.
   const [sessionReady, setSessionReady] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const callIssueSiweChallenge = useServerFn(issueSiweChallenge);
   const callVerifySiwe = useServerFn(verifySiwe);
 
   // ---- shared native USDC balance (single fetch for the whole app) ----
@@ -224,9 +229,10 @@ export function useWalletInternal() {
   }, [address, network?.key]);
 
   /**
-   * Sign-In With Ethereum: asks the wallet to sign a plain message (gasless,
-   * no tx) proving control of `address`, then exchanges that signature for a
-   * short-lived JWT the app uses for all positions/balance-history writes.
+   * Sign-In With Ethereum: asks the server for a one-time challenge, then asks
+   * the wallet to sign that exact message (gasless, no tx). The server verifies
+   * wallet ownership and atomically consumes the nonce before minting a
+   * short-lived JWT used for positions/balance-history writes.
    * Private key never leaves the wallet extension at any point.
    */
   const signIn = useCallback(async () => {
@@ -238,20 +244,34 @@ export function useWalletInternal() {
     }
     setSigningIn(true);
     try {
-      const issuedAt = Date.now();
-      const message = buildSiweMessage(address, issuedAt);
+      const loginAddress = address;
+      const challenge = await callIssueSiweChallenge({
+        data: { address: loginAddress },
+      });
+      const message = buildSiweMessage(
+        loginAddress,
+        challenge.nonce,
+        challenge.issuedAt,
+      );
       const signature = (await eth.request({
         method: "personal_sign",
-        params: [message, address],
+        params: [message, loginAddress],
       })) as string;
 
-      const result = await callVerifySiwe({ data: { address, issuedAt, signature } });
+      const result = await callVerifySiwe({
+        data: {
+          address: loginAddress,
+          nonce: challenge.nonce,
+          issuedAt: challenge.issuedAt,
+          signature,
+        },
+      });
       const newSession: SiweSession = {
         token: result.token,
         walletAddress: result.walletAddress,
         expiresAt: Date.now() + 23 * 60 * 60 * 1000, // JWT itself expires at 24h; refresh a bit early
       };
-      localStorage.setItem(SESSION_KEY(address), JSON.stringify(newSession));
+      localStorage.setItem(SESSION_KEY(loginAddress), JSON.stringify(newSession));
       setSession(newSession);
       return newSession;
     } catch (e) {
@@ -260,7 +280,7 @@ export function useWalletInternal() {
     } finally {
       setSigningIn(false);
     }
-  }, [address, callVerifySiwe]);
+  }, [address, callIssueSiweChallenge, callVerifySiwe]);
 
   return {
     address,

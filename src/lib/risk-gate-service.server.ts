@@ -55,7 +55,9 @@ export type CountryRiskGateServiceInput = {
    * Evaluation clock.
    *
    * Defaults to current time.
-   * Can be frozen for deterministic testing.
+   * Can be frozen for deterministic internal testing.
+   * External live-preflight callers are separately restricted
+   * to a small server-clock skew window by the API boundary.
    */
   evaluated_at?: string;
 };
@@ -223,6 +225,7 @@ evaluateCountryRiskGate(
     evaluateRiskGate(
       request,
       riskObject,
+      evaluatedAt,
     );
 
   if (
