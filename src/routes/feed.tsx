@@ -1,16 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { FeedSection } from "@/components/sections/feed-section";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/**
+ * Legacy public feed route.
+ *
+ * The commercial website has one canonical live-intelligence surface:
+ * `/intelligence`. Keep this redirect so old bookmarks and external links do
+ * not break while avoiding two competing public product identities.
+ */
 export const Route = createFileRoute("/feed")({
-  head: () => ({
-    meta: [
-      { title: "Terminal · Geomacro" },
-      { name: "description", content: "Live geopolitics, commodities, macro and crypto headlines with severity, confidence and stage scores from the Geomacro pipeline." },
-      { property: "og:title", content: "Terminal · Geomacro" },
-      { property: "og:description", content: "Live geopolitics, commodities, macro and crypto headlines scored by Geomacro." },
-      { property: "og:url", content: "https://geomacro.live/feed" },
-    ],
-    links: [{ rel: "canonical", href: "https://geomacro.live/feed" }],
-  }),
-  component: FeedSection,
+  beforeLoad: () => {
+    throw redirect({ to: "/intelligence", replace: true });
+  },
 });
