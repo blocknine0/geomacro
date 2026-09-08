@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 
 type ManifestEntry = {
   slug: string;
+  title: string;
+  route: string;
+  previous: string | null;
+  next: string | null;
   page_number: number;
   page_count: number;
 };
@@ -14,6 +18,13 @@ const MANIFEST_PATH = join(ROOT, "src/content/docs-manifest.json");
 
 function manifest(): ManifestEntry[] {
   return JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as ManifestEntry[];
+}
+
+function markdownTitle(slug: string): string {
+  const markdown = readFileSync(join(DOCS_DIR, `${slug}.md`), "utf8");
+  const h1 = markdown.match(/^#\s+(?:\d+\.\s+)?(.+)$/m);
+  if (!h1) throw new Error(`Missing H1 in ${slug}.md`);
+  return h1[1].trim();
 }
 
 describe("commercial documentation contract", () => {
@@ -31,6 +42,10 @@ describe("commercial documentation contract", () => {
     entries.forEach((entry, index) => {
       expect(entry.page_number).toBe(index + 1);
       expect(entry.page_count).toBe(52);
+      expect(entry.route).toBe(`/docs/${entry.slug}`);
+      expect(entry.previous).toBe(index === 0 ? null : entries[index - 1].slug);
+      expect(entry.next).toBe(index === entries.length - 1 ? null : entries[index + 1].slug);
+      expect(entry.title).toBe(markdownTitle(entry.slug));
     });
   });
 
