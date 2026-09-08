@@ -84,7 +84,7 @@ describe("Agentic Commerce public demo contract", () => {
     for (const forbidden of ["ip_address", "wallet_address", "raw_request", "payment_payload"]) {
       expect(migration.toLowerCase()).not.toContain(`${forbidden} `);
     }
-    expect(endpoint).toContain("does not store your IP address or wallet address");
+    expect(endpoint).toContain("stored without your IP address or wallet address");
   });
 
   it("matches the actual current Risk Gate decision contract", () => {
