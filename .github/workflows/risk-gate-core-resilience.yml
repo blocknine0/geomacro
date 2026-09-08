@@ -18,7 +18,7 @@ permissions:
 jobs:
   core-resilience:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -38,6 +38,9 @@ jobs:
 
       - name: Run 30k-per-path core resilience baseline
         run: bun x tsx scripts/stress-risk-gate-core.ts --iterations 30000
+
+      - name: Production build
+        run: bun run build
 
       - name: Upload resilience evidence
         uses: actions/upload-artifact@v4
