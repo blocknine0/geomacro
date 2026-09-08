@@ -1,92 +1,149 @@
 # GRI Transparency and Change Attribution
 
-## Implemented baseline: `gri-v1.1.0`
+## Current implemented baseline: `gri-v1.2.0`
 
-Geomacro now has one versioned deterministic aggregation engine in `scripts/lib/gri-engine-v11.js`. The previous rolling 24-hour simple mean is no longer the canonical methodology.
+Geomacro's current public Global Risk Index uses the versioned deterministic `gri-v1.2.0` aggregation contract after current event classification and story assignment.
 
-Every GRI v1 calculation is derived from eligible stored event records using:
+The current methodology uses:
 
 - severity as the 0–100 risk signal;
 - confidence-based evidence weighting;
 - exponential recency decay with a 24-hour half-life;
 - a 72-hour hard lookback;
 - a per-source evidence cap;
-- an immutable story-cluster evidence cap that prevents cross-publisher repetition of one underlying development from multiplying its influence;
-- equal base weights across geopolitics, macro, rare earth / critical minerals, and crypto;
+- an immutable story-cluster evidence cap;
+- equal base weights across geopolitics, macroeconomics and rare earth / critical-mineral risk;
 - explicit coverage instead of converting missing domains into zero risk;
-- `created_at` as the observation timestamp, preventing late ingestion from backdating what the system knew.
+- observation time (`created_at` / `observed_at`) as the time Geomacro knew an observation;
+- versioned classification and story-correlation provenance.
 
-The exact formula is documented in `docs/GRI_METHODOLOGY.md`. GRI v1 is explicitly an intensity index over **qualifying stored risk observations**; upstream ingestion gates mean it is not a complete census of all world events, and an empty window is unavailable rather than asserted to be low risk.
+Crypto is part of the broader Geomacro data/product architecture but is not a current GRI v1.2 scoring domain.
+
+The exact current formula is documented in `docs/GRI_METHODOLOGY.md`. GRI remains an intensity index over qualifying stored risk observations, not a census of every world event and not a prediction-market probability.
 
 ## Audit records
 
-Migration `004_gri_audit_system.sql` introduces persisted `gri_snapshots` and `gri_contributions` tables. Migrations `007_gri_story_correlation.sql` and `009_gri_v11_story_cap.sql` add immutable story provenance and the v1.1 story-aware audit contract.
+The persisted GRI audit architecture stores immutable/versioned snapshot and contribution proof material.
 
-A published snapshot records:
+A published snapshot can record:
 
 - methodology version and methodology hash;
-- input/data hash;
-- calculation hash;
+- proof version and proof hash;
+- input/data/evidence/calculation hashes;
 - raw and display score;
-- coverage and weighted confidence;
+- coverage and confidence metadata;
 - active categories and category breakdown;
-- event and source counts;
+- event/source/story counts as applicable;
 - previous comparable snapshot;
-- exact 24-hour score change;
-- change-attribution JSON and hash.
+- exact score change;
+- change-attribution payload and hash;
+- reconciliation residuals.
 
-Each contribution record preserves the event/source reference, severity, confidence, timestamps, decay, source-capped weights, normalized shares, exact contribution points, and classification provenance fields.
+Contribution records preserve the observation/source reference, severity, confidence, timestamps, source/story concentration weights, normalized shares, exact contribution points and relevant model/story provenance.
 
-Newly ingested events also record model/provider provenance: classification provider, model, classification version, prompt version, scoring time, and prompt/input hash. Legacy records are explicitly marked `legacy-unversioned` where historical model metadata cannot be reconstructed honestly.
+Current event classification and story-correlation provenance should be explicit enough to identify provider/model, contract version, prompt version, scoring time and input hash.
+
+Historical records whose original model metadata cannot be reconstructed must be labelled honestly rather than retroactively inventing provenance.
 
 ## Change Attribution Engine
 
-A movement such as `83 → 63` is decomposed mathematically:
+A score movement such as `83 -> 63` is decomposed mathematically:
 
 ```text
-GRI_change = Σ(current event contribution points - previous event contribution points)
+GRI_change = Σ(current contribution points - previous contribution points)
 ```
 
-The engine reports event-level changes as added, removed, rescored, or reweighted, plus category-level contribution deltas. The attribution stores a residual, which should be effectively zero apart from normal numeric storage/rounding precision.
+The engine can distinguish observation-level changes such as:
 
-This separates two different questions:
+- added
+- removed
+- rescored
+- reweighted
 
-1. **Why did an event receive severity 72?** — inspect source plus classification provider/model/version/provenance.
-2. **How did those events produce GRI 63, and why was it 83 before?** — inspect the deterministic GRI snapshot, category breakdown and event contribution deltas.
+Reweighting includes changes created by recency, source concentration, story concentration or active-domain normalization even when severity itself is unchanged.
+
+Category-level contribution deltas and observation-level deltas should reconcile to the published score movement within the explicitly versioned numeric tolerance.
+
+This separates two questions:
+
+1. **Why did an observation receive a particular severity/confidence?** Inspect the source and classification provenance.
+2. **How did qualifying observations produce the GRI, and why did it move?** Inspect the deterministic snapshot, effective weights and contribution/change ledger.
 
 ## Publication workflow
 
-`node scripts/compute-gri-v11.js` computes the canonical snapshot. It supports:
+The current canonical commands are:
 
-- `--dry-run` for calculation inspection without a write;
-- `--as-of <ISO>` for reproducibility checks.
+```bash
+bun run gri:compute
+bun run gri:verify
+bun run gri:validate
+```
 
-Live GRI publication is deliberately decoupled from news ingestion. The dedicated `publish-gri.yml` workflow is the only canonical live publisher; ingestion does not publish GRI snapshots.
+These route to the current v1.2 stack. Explicit v1.1 commands remain for compatibility/audit work and are not the canonical current publication path.
 
-## Remaining product-layer work
+Live GRI publication remains separated from news ingestion. The dedicated GRI publication workflow is the canonical live publisher, preventing ingestion retries from creating an uncontrolled competing publication path.
 
-The calculation/audit backend is now defined. Before calling the GRI institutional-grade in external materials, complete these deployment steps:
+The current public read model also has a maximum acceptable snapshot age. A stale or missing published snapshot should be surfaced as a freshness/availability problem rather than silently presented as current verified risk.
 
-- apply migration `004` to the production Supabase project;
-- enable snapshot publishing and confirm several consecutive snapshots reconcile;
-- backfill historical GRI snapshots from the stored historical event dataset using the same methodology version or an explicitly versioned historical-calibration methodology;
-- expose snapshot hash / methodology version / contribution drill-down in the public or professional UI;
-- run calibration and sensitivity analysis on the fixed v1 parameters before making predictive-performance claims.
+## Public proof requirements
 
-No methodology parameter should be silently changed. Any change to categories, weights, half-life, source cap, eligibility, observation-time semantics or rounding requires a new GRI methodology version.
+A professional or institutional user should be able to trace a published GRI through the following chain:
 
-## Retrospective replay proof envelope
+```text
+published score
+    -> category breakdown
+    -> contribution/change ledger
+    -> effective source/story weights
+    -> accepted observations
+    -> source + classification/story provenance
+    -> methodology/proof versions and hashes
+```
 
-`gri-replay-v1.1.0` uses the same `gri-v1.1.0` deterministic engine,
-`gri-proof-v1.1.0` proof envelope, current classification contract and
-immutable story-correlation contract as live publication.
+The UI does not need to display every field at once. Compact surfaces may show the score and change first, with deeper proof available on demand.
 
-Each replay snapshot persists its independent-story count, methodology,
-input, evidence and calculation hashes, proof version, proof hash and
-reconciliation residual. A replay run cannot transition to `published`
-unless its stored snapshot count and v1.1 proof envelopes reconcile.
+## Historical replay boundary
 
-Replay remains explicitly `lookahead_safe=false`. Historical `created_at`
-is an observation-time proxy, while current-contract classification and
-story provenance may have been produced later. Replay results therefore
-must never be represented as historical live or out-of-sample performance.
+Retrospective replay is useful for calibration and audit, but historical results must preserve their lookahead-safety status.
+
+If later classification or story-assignment contracts are applied retrospectively to historical observations, those replays are **not** genuine historical live or out-of-sample records. They must remain clearly labelled as retrospective calibration/audit runs.
+
+## Empirical validation boundary
+
+Validation is separate from calculation and never changes GRI values.
+
+External benchmark testing may evaluate relationships against risk-sensitive variables such as volatility, rates, commodities, equities or currencies. Any predictive or institutional-grade performance claim must be supported by adequate sample size, clearly defined methodology and honest out-of-sample boundaries.
+
+Correlation must not be represented as causality or guaranteed predictive performance.
+
+## Commercial and institutional transparency gates
+
+Before calling GRI institutionally validated or production-proven in external materials, Geomacro should have evidence for:
+
+- consistent live publication and freshness monitoring;
+- consecutive snapshot/proof reconciliation;
+- source/provenance completeness for current published observations;
+- explicit commercial-use rights for customer-delivered evidence and derived outputs;
+- sensitivity/calibration analysis for the current methodology;
+- independently reviewed security and operational controls where appropriate;
+- honest validation metrics with adequate sample gates;
+- stable customer-facing methodology and change-notice policy.
+
+Current engineering proof should not be overstated as independent third-party methodology validation or customer adoption.
+
+## Versioning rule
+
+Do not silently change any rule capable of altering the score for identical validated inputs. A new methodology version is required for changes to:
+
+- active domains or base weights;
+- eligibility/lookback;
+- recency half-life;
+- confidence weighting;
+- source cap;
+- story cap/correlation dependency;
+- observation-time semantics;
+- missing-domain treatment;
+- normalization;
+- contribution/change-attribution semantics;
+- rounding/display rules.
+
+Matching code, tests and documentation should move together with a methodology change.
