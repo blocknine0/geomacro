@@ -44,15 +44,8 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Resolve dependencies
-        run: bun install
-
-      - name: Capture resolved lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: resolved-bun-lockfile
-          path: bun.lock
-          retention-days: 1
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
 
       - name: App tests
         run: bun run test:app
@@ -65,60 +58,3 @@ jobs:
 
       - name: Production build
         run: bun run build
-
-      - name: Require committed lockfile consistency
-        run: git diff --exit-code -- bun.lock
-
-  # One-time bootstrap for this owner-controlled CI branch only.
-  #
-  # The test/build job above has a read-only token and produces the lockfile
-  # artifact. This separate job receives write permission only when the PR is
-  # the exact `chore/product-ci` branch opened by the repository owner. It does
-  # not install dependencies or execute project code; it only copies the
-  # already-produced artifact and commits bun.lock when needed.
-  #
-  # Remove this job after the stale lockfile is refreshed, then return the
-  # install step above to `bun install --frozen-lockfile` before merge.
-  refresh-lockfile-on-owner-ci-branch:
-    needs: app-test-and-build
-    if: >-
-      ${{
-        always() &&
-        github.event_name == 'pull_request' &&
-        github.head_ref == 'chore/product-ci' &&
-        github.actor == 'blocknine0'
-      }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout owner CI branch
-        uses: actions/checkout@v5
-        with:
-          ref: chore/product-ci
-
-      - name: Download resolved lockfile
-        uses: actions/download-artifact@v4
-        with:
-          name: resolved-bun-lockfile
-          path: /tmp/resolved-bun-lockfile
-
-      - name: Commit refreshed lockfile when changed
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp /tmp/resolved-bun-lockfile/bun.lock bun.lock
-
-          if git diff --quiet -- bun.lock; then
-            echo "bun.lock already matches the resolved dependency graph"
-            exit 0
-          fi
-
-          git config user.name "geomacro-ci"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bun.lock
-          git commit -m "chore: refresh Bun lockfile"
-          git push origin HEAD:chore/product-ci
