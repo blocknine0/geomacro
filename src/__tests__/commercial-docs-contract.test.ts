@@ -39,14 +39,33 @@ describe("commercial documentation contract", () => {
     expect(markdownFiles).toEqual(expectedFiles);
     expect(new Set(entries.map((entry) => entry.slug)).size).toBe(52);
 
+    const mismatches: string[] = [];
     entries.forEach((entry, index) => {
-      expect(entry.page_number).toBe(index + 1);
-      expect(entry.page_count).toBe(52);
-      expect(entry.route).toBe(`/docs/${entry.slug}`);
-      expect(entry.previous).toBe(index === 0 ? null : entries[index - 1].slug);
-      expect(entry.next).toBe(index === entries.length - 1 ? null : entries[index + 1].slug);
-      expect(entry.title).toBe(markdownTitle(entry.slug));
+      const expectedPrevious = index === 0 ? null : entries[index - 1].slug;
+      const expectedNext = index === entries.length - 1 ? null : entries[index + 1].slug;
+      const actualTitle = markdownTitle(entry.slug);
+
+      if (entry.page_number !== index + 1) {
+        mismatches.push(`${entry.slug}: page_number ${entry.page_number} != ${index + 1}`);
+      }
+      if (entry.page_count !== 52) {
+        mismatches.push(`${entry.slug}: page_count ${entry.page_count} != 52`);
+      }
+      if (entry.route !== `/docs/${entry.slug}`) {
+        mismatches.push(`${entry.slug}: route ${entry.route} != /docs/${entry.slug}`);
+      }
+      if (entry.previous !== expectedPrevious) {
+        mismatches.push(`${entry.slug}: previous ${String(entry.previous)} != ${String(expectedPrevious)}`);
+      }
+      if (entry.next !== expectedNext) {
+        mismatches.push(`${entry.slug}: next ${String(entry.next)} != ${String(expectedNext)}`);
+      }
+      if (entry.title !== actualTitle) {
+        mismatches.push(`${entry.slug}: title \"${entry.title}\" != \"${actualTitle}\"`);
+      }
     });
+
+    expect(mismatches).toEqual([]);
   });
 
   it("documents the current three-domain GRI v1.2 contract", () => {
