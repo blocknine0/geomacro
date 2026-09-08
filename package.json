@@ -3,6 +3,7 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "packageManager": "bun@1.4.2",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
