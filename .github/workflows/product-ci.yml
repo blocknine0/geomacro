@@ -66,12 +66,9 @@ jobs:
       - name: Production build
         run: bun run build
 
-      # TEMPORARY branch-only diagnostic: capture the exact TanStack Router
-      # output produced by the successful build so the stale committed
-      # routeTree.gen.ts can be reconciled without hand-editing generated code.
-      # Remove this step immediately after the generated file is committed.
+      # TEMPORARY branch-only diagnostic. Base64 keeps the exact generated
+      # bytes on one log line so they can be committed without hand-editing.
+      # Remove this step immediately after routeTree.gen.ts is reconciled.
       - name: Capture generated route tree
         run: |
-          echo "::group::GENERATED_ROUTE_TREE"
-          cat src/routeTree.gen.ts
-          echo "::endgroup::"
+          echo "ROUTE_TREE_BASE64=$(base64 -w0 src/routeTree.gen.ts)"
