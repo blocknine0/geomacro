@@ -1,37 +1,98 @@
 import { createClient } from "@supabase/supabase-js";
 import type { EventStage } from "./event-stage";
 
-// Public browser reads must stay on the authoritative Geomacro data project.
-// A stale/mismatched Lovable VITE_* environment previously pointed the client
-// at an empty Cloud database, which made GRI/intelligence appear unavailable.
-// Accept VITE_* overrides only when they target the authoritative project;
-// otherwise fall back to the known public project pair.
+/**
+ * Public browser read client.
+ *
+ * Production rule: browser-visible Supabase credentials are not a source of
+ * truth. Lovable/hosting platforms can inject their own VITE_SUPABASE_* pair,
+ * which previously caused Arena and older public read surfaces to authenticate
+ * against the wrong project. Every PostgREST GET/HEAD is therefore sent to a
+ * same-origin, read-only server proxy. The proxy uses APP_SUPABASE_ANON_KEY,
+ * applies a table allowlist and rejects writes.
+ *
+ * Realtime is deliberately disabled on this public client. The two historical
+ * realtime consumers (Arena refresh and jury/dispute status) already have
+ * polling fallbacks. Avoiding a browser WebSocket removes the final dependency
+ * on hosting-injected Supabase credentials without changing any transaction or
+ * settlement logic.
+ */
 const AUTHORITATIVE_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const AUTHORITATIVE_SUPABASE_URL =
   `https://${AUTHORITATIVE_SUPABASE_PROJECT_REF}.supabase.co`;
-const AUTHORITATIVE_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6ImxkcHdhamlzaW9sanlqdG9qdmZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NjUxNTcsImV4cCI6MjA5NzI0MTE1N30.Hm2LwUWuuyA2O28_woD9m0MJCrV-o48SUKOk5FHANNI";
 
 const configuredUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const configuredAnonKey =
   (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ??
   (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
 
-const configuredTargetsAuthoritativeProject = Boolean(
-  configuredUrl?.includes(AUTHORITATIVE_SUPABASE_PROJECT_REF),
-);
-
-const SUPABASE_URL = configuredTargetsAuthoritativeProject
-  ? configuredUrl!
+const clientUrl = configuredUrl?.includes(AUTHORITATIVE_SUPABASE_PROJECT_REF)
+  ? configuredUrl
   : AUTHORITATIVE_SUPABASE_URL;
-const SUPABASE_ANON_KEY =
-  configuredTargetsAuthoritativeProject && configuredAnonKey
-    ? configuredAnonKey
-    : AUTHORITATIVE_SUPABASE_ANON_KEY;
+const clientKey = configuredAnonKey?.trim() || "public-read-proxy";
 
-export const supabaseFeed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+async function publicReadFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const request = new Request(input, init);
+  const url = new URL(request.url);
+
+  if (url.pathname.startsWith("/rest/v1/")) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new Response(JSON.stringify({ error: "Public data client is read-only" }), {
+        status: 405,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
+
+    const target = `${url.pathname}${url.search}`;
+    const proxyUrl = `/api/public-data-proxy?target=${encodeURIComponent(target)}`;
+    const headers = new Headers();
+    for (const name of ["accept", "accept-profile", "range", "range-unit", "prefer"]) {
+      const value = request.headers.get(name);
+      if (value) headers.set(name, value);
+    }
+
+    return fetch(proxyUrl, {
+      method: request.method,
+      headers,
+      signal: request.signal,
+      credentials: "same-origin",
+    });
+  }
+
+  return fetch(request);
+}
+
+const rawPublicClient = createClient(clientUrl, clientKey, {
   auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: publicReadFetch },
 });
+
+const noRealtimeChannel = {
+  on() {
+    return noRealtimeChannel;
+  },
+  subscribe() {
+    return noRealtimeChannel;
+  },
+  unsubscribe() {
+    return Promise.resolve("ok" as const);
+  },
+};
+
+/**
+ * Preserve the normal Supabase query-builder API while making `.channel()` a
+ * no-op on this read-only browser client. Existing polling remains active.
+ */
+export const supabaseFeed = new Proxy(rawPublicClient, {
+  get(target, prop, receiver) {
+    if (prop === "channel") return () => noRealtimeChannel;
+    if (prop === "removeChannel") return () => Promise.resolve("ok" as const);
+    return Reflect.get(target, prop, receiver);
+  },
+}) as typeof rawPublicClient;
 
 export type StoredEventRow = {
   id: string;
