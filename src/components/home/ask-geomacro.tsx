@@ -63,12 +63,12 @@ export function AskGeomacroSection({ standalone = false }: { standalone?: boolea
       id={standalone ? undefined : "ask-geomacro"}
       eyebrow="Grounded research"
       title="Ask Geomacro"
-      subtitle="Ask geopolitical and macro risk questions using Geomacro's stored intelligence, evidence, confidence and canonical Global Risk Index."
+      subtitle="Ask about current geopolitical and macro risk using evidence already stored in Geomacro and the current verified Global Risk Index."
       className={standalone ? "py-10 sm:py-14" : undefined}
     >
       <div className="rounded-2xl border border-border/70 bg-card/50 p-5 sm:p-6">
         <div className="mb-5 rounded-xl border border-border/60 bg-background/30 px-4 py-3 text-sm text-muted-foreground">
-          Answers are generated from Geomacro's scored event store. This surface does not perform external web search or silently add outside evidence.
+          Answers use Geomacro's stored, scored events and current verified GRI. Ask Geomacro does not search the web or add uncited outside evidence.
         </div>
 
         <form
@@ -123,7 +123,7 @@ export function AskGeomacroSection({ standalone = false }: { standalone?: boolea
           {loading ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Researching stored Geomacro intelligence…
+              Checking Geomacro's stored intelligence…
             </p>
           ) : error ? (
             <ErrorState
@@ -135,7 +135,7 @@ export function AskGeomacroSection({ standalone = false }: { standalone?: boolea
             <AnswerView answer={answer} />
           ) : (
             <p className="text-sm text-muted-foreground">
-              If the stored evidence does not clear the relevance threshold, Geomacro will say so instead of forcing an interpretation.
+              If Geomacro does not have enough relevant evidence, it will say so rather than force an interpretation.
             </p>
           )}
         </div>
@@ -176,7 +176,7 @@ function AnswerView({ answer }: { answer: AskAnswer }) {
       {answer.low_confidence ? (
         <div className="rounded-xl border border-dashed border-border/70 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Geomacro interpretation withheld
+            Interpretation withheld
           </p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{answer.geomacro_view}</p>
         </div>
