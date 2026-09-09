@@ -1,5 +1,6 @@
 name: GOAT Testnet3 Provider Dry Run
 
+# Credentialed rerun requested 2026-09-10 after repository secrets were configured.
 on:
   pull_request:
     branches: [main]
