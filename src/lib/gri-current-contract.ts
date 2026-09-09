@@ -32,4 +32,6 @@ export const GRI_STORY_CORRELATION_PROMPT_VERSION = "story-match-title-v1.0.0";
 
 export const GRI_LOOKBACK_HOURS = 72;
 export const GRI_HALF_LIFE_HOURS = 24;
-export const GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS = 3;
+// Public freshness policy. A verified current-method snapshot remains eligible
+// for up to six hours; evidence-triggered publication can replace it earlier.
+export const GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS = 6;
