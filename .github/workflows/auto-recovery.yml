@@ -3,22 +3,46 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'sync-stakes / resolve-markets / create-markets'
+        description: 'Choose the recovery operation'
         required: true
         default: 'sync-stakes'
+        type: choice
+        options:
+          - sync-stakes
+          - resolve-markets
+          - create-markets
+
+permissions:
+  contents: read
+
+concurrency:
+  # Recovery can use OWNER_PRIVATE_KEY. Share the same owner-wallet lock as
+  # scheduled state-changing workflows and never cancel a run mid-operation.
+  group: arc-owner-wallet-state-change
+  cancel-in-progress: false
+
 jobs:
   recovery:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # 🛡️ NEW: safety net matching the other workflows — without this, a stuck
-    # manual recovery run could tie up Actions minutes for up to 6h (GitHub's
-    # default job timeout).
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          node-version: '22'
-      - run: npm install
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Verify Arc Testnet and contract before any recovery operation
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
       - name: Sync missing stakes
         if: ${{ github.event.inputs.action == 'sync-stakes' }}
         run: DEPLOY_BLOCK=49000000 node scripts/sync-stakes.js
@@ -32,10 +56,6 @@ jobs:
         run: node scripts/resolve-markets.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          # 🛡️ NEW: resolve-markets.js now expects up to 5 rotating RPC
-          # endpoints — without these, a manual recovery run falls back to a
-          # single endpoint with none of the failover resilience the
-          # scheduled workflow gets.
           ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
           ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
           ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
@@ -46,9 +66,6 @@ jobs:
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          # 🛡️ NEW: Cerebras fallback for when Groq's daily quota is exhausted
-          # — without this, a manual recovery run during a Groq outage just
-          # halts instead of falling back like the scheduled workflow does.
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
       - name: Create new markets
         if: ${{ github.event.inputs.action == 'create-markets' }}
