@@ -16,6 +16,7 @@
 -- - only a delivered, 2xx, non-authorizing audit created after the exact claim can
 --   reconcile that claim
 -- - an older audit with the same request_id cannot satisfy a newly-created claim
+-- - expired idempotency slots roll forward in place; no delete is required
 -- - immutable audit rows are not rewritten
 -- - execution_authorized=false remains mandatory
 -- =============================================================================
@@ -40,7 +41,7 @@ as $$
 declare
   v_now timestamptz := now();
   v_token uuid := gen_random_uuid();
-  v_inserted integer := 0;
+  v_claimed integer := 0;
   v_row public.risk_gate_idempotency_keys%rowtype;
   v_audit public.risk_gate_audit_log%rowtype;
 begin
@@ -67,18 +68,19 @@ begin
       'invalid or disabled Risk Gate API client';
   end if;
 
-  -- Opportunistic bounded-retention cleanup for this client.
-  delete from public.risk_gate_idempotency_keys expired
-  where
-    expired.client_id = p_client_id
-    and expired.expires_at <= v_now;
-
+  -- Insert a new slot or roll an expired slot forward in place. The idempotency
+  -- table is a 24-hour reliability ledger, while immutable historical evidence
+  -- remains in risk_gate_audit_log. Rolling the slot avoids destructive cleanup
+  -- and gives request_id reuse a new created_at boundary after expiration.
   insert into public.risk_gate_idempotency_keys (
     client_id,
     request_id,
     request_hash,
     state,
     claim_token,
+    audit_id,
+    response_payload,
+    http_status,
     created_at,
     updated_at,
     expires_at
@@ -89,6 +91,9 @@ begin
     p_request_hash,
     'processing',
     v_token,
+    null,
+    null,
+    null,
     v_now,
     v_now,
     v_now + interval '24 hours'
@@ -97,12 +102,24 @@ begin
     client_id,
     request_id
   )
-  do nothing;
+  do update
+  set
+    request_hash = excluded.request_hash,
+    state = 'processing',
+    claim_token = excluded.claim_token,
+    audit_id = null,
+    response_payload = null,
+    http_status = null,
+    created_at = excluded.created_at,
+    updated_at = excluded.updated_at,
+    expires_at = excluded.expires_at
+  where
+    public.risk_gate_idempotency_keys.expires_at <= v_now;
 
   get diagnostics
-    v_inserted = row_count;
+    v_claimed = row_count;
 
-  if v_inserted = 1 then
+  if v_claimed = 1 then
     return query
     select
       'CLAIMED'::text,
@@ -141,8 +158,7 @@ begin
   -- Reconcile a delivered immutable audit created by this exact idempotency
   -- claim. Do not compare audit.request_hash with canonical request_hash: those
   -- are intentionally separate hash domains. created_at binds recovery to the
-  -- current claim and excludes any older same-request_id audit after retention
-  -- cleanup/re-creation.
+  -- current claim and excludes any older same-request_id audit after slot rollover.
   select *
   into v_audit
   from public.risk_gate_audit_log audit
@@ -346,7 +362,7 @@ to service_role;
 
 
 comment on function public.claim_risk_gate_idempotency(text, text, text) is
-  'Claims/replays Risk Gate requests using canonical request hashes while reconciling immutable delivered audits by exact client/request claim window instead of equating separate audit/idempotency hash domains.';
+  'Claims/replays Risk Gate requests using canonical request hashes, rolls expired idempotency slots forward without deletes, and reconciles immutable delivered audits by exact client/request claim window rather than equating separate audit/idempotency hash domains.';
 
 comment on function public.complete_risk_gate_idempotency(text, text, text, uuid, text) is
   'Completes only the owned canonical idempotency claim from a delivered non-authorizing immutable audit created within that exact claim window.';
