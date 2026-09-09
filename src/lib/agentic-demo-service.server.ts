@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { GRI_METHOD_VERSION } from "./gri-current-contract";
 import {
   agenticDemoRequestSchema,
   demoPolicyFromPreset,
@@ -9,6 +8,7 @@ import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { loadStructuralContext } from "./structural-context.server";
+import { readPublicGlobalRisk } from "./global-risk-read.server";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 
 export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
@@ -86,25 +86,49 @@ async function loadRiskObject(objectId: string) {
   return publicRiskObject(data.payload as GeomacroRiskObject);
 }
 
+/**
+ * Reuse the exact canonical public GRI read contract instead of issuing a
+ * looser demo-specific query. If the newest current-method snapshot is stale,
+ * unverified, proof-incomplete, or otherwise ineligible for the public product,
+ * the agentic response must not expose it as context either.
+ */
 async function loadGriContext() {
-  const db = requireRiskSupabase();
-  const { data, error } = await db
-    .from("gri_snapshots")
-    .select(
-      "id,as_of,display_score,raw_score,previous_display_score,previous_raw_score,change_points,coverage,weighted_confidence,event_count,source_count,independent_story_count,methodology_version,proof_version,proof_hash,verification_status,published_at",
-    )
-    .eq("status", "published")
-    .eq("methodology_version", GRI_METHOD_VERSION)
-    .order("as_of", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[agentic-demo] GRI context unavailable", error.message);
+  try {
+    const risk = await readPublicGlobalRisk();
+    return {
+      id: risk.snapshotId,
+      as_of: risk.snapshotAsOf,
+      display_score: risk.score,
+      raw_score: risk.rawScore,
+      previous_display_score: risk.previous,
+      previous_raw_score: risk.previousRaw,
+      change_points:
+        risk.previous === null ? null : risk.score - risk.previous,
+      coverage: risk.coverage,
+      weighted_confidence: risk.weightedConfidence,
+      event_count: risk.eventCount,
+      source_count: risk.sourceCount,
+      independent_story_count: risk.independentStoryCount,
+      methodology_version: risk.methodologyVersion,
+      proof_version: risk.proofVersion,
+      proof_hash: risk.proofHash,
+      verification_status: risk.verificationStatus,
+      calculation_hash: risk.calculationHash,
+      evidence_hash: risk.evidenceHash,
+      input_hash: risk.inputHash,
+      methodology_hash: risk.methodologyHash,
+      disposition_hash: risk.dispositionHash,
+      candidate_event_count: risk.candidateEventCount,
+      reconciliation_residual: risk.reconciliationResidual,
+      change_residual: risk.changeResidual,
+    };
+  } catch (error) {
+    console.error(
+      "[agentic-demo] canonical GRI context unavailable",
+      error instanceof Error ? error.message : error,
+    );
     return null;
   }
-
-  return data ?? null;
 }
 
 async function recordDemoTelemetry(input: {
