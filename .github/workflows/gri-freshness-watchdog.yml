@@ -28,27 +28,35 @@ jobs:
 
       - name: Check current verified GRI freshness
         id: freshness
-        continue-on-error: true
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GRI_METHOD_VERSION: gri-v1.2.0
           GRI_PROOF_VERSION: gri-proof-v1.2.0
           GRI_WATCHDOG_MAX_AGE_HOURS: "1.5"
-        run: node scripts/check-gri-freshness.mjs
-
-      - name: Fail closed on watchdog query/runtime error
-        if: ${{ steps.freshness.outcome == 'failure' && steps.freshness.outputs.exitCode != '10' }}
+        shell: bash
         run: |
-          echo "Freshness check failed unexpectedly. Refusing to guess GRI state."
-          exit 1
+          set +e
+          node scripts/check-gri-freshness.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" -eq 10 ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Freshness checker failed with exit code $code. Refusing to guess GRI state."
+          exit "$code"
 
       - name: Install GRI runtime dependencies for recovery
-        if: ${{ steps.freshness.outcome == 'failure' }}
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
 
       - name: Correlate canonical GRI events into immutable stories
-        if: ${{ steps.freshness.outcome == 'failure' }}
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -59,14 +67,14 @@ jobs:
         run: node scripts/cluster-gri-stories-v12.js
 
       - name: Compute and publish immutable GRI v1.2 snapshot
-        if: ${{ steps.freshness.outcome == 'failure' }}
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/compute-gri-v12.js
 
       - name: Independently verify recovered proof package
-        if: ${{ steps.freshness.outcome == 'failure' }}
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
