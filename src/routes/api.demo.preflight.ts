@@ -1,33 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
+import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 
 const MAX_BODY_BYTES = 8 * 1024;
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 20;
-const buckets = new Map<string, { startedAt: number; count: number }>();
-
-function clientKey(request: Request) {
-  return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown"
-  );
-}
-
-function allowRequest(request: Request) {
-  const key = clientKey(request);
-  const now = Date.now();
-  const current = buckets.get(key);
-
-  if (!current || now - current.startedAt >= WINDOW_MS) {
-    buckets.set(key, { startedAt: now, count: 1 });
-    return true;
-  }
-
-  current.count += 1;
-  return current.count <= MAX_REQUESTS_PER_WINDOW;
-}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,7 +28,14 @@ export const Route = createFileRoute("/api/demo/preflight")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
       POST: async ({ request }) => {
-        if (!allowRequest(request)) {
+        if (
+          !allowPublicDemoRequest(request, {
+            namespace: "demo-preflight",
+            windowMs: 60_000,
+            maxPerClient: 20,
+            maxGlobal: 240,
+          })
+        ) {
           return json(
             {
               ok: false,
@@ -137,12 +120,18 @@ export const Route = createFileRoute("/api/demo/preflight")({
           const message = error instanceof Error ? error.message : "Pre-flight demo failed.";
           const unsupported = message.startsWith("Public demo currently supports");
 
+          if (!unsupported) {
+            console.error("[agentic-demo] public preflight failed closed", error);
+          }
+
           return json(
             {
               ok: false,
               error: {
                 code: unsupported ? "DEMO_SUBJECT_NOT_ENABLED" : "DEMO_FAILED_CLOSED",
-                message,
+                message: unsupported
+                  ? message
+                  : "Requested risk context is temporarily unavailable.",
               },
               execution_authorized: false,
             },
