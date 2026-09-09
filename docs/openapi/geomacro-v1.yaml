@@ -1,0 +1,318 @@
+openapi: 3.1.0
+info:
+  title: Geomacro Verified Intelligence API
+  version: 1.0.0-pilot
+  description: |
+    Versioned integration contract for Geomacro's current verified-intelligence surfaces.
+    Risk Gate is decision context only and never authorizes execution. Customer-facing
+    data is structured-only; raw/private warehouse data is not exposed.
+servers:
+  - url: https://geomacro.live
+    description: Production domain after deployment verification
+paths:
+  /api/agent/risk:
+    get:
+      summary: Discover Geomacro Agent capabilities
+      operationId: getAgentManifest
+      responses:
+        '200':
+          description: Machine-readable capability manifest
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    post:
+      summary: Query grounded intelligence or governed structural context
+      operationId: queryGeomacroAgent
+      description: |
+        Public read-only agent gateway. `intelligence_query` and `structural_query`
+        are rate-limited free capabilities. Other legacy x402 behavior is technical
+        proof on Arc Testnet and is not the planned production commercial billing rail.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/IntelligenceQuery'
+                - $ref: '#/components/schemas/StructuralQuery'
+      responses:
+        '200':
+          description: Grounded structured response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/risk-object-keys:
+    get:
+      summary: Get public Risk Object verification keys
+      operationId: getRiskObjectVerificationKeys
+      responses:
+        '200':
+          description: Ed25519 public verification-key registry
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '503': { $ref: '#/components/responses/Unavailable' }
+    post:
+      summary: Verify a Geomacro Risk Object
+      operationId: verifyRiskObject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [risk_object]
+              properties:
+                risk_object:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Verification report. `valid=true` means the current artifact passed the supported verification checks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskObjectVerificationReport'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413':
+          description: Verification payload exceeds the bounded request size
+        '415':
+          description: Content-Type must be application/json
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/risk-gate:
+    post:
+      summary: Evaluate a signed Risk Object against customer policy
+      operationId: evaluateRiskGate
+      security:
+        - bearerAuth: []
+      description: |
+        Private-pilot, authenticated and idempotent decision-context endpoint.
+        The same client/request_id and payload can be replayed safely. The response
+        always remains non-authorizing (`execution_authorized=false`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskGateRequest'
+      responses:
+        '200':
+          description: Audited Risk Gate decision context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskGateEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Bearer API key required or invalid
+        '403':
+          description: API client disabled
+        '409':
+          description: Idempotency conflict or identical request still in progress
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Private-pilot Geomacro API key. Never expose this credential in browser code.
+  responses:
+    BadRequest:
+      description: Invalid structured request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unavailable:
+      description: Required governed service is unavailable; no synthetic fallback is substituted
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    IntelligenceQuery:
+      type: object
+      required: [capability, question]
+      properties:
+        capability:
+          const: intelligence_query
+        question:
+          type: string
+          minLength: 1
+        client_request_id:
+          type: string
+    StructuralQuery:
+      type: object
+      required: [capability]
+      properties:
+        capability:
+          const: structural_query
+        country_iso3:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        corridor:
+          type: object
+          properties:
+            origin_country_iso3:
+              type: string
+              pattern: '^[A-Z]{3}$'
+            destination_country_iso3:
+              type: string
+              pattern: '^[A-Z]{3}$'
+        client_request_id:
+          type: string
+    RiskGatePolicy:
+      type: object
+      required:
+        - policy_id
+        - policy_version
+        - continue_max_score
+        - reduce_limit_max_score
+        - require_approval_max_score
+        - minimum_confidence_for_auto_continue
+        - require_commercial_verification_for_continue
+      properties:
+        policy_id: { type: string }
+        policy_version: { type: string }
+        continue_max_score: { type: number, minimum: 0, maximum: 100 }
+        reduce_limit_max_score: { type: number, minimum: 0, maximum: 100 }
+        require_approval_max_score: { type: number, minimum: 0, maximum: 100 }
+        minimum_confidence_for_auto_continue: { type: number, minimum: 0, maximum: 1 }
+        require_commercial_verification_for_continue: { type: boolean }
+        max_positive_delta_for_auto_continue: { type: number, minimum: 0, maximum: 100 }
+        hard_stop_driver_contributions:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 100
+    RiskGateRequest:
+      type: object
+      required: [request_id, subject, policy]
+      properties:
+        request_id:
+          type: string
+          description: Idempotency key scoped to the authenticated API client
+        evaluated_at:
+          type: string
+          format: date-time
+          description: Optional live-preflight clock within the server's accepted skew window
+        subject:
+          oneOf:
+            - type: object
+              required: [type, country_iso3]
+              properties:
+                type: { const: country }
+                country_iso3: { type: string, pattern: '^[A-Z]{3}$' }
+            - type: object
+              required: [type, origin_country_iso3, destination_country_iso3]
+              properties:
+                type: { const: corridor }
+                origin_country_iso3: { type: string, pattern: '^[A-Z]{3}$' }
+                destination_country_iso3: { type: string, pattern: '^[A-Z]{3}$' }
+        action_context:
+          type: object
+          properties:
+            action_type: { type: string }
+            amount: { type: number }
+            currency: { type: string }
+            destination: { type: string }
+            metadata:
+              type: object
+              additionalProperties: true
+        policy:
+          $ref: '#/components/schemas/RiskGatePolicy'
+    RiskGateDecision:
+      type: object
+      required:
+        - schema_version
+        - request_id
+        - decision
+        - recommended_action
+        - reason_codes
+        - counterfactual
+        - execution_authorized
+      properties:
+        schema_version: { const: risk-gate-1.0 }
+        request_id: { type: string }
+        decision:
+          enum: [CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE]
+        recommended_action:
+          enum: [ALLOW, REDUCE_EXPOSURE, REQUIRE_HUMAN_APPROVAL, BLOCK]
+        reason_codes:
+          type: array
+          items: { type: string }
+        counterfactual:
+          type: object
+          additionalProperties: true
+        subject:
+          type: object
+          additionalProperties: true
+        risk:
+          type: object
+          additionalProperties: true
+        top_drivers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        policy:
+          type: object
+          additionalProperties: true
+        execution_authorized:
+          const: false
+    RiskGateEnvelope:
+      type: object
+      required: [ok, risk_gate, context, audit_id]
+      properties:
+        ok: { const: true }
+        risk_gate:
+          $ref: '#/components/schemas/RiskGateDecision'
+        context:
+          type: object
+          additionalProperties: true
+        audit_id:
+          type: string
+    RiskObjectVerificationReport:
+      type: object
+      required: [ok, verification]
+      properties:
+        ok: { type: boolean }
+        verification:
+          type: object
+          properties:
+            verification_version: { const: gro-verification-v1.0.0 }
+            valid: { type: boolean }
+            status: { enum: [VERIFIED, EXPIRED, INVALID] }
+            cryptographic_valid: { type: boolean }
+            reason_codes:
+              type: array
+              items: { type: string }
+          additionalProperties: true
+    ErrorEnvelope:
+      type: object
+      properties:
+        ok: { const: false }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+        execution_authorized:
+          const: false
