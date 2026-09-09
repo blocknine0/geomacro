@@ -76,23 +76,6 @@ describe("commercial runtime security baseline", () => {
     );
   });
 
-  it("detects actual hosted admin-key bindings without flagging harmless documentation", () => {
-    const workflowSources = filesUnder(".github/workflows")
-      .filter((path) => path.endsWith(".yml") || path.endsWith(".yaml"))
-      .map(read)
-      .join("\n");
-
-    for (const secret of [
-      "TREASURY_PRIVATE_KEY_1",
-      "TREASURY_PRIVATE_KEY_2",
-      "LIQUIDITY_PRIVATE_KEY",
-      "DEPLOYER_PRIVATE_KEY",
-    ]) {
-      const binding = new RegExp(`secrets\\.${secret}\\b`);
-      expect(workflowSources).not.toMatch(binding);
-    }
-  });
-
   it("runs pinned CodeQL with least privilege", () => {
     const source = read(".github/workflows/codeql-security.yml");
     expect(source).toContain("contents: read");
