@@ -32,24 +32,34 @@ export const agentIntelligenceQuerySchema = z.object({
 
 const Iso3 = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
 
-export const agentStructuralQuerySchema = z.object({
-  capability: z.literal("structural_query"),
-  subject: z.discriminatedUnion("type", [
+const StructuralSubjectSchema = z
+  .discriminatedUnion("type", [
     z.object({
       type: z.literal("country"),
       country_iso3: Iso3,
     }),
-    z
-      .object({
-        type: z.literal("corridor"),
-        origin_country_iso3: Iso3,
-        destination_country_iso3: Iso3,
-      })
-      .refine(
-        (value) => value.origin_country_iso3 !== value.destination_country_iso3,
-        { message: "Corridor endpoints must be different countries" },
-      ),
-  ]),
+    z.object({
+      type: z.literal("corridor"),
+      origin_country_iso3: Iso3,
+      destination_country_iso3: Iso3,
+    }),
+  ])
+  .superRefine((value, ctx) => {
+    if (
+      value.type === "corridor" &&
+      value.origin_country_iso3 === value.destination_country_iso3
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destination_country_iso3"],
+        message: "Corridor endpoints must be different countries",
+      });
+    }
+  });
+
+export const agentStructuralQuerySchema = z.object({
+  capability: z.literal("structural_query"),
+  subject: StructuralSubjectSchema,
   client_request_id: z.string().trim().min(4).max(128).optional(),
 });
 
