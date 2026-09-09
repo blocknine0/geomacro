@@ -14,6 +14,7 @@ on:
       - "supabase/migrations/038_telegram_flash_channel_registry.sql"
       - "supabase/migrations/039_flash_corroboration_graph.sql"
       - "supabase/migrations/040_critical_minerals_news_candidates.sql"
+      - "supabase/migrations/041_country_flash_live_smoke_hardening.sql"
       - ".github/workflows/country-flash-validation.yml"
 
 permissions:
@@ -34,6 +35,7 @@ jobs:
         run: |
           python -m py_compile \
             workers/telegram-flash/worker.py \
+            workers/telegram-flash/production_entrypoint.py \
             workers/telegram-flash/corroboration_loop.py \
             workers/telegram-flash/supervisor.py \
             workers/telegram-flash/generate_session.py
@@ -62,3 +64,4 @@ jobs:
           test -f supabase/migrations/038_telegram_flash_channel_registry.sql
           test -f supabase/migrations/039_flash_corroboration_graph.sql
           test -f supabase/migrations/040_critical_minerals_news_candidates.sql
+          test -f supabase/migrations/041_country_flash_live_smoke_hardening.sql

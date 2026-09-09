@@ -16,6 +16,7 @@ const ALLOWED_SOURCE_IDS =
     "federal_reserve_press_rss",
     "forexlive_rss",
     "mining_com_rss",
+    "usgs_minerals_news_rss",
   ])
 
 const ALLOWED_VERIFICATION_STATUSES =

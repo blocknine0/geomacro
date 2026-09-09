@@ -9,6 +9,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY worker.py ./
+COPY production_entrypoint.py ./
 COPY corroboration_loop.py ./
 COPY supervisor.py ./
 
