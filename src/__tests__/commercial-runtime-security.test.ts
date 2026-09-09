@@ -5,6 +5,22 @@ import { describe, expect, it } from "vitest";
 const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
+const BUN_LOCKED_RUNTIME_WORKFLOWS = [
+  ".github/workflows/auto-ingest-news.yml",
+  ".github/workflows/security-monitor.yml",
+  ".github/workflows/sync-lifecycle.yml",
+  ".github/workflows/auto-recovery.yml",
+  ".github/workflows/auto-create-markets.yml",
+  ".github/workflows/auto-finalize-markets.yml",
+  ".github/workflows/auto-resolve-markets.yml",
+  ".github/workflows/auto-resolve-disputes.yml",
+  ".github/workflows/Auto-generate-briefings.yml",
+  ".github/workflows/propose-v2-upgrade.yml",
+  ".github/workflows/deploy-v2-implementation.yml",
+  ".github/workflows/execute-v2-upgrade.yml",
+  ".github/workflows/fund-v2-liquidity.yml",
+];
+
 function filesUnder(path: string): string[] {
   const absolute = join(ROOT, path);
   return readdirSync(absolute).flatMap((name) => {
@@ -50,6 +66,19 @@ describe("commercial runtime security baseline", () => {
     expect(source).toContain("cancel-in-progress: false");
   });
 
+  it("uses the canonical Bun lockfile for privileged and scheduled runtime workflows", () => {
+    for (const path of BUN_LOCKED_RUNTIME_WORKFLOWS) {
+      const source = read(path);
+      expectPinnedActions(path);
+      expect(source, path).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+      expect(source, path).toContain('bun-version: "1.4.2"');
+      expect(source, path).toContain("bun install --frozen-lockfile --ignore-scripts");
+      expect(source, path).not.toContain("npm ci");
+      expect(source, path).not.toContain("cache: npm");
+      expect(source, path).not.toMatch(/\bnpm install\b/);
+    }
+  });
+
   it("hardens scheduled production intelligence writes", () => {
     for (const path of [
       ".github/workflows/auto-ingest-news.yml",
@@ -63,7 +92,7 @@ describe("commercial runtime security baseline", () => {
     }
 
     const ingest = read(".github/workflows/auto-ingest-news.yml");
-    expect(ingest).toContain("npm ci --ignore-scripts --omit=dev --no-audit --no-fund");
+    expect(ingest).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(ingest).toContain("Prediction-market creation is not part of this");
 
     const reliefWeb = read(".github/workflows/ingest-reliefweb-live.yml");
