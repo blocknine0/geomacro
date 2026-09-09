@@ -97,6 +97,7 @@ const EVM_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 const TX_HASH = /^0x[a-fA-F0-9]{64}$/;
 const INTEGER_STRING = /^(0|[1-9][0-9]{0,77})$/;
 const SAFE_SIGNED_SCALAR = /^[^&=\u0000-\u001F\u007F]{1,512}$/;
+const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
 const KNOWN_STATUSES = new Set<GoatFlowOrderStatus>([
   "CHECKOUT_VERIFIED",
   "PAYMENT_CONFIRMED",
@@ -142,6 +143,13 @@ function safeSignedScalar(value: string, field: string): string {
   return value;
 }
 
+function validateProviderCredential(value: string, field: string, maxLength: number): string {
+  if (!value || value.length > maxLength || CONTROL_CHARS.test(value)) {
+    throw new Error(`${field} contains invalid credential characters or length`);
+  }
+  return value;
+}
+
 export function goatFlowEnvironment(): GoatFlowEnvironment | null {
   const value = process.env.GOATX402_ENVIRONMENT?.trim().toLowerCase();
   return value === "testnet3" || value === "mainnet" ? value : null;
@@ -173,13 +181,9 @@ export function requireGoatFlowConfig(): GoatFlowConfig {
     throw new Error("GOATX402_API_URL must match the official selected GOAT Flow origin");
   }
 
-  const apiKey = requiredEnv("GOATX402_API_KEY", 512);
-  const apiSecret = requiredEnv("GOATX402_API_SECRET", 2048);
+  const apiKey = validateProviderCredential(requiredEnv("GOATX402_API_KEY", 512), "GOATX402_API_KEY", 512);
+  const apiSecret = validateProviderCredential(requiredEnv("GOATX402_API_SECRET", 2048), "GOATX402_API_SECRET", 2048);
   const merchantId = safeId(requiredEnv("GOATX402_MERCHANT_ID", 128), "GOATX402_MERCHANT_ID");
-
-  if (/[\u0000-\u001F\u007F]/.test(apiKey) || /[\u0000-\u001F\u007F]/.test(apiSecret)) {
-    throw new Error("GOAT Flow credentials contain invalid control characters");
-  }
 
   return {
     environment,
@@ -266,22 +270,23 @@ export function signGoatFlowRequest(
   nowSeconds = Math.floor(Date.now() / 1000),
   nonce = randomUUID(),
 ) {
-  safeSignedScalar(config.api_key, "api_key");
+  const apiKey = validateProviderCredential(config.api_key, "api_key", 512);
+  const apiSecret = validateProviderCredential(config.api_secret, "api_secret", 2048);
   safeSignedScalar(String(nowSeconds), "timestamp");
   safeSignedScalar(nonce, "nonce");
 
   const params = {
     ...stringifiedSignedBody(body),
-    api_key: config.api_key,
+    api_key: apiKey,
     timestamp: String(nowSeconds),
     nonce,
   };
 
   return {
-    "X-API-Key": config.api_key,
+    "X-API-Key": apiKey,
     "X-Timestamp": String(nowSeconds),
     "X-Nonce": nonce,
-    "X-Sign": calculateGoatFlowSignature(params, config.api_secret),
+    "X-Sign": calculateGoatFlowSignature(params, apiSecret),
   } as const;
 }
 
