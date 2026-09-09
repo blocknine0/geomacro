@@ -525,7 +525,7 @@ export function ArenaSection() {
           [market.id]: { hawkWei: 0n, doveWei: 0n, hawkUsdc: 0, doveUsdc: 0 },
         }));
       } else {
-        setClaimError(`[${m.id}] ${notify.error("arena.claim", e, "claiming your winnings").message}`);
+        setClaimError(`[${market.id}] ${notify.error("arena.claim", e, "claiming your winnings").message}`);
       }
     } finally {
       setClaiming(null);
