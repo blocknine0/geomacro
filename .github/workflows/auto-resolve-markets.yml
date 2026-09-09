@@ -1,45 +1,47 @@
 name: Auto-resolve Agent Arena markets
-# Runs at :30 every 2 hours — after create-markets (:10) and finalize-markets
-# (:15), so it's not competing with them for RPC calls. Resolves any market
-# that's at least 48 hours old (per resolution_at) with an AI verdict.
+# Existing Arc Testnet markets remain supported as secondary technical proof.
+# This runs at :30 every 2 hours after finalization (:15) and resolves markets
+# that are due under the existing lifecycle contract. New market creation is
+# manual-only and is not part of this scheduled pipeline.
 on:
   schedule:
     - cron: "30 */2 * * *"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+
 concurrency:
-  # Prevents a manual re-run from overlapping with a still-running scheduled
-  # run (or vice versa) — both use the same wallet/nonce, so an overlap can
-  # cause exactly the kind of nonce races / duplicate-send issues seen in
-  # the logs. Cancels the older run in favor of the newer one.
-  group: auto-resolve-markets
-  cancel-in-progress: true
+  # All workflows using OWNER_PRIVATE_KEY share this group. Queue rather than
+  # cancel so a manual run cannot interrupt another transaction mid-broadcast.
+  group: arc-owner-wallet-state-change
+  cancel-in-progress: false
+
 jobs:
   resolve-markets:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # 🛡️ NEW: without this, GitHub Actions' default job timeout is 6 hours —
-    # meaning a run stuck retrying against a rate-limited RPC just burns
-    # Actions minutes for hours instead of failing fast. 10 min gives the
-    # script's own RUN_TIME_BUDGET_MS (6 min) headroom to exit gracefully
-    # before a hard timeout cancels it mid-transaction.
     timeout-minutes: 10
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: npm install ethers @supabase/supabase-js groq-sdk node-fetch
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Verify Arc Testnet and contract before exposing owner credentials
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
       - name: Run market resolution script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
-          # 🛡️ FIX: these two were missing entirely — the script was silently
-          # falling back to its own hardcoded default (the OLD V1 address)
-          # regardless of what CONTRACT_ADDRESS was set to in repo secrets,
-          # since this workflow never actually read the secret into the
-          # environment. This is why resolve-markets.js kept resolving
-          # against V1 even after CONTRACT_ADDRESS was updated post-cutover.
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -49,19 +51,9 @@ jobs:
           ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
           ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
           ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
-          # 5th fallback is optional. If this secret doesn't exist, GitHub
-          # Actions passes an empty string, and the script falls back to its
-          # own default (the public rpc.testnet.arc.network) — no secret
-          # needed unless you want to override it with something else.
           ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          # Lowered from 40/60 — given the sustained (not just bursty) RPC
-          # throttle seen in practice, a run that tries for 60 events just
-          # spends its whole time budget backing off on the first several
-          # instead of actually resolving anything. Smaller batches finish
-          # more of what they start; the leftover backlog is picked up by
-          # the next run 2h later regardless.
           MAX_RESOLUTIONS_PER_RUN: "15"
           MAX_EVENTS_PER_RUN: "20"
           RUN_TIME_BUDGET_MS: "360000"
