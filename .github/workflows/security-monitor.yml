@@ -36,6 +36,10 @@ jobs:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
         run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target before privileged writes
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
       - name: Run anomaly monitor
         run: node scripts/anomaly-monitor.js
         env:
