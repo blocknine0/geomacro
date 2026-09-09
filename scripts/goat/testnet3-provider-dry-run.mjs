@@ -23,6 +23,7 @@ const TOKEN_RE = /^[A-Z0-9][A-Z0-9._-]{1,15}$/;
 const INTEGER_RE = /^(0|[1-9][0-9]{0,77})$/;
 const SAFE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SAFE_SCALAR_RE = /^[^&=\u0000-\u001f\u007f]{1,512}$/;
+const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/;
 
 function fail(message) {
   throw new Error(message);
@@ -48,9 +49,19 @@ function safeScalar(value, field) {
   return text;
 }
 
+function validateCredential(value, field, maxLength) {
+  const text = String(value);
+  if (!text || text.length > maxLength || CONTROL_CHARS_RE.test(text)) {
+    fail(`${field} contains invalid credential characters or length`);
+  }
+  return text;
+}
+
 function signHeaders(body, apiKey, apiSecret) {
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = randomUUID();
+  const safeApiKey = validateCredential(apiKey, "api_key", 512);
+  const safeApiSecret = validateCredential(apiSecret, "api_secret", 2048);
   const params = {
     ...Object.fromEntries(
       Object.entries(body ?? {}).map(([key, value]) => [
@@ -58,7 +69,7 @@ function signHeaders(body, apiKey, apiSecret) {
         safeScalar(value, key),
       ]),
     ),
-    api_key: safeScalar(apiKey, "api_key"),
+    api_key: safeApiKey,
     timestamp: safeScalar(timestamp, "timestamp"),
     nonce: safeScalar(nonce, "nonce"),
   };
@@ -69,12 +80,12 @@ function signHeaders(body, apiKey, apiSecret) {
     .map((key) => `${key}=${params[key]}`)
     .join("&");
 
-  const signature = createHmac("sha256", apiSecret)
+  const signature = createHmac("sha256", safeApiSecret)
     .update(canonical)
     .digest("hex");
 
   return {
-    "X-API-Key": apiKey,
+    "X-API-Key": safeApiKey,
     "X-Timestamp": timestamp,
     "X-Nonce": nonce,
     "X-Sign": signature,
@@ -242,12 +253,10 @@ function normalizeChallenge(raw, expected) {
   };
 }
 
-const apiKey = requiredEnv("GOATX402_API_KEY", 512);
-const apiSecret = requiredEnv("GOATX402_API_SECRET", 2048);
+const apiKey = validateCredential(requiredEnv("GOATX402_API_KEY", 512), "GOATX402_API_KEY", 512);
+const apiSecret = validateCredential(requiredEnv("GOATX402_API_SECRET", 2048), "GOATX402_API_SECRET", 2048);
 const merchantId = requiredEnv("GOATX402_MERCHANT_ID", 128);
 assert(SAFE_ID_RE.test(merchantId), "GOATX402_MERCHANT_ID is invalid");
-assert(!/[\u0000-\u001f\u007f]/.test(apiKey), "GOAT API key has invalid control characters");
-assert(!/[\u0000-\u001f\u007f]/.test(apiSecret), "GOAT API secret has invalid control characters");
 
 const merchant = await publicGet(`/merchants/${encodeURIComponent(merchantId)}`);
 assert(requiredString(merchant, "merchant_id", 128) === merchantId, "GOAT merchant identity mismatch");
