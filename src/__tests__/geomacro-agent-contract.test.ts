@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentIntelligenceQuerySchema,
+  agentStructuralQuerySchema,
   GEOMACRO_AGENT_VERSION,
   geomacroAgentManifest,
 } from "../lib/geomacro-agent-contract";
@@ -26,6 +27,39 @@ describe("Geomacro Agent v1 contract", () => {
     ).toThrow();
   });
 
+  it("accepts normalized country/corridor structural queries and rejects a self-corridor", () => {
+    const country = agentStructuralQuerySchema.parse({
+      capability: "structural_query",
+      subject: { type: "country", country_iso3: "ind" },
+    });
+    const corridor = agentStructuralQuerySchema.parse({
+      capability: "structural_query",
+      subject: {
+        type: "corridor",
+        origin_country_iso3: "usa",
+        destination_country_iso3: "chn",
+      },
+    });
+
+    expect(country.subject).toEqual({ type: "country", country_iso3: "IND" });
+    expect(corridor.subject).toEqual({
+      type: "corridor",
+      origin_country_iso3: "USA",
+      destination_country_iso3: "CHN",
+    });
+
+    expect(() =>
+      agentStructuralQuerySchema.parse({
+        capability: "structural_query",
+        subject: {
+          type: "corridor",
+          origin_country_iso3: "IND",
+          destination_country_iso3: "IND",
+        },
+      }),
+    ).toThrow("Corridor endpoints must be different countries");
+  });
+
   it("publishes a read-and-recommend manifest with execution disabled", () => {
     const manifest = geomacroAgentManifest("https://geomacro.live");
 
@@ -34,8 +68,11 @@ describe("Geomacro Agent v1 contract", () => {
     expect(manifest.endpoint).toBe("https://geomacro.live/api/agent/risk");
     expect(manifest.boundaries.autonomous_execution).toBe(false);
     expect(manifest.boundaries.wallet_custody).toBe(false);
+    expect(manifest.boundaries.raw_data_delivery).toBe(false);
+    expect(manifest.commercial.free_credits_per_30_days).toBe(500);
     expect(manifest.capabilities.map((item) => item.id)).toEqual([
       "intelligence_query",
+      "structural_query",
       "risk_preflight",
     ]);
   });
