@@ -1,8 +1,11 @@
 {
   "protocol_version": "gri-historical-validation-v1.0.0",
   "methodology_version": "gri-v1.2.0",
+  "proof_version": "gri-proof-v1.2.0",
   "evidence_class": "retrospective_replay",
+  "lookahead_safe": false,
   "lookahead_safe_required_for_predictive_claims": true,
+  "max_snapshot_distance_hours": 30,
   "windows": [
     {
       "id": "russia-ukraine-invasion-2022",
