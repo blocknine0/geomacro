@@ -1,8 +1,8 @@
-name: Publish GRI Proof Snapshot
+name: GRI Freshness Watchdog
 
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "8,38 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -13,20 +13,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  freshness-watchdog:
     if: ${{ github.event_name == 'workflow_dispatch' || vars.GRI_PUBLISH_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install GRI runtime dependencies
+
+      - name: Check current verified GRI freshness
+        id: freshness
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GRI_METHOD_VERSION: gri-v1.2.0
+          GRI_PROOF_VERSION: gri-proof-v1.2.0
+          GRI_WATCHDOG_MAX_AGE_HOURS: "1.5"
+        shell: bash
+        run: |
+          set +e
+          node scripts/check-gri-freshness.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" -eq 10 ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Freshness checker failed with exit code $code. Refusing to guess GRI state."
+          exit "$code"
+
+      - name: Install GRI runtime dependencies for recovery
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+
       - name: Correlate canonical GRI events into immutable stories
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -36,12 +66,15 @@ jobs:
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
         run: node scripts/cluster-gri-stories-v12.js
 
-      - name: Compute, reconcile and publish immutable GRI v1.2 snapshot
+      - name: Compute and publish immutable GRI v1.2 snapshot
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/compute-gri-v12.js
-      - name: Independently verify the latest published proof package
+
+      - name: Independently verify recovered proof package
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
