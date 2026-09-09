@@ -1,10 +1,9 @@
-name: Auto-generate Hawk/Dove briefings
-# Standalone and isolated from create-markets/resolve-markets/finalize-markets
-# on purpose — this only reads+writes Supabase, never touches the chain, so
-# a failure here cannot affect market creation, resolution, or finalization.
+name: Generate Hawk/Dove briefings (Technical Proof)
+# Prediction-market briefings are a secondary Arc Testnet technical-proof
+# artifact, not part of the flagship intelligence production pipeline.
+# Keep this available for deliberate demo/testing runs without continuously
+# spending Actions/LLM quota or generating new market-side artifacts.
 on:
-  schedule:
-    - cron: "20,50 * * * *" # twice an hour, offset from the other jobs
   workflow_dispatch: {}
 concurrency:
   group: auto-generate-briefings
