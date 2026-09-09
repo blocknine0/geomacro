@@ -44,14 +44,17 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).not.toContain("country, corridor and event risk");
   });
 
-  it("keeps Data & API availability explicit", () => {
+  it("keeps Data, API and Agent availability explicit", () => {
     const route = read("src/routes/data-api.tsx");
 
-    expect(route).toContain("LIVE · PUBLIC");
-    expect(route).toContain("PRIVATE PILOT");
-    expect(route).toContain("COMMERCIAL DIRECTION");
-    expect(route).toContain("country + directional endpoint-composed corridor");
-    expect(route).toContain("customer retains execution control");
+    expect(route).toContain("PUBLIC · GEOMACRO AGENT V1");
+    expect(route).toContain("PUBLIC · FREE");
+    expect(route).toContain("FOUNDING PILOT");
+    expect(route).toContain("FOUNDING PILOT · API");
+    expect(route).toContain("VALIDATED EXPANSION");
+    expect(route).toContain("ENDPOINT_COMPOSED_V0_1");
+    expect(route).toContain("route_modeling_status = NOT_MODELED");
+    expect(route).toContain("execution_authorized=false");
   });
 
   it("keeps Arc, Circle and market routes explicitly technical proof", () => {
