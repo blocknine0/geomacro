@@ -1,6 +1,8 @@
 # Commercial Early Access Scope
 
-Geomacro's first commercial Early Access should be a narrow founding-pilot engagement, not a claim of broad enterprise availability.
+Canonical commercial source of truth: `docs/EARLY_ACCESS_COMMERCIAL_PACKAGE.md`.
+
+This document is the narrower scope-and-boundary companion. Geomacro's first commercial Early Access should be a founding-pilot engagement, not a claim of broad enterprise availability.
 
 ## Offer
 
