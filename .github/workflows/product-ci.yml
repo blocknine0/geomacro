@@ -12,10 +12,21 @@ on:
       - 'vite.config.*'
       - 'tsconfig*.json'
       - '.github/workflows/product-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bunfig.toml'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - '.github/workflows/product-ci.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: product-ci-${{ github.workflow }}-${{ github.ref }}
@@ -27,32 +38,21 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout GOAT pilot branch for one-time normalization
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: feat/goat-x402-partner-pilot
 
+      # Pin the exact Bun version that produced and validated the committed
+      # lockfile. Do not float on "latest": lockfile semantics can change
+      # between Bun releases and create false/intermittent CI failures.
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
 
+      # This is intentionally frozen. package.json dependency/override changes
+      # must be accompanied by a regenerated bun.lock in the same PR.
       - name: Verify committed lockfile and install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Normalize GOAT provider challenge
-        shell: bash
-        run: |
-          perl -0pi -e 's/  raw: Record<string, unknown>;\n//s' src/lib/goat-flow.server.ts
-          perl -0pi -e 's/    expires_at: expiresAt,\n    raw,\n  };/    expires_at: expiresAt,\n  };/s' src/lib/goat-flow.server.ts
-          perl -0pi -e 's/  const \{\n    raw: _providerRaw,\n    \.\.\.normalizedChallenge\n  \} = providerChallenge;/  const normalizedChallenge = providerChallenge;/s' src/lib/goat-pilot-service.server.ts
-          git add src/lib/goat-flow.server.ts src/lib/goat-pilot-service.server.ts
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "fix(goat): expose normalized payment challenge only"
-            git push origin HEAD:feat/goat-x402-partner-pilot
-          fi
 
       - name: App tests
         run: bun run test:app
@@ -70,6 +70,9 @@ jobs:
         shell: bash
         run: |
           if ! git diff --quiet -- src/routeTree.gen.ts; then
-            echo "::error::src/routeTree.gen.ts is stale"
+            echo "::error::src/routeTree.gen.ts is stale. Regenerate it with the current TanStack Router source routes and commit the generated file."
+            echo "----- BEGIN GENERATED ROUTE TREE -----"
+            cat src/routeTree.gen.ts
+            echo "----- END GENERATED ROUTE TREE -----"
             exit 1
           fi
