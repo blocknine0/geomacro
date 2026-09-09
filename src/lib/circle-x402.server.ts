@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import process from "node:process";
 import { BatchFacilitatorClient } from "@circle-fin/x402-batching/server";
@@ -58,8 +57,34 @@ function paymentRequirements() {
   };
 }
 
+/**
+ * Standards-based UTF-8/base64 helpers for Node, Vite SSR and edge runtimes.
+ *
+ * Do not import node:buffer here. The app's Worker/browser polyfill resolver
+ * intentionally redirects that specifier, and importing it from this server
+ * module can force Vite's SSR evaluator through the raw CommonJS `buffer`
+ * package where `require` is unavailable.
+ */
+function encodeUtf8Base64(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return globalThis.btoa(binary);
+}
+
+function decodeUtf8Base64(value: string) {
+  const binary = globalThis.atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+}
+
 function encodeHeader(value: unknown) {
-  return Buffer.from(JSON.stringify(value), "utf8").toString("base64");
+  return encodeUtf8Base64(JSON.stringify(value));
 }
 
 function decodePaymentHeader(header: string) {
@@ -69,7 +94,7 @@ function decodePaymentHeader(header: string) {
 
   let json: string;
   try {
-    json = Buffer.from(header, "base64").toString("utf8");
+    json = decodeUtf8Base64(header);
   } catch {
     throw new Error("PAYMENT_SIGNATURE_INVALID_ENCODING");
   }
