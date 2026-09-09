@@ -1,147 +1,84 @@
 # Geomacro Security Policy
 
-Security is a core requirement of Geomacro because the platform combines
-external data, automated intelligence, wallet interactions, smart contracts,
-and onchain financial state.
+Security, data integrity and operational resilience are release requirements for Geomacro because the product combines external evidence, automated intelligence, signed Risk Objects, APIs, wallet-facing technical proof, smart contracts and privileged infrastructure.
 
-## Supported Version
+## Supported version
 
-Security support currently applies to the latest version of the `main` branch
-and the infrastructure associated with the current Geomacro deployment.
+Security support applies to the latest `main` source and the infrastructure explicitly associated with the current Geomacro deployment. Historical versions, forks, modified deployments and third-party copies are not supported by Geomacro.
 
-Historical versions, forks, modified deployments, and third-party copies are
-not supported by Geomacro.
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Do not disclose suspected vulnerabilities through public GitHub issues, discussions, pull requests or social media.
 
-Please do **not** disclose suspected security vulnerabilities through public
-GitHub issues, discussions, pull requests, or social media.
+Use the private contact channel at:
 
-Use GitHub's private vulnerability reporting / security advisory mechanism for
-this repository.
+- https://geomacro.live/contact
 
-When submitting a report, please include, where possible:
+If GitHub private vulnerability reporting is visibly available for this repository, that channel may also be used.
 
-- a clear description of the issue;
-- the affected component;
-- steps required to reproduce it;
-- the potential security impact;
-- relevant transaction hashes, logs, screenshots, or test cases;
-- any suggested mitigation, if known.
+A useful report includes the affected surface, prerequisites, steps to reproduce, likely impact and a minimal proof of concept where safe. Transaction hashes, block numbers and test cases are particularly useful for smart-contract or wallet-related reports.
 
-We aim to acknowledge legitimate security reports within 72 hours.
+Do not send private keys, seed phrases, service-role credentials, signing keys, OTPs or unrelated confidential information.
 
-Please allow reasonable time for investigation and remediation before making
-a vulnerability public.
+## Security scope
 
-## Security Scope
+Examples of material findings include:
 
-Examples of issues that may be in scope include:
-
-- unauthorized smart-contract actions;
-- incorrect authorization or access-control behavior;
-- exposure of privileged credentials or secrets;
+- unauthorized smart-contract or privileged application actions;
+- authentication, authorization or access-control bypass;
+- credential, signing-key or secret exposure;
 - wallet transaction manipulation originating from Geomacro;
-- vulnerabilities affecting market, dispute, resolution, finalization, or
-  claim integrity;
-- cross-site scripting or other application-level injection vulnerabilities;
-- unauthorized access to protected application data;
-- database Row Level Security failures;
-- privilege escalation between public and trusted application services;
-- vulnerabilities in automated lifecycle infrastructure that could result in
-  unauthorized state changes;
-- vulnerabilities that could materially affect user funds or protocol state.
+- failures affecting signed Risk Object integrity or verification;
+- Risk Gate boundary violations, especially any path where `execution_authorized` could become true;
+- cross-site scripting, injection or server-side request abuse;
+- unauthorized access to protected application or database data;
+- Row Level Security or service-boundary failures;
+- privilege escalation between public and trusted services;
+- lifecycle infrastructure behavior that can cause unauthorized state changes;
+- vulnerabilities that materially affect user assets or protocol state.
 
-This list is illustrative rather than exhaustive.
+## Research boundaries
 
-## Out of Scope
+Please avoid actions that could harm users or production systems, including:
 
-The following are generally outside the scope of the Geomacro security
-program:
+- accessing or changing data that is not yours;
+- destructive production testing;
+- denial-of-service or high-volume load testing against `geomacro.live`;
+- phishing, social engineering or credential theft;
+- moving, staking, claiming or otherwise using assets that are not yours;
+- extracting or attempting to use private keys or privileged credentials;
+- automated scanning that materially degrades service availability.
 
-- vulnerabilities entirely within independent third-party services;
-- attacks requiring compromise of a user's own wallet or device where
-  Geomacro is not the source of the compromise;
-- social engineering or phishing that does not originate from Geomacro;
-- denial-of-service reports that rely solely on excessive traffic;
-- findings against obsolete or unsupported versions;
-- issues already documented by Geomacro as known testnet limitations;
-- theoretical findings without a credible security impact.
+Use isolated test environments and test assets wherever possible.
 
-Vulnerabilities affecting third-party infrastructure should normally be
-reported directly to the responsible provider.
+Findings entirely within independent third-party infrastructure should normally be reported to the responsible provider unless Geomacro's integration materially creates or amplifies the vulnerability.
 
-## Testnet Notice
+## Response and launch policy
 
-Geomacro currently operates on testnet infrastructure.
+Reports are triaged by impact, exploitability and affected trust boundary. Critical and high-severity findings block external launch of the affected capability, or are remediated and re-tested before that capability is treated as release-ready.
 
-Testnet deployments may contain known limitations, experimental parameters,
-or implementation choices that are scheduled to change before production
-deployment.
+Geomacro preserves evidence for material security and resilience tests where practical. Security statements are limited to what has actually been tested.
 
-A documented testnet limitation is not automatically considered a previously
-unknown security vulnerability.
+Geomacro does not describe the system as "unhackable" and does not imply a third-party audit, certification or compliance status unless one has actually been obtained.
 
-This does not exclude reports demonstrating that a known limitation creates a
-material security impact beyond its documented scope.
+## Product boundaries
 
-## Responsible Disclosure
+- Risk Gate is decision-support infrastructure and does not authorize customer execution. `execution_authorized=false` is a permanent product boundary.
+- Geomacro does not custody customer wallets or request customer signing keys.
+- Arc, Circle and event-market integrations are technical-proof surfaces unless explicitly stated otherwise.
+- Structural evidence is not silently converted into GRI input outside the published methodology contract.
 
-Researchers are expected to:
+## Testnet notice
 
-- make a good-faith effort to avoid privacy violations, data destruction, and
-  disruption of services;
-- avoid accessing or modifying data beyond what is necessary to demonstrate
-  the vulnerability;
-- avoid attempting to extract private keys, credentials, or unrelated
-  confidential information;
-- avoid intentionally affecting other users;
-- report vulnerabilities privately before public disclosure.
+Current Arc/onchain surfaces operate on testnet infrastructure. Testnet deployments can contain experimental parameters and documented limitations. A documented limitation is not automatically a previously unknown vulnerability, but a report showing materially greater impact remains relevant.
 
-Do not exploit a vulnerability for financial gain or use it to interfere with
-market, dispute, settlement, or protocol operations.
+## No bug-bounty commitment
 
-## Smart Contract and Financial Safety
+Geomacro does not currently promise a public monetary bug bounty. Submission of a report does not create an entitlement to compensation, employment, partnership or another reward unless separately agreed in writing.
 
-A security report involving smart contracts should clearly distinguish
-between:
+## Intellectual property
 
-- application or synchronization state;
-- authoritative onchain state;
-- expected protocol behavior;
-- unexpected or exploitable contract behavior.
-
-Transaction hashes, block numbers, contract addresses, and reproducible test
-cases are particularly useful for these reports.
-
-## No Bug Bounty Commitment
-
-Geomacro does not currently operate a public bug bounty program.
-
-Submitting a vulnerability report does not create an entitlement to payment,
-compensation, employment, partnership, or any other reward unless separately
-agreed to in writing.
-
-Geomacro may introduce a formal security or bug bounty program in the future.
-
-## Intellectual Property
-
-Security research and vulnerability reporting do not grant a license to copy,
-redistribute, deploy, commercialize, or create derivative works from the
-Geomacro codebase.
-
-Use of this repository remains governed by [LICENSE.txt](LICENSE.txt).
-
-Nothing in this policy grants rights to the Geomacro name, trademarks,
-branding, proprietary data, or other intellectual property.
-
-## Contact
-
-For security matters, use the private security reporting mechanism provided
-for this repository.
-
-For non-security matters, use an official Geomacro contact channel identified
-in the repository.
+Security research and vulnerability reporting do not grant a license to copy, redistribute, deploy, commercialize or create derivative works from the Geomacro codebase. Repository use remains governed by [LICENSE.txt](LICENSE.txt).
 
 ---
 
