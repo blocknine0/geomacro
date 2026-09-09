@@ -1,0 +1,43 @@
+name: Ingest ReliefWeb live metadata
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingest-reliefweb-live
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RELIEFWEB_APPNAME: ${{ secrets.RELIEFWEB_APPNAME }}
+      RELIEFWEB_MAX_REPORTS: "250"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Ingest latest ReliefWeb report metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" || -z "${RELIEFWEB_APPNAME:-}" ]]; then
+            echo "ReliefWeb ingestion skipped: required repository secrets are not configured."
+            exit 0
+          fi
+
+          bun install --frozen-lockfile
+          node scripts/ingest-reliefweb-live.mjs

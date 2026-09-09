@@ -1,0 +1,60 @@
+name: Validate country flash intelligence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "workers/telegram-flash/**"
+      - "scripts/ingest-reliefweb-live.mjs"
+      - "scripts/corroborate-live-flashes.mjs"
+      - "supabase/functions/live-flash-ingest/**"
+      - "supabase/functions/live-flash-corroborate/**"
+      - "supabase/migrations/036_country_flash_intelligence.sql"
+      - "supabase/migrations/037_breaking_news_source_registry.sql"
+      - "supabase/migrations/038_telegram_flash_channel_registry.sql"
+      - "supabase/migrations/039_flash_corroboration_graph.sql"
+      - "supabase/migrations/040_critical_minerals_news_candidates.sql"
+      - ".github/workflows/country-flash-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Python syntax
+        run: |
+          python -m py_compile \
+            workers/telegram-flash/worker.py \
+            workers/telegram-flash/corroboration_loop.py \
+            workers/telegram-flash/supervisor.py \
+            workers/telegram-flash/generate_session.py
+
+      - name: Validate Node scripts syntax
+        run: |
+          node --check scripts/ingest-reliefweb-live.mjs
+          node --check scripts/corroborate-live-flashes.mjs
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Validate Supabase Edge Functions
+        run: |
+          deno check supabase/functions/live-flash-ingest/index.ts
+          deno check supabase/functions/live-flash-corroborate/index.ts
+
+      - name: Confirm migration ordering
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f supabase/migrations/036_country_flash_intelligence.sql
+          test -f supabase/migrations/037_breaking_news_source_registry.sql
+          test -f supabase/migrations/038_telegram_flash_channel_registry.sql
+          test -f supabase/migrations/039_flash_corroboration_graph.sql
+          test -f supabase/migrations/040_critical_minerals_news_candidates.sql
