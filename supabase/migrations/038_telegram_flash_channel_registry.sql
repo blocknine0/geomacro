@@ -2,8 +2,9 @@
 -- Geomacro Telegram Flash Channel Registry
 --
 -- Telegram is a lead/flash intake surface, not an automatic truth source.
--- Every monitored channel must be explicitly allowlisted with provenance and a
--- bounded source-reliability prior. Nothing from this table directly enters GRI.
+-- Source trust does not determine whether a lead can be ingested. It determines
+-- how much independent corroboration is required before a flash is promoted.
+-- Nothing from this table directly enters GRI/Risk Gate.
 -- =============================================================================
 
 create table if not exists public.live_telegram_channel_registry (
@@ -66,7 +67,7 @@ values
   60,
   array['GEOPOLITICS'],
   true,
-  'High-speed conflict-location lead source. Channel exists publicly as @liveuamap, but Geomacro has not independently established channel ownership/licensing. Use only as an unverified lead requiring corroboration.'
+  'High-speed conflict-location lead source. Ingest immediately, but require independent corroboration before promotion into verified country intelligence.'
 ),
 (
   'financialjuice',
@@ -76,7 +77,7 @@ values
   45,
   array['MACRO', 'GEOPOLITICS'],
   true,
-  'The public channel description states that it is an automated Twitter-to-Telegram feed with no affiliation. Treat only as a discovery relay; never present it as an official FinancialJuice wire or let it directly drive scores.'
+  'Public channel description states that it is an automated Twitter-to-Telegram relay with no affiliation. Still useful for speed. Ingest as a lead and corroborate against independent feeds/official releases/GDELT before verification.'
 ),
 (
   'reutersworldchannel',
@@ -85,8 +86,8 @@ values
   'INTERNAL_RESEARCH_ONLY',
   35,
   array['GEOPOLITICS'],
-  false,
-  'Explicitly disabled. The public channel description states that it is not an official Reuters channel. Reuters detection should come through the existing governed GDELT layer or a future licensed Reuters product.'
+  true,
+  'Public channel states it is not official Reuters. That does not block internal lead ingestion. Treat every item as unverified and corroborate against GDELT, official sources or independent publishers before promotion.'
 )
 on conflict (channel_key)
 do update set
@@ -103,4 +104,4 @@ alter table public.live_telegram_channel_registry
   enable row level security;
 
 comment on table public.live_telegram_channel_registry is
-  'Server-side Telegram channel allowlist and provenance/reliability registry for unverified flash intake. Never an automatic scoring whitelist.';
+  'Server-side Telegram lead allowlist. Low source trust reduces verification weight but does not block ingestion; independent corroboration is mandatory before scoring.';
