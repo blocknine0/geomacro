@@ -6,7 +6,9 @@
 -- France (FRA). Remove that ambiguous short-form attribution from ATF while
 -- preserving the full territory name for explicit ATF mentions.
 --
--- Also repair the exact bad relation written by the 2026-09-09 smoke test.
+-- Existing smoke-test flash rows remain immutable evidence. They are still
+-- UNVERIFIED and are not scoring-eligible, so this migration only prevents the
+-- false attribution from being written on future ingests.
 -- =============================================================================
 
 update public.live_country_registry
@@ -29,13 +31,3 @@ set
   ),
   updated_at = now()
 where iso3 = 'ATF';
-
--- Repair the observed false-positive row from the live smoke test.
-delete from public.live_flash_event_countries
-where flash_id = 'forexlive_rss_1645c7bdaa7e35783522f56b13bcac2c'
-  and country_iso3 = 'ATF';
-
-update public.live_flash_event_countries
-set is_primary = true
-where flash_id = 'forexlive_rss_1645c7bdaa7e35783522f56b13bcac2c'
-  and country_iso3 = 'FRA';
