@@ -52,7 +52,7 @@ async def stream_process(
 
 async def main() -> None:
     commands = [
-        ("intake", sys.executable, "worker.py"),
+        ("intake", sys.executable, "production_entrypoint.py"),
         ("corroboration", sys.executable, "corroboration_loop.py"),
     ]
 
