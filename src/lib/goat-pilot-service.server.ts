@@ -582,10 +582,7 @@ async function createOrLoadGoatOrder(
     );
   }
 
-  const {
-    raw: _providerRaw,
-    ...normalizedChallenge
-  } = providerChallenge;
+  const normalizedChallenge = providerChallenge;
   const challengeHash = sha256Text(canonicalJson(normalizedChallenge));
 
   const persistArgs = {

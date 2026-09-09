@@ -63,7 +63,6 @@ export type GoatFlowPaymentChallenge = {
   destination_chain_id: number;
   amount_wei: string;
   expires_at: number;
-  raw: Record<string, unknown>;
 };
 
 export type GoatFlowOrder = {
@@ -500,7 +499,6 @@ function validateCreatedChallenge(
     destination_chain_id: destinationChainId,
     amount_wei: amount,
     expires_at: expiresAt,
-    raw,
   };
 }
 
