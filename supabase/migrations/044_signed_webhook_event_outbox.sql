@@ -99,6 +99,60 @@ on public.webhook_event_outbox (
 );
 
 
+-- ---------------------------------------------------------------------------
+-- Bind the signed event to the immutable audit semantics, not only the audit ID.
+-- This prevents a privileged-but-buggy insert from pairing a valid audit_id with
+-- a different client/request/decision/risk object/policy inside the event.
+-- ---------------------------------------------------------------------------
+
+create or replace function
+  public.validate_webhook_event_audit_alignment()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_audit public.risk_gate_audit_log%rowtype;
+begin
+  select *
+  into v_audit
+  from public.risk_gate_audit_log audit
+  where audit.audit_id = new.audit_id
+  limit 1;
+
+  if not found then
+    raise exception
+      'Webhook event audit record does not exist';
+  end if;
+
+  if
+    v_audit.outcome <> 'delivered'
+    or v_audit.execution_authorized is distinct from false
+    or new.client_id is distinct from v_audit.client_id
+    or new.payload #>> '{data,request_id}' is distinct from v_audit.request_id
+    or new.payload #>> '{data,decision}' is distinct from v_audit.decision
+    or new.payload #>> '{data,risk,object_id}' is distinct from v_audit.risk_object_id
+    or new.payload #>> '{data,policy,policy_id}' is distinct from v_audit.policy_id
+    or new.payload #>> '{data,policy,policy_version}' is distinct from v_audit.policy_version
+  then
+    raise exception
+      'Webhook event does not match immutable Risk Gate audit semantics';
+  end if;
+
+  return new;
+end;
+$$;
+
+
+create trigger
+  webhook_event_validate_audit_alignment
+before insert
+on public.webhook_event_outbox
+for each row
+execute function
+  public.validate_webhook_event_audit_alignment();
+
+
 -- Signed event rows are source evidence. Future delivery-attempt state belongs
 -- in a separate delivery table so the signed envelope itself remains immutable.
 create or replace function
@@ -138,6 +192,17 @@ grant all
 on table public.webhook_event_outbox
 to service_role;
 
+revoke all
+on function public.validate_webhook_event_audit_alignment()
+from PUBLIC, anon, authenticated;
+
+grant execute
+on function public.validate_webhook_event_audit_alignment()
+to service_role;
+
 
 comment on table public.webhook_event_outbox is
   'Immutable signed structured webhook event source. No outbound network delivery is performed by this table or migration.';
+
+comment on function public.validate_webhook_event_audit_alignment() is
+  'Rejects webhook outbox inserts whose signed structured semantics do not match the referenced immutable delivered Risk Gate audit row.';
