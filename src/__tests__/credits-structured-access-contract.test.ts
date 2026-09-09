@@ -41,18 +41,37 @@ describe("credits and structured access contract", () => {
   it("keeps durable credit enforcement explicitly separate from anonymous rate limits", () => {
     const agent = read("src/lib/geomacro-agent-contract.ts");
     const digest = read("src/lib/public-structural-digest.server.ts");
+    const migration = read("supabase/migrations/043_commercial_credit_ledger.sql");
 
     expect(agent).toContain("Anonymous public endpoints remain rate-limited until durable account credit metering is activated");
     expect(digest).toContain("durable_metering_active: false");
+    expect(migration).toContain("commercial_credit_accounts");
+    expect(migration).toContain("commercial_credit_usage");
+    expect(migration).toContain("ensure_commercial_credit_account");
+    expect(migration).toContain("consume_commercial_credits");
+    expect(migration).toContain("greatest(included_credits, p_included_credits)");
+    expect(migration).toContain("unique (account_id, request_id)");
+    expect(migration).toContain("to service_role");
+    expect(migration).toContain("from PUBLIC, anon, authenticated");
   });
 
   it("keeps the current Arc x402 flow technical proof rather than production commercial payments", () => {
     const route = read("src/routes/api.agent.risk.ts");
     const agent = read("src/lib/geomacro-agent-contract.ts");
+    const roadmap = read("docs/COMMERCIAL_PAYMENT_ROADMAP.md");
 
     expect(route).toContain("Arc Testnet");
     expect(route).toContain("technical proof only");
     expect(route).toContain("not the planned production real-money commercial payment system");
     expect(agent).toContain("Current Arc Testnet x402 pricing is technical proof only");
+
+    expect(roadmap).toContain("real-money production payment rails");
+    expect(roadmap).toContain("multi-currency payments");
+    expect(roadmap).toContain("multi-chain payments");
+    expect(roadmap).toContain("USD-denominated");
+    expect(roadmap).toContain("INR-denominated");
+    expect(roadmap).toContain("not real-money prediction-market stakes");
+    expect(roadmap).toContain("server-side verification is mandatory");
+    expect(roadmap).toContain("webhook retries must be idempotent");
   });
 });
