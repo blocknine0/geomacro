@@ -1,8 +1,6 @@
-name: GRI Freshness Watchdog
+name: GRI Freshness Recovery
 
 on:
-  schedule:
-    - cron: "8,38 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -13,8 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  freshness-watchdog:
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.GRI_PUBLISH_ENABLED == 'true' }}
+  freshness-recovery:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,7 +30,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GRI_METHOD_VERSION: gri-v1.2.0
           GRI_PROOF_VERSION: gri-proof-v1.2.0
-          GRI_WATCHDOG_MAX_AGE_HOURS: "1.5"
+          GRI_WATCHDOG_MAX_AGE_HOURS: "5"
         shell: bash
         run: |
           set +e
