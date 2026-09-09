@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info:
   title: Geomacro Verified Intelligence API
-  version: 1.0.0-pilot
+  version: 1.0.1-pilot
   description: |
     Versioned integration contract for Geomacro's current verified-intelligence surfaces.
-    Risk Gate is decision context only and never authorizes execution. Customer-facing
-    data is structured-only; raw/private warehouse data is not exposed.
+    Risk Gate and sandbox responses are decision context only and never authorize execution.
+    Customer-facing data is structured-only; raw/private warehouse data is not exposed.
 servers:
   - url: https://geomacro.live
     description: Production domain after deployment verification
@@ -46,6 +46,37 @@ paths:
                 type: object
                 additionalProperties: true
         '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/demo/preflight:
+    post:
+      summary: Run the bounded public Risk Gate sandbox
+      operationId: runPublicRiskPreflightSandbox
+      description: |
+        Free technical sandbox for structured preflight evaluation. The current public
+        fixture is deliberately bounded to USA and CHN country subjects and the USA>CHN
+        and CHN>USA corridors. It returns structured GRI, Risk Object, structural-context
+        and Risk Gate decision context. It never submits, signs or authorizes a customer
+        transaction and always preserves `execution_authorized=false`. Arc Testnet x402
+        remains a separate technical proof and is not production commercial billing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoPreflightRequest'
+      responses:
+        '200':
+          description: Structured sandbox decision context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoPreflightEnvelope'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413':
+          description: Sandbox payload exceeds the 8 KiB request bound
+        '415':
+          description: Content-Type must be application/json
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Unavailable' }
   /api/risk-object-keys:
@@ -96,8 +127,9 @@ paths:
         - bearerAuth: []
       description: |
         Private-pilot, authenticated and idempotent decision-context endpoint.
-        The same client/request_id and payload can be replayed safely. The response
-        always remains non-authorizing (`execution_authorized=false`).
+        The same client/request_id and semantically identical JSON payload can be
+        replayed safely even if object key order differs. The response always remains
+        non-authorizing (`execution_authorized=false`).
       requestBody:
         required: true
         content:
@@ -177,6 +209,120 @@ components:
               pattern: '^[A-Z]{3}$'
         client_request_id:
           type: string
+    DemoCountrySubject:
+      type: object
+      required: [type, country_iso3]
+      properties:
+        type:
+          const: country
+        country_iso3:
+          enum: [USA, CHN]
+    DemoUsaToChnCorridor:
+      type: object
+      required: [type, origin_country_iso3, destination_country_iso3]
+      properties:
+        type:
+          const: corridor
+        origin_country_iso3:
+          const: USA
+        destination_country_iso3:
+          const: CHN
+    DemoChnToUsaCorridor:
+      type: object
+      required: [type, origin_country_iso3, destination_country_iso3]
+      properties:
+        type:
+          const: corridor
+        origin_country_iso3:
+          const: CHN
+        destination_country_iso3:
+          const: USA
+    DemoPreflightRequest:
+      type: object
+      required: [subject]
+      properties:
+        subject:
+          oneOf:
+            - $ref: '#/components/schemas/DemoCountrySubject'
+            - $ref: '#/components/schemas/DemoUsaToChnCorridor'
+            - $ref: '#/components/schemas/DemoChnToUsaCorridor'
+        policy_preset:
+          enum: [balanced, cautious, strict]
+          default: balanced
+        action_type:
+          enum: [treasury_payment, vendor_payment, agent_payment, exposure_review]
+          default: agent_payment
+        amount_usdc:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000000000
+        client_request_id:
+          type: string
+          minLength: 4
+          maxLength: 128
+    DemoPreflightEnvelope:
+      type: object
+      required:
+        - ok
+        - demo_version
+        - request_id
+        - mode
+        - risk_gate
+        - risk_object
+        - structural_context
+        - gri_context
+        - boundaries
+      properties:
+        ok:
+          const: true
+        demo_version:
+          const: agentic-commerce-demo-v2
+        request_id:
+          type: string
+          format: uuid
+        client_request_id:
+          type: [string, 'null']
+        mode:
+          const: PUBLIC_SANDBOX
+        payment:
+          type: object
+          additionalProperties: true
+        action_context:
+          type: object
+          additionalProperties: true
+        policy_preset:
+          enum: [balanced, cautious, strict]
+        policy:
+          $ref: '#/components/schemas/RiskGatePolicy'
+        risk_gate:
+          $ref: '#/components/schemas/RiskGateDecision'
+        risk_object:
+          type: object
+          description: Structured public Risk Object projection. No raw/private warehouse payload is included.
+          additionalProperties: true
+        structural_context:
+          type: object
+          description: Governed bounded structural evidence digest; evidence-only and not silently weighted into GRI v1.2.
+          additionalProperties: true
+        gri_context:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+        boundaries:
+          type: object
+          required: [execution_authorized, structural_evidence_is_not_gri_v1_2_input, financial_advice]
+          properties:
+            execution_authorized:
+              const: false
+            structural_evidence_is_not_gri_v1_2_input:
+              const: true
+            corridor_model:
+              type: string
+            route_modeling_status:
+              type: [string, 'null']
+            financial_advice:
+              const: false
     RiskGatePolicy:
       type: object
       required:
