@@ -355,6 +355,9 @@ export const Route = createFileRoute("/api/agent/risk")({
           throw error;
         }
 
+        // Prepare the exact risk resource BEFORE asking the caller to pay.
+        // On a paid retry the same prepared result is delivered after settlement;
+        // we do not recompute a second Risk Gate result after money is accepted.
         let prepared;
         try {
           prepared = await runAgenticPreflightDemo(body, {
