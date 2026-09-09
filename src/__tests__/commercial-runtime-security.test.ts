@@ -50,13 +50,25 @@ describe("commercial runtime security baseline", () => {
     expect(source).toContain("cancel-in-progress: false");
   });
 
-  it("hardens scheduled ReliefWeb production writes", () => {
-    const source = read(".github/workflows/ingest-reliefweb-live.yml");
-    expectPinnedActions(".github/workflows/ingest-reliefweb-live.yml");
-    expect(source).toContain("if: github.ref == 'refs/heads/main'");
-    expect(source).toContain("SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}");
-    expect(source).toContain("assert-authoritative-supabase.mjs");
-    expect(source).toContain("bun install --frozen-lockfile --ignore-scripts");
+  it("hardens scheduled production intelligence writes", () => {
+    for (const path of [
+      ".github/workflows/auto-ingest-news.yml",
+      ".github/workflows/ingest-reliefweb-live.yml",
+    ]) {
+      const source = read(path);
+      expectPinnedActions(path);
+      expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
+      expect(source, path).toContain("assert-authoritative-supabase.mjs");
+      expect(source, path).not.toMatch(/\bnpm install\b/);
+    }
+
+    const ingest = read(".github/workflows/auto-ingest-news.yml");
+    expect(ingest).toContain("npm ci --ignore-scripts --omit=dev --no-audit --no-fund");
+    expect(ingest).toContain("Prediction-market creation is not part of this");
+
+    const reliefWeb = read(".github/workflows/ingest-reliefweb-live.yml");
+    expect(reliefWeb).toContain("SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}");
+    expect(reliefWeb).toContain("bun install --frozen-lockfile --ignore-scripts");
   });
 
   it("keeps browser source free of privileged VITE credentials", () => {
