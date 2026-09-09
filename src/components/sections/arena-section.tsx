@@ -399,15 +399,6 @@ export function ArenaSection() {
     setStakeError(null);
     try {
       const { market, side } = pendingStake;
-      // stakeOnContract() returns as soon as the wallet has broadcast the tx
-      // — it does NOT wait for on-chain confirmation. This is deliberate:
-      // Arc's public RPC intermittently 429s on receipt polling, and if
-      // recordStake() only fired after a successful wait(), an RPC hiccup
-      // would leave a real, paid-for stake missing from Supabase/Portfolio
-      // (a "ghost stake"). Recording immediately off the hash means the
-      // position always gets saved once the wallet confirms the tx was
-      // sent, regardless of RPC flakiness. scripts/sync-stakes.js is the
-      // periodic backstop that reconciles on-chain events either way.
       const { hash, confirmed } = await stakeOnContract(market.id, side, stakeAmount, market.marketAddress);
       setStakeTx((prev) => ({ ...prev, [market.id]: { side, hash } }));
       if (market.eventId) {
@@ -425,11 +416,6 @@ export function ArenaSection() {
           console.error("[recordStake] failed", err);
         }
       }
-      // Confirmation happens in the background — we don't block the UI on
-      // it. If it turns out the tx actually reverted (rare, since the
-      // wallet already estimated gas successfully before broadcasting), log
-      // it for visibility; sync-stakes.js / anomaly-monitor.js reconcile the
-      // Supabase state independently on their own schedule.
       void confirmed.then(({ success, error }) => {
         if (!success) {
           console.warn("[stake] on-chain confirmation did not complete", { marketId: market.id, error });
@@ -588,9 +574,6 @@ export function ArenaSection() {
         : velocity === "Medium"
         ? "text-accent"
         : "text-muted-foreground";
-    // Implied probability is only shown when the pool actually has volume.
-    // With no positions there is no market-implied number, so we omit it
-    // rather than render a fake 0% or 50%.
     const impliedEscalation = total > 0 ? (hawkUsd / total) * 100 : null;
     const marketState: { label: string; tone: "neutral" | "positive" | "warning" | "negative" } =
       isFinalized
@@ -972,10 +955,6 @@ export function ArenaSection() {
   };
 
   const effectiveStage = (m: Market): "active" | "awaiting_dispute" | "disputed" | "completed" => {
-    // lifecycle_stage is written by sync-lifecycle.js only twice per 2h cycle, so a
-    // stale "active" value can outlive the staking deadline. Trust it as-is for any
-    // non-"active" value (those are definitive), but for "active" (or when it hasn't
-    // synced yet) fall through to the same time-based check the card badge uses.
     if (m.lifecycleStage && m.lifecycleStage !== "active") return m.lifecycleStage;
     const om = onchainMarkets[m.id] ?? m.onchain;
     const finalized = !!m.marketFinalized || !!om.resolved;
@@ -985,12 +964,6 @@ export function ArenaSection() {
     return "active";
   };
 
-  // 🆕 The DB/backend lifecycle_stage only tracks 4 states — "awaiting_dispute"
-  // covers both "resolver agent hasn't judged yet" and "resolver agent has
-  // judged, dispute window still open". The UI already tracks that split
-  // per-card via m.aiProcessed (see isAwaitingResolution/isTentative above),
-  // so we reuse it here to give the tab bar 5 buckets without touching the
-  // backend enum: Active / Staking Closed / Market Resolved / Dispute / Completed.
   type TabStage = "active" | "staking_closed" | "market_resolved" | "disputed" | "completed";
   const effectiveTabStage = (m: Market): TabStage => {
     const stage = effectiveStage(m);
@@ -998,7 +971,6 @@ export function ArenaSection() {
     return m.aiProcessed ? "market_resolved" : "staking_closed";
   };
 
-  // Categories are derived from real event metadata only — no hardcoded list.
   const availableCategories = Array.from(
     new Set(
       markets
@@ -1007,7 +979,6 @@ export function ArenaSection() {
     ),
   ).sort();
 
-  // "Closing soon" is only offered because stakingEndTime is a real timestamp.
   const sortMarkets = (list: Market[]) => {
     const arr = [...list];
     if (sortKey === "risk") return arr.sort((a, b) => b.severity - a.severity);
@@ -1044,7 +1015,7 @@ export function ArenaSection() {
           as="h1"
           eyebrow="Markets"
           title="Markets"
-          desc="Explore markets around events shaping the world. Every market is opened by an event in the pipeline, priced by two opposing analyst briefings, and settled automatically once the outcome is judged."
+          desc="Experimental Arc Testnet event markets built on top of Geomacro intelligence. This secondary surface demonstrates two-sided analysis, testnet positioning and settlement; it is not the core product or an institutional hedge."
         />
         {refreshing && (
           <div className="absolute right-0 top-0 flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
@@ -1054,9 +1025,6 @@ export function ArenaSection() {
         )}
       </div>
 
-      {/* Browsing never requires a wallet. Only a connected-but-wrong-network
-          wallet gets a notice here; connection itself is requested at the
-          action boundary inside the position dialog. */}
       {address && !onArc ? (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3">
           <span className="font-mono text-xs text-destructive">
@@ -1113,7 +1081,6 @@ export function ArenaSection() {
           {(() => {
             try {
               const cached = getCachedMarkets();
-              // eslint-disable-next-line no-console
               console.log("[arena] rendering empty state", {
                 initialLoadDone,
                 marketsLength: markets.length,
@@ -1332,28 +1299,28 @@ export function ArenaSection() {
       <div className="mt-20 border-t border-border/60 pt-12">
         <div className="max-w-2xl">
           <div className="font-mono text-xs uppercase tracking-widest text-primary">
-            The Narrative Economy
+            Technical Proof · Event Markets
           </div>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
-            Why event contracts belong in a macro book.
+            What this testnet application demonstrates.
           </h3>
         </div>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {[
             {
               k: "01",
-              title: "News as Liquidity",
-              body: "Breaking global events create instant volatility. Geomacro captures this attention spike and financializes it onchain, turning every headline into a tradable contract.",
+              title: "Event-to-market translation",
+              body: "Selected qualifying events can become testnet market questions so Geomacro can test how structured risk intelligence maps into a programmable application.",
             },
             {
               k: "02",
-              title: "Algorithmic Frameworks",
-              body: "Agent Hawk and Agent Dove act as algorithmic market makers representing opposing global risk frameworks. Their briefings price every contract before retail capital arrives.",
+              title: "Two-sided analysis",
+              body: "Opposing analyst briefings expose competing escalation and de-escalation interpretations. They are experimental calibration artifacts, not investment recommendations.",
             },
             {
               k: "03",
-              title: "Macro Hedging",
-              body: "Use event contracts to hedge real-world portfolio exposure against black swan events or geopolitical escalation. Settlement is USDC on Arc, no custodian required.",
+              title: "Testnet settlement",
+              body: "Positions and lifecycle settlement run in test USDC on Arc Testnet. This proves integration mechanics without representing production execution, custody or institutional hedging.",
             },
           ].map((c) => (
             <div key={c.k} className="rounded-2xl border border-border/60 bg-card/40 p-6">
