@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { requireRiskSupabase } from "../lib/risk-supabase.server";
+import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 
 const MAX_BODY_BYTES = 6 * 1024;
-const WINDOW_MS = 60 * 60 * 1000;
-const MAX_FEEDBACK_PER_WINDOW = 10;
-const buckets = new Map<string, { startedAt: number; count: number }>();
 
 const feedbackSchema = z.object({
   request_id: z.string().uuid().nullable().optional(),
@@ -18,26 +16,6 @@ const feedbackSchema = z.object({
   friction: z.string().trim().max(2000).optional(),
   missing_capability: z.string().trim().max(1000).optional(),
 });
-
-function clientKey(request: Request) {
-  return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown"
-  );
-}
-
-function allowRequest(request: Request) {
-  const key = clientKey(request);
-  const now = Date.now();
-  const current = buckets.get(key);
-  if (!current || now - current.startedAt >= WINDOW_MS) {
-    buckets.set(key, { startedAt: now, count: 1 });
-    return true;
-  }
-  current.count += 1;
-  return current.count <= MAX_FEEDBACK_PER_WINDOW;
-}
 
 function allowedOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -72,13 +50,26 @@ export const Route = createFileRoute("/api/demo/feedback")({
         if (!allowedOrigin(request)) {
           return json({ ok: false, error: "Feedback origin is not allowed." }, 403);
         }
-        if (!allowRequest(request)) {
+
+        if (
+          !allowPublicDemoRequest(request, {
+            namespace: "demo-feedback",
+            windowMs: 60 * 60 * 1000,
+            maxPerClient: 10,
+            maxGlobal: 300,
+          })
+        ) {
           return json({ ok: false, error: "Feedback limit exceeded. Try again later." }, 429);
         }
 
         const contentType = request.headers.get("content-type") ?? "";
         if (!contentType.toLowerCase().includes("application/json")) {
           return json({ ok: false, error: "Content-Type must be application/json." }, 415);
+        }
+
+        const declared = Number(request.headers.get("content-length") ?? "0");
+        if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+          return json({ ok: false, error: "Feedback body is too large." }, 413);
         }
 
         const raw = await request.text();
