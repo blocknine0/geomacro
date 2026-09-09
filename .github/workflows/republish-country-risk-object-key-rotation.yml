@@ -1,0 +1,132 @@
+name: Republish Country Risk Object After Key Rotation
+
+on:
+  workflow_dispatch:
+    inputs:
+      iso3:
+        description: "ISO3 country code to republish (for example IRN)"
+        required: true
+        default: "IRN"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: risk-object-key-rotation-republish
+  cancel-in-progress: false
+
+jobs:
+  republish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_KEY_ID: geomacro-risk-2026-02
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate key rotation configuration and derive verifier public key
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_SUPABASE_URL:-}" ] || [ -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::Authoritative Supabase GitHub Actions secrets are missing."
+            exit 1
+          fi
+
+          if [ "${RISK_OBJECT_SIGNING_KEY_ID:-}" != "$EXPECTED_KEY_ID" ]; then
+            echo "::error::RISK_OBJECT_SIGNING_KEY_ID must equal $EXPECTED_KEY_ID for this rotation workflow."
+            exit 1
+          fi
+
+          if [ -z "${RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:-}" ]; then
+            echo "::error::RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 is missing."
+            exit 1
+          fi
+
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('Risk Object signing key must be Ed25519');
+          }
+
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=${publicB64}\n`,
+          );
+          NODE
+
+      - name: Validate requested country
+        id: country
+        shell: bash
+        env:
+          RAW_ISO3: ${{ inputs.iso3 }}
+        run: |
+          set -euo pipefail
+          ISO3="$(printf '%s' "$RAW_ISO3" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          if ! [[ "$ISO3" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::iso3 must be exactly three letters."
+            exit 1
+          fi
+          echo "iso3=$ISO3" >> "$GITHUB_OUTPUT"
+
+      - name: Publish fresh signed Risk Object
+        shell: bash
+        env:
+          ISO3: ${{ steps.country.outputs.iso3 }}
+        run: |
+          set -euo pipefail
+          bun scripts/publish-country-risk-object.ts "$ISO3" | tee /tmp/risk-object-publish.json
+
+      - name: Verify rotation evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const text = fs.readFileSync('/tmp/risk-object-publish.json', 'utf8');
+          const result = JSON.parse(text);
+
+          if (result?.integrity?.signing_key_id !== 'geomacro-risk-2026-02') {
+            throw new Error(`Unexpected signing key id: ${result?.integrity?.signing_key_id ?? 'missing'}`);
+          }
+          if (result?.integrity?.signature_present !== true) {
+            throw new Error('Published Risk Object has no signature');
+          }
+          if (result?.integrity?.signature_valid !== true) {
+            throw new Error(`Published signature did not verify: ${result?.integrity?.signature_reason ?? 'unknown'}`);
+          }
+          if (result?.context?.published !== true) {
+            throw new Error('Publisher did not report an immutable publication');
+          }
+
+          console.log('Key-rotation publication verified.');
+          console.log(`object_id=${result.object_id}`);
+          console.log(`signing_key_id=${result.integrity.signing_key_id}`);
+          console.log(`signature_valid=${result.integrity.signature_valid}`);
+          NODE
