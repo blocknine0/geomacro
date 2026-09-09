@@ -58,20 +58,19 @@ describe("credits and structured access contract", () => {
   it("keeps the current Arc x402 flow technical proof rather than production commercial payments", () => {
     const route = read("src/routes/api.agent.risk.ts");
     const agent = read("src/lib/geomacro-agent-contract.ts");
-    const roadmap = read("docs/COMMERCIAL_PAYMENT_ROADMAP.md");
+    const roadmap = read("docs/PRODUCTION_PAYMENT_NEXT_PLAN.md");
 
     expect(route).toContain("Arc Testnet");
     expect(route).toContain("technical proof only");
     expect(route).toContain("not the planned production real-money commercial payment system");
     expect(agent).toContain("Current Arc Testnet x402 pricing is technical proof only");
 
-    expect(roadmap).toContain("real-money production payment rails");
-    expect(roadmap).toContain("multi-currency payments");
-    expect(roadmap).toContain("multi-chain payments");
-    expect(roadmap).toContain("USD-denominated");
-    expect(roadmap).toContain("INR-denominated");
-    expect(roadmap).toContain("not real-money prediction-market stakes");
-    expect(roadmap).toContain("server-side verification is mandatory");
-    expect(roadmap).toContain("webhook retries must be idempotent");
+    expect(roadmap).toContain("real-money production payment rails only");
+    expect(roadmap).toContain("multi-chain settlement support");
+    expect(roadmap).toContain("USD-denominated payment");
+    expect(roadmap).toContain("INR-denominated payment");
+    expect(roadmap).toContain("No testnet transaction is a commercial payment");
+    expect(roadmap).toContain("server-side verification of provider payment status");
+    expect(roadmap).toContain("webhook signature verification");
   });
 });
