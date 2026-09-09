@@ -63,6 +63,17 @@ describe("Agentic Commerce public demo contract", () => {
     expect(paidRoute).toContain("we do not recompute a second Risk Gate result");
   });
 
+  it("uses the exact canonical verified public GRI contract for optional demo context", () => {
+    const service = read("src/lib/agentic-demo-service.server.ts");
+    const publicGri = read("src/lib/global-risk-read.server.ts");
+
+    expect(service).toContain("readPublicGlobalRisk");
+    expect(service).not.toContain('.from("gri_snapshots")');
+    expect(publicGri).toContain('latest.verification_status === "verified"');
+    expect(publicGri).toContain("GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS");
+    expect(publicGri).toContain("GRI_PROOF_VERSION");
+  });
+
   it("uses the governed current structural serving layer without changing GRI v1.2", () => {
     const structural = read("src/lib/structural-context.server.ts");
     const contract = read("src/lib/agentic-demo-contract.ts");
@@ -80,6 +91,39 @@ describe("Agentic Commerce public demo contract", () => {
     const service = read("src/lib/agentic-demo-service.server.ts");
     expect(service).toContain('["USA", "CHN"]');
     expect(service).toContain('["USA>CHN", "CHN>USA"]');
+  });
+
+  it("protects TanStack server functions with CSRF middleware", () => {
+    const start = read("src/start.ts");
+    expect(start).toContain("createCsrfMiddleware");
+    expect(start).toContain('ctx.handlerType === "serverFn"');
+    expect(start).toContain("requestMiddleware: [csrfMiddleware, errorMiddleware]");
+  });
+
+  it("bounds public demo abuse and throttles unpaid x402 preparation", () => {
+    const limiter = read("src/lib/public-demo-rate-limit.server.ts");
+    const freeRoute = read("src/routes/api.demo.preflight.ts");
+    const paidRoute = read("src/routes/api.agent.risk.ts");
+    const feedbackRoute = read("src/routes/api.demo.feedback.ts");
+
+    expect(limiter).toContain("maxGlobal");
+    expect(limiter).toContain("DEFAULT_MAX_CLIENT_BUCKETS");
+    expect(limiter).toContain("purgeExpiredClientBuckets");
+    expect(limiter).toContain('createHash("sha256")');
+    expect(freeRoute).toContain("allowPublicDemoRequest");
+    expect(paidRoute).toContain("allowPublicDemoRequest");
+    expect(paidRoute).toContain('namespace: "agentic-x402"');
+    expect(feedbackRoute).toContain("allowPublicDemoRequest");
+  });
+
+  it("does not return raw generic internal failures from public demo routes", () => {
+    const freeRoute = read("src/routes/api.demo.preflight.ts");
+    const paidRoute = read("src/routes/api.agent.risk.ts");
+
+    expect(freeRoute).toContain("Requested risk context is temporarily unavailable.");
+    expect(paidRoute).toContain("Requested risk context is temporarily unavailable.");
+    expect(paidRoute).toContain("Payment signature could not be verified or settled.");
+    expect(paidRoute).toContain("Paid resource delivery failed closed.");
   });
 
   it("keeps feedback persistence privacy-minimized and does not store raw payer identity", () => {
