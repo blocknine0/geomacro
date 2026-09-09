@@ -399,6 +399,15 @@ export function ArenaSection() {
     setStakeError(null);
     try {
       const { market, side } = pendingStake;
+      // stakeOnContract() returns as soon as the wallet has broadcast the tx
+      // — it does NOT wait for on-chain confirmation. This is deliberate:
+      // Arc's public RPC intermittently 429s on receipt polling, and if
+      // recordStake() only fired after a successful wait(), an RPC hiccup
+      // would leave a real, paid-for stake missing from Supabase/Portfolio
+      // (a "ghost stake"). Recording immediately off the hash means the
+      // position always gets saved once the wallet confirms the tx was
+      // sent, regardless of RPC flakiness. scripts/sync-stakes.js is the
+      // periodic backstop that reconciles on-chain events either way.
       const { hash, confirmed } = await stakeOnContract(market.id, side, stakeAmount, market.marketAddress);
       setStakeTx((prev) => ({ ...prev, [market.id]: { side, hash } }));
       if (market.eventId) {
@@ -416,6 +425,11 @@ export function ArenaSection() {
           console.error("[recordStake] failed", err);
         }
       }
+      // Confirmation happens in the background — we don't block the UI on
+      // it. If it turns out the tx actually reverted (rare, since the
+      // wallet already estimated gas successfully before broadcasting), log
+      // it for visibility; sync-stakes.js / anomaly-monitor.js reconcile the
+      // Supabase state independently on their own schedule.
       void confirmed.then(({ success, error }) => {
         if (!success) {
           console.warn("[stake] on-chain confirmation did not complete", { marketId: market.id, error });
@@ -511,7 +525,7 @@ export function ArenaSection() {
           [market.id]: { hawkWei: 0n, doveWei: 0n, hawkUsdc: 0, doveUsdc: 0 },
         }));
       } else {
-        setClaimError(`[${market.id}] ${notify.error("arena.claim", e, "claiming your winnings").message}`);
+        setClaimError(`[${m.id}] ${notify.error("arena.claim", e, "claiming your winnings").message}`);
       }
     } finally {
       setClaiming(null);
@@ -574,6 +588,9 @@ export function ArenaSection() {
         : velocity === "Medium"
         ? "text-accent"
         : "text-muted-foreground";
+    // Implied probability is only shown when the pool actually has volume.
+    // With no positions there is no market-implied number, so we omit it
+    // rather than render a fake 0% or 50%.
     const impliedEscalation = total > 0 ? (hawkUsd / total) * 100 : null;
     const marketState: { label: string; tone: "neutral" | "positive" | "warning" | "negative" } =
       isFinalized
@@ -955,6 +972,10 @@ export function ArenaSection() {
   };
 
   const effectiveStage = (m: Market): "active" | "awaiting_dispute" | "disputed" | "completed" => {
+    // lifecycle_stage is written by sync-lifecycle.js only twice per 2h cycle, so a
+    // stale "active" value can outlive the staking deadline. Trust it as-is for any
+    // non-"active" value (those are definitive), but for "active" (or when it hasn't
+    // synced yet) fall through to the same time-based check the card badge uses.
     if (m.lifecycleStage && m.lifecycleStage !== "active") return m.lifecycleStage;
     const om = onchainMarkets[m.id] ?? m.onchain;
     const finalized = !!m.marketFinalized || !!om.resolved;
@@ -964,6 +985,12 @@ export function ArenaSection() {
     return "active";
   };
 
+  // 🆕 The DB/backend lifecycle_stage only tracks 4 states — "awaiting_dispute"
+  // covers both "resolver agent hasn't judged yet" and "resolver agent has
+  // judged, dispute window still open". The UI already tracks that split
+  // per-card via m.aiProcessed (see isAwaitingResolution/isTentative above),
+  // so we reuse it here to give the tab bar 5 buckets without touching the
+  // backend enum: Active / Staking Closed / Market Resolved / Dispute / Completed.
   type TabStage = "active" | "staking_closed" | "market_resolved" | "disputed" | "completed";
   const effectiveTabStage = (m: Market): TabStage => {
     const stage = effectiveStage(m);
@@ -971,6 +998,7 @@ export function ArenaSection() {
     return m.aiProcessed ? "market_resolved" : "staking_closed";
   };
 
+  // Categories are derived from real event metadata only — no hardcoded list.
   const availableCategories = Array.from(
     new Set(
       markets
@@ -979,6 +1007,7 @@ export function ArenaSection() {
     ),
   ).sort();
 
+  // "Closing soon" is only offered because stakingEndTime is a real timestamp.
   const sortMarkets = (list: Market[]) => {
     const arr = [...list];
     if (sortKey === "risk") return arr.sort((a, b) => b.severity - a.severity);
@@ -1025,6 +1054,9 @@ export function ArenaSection() {
         )}
       </div>
 
+      {/* Browsing never requires a wallet. Only a connected-but-wrong-network
+          wallet gets a notice here; connection itself is requested at the
+          action boundary inside the position dialog. */}
       {address && !onArc ? (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3">
           <span className="font-mono text-xs text-destructive">
@@ -1081,6 +1113,7 @@ export function ArenaSection() {
           {(() => {
             try {
               const cached = getCachedMarkets();
+              // eslint-disable-next-line no-console
               console.log("[arena] rendering empty state", {
                 initialLoadDone,
                 marketsLength: markets.length,
