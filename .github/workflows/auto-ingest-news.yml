@@ -28,6 +28,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          # Optional repository variables; empty/unset values fall back to script defaults.
           GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
           GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
@@ -41,6 +42,10 @@ jobs:
           GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
           GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
           GROQ_MAX_WAIT_MS: "900000"
+
+          # Production classifier contract.
+          # Keep request batching efficient without allowing batch-size
+          # changes to inflate daily token consumption.
           GROQ_BATCH_SIZE: "4"
           MAX_CANDIDATES_PER_CATEGORY: "12"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
@@ -66,10 +71,12 @@ jobs:
             echo "::error::LIVE_STRUCTURE_TOKEN is required for the structured-intelligence handoff."
             exit 1
           fi
+
           curl --fail-with-body -sS -X POST \
             "${SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
             -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
             -H "Content-Type: application/json"
+
           echo
 
       - name: Check whether canonical GRI inputs changed
