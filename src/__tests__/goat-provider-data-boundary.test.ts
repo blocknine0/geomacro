@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+// This contract is intentionally static: any future provider field expansion
+// must be explicitly normalized before it can enter customer-facing evidence.
 describe("GOAT provider data boundary", () => {
   it("keeps raw provider responses out of the public payment challenge contract", () => {
     const source = readFileSync("src/lib/goat-flow.server.ts", "utf8");
