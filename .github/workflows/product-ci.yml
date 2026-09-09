@@ -65,3 +65,14 @@ jobs:
 
       - name: Production build
         run: bun run build
+
+      - name: Verify generated route tree is committed
+        shell: bash
+        run: |
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            echo "::error::src/routeTree.gen.ts is stale. Regenerate it with the current TanStack Router source routes and commit the generated file."
+            echo "----- BEGIN GENERATED ROUTE TREE -----"
+            cat src/routeTree.gen.ts
+            echo "----- END GENERATED ROUTE TREE -----"
+            exit 1
+          fi
