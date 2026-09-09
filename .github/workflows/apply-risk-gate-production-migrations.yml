@@ -40,10 +40,16 @@ jobs:
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
-          if grep -Eq 'functions deploy|secrets set' "$file"; then
+
+          # Keep this workflow migration-only. Build forbidden command strings
+          # from fragments so this validator does not match its own source text.
+          forbidden_functions="supabase functions"' deploy'
+          forbidden_secrets="supabase secrets"' set'
+          if grep -Fq "$forbidden_functions" "$file" || grep -Fq "$forbidden_secrets" "$file"; then
             echo "::error title=Unexpected side effect::This workflow must be migration-only."
             exit 1
           fi
+
           echo "Risk Gate migration workflow safety guardrails are present."
 
   migrate:
