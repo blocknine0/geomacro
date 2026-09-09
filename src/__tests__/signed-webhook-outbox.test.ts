@@ -324,6 +324,9 @@ describe(
         expect(migration).toContain(
           "'execution_authorized' = 'false'::jsonb",
         );
+        expect(migration).toContain(
+          ") is true",
+        );
         expect(migration).not.toMatch(
           /https?:\/\//,
         );
@@ -358,6 +361,49 @@ describe(
         );
         expect(outbox).not.toContain(
           "endpoint_url",
+        );
+      },
+    );
+
+    it(
+      "publishes the same no-egress truth boundary in OpenAPI, docs and environment contract",
+      () => {
+        const openapi =
+          readFileSync(
+            "docs/openapi/geomacro-v1.yaml",
+            "utf8",
+          );
+        const docs =
+          readFileSync(
+            "docs/WEBHOOK_DELIVERY_CONTRACT.md",
+            "utf8",
+          );
+        const env =
+          readFileSync(
+            ".env.example",
+            "utf8",
+          );
+
+        expect(openapi).toContain(
+          "webhooks:",
+        );
+        expect(openapi).toContain(
+          "x-geomacro-delivery-status: outbox-only-no-egress",
+        );
+        expect(openapi).toContain(
+          "SignedRiskGateWebhookEvent",
+        );
+        expect(docs).toContain(
+          "does not send outbound HTTP webhooks yet",
+        );
+        expect(docs).toContain(
+          "SSRF",
+        );
+        expect(env).toContain(
+          "WEBHOOK_OUTBOX_ENABLED=false",
+        );
+        expect(env).toContain(
+          "Do not reuse the Risk Object",
         );
       },
     );
