@@ -2,7 +2,7 @@ name: Publish GRI Proof Snapshot
 
 on:
   schedule:
-    - cron: "20 */2 * * *"
+    - cron: "23 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -36,7 +36,7 @@ jobs:
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
         run: node scripts/cluster-gri-stories-v12.js
 
-      - name: Compute, reconcile and publish immutable GRI v1.1 snapshot
+      - name: Compute, reconcile and publish immutable GRI v1.2 snapshot
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
