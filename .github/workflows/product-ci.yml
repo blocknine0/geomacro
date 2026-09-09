@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: product-ci-${{ github.workflow }}-${{ github.ref }}
@@ -38,10 +38,8 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout PR head for one-time generated route sync
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.head_ref }}
 
       # Pin the exact Bun version that produced and validated the committed
       # lockfile. Do not float on "latest": lockfile semantics can change
@@ -68,15 +66,13 @@ jobs:
       - name: Production build
         run: bun run build
 
-      - name: One-time sync generated route tree
+      - name: Verify generated route tree is committed
         shell: bash
         run: |
-          if git diff --quiet -- src/routeTree.gen.ts; then
-            echo "Route tree already current"
-            exit 0
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            echo "::error::src/routeTree.gen.ts is stale. Regenerate it with the current TanStack Router source routes and commit the generated file."
+            echo "----- BEGIN GENERATED ROUTE TREE -----"
+            cat src/routeTree.gen.ts
+            echo "----- END GENERATED ROUTE TREE -----"
+            exit 1
           fi
-          git add src/routeTree.gen.ts
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(routes): sync generated GOAT pilot routes"
-          git push origin HEAD:${{ github.head_ref }}
