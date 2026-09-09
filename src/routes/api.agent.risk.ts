@@ -1,7 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { agenticDemoRequestSchema } from "../lib/agentic-demo-contract";
 import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
+import { answerQuestion } from "../lib/ask-intelligence.server";
+import {
+  agentIntelligenceQuerySchema,
+  GEOMACRO_AGENT_VERSION,
+  geomacroAgentManifest,
+} from "../lib/geomacro-agent-contract";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
   CIRCLE_X402_ASSET,
@@ -19,7 +26,7 @@ const MAX_BODY_BYTES = 8 * 1024;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, payment-signature",
   "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
   "Access-Control-Max-Age": "600",
@@ -41,7 +48,7 @@ function json(
   });
 }
 
-async function parseBody(request: Request) {
+async function parseJsonBody(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
     throw new Response("Content-Type must be application/json", { status: 415 });
@@ -57,21 +64,145 @@ async function parseBody(request: Request) {
     throw new Response("Request body too large", { status: 413 });
   }
 
-  let body: unknown;
   try {
-    body = JSON.parse(raw);
+    return JSON.parse(raw) as unknown;
   } catch {
     throw new Response("Request body is not valid JSON", { status: 400 });
   }
+}
 
-  return agenticDemoRequestSchema.parse(body);
+function isIntelligenceQuery(raw: unknown) {
+  return Boolean(
+    raw &&
+      typeof raw === "object" &&
+      "capability" in raw &&
+      (raw as { capability?: unknown }).capability === "intelligence_query",
+  );
+}
+
+async function handlePublicIntelligenceQuery(request: Request, raw: unknown) {
+  if (
+    !allowPublicDemoRequest(request, {
+      namespace: "geomacro-agent-intelligence",
+      windowMs: 60_000,
+      maxPerClient: 20,
+      maxGlobal: 200,
+    })
+  ) {
+    return json(
+      {
+        ok: false,
+        agent_version: GEOMACRO_AGENT_VERSION,
+        capability: "intelligence_query",
+        error: {
+          code: "AGENT_RATE_LIMITED",
+          message: "Public agent query limit exceeded. Try again shortly.",
+        },
+        execution_authorized: false,
+      },
+      429,
+    );
+  }
+
+  let input;
+  try {
+    input = agentIntelligenceQuerySchema.parse(raw);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return json(
+        {
+          ok: false,
+          agent_version: GEOMACRO_AGENT_VERSION,
+          capability: "intelligence_query",
+          error: {
+            code: "INVALID_AGENT_QUERY",
+            message: "Agent intelligence query fields are invalid.",
+            issues: error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            })),
+          },
+          execution_authorized: false,
+        },
+        400,
+      );
+    }
+    throw error;
+  }
+
+  try {
+    const answer = await answerQuestion(input.question);
+    return json({
+      ok: true,
+      agent_version: GEOMACRO_AGENT_VERSION,
+      capability: "intelligence_query",
+      request_id: randomUUID(),
+      client_request_id: input.client_request_id ?? null,
+      answer,
+      grounding: {
+        mode: "geomacro_stored_intelligence_only",
+        external_web_search: false,
+        synthetic_fallback_score: false,
+        current_gri_requires_canonical_public_verification: true,
+      },
+      boundaries: {
+        execution_authorized: false,
+        financial_advice: false,
+        wallet_custody: false,
+        transaction_signing: false,
+      },
+    });
+  } catch (error) {
+    console.error("[geomacro-agent] intelligence query failed", error);
+    return json(
+      {
+        ok: false,
+        agent_version: GEOMACRO_AGENT_VERSION,
+        capability: "intelligence_query",
+        error: {
+          code: "INTELLIGENCE_UNAVAILABLE",
+          message: "Grounded Geomacro intelligence is temporarily unavailable.",
+        },
+        execution_authorized: false,
+      },
+      503,
+    );
+  }
 }
 
 export const Route = createFileRoute("/api/agent/risk")({
   server: {
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
+      GET: async ({ request }) => {
+        const origin = new URL(request.url).origin;
+        return json(geomacroAgentManifest(origin));
+      },
       POST: async ({ request }) => {
+        let rawBody: unknown;
+        try {
+          rawBody = await parseJsonBody(request);
+        } catch (error) {
+          if (error instanceof Response) {
+            return json(
+              {
+                ok: false,
+                error: {
+                  code: "INVALID_AGENT_REQUEST",
+                  message: await error.text(),
+                },
+                execution_authorized: false,
+              },
+              error.status,
+            );
+          }
+          throw error;
+        }
+
+        if (isIntelligenceQuery(rawBody)) {
+          return handlePublicIntelligenceQuery(request, rawBody);
+        }
+
         if (!isCircleX402Configured()) {
           return json(
             {
@@ -79,7 +210,7 @@ export const Route = createFileRoute("/api/agent/risk")({
               error: {
                 code: "X402_NOT_CONFIGURED",
                 message:
-                  "Circle x402 seller configuration is not active in this runtime. The free /api/demo/preflight sandbox remains available.",
+                  "Circle x402 seller configuration is not active in this runtime. The free intelligence_query capability remains available.",
               },
               execution_authorized: false,
             },
@@ -113,7 +244,7 @@ export const Route = createFileRoute("/api/agent/risk")({
 
         let body;
         try {
-          body = await parseBody(request);
+          body = agenticDemoRequestSchema.parse(rawBody);
         } catch (error) {
           if (error instanceof ZodError) {
             return json(
@@ -130,20 +261,6 @@ export const Route = createFileRoute("/api/agent/risk")({
                 execution_authorized: false,
               },
               400,
-            );
-          }
-
-          if (error instanceof Response) {
-            return json(
-              {
-                ok: false,
-                error: {
-                  code: "INVALID_AGENT_REQUEST",
-                  message: await error.text(),
-                },
-                execution_authorized: false,
-              },
-              error.status,
             );
           }
           throw error;

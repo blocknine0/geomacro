@@ -1,0 +1,51 @@
+{
+  "agent": {
+    "id": "geomacro",
+    "name": "Geomacro Agent",
+    "version": "geomacro-agent-v1",
+    "description": "Grounded geopolitical and macro risk intelligence for humans, software and AI agents.",
+    "mode": "read_and_recommend",
+    "execution_authorized": false
+  },
+  "endpoint": "https://geomacro.live/api/agent/risk",
+  "capabilities": [
+    {
+      "id": "intelligence_query",
+      "access": "public_free",
+      "method": "POST",
+      "content_type": "application/json",
+      "request_example": {
+        "capability": "intelligence_query",
+        "question": "What is changing in critical-mineral risk?",
+        "client_request_id": "optional-client-id"
+      }
+    },
+    {
+      "id": "risk_preflight",
+      "access": "x402_technical_proof_or_private_pilot",
+      "method": "POST",
+      "content_type": "application/json",
+      "execution_authorized": false
+    }
+  ],
+  "grounding": {
+    "stored_geomacro_intelligence": true,
+    "canonical_public_gri": true,
+    "external_web_search": false,
+    "synthetic_fallback_score": false
+  },
+  "boundaries": {
+    "financial_advice": false,
+    "autonomous_execution": false,
+    "wallet_custody": false,
+    "transaction_signing": false,
+    "sanctions_screening_replacement": false,
+    "corridor_model": "directional endpoint-composed pilot"
+  },
+  "commercial": {
+    "public_read": "available",
+    "risk_api": "private_pilot",
+    "institutional_sla": "not_generally_available",
+    "x402_price_note": "Current Arc Testnet x402 pricing is technical proof only and is not institutional pricing."
+  }
+}
