@@ -28,9 +28,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          # Optional repository variables; empty/unset values fall back to script defaults.
           GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
-          GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
           MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
           CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
@@ -42,10 +41,6 @@ jobs:
           GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
           GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
           GROQ_MAX_WAIT_MS: "900000"
-
-          # Production classifier contract.
-          # Keep request batching efficient without allowing batch-size
-          # changes to inflate daily token consumption.
           GROQ_BATCH_SIZE: "4"
           MAX_CANDIDATES_PER_CATEGORY: "12"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
@@ -71,10 +66,55 @@ jobs:
             echo "::error::LIVE_STRUCTURE_TOKEN is required for the structured-intelligence handoff."
             exit 1
           fi
-
           curl --fail-with-body -sS -X POST \
             "${SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
             -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
             -H "Content-Type: application/json"
-
           echo
+
+      - name: Check whether canonical GRI inputs changed
+        id: gri_change
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        shell: bash
+        run: |
+          set +e
+          node scripts/check-gri-input-change.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" -eq 10 ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "GRI input-change check failed with exit code $code."
+          exit "$code"
+
+      - name: Correlate changed canonical GRI evidence
+        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+        run: node scripts/cluster-gri-stories-v12.js
+
+      - name: Publish GRI v1.2 after canonical evidence change
+        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/compute-gri-v12.js
+
+      - name: Verify changed GRI proof package
+        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/verify-gri-snapshot-v12.js
