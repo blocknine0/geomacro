@@ -1,28 +1,43 @@
 name: Resolve Agent Arena disputes
 # Existing Arc Testnet disputes still need a path to completion while the
 # prediction-market surface is maintained as secondary technical proof.
-# A two-hour cadence is sufficient for the 48-hour jury window and avoids
-# spending Actions/LLM/RPC quota every 15 minutes.
+# A two-hour cadence is sufficient for the 48-hour jury window.
 on:
   schedule:
     - cron: "45 */2 * * *"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+
 concurrency:
-  group: auto-resolve-disputes
-  cancel-in-progress: true
+  # The five jury credentials can submit state-changing transactions. Queue
+  # rather than cancel to avoid interrupting a signing/broadcast sequence.
+  group: arc-jury-wallet-state-change
+  cancel-in-progress: false
+
 jobs:
   resolve-disputes:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: npm install ethers @supabase/supabase-js groq-sdk node-fetch
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Verify Arc Testnet and contract before exposing jury credentials
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
       - name: Run dispute resolution script
         env:
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
