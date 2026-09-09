@@ -64,15 +64,28 @@ describe("GOAT partner-pilot security boundaries", () => {
     expect(service).toContain("payment_required: true");
   });
 
-  it("does not persist or return the unbounded provider raw response", () => {
+  it("does not persist or return an unbounded provider raw response", () => {
+    const flow = readFileSync(
+      "src/lib/goat-flow.server.ts",
+      "utf8",
+    );
     const service = readFileSync(
       "src/lib/goat-pilot-service.server.ts",
       "utf8",
     );
 
-    expect(service).toContain("raw: _providerRaw");
-    expect(service).toContain("...normalizedChallenge");
+    const challengeStart = flow.indexOf("export type GoatFlowPaymentChallenge");
+    const challengeEnd = flow.indexOf("export type GoatFlowOrder", challengeStart);
+    const challengeContract = flow.slice(challengeStart, challengeEnd);
+
+    expect(challengeContract).not.toContain("raw:");
+    expect(challengeContract).not.toContain("Record<string, unknown>");
+    expect(service).toContain("const normalizedChallenge = providerChallenge;");
+    expect(service).not.toContain("raw: _providerRaw");
+    expect(service).not.toContain("provider_raw");
+    expect(service).not.toContain("provider_response");
     expect(service).not.toContain("p_challenge: providerChallenge");
+    expect(service).toContain("p_challenge: normalizedChallenge");
   });
 
   it("fails closed after an ambiguous external create-order attempt instead of submitting a second order", () => {
