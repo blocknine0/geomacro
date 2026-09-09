@@ -325,8 +325,10 @@ export const Route = createFileRoute("/api/agent/risk")({
                 code: "X402_RATE_LIMITED",
                 message: "Agent risk request limit exceeded. Try again shortly.",
               },
-              429,
-            );
+              execution_authorized: false,
+            },
+            429,
+          );
         }
 
         let body;
@@ -345,8 +347,10 @@ export const Route = createFileRoute("/api/agent/risk")({
                     message: issue.message,
                   })),
                 },
-                400,
-              );
+                execution_authorized: false,
+              },
+              400,
+            );
           }
           throw error;
         }
