@@ -1,16 +1,13 @@
-name: Auto-resolve Agent Arena disputes
-# Runs every 15 minutes — disputes have a 48h jury window (JURY_VOTE_WINDOW
-# in AgentArenaV2.sol), so this needs a tighter cadence than the 2h main
-# lifecycle jobs to give the 5-agent jury a real chance to converge before
-# the inconclusive-fallback (uphold AI verdict) kicks in.
+name: Resolve Agent Arena disputes
+# Existing Arc Testnet disputes still need a path to completion while the
+# prediction-market surface is maintained as secondary technical proof.
+# A two-hour cadence is sufficient for the 48-hour jury window and avoids
+# spending Actions/LLM/RPC quota every 15 minutes.
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "45 */2 * * *"
   workflow_dispatch: {}
 concurrency:
-  # Same reasoning as the other auto-* workflows: each of the 5 jury wallets
-  # has its own nonce, but overlapping runs racing to submit votes on the
-  # same dispute is still worth avoiding — cancel the older run.
   group: auto-resolve-disputes
   cancel-in-progress: true
 jobs:
