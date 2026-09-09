@@ -9,75 +9,41 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RoadmapRouteImport } from './routes/roadmap'
-import { Route as PortfolioRouteImport } from './routes/portfolio'
-import { Route as PipelineRouteImport } from './routes/pipeline'
-import { Route as OnchainRouteImport } from './routes/onchain'
-import { Route as GlobalRiskRouteImport } from './routes/global-risk'
-import { Route as FeedRouteImport } from './routes/feed'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as BridgeSwapRouteImport } from './routes/bridge-swap'
-import { Route as BridgeRouteImport } from './routes/bridge'
-import { Route as ArenaRouteImport } from './routes/arena'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as ArenaRouteImport } from './routes/arena'
+import { Route as AskGeomacroRouteImport } from './routes/ask-geomacro'
+import { Route as BridgeRouteImport } from './routes/bridge'
+import { Route as BridgeSwapRouteImport } from './routes/bridge-swap'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DataApiRouteImport } from './routes/data-api'
+import { Route as DemoRouteImport } from './routes/demo'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as FeedRouteImport } from './routes/feed'
+import { Route as GlobalRiskRouteImport } from './routes/global-risk'
+import { Route as InstitutionalRouteImport } from './routes/institutional'
+import { Route as IntelligenceRouteImport } from './routes/intelligence'
+import { Route as OnchainRouteImport } from './routes/onchain'
+import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as PortfolioRouteImport } from './routes/portfolio'
+import { Route as ResearchRouteImport } from './routes/research'
+import { Route as RiskGateRouteImport } from './routes/risk-gate'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiPublicDataProxyRouteImport } from './routes/api.public-data-proxy'
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
+import { Route as ApiRiskGateReadinessRouteImport } from './routes/api.risk-gate-readiness'
+import { Route as ApiRiskObjectKeysRouteImport } from './routes/api.risk-object-keys'
+import { Route as DocsSlugRouteImport } from './routes/docs_.$slug'
+import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
+import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
+import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
+import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
+import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
 
-const RoadmapRoute = RoadmapRouteImport.update({
-  id: '/roadmap',
-  path: '/roadmap',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortfolioRoute = PortfolioRouteImport.update({
-  id: '/portfolio',
-  path: '/portfolio',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PipelineRoute = PipelineRouteImport.update({
-  id: '/pipeline',
-  path: '/pipeline',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnchainRoute = OnchainRouteImport.update({
-  id: '/onchain',
-  path: '/onchain',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GlobalRiskRoute = GlobalRiskRouteImport.update({
-  id: '/global-risk',
-  path: '/global-risk',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeedRoute = FeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BridgeSwapRoute = BridgeSwapRouteImport.update({
-  id: '/bridge-swap',
-  path: '/bridge-swap',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BridgeRoute = BridgeRouteImport.update({
-  id: '/bridge',
-  path: '/bridge',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArenaRoute = ArenaRouteImport.update({
-  id: '/arena',
-  path: '/arena',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -85,14 +51,104 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ArenaRoute = ArenaRouteImport.update({
+  id: '/arena',
+  path: '/arena',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsGriArchitectureRoute = DocsGriArchitectureRouteImport.update({
-  id: '/docs_/gri-architecture',
-  path: '/docs/gri-architecture',
+const AskGeomacroRoute = AskGeomacroRouteImport.update({
+  id: '/ask-geomacro',
+  path: '/ask-geomacro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BridgeRoute = BridgeRouteImport.update({
+  id: '/bridge',
+  path: '/bridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BridgeSwapRoute = BridgeSwapRouteImport.update({
+  id: '/bridge-swap',
+  path: '/bridge-swap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataApiRoute = DataApiRouteImport.update({
+  id: '/data-api',
+  path: '/data-api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GlobalRiskRoute = GlobalRiskRouteImport.update({
+  id: '/global-risk',
+  path: '/global-risk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstitutionalRoute = InstitutionalRouteImport.update({
+  id: '/institutional',
+  path: '/institutional',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntelligenceRoute = IntelligenceRouteImport.update({
+  id: '/intelligence',
+  path: '/intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnchainRoute = OnchainRouteImport.update({
+  id: '/onchain',
+  path: '/onchain',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortfolioRoute = PortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiskGateRoute = RiskGateRouteImport.update({
+  id: '/risk-gate',
+  path: '/risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDataProxyRoute = ApiPublicDataProxyRouteImport.update({
+  id: '/api/public-data-proxy',
+  path: '/api/public-data-proxy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRiskGateRoute = ApiRiskGateRouteImport.update({
@@ -100,58 +156,146 @@ const ApiRiskGateRoute = ApiRiskGateRouteImport.update({
   path: '/api/risk-gate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRiskGateReadinessRoute = ApiRiskGateReadinessRouteImport.update({
+  id: '/api/risk-gate-readiness',
+  path: '/api/risk-gate-readiness',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRiskObjectKeysRoute = ApiRiskObjectKeysRouteImport.update({
+  id: '/api/risk-object-keys',
+  path: '/api/risk-object-keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSlugRoute = DocsSlugRouteImport.update({
+  id: '/docs_/$slug',
+  path: '/docs/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsGriArchitectureRoute = DocsGriArchitectureRouteImport.update({
+  id: '/docs_/gri-architecture',
+  path: '/docs/gri-architecture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventEventIdRoute = EventEventIdRouteImport.update({
+  id: '/event/$eventId',
+  path: '/event/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentRiskRoute = ApiAgentRiskRouteImport.update({
+  id: '/api/agent/risk',
+  path: '/api/agent/risk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDemoFeedbackRoute = ApiDemoFeedbackRouteImport.update({
+  id: '/api/demo/feedback',
+  path: '/api/demo/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDemoPreflightRoute = ApiDemoPreflightRouteImport.update({
+  id: '/api/demo/preflight',
+  path: '/api/demo/preflight',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
+  '/ask-geomacro': typeof AskGeomacroRoute
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/data-api': typeof DataApiRoute
+  '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
+  '/institutional': typeof InstitutionalRoute
+  '/intelligence': typeof IntelligenceRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
+  '/research': typeof ResearchRoute
+  '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
+  '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
+  '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
+  '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
+  '/event/$eventId': typeof EventEventIdRoute
+  '/api/agent/risk': typeof ApiAgentRiskRoute
+  '/api/demo/feedback': typeof ApiDemoFeedbackRoute
+  '/api/demo/preflight': typeof ApiDemoPreflightRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
+  '/ask-geomacro': typeof AskGeomacroRoute
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/data-api': typeof DataApiRoute
+  '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
+  '/institutional': typeof InstitutionalRoute
+  '/intelligence': typeof IntelligenceRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
+  '/research': typeof ResearchRoute
+  '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
+  '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
+  '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
+  '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
+  '/event/$eventId': typeof EventEventIdRoute
+  '/api/agent/risk': typeof ApiAgentRiskRoute
+  '/api/demo/feedback': typeof ApiDemoFeedbackRoute
+  '/api/demo/preflight': typeof ApiDemoPreflightRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
+  '/ask-geomacro': typeof AskGeomacroRoute
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/data-api': typeof DataApiRoute
+  '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
+  '/institutional': typeof InstitutionalRoute
+  '/intelligence': typeof IntelligenceRoute
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
+  '/research': typeof ResearchRoute
+  '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
+  '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
+  '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
+  '/docs_/$slug': typeof DocsSlugRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
+  '/event/$eventId': typeof EventEventIdRoute
+  '/api/agent/risk': typeof ApiAgentRiskRoute
+  '/api/demo/feedback': typeof ApiDemoFeedbackRoute
+  '/api/demo/preflight': typeof ApiDemoPreflightRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,149 +303,143 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/arena'
+    | '/ask-geomacro'
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/data-api'
+    | '/demo'
     | '/docs'
     | '/feed'
     | '/global-risk'
+    | '/institutional'
+    | '/intelligence'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
+    | '/research'
+    | '/risk-gate'
     | '/roadmap'
+    | '/api/health'
+    | '/api/public-data-proxy'
     | '/api/risk-gate'
+    | '/api/risk-gate-readiness'
+    | '/api/risk-object-keys'
+    | '/docs/$slug'
     | '/docs/gri-architecture'
+    | '/event/$eventId'
+    | '/api/agent/risk'
+    | '/api/demo/feedback'
+    | '/api/demo/preflight'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/arena'
+    | '/ask-geomacro'
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/data-api'
+    | '/demo'
     | '/docs'
     | '/feed'
     | '/global-risk'
+    | '/institutional'
+    | '/intelligence'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
+    | '/research'
+    | '/risk-gate'
     | '/roadmap'
+    | '/api/health'
+    | '/api/public-data-proxy'
     | '/api/risk-gate'
+    | '/api/risk-gate-readiness'
+    | '/api/risk-object-keys'
+    | '/docs/$slug'
     | '/docs/gri-architecture'
+    | '/event/$eventId'
+    | '/api/agent/risk'
+    | '/api/demo/feedback'
+    | '/api/demo/preflight'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/arena'
+    | '/ask-geomacro'
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/data-api'
+    | '/demo'
     | '/docs'
     | '/feed'
     | '/global-risk'
+    | '/institutional'
+    | '/intelligence'
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
+    | '/research'
+    | '/risk-gate'
     | '/roadmap'
+    | '/api/health'
+    | '/api/public-data-proxy'
     | '/api/risk-gate'
+    | '/api/risk-gate-readiness'
+    | '/api/risk-object-keys'
+    | '/docs_/$slug'
     | '/docs_/gri-architecture'
+    | '/event/$eventId'
+    | '/api/agent/risk'
+    | '/api/demo/feedback'
+    | '/api/demo/preflight'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ArenaRoute: typeof ArenaRoute
+  AskGeomacroRoute: typeof AskGeomacroRoute
   BridgeRoute: typeof BridgeRoute
   BridgeSwapRoute: typeof BridgeSwapRoute
   ContactRoute: typeof ContactRoute
+  DataApiRoute: typeof DataApiRoute
+  DemoRoute: typeof DemoRoute
   DocsRoute: typeof DocsRoute
   FeedRoute: typeof FeedRoute
   GlobalRiskRoute: typeof GlobalRiskRoute
+  InstitutionalRoute: typeof InstitutionalRoute
+  IntelligenceRoute: typeof IntelligenceRoute
   OnchainRoute: typeof OnchainRoute
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
+  ResearchRoute: typeof ResearchRoute
+  RiskGateRoute: typeof RiskGateRoute
   RoadmapRoute: typeof RoadmapRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiPublicDataProxyRoute: typeof ApiPublicDataProxyRoute
   ApiRiskGateRoute: typeof ApiRiskGateRoute
+  ApiRiskGateReadinessRoute: typeof ApiRiskGateReadinessRoute
+  ApiRiskObjectKeysRoute: typeof ApiRiskObjectKeysRoute
+  DocsSlugRoute: typeof DocsSlugRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
+  EventEventIdRoute: typeof EventEventIdRoute
+  ApiAgentRiskRoute: typeof ApiAgentRiskRoute
+  ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
+  ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/roadmap': {
-      id: '/roadmap'
-      path: '/roadmap'
-      fullPath: '/roadmap'
-      preLoaderRoute: typeof RoadmapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portfolio': {
-      id: '/portfolio'
-      path: '/portfolio'
-      fullPath: '/portfolio'
-      preLoaderRoute: typeof PortfolioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pipeline': {
-      id: '/pipeline'
-      path: '/pipeline'
-      fullPath: '/pipeline'
-      preLoaderRoute: typeof PipelineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onchain': {
-      id: '/onchain'
-      path: '/onchain'
-      fullPath: '/onchain'
-      preLoaderRoute: typeof OnchainRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/global-risk': {
-      id: '/global-risk'
-      path: '/global-risk'
-      fullPath: '/global-risk'
-      preLoaderRoute: typeof GlobalRiskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/feed': {
-      id: '/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof FeedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bridge-swap': {
-      id: '/bridge-swap'
-      path: '/bridge-swap'
-      fullPath: '/bridge-swap'
-      preLoaderRoute: typeof BridgeSwapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bridge': {
-      id: '/bridge'
-      path: '/bridge'
-      fullPath: '/bridge'
-      preLoaderRoute: typeof BridgeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/arena': {
-      id: '/arena'
-      path: '/arena'
-      fullPath: '/arena'
-      preLoaderRoute: typeof ArenaRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -311,18 +449,144 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/arena': {
+      id: '/arena'
+      path: '/arena'
+      fullPath: '/arena'
+      preLoaderRoute: typeof ArenaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs_/gri-architecture': {
-      id: '/docs_/gri-architecture'
-      path: '/docs/gri-architecture'
-      fullPath: '/docs/gri-architecture'
-      preLoaderRoute: typeof DocsGriArchitectureRouteImport
+    '/ask-geomacro': {
+      id: '/ask-geomacro'
+      path: '/ask-geomacro'
+      fullPath: '/ask-geomacro'
+      preLoaderRoute: typeof AskGeomacroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bridge': {
+      id: '/bridge'
+      path: '/bridge'
+      fullPath: '/bridge'
+      preLoaderRoute: typeof BridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bridge-swap': {
+      id: '/bridge-swap'
+      path: '/bridge-swap'
+      fullPath: '/bridge-swap'
+      preLoaderRoute: typeof BridgeSwapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-api': {
+      id: '/data-api'
+      path: '/data-api'
+      fullPath: '/data-api'
+      preLoaderRoute: typeof DataApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/global-risk': {
+      id: '/global-risk'
+      path: '/global-risk'
+      fullPath: '/global-risk'
+      preLoaderRoute: typeof GlobalRiskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/institutional': {
+      id: '/institutional'
+      path: '/institutional'
+      fullPath: '/institutional'
+      preLoaderRoute: typeof InstitutionalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intelligence': {
+      id: '/intelligence'
+      path: '/intelligence'
+      fullPath: '/intelligence'
+      preLoaderRoute: typeof IntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onchain': {
+      id: '/onchain'
+      path: '/onchain'
+      fullPath: '/onchain'
+      preLoaderRoute: typeof OnchainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolio': {
+      id: '/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof PortfolioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/risk-gate': {
+      id: '/risk-gate'
+      path: '/risk-gate'
+      fullPath: '/risk-gate'
+      preLoaderRoute: typeof RiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public-data-proxy': {
+      id: '/api/public-data-proxy'
+      path: '/api/public-data-proxy'
+      fullPath: '/api/public-data-proxy'
+      preLoaderRoute: typeof ApiPublicDataProxyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/risk-gate': {
@@ -332,6 +596,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRiskGateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/risk-gate-readiness': {
+      id: '/api/risk-gate-readiness'
+      path: '/api/risk-gate-readiness'
+      fullPath: '/api/risk-gate-readiness'
+      preLoaderRoute: typeof ApiRiskGateReadinessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/risk-object-keys': {
+      id: '/api/risk-object-keys'
+      path: '/api/risk-object-keys'
+      fullPath: '/api/risk-object-keys'
+      preLoaderRoute: typeof ApiRiskObjectKeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs_/$slug': {
+      id: '/docs_/$slug'
+      path: '/docs/$slug'
+      fullPath: '/docs/$slug'
+      preLoaderRoute: typeof DocsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs_/gri-architecture': {
+      id: '/docs_/gri-architecture'
+      path: '/docs/gri-architecture'
+      fullPath: '/docs/gri-architecture'
+      preLoaderRoute: typeof DocsGriArchitectureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/event/$eventId': {
+      id: '/event/$eventId'
+      path: '/event/$eventId'
+      fullPath: '/event/$eventId'
+      preLoaderRoute: typeof EventEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/risk': {
+      id: '/api/agent/risk'
+      path: '/api/agent/risk'
+      fullPath: '/api/agent/risk'
+      preLoaderRoute: typeof ApiAgentRiskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/demo/feedback': {
+      id: '/api/demo/feedback'
+      path: '/api/demo/feedback'
+      fullPath: '/api/demo/feedback'
+      preLoaderRoute: typeof ApiDemoFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/demo/preflight': {
+      id: '/api/demo/preflight'
+      path: '/api/demo/preflight'
+      fullPath: '/api/demo/preflight'
+      preLoaderRoute: typeof ApiDemoPreflightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -339,18 +659,34 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ArenaRoute: ArenaRoute,
+  AskGeomacroRoute: AskGeomacroRoute,
   BridgeRoute: BridgeRoute,
   BridgeSwapRoute: BridgeSwapRoute,
   ContactRoute: ContactRoute,
+  DataApiRoute: DataApiRoute,
+  DemoRoute: DemoRoute,
   DocsRoute: DocsRoute,
   FeedRoute: FeedRoute,
   GlobalRiskRoute: GlobalRiskRoute,
+  InstitutionalRoute: InstitutionalRoute,
+  IntelligenceRoute: IntelligenceRoute,
   OnchainRoute: OnchainRoute,
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
+  ResearchRoute: ResearchRoute,
+  RiskGateRoute: RiskGateRoute,
   RoadmapRoute: RoadmapRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiPublicDataProxyRoute: ApiPublicDataProxyRoute,
   ApiRiskGateRoute: ApiRiskGateRoute,
+  ApiRiskGateReadinessRoute: ApiRiskGateReadinessRoute,
+  ApiRiskObjectKeysRoute: ApiRiskObjectKeysRoute,
+  DocsSlugRoute: DocsSlugRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
+  EventEventIdRoute: EventEventIdRoute,
+  ApiAgentRiskRoute: ApiAgentRiskRoute,
+  ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
+  ApiDemoPreflightRoute: ApiDemoPreflightRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

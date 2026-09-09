@@ -46,7 +46,7 @@ const VerifyInput = z.object({
  * the same-origin client and is bound into the wallet-signed message.
  */
 export const issueSiweChallenge = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => AddressInput.parse(input))
+  .validator((input: unknown) => AddressInput.parse(input))
   .handler(async ({ data }) => {
     assertSameOrigin();
 
@@ -100,7 +100,7 @@ export const issueSiweChallenge = createServerFn({ method: "POST" })
  * the replay-protection mechanism.
  */
 export const verifySiwe = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => VerifyInput.parse(input))
+  .validator((input: unknown) => VerifyInput.parse(input))
   .handler(async ({ data }) => {
     assertSameOrigin();
     const { address, nonce, issuedAt, signature } = data;

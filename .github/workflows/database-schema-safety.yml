@@ -34,7 +34,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pin the CLI so CI does not depend on GitHub's unauthenticated
+          # "latest release" lookup, which can fail under API rate limiting.
+          version: 2.117.0
       - name: Start disposable local Supabase
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - name: Replay the full migration chain from zero
