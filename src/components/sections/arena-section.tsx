@@ -1044,7 +1044,7 @@ export function ArenaSection() {
           as="h1"
           eyebrow="Markets"
           title="Markets"
-          desc="Explore markets around events shaping the world. Every market is opened by an event in the pipeline, priced by two opposing analyst briefings, and settled automatically once the outcome is judged."
+          desc="Experimental Arc Testnet event markets built on top of Geomacro intelligence. This secondary surface demonstrates two-sided analysis, testnet positioning and settlement; it is not the core product or an institutional hedge."
         />
         {refreshing && (
           <div className="absolute right-0 top-0 flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
@@ -1332,28 +1332,28 @@ export function ArenaSection() {
       <div className="mt-20 border-t border-border/60 pt-12">
         <div className="max-w-2xl">
           <div className="font-mono text-xs uppercase tracking-widest text-primary">
-            The Narrative Economy
+            Technical Proof · Event Markets
           </div>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
-            Why event contracts belong in a macro book.
+            What this testnet application demonstrates.
           </h3>
         </div>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {[
             {
               k: "01",
-              title: "News as Liquidity",
-              body: "Breaking global events create instant volatility. Geomacro captures this attention spike and financializes it onchain, turning every headline into a tradable contract.",
+              title: "Event-to-market translation",
+              body: "Selected qualifying events can become testnet market questions so Geomacro can test how structured risk intelligence maps into a programmable application.",
             },
             {
               k: "02",
-              title: "Algorithmic Frameworks",
-              body: "Agent Hawk and Agent Dove act as algorithmic market makers representing opposing global risk frameworks. Their briefings price every contract before retail capital arrives.",
+              title: "Two-sided analysis",
+              body: "Opposing analyst briefings expose competing escalation and de-escalation interpretations. They are experimental calibration artifacts, not investment recommendations.",
             },
             {
               k: "03",
-              title: "Macro Hedging",
-              body: "Use event contracts to hedge real-world portfolio exposure against black swan events or geopolitical escalation. Settlement is USDC on Arc, no custodian required.",
+              title: "Testnet settlement",
+              body: "Positions and lifecycle settlement run in test USDC on Arc Testnet. This proves integration mechanics without representing production execution, custody or institutional hedging.",
             },
           ].map((c) => (
             <div key={c.k} className="rounded-2xl border border-border/60 bg-card/40 p-6">
