@@ -126,6 +126,20 @@ describe("Agentic Commerce public demo contract", () => {
     expect(paidRoute).toContain("Paid resource delivery failed closed.");
   });
 
+  it("ships a staging-only no-payment resilience harness", () => {
+    const harness = read("scripts/agentic/staging-resilience.mjs");
+    const pkg = read("package.json");
+
+    expect(pkg).toContain('"agentic:resilience": "node scripts/agentic/staging-resilience.mjs"');
+    expect(harness).toContain('"geomacro.live"');
+    expect(harness).toContain('"www.geomacro.live"');
+    expect(harness).toContain("STAGING_ONLY");
+    expect(harness).toContain('path: "/api/demo/preflight"');
+    expect(harness).toContain('path: "/api/agent/risk"');
+    expect(harness).toContain("payment_performed: false");
+    expect(harness).toContain("boundary_violation_count");
+  });
+
   it("keeps feedback persistence privacy-minimized and does not store raw payer identity", () => {
     const migration = read("supabase/migrations/035_agentic_demo_feedback.sql");
     const endpoint = read("src/routes/api.demo.feedback.ts");
