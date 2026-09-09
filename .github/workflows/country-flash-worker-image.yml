@@ -101,7 +101,7 @@ jobs:
             --username "$GITHUB_ACTOR" \
             --password-stdin
 
-      - name: Build and publish immutable and latest tags
+      - name: Build and publish immutable commit tag
         shell: bash
         run: |
           set -euo pipefail
@@ -109,11 +109,7 @@ jobs:
           docker build \
             --file workers/telegram-flash/Dockerfile \
             --tag "${IMAGE}:${GITHUB_SHA}" \
-            --tag "${IMAGE}:latest" \
             workers/telegram-flash
 
           docker push "${IMAGE}:${GITHUB_SHA}"
-          docker push "${IMAGE}:latest"
-
-          echo "Published ${IMAGE}:${GITHUB_SHA}"
-          echo "Published ${IMAGE}:latest"
+          echo "Published immutable worker image ${IMAGE}:${GITHUB_SHA}"

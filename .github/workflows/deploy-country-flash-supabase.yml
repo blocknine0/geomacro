@@ -40,12 +40,14 @@ jobs:
           grep -q 'supabase db push --dry-run' "$file"
           grep -q 'FLASH_INGEST_TOKEN' "$file"
           grep -q -- '--no-verify-jwt' "$file"
-          grep -q "github.event_name == 'workflow_dispatch'" "$file"
+          grep -q "github.ref == 'refs/heads/main'" "$file"
+          grep -q 'ldpwajisioljyjtojvfx' "$file"
+          grep -q 'version: 2.117.0' "$file"
 
           echo "Supabase deployment workflow safety guardrails are present."
 
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -53,6 +55,7 @@ jobs:
       group: deploy-country-flash-supabase-production
       cancel-in-progress: false
     env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -64,7 +67,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate required production secrets
+      - name: Validate required production secrets and target
         shell: bash
         run: |
           set -euo pipefail
@@ -86,10 +89,17 @@ jobs:
             exit 1
           fi
 
-      - name: Install Supabase CLI
+          if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
+            echo "::error title=Wrong production target::Refusing to link or deploy to a Supabase project other than the authoritative Geomacro production ref."
+            exit 1
+          fi
+
+          echo "PASS: authoritative production Supabase project ref confirmed."
+
+      - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
         with:
-          version: latest
+          version: 2.117.0
 
       - name: Link production project
         shell: bash
