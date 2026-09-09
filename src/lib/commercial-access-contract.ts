@@ -1,0 +1,101 @@
+export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.0.1" as const;
+
+export const GEOMACRO_CREDIT_COSTS = {
+  intelligence_query: 1,
+  gri_read: 1,
+  structural_country_digest: 3,
+  structural_corridor_digest: 5,
+  structural_country_profile: 8,
+  structural_corridor_profile: 12,
+  signed_risk_object: 10,
+  risk_gate_bundle: 15,
+} as const;
+
+export type GeomacroCreditCapability = keyof typeof GEOMACRO_CREDIT_COSTS;
+
+export const GEOMACRO_ACCESS_TIERS = {
+  free: {
+    id: "free",
+    label: "Free Explorer",
+    credits_per_30_days: 500,
+    public_price_usd: 0,
+    structured_data: {
+      raw_data_access: false,
+      governed_structured_data_only: true,
+      latest_snapshot_only: true,
+      max_subjects_per_request: 1,
+      max_structural_observations_per_response: 3,
+      max_evidence_references_per_answer: 5,
+      coverage_mode: "summary",
+      provenance_mode: "source_reference",
+      bulk_export: false,
+      signed_risk_objects: false,
+      risk_gate: false,
+    },
+  },
+  analyst_pilot: {
+    id: "analyst_pilot",
+    label: "Founding Analyst Pilot",
+    credits_per_30_days: 5_000,
+    pricing_reference: "USD 1,500 / 30 days default founding quote",
+    structured_data: {
+      raw_data_access: false,
+      governed_structured_data_only: true,
+      latest_snapshot_only: false,
+      default_scope: "up to two countries or one directional corridor",
+      max_structural_observations_per_profile: 12,
+      coverage_mode: "governed_profile",
+      provenance_mode: "commercially_eligible_structured_metadata",
+      bulk_export: "agreed structured exports only",
+      signed_risk_objects: false,
+      risk_gate: false,
+    },
+  },
+  api_pilot: {
+    id: "api_pilot",
+    label: "Founding API + Risk Gate Pilot",
+    credits_per_30_days: 20_000,
+    pricing_reference: "USD 2,500 / 30 days default founding quote",
+    structured_data: {
+      raw_data_access: false,
+      governed_structured_data_only: true,
+      latest_snapshot_only: false,
+      default_scope: "one defined workflow; geography agreed before start",
+      max_structural_observations_per_profile: 12,
+      coverage_mode: "governed_profile",
+      provenance_mode: "commercially_eligible_structured_metadata",
+      bulk_export: "controlled structured API/export only",
+      signed_risk_objects: true,
+      risk_gate: true,
+      execution_authorized: false,
+    },
+  },
+  institutional: {
+    id: "institutional",
+    label: "Institutional",
+    credits_per_month_starting_pool: 100_000,
+    pricing_reference: "contracted; current annual discussion anchor starts around USD 24k-36k",
+    structured_data: {
+      raw_data_access: false,
+      governed_structured_data_only: true,
+      latest_snapshot_only: false,
+      scope: "contracted countries, corridors, history, cadence and API volume",
+      coverage_mode: "governed_profile",
+      provenance_mode: "commercially_eligible_structured_metadata",
+      bulk_export: "contracted structured exports only",
+      signed_risk_objects: true,
+      risk_gate: true,
+      execution_authorized: false,
+    },
+  },
+} as const;
+
+export const GEOMACRO_DATA_POLICY = {
+  raw_customer_delivery: false,
+  private_warehouse_customer_access: false,
+  structured_delivery_required_for_every_tier: true,
+  review_gated_source_delivery: false,
+  missing_data_becomes_zero_risk: false,
+  structural_data_is_gri_v1_2_input: false,
+  structural_data_is_gro_v0_2_weight: false,
+} as const;
