@@ -6,22 +6,40 @@ on:
   schedule:
     - cron: "5 */2 * * *"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+
 concurrency:
   group: sync-lifecycle
   cancel-in-progress: true
+
 jobs:
   sync-lifecycle:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: npm install ethers @supabase/supabase-js
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Verify Arc Testnet and contract target
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
       - name: Run one bounded lifecycle sync
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
