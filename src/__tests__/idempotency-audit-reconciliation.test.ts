@@ -117,6 +117,33 @@ describe(
     );
 
     it(
+      "rolls expired idempotency slots forward without destructive cleanup",
+      () => {
+        const migration =
+          readFileSync(
+            "supabase/migrations/045_idempotency_audit_reconciliation.sql",
+            "utf8",
+          );
+
+        expect(migration).toContain(
+          "expired idempotency slots roll forward in place",
+        );
+        expect(migration).toContain(
+          "on conflict (",
+        );
+        expect(migration).toContain(
+          "do update",
+        );
+        expect(migration).toContain(
+          "public.risk_gate_idempotency_keys.expires_at <= v_now",
+        );
+        expect(migration).not.toContain(
+          "delete from public.risk_gate_idempotency_keys",
+        );
+      },
+    );
+
+    it(
       "completes only the currently owned canonical claim from its matching delivered audit window",
       () => {
         const migration =
