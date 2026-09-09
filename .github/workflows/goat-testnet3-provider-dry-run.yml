@@ -2,6 +2,7 @@ name: GOAT Testnet3 Provider Dry Run
 
 # Credentialed rerun requested 2026-09-10 after repository secrets were configured.
 # Receiving-address rerun requested after GOAT Testnet3 merchant wallet setup.
+# Live Testnet3 validation requires a minimum order amount of 100000 atomic units.
 on:
   pull_request:
     branches: [main]
@@ -29,7 +30,7 @@ jobs:
       GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
       GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
       GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
-      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '1'
+      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
       GOATX402_DRY_RUN_ARTIFACT_DIR: artifacts/goat-testnet3
 
     steps:
