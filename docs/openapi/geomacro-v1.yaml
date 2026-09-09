@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
   title: Geomacro Verified Intelligence API
-  version: 1.0.1-pilot
+  version: 1.1.0-pilot
   description: |
     Versioned integration contract for Geomacro's current verified-intelligence surfaces.
-    Risk Gate and sandbox responses are decision context only and never authorize execution.
+    Risk Gate, sandbox and webhook-event contexts never authorize execution.
     Customer-facing data is structured-only; raw/private warehouse data is not exposed.
+    Signed webhook events currently have a durable outbox contract only; outbound callback
+    delivery remains disabled pending explicit SSRF/egress hardening and verification.
 servers:
   - url: https://geomacro.live
     description: Production domain after deployment verification
@@ -129,7 +131,9 @@ paths:
         Private-pilot, authenticated and idempotent decision-context endpoint.
         The same client/request_id and semantically identical JSON payload can be
         replayed safely even if object key order differs. The response always remains
-        non-authorizing (`execution_authorized=false`).
+        non-authorizing (`execution_authorized=false`). When the signed webhook outbox
+        rollout flag is enabled, a successful response is not finalized until its
+        immutable signed delivery event is durable; no outbound callback is sent yet.
       requestBody:
         required: true
         content:
@@ -152,6 +156,32 @@ paths:
           description: Idempotency conflict or identical request still in progress
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Unavailable' }
+webhooks:
+  riskGateDecisionCreated:
+    post:
+      summary: Signed structured Risk Gate decision event contract
+      description: |
+        Contract for future outbound webhook delivery. The current implementation signs
+        and persists this event in an immutable server-only outbox but deliberately does
+        not perform outbound HTTP delivery yet. Receivers must verify payload hash and
+        Ed25519 signature, reject unknown/revoked signing keys, require
+        `execution_authorized=false`, and deduplicate by event_id/audit_id.
+      x-geomacro-delivery-status: outbox-only-no-egress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedRiskGateWebhookEvent'
+      responses:
+        '200':
+          description: Receiver accepted or idempotently recognized the signed event
+        '400':
+          description: Receiver rejected malformed or unsupported structured event
+        '401':
+          description: Receiver rejected signature/key verification
+        '409':
+          description: Receiver detected conflicting reuse of event_id or audit_id
 components:
   securitySchemes:
     bearerAuth:
@@ -435,6 +465,99 @@ components:
           additionalProperties: true
         audit_id:
           type: string
+    SignedRiskGateWebhookEvent:
+      type: object
+      required:
+        - schema_version
+        - event_id
+        - event_type
+        - occurred_at
+        - client_id
+        - data
+        - integrity
+      properties:
+        schema_version:
+          const: geomacro-webhook-1.0
+        event_id:
+          type: string
+          pattern: '^gwe_[A-Za-z0-9-]+$'
+        event_type:
+          const: risk_gate.decision.created
+        occurred_at:
+          type: string
+          format: date-time
+        client_id:
+          type: string
+        data:
+          type: object
+          required:
+            - audit_id
+            - request_id
+            - decision
+            - recommended_action
+            - reason_codes
+            - counterfactual
+            - subject
+            - risk
+            - top_drivers
+            - policy
+            - execution_authorized
+          properties:
+            audit_id:
+              type: string
+              pattern: '^rga_[A-Za-z0-9-]+$'
+            request_id:
+              type: string
+            decision:
+              enum: [CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE]
+            recommended_action:
+              enum: [ALLOW, REDUCE_EXPOSURE, REQUIRE_HUMAN_APPROVAL, BLOCK]
+            reason_codes:
+              type: array
+              items: { type: string }
+            counterfactual:
+              type: object
+              additionalProperties: true
+            subject:
+              type: object
+              additionalProperties: true
+            risk:
+              type: object
+              additionalProperties: true
+            top_drivers:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            policy:
+              type: object
+              additionalProperties: true
+            execution_authorized:
+              const: false
+          additionalProperties: false
+        integrity:
+          type: object
+          required:
+            - canonicalization
+            - payload_hash
+            - signature_scheme
+            - signing_key_id
+            - signature
+          properties:
+            canonicalization:
+              const: geomacro-canonical-json-1.0
+            payload_hash:
+              type: string
+              pattern: '^[a-f0-9]{64}$'
+            signature_scheme:
+              const: Ed25519
+            signing_key_id:
+              type: string
+              pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'
+            signature:
+              type: string
+          additionalProperties: false
+      additionalProperties: false
     RiskObjectVerificationReport:
       type: object
       required: [ok, verification]
