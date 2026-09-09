@@ -1,0 +1,78 @@
+{
+  "manifest_version": "goat-partner-evidence-v1.0.0",
+  "product": "Geomacro Verified Intelligence & Decision Infrastructure",
+  "partner_track": "GOAT Flow x402",
+  "commercial_sku": "risk_preflight_v1",
+  "data_delivery": "structured_only",
+  "raw_private_data_delivered": false,
+  "execution_authorized": false,
+  "testnet": {
+    "environment": "GOAT Testnet3",
+    "chain_id": 48816,
+    "network": "eip155:48816",
+    "commercial_revenue": false,
+    "merchant_access_confirmed": true,
+    "provider_dry_run": {
+      "engineering_status": "READY",
+      "live_status": "BLOCKED_SECURE_CONFIGURATION",
+      "reason": "The repository workflow context does not currently expose all required GOAT merchant secrets. No provider success is claimed until a sanitized evidence artifact exists.",
+      "required_evidence": [
+        "authenticated merchant identity",
+        "runtime-resolved Testnet3 USDC capability",
+        "HTTP 402 order challenge",
+        "authenticated order read",
+        "CHECKOUT_VERIFIED unpaid state",
+        "no transaction hash",
+        "sanitized artifact"
+      ]
+    },
+    "paid_e2e": {
+      "engineering_status": "READY",
+      "live_status": "NOT_EXECUTED",
+      "manual_only": true,
+      "required_acknowledgement": "GOAT_TESTNET3_USDC",
+      "commercial_revenue": false,
+      "required_evidence": [
+        "dedicated funded test wallet",
+        "single Testnet3 USDC transfer",
+        "GOAT authenticated paid status",
+        "exact provider order reconciliation",
+        "exact transaction hash reconciliation",
+        "structured intelligence delivery only after confirmation",
+        "public Risk Object cryptographic verification",
+        "execution_authorized=false end to end",
+        "sanitized evidence artifact"
+      ]
+    }
+  },
+  "production": {
+    "mainnet_commercial_enabled": false,
+    "official_partner_status": "NOT_YET_CONFIRMED",
+    "commercial_revenue_status": "NOT_YET_STARTED_VIA_GOAT",
+    "general_billing_replaced_by_goat": false,
+    "launch_gates": [
+      "GOAT mainnet merchant approval/onboarding",
+      "production merchant credentials isolated from Testnet3",
+      "approved real commercial SKU and price",
+      "legal/entity/accounting review",
+      "production settlement verification",
+      "security and resilience evidence",
+      "refund/dispute/reconciliation operations",
+      "first real paid order",
+      "confirmed delivery",
+      "payment/order/delivery reconciliation"
+    ]
+  },
+  "security_invariants": [
+    "GOAT merchant credentials are server-only",
+    "buyer private keys are never held by Geomacro",
+    "browser success never authorizes fulfillment",
+    "only PAYMENT_CONFIRMED or INVOICED can fulfill",
+    "unknown provider status fails closed",
+    "ambiguous create-order state never creates a blind second order",
+    "provider raw response is not customer-facing or persisted as evidence",
+    "testnet is never counted as revenue",
+    "Risk Gate never authorizes execution"
+  ],
+  "final_exact_head_gate_status": "PENDING_AFTER_ALL_PARTNER_PACKAGE_COMMITS"
+}
