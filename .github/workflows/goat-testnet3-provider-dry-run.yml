@@ -1,0 +1,74 @@
+name: GOAT Testnet3 Provider Dry Run
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/goat/testnet3-provider-dry-run.mjs'
+      - 'src/lib/goat-flow.server.ts'
+      - 'src/lib/goat-pilot-**'
+      - 'src/routes/api.goat.pilot.*'
+      - 'src/__tests__/goat-*'
+      - '.github/workflows/goat-testnet3-provider-dry-run.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-testnet3-provider-dry-run-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '1'
+      GOATX402_DRY_RUN_ARTIFACT_DIR: artifacts/goat-testnet3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Check secure merchant configuration
+        id: config
+        shell: bash
+        run: |
+          if [ -n "$GOATX402_API_KEY" ] && [ -n "$GOATX402_API_SECRET" ] && [ -n "$GOATX402_MERCHANT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "GOAT Testnet3 merchant secrets are configured for this repository context." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "GOAT Testnet3 live provider dry run was not executed because one or more required repository secrets are unavailable in this workflow context." >> "$GITHUB_STEP_SUMMARY"
+            echo "No merchant credential value was printed or inferred." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Run no-payment Testnet3 provider dry run
+        if: steps.config.outputs.configured == 'true'
+        run: node scripts/goat/testnet3-provider-dry-run.mjs
+
+      - name: Upload sanitized provider evidence
+        if: steps.config.outputs.configured == 'true' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-testnet3-provider-dry-run-${{ github.run_id }}
+          path: artifacts/goat-testnet3/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record no-payment boundary
+        if: steps.config.outputs.configured == 'true'
+        shell: bash
+        run: |
+          echo "Transaction submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "The dry run creates a GOAT Testnet3 402 challenge with a random payer address that has no private key, then performs an authenticated order read only." >> "$GITHUB_STEP_SUMMARY"
