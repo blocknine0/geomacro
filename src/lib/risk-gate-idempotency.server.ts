@@ -4,6 +4,9 @@ import {
 } from "node:crypto";
 
 import {
+  canonicalJson,
+} from "./canonical-json";
+import {
   handleExternalRiskGateRequest,
   readExternalRiskGateJsonBody,
 } from "./risk-gate-api.server";
@@ -41,15 +44,11 @@ type SuccessfulRiskGateBody = {
 };
 
 
-function sha256(
-  value: unknown,
+function sha256Text(
+  value: string,
 ): string {
   return createHash("sha256")
-    .update(
-      typeof value === "string"
-        ? value
-        : JSON.stringify(value),
-    )
+    .update(value)
     .digest("hex");
 }
 
@@ -123,7 +122,7 @@ async function identifyClient(
   const token = extractBearerToken(request);
   if (!token) return null;
 
-  const tokenHash = sha256(token);
+  const tokenHash = sha256Text(token);
   const db = requireRiskSupabase();
   const { data, error } = await db
     .from("risk_gate_api_clients")
@@ -311,6 +310,8 @@ function replayResponse(
  * validation, rate limiting, evaluation and immutable audit persistence. This
  * wrapper adds a server-only 24-hour request-id ledger around successful
  * deliveries so retries cannot double-evaluate the same client/request_id.
+ * Request hashes use canonical JSON, so semantically identical JSON bodies do
+ * not conflict solely because object keys were serialized in a different order.
  *
  * IMPORTANT: idempotency never changes the execution boundary. Every response,
  * including errors and replays, remains non-authorizing.
@@ -350,7 +351,20 @@ handleIdempotentExternalRiskGateRequest(
     return handleExternalRiskGateRequest(request);
   }
 
-  const requestHash = sha256(payload);
+  let requestHash: string;
+  try {
+    requestHash = sha256Text(
+      canonicalJson(payload),
+    );
+  } catch (error) {
+    console.error("[risk-gate] canonical idempotency hashing failed", error);
+    return jsonError(
+      400,
+      "INVALID_REQUEST_PAYLOAD",
+      "Risk Gate request payload is not canonical JSON data",
+    );
+  }
+
   let claim: ClaimRow;
 
   try {
