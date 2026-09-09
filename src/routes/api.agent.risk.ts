@@ -6,9 +6,11 @@ import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
 import { answerQuestion } from "../lib/ask-intelligence.server";
 import {
   agentIntelligenceQuerySchema,
+  agentStructuralQuerySchema,
   GEOMACRO_AGENT_VERSION,
   geomacroAgentManifest,
 } from "../lib/geomacro-agent-contract";
+import { loadPublicStructuralDigest } from "../lib/public-structural-digest.server";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
   CIRCLE_X402_ASSET,
@@ -71,12 +73,12 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-function isIntelligenceQuery(raw: unknown) {
+function hasCapability(raw: unknown, capability: string) {
   return Boolean(
     raw &&
       typeof raw === "object" &&
       "capability" in raw &&
-      (raw as { capability?: unknown }).capability === "intelligence_query",
+      (raw as { capability?: unknown }).capability === capability,
   );
 }
 
@@ -150,6 +152,7 @@ async function handlePublicIntelligenceQuery(request: Request, raw: unknown) {
         financial_advice: false,
         wallet_custody: false,
         transaction_signing: false,
+        raw_data_included: false,
       },
     });
   } catch (error) {
@@ -162,6 +165,91 @@ async function handlePublicIntelligenceQuery(request: Request, raw: unknown) {
         error: {
           code: "INTELLIGENCE_UNAVAILABLE",
           message: "Grounded Geomacro intelligence is temporarily unavailable.",
+        },
+        execution_authorized: false,
+      },
+      503,
+    );
+  }
+}
+
+async function handlePublicStructuralQuery(request: Request, raw: unknown) {
+  if (
+    !allowPublicDemoRequest(request, {
+      namespace: "geomacro-agent-structural",
+      windowMs: 60_000,
+      maxPerClient: 12,
+      maxGlobal: 120,
+    })
+  ) {
+    return json(
+      {
+        ok: false,
+        agent_version: GEOMACRO_AGENT_VERSION,
+        capability: "structural_query",
+        error: {
+          code: "STRUCTURAL_RATE_LIMITED",
+          message: "Public structural query limit exceeded. Try again shortly.",
+        },
+        execution_authorized: false,
+      },
+      429,
+    );
+  }
+
+  let input;
+  try {
+    input = agentStructuralQuerySchema.parse(raw);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return json(
+        {
+          ok: false,
+          agent_version: GEOMACRO_AGENT_VERSION,
+          capability: "structural_query",
+          error: {
+            code: "INVALID_STRUCTURAL_QUERY",
+            message: "Structural query fields are invalid.",
+            issues: error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            })),
+          },
+          execution_authorized: false,
+        },
+        400,
+      );
+    }
+    throw error;
+  }
+
+  try {
+    const digest = await loadPublicStructuralDigest(input);
+    return json({
+      ok: true,
+      agent_version: GEOMACRO_AGENT_VERSION,
+      capability: "structural_query",
+      request_id: randomUUID(),
+      client_request_id: input.client_request_id ?? null,
+      structural_context: digest,
+      boundaries: {
+        execution_authorized: false,
+        financial_advice: false,
+        raw_data_included: false,
+        private_warehouse_access: false,
+        structured_delivery_only: true,
+      },
+    });
+  } catch (error) {
+    console.error("[geomacro-agent] public structural query failed", error);
+    return json(
+      {
+        ok: false,
+        agent_version: GEOMACRO_AGENT_VERSION,
+        capability: "structural_query",
+        error: {
+          code: "STRUCTURAL_CONTEXT_UNAVAILABLE",
+          message: "Governed structural context is temporarily unavailable.",
         },
         execution_authorized: false,
       },
@@ -199,8 +287,12 @@ export const Route = createFileRoute("/api/agent/risk")({
           throw error;
         }
 
-        if (isIntelligenceQuery(rawBody)) {
+        if (hasCapability(rawBody, "intelligence_query")) {
           return handlePublicIntelligenceQuery(request, rawBody);
+        }
+
+        if (hasCapability(rawBody, "structural_query")) {
+          return handlePublicStructuralQuery(request, rawBody);
         }
 
         if (!isCircleX402Configured()) {
@@ -210,7 +302,7 @@ export const Route = createFileRoute("/api/agent/risk")({
               error: {
                 code: "X402_NOT_CONFIGURED",
                 message:
-                  "Circle x402 seller configuration is not active in this runtime. The free intelligence_query capability remains available.",
+                  "Circle x402 seller configuration is not active in this runtime. Free intelligence_query and structural_query capabilities remain available.",
               },
               execution_authorized: false,
             },
@@ -218,9 +310,6 @@ export const Route = createFileRoute("/api/agent/risk")({
           );
         }
 
-        // The x402 challenge is intentionally computed from an exact prepared
-        // Risk Gate resource before payment. Bound that unpaid preparation path
-        // so payment cannot be bypassed as a free compute-amplification vector.
         if (
           !allowPublicDemoRequest(request, {
             namespace: "agentic-x402",
@@ -236,10 +325,8 @@ export const Route = createFileRoute("/api/agent/risk")({
                 code: "X402_RATE_LIMITED",
                 message: "Agent risk request limit exceeded. Try again shortly.",
               },
-              execution_authorized: false,
-            },
-            429,
-          );
+              429,
+            );
         }
 
         let body;
@@ -258,17 +345,12 @@ export const Route = createFileRoute("/api/agent/risk")({
                     message: issue.message,
                   })),
                 },
-                execution_authorized: false,
-              },
-              400,
-            );
+                400,
+              );
           }
           throw error;
         }
 
-        // Prepare the exact risk resource BEFORE asking the caller to pay.
-        // On a paid retry the same prepared result is delivered after settlement;
-        // we do not recompute a second Risk Gate result after money is accepted.
         let prepared;
         try {
           prepared = await runAgenticPreflightDemo(body, {
@@ -325,7 +407,7 @@ export const Route = createFileRoute("/api/agent/risk")({
               payer: settlement.payer,
               settlement_reference: settlement.settlement_reference,
               note:
-                "Paid through Circle Gateway x402 on Arc Testnet. This is technical proof, not institutional pricing or production execution authorization.",
+                "Paid through Circle Gateway x402 on Arc Testnet. This remains technical proof only and is not the planned production real-money commercial payment system.",
             },
           };
 
