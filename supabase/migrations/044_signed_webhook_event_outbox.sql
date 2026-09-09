@@ -65,18 +65,20 @@ create table if not exists public.webhook_event_outbox (
 
   constraint webhook_event_outbox_payload_alignment_check
     check (
-      jsonb_typeof(payload) = 'object'
-      and payload ->> 'event_id' = event_id
-      and payload ->> 'client_id' = client_id
-      and payload ->> 'schema_version' = schema_version
-      and payload ->> 'event_type' = event_type
-      and payload #>> '{data,audit_id}' = audit_id
-      and payload -> 'data' -> 'execution_authorized' = 'false'::jsonb
-      and payload #>> '{integrity,payload_hash}' = payload_hash
-      and payload #>> '{integrity,signature_scheme}' = signature_scheme
-      and payload #>> '{integrity,signing_key_id}' = signing_key_id
-      and payload #>> '{integrity,signature}' = signature
-      and payload #>> '{integrity,canonicalization}' = 'geomacro-canonical-json-1.0'
+      (
+        jsonb_typeof(payload) = 'object'
+        and payload ->> 'event_id' = event_id
+        and payload ->> 'client_id' = client_id
+        and payload ->> 'schema_version' = schema_version
+        and payload ->> 'event_type' = event_type
+        and payload #>> '{data,audit_id}' = audit_id
+        and payload -> 'data' -> 'execution_authorized' = 'false'::jsonb
+        and payload #>> '{integrity,payload_hash}' = payload_hash
+        and payload #>> '{integrity,signature_scheme}' = signature_scheme
+        and payload #>> '{integrity,signing_key_id}' = signing_key_id
+        and payload #>> '{integrity,signature}' = signature
+        and payload #>> '{integrity,canonicalization}' = 'geomacro-canonical-json-1.0'
+      ) is true
     )
 );
 
