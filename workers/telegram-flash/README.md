@@ -22,7 +22,7 @@ Telegram MTProto -------------------------------\
 Al Jazeera RSS -----------------------------------+--> live-flash-ingest
 Federal Reserve official RSS ---------------------+         |
 ForexLive RSS ------------------------------------+         | country attribution
-MINING.com RSS -----------------------------------/         v
+USGS Minerals News RSS ---------------------------/         v
                                                     live_flash_events
 Existing Geomacro GDELT pipeline -------------------------> |
                                                             v
@@ -82,8 +82,10 @@ The long-lived worker has these default feed adapters:
 
 ### Critical minerals
 
-- MINING.com RSS
+- USGS Minerals News RSS
 - Existing Geomacro USGS/minerals source layer
+
+MINING.com RSS is not part of the active default hot path after production smoke testing returned persistent HTTP 403 responses. It remains a possible future source only if reliable permitted machine access becomes available.
 
 The source registry also contains controlled candidates for Reuters, AP, Trading Economics, FinancialJuice web, Forex Factory, World News API, NewsAPI.ai/Event Registry, MetalMiner and Argus. A candidate registration does not mean scraping or commercial reuse is enabled.
 
@@ -128,6 +130,8 @@ Apply in numeric order:
 - `038_telegram_flash_channel_registry.sql`
 - `039_flash_corroboration_graph.sql`
 - `040_critical_minerals_news_candidates.sql`
+- `041_country_flash_live_smoke_hardening.sql`
+- `042_country_flash_atf_demonym_fix.sql`
 
 ## Supabase functions
 
