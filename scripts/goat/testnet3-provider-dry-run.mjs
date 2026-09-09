@@ -57,6 +57,17 @@ function validateCredential(value, field, maxLength) {
   return text;
 }
 
+function boundedProviderDetail(parsed) {
+  const parts = [];
+  for (const key of ["code", "error", "message"]) {
+    const value = parsed?.[key];
+    if (typeof value !== "string") continue;
+    const clean = value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
+    if (clean) parts.push(`${key}=${clean}`);
+  }
+  return parts.join("; ");
+}
+
 function signHeaders(body, apiKey, apiSecret) {
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = randomUUID();
@@ -142,8 +153,8 @@ async function merchantRequest(method, path, body, apiKey, apiSecret, expected) 
   });
   const parsed = await boundedJson(response);
   if (!expected.includes(response.status)) {
-    const code = typeof parsed.code === "string" ? parsed.code : "GOAT_FLOW_ERROR";
-    fail(`${code}: GOAT merchant request failed with HTTP ${response.status}`);
+    const detail = boundedProviderDetail(parsed);
+    fail(`GOAT merchant request failed with HTTP ${response.status}${detail ? ` (${detail})` : ""}`);
   }
   return { status: response.status, body: parsed };
 }
