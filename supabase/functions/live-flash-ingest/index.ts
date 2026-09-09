@@ -54,6 +54,11 @@ type CountryMatch = {
   matched: string
 }
 
+type RankedCountryMatch =
+  CountryMatch & {
+    rank: number
+  }
+
 type VerificationStatus =
   | "UNVERIFIED"
   | "CORROBORATING"
@@ -307,6 +312,65 @@ function explicitIsoMatches(
   return matches
 }
 
+function inferUppercaseCountryAbbreviations(
+  rawText: string,
+  rows: CountryRow[],
+) {
+  const allowed =
+    new Set(
+      rows.map(row => row.iso3)
+    )
+
+  const matches:
+    RankedCountryMatch[] = []
+
+  // Keep this case-sensitive. Lowercase "us" is an English pronoun and must
+  // never become a country signal. Remove the well-known sports tournament
+  // phrase before testing so headlines such as "US Open quarterfinal" do not
+  // create a USA attribution by themselves.
+  const withoutUsOpen =
+    rawText.replace(
+      /(?:US|U\.S\.)\s+Open\b/g,
+      "",
+    )
+
+  if (
+    allowed.has("USA") &&
+    /(?:^|[^A-Za-z0-9])(?:US|U\.S\.)(?=$|[^A-Za-z0-9])/.test(
+      withoutUsOpen,
+    )
+  ) {
+    matches.push({
+      iso3: "USA",
+      confidence: 90,
+      method:
+        "UPPERCASE_COUNTRY_ABBREVIATION",
+      matched: "US/U.S.",
+      // Keep abbreviation evidence below an explicit country name/demonym so
+      // "Iran ... US sanctions" remains Iran-primary and USA-secondary.
+      rank: 900,
+    })
+  }
+
+  if (
+    allowed.has("GBR") &&
+    /(?:^|[^A-Za-z0-9])(?:UK|U\.K\.)(?=$|[^A-Za-z0-9])/.test(
+      rawText,
+    )
+  ) {
+    matches.push({
+      iso3: "GBR",
+      confidence: 90,
+      method:
+        "UPPERCASE_COUNTRY_ABBREVIATION",
+      matched: "UK/U.K.",
+      rank: 900,
+    })
+  }
+
+  return matches
+}
+
 function inferCountries(
   rawText: string,
   rows: CountryRow[],
@@ -315,11 +379,12 @@ function inferCountries(
     ` ${normalizeText(rawText)} `
 
   const candidates:
-    Array<
-      CountryMatch & {
-        rank: number
-      }
-    > = []
+    RankedCountryMatch[] = [
+      ...inferUppercaseCountryAbbreviations(
+        rawText,
+        rows,
+      ),
+    ]
 
   for (const row of rows) {
     const values = [
@@ -336,9 +401,8 @@ function inferCountries(
       const normalized =
         normalizeText(value)
 
-      // Very short aliases such as US/UK are ambiguous in prose after
-      // punctuation normalization. Workers can supply an ISO3 hint when the
-      // source has an explicit country context.
+      // Very short aliases are handled separately with case-sensitive
+      // abbreviation rules so ordinary prose cannot turn "us" into USA.
       if (normalized.length < 3) {
         continue
       }
