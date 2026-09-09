@@ -13,6 +13,9 @@ import {
 import {
   requireRiskSupabase,
 } from "./risk-supabase.server";
+import {
+  ensureRiskGateWebhookEvent,
+} from "./webhook-event-outbox.server";
 
 
 type ApiClientRow = {
@@ -269,16 +272,27 @@ async function completeClaim(
 }
 
 
+function validReplayState(
+  row: ClaimRow,
+): row is ClaimRow & {
+  audit_id: string;
+  response_payload: Record<string, unknown>;
+  http_status: number;
+} {
+  return Boolean(
+    row.audit_id &&
+    isRecord(row.response_payload) &&
+    Number.isInteger(row.http_status) &&
+    (row.http_status as number) >= 200 &&
+    (row.http_status as number) <= 299,
+  );
+}
+
+
 function replayResponse(
   row: ClaimRow,
 ): Response {
-  if (
-    !row.audit_id ||
-    !isRecord(row.response_payload) ||
-    !Number.isInteger(row.http_status) ||
-    (row.http_status as number) < 200 ||
-    (row.http_status as number) > 299
-  ) {
+  if (!validReplayState(row)) {
     return jsonError(
       503,
       "IDEMPOTENCY_BACKEND_INVALID",
@@ -292,7 +306,7 @@ function replayResponse(
       audit_id: row.audit_id,
     },
     {
-      status: row.http_status as number,
+      status: row.http_status,
       headers: {
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
@@ -300,6 +314,36 @@ function replayResponse(
       },
     },
   );
+}
+
+
+async function ensureWebhookBeforeDelivery(
+  input: {
+    client_id: string;
+    audit_id: string;
+    response_payload: unknown;
+  },
+): Promise<Response | null> {
+  try {
+    await ensureRiskGateWebhookEvent(
+      input,
+    );
+    return null;
+  } catch (error) {
+    console.error(
+      "[risk-gate] signed webhook outbox unavailable",
+      error,
+    );
+
+    return jsonError(
+      503,
+      "WEBHOOK_OUTBOX_UNAVAILABLE",
+      "Risk Gate result was audited but its signed delivery event is not durable yet",
+      {
+        "Retry-After": "2",
+      },
+    );
+  }
 }
 
 
@@ -313,8 +357,16 @@ function replayResponse(
  * Request hashes use canonical JSON, so semantically identical JSON bodies do
  * not conflict solely because object keys were serialized in a different order.
  *
- * IMPORTANT: idempotency never changes the execution boundary. Every response,
- * including errors and replays, remains non-authorizing.
+ * When WEBHOOK_OUTBOX_ENABLED=true, a successful Risk Gate response is not
+ * returned until one immutable signed structured webhook event is durable for
+ * its audit_id. If audit persistence succeeded but event persistence failed,
+ * the exact retry path reconstructs the missing event from the immutable audit
+ * response before replaying the 200 response. No outbound HTTP request occurs
+ * in this wrapper.
+ *
+ * IMPORTANT: idempotency/webhook reliability never changes the execution
+ * boundary. Every response, including errors and replays, remains
+ * non-authorizing.
  */
 export async function
 handleIdempotentExternalRiskGateRequest(
@@ -383,6 +435,24 @@ handleIdempotentExternalRiskGateRequest(
   }
 
   if (claim.disposition === "REPLAY") {
+    if (!validReplayState(claim)) {
+      return replayResponse(claim);
+    }
+
+    const webhookFailure =
+      await ensureWebhookBeforeDelivery({
+        client_id:
+          client.client_id,
+        audit_id:
+          claim.audit_id,
+        response_payload:
+          claim.response_payload,
+      });
+
+    if (webhookFailure) {
+      return webhookFailure;
+    }
+
     return replayResponse(claim);
   }
 
@@ -460,6 +530,23 @@ handleIdempotentExternalRiskGateRequest(
       "IDEMPOTENCY_COMPLETION_FAILED",
       "Risk Gate result has no immutable audit identifier",
     );
+  }
+
+  const webhookFailure =
+    await ensureWebhookBeforeDelivery({
+      client_id:
+        client.client_id,
+      audit_id:
+        auditId,
+      response_payload:
+        body,
+    });
+
+  if (webhookFailure) {
+    // Do not release the claim here. The delivered audit row already exists.
+    // On exact retry, claim_risk_gate_idempotency() reconciles that immutable
+    // audit row and the REPLAY path repairs/validates the signed webhook event.
+    return webhookFailure;
   }
 
   try {
