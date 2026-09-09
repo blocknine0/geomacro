@@ -9,6 +9,23 @@ const SERVICE_ROLE_KEY =
 const FLASH_INGEST_TOKEN =
   Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
 
+const ALLOWED_SOURCE_IDS =
+  new Set([
+    "telegram_mtproto_flash",
+    "aljazeera_rss",
+    "federal_reserve_press_rss",
+    "forexlive_rss",
+    "mining_com_rss",
+  ])
+
+const ALLOWED_VERIFICATION_STATUSES =
+  new Set([
+    "UNVERIFIED",
+    "CORROBORATING",
+    "VERIFIED",
+    "REJECTED",
+  ])
+
 const db =
   createClient(
     SUPABASE_URL,
@@ -36,6 +53,12 @@ type CountryMatch = {
   matched: string
 }
 
+type VerificationStatus =
+  | "UNVERIFIED"
+  | "CORROBORATING"
+  | "VERIFIED"
+  | "REJECTED"
+
 type FlashPayload = {
   source_id?: string
   source_record_id?: string
@@ -47,11 +70,7 @@ type FlashPayload = {
   event_type?: string | null
   severity?: number | null
   source_reliability?: number | null
-  verification_status?:
-    | "UNVERIFIED"
-    | "CORROBORATING"
-    | "VERIFIED"
-    | "REJECTED"
+  verification_status?: VerificationStatus
   latitude?: number | null
   longitude?: number | null
   commodity_tags?: string[] | null
@@ -124,6 +143,32 @@ function clampScore(
     0,
     Math.min(100, numeric),
   )
+}
+
+function clampCoordinate(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null
+  }
+
+  const numeric =
+    Number(value)
+
+  if (
+    !Number.isFinite(numeric) ||
+    numeric < minimum ||
+    numeric > maximum
+  ) {
+    return null
+  }
+
+  return numeric
 }
 
 function cleanString(
@@ -290,8 +335,9 @@ function inferCountries(
       const normalized =
         normalizeText(value)
 
-      // Two-character aliases such as US/UK are too ambiguous in normalized
-      // prose. Upstream workers can supply an ISO3 hint when needed.
+      // Very short aliases such as US/UK are ambiguous in prose after
+      // punctuation normalization. Workers can supply an ISO3 hint when the
+      // source has an explicit country context.
       if (normalized.length < 3) {
         continue
       }
@@ -426,12 +472,7 @@ Deno.serve(async request => {
       120,
     ) ?? "telegram_mtproto_flash"
 
-  // Keep the first production hot path narrow. Additional providers should be
-  // explicitly admitted through source governance, not by arbitrary caller input.
-  if (
-    sourceId !==
-    "telegram_mtproto_flash"
-  ) {
+  if (!ALLOWED_SOURCE_IDS.has(sourceId)) {
     return jsonResponse(
       400,
       {
@@ -445,7 +486,7 @@ Deno.serve(async request => {
   const sourceRecordId =
     cleanString(
       payload.source_record_id,
-      240,
+      500,
     )
 
   const headline =
@@ -508,6 +549,17 @@ Deno.serve(async request => {
     )
   }
 
+  const requestedVerification =
+    payload.verification_status ??
+    "UNVERIFIED"
+
+  const verificationStatus =
+    ALLOWED_VERIFICATION_STATUSES.has(
+      requestedVerification
+    )
+      ? requestedVerification
+      : "UNVERIFIED"
+
   const countries =
     await loadCountries()
 
@@ -530,6 +582,11 @@ Deno.serve(async request => {
       ? explicit
       : inferred
 
+  const stableIdentityHash =
+    await sha256Hex(
+      `${sourceId}:${sourceRecordId}`
+    )
+
   const contentHash =
     await sha256Hex(
       JSON.stringify({
@@ -548,8 +605,9 @@ Deno.serve(async request => {
       })
     )
 
+  // Stable across edits. content_hash tracks the latest content separately.
   const flashId =
-    `${sourceId}_${contentHash.slice(0, 32)}`
+    `${sourceId}_${stableIdentityHash.slice(0, 32)}`
 
   const eventRow = {
     flash_id:
@@ -582,14 +640,19 @@ Deno.serve(async request => {
         payload.source_reliability
       ),
     verification_status:
-      payload.verification_status ??
-      "UNVERIFIED",
+      verificationStatus,
     latitude:
-      payload.latitude ??
-      null,
+      clampCoordinate(
+        payload.latitude,
+        -90,
+        90,
+      ),
     longitude:
-      payload.longitude ??
-      null,
+      clampCoordinate(
+        payload.longitude,
+        -180,
+        180,
+      ),
     commodity_tags:
       Array.isArray(
         payload.commodity_tags
@@ -718,8 +781,10 @@ Deno.serve(async request => {
       ok: true,
       flash_id:
         storedFlashId,
+      source_id:
+        sourceId,
       verification_status:
-        eventRow.verification_status,
+        verificationStatus,
       countries:
         countryMatches.map(
           (match, index) => ({
@@ -733,6 +798,8 @@ Deno.serve(async request => {
               match.method,
           })
         ),
+      // No fast-wire source is allowed to bypass the structured verification
+      // and commercial eligibility pipeline at this endpoint.
       scoring_eligible:
         false,
     },
