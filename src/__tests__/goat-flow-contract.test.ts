@@ -87,6 +87,40 @@ describe("GOAT Flow partner contract", () => {
     ).toBe("2783a668235a517e0bba3b8722d912b5b15651ae9eeebb57d7026ee24275116a");
   });
 
+  it("accepts opaque provider credentials containing HMAC delimiters", () => {
+    const apiKey = "provider_key=opaque&part";
+    const apiSecret = "provider_secret=opaque&part";
+    const signed = signGoatFlowRequest(
+      {
+        dapp_order_id: "geomacro-goat-test",
+        chain_id: 48816,
+        token_symbol: "USDC",
+        token_contract: "0x1111111111111111111111111111111111111111",
+        from_address: "0x2222222222222222222222222222222222222222",
+        amount_wei: "1000000",
+      },
+      { api_key: apiKey, api_secret: apiSecret },
+      1789000000,
+      "00000000-0000-4000-8000-000000000001",
+    );
+
+    expect(signed["X-API-Key"]).toBe(apiKey);
+    expect(signed["X-Sign"]).toMatch(/^[a-f0-9]{64}$/);
+
+    process.env.GOATX402_ENVIRONMENT = "testnet3";
+    delete process.env.GOATX402_API_URL;
+    process.env.GOATX402_API_KEY = apiKey;
+    process.env.GOATX402_API_SECRET = apiSecret;
+    process.env.GOATX402_MERCHANT_ID = "merchant_test";
+
+    expect(requireGoatFlowConfig()).toMatchObject({
+      environment: "testnet3",
+      api_key: apiKey,
+      api_secret: apiSecret,
+      merchant_id: "merchant_test",
+    });
+  });
+
   it("rejects HMAC delimiter injection and invalid payment scalars before the provider call", () => {
     expect(() =>
       validateGoatCreateOrderInput(
@@ -100,6 +134,13 @@ describe("GOAT Flow partner contract", () => {
         "testnet3",
       ),
     ).toThrow("dapp_order_id is invalid");
+
+    expect(() =>
+      signGoatFlowRequest(
+        { arbitrary: "bad&value" },
+        { api_key: "provider_key=opaque&part", api_secret: "provider_secret" },
+      ),
+    ).toThrow("arbitrary contains unsupported HMAC delimiter/control characters");
 
     expect(() =>
       validateGoatCreateOrderInput(
