@@ -4,8 +4,9 @@
 -- 1) MINING.com RSS returned persistent CDN 403 responses from the live worker.
 --    Keep the source registered for provenance/history, but disable it as an
 --    active ingestion source until a supported machine endpoint is available.
--- 2) Register the official USGS Minerals News RSS endpoint as the preferred
---    critical-minerals candidate for the next hot-path activation.
+-- 2) Activate the official USGS Minerals News RSS endpoint as the replacement
+--    critical-minerals source. The matching Edge Function allowlist change is
+--    shipped in the same release.
 -- 3) Remove the ambiguous Iceland alias "Island" from the canonical country
 --    registry because it produced a false attribution for headlines such as
 --    "Kharg Island" -> ISL during the first production smoke test.
@@ -52,11 +53,11 @@ values (
   'DERIVED_ONLY',
   false,
   true,
+  true,
   false,
-  false,
-  'USA',
+  'GLOBAL',
   'SOURCE_DEPENDENT',
-  'Official Mineral Resources Program news RSS endpoint. Registered as the preferred replacement for the blocked MINING.com hot-path feed. Keep disabled until the flash-ingest source allowlist and deployment are updated together.'
+  'Official Mineral Resources Program news RSS endpoint. Enabled as the production-safe critical-minerals replacement for the blocked MINING.com feed. Store only minimal feed metadata and Geomacro-derived intelligence.'
 )
 on conflict (source_id)
 do update set
