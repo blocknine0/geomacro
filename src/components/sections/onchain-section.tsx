@@ -13,7 +13,7 @@ export function OnchainSection() {
       <SectionHeader
         eyebrow="Onchain"
         title="Built for Arc"
-        desc="Arc is a stablecoin-first chain that settles in USDC. Geomacro follows whichever network your wallet is on, which is testnet today and mainnet the moment it goes live."
+        desc="Arc Testnet is the live technical-proof network used by Geomacro today. Mainnet remains disabled until Arc mainnet availability is independently confirmed and Geomacro explicitly enables a production configuration."
       />
       <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
