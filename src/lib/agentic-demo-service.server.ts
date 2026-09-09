@@ -15,13 +15,20 @@ export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
 export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
 
 export type AgenticDemoRunOptions = {
-  mode?: "PUBLIC_SANDBOX" | "X402_PAID";
+  mode?: "PUBLIC_SANDBOX" | "X402_PAID" | "GOAT_X402_PAID";
   recordTelemetry?: boolean;
+  /**
+   * Optional server-controlled correlation ID. Commercial partner integrations
+   * can reuse their durable request UUID so the paid order, Risk Gate audit and
+   * delivered intelligence all share one traceable identity. Public callers do
+   * not control this field through the API.
+   */
+  requestId?: string;
   payment?: {
     required: boolean;
-    provider?: "circle_gateway_x402";
-    asset?: "USDC";
-    network?: "eip155:5042002";
+    provider?: "circle_gateway_x402" | "goat_flow_x402";
+    asset?: string;
+    network?: string;
     amount_atomic?: string;
     amount_usdc?: string;
     payer?: string | null;
@@ -86,12 +93,6 @@ async function loadRiskObject(objectId: string) {
   return publicRiskObject(data.payload as GeomacroRiskObject);
 }
 
-/**
- * Reuse the exact canonical public GRI read contract instead of issuing a
- * looser demo-specific query. If the newest current-method snapshot is stale,
- * unverified, proof-incomplete, or otherwise ineligible for the public product,
- * the agentic response must not expose it as context either.
- */
 async function loadGriContext() {
   try {
     const risk = await readPublicGlobalRisk();
@@ -161,7 +162,11 @@ export async function runAgenticPreflightDemo(
   const parsed = agenticDemoRequestSchema.parse(raw);
   assertSupportedDemoSubject(parsed);
 
-  const requestId = randomUUID();
+  const requestId = options.requestId?.trim() || randomUUID();
+  if (requestId.length < 1 || requestId.length > 256) {
+    throw new Error("Server-controlled agentic request ID is invalid");
+  }
+
   const policy = demoPolicyFromPreset(parsed.policy_preset);
   const mode = options.mode ?? "PUBLIC_SANDBOX";
   const shouldRecordTelemetry = options.recordTelemetry ?? true;
@@ -204,8 +209,17 @@ export async function runAgenticPreflightDemo(
         status: "delivered",
         httpStatus: 200,
         responseCode:
-          mode === "X402_PAID" ? "X402_DEMO_DELIVERED" : "DEMO_DELIVERED",
-        externalAgentId: mode === "X402_PAID" ? "x402_agent" : "public_demo",
+          mode === "PUBLIC_SANDBOX"
+            ? "DEMO_DELIVERED"
+            : mode === "GOAT_X402_PAID"
+              ? "GOAT_X402_DEMO_DELIVERED"
+              : "X402_DEMO_DELIVERED",
+        externalAgentId:
+          mode === "PUBLIC_SANDBOX"
+            ? "public_demo"
+            : mode === "GOAT_X402_PAID"
+              ? "goat_x402_agent"
+              : "x402_agent",
       });
     }
 
@@ -220,7 +234,7 @@ export async function runAgenticPreflightDemo(
         ({
           required: false,
           note:
-            "The browser sandbox is free. The separate agent endpoint demonstrates Circle x402 / USDC pay-per-call access on Arc Testnet.",
+            "The browser sandbox is free. Partner-specific paid-agent integrations use separate governed payment rails.",
         } as const),
       action_context: actionContext,
       policy_preset: parsed.policy_preset,
@@ -247,7 +261,12 @@ export async function runAgenticPreflightDemo(
         status: "delivery_failed",
         httpStatus: 503,
         responseCode: "DEMO_FAILED_CLOSED",
-        externalAgentId: mode === "X402_PAID" ? "x402_agent" : "public_demo",
+        externalAgentId:
+          mode === "GOAT_X402_PAID"
+            ? "goat_x402_agent"
+            : mode === "X402_PAID"
+              ? "x402_agent"
+              : "public_demo",
       });
     }
     throw error;
