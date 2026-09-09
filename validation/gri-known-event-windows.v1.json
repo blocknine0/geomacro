@@ -1,0 +1,38 @@
+{
+  "protocol_version": "gri-historical-validation-v1.0.0",
+  "methodology_version": "gri-v1.2.0",
+  "evidence_class": "retrospective_replay",
+  "lookahead_safe_required_for_predictive_claims": true,
+  "windows": [
+    {
+      "id": "russia-ukraine-invasion-2022",
+      "label": "Russia launches full-scale invasion of Ukraine",
+      "event_at": "2022-02-24T00:00:00.000Z",
+      "baseline_hours_before": 72,
+      "evaluation_hours_after": 72,
+      "expected_direction": "increase",
+      "minimum_coverage": 0,
+      "claim_boundary": "methodology_response_only"
+    },
+    {
+      "id": "svb-failure-2023",
+      "label": "Silicon Valley Bank failure",
+      "event_at": "2023-03-10T00:00:00.000Z",
+      "baseline_hours_before": 72,
+      "evaluation_hours_after": 72,
+      "expected_direction": "increase",
+      "minimum_coverage": 0,
+      "claim_boundary": "methodology_response_only"
+    },
+    {
+      "id": "israel-hamas-war-2023",
+      "label": "October 7 Israel-Hamas war onset",
+      "event_at": "2023-10-07T00:00:00.000Z",
+      "baseline_hours_before": 72,
+      "evaluation_hours_after": 72,
+      "expected_direction": "increase",
+      "minimum_coverage": 0,
+      "claim_boundary": "methodology_response_only"
+    }
+  ]
+}
