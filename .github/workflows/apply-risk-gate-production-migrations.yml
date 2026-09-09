@@ -1,0 +1,134 @@
+name: Apply Risk Gate production migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan shows pending migrations only. Apply pushes pending migrations to the authoritative production Supabase project."
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+  pull_request:
+    paths:
+      - ".github/workflows/apply-risk-gate-production-migrations.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate production safety guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/apply-risk-gate-production-migrations.yml"
+          grep -q 'workflow_dispatch:' "$file"
+          grep -q 'supabase db push --dry-run' "$file"
+          grep -q 'supabase db push' "$file"
+          grep -q "github.ref == 'refs/heads/main'" "$file"
+          grep -q 'ldpwajisioljyjtojvfx' "$file"
+          grep -q 'version: 2.117.0' "$file"
+
+          # Keep this workflow migration-only. Build forbidden command strings
+          # from fragments so this validator does not match its own source text.
+          forbidden_functions="supabase functions"' deploy'
+          forbidden_secrets="supabase secrets"' set'
+          if grep -Fq "$forbidden_functions" "$file" || grep -Fq "$forbidden_secrets" "$file"; then
+            echo "::error title=Unexpected side effect::This workflow must be migration-only."
+            exit 1
+          fi
+
+          echo "Risk Gate migration workflow safety guardrails are present."
+
+  migrate:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: risk-gate-production-migrations
+      cancel-in-progress: false
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate required production secrets and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing production secret::${name} is not configured."
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+          if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
+            echo "::error title=Wrong production target::Refusing to touch any Supabase project other than the authoritative Geomacro production ref."
+            exit 1
+          fi
+          echo "PASS: authoritative production Supabase project ref confirmed."
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+
+      - name: Link authoritative production project
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Show pending production migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --dry-run | tee /tmp/risk-gate-migration-plan.txt
+
+      - name: Stop after plan
+        if: ${{ inputs.mode == 'plan' }}
+        shell: bash
+        run: |
+          echo "Plan completed. No production database changes were applied."
+
+      - name: Apply pending production migrations
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push
+
+      - name: Verify no migrations remain pending
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --dry-run | tee /tmp/risk-gate-migration-postcheck.txt
+          if grep -Eq 'Would push|would push|Pending migrations|pending migrations' /tmp/risk-gate-migration-postcheck.txt; then
+            echo "::warning title=Review post-check::Supabase reported text that may indicate pending migrations remain. Review this step output before live testing."
+          fi
+          echo "Production migration post-check completed."
