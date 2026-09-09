@@ -1,0 +1,79 @@
+name: Derive Risk Object Public Key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  derive-public-key:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      EXPECTED_KEY_ID: geomacro-risk-2026-01
+      SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+    steps:
+      - name: Derive Ed25519 public verification key
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SIGNING_PRIVATE_KEY_PKCS8_B64:-}" ]; then
+            echo "::error::RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 is not configured in GitHub Actions secrets."
+            exit 1
+          fi
+
+          node <<'NODE'
+          const { createHash, createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+
+          const privateB64 = process.env.SIGNING_PRIVATE_KEY_PKCS8_B64?.trim();
+          const keyId = process.env.EXPECTED_KEY_ID;
+
+          if (!privateB64) {
+            throw new Error('Signing private key secret is empty');
+          }
+
+          const privateKey = createPrivateKey({
+            key: Buffer.from(privateB64, 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error(`Expected Ed25519 private key, received ${privateKey.asymmetricKeyType ?? 'unknown'}`);
+          }
+
+          const spkiDer = createPublicKey(privateKey).export({
+            format: 'der',
+            type: 'spki',
+          });
+          const publicB64 = Buffer.from(spkiDer).toString('base64');
+          const fingerprint = createHash('sha256').update(spkiDer).digest('hex');
+
+          console.log(`Signing key id: ${keyId}`);
+          console.log(`Public key SPKI SHA-256: ${fingerprint}`);
+
+          fs.appendFileSync(
+            process.env.GITHUB_STEP_SUMMARY,
+            [
+              '# Geomacro Risk Object verification key',
+              '',
+              `- Key ID: \`${keyId}\``,
+              '- Algorithm: Ed25519',
+              '- Format: SPKI DER, base64 encoded',
+              `- Public key fingerprint (SHA-256): \`${fingerprint}\``,
+              '',
+              'Copy the value below into the server-only Lovable secret `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64`:',
+              '',
+              '```text',
+              publicB64,
+              '```',
+              '',
+              'Also set `RISK_OBJECT_SIGNING_KEY_ID` to `geomacro-risk-2026-01`.',
+              '',
+              'The private signing key was not printed or persisted by this workflow.',
+            ].join('\n'),
+          );
+          NODE
