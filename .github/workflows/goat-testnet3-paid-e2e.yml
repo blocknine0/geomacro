@@ -1,0 +1,96 @@
+name: GOAT Testnet3 Paid E2E Proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type exactly GOAT_TESTNET3_USDC to authorize one Testnet3 test payment'
+        required: true
+        type: string
+      client_request_id:
+        description: 'Optional deterministic client request ID for reconciliation/retry'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-testnet3-paid-e2e
+  cancel-in-progress: false
+
+jobs:
+  paid-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: goat-testnet3-paid-proof
+    env:
+      GEOMACRO_GOAT_PILOT_BASE_URL: ${{ secrets.GEOMACRO_GOAT_PILOT_BASE_URL }}
+      GEOMACRO_GOAT_PILOT_EXPECTED_HOST: ${{ secrets.GEOMACRO_GOAT_PILOT_EXPECTED_HOST }}
+      GEOMACRO_GOAT_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY }}
+      GEOMACRO_GOAT_TEST_PAYER_ADDRESS: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_ADDRESS }}
+      GEOMACRO_GOAT_TESTNET_E2E_ACK: ${{ inputs.confirmation }}
+      GEOMACRO_GOAT_CLIENT_REQUEST_ID: ${{ inputs.client_request_id }}
+      GEOMACRO_GOAT_E2E_ARTIFACT_DIR: artifacts/goat-testnet3-paid
+
+    steps:
+      - name: Validate explicit Testnet payment acknowledgement
+        shell: bash
+        run: |
+          if [ "$GEOMACRO_GOAT_TESTNET_E2E_ACK" != "GOAT_TESTNET3_USDC" ]; then
+            echo "::error::Paid Testnet3 proof requires the exact acknowledgement GOAT_TESTNET3_USDC."
+            exit 1
+          fi
+          echo "Explicit Testnet3 payment acknowledgement accepted." >> "$GITHUB_STEP_SUMMARY"
+          echo "This run is testnet proof only and cannot be counted as commercial revenue." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate protected staging secrets without printing them
+        shell: bash
+        run: |
+          missing=0
+          for name in \
+            GEOMACRO_GOAT_PILOT_BASE_URL \
+            GEOMACRO_GOAT_PILOT_EXPECTED_HOST \
+            GEOMACRO_GOAT_PILOT_ACCESS_TOKEN \
+            GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured in the protected goat-testnet3-paid-proof environment."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Checkout exact workflow ref
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Execute one explicitly acknowledged paid Testnet3 E2E
+        run: node scripts/goat/testnet3-e2e.mjs
+
+      - name: Upload sanitized paid-proof evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-testnet3-paid-proof-${{ github.run_id }}
+          path: artifacts/goat-testnet3-paid/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record proof boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Network: GOAT Testnet3 / eip155:48816" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Buyer-wallet custody by Geomacro: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Execution authorization from Risk Gate: false" >> "$GITHUB_STEP_SUMMARY"
