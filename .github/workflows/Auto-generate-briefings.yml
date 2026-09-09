@@ -5,22 +5,35 @@ name: Generate Hawk/Dove briefings (Technical Proof)
 # spending Actions/LLM quota or generating new market-side artifacts.
 on:
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+
 concurrency:
   group: auto-generate-briefings
   cancel-in-progress: true
+
 jobs:
   generate-briefings:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: npm install @supabase/supabase-js groq-sdk node-fetch
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Verify authoritative Supabase target before privileged writes
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
       - name: Run briefing generation script
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}

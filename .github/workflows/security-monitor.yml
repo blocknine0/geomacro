@@ -1,26 +1,45 @@
 name: Security Monitor
 on:
   schedule:
-    - cron: "*/15 * * * *" 
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
+
+permissions:
+  contents: read
+
 concurrency:
-  # guardian wallet দিয়ে pause() পাঠানোর মতো state-changing action এখানে আছে,
-  # তাই একসাথে দুইটা রান চলা risky — আগের scan শেষ হতে দাও।
-  group: security-monitor
+  # This workflow can submit a guardian pause transaction. Never cancel a run
+  # that may already be signing or broadcasting, and never overlap guardian
+  # wallet activity.
+  group: arc-guardian-wallet-state-change
   cancel-in-progress: false
+
 jobs:
   monitor:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # 🛡️ NEW: bumped from 4 to 6 min — queryFilter calls are now chunked into
-    # 10-block windows (some free-tier RPC providers reject wider ranges),
-    # so a single run can make up to ~30 RPC calls instead of 3.
     timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          node-version: '22'
-      - run: npm install
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Verify Arc Testnet and contract before exposing guardian credentials
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target before privileged writes
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
       - name: Run anomaly monitor
         run: node scripts/anomaly-monitor.js
         env:
@@ -30,11 +49,6 @@ jobs:
           ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
           ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
-          # 🛡️ NEW: added for consistency with the other workflows — the
-          # script's own fallback default already equals the V1 address, so
-          # this wasn't silently broken like the other files, but the other
-          # 5 workflows all now set this explicitly and this one should too,
-          # in case the default is ever changed.
           OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           GUARDIAN_PRIVATE_KEY: ${{ secrets.GUARDIAN_PRIVATE_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
