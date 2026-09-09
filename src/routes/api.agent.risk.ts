@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { agenticDemoRequestSchema } from "../lib/agentic-demo-contract";
 import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
+import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
   CIRCLE_X402_ASSET,
   CIRCLE_X402_NETWORK,
@@ -83,6 +84,30 @@ export const Route = createFileRoute("/api/agent/risk")({
               execution_authorized: false,
             },
             503,
+          );
+        }
+
+        // The x402 challenge is intentionally computed from an exact prepared
+        // Risk Gate resource before payment. Bound that unpaid preparation path
+        // so payment cannot be bypassed as a free compute-amplification vector.
+        if (
+          !allowPublicDemoRequest(request, {
+            namespace: "agentic-x402",
+            windowMs: 60_000,
+            maxPerClient: 30,
+            maxGlobal: 300,
+          })
+        ) {
+          return json(
+            {
+              ok: false,
+              error: {
+                code: "X402_RATE_LIMITED",
+                message: "Agent risk request limit exceeded. Try again shortly.",
+              },
+              execution_authorized: false,
+            },
+            429,
           );
         }
 
