@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       # Pin the exact Bun version that produced and validated the committed
       # lockfile. Do not float on "latest": lockfile semantics can change
