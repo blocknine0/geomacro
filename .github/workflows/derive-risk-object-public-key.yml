@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      EXPECTED_KEY_ID: geomacro-risk-2026-01
+      EXPECTED_KEY_ID: geomacro-risk-2026-02
       SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
     steps:
       - name: Derive Ed25519 public verification key
@@ -71,7 +71,7 @@ jobs:
               publicB64,
               '```',
               '',
-              'Also set `RISK_OBJECT_SIGNING_KEY_ID` to `geomacro-risk-2026-01`.',
+              'Also set `RISK_OBJECT_SIGNING_KEY_ID` to `geomacro-risk-2026-02`.',
               '',
               'The private signing key was not printed or persisted by this workflow.',
             ].join('\n'),
