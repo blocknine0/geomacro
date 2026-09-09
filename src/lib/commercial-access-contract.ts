@@ -1,4 +1,4 @@
-export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.0.0" as const;
+export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.0.1" as const;
 
 export const GEOMACRO_CREDIT_COSTS = {
   intelligence_query: 1,
@@ -17,7 +17,7 @@ export const GEOMACRO_ACCESS_TIERS = {
   free: {
     id: "free",
     label: "Free Explorer",
-    credits_per_30_days: 100,
+    credits_per_30_days: 500,
     public_price_usd: 0,
     structured_data: {
       raw_data_access: false,
