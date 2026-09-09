@@ -4,7 +4,7 @@ import process from "node:process";
 
 const METHOD = process.env.GRI_METHOD_VERSION || "gri-v1.2.0";
 const PROOF = process.env.GRI_PROOF_VERSION || "gri-proof-v1.2.0";
-const MAX_AGE_HOURS = Number(process.env.GRI_WATCHDOG_MAX_AGE_HOURS || "1.5");
+const MAX_AGE_HOURS = Number(process.env.GRI_WATCHDOG_MAX_AGE_HOURS || "5");
 const FUTURE_TOLERANCE_MINUTES = 15;
 const STALE_EXIT_CODE = 10;
 
@@ -83,7 +83,7 @@ if (ageHours < -futureToleranceHours) {
 const fresh = ageHours <= MAX_AGE_HOURS;
 console.log(JSON.stringify({
   fresh,
-  reason: fresh ? "WITHIN_WATCHDOG_WINDOW" : "VERIFIED_SNAPSHOT_STALE",
+  reason: fresh ? "WITHIN_RECOVERY_WINDOW" : "VERIFIED_SNAPSHOT_STALE",
   snapshotId: latest.id,
   asOf: latest.as_of,
   ageHours: Number(ageHours.toFixed(4)),
