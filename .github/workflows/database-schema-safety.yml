@@ -21,8 +21,8 @@ jobs:
   static-safety:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Reject destructive migrations and missing baseline
@@ -31,8 +31,8 @@ jobs:
   disposable-migration-replay:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v3
         with:
           # Pin the CLI so CI does not depend on GitHub's unauthenticated
           # "latest release" lookup, which can fail under API rate limiting.

@@ -60,7 +60,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
@@ -94,7 +94,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload staging resilience evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: risk-gate-staging-http-load
           path: artifacts/risk-gate-staging-http-load.json
