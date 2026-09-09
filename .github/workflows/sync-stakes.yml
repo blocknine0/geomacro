@@ -1,31 +1,27 @@
 name: Sync Stakes
+# Stake indexing is retained for existing Arc Testnet technical-proof markets,
+# but it no longer needs a 30-minute production-style cadence while market
+# creation is manual-only.
 on:
   schedule:
-    - cron: '*/30 * * * *' # প্রতি ৩০ মিনিটে
-  workflow_dispatch:
+    - cron: "25 */2 * * *"
+  workflow_dispatch: {}
+concurrency:
+  group: sync-stakes
+  cancel-in-progress: true
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
+      - run: bun install --frozen-lockfile
       - run: bun scripts/sync-stakes.js
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          # 🛡️ FIX: were missing entirely — sync-stakes.js now scans BOTH
-          # contracts (legacy V1 + V2) with independent checkpoints, but
-          # without CONTRACT_ADDRESS/OLD_CONTRACT_ADDRESS in the environment
-          # both default to the script's own hardcoded V1 fallback, making
-          # v2CutoverActive evaluate false — so V2 stakes were never being
-          # scanned at all, silently, with no error to signal it.
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
           OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
-          # 🛡️ FIX: required once CONTRACT_ADDRESS actually differs from
-          # OLD_CONTRACT_ADDRESS — the script throws a clear startup error if
-          # this is missing/low rather than silently scanning from block 0.
-          # Using vars (not secrets) to match this workflow's existing
-          # DEPLOY_BLOCK pattern below.
           DEPLOY_BLOCK_V2: ${{ vars.DEPLOY_BLOCK_V2 }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

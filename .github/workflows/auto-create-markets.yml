@@ -1,26 +1,15 @@
-name: Auto Create Markets
-# Runs twice per 2-hour cycle: at :10 (after ingest + first lifecycle sync,
-# so fresh events exist and "room" is accurate) and at :40 (right after
-# finalize-markets + the second lifecycle sync free up completed slots —
-# this is what makes "staking_closed -> completed" immediately free room
-# for a new market within ~30 min instead of up to 2 hours).
+name: Create Markets (Technical Proof)
+# Prediction markets are a secondary Arc Testnet technical-proof surface.
+# Do not continuously create new markets from the flagship intelligence feed.
+# Manual dispatch remains available for deliberate demos and controlled tests.
 on:
-  schedule:
-    - cron: "10,40 */2 * * *"
   workflow_dispatch: {}
 concurrency:
-  # Runs twice per 2h cycle (:10 and :40) — this prevents one run from
-  # overlapping with a still-running previous one (e.g. a manual dispatch
-  # colliding with the scheduled :40 run), which would otherwise race on the
-  # same wallet nonce.
   group: auto-create-markets
   cancel-in-progress: true
 jobs:
   create-markets:
     runs-on: ubuntu-latest
-    # 🛡️ NEW: without this, GitHub Actions' default job timeout is 6 hours.
-    # 10 min gives the script's own RUN_TIME_BUDGET_MS (6 min) headroom to
-    # exit gracefully before a hard timeout cancels it mid-transaction.
     timeout-minutes: 10
     steps:
       - name: Checkout repo
@@ -34,18 +23,7 @@ jobs:
       - name: Run market creation script
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
-          # 🛡️ FIX: was missing entirely — every market create-markets.js
-          # made was going to this script's hardcoded fallback default (the
-          # OLD V1 address), regardless of what CONTRACT_ADDRESS actually
-          # held in repo secrets, since the workflow never read the secret
-          # into the environment at all. New markets would have kept being
-          # created on V1 indefinitely even after the V2 cutover.
           CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
-          # 🛡️ FIX: added — create-markets.js's active-market verification
-          # step now routes each flagged market to its recorded contract
-          # (legacy V1 vs current V2) instead of always checking against
-          # CONTRACT_ADDRESS, which was misreading old V1 markets as
-          # "genuinely active" once CONTRACT_ADDRESS pointed to V2.
           OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
