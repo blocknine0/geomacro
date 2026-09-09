@@ -1,0 +1,160 @@
+name: Deploy country flash intelligence to Supabase
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan shows pending migrations only; apply pushes migrations, syncs the flash token, deploys both functions, and runs smoke checks."
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-country-flash-supabase-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate required production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing production secret::${name} is not configured."
+              missing=1
+            fi
+          done
+
+          if [[ "${{ inputs.mode }}" == "apply" && -z "${FLASH_INGEST_TOKEN:-}" ]]; then
+            echo "::error title=Missing production secret::FLASH_INGEST_TOKEN is required for apply mode."
+            missing=1
+          fi
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: latest
+
+      - name: Link production project
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Show pending database migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --dry-run
+
+      - name: Stop after deployment plan
+        if: ${{ inputs.mode == 'plan' }}
+        shell: bash
+        run: |
+          echo "Plan completed. No production database or function changes were applied."
+
+      - name: Apply database migrations
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push
+
+      - name: Sync flash authentication secret
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase secrets set \
+            FLASH_INGEST_TOKEN="$FLASH_INGEST_TOKEN" \
+            --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Deploy live flash ingest function
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy live-flash-ingest \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --no-verify-jwt
+
+      - name: Deploy live flash corroboration function
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy live-flash-corroborate \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --no-verify-jwt
+
+      - name: Smoke-check deployed endpoints without inserting synthetic data
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+
+          ingest_code="$(curl --silent --show-error \
+            --output /tmp/flash-ingest.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "${base}/live-flash-ingest")"
+
+          cat /tmp/flash-ingest.json
+          echo
+
+          if [[ "$ingest_code" != "400" ]] || ! grep -q 'source_record_id_and_headline_required' /tmp/flash-ingest.json; then
+            echo "::error title=Ingest smoke check failed::Expected authenticated validation response from live-flash-ingest."
+            exit 1
+          fi
+
+          corroborate_code="$(curl --silent --show-error \
+            --output /tmp/flash-corroborate.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "${base}/live-flash-corroborate")"
+
+          cat /tmp/flash-corroborate.json
+          echo
+
+          if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
+            echo "::error title=Corroboration smoke check failed::live-flash-corroborate did not return a successful response."
+            exit 1
+          fi
+
+          echo "Country flash Supabase deployment smoke checks passed."
