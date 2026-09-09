@@ -27,12 +27,20 @@ PRODUCTION_RSS_FEEDS = [
         "event_type": "MACRO_BREAKING",
         "source_reliability": 65.0,
     },
+    {
+        "source_id": "usgs_minerals_news_rss",
+        "name": "USGS Minerals News RSS",
+        "url": "https://www.usgs.gov/news/minerals/feed",
+        "event_type": "CRITICAL_MINERALS_OFFICIAL",
+        "source_reliability": 95.0,
+    },
 ]
 
 
 # Preserve an explicit operator override. Otherwise use the production-safe
 # baseline discovered during the first live smoke test. MINING.com is omitted
-# because the endpoint returned persistent CDN 403 responses from the worker.
+# because the endpoint returned persistent CDN 403 responses; the official
+# USGS Minerals News RSS endpoint is used for critical-minerals coverage.
 if not os.environ.get("BREAKING_RSS_FEEDS_JSON", "").strip():
     os.environ["BREAKING_RSS_FEEDS_JSON"] = json.dumps(PRODUCTION_RSS_FEEDS)
 
