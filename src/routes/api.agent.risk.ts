@@ -138,13 +138,26 @@ export const Route = createFileRoute("/api/agent/risk")({
             error instanceof Error
               ? error.message
               : "Requested risk resource is unavailable.";
+          const unsupported = message.startsWith("Public demo currently supports");
+
+          if (!unsupported) {
+            console.error("[agentic-x402] risk resource preparation failed", error);
+          }
+
           return json(
             {
               ok: false,
-              error: { code: "RISK_RESOURCE_UNAVAILABLE", message },
+              error: {
+                code: unsupported
+                  ? "DEMO_SUBJECT_NOT_ENABLED"
+                  : "RISK_RESOURCE_UNAVAILABLE",
+                message: unsupported
+                  ? message
+                  : "Requested risk context is temporarily unavailable.",
+              },
               execution_authorized: false,
             },
-            message.startsWith("Public demo currently supports") ? 400 : 503,
+            unsupported ? 400 : 503,
           );
         }
 
@@ -194,6 +207,13 @@ export const Route = createFileRoute("/api/agent/risk")({
             message.startsWith("PAYMENT_SETTLEMENT_FAILED") ||
             message.startsWith("PAYMENT_SIGNATURE_");
 
+          console.error(
+            paymentFailure
+              ? "[agentic-x402] payment validation/settlement failed"
+              : "[agentic-x402] paid resource failed closed",
+            error,
+          );
+
           return json(
             {
               ok: false,
@@ -201,7 +221,9 @@ export const Route = createFileRoute("/api/agent/risk")({
                 code: paymentFailure
                   ? "X402_PAYMENT_FAILED"
                   : "PAID_RESOURCE_FAILED_CLOSED",
-                message,
+                message: paymentFailure
+                  ? "Payment signature could not be verified or settled."
+                  : "Paid resource delivery failed closed.",
               },
               payment: {
                 provider: "circle_gateway_x402",
