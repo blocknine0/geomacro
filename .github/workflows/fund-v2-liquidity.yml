@@ -1,39 +1,63 @@
-name: Fund AgentArena V2 Liquidity Reserve
+name: Verify AgentArena V2 Liquidity Funding Readiness
 
 on:
   workflow_dispatch:
     inputs:
       amount:
-        description: "Native USDC amount to add to the V2 liquidity reserve (18-decimal tx.value precision)"
+        description: "Planned native USDC amount for an offline/manual funding transaction"
         required: true
         type: string
 
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-v2-liquidity-funding
+  cancel-in-progress: true
+
 jobs:
-  fund:
+  verify:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify V2 economics before funding
+          cache: npm
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+      - name: Validate planned amount
+        env:
+          LIQUIDITY_AMOUNT: ${{ inputs.amount }}
+        run: |
+          node --input-type=module <<'NODE'
+          const raw = process.env.LIQUIDITY_AMOUNT ?? "";
+          if (!/^\d+(\.\d{1,18})?$/.test(raw)) {
+            throw new Error("Amount must be a positive decimal with at most 18 decimal places.");
+          }
+          const value = Number(raw);
+          if (!Number.isFinite(value) || value <= 0) {
+            throw new Error("Amount must be greater than zero.");
+          }
+          console.log(`Planned amount validated: ${raw} USDC`);
+          NODE
+      - name: Verify Arc Testnet and V2 proxy
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify V2 economics before offline/manual funding
         env:
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
         run: npm run economics:verify
 
-      - name: Fund V2 liquidity reserve
-        env:
-          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          CONTRACT_ADDRESS: ${{ vars.ARC_V2_PROXY_ADDRESS }}
-          LIQUIDITY_PRIVATE_KEY: ${{ secrets.LIQUIDITY_PRIVATE_KEY }}
-          LIQUIDITY_AMOUNT: ${{ inputs.amount }}
-        run: npm run liquidity:fund
+# Security boundary: hosted CI intentionally has no LIQUIDITY_PRIVATE_KEY and
+# does not transfer funds. Funding is performed outside CI after this read-only
+# readiness check according to the onchain admin signing runbook.
