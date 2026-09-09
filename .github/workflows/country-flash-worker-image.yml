@@ -56,8 +56,14 @@ jobs:
             exit 1
           fi
 
+          if [[ "$code" -eq 0 ]]; then
+            echo "::error title=Worker startup guardrail check failed::Container exited successfully even though required runtime configuration was absent."
+            exit 1
+          fi
+
           if ! grep -Eqi 'missing|required|configure|environment|TELEGRAM|GEOMACRO' <<<"$output"; then
-            echo "::warning title=Startup output not recognized::Container exited as expected without secrets, but the error text did not match known configuration guardrails."
+            echo "::error title=Startup error not recognized::Container failed without secrets, but not for a recognized configuration guardrail."
+            exit 1
           fi
 
           echo "Worker image built and refused to run without production secrets, as expected."
