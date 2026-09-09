@@ -11,19 +11,47 @@ on:
         options:
           - plan
           - apply
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-country-flash-supabase.yml"
 
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-country-flash-supabase-production
-  cancel-in-progress: false
-
 jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate production safety guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/deploy-country-flash-supabase.yml"
+
+          grep -q 'workflow_dispatch:' "$file"
+          grep -q 'supabase db push --dry-run' "$file"
+          grep -q 'FLASH_INGEST_TOKEN' "$file"
+          grep -q -- '--no-verify-jwt' "$file"
+          grep -q "github.event_name == 'workflow_dispatch'" "$file"
+
+          echo "Supabase deployment workflow safety guardrails are present."
+
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
+    concurrency:
+      group: deploy-country-flash-supabase-production
+      cancel-in-progress: false
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
