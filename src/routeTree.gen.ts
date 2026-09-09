@@ -40,6 +40,8 @@ import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
 import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
+import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
+import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -196,6 +198,16 @@ const ApiDemoPreflightRoute = ApiDemoPreflightRouteImport.update({
   path: '/api/demo/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoatPilotOrderRoute = ApiGoatPilotOrderRouteImport.update({
+  id: '/api/goat/pilot/order',
+  path: '/api/goat/pilot/order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
+  id: '/api/goat/pilot/status',
+  path: '/api/goat/pilot/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -229,6 +241,8 @@ export interface FileRoutesByFullPath {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
+  '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -262,6 +276,8 @@ export interface FileRoutesByTo {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
+  '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -296,6 +312,8 @@ export interface FileRoutesById {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
+  '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -331,6 +349,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/goat/pilot/order'
+    | '/api/goat/pilot/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -364,6 +384,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/goat/pilot/order'
+    | '/api/goat/pilot/status'
   id:
     | '__root__'
     | '/'
@@ -397,6 +419,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/goat/pilot/order'
+    | '/api/goat/pilot/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -431,6 +455,8 @@ export interface RootRouteChildren {
   ApiAgentRiskRoute: typeof ApiAgentRiskRoute
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
+  ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
+  ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -652,6 +678,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDemoPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/goat/pilot/order': {
+      id: '/api/goat/pilot/order'
+      path: '/api/goat/pilot/order'
+      fullPath: '/api/goat/pilot/order'
+      preLoaderRoute: typeof ApiGoatPilotOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/goat/pilot/status': {
+      id: '/api/goat/pilot/status'
+      path: '/api/goat/pilot/status'
+      fullPath: '/api/goat/pilot/status'
+      preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -687,6 +727,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRiskRoute: ApiAgentRiskRoute,
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
+  ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
+  ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
