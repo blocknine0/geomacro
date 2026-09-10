@@ -6,6 +6,10 @@ import {
   createClient,
 } from "@supabase/supabase-js"
 
+import {
+  assertCommercialEligibilityAllowed,
+} from "./commercial-source-policy.mjs"
+
 const db = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -20,6 +24,12 @@ const db = createClient(
 const SOURCE_ID =
   "world_bank_indicators"
 
+const COMMERCIAL_ELIGIBILITY_STATUS =
+  assertCommercialEligibilityAllowed(
+    SOURCE_ID,
+    "VERIFIED",
+  )
+
 // World Bank indicator codes can be published through multiple API sources.
 // Commercial provenance therefore pins the exact reviewed catalogue instead
 // of treating an indicator code as sufficient licence identity.
@@ -30,7 +40,7 @@ const WORLD_BANK_DATASET_NAME =
 const WORLD_BANK_DATASET_LICENCE =
   "CC BY 4.0"
 const WORLD_BANK_DATASET_TERMS_URL =
-  "https://www.worldbank.org/ext/en/legal/terms-conditions/datasets"
+  "https://www.worldbank.org/en/about/legal/terms-of-use-for-datasets"
 
 const INDICATORS = [
   { id: "SP.POP.TOTL", metric: "population_total", unit: "persons" },
@@ -159,8 +169,8 @@ for (const indicator of INDICATORS) {
       raw_hash: rawHash,
       normalized_hash: normalizedHash,
       quality_status: "VERIFIED",
-      // Explicitly reviewed only for this pinned WDI source contract.
-      commercial_eligibility_status: "VERIFIED",
+      commercial_eligibility_status:
+        COMMERCIAL_ELIGIBILITY_STATUS,
     })
   }
 
