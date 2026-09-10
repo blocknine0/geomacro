@@ -7,13 +7,11 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronDown,
-  Clock,
   Link2,
   Loader2,
   Minus,
   Radio,
   Search,
-  Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +24,7 @@ import { LastUpdated } from "@/components/foundation/live";
 import { InlineError, UpdatingIndicator } from "@/components/foundation/async-states";
 import { reportError } from "@/lib/user-errors";
 import { useGlobalRisk } from "@/lib/use-global-risk";
+import { GRI_METHOD_VERSION } from "@/lib/gri-current-contract";
 
 type Bucket = { t: number; avg: number; count: number };
 
@@ -173,28 +172,28 @@ function Delta({
 const STEPS = [
   {
     icon: Search,
-    label: "Choose an event",
-    description: "Pick a live geopolitical or macro event",
+    label: "Observe the event",
+    description: "Capture a relevant geopolitical or macro development",
   },
   {
     icon: BookOpen,
-    label: "Read the research",
-    description: "Review Hawk vs Dove briefings",
-  },
-  {
-    icon: Wallet,
-    label: "Stake USDC",
-    description: "Lock USDC on your conviction",
-  },
-  {
-    icon: Clock,
-    label: "Wait for result",
-    description: "46-hour staking window runs",
+    label: "Structure the evidence",
+    description: "Normalize the event, sources, severity and confidence",
   },
   {
     icon: CheckCircle2,
-    label: "Get settlement",
-    description: "Claim your payout onchain",
+    label: "Score and attribute",
+    description: "Calculate risk and preserve the exact drivers of change",
+  },
+  {
+    icon: Link2,
+    label: "Verify the proof",
+    description: "Trace methodology, provenance, timestamps and integrity",
+  },
+  {
+    icon: Radio,
+    label: "Deliver decision context",
+    description: "Serve intelligence to professionals, APIs and Risk Gate",
   },
 ];
 
@@ -202,7 +201,7 @@ function StepGuide() {
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
       <div className="mb-5 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
-        How it works
+        How Geomacro works
       </div>
       <div className="flex flex-col">
         {STEPS.map((step, i) => {
@@ -321,7 +320,7 @@ export function HeroSection() {
   const countDelta =
     stats && stats.countPrev24h !== null ? stats.count24h - stats.countPrev24h : null;
   const riskTrend = riskDelta > 0 ? "Escalating" : riskDelta < 0 ? "Cooling" : "Steady";
-  const windowLabel = "gri-v1.1.0";
+  const windowLabel = GRI_METHOD_VERSION;
 
   return (
     <section className="relative overflow-hidden">
@@ -475,7 +474,7 @@ export function HeroSection() {
                         </div>
                         <p className="mt-3 max-w-md text-xs leading-relaxed text-muted-foreground">
                           A deterministic global risk index built from versioned event severity,
-                          confidence, recency decay and source- and story-capped evidence across four domains.
+                          confidence, recency decay and source- and story-capped evidence across three scoring domains.
                         </p>
                       </div>
 
