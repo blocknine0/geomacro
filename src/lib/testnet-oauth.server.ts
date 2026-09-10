@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   deleteCookie,
   getCookie,
@@ -33,17 +33,42 @@ function siteUrl(env: Record<string, string | undefined> = process.env) {
   return requireEnv("PUBLIC_SITE_URL", env).replace(/\/$/, "");
 }
 
+function oauthCookieSecret(env: Record<string, string | undefined>) {
+  const secret = requireEnv("TESTNET_OAUTH_COOKIE_SECRET", env);
+  if (Buffer.byteLength(secret, "utf8") < 32) {
+    throw new Error("TESTNET_OAUTH_COOKIE_SECRET_TOO_SHORT");
+  }
+  return secret;
+}
+
 function cookieName(provider: TesterOauthProvider) {
   return `__Host-geomacro_test_oauth_${provider}`;
 }
 
-function encodeOauthCookie(payload: { state: string; verifier?: string }) {
-  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+function signCookiePayload(payload: string, secret: string) {
+  return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-function decodeOauthCookie(value: string) {
+function encodeOauthCookie(
+  payload: { state: string; verifier?: string },
+  secret: string,
+) {
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  return `${body}.${signCookiePayload(body, secret)}`;
+}
+
+function decodeOauthCookie(value: string, secret: string) {
   try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as {
+    const [body, suppliedSignature, extra] = value.split(".");
+    if (!body || !suppliedSignature || extra) return null;
+    const expectedSignature = signCookiePayload(body, secret);
+    const supplied = Buffer.from(suppliedSignature);
+    const expected = Buffer.from(expectedSignature);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+      return null;
+    }
+
+    const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as {
       state?: unknown;
       verifier?: unknown;
     };
@@ -60,14 +85,20 @@ function setOauthCookie(
   event: H3Event,
   provider: TesterOauthProvider,
   payload: { state: string; verifier?: string },
+  env: Record<string, string | undefined>,
 ) {
-  setCookie(event, cookieName(provider), encodeOauthCookie(payload), {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: OAUTH_COOKIE_MAX_AGE,
-  });
+  setCookie(
+    event,
+    cookieName(provider),
+    encodeOauthCookie(payload, oauthCookieSecret(env)),
+    {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: OAUTH_COOKIE_MAX_AGE,
+    },
+  );
 }
 
 export function clearTesterOauthCookie(event: H3Event, provider: TesterOauthProvider) {
@@ -96,7 +127,7 @@ export async function buildTesterOauthAuthorizeUrl(input: {
     const redirectUri = `${siteUrl(env)}/api/testnet-tester/oauth/x/callback`;
     const verifier = randomBytes(48).toString("base64url");
     const challenge = sha256base64url(verifier);
-    setOauthCookie(input.event, "x", { state: issued.state, verifier });
+    setOauthCookie(input.event, "x", { state: issued.state, verifier }, env);
 
     const url = new URL("https://x.com/i/oauth2/authorize");
     url.searchParams.set("response_type", "code");
@@ -111,7 +142,7 @@ export async function buildTesterOauthAuthorizeUrl(input: {
 
   const clientId = requireEnv("DISCORD_OAUTH_CLIENT_ID", env);
   const redirectUri = `${siteUrl(env)}/api/testnet-tester/oauth/discord/callback`;
-  setOauthCookie(input.event, "discord", { state: issued.state });
+  setOauthCookie(input.event, "discord", { state: issued.state }, env);
 
   const url = new URL("https://discord.com/oauth2/authorize");
   url.searchParams.set("response_type", "code");
@@ -211,13 +242,15 @@ export async function completeTesterOauthCallback(input: {
   state: string;
   env?: Record<string, string | undefined>;
 }) {
+  const env = input.env ?? process.env;
   const rawCookie = String(getCookie(input.event, cookieName(input.provider)) ?? "").trim();
-  const cookie = rawCookie ? decodeOauthCookie(rawCookie) : null;
+  const cookie = rawCookie
+    ? decodeOauthCookie(rawCookie, oauthCookieSecret(env))
+    : null;
   if (!cookie || !cookie.state || cookie.state !== input.state) {
     throw new Error("OAUTH_BROWSER_STATE_MISMATCH");
   }
 
-  const env = input.env ?? process.env;
   let providerAccountId: string;
   if (input.provider === "x") {
     if (!cookie.verifier) throw new Error("X_OAUTH_PKCE_VERIFIER_MISSING");
