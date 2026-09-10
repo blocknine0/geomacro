@@ -45,17 +45,54 @@ on:
         required: true
         default: "30"
         type: string
+  pull_request:
+    paths:
+      - ".github/workflows/commercial-api-production-acceptance.yml"
+      - "scripts/commercial/**"
+      - "src/__tests__/commercial-production-acceptance-static.test.ts"
 
 permissions:
   contents: read
 
 concurrency:
-  group: commercial-api-production-acceptance
+  group: commercial-api-production-acceptance-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate production acceptance guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/commercial-api-production-acceptance.yml"
+          grep -q 'workflow_dispatch:' "$file"
+          grep -q 'default: dry_run' "$file"
+          grep -q "github.ref == 'refs/heads/main'" "$file"
+          grep -q 'environment: production' "$file"
+          grep -q 'COMMERCIAL_PILOT_API_KEY:.*secrets.COMMERCIAL_PILOT_API_KEY' "$file"
+          grep -q 'https://geomacro.live' "$file"
+          grep -q 'provision-commercial-api-pilot.ts --write' "$file"
+          grep -q 'accept-commercial-api.ts' "$file"
+
+          # Production mutation must remain manual-only. The provision/write
+          # step is permitted only inside the workflow_dispatch job below.
+          if grep -q 'schedule:' "$file" || grep -q '^  push:' "$file"; then
+            echo "::error::Commercial production acceptance must remain manual-only."
+            exit 1
+          fi
+          echo "PASS: commercial production acceptance workflow guardrails are present."
+
   accept:
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
