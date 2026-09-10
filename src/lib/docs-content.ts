@@ -35,10 +35,31 @@ for (const [path, raw] of Object.entries(rawFiles)) {
   if (slug) bySlug[slug] = raw;
 }
 
+function stripMarkdownComments(input: string): string {
+  let output = "";
+  let cursor = 0;
+
+  while (cursor < input.length) {
+    const start = input.indexOf("<!--", cursor);
+    if (start === -1) {
+      output += input.slice(cursor);
+      break;
+    }
+
+    output += input.slice(cursor, start);
+    const end = input.indexOf("-->", start + 4);
+    if (end === -1) {
+      break;
+    }
+    cursor = end + 3;
+  }
+
+  return output;
+}
+
 function cleanMarkdown(raw: string): string {
-  let body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
-  body = body.replace(/<!--[\s\S]*?-->/g, "");
-  return body.trim();
+  const withoutFrontmatter = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+  return stripMarkdownComments(withoutFrontmatter).trim();
 }
 
 export type DocsHeading = { id: string; text: string; level: 2 | 3; line: number };
