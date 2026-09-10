@@ -2,7 +2,7 @@ name: Publish GRI Proof Snapshot
 
 on:
   schedule:
-    - cron: "20 * * * *"
+    - cron: "50 */4 * * *"
   workflow_dispatch: {}
 
 permissions:
