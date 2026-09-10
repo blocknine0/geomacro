@@ -1,0 +1,266 @@
+name: Commercial Country Pilot Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      origin_iso3:
+        description: "First commercially eligible country ISO3"
+        required: true
+        default: "CHN"
+        type: string
+      destination_iso3:
+        description: "Second commercially eligible country ISO3"
+        required: true
+        default: "BRA"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-country-pilot-acceptance
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      EXPECTED_PROJECT_REF: ldpwajisioljyjtojvfx
+      EXPECTED_KEY_ID: geomacro-risk-2026-02
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_GATE_PROOF_API_KEY: ${{ secrets.RISK_GATE_PROOF_API_KEY }}
+      RISK_GATE_BASE_URL: https://geomacro.live
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 RISK_GATE_PROOF_API_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is missing"
+              exit 1
+            fi
+          done
+
+          project_ref="$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')"
+          if [ "$project_ref" != "$EXPECTED_PROJECT_REF" ]; then
+            echo "::error::APP_SUPABASE_URL is not the authoritative Geomacro project"
+            exit 1
+          fi
+
+          if [ "${RISK_OBJECT_SIGNING_KEY_ID:-}" != "$EXPECTED_KEY_ID" ]; then
+            echo "::error::RISK_OBJECT_SIGNING_KEY_ID must equal $EXPECTED_KEY_ID"
+            exit 1
+          fi
+
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('Risk Object signing key must be Ed25519');
+          }
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=${publicB64}\n`);
+          NODE
+
+      - name: Validate country inputs
+        id: countries
+        shell: bash
+        env:
+          RAW_ORIGIN: ${{ inputs.origin_iso3 }}
+          RAW_DESTINATION: ${{ inputs.destination_iso3 }}
+        run: |
+          set -euo pipefail
+          origin="$(printf '%s' "$RAW_ORIGIN" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          destination="$(printf '%s' "$RAW_DESTINATION" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          [[ "$origin" =~ ^[A-Z]{3}$ ]] || { echo "::error::origin_iso3 must be exactly three letters"; exit 1; }
+          [[ "$destination" =~ ^[A-Z]{3}$ ]] || { echo "::error::destination_iso3 must be exactly three letters"; exit 1; }
+          [[ "$origin" != "$destination" ]] || { echo "::error::countries must be different"; exit 1; }
+          echo "origin=$origin" >> "$GITHUB_OUTPUT"
+          echo "destination=$destination" >> "$GITHUB_OUTPUT"
+
+      - name: Publish fresh signed country Risk Objects
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.countries.outputs.origin }}
+          DESTINATION: ${{ steps.countries.outputs.destination }}
+        run: |
+          set -euo pipefail
+          bun scripts/publish-country-risk-object.ts "$ORIGIN" | tee origin-country-gro.json
+          bun scripts/publish-country-risk-object.ts "$DESTINATION" | tee destination-country-gro.json
+
+      - name: Verify commercial country acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          for (const [label, file] of [['origin', 'origin-country-gro.json'], ['destination', 'destination-country-gro.json']]) {
+            const result = JSON.parse(fs.readFileSync(file, 'utf8'));
+            if (result?.published !== true || result?.context?.published !== true) {
+              throw new Error(`${label}: immutable publication was not confirmed`);
+            }
+            if (result?.integrity?.signing_key_id !== 'geomacro-risk-2026-02') {
+              throw new Error(`${label}: unexpected signing key id`);
+            }
+            if (result?.integrity?.signature_present !== true || result?.integrity?.signature_valid !== true) {
+              throw new Error(`${label}: signature verification failed`);
+            }
+            if (result?.commercial_eligibility?.status !== 'VERIFIED') {
+              throw new Error(`${label}: commercial eligibility is ${result?.commercial_eligibility?.status ?? 'missing'}`);
+            }
+            if (result?.verification?.status !== 'VERIFIED') {
+              throw new Error(`${label}: verification is ${result?.verification?.status ?? 'missing'}`);
+            }
+            const reasons = new Set(result?.commercial_eligibility?.reason_codes ?? []);
+            if (reasons.has('commercial_source_derived_only') && !reasons.has('derived_only_delivery_no_raw_redistribution')) {
+              throw new Error(`${label}: derived-only evidence is missing the no-raw-redistribution restriction`);
+            }
+          }
+          console.log('PASS: both country GROs are freshly signed, commercially eligible, verified, and publication-confirmed.');
+          NODE
+
+      - name: Prove authenticated Risk Gate behavior for both countries
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.countries.outputs.origin }}
+          DESTINATION: ${{ steps.countries.outputs.destination }}
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null
+          endpoint="${RISK_GATE_BASE_URL%/}/api/risk-gate"
+          : > risk-gate-country-pilot.ndjson
+
+          prove_country() {
+            local iso3="$1"
+            local request_id="country-pilot-${iso3}-$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_RUN_ID}"
+
+            make_body() {
+              local continue_max="$1"
+              jq -cn \
+                --arg request_id "$request_id" \
+                --arg iso3 "$iso3" \
+                --argjson continue_max "$continue_max" \
+                '{
+                  request_id:$request_id,
+                  subject:{type:"country",country_iso3:$iso3},
+                  action_context:{action_type:"commercial_country_pilot_acceptance",currency:"USDC"},
+                  policy:{
+                    policy_id:"geomacro-commercial-country-pilot",
+                    policy_version:"1.0",
+                    continue_max_score:$continue_max,
+                    reduce_limit_max_score:55,
+                    require_approval_max_score:75,
+                    minimum_confidence_for_auto_continue:0.8,
+                    require_commercial_verification_for_continue:true,
+                    max_positive_delta_for_auto_continue:10,
+                    hard_stop_driver_contributions:{sanctions:20}
+                  }
+                }'
+            }
+
+            local body conflict_body
+            body="$(make_body 35)"
+            conflict_body="$(make_body 34)"
+
+            local prefix="proof-${iso3}"
+            local status1 status2 status3 curl_rc
+
+            status1="$(curl --silent --show-error --fail-with-body --connect-timeout 10 --max-time 30 \
+              -D "${prefix}-first.headers" -o "${prefix}-first.json" -w '%{http_code}' \
+              -X POST "$endpoint" -H "Authorization: Bearer ${RISK_GATE_PROOF_API_KEY}" \
+              -H 'Content-Type: application/json' --data-binary "$body")"
+            [[ "$status1" == "200" ]] || { echo "$iso3 first request HTTP $status1"; cat "${prefix}-first.json"; exit 1; }
+            jq -e '.ok == true and .risk_gate.execution_authorized == false and (.audit_id|type=="string" and length>0)' "${prefix}-first.json" >/dev/null
+            local audit decision
+            audit="$(jq -r '.audit_id' "${prefix}-first.json")"
+            decision="$(jq -r '.risk_gate.decision // "UNKNOWN"' "${prefix}-first.json")"
+
+            status2="$(curl --silent --show-error --fail-with-body --connect-timeout 10 --max-time 30 \
+              -D "${prefix}-replay.headers" -o "${prefix}-replay.json" -w '%{http_code}' \
+              -X POST "$endpoint" -H "Authorization: Bearer ${RISK_GATE_PROOF_API_KEY}" \
+              -H 'Content-Type: application/json' --data-binary "$body")"
+            [[ "$status2" == "200" ]] || exit 1
+            grep -qi '^X-Geomacro-Idempotent-Replay:[[:space:]]*true' "${prefix}-replay.headers"
+            jq -e --arg audit "$audit" '.ok == true and .risk_gate.execution_authorized == false and .audit_id == $audit' "${prefix}-replay.json" >/dev/null
+
+            set +e
+            status3="$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+              -D "${prefix}-conflict.headers" -o "${prefix}-conflict.json" -w '%{http_code}' \
+              -X POST "$endpoint" -H "Authorization: Bearer ${RISK_GATE_PROOF_API_KEY}" \
+              -H 'Content-Type: application/json' --data-binary "$conflict_body")"
+            curl_rc=$?
+            set -e
+            [[ "$curl_rc" -eq 0 && "$status3" == "409" ]] || exit 1
+            jq -e '.ok == false and .error.code == "IDEMPOTENCY_CONFLICT" and .execution_authorized == false' "${prefix}-conflict.json" >/dev/null
+
+            jq -cn --arg iso3 "$iso3" --arg request_id "$request_id" --arg audit "$audit" --arg decision "$decision" \
+              '{country:$iso3,request_id:$request_id,authenticated_http:200,audit_id:$audit,decision:$decision,replay_http:200,same_audit_id:true,conflict_http:409,execution_authorized:false}' \
+              >> risk-gate-country-pilot.ndjson
+          }
+
+          prove_country "$ORIGIN"
+          prove_country "$DESTINATION"
+
+      - name: Build redacted acceptance artifact
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.countries.outputs.origin }}
+          DESTINATION: ${{ steps.countries.outputs.destination }}
+        run: |
+          set -euo pipefail
+          jq -s \
+            --arg origin "$ORIGIN" \
+            --arg destination "$DESTINATION" \
+            --slurpfile origin_gro origin-country-gro.json \
+            --slurpfile destination_gro destination-country-gro.json \
+            '{
+              proof:"PASS",
+              scope:"commercial_country_private_pilot",
+              countries:[$origin,$destination],
+              country_gros:[
+                {country:$origin,object_id:$origin_gro[0].object_id,commercial_eligibility:$origin_gro[0].commercial_eligibility,verification:$origin_gro[0].verification,signature_valid:$origin_gro[0].integrity.signature_valid},
+                {country:$destination,object_id:$destination_gro[0].object_id,commercial_eligibility:$destination_gro[0].commercial_eligibility,verification:$destination_gro[0].verification,signature_valid:$destination_gro[0].integrity.signature_valid}
+              ],
+              risk_gate:.,
+              execution_authorized:false,
+              corridor_methodology_verified:false,
+              limitations:[
+                "Country-only private-pilot acceptance evidence; not a GA or production-SLA claim.",
+                "Derived-only source material may support derived intelligence only; raw publisher content is not redistributed.",
+                "Corridor v0.1 remains a separate unverified pilot methodology."
+              ]
+            }' risk-gate-country-pilot.ndjson > commercial-country-pilot-acceptance.json
+          cat commercial-country-pilot-acceptance.json
+
+      - name: Upload redacted country pilot evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: commercial-country-pilot-acceptance
+          path: commercial-country-pilot-acceptance.json
+          if-no-files-found: warn
+          retention-days: 30
