@@ -27,9 +27,9 @@ export function hashCommercialReference(value: string | null | undefined) {
   return normalized ? sha256(normalized) : null;
 }
 
-export function requireCommercialOpsAdmin(request: Request) {
+export function requireCommercialOpsToken(suppliedValue: string | null | undefined) {
   const expected = String(process.env.COMMERCIAL_OPS_ADMIN_TOKEN ?? "").trim();
-  const supplied = String(request.headers.get("x-geomacro-ops-token") ?? "").trim();
+  const supplied = String(suppliedValue ?? "").trim();
   if (expected.length < 32 || supplied.length < 32) {
     throw new Response("Unauthorized", { status: 401 });
   }
