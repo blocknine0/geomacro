@@ -3,9 +3,14 @@
   const text = (id, value) => { const el = $(id); if (el) el.textContent = String(value ?? ""); };
   const show = (id, visible = true) => { const el = $(id); if (el) el.hidden = !visible; };
   const json = async (url, options = {}) => {
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
     const response = await fetch(url, {
       credentials: "same-origin",
-      headers: { accept: "application/json", ...(options.body ? { "content-type": "application/json" } : {}), ...(options.headers || {}) },
+      headers: {
+        accept: "application/json",
+        ...(!isFormData && options.body ? { "content-type": "application/json" } : {}),
+        ...(options.headers || {}),
+      },
       ...options,
     });
     const payload = await response.json().catch(() => ({}));
@@ -35,6 +40,13 @@
       show("walletConnect", !account.wallet_verified);
       show("paymentPanel", account.registration_status === "complete");
       show("developerPanel", account.access_status === "active");
+      if (account.avatar_path) {
+        const preview = $("avatarPreview");
+        if (preview) {
+          preview.src = `/api/testnet-tester/avatar?v=${Date.now()}`;
+          preview.hidden = false;
+        }
+      }
       if (account.registration_status === "complete") await loadPaymentConfig();
       if (account.access_status === "active") await loadDeveloperKeys();
       return account;
@@ -59,6 +71,21 @@
     } catch (error) {
       text("globalStatus", error.message || "Email verification failed.");
     }
+  }
+
+  function consumeOauthResult() {
+    const params = new URLSearchParams(location.search);
+    const result = params.get("oauth");
+    if (!result) return;
+    const messages = {
+      x_connected: "X account connected.",
+      discord_connected: "Discord account connected.",
+      x_declined: "X connection was cancelled.",
+      discord_declined: "Discord connection was cancelled.",
+    };
+    text("globalStatus", messages[result] || "Account connection updated.");
+    params.delete("oauth");
+    history.replaceState({}, "", `${location.pathname}${params.toString() ? `?${params}` : ""}`);
   }
 
   async function register(event) {
@@ -109,6 +136,29 @@
       await loadAccount();
     } catch (error) {
       text("walletActionStatus", error.message || "Wallet verification failed.");
+    }
+  }
+
+  async function uploadAvatar(event) {
+    event.preventDefault();
+    const file = $("avatarInput")?.files?.[0];
+    if (!file) {
+      text("avatarStatus", "Choose a PNG, JPEG or WebP image first.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      text("avatarStatus", "Profile image must be 2 MB or smaller.");
+      return;
+    }
+    const data = new FormData();
+    data.append("avatar", file);
+    text("avatarStatus", "Uploading profile image...");
+    try {
+      await json("/api/testnet-tester/avatar", { method: "POST", body: data });
+      text("avatarStatus", "Profile image updated.");
+      await loadAccount();
+    } catch (error) {
+      text("avatarStatus", error.message || "Profile image upload failed.");
     }
   }
 
@@ -217,6 +267,7 @@
   function bind() {
     $("registrationForm")?.addEventListener("submit", register);
     $("walletConnect")?.addEventListener("click", connectWallet);
+    $("avatarForm")?.addEventListener("submit", uploadAvatar);
     $("paymentForm")?.addEventListener("submit", claimPayment);
     $("developerKeyForm")?.addEventListener("submit", createDeveloperKey);
     $("xConnect")?.addEventListener("click", () => { location.href = "/api/testnet-tester/oauth/x/start"; });
@@ -232,6 +283,7 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     bind();
+    consumeOauthResult();
     await loadAccount();
     await verifyEmailFromUrl();
     await loadAccount();
