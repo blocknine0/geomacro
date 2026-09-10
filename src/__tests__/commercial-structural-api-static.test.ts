@@ -10,23 +10,37 @@ const access = readFileSync(
   join(process.cwd(), "src/lib/commercial-access.server.ts"),
   "utf8",
 );
+const policy = readFileSync(
+  join(process.cwd(), "src/lib/commercial-entitlement-policy.ts"),
+  "utf8",
+);
 
 describe("commercial structural API", () => {
-  it("uses server-resolved entitlements and idempotent commercial usage", () => {
+  it("uses server-resolved exact entitlements and idempotent commercial usage", () => {
     expect(route).toContain("authenticateCommercialApiRequest");
-    expect(route).toContain("resolveCommercialEntitlementTier");
+    expect(route).toContain("resolveCommercialEntitlementForCapability");
     expect(route).toContain("ensureCommercialCreditAccount");
     expect(route).toContain("consumeCommercialCapability");
     expect(access).toContain('from("commercial_entitlement_grants")');
     expect(access).toContain('eq("contract_version", GEOMACRO_CREDIT_CONTRACT_VERSION)');
+    expect(access).toContain("canonicalGrantPolicy");
+    expect(policy).toContain("ONE_SHOT_CAPABILITY_MISMATCH");
+    expect(policy).toContain("REGISTRY_VERSION_MISMATCH");
+  });
+
+  it("takes output limits and boundaries from the centralized registry", () => {
+    expect(route).toContain("structuredDeliveryPolicy");
+    expect(route).toContain("policy.tier.max_structural_observations");
+    expect(route).toContain("policy.tier.max_evidence_references");
+    expect(route).toContain("policy.product.raw_data_included");
+    expect(route).toContain("policy.product.private_warehouse_access");
+    expect(route).toContain("policy.product.execution_authorized");
   });
 
   it("serves governed structural context without raw warehouse fields", () => {
     expect(route).toContain("loadStructuralContext");
     expect(route).toContain("response_sha256");
     expect(route).toContain("structured_delivery_only: true");
-    expect(route).toContain("raw_data_included: false");
-    expect(route).toContain("private_warehouse_access: false");
     expect(route).not.toContain("provenance: row.provenance");
     expect(route).not.toContain("source_url: row.source_url");
   });
@@ -34,7 +48,6 @@ describe("commercial structural API", () => {
   it("fails closed for missing data and never authorizes execution", () => {
     expect(route).toContain("STRUCTURAL_DATA_NOT_CONFIGURED");
     expect(route).toContain("STRUCTURAL_DATA_UNAVAILABLE");
-    expect(route).toContain("execution_authorized: false");
-    expect(route).toContain("structural_data_is_gri_v1_2_input: false");
+    expect(route).toContain("structural_data_is_gri_v1_2_input");
   });
 });

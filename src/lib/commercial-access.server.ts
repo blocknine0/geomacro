@@ -9,6 +9,14 @@ import {
   type GeomacroCreditCapability,
 } from "./commercial-access-contract";
 import {
+  canonicalGrantPolicy,
+  type CanonicalGrantPolicy,
+  type CommercialGrantMetadata,
+} from "./commercial-entitlement-policy";
+import {
+  tierAllowsStructuredCapability,
+} from "./structured-data-entitlement-registry";
+import {
   requireRiskSupabase,
 } from "./risk-supabase.server";
 
@@ -20,6 +28,14 @@ export type CommercialPrincipal = {
   principal_external_id: string;
   key_id: string;
   scopes: string[];
+};
+
+export type CommercialResolvedEntitlement = {
+  grant_id: string;
+  tier: CommercialTierId;
+  source_type: string;
+  source_reference: string | null;
+  policy: CanonicalGrantPolicy;
 };
 
 export type CommercialCreditResult = {
@@ -67,23 +83,7 @@ export function tierAllowsCapability(
   tier: CommercialTierId,
   capability: GeomacroCreditCapability,
 ): boolean {
-  if (!(capability in GEOMACRO_CREDIT_COSTS)) return false;
-
-  if (tier === "institutional" || tier === "api_pilot") return true;
-
-  if (tier === "analyst_pilot") {
-    return ![
-      "signed_risk_object",
-      "risk_gate_bundle",
-    ].includes(capability);
-  }
-
-  return [
-    "intelligence_query",
-    "gri_read",
-    "structural_country_digest",
-    "structural_corridor_digest",
-  ].includes(capability);
+  return tierAllowsStructuredCapability(tier, capability);
 }
 
 export function tierCreditAllocation(tier: CommercialTierId): number {
@@ -134,15 +134,16 @@ const TIER_PRIORITY: Record<CommercialTierId, number> = {
   institutional: 3,
 };
 
-export async function resolveCommercialEntitlementTier(
-  principal: CommercialPrincipal,
-): Promise<CommercialTierId> {
+export async function resolveCommercialEntitlementForCapability(input: {
+  principal: CommercialPrincipal;
+  capability: GeomacroCreditCapability;
+}): Promise<CommercialResolvedEntitlement> {
   const db = requireRiskSupabase();
   const now = new Date().toISOString();
   const { data, error } = await db
     .from("commercial_entitlement_grants")
-    .select("tier,contract_version,starts_at,ends_at,status")
-    .eq("principal_id", principal.principal_id)
+    .select("id,tier,contract_version,source_type,source_reference,starts_at,ends_at,status,metadata")
+    .eq("principal_id", input.principal.principal_id)
     .eq("status", "active")
     .eq("contract_version", GEOMACRO_CREDIT_CONTRACT_VERSION)
     .lte("starts_at", now)
@@ -156,12 +157,31 @@ export async function resolveCommercialEntitlementTier(
     );
   }
 
-  const tiers = (data ?? [])
-    .map((row) => String(row.tier))
-    .filter((tier): tier is CommercialTierId => tier in GEOMACRO_ACCESS_TIERS)
-    .sort((a, b) => TIER_PRIORITY[b] - TIER_PRIORITY[a]);
+  const grants = (data ?? [])
+    .map((row) => {
+      const tier = String(row.tier);
+      if (!(tier in GEOMACRO_ACCESS_TIERS)) return null;
+      const typedTier = tier as CommercialTierId;
+      const metadata =
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as CommercialGrantMetadata)
+          : {};
+      return {
+        grant_id: String(row.id),
+        tier: typedTier,
+        source_type: String(row.source_type),
+        source_reference: row.source_reference ? String(row.source_reference) : null,
+        policy: canonicalGrantPolicy({
+          tier: typedTier,
+          metadata,
+          capability: input.capability,
+        }),
+      } satisfies CommercialResolvedEntitlement;
+    })
+    .filter((grant): grant is CommercialResolvedEntitlement => grant !== null)
+    .sort((a, b) => TIER_PRIORITY[b.tier] - TIER_PRIORITY[a.tier]);
 
-  if (tiers.length === 0) {
+  if (grants.length === 0) {
     throw new CommercialAccessError(
       403,
       "ACTIVE_ENTITLEMENT_REQUIRED",
@@ -169,7 +189,22 @@ export async function resolveCommercialEntitlementTier(
     );
   }
 
-  return tiers[0];
+  const allowed = grants.find((grant) => grant.policy.allowed);
+  if (allowed) return allowed;
+
+  if (grants.some((grant) => grant.policy.code === "REGISTRY_VERSION_MISMATCH")) {
+    throw new CommercialAccessError(
+      403,
+      "ENTITLEMENT_REGISTRY_VERSION_MISMATCH",
+      "This entitlement was created for a different structured-data registry version and must be reconciled before use.",
+    );
+  }
+
+  throw new CommercialAccessError(
+    403,
+    "CAPABILITY_NOT_INCLUDED",
+    "The requested capability is not included in the active Geomacro entitlement.",
+  );
 }
 
 export async function ensureCommercialCreditAccount(input: {
@@ -199,15 +234,15 @@ export async function ensureCommercialCreditAccount(input: {
 
 export async function consumeCommercialCapability(input: {
   principal: CommercialPrincipal;
-  tier: CommercialTierId;
+  entitlement: CommercialResolvedEntitlement;
   requestId: string;
   capability: GeomacroCreditCapability;
 }): Promise<CommercialCreditResult> {
-  if (!tierAllowsCapability(input.tier, input.capability)) {
+  if (!input.entitlement.policy.allowed) {
     throw new CommercialAccessError(
       403,
       "CAPABILITY_NOT_INCLUDED",
-      "The requested capability is not included in this Geomacro tier.",
+      "The requested capability is not included in this Geomacro entitlement.",
     );
   }
 

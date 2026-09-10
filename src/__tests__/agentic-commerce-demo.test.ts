@@ -49,7 +49,7 @@ describe("Agentic Commerce public demo contract", () => {
     expect(x402).toContain("PAYMENT-RESPONSE");
   });
 
-  it("keeps the free sandbox and paid path on the same fail-closed Risk Gate service", () => {
+  it("keeps public demo and x402 technical proof on the same fail-closed Risk Gate service", () => {
     const service = read("src/lib/agentic-demo-service.server.ts");
     const freeRoute = read("src/routes/api.demo.preflight.ts");
     const paidRoute = read("src/routes/api.agent.risk.ts");
@@ -59,8 +59,9 @@ describe("Agentic Commerce public demo contract", () => {
     expect(service).toContain("execution_authorized !== false");
     expect(freeRoute).toContain("runAgenticPreflightDemo");
     expect(paidRoute).toContain("runAgenticPreflightDemo");
+    expect(paidRoute).toContain('mode: "X402_PAID"');
     expect(paidRoute).toContain("settleCircleX402");
-    expect(paidRoute).toContain("we do not recompute a second Risk Gate result");
+    expect(paidRoute).toContain("Risk Gate execution boundary violated after settlement");
   });
 
   it("uses the exact canonical verified public GRI contract for optional demo context", () => {

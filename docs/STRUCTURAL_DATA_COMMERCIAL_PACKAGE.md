@@ -1,6 +1,6 @@
 # Geomacro Structural Data Commercial Package
 
-This is the commercial source of truth for how Geomacro exposes structural historical context to public users, founding pilots and institutional integrations.
+This is the commercial source of truth for how Geomacro exposes structural historical context to public website users, founding paid pilots and institutional integrations.
 
 Structural data is supporting evidence. It is not a hidden Global Risk Index (GRI) v1.2 input and it is not an undisclosed input to the signed Geomacro Risk Object (GRO) v0.2 score contract.
 
@@ -8,13 +8,13 @@ Structural data is supporting evidence. It is not a hidden Global Risk Index (GR
 
 Structural data is slower-moving historical context that helps explain the environment around a current geopolitical or macro decision.
 
-The current governed commercial serving layer is historical geopolitical evidence delivered as:
+The governed commercial serving layer supports:
 
-- bounded public structured digests;
 - country structural profiles;
 - directional corridor structural profiles;
 - coverage and provenance metadata;
-- eligible direct bilateral observations where available.
+- eligible direct bilateral observations where available;
+- bounded machine-readable digests for paid API workflows.
 
 The current corridor model is endpoint-composed. It does not model the complete logistics, maritime, payment, counterparty, sanctions or correspondent-bank route.
 
@@ -30,11 +30,11 @@ The governed base commercial evidence boundary remains:
 
 - `commercial_structural_geopolitical_observations`
 
-The private raw warehouse is never a customer-facing commercial interface. Every customer-facing tier receives governed structured output only.
+The private raw warehouse is never a customer-facing commercial interface. Commercial delivery uses governed structured output only.
 
 ## 3. What a country structural profile can contain
 
-A country profile may include the latest commercially eligible observations across available structural dimensions together with coverage and provenance.
+A paid country profile may include the latest commercially eligible observations across available structural dimensions together with coverage and provenance.
 
 Machine-readable fields can include:
 
@@ -49,25 +49,14 @@ Machine-readable fields can include:
 - unit;
 - event or signal type when present;
 - source ID;
-- source URL when redistribution rules allow it;
+- source reference where redistribution rules allow it;
 - parser version;
 - methodology status;
 - quality status;
-- provenance metadata;
 - normalized content hash;
 - retrieval time.
 
-Coverage records can include:
-
-- source ID;
-- structural dimension;
-- country;
-- coverage year;
-- coverage status;
-- observation count;
-- latest observed time;
-- audit metadata;
-- last update time.
+Coverage records can include source ID, structural dimension, country, coverage year/status, observation count, latest observed time, audit metadata and last update time.
 
 Missing dimensions remain missing. Geomacro does not replace missing structural evidence with zero values.
 
@@ -105,91 +94,84 @@ No state silently becomes a low-risk value.
 
 ### Public / Free Explorer
 
-Launch allocation: **500 credits per 30 days**.
+Free Explorer is a public website/dashboard experience only.
 
-Available without a Private Pilot agreement:
+The public product may show selected intelligence, selected event/evidence summaries, current public GRI visibility, methodology and approved public country/corridor views.
 
-- Geomacro Agent v1 grounded intelligence query;
-- public Risk Intelligence;
-- current verified GRI when the canonical public freshness/proof contract passes;
-- selected evidence and source context already exposed in the public product;
-- a bounded governed `structural_query` for one country or one directional corridor per request;
-- up to three latest commercially eligible structural observations per public structural response;
-- structured coverage summary and explicit availability/missing-data state;
-- public methodology and audit documentation.
+The free layer does **not** include:
 
-Not included in the public/free layer:
-
-- raw historical structural warehouse access;
-- private warehouse access;
-- bulk structural exports;
-- full country structural profile payloads;
-- full corridor structural profile payloads;
+- API credentials;
+- anonymous structured API access;
+- structured-data download/export;
+- full country or corridor structural profile payloads;
 - signed Risk Objects;
-- Risk Gate integration;
+- Risk Gate;
+- commercial machine access;
 - institutional support or SLA.
 
-The 500-credit allocation is a launch-stage product quota. Durable account-based credit metering must be implemented before the quota is represented as actively enforced across anonymous public requests. Until then, anonymous endpoints remain rate-limited and the tariff remains the commercial entitlement contract.
+Free Explorer has no commercial API credit allocation.
 
-### Founding Pilot: Analyst / Operational Workflow
+### Founding Analyst Pilot
 
-Default product allocation: **5,000 credits per 30 days**, subject to the signed pilot scope.
+Default commercial allocation: **5,000 credits per 30 days**, subject to the signed pilot scope.
 
-For a narrow paid pilot, the buyer can receive a governed structural evidence package for the agreed country or directional corridor.
+Current default founding quote: **USD 1,500 / 30 days**.
 
-Default pilot deliverables may include:
+A narrow paid Analyst pilot may include:
 
-- latest country structural observations;
-- origin/destination structural context for one directional corridor;
-- source and dimension coverage;
-- observation timestamps;
-- metric/value/unit;
-- source/provenance metadata subject to rights restrictions;
-- quality/methodology status;
-- normalized integrity hashes;
-- explicit missing-data status;
-- current public intelligence and verified GRI where relevant;
-- agreed structured exports;
-- founder-led interpretation and weekly review.
+- deeper professional intelligence and analytics;
+- alerts/monitoring within the agreed pilot scope;
+- country/corridor historical context;
+- change attribution where commercially eligible;
+- premium Ask Geomacro;
+- governed country/corridor profile views;
+- agreed structured exports where the signed pilot scope permits them;
+- founder-led interpretation/review where included.
+
+This tier is dashboard/research oriented. It does not automatically create a commercial API credential, signed Risk Object entitlement or Risk Gate entitlement.
 
 Raw warehouse delivery is not included.
 
-### Founding Pilot: API / Risk Gate
+### Founding API + Risk Gate Pilot
 
-Default product allocation: **20,000 credits per 30 days**, subject to the signed pilot scope.
+Default commercial allocation: **20,000 credits per 30 days**, subject to the signed pilot scope.
 
-For a technical pilot, the buyer can additionally receive:
+Current default founding quote: **USD 2,500 / 30 days**.
 
-- machine-readable governed structural context payloads;
+The buyer can additionally receive:
+
+- authenticated machine-readable governed structural payloads;
+- country/corridor digests and profiles within registry limits;
 - signed country or directional-corridor Risk Objects;
 - Risk Gate recommendation and reason codes;
 - confidence/freshness/verification state;
 - controlled API access with agreed rate limits;
 - integration support for one defined workflow;
-- decision-audit evidence where implemented in the pilot path.
+- decision-audit evidence where implemented.
 
 The customer controls execution. Geomacro keeps `execution_authorized=false`.
 
 Raw warehouse delivery remains prohibited.
 
-### Institutional Expansion
+### Institutional
 
-Current product-volume starting anchor: **100,000 credits per month**, then contracted volume based on geography, history, cadence, API use, support and data-rights scope.
+Starting product-volume anchor: **100,000 credits per month**, then contracted volume based on geography, history, cadence, API use, support and data-rights scope.
 
-A wider institutional agreement can be discussed only after the founding pilot validates usefulness, source rights, reliability, support requirements and delivery volume.
+Current annual discussion anchor starts around **USD 24k-36k**, subject to contract and scope.
 
-Potential expansion may include:
+Potential contracted expansion may include additional countries/corridors, deeper historical coverage, wider API volume, team workflows, custom structured exports, additional approved structural dimensions, custom monitoring cadence and agreed support/security requirements.
 
-- additional countries and corridors;
-- deeper historical coverage;
-- wider API volume;
-- team workflows;
-- custom structured exports;
-- additional approved structural dimensions;
-- custom monitoring cadence;
-- agreed support and security review requirements.
+These are not generally available promises until separately validated and contracted. Raw/private warehouse access is not an institutional entitlement by default.
 
-These are not generally available promises until separately validated and contracted. Raw/private warehouse access is not an institutional entitlement.
+### Agent commerce / one-shot machine purchase
+
+A machine or autonomous agent may purchase one bounded capability through an approved payment adapter.
+
+Example canonical mapping:
+
+`machine_risk_preflight -> risk_gate_bundle -> signed Risk Object + Risk Gate decision -> execution_authorized=false`
+
+A one-shot machine payment does not grant the entire monthly API tier. The payment provider can prove payment; only the centralized Geomacro entitlement registry decides the resulting payload.
 
 ## 7. Credit tariff
 
@@ -206,23 +188,30 @@ Current commercial product tariff:
 
 Credits are a product-usage unit, not money, currency, a token, a deposit or a cash-redeemable stored-value instrument.
 
-## 8. Commercial source-rights gate
+## 8. Centralized entitlement registry
 
-A source may enter customer structural delivery only when:
+`src/lib/structured-data-entitlement-registry.ts` is the server-owned source of truth for:
 
-- the exact dataset/API is identified;
-- commercial reuse is permitted for the intended delivery mode;
-- attribution/reuse requirements are recorded;
-- raw redistribution restrictions are understood;
-- adapter operation is verified;
-- the observation carries an approved commercial eligibility state;
-- downstream delivery obeys derived-only/raw-data restrictions.
+- which commercial tier can access each capability;
+- which subject types are valid;
+- observation/evidence limits;
+- history mode;
+- export mode;
+- signed Risk Object availability;
+- Risk Gate availability;
+- public-web vs paid-dashboard vs API vs agent vs institutional access surfaces;
+- payment offer to canonical entitlement mapping;
+- permanent safety boundaries.
 
-Unknown or review-required source rights fail closed.
+Clients and payment providers cannot override these settings with request fields.
 
-Public accessibility alone is not commercial permission.
+## 9. Commercial source-rights gate
 
-## 9. Current exclusions
+A source may enter customer structural delivery only when the exact dataset/API is identified, commercial reuse is permitted for the intended delivery mode, attribution/reuse requirements are recorded, raw redistribution restrictions are understood, adapter operation is verified, the observation carries an approved commercial eligibility state, and downstream delivery obeys derived-only/raw-data restrictions.
+
+Unknown or review-required source rights fail closed. Public accessibility alone is not commercial permission.
+
+## 10. Current exclusions
 
 The structural commercial product does not currently claim:
 
@@ -237,7 +226,7 @@ The structural commercial product does not currently claim:
 - customer delivery of review-gated sources;
 - a third-party security or methodology certification.
 
-## 10. Methodology boundary
+## 11. Methodology boundary
 
 Main-product structural responses are labelled:
 
@@ -249,18 +238,10 @@ Historical warehouse evidence remains labelled:
 
 If structural evidence is ever promoted into a published score, Geomacro must first introduce a new deterministic/versioned methodology, historical replay, validation, proof artifacts, documentation and deliberate activation step.
 
-## 11. Relationship to Geomacro Agent
+## 12. Relationship to Geomacro Agent
 
-Geomacro Agent v1 is the public machine-readable entry point.
+Geomacro Agent discovery is not a free commercial API. Free users use the public website/dashboard.
 
-Today it provides:
+The `/api/agent/risk` route remains a bounded Arc Testnet x402 technical-proof/private-pilot surface. Anonymous `intelligence_query` and `structural_query` fulfillment is disabled under the commercial launch policy.
 
-- grounded public intelligence queries;
-- bounded public governed structural digests;
-- discovery of the controlled risk-preflight capability.
-
-Full structural profiles, signed Risk Objects and Risk Gate remain Founding Pilot / controlled paid capabilities until wider source-rights, reliability, account metering and access-control contracts are validated.
-
-The commercial sequence is therefore:
-
-`public agent discovery -> grounded intelligence / bounded structured digest -> qualified workflow -> full structural profile / signed Risk Object / Risk Gate pilot -> validated paid continuation`
+Production paid structured delivery is resolved through the commercial entitlement layer and the centralized Structured Data Entitlement Registry.

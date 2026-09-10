@@ -7,7 +7,7 @@ import {
 } from "../lib/geomacro-agent-contract";
 
 describe("Geomacro Agent v1 contract", () => {
-  it("accepts a bounded grounded intelligence query", () => {
+  it("keeps bounded intelligence schema reusable for paid commercial surfaces", () => {
     const parsed = agentIntelligenceQuerySchema.parse({
       capability: "intelligence_query",
       question: "What is changing in critical-mineral risk?",
@@ -27,7 +27,7 @@ describe("Geomacro Agent v1 contract", () => {
     ).toThrow();
   });
 
-  it("accepts normalized country/corridor structural queries and rejects a self-corridor", () => {
+  it("keeps normalized structural schemas reusable and rejects a self-corridor", () => {
     const country = agentStructuralQuerySchema.parse({
       capability: "structural_query",
       subject: { type: "country", country_iso3: "ind" },
@@ -60,7 +60,7 @@ describe("Geomacro Agent v1 contract", () => {
     ).toThrow("Corridor endpoints must be different countries");
   });
 
-  it("publishes a read-and-recommend manifest with execution disabled", () => {
+  it("publishes a paid/private-pilot read-and-recommend manifest with execution disabled", () => {
     const manifest = geomacroAgentManifest("https://geomacro.live");
 
     expect(manifest.agent.version).toBe(GEOMACRO_AGENT_VERSION);
@@ -69,10 +69,10 @@ describe("Geomacro Agent v1 contract", () => {
     expect(manifest.boundaries.autonomous_execution).toBe(false);
     expect(manifest.boundaries.wallet_custody).toBe(false);
     expect(manifest.boundaries.raw_data_delivery).toBe(false);
-    expect(manifest.commercial.free_credits_per_30_days).toBe(500);
+    expect(manifest.boundaries.free_api_access).toBe(false);
+    expect(manifest.commercial.public_api).toBe("not_available");
+    expect(manifest.commercial.free_web).toBe("public_website_dashboard_only");
     expect(manifest.capabilities.map((item) => item.id)).toEqual([
-      "intelligence_query",
-      "structural_query",
       "risk_preflight",
     ]);
   });

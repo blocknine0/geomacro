@@ -1,4 +1,4 @@
-export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.0.1" as const;
+export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.1.0" as const;
 
 export const GEOMACRO_CREDIT_COSTS = {
   intelligence_query: 1,
@@ -17,17 +17,20 @@ export const GEOMACRO_ACCESS_TIERS = {
   free: {
     id: "free",
     label: "Free Explorer",
-    credits_per_30_days: 500,
+    credits_per_30_days: 0,
     public_price_usd: 0,
+    access_mode: "public_web_only",
     structured_data: {
+      api_access: false,
+      structured_download: false,
       raw_data_access: false,
-      governed_structured_data_only: true,
+      governed_structured_data_only: false,
       latest_snapshot_only: true,
-      max_subjects_per_request: 1,
-      max_structural_observations_per_response: 3,
-      max_evidence_references_per_answer: 5,
-      coverage_mode: "summary",
-      provenance_mode: "source_reference",
+      max_subjects_per_request: 0,
+      max_structural_observations_per_response: 0,
+      max_evidence_references_per_answer: 0,
+      coverage_mode: "public_website_summary",
+      provenance_mode: "public_source_reference",
       bulk_export: false,
       signed_risk_objects: false,
       risk_gate: false,
@@ -38,7 +41,10 @@ export const GEOMACRO_ACCESS_TIERS = {
     label: "Founding Analyst Pilot",
     credits_per_30_days: 5_000,
     pricing_reference: "USD 1,500 / 30 days default founding quote",
+    access_mode: "paid_dashboard",
     structured_data: {
+      api_access: false,
+      structured_download: "agreed exports only",
       raw_data_access: false,
       governed_structured_data_only: true,
       latest_snapshot_only: false,
@@ -56,7 +62,10 @@ export const GEOMACRO_ACCESS_TIERS = {
     label: "Founding API + Risk Gate Pilot",
     credits_per_30_days: 20_000,
     pricing_reference: "USD 2,500 / 30 days default founding quote",
+    access_mode: "paid_api_and_agent",
     structured_data: {
+      api_access: true,
+      structured_download: "controlled structured API/export only",
       raw_data_access: false,
       governed_structured_data_only: true,
       latest_snapshot_only: false,
@@ -75,7 +84,10 @@ export const GEOMACRO_ACCESS_TIERS = {
     label: "Institutional",
     credits_per_month_starting_pool: 100_000,
     pricing_reference: "contracted; current annual discussion anchor starts around USD 24k-36k",
+    access_mode: "contracted_enterprise",
     structured_data: {
+      api_access: true,
+      structured_download: "contracted structured exports only",
       raw_data_access: false,
       governed_structured_data_only: true,
       latest_snapshot_only: false,
@@ -91,11 +103,14 @@ export const GEOMACRO_ACCESS_TIERS = {
 } as const;
 
 export const GEOMACRO_DATA_POLICY = {
+  free_api_access: false,
+  free_structured_download: false,
+  commercial_api_requires_paid_entitlement: true,
   raw_customer_delivery: false,
   private_warehouse_customer_access: false,
-  structured_delivery_required_for_every_tier: true,
   review_gated_source_delivery: false,
   missing_data_becomes_zero_risk: false,
   structural_data_is_gri_v1_2_input: false,
   structural_data_is_gro_v0_2_weight: false,
+  execution_authorized_by_geomacro: false,
 } as const;

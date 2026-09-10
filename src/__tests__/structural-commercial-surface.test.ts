@@ -8,16 +8,19 @@ const packageDoc = readFileSync(
 );
 
 describe("structural data commercial surface", () => {
-  it("publishes the Geomacro Agent endpoint and grounded public capability", () => {
-    expect(page).toContain("POST https://geomacro.live/api/agent/risk");
-    expect(page).toContain('"capability": "intelligence_query"');
+  it("publishes the paid commercial endpoint and machine discovery without a free API promise", () => {
+    expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
+    expect(page).toContain('"capability": "structural_country_profile"');
     expect(page).toContain("/.well-known/geomacro-agent.json");
+    expect(page).toContain("Free Explorer remains the public website and dashboard");
+    expect(page).not.toContain("bounded public structured-data digest");
   });
 
-  it("keeps structural data out of the public free entitlement", () => {
-    expect(packageDoc).toContain("Not included in the public/free layer");
-    expect(packageDoc).toContain("raw historical structural warehouse access");
-    expect(packageDoc).toContain("full country structural profile payloads");
+  it("keeps structural API/download delivery out of the public free entitlement", () => {
+    expect(packageDoc).toContain("Free Explorer is a public website/dashboard experience only");
+    expect(packageDoc).toContain("anonymous structured API access");
+    expect(packageDoc).toContain("structured-data download/export");
+    expect(packageDoc).toContain("full country or corridor structural profile payloads");
   });
 
   it("keeps the current corridor model endpoint-composed and non-executing", () => {

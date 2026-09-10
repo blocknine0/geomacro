@@ -44,17 +44,20 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).not.toContain("country, corridor and event risk");
   });
 
-  it("keeps Data, API and Agent availability explicit", () => {
+  it("keeps Data, API and Agent availability explicit without advertising a free API", () => {
     const route = read("src/routes/data-api.tsx");
 
-    expect(route).toContain("PUBLIC · GEOMACRO AGENT V1");
+    expect(route).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
     expect(route).toContain("PUBLIC · FREE");
-    expect(route).toContain("FOUNDING PILOT");
-    expect(route).toContain("FOUNDING PILOT · API");
-    expect(route).toContain("VALIDATED EXPANSION");
+    expect(route).toContain("FOUNDING ANALYST PILOT");
+    expect(route).toContain("FOUNDING API + RISK GATE PILOT");
+    expect(route).toContain("INSTITUTIONAL");
+    expect(route).toContain("POST https://geomacro.live/api/commercial/structural");
+    expect(route).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(route).toContain("ENDPOINT_COMPOSED_V0_1");
     expect(route).toContain("route_modeling_status = NOT_MODELED");
     expect(route).toContain("execution_authorized=false");
+    expect(route).not.toContain("PUBLIC · GEOMACRO AGENT V1");
   });
 
   it("keeps Arc, Circle and market routes explicitly technical proof", () => {
