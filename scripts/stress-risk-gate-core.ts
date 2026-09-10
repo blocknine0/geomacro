@@ -6,6 +6,7 @@ import type { RiskGateRequest } from "../src/lib/risk-gate-contract";
 import {
   COUNTRY_RISK_METHOD_VERSION,
   GRO_SCHEMA_VERSION,
+  riskLabel,
   type GeomacroRiskObject,
 } from "../src/lib/risk-object-contract";
 
@@ -79,7 +80,7 @@ function gro(input: {
     },
     risk: {
       score: input.score,
-      label: input.score > 75 ? "HIGH" : input.score > 55 ? "ELEVATED" : "WATCH",
+      label: riskLabel(input.score),
       previous_score: input.score - 2,
       delta: 2,
       direction: "escalating",
@@ -144,7 +145,11 @@ function gro(input: {
 type Scenario = {
   name: string;
   object: GeomacroRiskObject;
-  expectedDecision: "CONTINUE" | "REDUCE_LIMIT" | "REQUIRE_APPROVAL" | "PAUSE";
+  expectedDecision:
+    | "CONTINUE"
+    | "REDUCE_LIMIT"
+    | "REQUIRE_APPROVAL"
+    | "PAUSE";
 };
 
 const scenarios: Scenario[] = [
@@ -172,7 +177,6 @@ const scenarios: Scenario[] = [
 
 const durations: number[] = [];
 const counts = new Map<string, number>();
-
 const started = performance.now();
 
 for (let i = 0; i < iterations; i += 1) {
@@ -216,7 +220,8 @@ function percentile(fraction: number) {
 
 const report = {
   generated_at: new Date().toISOString(),
-  scope: "in-process Risk Gate decision engine only; no network, auth DB, audit DB, idempotency DB, signing service or external dependency",
+  scope:
+    "in-process Risk Gate decision engine only; no network, auth DB, audit DB, idempotency DB, signing service or external dependency",
   iterations,
   scenarios: scenarios.map((scenario) => ({
     name: scenario.name,
