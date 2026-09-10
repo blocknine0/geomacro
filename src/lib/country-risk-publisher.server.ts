@@ -9,6 +9,12 @@ import {
 } from "./country-risk-engine";
 
 import {
+  applyCountryRiskCommercialEligibility,
+  type StructuredEventCommercialEligibility,
+  type StructuredEventCommercialEligibilityStatus,
+} from "./country-risk-commercial-eligibility";
+
+import {
   COUNTRY_RISK_LOOKBACK_HOURS,
   type GeomacroRiskObject,
   type RiskDirection,
@@ -49,6 +55,13 @@ export type CountryRiskGenerationResult = {
 
     published: boolean;
   };
+};
+
+
+type LoadedStructuredEvents = {
+  events: CountryRiskEventInput[];
+  commercial_eligibility:
+    StructuredEventCommercialEligibility[];
 };
 
 
@@ -124,6 +137,22 @@ function normalizeStringArray(
         .filter(Boolean),
     ),
   ];
+}
+
+
+function normalizeCommercialEligibilityStatus(
+  value: unknown,
+): StructuredEventCommercialEligibilityStatus {
+  switch (value) {
+    case "VERIFIED":
+    case "DERIVED_ONLY":
+    case "UNVERIFIED":
+    case "INELIGIBLE":
+      return value;
+
+    default:
+      return "UNVERIFIED";
+  }
 }
 
 
@@ -242,9 +271,33 @@ function rowToCountryRiskEvent(
 }
 
 
+function rowToCommercialEligibility(
+  row: Record<string, unknown>,
+): StructuredEventCommercialEligibility {
+  return {
+    event_id:
+      String(
+        row.id ?? "",
+      ),
+
+    status:
+      normalizeCommercialEligibilityStatus(
+        row
+          .commercial_eligibility_status,
+      ),
+
+    reason_codes:
+      normalizeStringArray(
+        row
+          .commercial_eligibility_reason_codes,
+      ),
+  };
+}
+
+
 async function loadRecentStructuredEvents(
   asOf: Date,
-) {
+): Promise<LoadedStructuredEvents> {
   const db =
     requireRiskSupabase();
 
@@ -276,7 +329,9 @@ async function loadRecentStructuredEvents(
         independent_source_count,
         evidence_refs,
         structure_version,
-        structured_payload
+        structured_payload,
+        commercial_eligibility_status,
+        commercial_eligibility_reason_codes
       `)
       .gte(
         "last_seen_at",
@@ -297,17 +352,31 @@ async function loadRecentStructuredEvents(
     throw result.error;
   }
 
-  return (
-    result.data ?? []
-  ).map(
-    (row) =>
-      rowToCountryRiskEvent(
-        row as Record<
-          string,
-          unknown
-        >,
+  const rows =
+    (
+      result.data ?? []
+    ) as Record<
+      string,
+      unknown
+    >[];
+
+  return {
+    events:
+      rows.map(
+        row =>
+          rowToCountryRiskEvent(
+            row,
+          ),
       ),
-  );
+
+    commercial_eligibility:
+      rows.map(
+        row =>
+          rowToCommercialEligibility(
+            row,
+          ),
+      ),
+  };
 }
 
 
@@ -381,10 +450,13 @@ async function generateInternal(
     );
   }
 
-  const events =
+  const loaded =
     await loadRecentStructuredEvents(
       asOf,
     );
+
+  const events =
+    loaded.events;
 
   const countryEvents =
     events.filter(
@@ -406,7 +478,7 @@ async function generateInternal(
       previous,
     );
 
-  const unsignedObject =
+  const calculatedObject =
     await buildCountryRiskObject({
       country_iso3:
         iso3,
@@ -423,6 +495,13 @@ async function generateInternal(
       as_of:
         asOf.toISOString(),
     });
+
+  const unsignedObject =
+    applyCountryRiskCommercialEligibility(
+      calculatedObject,
+      loaded
+        .commercial_eligibility,
+    );
 
   const object =
     publish
