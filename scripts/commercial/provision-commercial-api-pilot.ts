@@ -91,22 +91,44 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const principalResult = await db
+  const existingPrincipal = await db
     .from("commercial_principals")
-    .upsert(
-      {
+    .select("id,principal_type,external_id,display_name,status")
+    .eq("principal_type", "api_client")
+    .eq("external_id", externalId)
+    .maybeSingle();
+  if (existingPrincipal.error) throw existingPrincipal.error;
+
+  let principal = existingPrincipal.data;
+  if (principal) {
+    if (principal.status !== "active") {
+      throw new Error("Existing principal is not active; refusing implicit reactivation");
+    }
+    if (principal.display_name !== displayName) {
+      const updateName = await db
+        .from("commercial_principals")
+        .update({ display_name: displayName, updated_at: new Date().toISOString() })
+        .eq("id", principal.id)
+        .eq("status", "active")
+        .select("id,principal_type,external_id,display_name,status")
+        .single();
+      if (updateName.error) throw updateName.error;
+      principal = updateName.data;
+    }
+  } else {
+    const insertPrincipal = await db
+      .from("commercial_principals")
+      .insert({
         principal_type: "api_client",
         external_id: externalId,
         display_name: displayName,
         status: "active",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "principal_type,external_id" },
-    )
-    .select("id,principal_type,external_id,status")
-    .single();
-  if (principalResult.error) throw principalResult.error;
-  const principal = principalResult.data;
+      })
+      .select("id,principal_type,external_id,display_name,status")
+      .single();
+    if (insertPrincipal.error) throw insertPrincipal.error;
+    principal = insertPrincipal.data;
+  }
 
   const existingCredential = await db
     .from("commercial_api_credentials")
@@ -144,7 +166,7 @@ async function main() {
 
   const existingGrant = await db
     .from("commercial_entitlement_grants")
-    .select("id,principal_id,tier,included_credits,contract_version,source_type,source_reference,status,ends_at")
+    .select("id,principal_id,tier,included_credits,contract_version,source_type,source_reference,status,starts_at,ends_at")
     .eq("source_reference", reference)
     .eq("contract_version", GEOMACRO_CREDIT_CONTRACT_VERSION);
   if (existingGrant.error) throw existingGrant.error;
@@ -155,6 +177,9 @@ async function main() {
   }
   if (grantRows.length === 1) {
     const row = grantRows[0];
+    const now = Date.now();
+    const startsAt = Date.parse(row.starts_at);
+    const endsAt = Date.parse(row.ends_at);
     if (
       row.principal_id !== principal.id ||
       row.tier !== tier ||
@@ -162,6 +187,15 @@ async function main() {
       row.source_type !== "manual_pilot"
     ) {
       throw new Error("Entitlement reference conflict: refusing to change existing commercial terms");
+    }
+    if (
+      row.status !== "active" ||
+      !Number.isFinite(startsAt) ||
+      !Number.isFinite(endsAt) ||
+      startsAt > now ||
+      endsAt <= now
+    ) {
+      throw new Error("Existing entitlement is not currently active; refusing implicit renewal/reactivation");
     }
   } else {
     const startsAt = new Date();
