@@ -129,9 +129,10 @@ export async function authenticateCommercialApiRequest(
 
 const TIER_PRIORITY: Record<CommercialTierId, number> = {
   free: 0,
-  analyst_pilot: 1,
-  api_pilot: 2,
-  institutional: 3,
+  testnet_tester: 1,
+  analyst_pilot: 2,
+  api_pilot: 3,
+  institutional: 4,
 };
 
 export async function resolveCommercialEntitlementForCapability(input: {
