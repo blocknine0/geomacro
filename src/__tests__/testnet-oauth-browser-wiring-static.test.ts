@@ -18,6 +18,17 @@ describe("Testnet tester OAuth and browser wiring", () => {
     expect(register).not.toContain("session_token: result.session_token");
   });
 
+  it("integrity-protects short-lived OAuth browser state and PKCE material", () => {
+    const oauth = read("src/lib/testnet-oauth.server.ts");
+    expect(oauth).toContain("TESTNET_OAUTH_COOKIE_SECRET");
+    expect(oauth).toContain('createHmac("sha256", secret)');
+    expect(oauth).toContain("timingSafeEqual");
+    expect(oauth).toContain("httpOnly: true");
+    expect(oauth).toContain("secure: true");
+    expect(oauth).toContain('sameSite: "lax"');
+    expect(oauth).toContain("TESTNET_OAUTH_COOKIE_SECRET_TOO_SHORT");
+  });
+
   it("uses X OAuth Authorization Code + PKCE and minimal users.read scope", () => {
     const oauth = read("src/lib/testnet-oauth.server.ts");
     expect(oauth).toContain("https://x.com/i/oauth2/authorize");
