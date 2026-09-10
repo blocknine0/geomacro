@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody, setResponseHeaders } from "h3";
 
 import { createTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
+import { sendTestnetVerificationEmail } from "../../../src/lib/testnet-email-delivery.server";
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
@@ -9,18 +10,37 @@ export default defineEventHandler(async (event) => {
   });
 
   const body = await readBody<Record<string, unknown>>(event);
+  const email = String(body?.email ?? "");
+
   try {
     const result = await createTestnetTesterAccount({
-      email: String(body?.email ?? ""),
+      email,
       profileName: String(body?.profile_name ?? ""),
       termsVersion: String(body?.terms_version ?? "testnet-terms-v1"),
     });
 
-    // email_verification_token is returned only until an outbound email provider
-    // is configured. The public UI must not display it in production.
-    return { ok: true, data: result, execution_authorized: false };
+    await sendTestnetVerificationEmail({
+      to: email,
+      verificationToken: result.email_verification_token,
+    });
+
+    return {
+      ok: true,
+      data: {
+        principal_id: result.principal_id,
+        session_token: result.session_token,
+        session_expires_at: result.session_expires_at,
+        email_verification_expires_at: result.email_verification_expires_at,
+        email_verification_sent: true,
+      },
+      execution_authorized: false,
+    };
   } catch (error) {
     const code = error instanceof Error ? error.message : "TESTER_REGISTRATION_FAILED";
-    throw createError({ statusCode: 400, statusMessage: code.slice(0, 120) });
+    const configurationFailure = code === "TESTNET_EMAIL_DELIVERY_NOT_CONFIGURED";
+    throw createError({
+      statusCode: configurationFailure ? 503 : 400,
+      statusMessage: code.slice(0, 120),
+    });
   }
 });
