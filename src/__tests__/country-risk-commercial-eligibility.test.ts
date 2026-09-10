@@ -94,7 +94,7 @@ describe(
   "country GRO commercial eligibility",
   () => {
     it(
-      "promotes only when every used structured event is VERIFIED",
+      "promotes when every used structured event is VERIFIED",
       () => {
         const result =
           applyCountryRiskCommercialEligibility(
@@ -144,7 +144,7 @@ describe(
     );
 
     it(
-      "does not treat DERIVED_ONLY as fully VERIFIED",
+      "permits DERIVED_ONLY evidence for the derived GRO contract while retaining the no-raw restriction",
       () => {
         const result =
           applyCountryRiskCommercialEligibility(
@@ -162,11 +162,106 @@ describe(
 
         expect(
           result.commercial_eligibility.status,
+        ).toBe("VERIFIED");
+        expect(
+          result.commercial_eligibility.reason_codes,
+        ).toContain(
+          "commercial_source_derived_only",
+        );
+        expect(
+          result.commercial_eligibility.reason_codes,
+        ).toContain(
+          "derived_only_delivery_no_raw_redistribution",
+        );
+        expect(
+          result.commercial_eligibility.reason_codes,
+        ).toContain(
+          "raw_redistribution_prohibited",
+        );
+        expect(
+          result.verification.status,
+        ).toBe("VERIFIED");
+        expect(
+          result.verification.reason_codes,
+        ).toEqual([]);
+      },
+    );
+
+    it(
+      "allows a VERIFIED plus DERIVED_ONLY mixed evidence set",
+      () => {
+        const object = baseObject();
+        object.evidence.push({
+          ...object.evidence[0],
+          event_id: "event-2",
+          title: "Event 2",
+        });
+
+        const result =
+          applyCountryRiskCommercialEligibility(
+            object,
+            [
+              {
+                event_id: "event-1",
+                status: "VERIFIED",
+                reason_codes: [],
+              },
+              {
+                event_id: "event-2",
+                status: "DERIVED_ONLY",
+                reason_codes: [],
+              },
+            ],
+          );
+
+        expect(
+          result.commercial_eligibility.status,
+        ).toBe("VERIFIED");
+        expect(
+          result.verification.status,
+        ).toBe("VERIFIED");
+      },
+    );
+
+    it(
+      "does not let DERIVED_ONLY hide an UNVERIFIED source",
+      () => {
+        const object = baseObject();
+        object.evidence.push({
+          ...object.evidence[0],
+          event_id: "event-2",
+          title: "Event 2",
+        });
+
+        const result =
+          applyCountryRiskCommercialEligibility(
+            object,
+            [
+              {
+                event_id: "event-1",
+                status: "DERIVED_ONLY",
+                reason_codes: [],
+              },
+              {
+                event_id: "event-2",
+                status: "UNVERIFIED",
+                reason_codes: [
+                  "commercial_source_review_required",
+                ],
+              },
+            ],
+          );
+
+        expect(
+          result.commercial_eligibility.status,
         ).toBe("UNVERIFIED");
+        expect(
+          result.verification.status,
+        ).toBe("INCOMPLETE");
         expect(
           result.verification.reason_codes,
         ).toContain(
-          "commercial_source_derived_only",
+          "commercial_source_review_required",
         );
       },
     );

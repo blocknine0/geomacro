@@ -6,6 +6,22 @@ import { dryRunCountryRiskObject } from "../src/lib/country-risk-publisher.serve
 const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const LOOKBACK_HOURS = 72;
 
+const STATUSES = [
+  "VERIFIED",
+  "DERIVED_ONLY",
+  "UNVERIFIED",
+  "INELIGIBLE",
+] as const;
+
+function emptyCounts() {
+  return {
+    VERIFIED: 0,
+    DERIVED_ONLY: 0,
+    UNVERIFIED: 0,
+    INELIGIBLE: 0,
+  };
+}
+
 function normalizeIso3(value: string | undefined, fallback: string) {
   const iso3 = String(value ?? fallback).trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(iso3)) {
@@ -20,6 +36,23 @@ function projectRef(url: string) {
   } catch {
     return "";
   }
+}
+
+function normalizeCountries(row: Record<string, unknown>) {
+  const touched = new Set<string>();
+
+  if (row.primary_country) {
+    touched.add(String(row.primary_country).trim().toUpperCase());
+  }
+
+  for (const country of Array.isArray(row.countries) ? row.countries : []) {
+    const iso3 = String(country).trim().toUpperCase();
+    if (/^[A-Z]{3}$/.test(iso3)) {
+      touched.add(iso3);
+    }
+  }
+
+  return touched;
 }
 
 async function main() {
@@ -60,7 +93,7 @@ async function main() {
   const { data: rows, error: rowsError } = await db
     .from("live_structured_events")
     .select(
-      "id,primary_country,countries,commercial_eligibility_status,last_seen_at",
+      "id,primary_country,countries,commercial_eligibility_status,commercial_eligibility_reason_codes,last_seen_at",
     )
     .gte("last_seen_at", cutoff);
 
@@ -68,28 +101,46 @@ async function main() {
     throw rowsError;
   }
 
-  const counts: Record<string, number> = {
-    VERIFIED: 0,
-    DERIVED_ONLY: 0,
-    UNVERIFIED: 0,
-    INELIGIBLE: 0,
-  };
+  const counts: Record<string, number> = emptyCounts();
 
   const countryCounts: Record<string, Record<string, number>> = {
-    [origin]: { VERIFIED: 0, DERIVED_ONLY: 0, UNVERIFIED: 0, INELIGIBLE: 0 },
-    [destination]: { VERIFIED: 0, DERIVED_ONLY: 0, UNVERIFIED: 0, INELIGIBLE: 0 },
+    [origin]: emptyCounts(),
+    [destination]: emptyCounts(),
   };
 
-  for (const row of rows ?? []) {
-    const status = String(row.commercial_eligibility_status ?? "UNVERIFIED");
-    counts[status] = (counts[status] ?? 0) + 1;
+  const allCountryCounts = new Map<string, Record<string, number>>();
+  const reasonCounts = new Map<string, number>();
 
-    const touched = new Set<string>();
-    if (row.primary_country) {
-      touched.add(String(row.primary_country).trim().toUpperCase());
+  for (const rawRow of rows ?? []) {
+    const row = rawRow as Record<string, unknown>;
+    const status = String(row.commercial_eligibility_status ?? "UNVERIFIED");
+
+    if (!STATUSES.includes(status as (typeof STATUSES)[number])) {
+      counts.UNVERIFIED++;
+    } else {
+      counts[status] = (counts[status] ?? 0) + 1;
     }
-    for (const country of Array.isArray(row.countries) ? row.countries : []) {
-      touched.add(String(country).trim().toUpperCase());
+
+    for (
+      const reason of Array.isArray(row.commercial_eligibility_reason_codes)
+        ? row.commercial_eligibility_reason_codes
+        : []
+    ) {
+      const normalized = String(reason).trim();
+      if (normalized) {
+        reasonCounts.set(normalized, (reasonCounts.get(normalized) ?? 0) + 1);
+      }
+    }
+
+    const touched = normalizeCountries(row);
+
+    for (const iso3 of touched) {
+      if (!allCountryCounts.has(iso3)) {
+        allCountryCounts.set(iso3, emptyCounts());
+      }
+
+      const bucket = allCountryCounts.get(iso3)!;
+      bucket[status] = (bucket[status] ?? 0) + 1;
     }
 
     for (const iso3 of [origin, destination]) {
@@ -99,6 +150,48 @@ async function main() {
       }
     }
   }
+
+  const countryCoverage = [...allCountryCounts.entries()]
+    .map(([iso3, statusCounts]) => {
+      const commerciallyUsableEvents =
+        (statusCounts.VERIFIED ?? 0) +
+        (statusCounts.DERIVED_ONLY ?? 0);
+
+      const blockingEvents =
+        (statusCounts.UNVERIFIED ?? 0) +
+        (statusCounts.INELIGIBLE ?? 0);
+
+      const totalEvents = Object.values(statusCounts).reduce(
+        (sum, value) => sum + Number(value ?? 0),
+        0,
+      );
+
+      return {
+        iso3,
+        total_events: totalEvents,
+        commercially_usable_events: commerciallyUsableEvents,
+        blocking_events: blockingEvents,
+        status_counts: statusCounts,
+        commercial_candidate:
+          commerciallyUsableEvents > 0 && blockingEvents === 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        Number(b.commercial_candidate) - Number(a.commercial_candidate) ||
+        b.commercially_usable_events - a.commercially_usable_events ||
+        b.total_events - a.total_events ||
+        a.iso3.localeCompare(b.iso3),
+    );
+
+  const recommendedDestination =
+    countryCoverage.find(
+      (item) => item.iso3 !== origin && item.commercial_candidate,
+    )?.iso3 ??
+    countryCoverage.find(
+      (item) => item.iso3 !== origin && item.total_events > 0,
+    )?.iso3 ??
+    null;
 
   const { data: rightsProbe, error: rightsProbeError } = await db
     .from("live_structured_event_commercial_rights_evaluation")
@@ -156,7 +249,12 @@ async function main() {
     structured_event_rights: {
       total_recent_events: rows?.length ?? 0,
       status_counts: counts,
+      reason_counts: Object.fromEntries(
+        [...reasonCounts.entries()].sort(([a], [b]) => a.localeCompare(b)),
+      ),
       endpoint_status_counts: countryCounts,
+      country_coverage_candidates: countryCoverage.slice(0, 15),
+      recommended_destination: recommendedDestination,
       evaluation_view_readable: true,
       evaluation_probe_rows: rightsProbe?.length ?? 0,
     },

@@ -39,6 +39,13 @@ function normalizeReasons(
  * Resolve commercial eligibility only from events that actually appear in the
  * calculated GRO evidence set. Missing metadata fails closed.
  *
+ * `DERIVED_ONLY` is commercially usable only because the GRO contract is a
+ * derived-intelligence delivery surface: it does not expose raw provider/API
+ * payloads or private warehouse rows. The restriction is retained in
+ * commercial_eligibility.reason_codes so downstream delivery code can enforce
+ * the no-raw-redistribution boundary. It is not a technical-verification
+ * failure by itself.
+ *
  * This function does not change the score or calculation hash. Commercial
  * eligibility is signed as part of the final GRO payload before publication.
  */
@@ -100,11 +107,34 @@ export function applyCountryRiskCommercialEligibility(
   } else if (
     used.every(
       item =>
-        item.status ===
-          "VERIFIED",
+        item.status === "VERIFIED" ||
+        item.status === "DERIVED_ONLY",
     )
   ) {
     status = "VERIFIED";
+
+    for (const item of used) {
+      if (
+        item.status ===
+          "DERIVED_ONLY"
+      ) {
+        commercialReasons.add(
+          "commercial_source_derived_only",
+        );
+        commercialReasons.add(
+          "derived_only_delivery_no_raw_redistribution",
+        );
+
+        for (
+          const reason of
+            item.reason_codes
+        ) {
+          commercialReasons.add(
+            reason,
+          );
+        }
+      }
+    }
   } else {
     for (const item of used) {
       if (
@@ -146,6 +176,9 @@ export function applyCountryRiskCommercialEligibility(
     "commercial_source_eligibility_not_enforced",
   );
 
+  // Commercial delivery restrictions remain in commercial_eligibility and do
+  // not invalidate deterministic technical verification when the derived-only
+  // output contract is itself eligible. Unverified/ineligible source states do.
   if (status !== "VERIFIED") {
     for (
       const reason of
