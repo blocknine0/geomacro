@@ -11,18 +11,16 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GEOMACRO_ACCESS_TIERS } from "@/lib/commercial-access-contract";
 
 const TITLE = "Data, API & Agent · Geomacro";
 const DESCRIPTION =
-  "Connect to Geomacro's grounded agent gateway and use governed structured geopolitical risk data, structural context, signed Risk Objects and Risk Gate outputs.";
-const FREE_CREDITS = GEOMACRO_ACCESS_TIERS.free.credits_per_30_days;
+  "Access governed geopolitical and macro risk intelligence through paid structured APIs, signed Risk Objects and Risk Gate outputs.";
 
 const RISK_OBJECT_FIELDS = [
   ["Subject", "Country or directional corridor in the current controlled scope."],
   ["Risk state", "Current score or state, previous state and quantified change where available."],
   ["Attribution", "Drivers and contribution details that explain material movement."],
-  ["Evidence", "Evidence references, coverage and provenance that can be delivered to the customer."],
+  ["Evidence", "Eligible evidence references, coverage and provenance that can be delivered to the customer."],
   ["Confidence & freshness", "Confidence, generated time, expiry or freshness and degraded-state context."],
   ["Methodology", "Versioned schema and methodology identifiers plus integrity information."],
 ] as const;
@@ -30,7 +28,7 @@ const RISK_OBJECT_FIELDS = [
 const STRUCTURAL_FIELDS = [
   ["Observation", "Dimension, metric, numeric/text value, unit and observation time."],
   ["Geography", "Country ISO3 and partner-country ISO3 when an eligible bilateral record exists."],
-  ["Provenance", "Source ID, source URL where permitted, parser version and retrieval time."],
+  ["Provenance", "Commercially eligible source metadata, parser version and retrieval time."],
   ["Integrity", "Quality/methodology status and normalized content hash."],
   ["Coverage", "Source, dimension, coverage year, observation count and latest observed time."],
   ["Missing data", "Explicit AVAILABLE, UNAVAILABLE or NOT_CONFIGURED state. Missing is never converted to zero risk."],
@@ -55,13 +53,13 @@ function DataApiPage() {
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <section className="max-w-4xl">
         <Badge variant="outline" className="font-mono text-[11px]">
-          PUBLIC AGENT + STRUCTURED DATA + PRIVATE PILOT
+          GOVERNED DATA · PAID API · AGENT ACCESS
         </Badge>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-          Connect software and AI agents to Geomacro risk intelligence.
+          Structured risk intelligence for software, analysts and AI agents.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro Agent provides grounded intelligence plus a bounded public structured-data digest. Qualified pilots add deeper governed country/corridor profiles, signed Risk Objects and Risk Gate recommendations for a defined workflow.
+          Geomacro exposes governed geopolitical and macro risk data through controlled paid access. Free Explorer remains the public website and dashboard. API credentials, structured data delivery, signed Risk Objects and Risk Gate are commercial capabilities.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
@@ -80,31 +78,25 @@ function DataApiPage() {
           <div>
             <Bot className="h-6 w-6 text-primary" />
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              PUBLIC · GEOMACRO AGENT V1
+              COMMERCIAL MACHINE ACCESS
             </p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              One grounded agent gateway.
+              One entitlement layer, independent of payment provider.
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              External software and AI agents can query Geomacro's stored intelligence through the same evidence engine used by Ask Geomacro, or request a limited governed structural digest for one country or directional corridor. The public read path does not invent a fallback GRI score and never returns the private raw warehouse.
+              A subscription, invoice or verified machine payment maps to a canonical Geomacro entitlement. The centralized Structured Data Entitlement Registry then decides exactly which capability, subject type, history depth and response limits are allowed. A payment provider cannot widen the payload.
             </p>
           </div>
           <div className="rounded-xl border border-border/70 bg-background/60 p-5">
-            <p className="font-mono text-xs text-muted-foreground">Endpoint</p>
+            <p className="font-mono text-xs text-muted-foreground">Paid structured endpoint</p>
             <code className="mt-2 block break-all rounded-md bg-muted/50 p-3 text-xs">
-              POST https://geomacro.live/api/agent/risk
+              POST https://geomacro.live/api/commercial/structural
             </code>
-            <p className="mt-5 font-mono text-xs text-muted-foreground">Grounded intelligence request</p>
+            <p className="mt-5 font-mono text-xs text-muted-foreground">Example paid request</p>
             <pre className="mt-2 overflow-x-auto rounded-md bg-muted/50 p-3 text-xs leading-relaxed">
 {`{
-  "capability": "intelligence_query",
-  "question": "What is changing in critical-mineral risk?"
-}`}
-            </pre>
-            <p className="mt-5 font-mono text-xs text-muted-foreground">Structured country digest</p>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-muted/50 p-3 text-xs leading-relaxed">
-{`{
-  "capability": "structural_query",
+  "request_id": "client-request-0001",
+  "capability": "structural_country_profile",
   "subject": {
     "type": "country",
     "country_iso3": "IND"
@@ -112,7 +104,7 @@ function DataApiPage() {
 }`}
             </pre>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Machine discovery: <code>/.well-known/geomacro-agent.json</code>. The same gateway separately advertises the controlled risk-preflight capability used for x402 technical proof and Private Pilot workflows.
+              Machine discovery remains available at <code>/.well-known/geomacro-agent.json</code>. The <code>/api/agent/risk</code> route is a bounded paid/private-pilot and x402 technical-proof surface, not a free API fallback.
             </p>
           </div>
         </div>
@@ -123,7 +115,7 @@ function DataApiPage() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Access model</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight">Who gets what.</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Every customer-facing tier receives governed structured data only. The difference is depth, volume, history, number of subjects, signed decision objects, Risk Gate access and support. Raw/private warehouse delivery is not a customer entitlement at any tier.
+            The commercial layer is intentionally separated by access surface. Free is public website access. Analyst is a paid professional dashboard/research package. API + Risk Gate and Institutional add machine-readable delivery. Raw/private warehouse access is not a default customer entitlement at any tier.
           </p>
         </div>
 
@@ -132,51 +124,50 @@ function DataApiPage() {
             <Database className="h-5 w-5 text-primary" />
             <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">PUBLIC · FREE</p>
             <h3 className="mt-2 text-xl font-semibold">Free Explorer</h3>
-            <p className="mt-2 text-sm font-medium text-foreground">{FREE_CREDITS} credits / 30 days</p>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
-              <li>Grounded Geomacro Agent queries.</li>
-              <li>Public Risk Intelligence and verified GRI when eligible.</li>
-              <li>One country/corridor per structured request.</li>
-              <li>Up to three latest eligible structural observations plus coverage summary.</li>
-              <li>No full profile, bulk export, signed Risk Object or Risk Gate.</li>
+              <li>Public Risk Intelligence and selected event/evidence pages.</li>
+              <li>Current public GRI visibility and methodology context.</li>
+              <li>Approved public country/corridor views.</li>
+              <li>No API credential or structured-data download.</li>
+              <li>No signed Risk Object or Risk Gate.</li>
             </ul>
           </article>
 
           <article className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6">
             <FileCheck2 className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING PILOT</p>
-            <h3 className="mt-2 text-xl font-semibold">Structural analyst package</h3>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING ANALYST PILOT</p>
+            <h3 className="mt-2 text-xl font-semibold">Professional intelligence</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>5,000 credits / 30 days.</li>
-              <li>Governed country structural profile.</li>
-              <li>Directional corridor endpoint context.</li>
-              <li>Coverage, eligible provenance and integrity metadata.</li>
-              <li>Agreed structured exports and founder review.</li>
+              <li>Deeper analytics, historical context and attribution.</li>
+              <li>Governed country/corridor profile views.</li>
+              <li>Agreed structured exports where scoped.</li>
+              <li>No automatic API credential, Risk Object or Risk Gate.</li>
             </ul>
           </article>
 
           <article className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6">
             <Braces className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING PILOT · API</p>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING API + RISK GATE PILOT</p>
             <h3 className="mt-2 text-xl font-semibold">Risk API + Risk Gate</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>20,000 credits / 30 days.</li>
-              <li>Machine-readable governed structural context.</li>
-              <li>Signed country/corridor Risk Objects.</li>
-              <li>Risk Gate recommendation and reason codes.</li>
-              <li>Controlled volume and integration support.</li>
+              <li>Authenticated machine-readable governed data.</li>
+              <li>Country/corridor digests and profiles.</li>
+              <li>Signed Risk Objects and Risk Gate bundles.</li>
+              <li>Controlled API/export access for an agreed workflow.</li>
             </ul>
           </article>
 
           <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
             <ShieldCheck className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">VALIDATED EXPANSION</p>
-            <h3 className="mt-2 text-xl font-semibold">Institutional scope</h3>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">INSTITUTIONAL</p>
+            <h3 className="mt-2 text-xl font-semibold">Contracted deployment</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>100,000-credit monthly starting pool, then contracted volume.</li>
-              <li>Additional approved countries/corridors and deeper history.</li>
-              <li>Wider API volume, structured exports or monitoring cadence.</li>
-              <li>Only after rights, reliability, security and support review.</li>
+              <li>Contracted countries, corridors and historical depth.</li>
+              <li>Wider API volume, structured exports and monitoring cadence.</li>
+              <li>Enterprise controls and support only where implemented and contracted.</li>
             </ul>
           </article>
         </div>
@@ -187,7 +178,7 @@ function DataApiPage() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Country structural profile</p>
           <h2 className="mt-3 text-2xl font-semibold">Historical context without a fabricated structural score.</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            A governed country profile can return the newest commercially eligible observations available across governed structural dimensions plus source and coverage metadata. Public Free receives only the bounded digest; deeper profile delivery is scoped to paid access.
+            Paid governed profiles can return commercially eligible structural observations, source/coverage metadata and integrity context within the server-owned entitlement limits. Free Explorer does not receive the structured profile payload.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {STRUCTURAL_FIELDS.map(([title, text]) => (
@@ -220,7 +211,7 @@ function DataApiPage() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Signed decision context</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight">A Risk Object should explain itself.</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            In a technical pilot, Geomacro combines the current risk state with evidence, confidence, freshness, methodology and integrity information so software can inspect what it received before applying customer policy.
+            Paid API workflows can combine the current risk state with evidence, confidence, freshness, methodology and integrity information so software can inspect what it received before applying customer policy.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -242,7 +233,7 @@ function DataApiPage() {
           <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Structural evidence remains <code>EVIDENCE_ONLY_NOT_IN_GRI_V1_2</code>.</li>
             <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Review-gated or commercially unverified sources stay outside customer delivery.</li>
-            <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Raw/private historical warehouse data is never a customer-facing product at any tier.</li>
+            <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Raw/private historical warehouse data is never a default customer-facing product.</li>
             <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Risk Gate returns context and recommendation; <code>execution_authorized=false</code>.</li>
           </ul>
         </div>
@@ -253,9 +244,9 @@ function DataApiPage() {
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-xl font-semibold">Current scope boundaries</h2>
           <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
-            <li>Public Agent v1 is a grounded read layer, not autonomous execution.</li>
-            <li>Public structural access is a bounded digest, not a full historical profile.</li>
-            <li>Full structural profiles, signed Risk Objects and Risk Gate remain controlled paid capabilities.</li>
+            <li>Free Explorer is website/dashboard access, not a free API.</li>
+            <li>Commercial API access requires an active paid entitlement.</li>
+            <li>One-shot machine payments unlock only the named bounded capability.</li>
             <li>Additional structural dimensions require separate source-rights and serving validation.</li>
           </ul>
         </article>
@@ -276,7 +267,7 @@ function DataApiPage() {
           <div>
             <h2 className="text-xl font-semibold">Have one real country, corridor or agent workflow?</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Start with the public Agent and bounded structured digest. If the workflow needs deeper structural history, signed data or a policy recommendation, scope a 30-day Founding Pilot.
+              Use Free Explorer to evaluate the public intelligence product. If the workflow needs deeper history, structured API delivery, signed data or policy context, scope the appropriate commercial pilot.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">
