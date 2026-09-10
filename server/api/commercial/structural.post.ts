@@ -17,7 +17,7 @@ import {
   CommercialAccessError,
   consumeCommercialCapability,
   ensureCommercialCreditAccount,
-  resolveCommercialEntitlementTier,
+  resolveCommercialEntitlementForCapability,
 } from "../../../src/lib/commercial-access.server";
 import {
   structuredDeliveryPolicy,
@@ -243,12 +243,16 @@ export default defineEventHandler(async (event) => {
     const input = requestSchema.parse(raw);
     assertCapabilityMatchesSubject(input.capability, input.subject.type);
 
-    const tier = await resolveCommercialEntitlementTier(principal);
+    const entitlement = await resolveCommercialEntitlementForCapability({
+      principal,
+      capability: input.capability as GeomacroCreditCapability,
+    });
+    const tier = entitlement.tier;
     const policy = structuredDeliveryPolicy(
       tier,
       input.capability as GeomacroCreditCapability,
     );
-    if (!policy.allowed) {
+    if (!policy.allowed || !entitlement.policy.allowed) {
       throw new CommercialAccessError(
         403,
         "CAPABILITY_NOT_INCLUDED",
@@ -283,7 +287,7 @@ export default defineEventHandler(async (event) => {
     await ensureCommercialCreditAccount({ principal, tier });
     const usage = await consumeCommercialCapability({
       principal,
-      tier,
+      entitlement,
       requestId: input.request_id,
       capability: input.capability as GeomacroCreditCapability,
     });
@@ -305,6 +309,9 @@ export default defineEventHandler(async (event) => {
         type: principal.principal_type,
       },
       entitlement: {
+        grant_id: entitlement.grant_id,
+        offer_id: entitlement.policy.offer_id,
+        entitlement_kind: entitlement.policy.entitlement_kind,
         registry_version: policy.registry_version,
         credit_contract_version: policy.credit_contract_version,
         tier,
