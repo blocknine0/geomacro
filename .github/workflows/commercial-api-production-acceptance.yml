@@ -1,0 +1,161 @@
+name: Commercial API production acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Dry run validates configuration without database writes or live API requests. Provision and verify performs the controlled production pilot acceptance."
+        required: true
+        default: dry_run
+        type: choice
+        options:
+          - dry_run
+          - provision_and_verify
+      country_iso3:
+        description: "Commercially eligible country used for the acceptance request"
+        required: true
+        default: "CHN"
+        type: string
+      external_id:
+        description: "Non-secret canonical pilot client identifier"
+        required: true
+        default: "geomacro-first-api-pilot"
+        type: string
+      display_name:
+        description: "Pilot display name"
+        required: true
+        default: "Geomacro First API Pilot"
+        type: string
+      entitlement_reference:
+        description: "Unique non-secret entitlement reference"
+        required: true
+        default: "manual-pilot:geomacro-first-api-pilot:v1"
+        type: string
+      tier:
+        description: "Commercial pilot tier"
+        required: true
+        default: api_pilot
+        type: choice
+        options:
+          - analyst_pilot
+          - api_pilot
+          - institutional
+      duration_days:
+        description: "Pilot entitlement duration in days"
+        required: true
+        default: "30"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-api-production-acceptance
+  cancel-in-progress: false
+
+jobs:
+  accept:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      COMMERCIAL_PILOT_API_KEY: ${{ secrets.COMMERCIAL_PILOT_API_KEY }}
+      COMMERCIAL_PILOT_EXTERNAL_ID: ${{ inputs.external_id }}
+      COMMERCIAL_PILOT_DISPLAY_NAME: ${{ inputs.display_name }}
+      COMMERCIAL_PILOT_REFERENCE: ${{ inputs.entitlement_reference }}
+      COMMERCIAL_PILOT_TIER: ${{ inputs.tier }}
+      COMMERCIAL_PILOT_DURATION_DAYS: ${{ inputs.duration_days }}
+      COMMERCIAL_ACCEPTANCE_COUNTRY: ${{ inputs.country_iso3 }}
+      COMMERCIAL_API_BASE_URL: https://geomacro.live
+      COMMERCIAL_ACCEPTANCE_OUTPUT: /tmp/commercial-api-production-acceptance.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate required secret and bounded inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${APP_SUPABASE_URL:-}" || -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "::error::Authoritative Supabase production secrets are missing."
+            exit 1
+          fi
+          if [[ -z "${COMMERCIAL_PILOT_API_KEY:-}" ]]; then
+            echo "::error::COMMERCIAL_PILOT_API_KEY production environment secret is missing."
+            exit 1
+          fi
+          if ! [[ "$COMMERCIAL_ACCEPTANCE_COUNTRY" =~ ^[A-Za-z]{3}$ ]]; then
+            echo "::error::country_iso3 must be exactly three letters."
+            exit 1
+          fi
+          if ! [[ "$COMMERCIAL_PILOT_DURATION_DAYS" =~ ^[0-9]+$ ]] || (( COMMERCIAL_PILOT_DURATION_DAYS < 1 || COMMERCIAL_PILOT_DURATION_DAYS > 366 )); then
+            echo "::error::duration_days must be an integer from 1 to 366."
+            exit 1
+          fi
+          case "$COMMERCIAL_PILOT_TIER" in
+            analyst_pilot|api_pilot|institutional) ;;
+            *) echo "::error::Unsupported commercial pilot tier."; exit 1 ;;
+          esac
+
+      - name: Produce sanitized provisioning plan
+        run: bun scripts/commercial/provision-commercial-api-pilot.ts | tee /tmp/commercial-api-provision-plan.json
+
+      - name: Stop after dry run
+        if: ${{ inputs.mode == 'dry_run' }}
+        run: echo "Dry run complete. No commercial principal/credential/entitlement was written and no live API request was sent."
+
+      - name: Provision controlled pilot access
+        if: ${{ inputs.mode == 'provision_and_verify' }}
+        run: bun scripts/commercial/provision-commercial-api-pilot.ts --write | tee /tmp/commercial-api-provision-result.json
+
+      - name: Run authenticated production acceptance
+        if: ${{ inputs.mode == 'provision_and_verify' }}
+        run: bun scripts/commercial/accept-commercial-api.ts | tee /tmp/commercial-api-production-acceptance.log
+
+      - name: Guard sanitized evidence
+        if: ${{ always() && inputs.mode == 'provision_and_verify' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f /tmp/commercial-api-production-acceptance.json ]]; then
+            echo "::error::Acceptance evidence was not produced."
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/commercial-api-production-acceptance.json', 'utf8'));
+          if (result?.exact_replay?.no_double_charge !== true) throw new Error('No-double-charge proof failed');
+          if (result?.mutated_replay?.error_code !== 'IDEMPOTENCY_CONFLICT') throw new Error('Mutated replay fail-closed proof failed');
+          if (result?.invalid_auth?.fail_closed !== true) throw new Error('Invalid-auth proof failed');
+          if (result?.boundaries?.execution_authorized !== false) throw new Error('execution_authorized boundary failed');
+          if (result?.boundaries?.raw_data_included !== false) throw new Error('raw_data_included boundary failed');
+          if (result?.boundaries?.private_warehouse_access !== false) throw new Error('private_warehouse_access boundary failed');
+          if (result?.boundaries?.api_key_logged !== false) throw new Error('API key logging boundary failed');
+          NODE
+
+      - name: Upload sanitized acceptance evidence
+        if: ${{ always() && inputs.mode == 'provision_and_verify' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: commercial-api-production-acceptance-${{ github.run_id }}
+          path: |
+            /tmp/commercial-api-provision-plan.json
+            /tmp/commercial-api-provision-result.json
+            /tmp/commercial-api-production-acceptance.json
+            /tmp/commercial-api-production-acceptance.log
+          if-no-files-found: warn
+          retention-days: 30
