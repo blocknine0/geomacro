@@ -3,7 +3,7 @@
  *
  * Public browser surfaces deliberately read through a same-origin server
  * function. That keeps production independent of stale hosting VITE_* values
- * while preserving the existing events table as the source of truth.
+ * while preserving the existing events table as the internal source of truth.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,7 +18,8 @@ export type IntelEvent = {
   severity: number | null;
   /** Severity change written by the pipeline. null when never scored. */
   delta: number | null;
-  sourceName: string | null;
+  /** Public compatibility field. Upstream publisher identity is never populated. */
+  sourceName: null;
   createdAt: string;
   publishedAt: string | null;
 };
@@ -164,7 +165,7 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
           category: r.category ?? null,
           severity: num(r.severity),
           delta: num(r.delta),
-          sourceName: r.source_name ?? null,
+          sourceName: null,
           createdAt: String(r.created_at),
           publishedAt: r.published_at ?? null,
         }));
@@ -216,8 +217,7 @@ export function applyIntelFilters(
       (r) =>
         r.title.toLowerCase().includes(q) ||
         (r.summary ?? "").toLowerCase().includes(q) ||
-        (r.category ?? "").toLowerCase().includes(q) ||
-        (r.sourceName ?? "").toLowerCase().includes(q),
+        (r.category ?? "").toLowerCase().includes(q),
     );
   }
   const sorted = [...out];

@@ -16,13 +16,11 @@ export type PublicEventDetail = {
   severity: number | null;
   confidence: number | null;
   delta: number | null;
-  source_name: string | null;
-  source_domain: string | null;
-  source_url: string | null;
   published_at: string | null;
   created_at: string;
 };
 
+/** Public event details intentionally exclude upstream publisher identity and URLs. */
 export const getPublicEventDetail = createServerFn({ method: "POST" })
   .validator((input: unknown) => EventInput.parse(input))
   .handler(async ({ data }): Promise<PublicEventDetail | null> => {
@@ -33,7 +31,7 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
     const result = await supabase
       .from("events")
       .select(
-        "id,source_title,summary,narrative,category,severity,confidence,delta,source_name,source_domain,source_url,published_at,created_at",
+        "id,source_title,summary,narrative,category,severity,confidence,delta,published_at,created_at",
       )
       .eq("id", data.eventId)
       .maybeSingle();
