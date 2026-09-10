@@ -1,16 +1,11 @@
-import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { agenticDemoRequestSchema } from "../lib/agentic-demo-contract";
 import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
-import { answerQuestion } from "../lib/ask-intelligence.server";
 import {
-  agentIntelligenceQuerySchema,
-  agentStructuralQuerySchema,
   GEOMACRO_AGENT_VERSION,
   geomacroAgentManifest,
 } from "../lib/geomacro-agent-contract";
-import { loadPublicStructuralDigest } from "../lib/public-structural-digest.server";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
   CIRCLE_X402_ASSET,
@@ -73,189 +68,15 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-function hasCapability(raw: unknown, capability: string) {
+function hasDeprecatedFreeCapability(raw: unknown) {
   return Boolean(
     raw &&
       typeof raw === "object" &&
       "capability" in raw &&
-      (raw as { capability?: unknown }).capability === capability,
+      ["intelligence_query", "structural_query"].includes(
+        String((raw as { capability?: unknown }).capability ?? ""),
+      ),
   );
-}
-
-async function handlePublicIntelligenceQuery(request: Request, raw: unknown) {
-  if (
-    !allowPublicDemoRequest(request, {
-      namespace: "geomacro-agent-intelligence",
-      windowMs: 60_000,
-      maxPerClient: 20,
-      maxGlobal: 200,
-    })
-  ) {
-    return json(
-      {
-        ok: false,
-        agent_version: GEOMACRO_AGENT_VERSION,
-        capability: "intelligence_query",
-        error: {
-          code: "AGENT_RATE_LIMITED",
-          message: "Public agent query limit exceeded. Try again shortly.",
-        },
-        execution_authorized: false,
-      },
-      429,
-    );
-  }
-
-  let input;
-  try {
-    input = agentIntelligenceQuerySchema.parse(raw);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return json(
-        {
-          ok: false,
-          agent_version: GEOMACRO_AGENT_VERSION,
-          capability: "intelligence_query",
-          error: {
-            code: "INVALID_AGENT_QUERY",
-            message: "Agent intelligence query fields are invalid.",
-            issues: error.issues.map((issue) => ({
-              path: issue.path.join("."),
-              message: issue.message,
-            })),
-          },
-          execution_authorized: false,
-        },
-        400,
-      );
-    }
-    throw error;
-  }
-
-  try {
-    const answer = await answerQuestion(input.question);
-    return json({
-      ok: true,
-      agent_version: GEOMACRO_AGENT_VERSION,
-      capability: "intelligence_query",
-      request_id: randomUUID(),
-      client_request_id: input.client_request_id ?? null,
-      answer,
-      grounding: {
-        mode: "geomacro_stored_intelligence_only",
-        external_web_search: false,
-        synthetic_fallback_score: false,
-        current_gri_requires_canonical_public_verification: true,
-      },
-      boundaries: {
-        execution_authorized: false,
-        financial_advice: false,
-        wallet_custody: false,
-        transaction_signing: false,
-        raw_data_included: false,
-      },
-    });
-  } catch (error) {
-    console.error("[geomacro-agent] intelligence query failed", error);
-    return json(
-      {
-        ok: false,
-        agent_version: GEOMACRO_AGENT_VERSION,
-        capability: "intelligence_query",
-        error: {
-          code: "INTELLIGENCE_UNAVAILABLE",
-          message: "Grounded Geomacro intelligence is temporarily unavailable.",
-        },
-        execution_authorized: false,
-      },
-      503,
-    );
-  }
-}
-
-async function handlePublicStructuralQuery(request: Request, raw: unknown) {
-  if (
-    !allowPublicDemoRequest(request, {
-      namespace: "geomacro-agent-structural",
-      windowMs: 60_000,
-      maxPerClient: 12,
-      maxGlobal: 120,
-    })
-  ) {
-    return json(
-      {
-        ok: false,
-        agent_version: GEOMACRO_AGENT_VERSION,
-        capability: "structural_query",
-        error: {
-          code: "STRUCTURAL_RATE_LIMITED",
-          message: "Public structural query limit exceeded. Try again shortly.",
-        },
-        execution_authorized: false,
-      },
-      429,
-    );
-  }
-
-  let input;
-  try {
-    input = agentStructuralQuerySchema.parse(raw);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return json(
-        {
-          ok: false,
-          agent_version: GEOMACRO_AGENT_VERSION,
-          capability: "structural_query",
-          error: {
-            code: "INVALID_STRUCTURAL_QUERY",
-            message: "Structural query fields are invalid.",
-            issues: error.issues.map((issue) => ({
-              path: issue.path.join("."),
-              message: issue.message,
-            })),
-          },
-          execution_authorized: false,
-        },
-        400,
-      );
-    }
-    throw error;
-  }
-
-  try {
-    const digest = await loadPublicStructuralDigest(input);
-    return json({
-      ok: true,
-      agent_version: GEOMACRO_AGENT_VERSION,
-      capability: "structural_query",
-      request_id: randomUUID(),
-      client_request_id: input.client_request_id ?? null,
-      structural_context: digest,
-      boundaries: {
-        execution_authorized: false,
-        financial_advice: false,
-        raw_data_included: false,
-        private_warehouse_access: false,
-        structured_delivery_only: true,
-      },
-    });
-  } catch (error) {
-    console.error("[geomacro-agent] public structural query failed", error);
-    return json(
-      {
-        ok: false,
-        agent_version: GEOMACRO_AGENT_VERSION,
-        capability: "structural_query",
-        error: {
-          code: "STRUCTURAL_CONTEXT_UNAVAILABLE",
-          message: "Governed structural context is temporarily unavailable.",
-        },
-        execution_authorized: false,
-      },
-      503,
-    );
-  }
 }
 
 export const Route = createFileRoute("/api/agent/risk")({
@@ -287,12 +108,21 @@ export const Route = createFileRoute("/api/agent/risk")({
           throw error;
         }
 
-        if (hasCapability(rawBody, "intelligence_query")) {
-          return handlePublicIntelligenceQuery(request, rawBody);
-        }
-
-        if (hasCapability(rawBody, "structural_query")) {
-          return handlePublicStructuralQuery(request, rawBody);
+        if (hasDeprecatedFreeCapability(rawBody)) {
+          return json(
+            {
+              ok: false,
+              agent_version: GEOMACRO_AGENT_VERSION,
+              error: {
+                code: "FREE_API_NOT_AVAILABLE",
+                message:
+                  "Geomacro Free Explorer is a website/dashboard experience. Commercial structured API access requires a paid entitlement.",
+              },
+              commercial_api: "/api/commercial/structural",
+              execution_authorized: false,
+            },
+            403,
+          );
         }
 
         if (!isCircleX402Configured()) {
@@ -302,7 +132,7 @@ export const Route = createFileRoute("/api/agent/risk")({
               error: {
                 code: "X402_NOT_CONFIGURED",
                 message:
-                  "Circle x402 seller configuration is not active in this runtime. Free intelligence_query and structural_query capabilities remain available.",
+                  "Circle x402 technical-proof seller configuration is not active in this runtime. No free agent API fallback is provided.",
               },
               execution_authorized: false,
             },
@@ -355,9 +185,6 @@ export const Route = createFileRoute("/api/agent/risk")({
           throw error;
         }
 
-        // Prepare the exact risk resource BEFORE asking the caller to pay.
-        // On a paid retry the same prepared result is delivered after settlement;
-        // we do not recompute a second Risk Gate result after money is accepted.
         let prepared;
         try {
           prepared = await runAgenticPreflightDemo(body, {
