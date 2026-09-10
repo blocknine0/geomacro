@@ -10,6 +10,22 @@ alter table public.commercial_entitlement_grants
   add constraint commercial_entitlement_grants_tier_check
   check (tier in ('free','testnet_tester','analyst_pilot','api_pilot','institutional'));
 
+alter table public.commercial_entitlement_grants
+  drop constraint if exists commercial_entitlement_grants_source_check;
+
+alter table public.commercial_entitlement_grants
+  add constraint commercial_entitlement_grants_source_check
+  check (source_type in (
+    'free_provisioning',
+    'manual_pilot',
+    'subscription',
+    'invoice',
+    'payment_provider',
+    'testnet_usdc',
+    'goat_x402',
+    'internal'
+  ));
+
 alter table public.commercial_usage_events
   drop constraint if exists commercial_usage_surface_check;
 
@@ -113,6 +129,20 @@ create table if not exists public.testnet_usdc_payment_claims (
   unique (chain_id, tx_hash)
 );
 
+create table if not exists public.testnet_developer_credentials (
+  id uuid primary key default gen_random_uuid(),
+  principal_id uuid not null references public.commercial_principals(id) on delete cascade,
+  commercial_api_credential_id uuid not null unique references public.commercial_api_credentials(id) on delete cascade,
+  label text not null default 'Default test integration',
+  integration_type text not null default 'product_api',
+  enabled boolean not null default true,
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz,
+  constraint testnet_developer_credentials_label_check check (char_length(label) between 2 and 80),
+  constraint testnet_developer_credentials_type_check
+    check (integration_type in ('product_api','ai_agent','automation','demo'))
+);
+
 create table if not exists public.commercial_share_events (
   id uuid primary key default gen_random_uuid(),
   occurred_at timestamptz not null default now(),
@@ -141,25 +171,31 @@ create table if not exists public.commercial_share_events (
 create unique index if not exists commercial_share_slug_unique on public.commercial_share_events (share_slug);
 create index if not exists commercial_share_principal_time_idx on public.commercial_share_events (principal_id, occurred_at desc);
 create index if not exists testnet_payment_claim_principal_idx on public.testnet_usdc_payment_claims (principal_id, created_at desc);
+create index if not exists testnet_developer_credentials_principal_idx on public.testnet_developer_credentials (principal_id, enabled, created_at desc);
 
 alter table public.testnet_tester_profiles enable row level security;
 alter table public.testnet_wallet_challenges enable row level security;
 alter table public.testnet_usdc_payment_claims enable row level security;
+alter table public.testnet_developer_credentials enable row level security;
 alter table public.commercial_share_events enable row level security;
 
 revoke all on table public.testnet_tester_profiles from PUBLIC, anon, authenticated;
 revoke all on table public.testnet_wallet_challenges from PUBLIC, anon, authenticated;
 revoke all on table public.testnet_usdc_payment_claims from PUBLIC, anon, authenticated;
+revoke all on table public.testnet_developer_credentials from PUBLIC, anon, authenticated;
 revoke all on table public.commercial_share_events from PUBLIC, anon, authenticated;
 
 grant all on table public.testnet_tester_profiles to service_role;
 grant all on table public.testnet_wallet_challenges to service_role;
 grant all on table public.testnet_usdc_payment_claims to service_role;
+grant all on table public.testnet_developer_credentials to service_role;
 grant all on table public.commercial_share_events to service_role;
 
 comment on table public.testnet_tester_profiles is
   'Private verified tester registration state. Access activates only after a verified supported-testnet USDC payment creates a canonical testnet_tester entitlement.';
 comment on table public.testnet_usdc_payment_claims is
   'Replay-protected claims for 1 USDC Testnet Tester Pass purchases. Testnet settlement is non-revenue.';
+comment on table public.testnet_developer_credentials is
+  'Private mapping for paid testnet users who integrate Geomacro into their own product, AI agent, automation or demo. Plaintext API keys remain outside the database and are returned only at creation time.';
 comment on table public.commercial_share_events is
   'Social sharing telemetry. Upstream news/publisher/source identity is prohibited from customer-facing share cards.';
