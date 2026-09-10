@@ -10,8 +10,14 @@ export const STRUCTURED_DATA_REGISTRY_VERSION =
 
 export type StructuredDataTierId = keyof typeof GEOMACRO_ACCESS_TIERS;
 export type StructuredSubjectType = "country" | "corridor" | "global" | "query";
-export type StructuredHistoryMode = "latest_only" | "bounded_history" | "contracted_history";
+export type StructuredHistoryMode = "none" | "bounded_history" | "contracted_history";
 export type StructuredExportMode = "none" | "agreed" | "controlled_api" | "contracted";
+export type StructuredAccessSurface =
+  | "public_web"
+  | "paid_dashboard"
+  | "commercial_api"
+  | "agent_payment"
+  | "institutional_integration";
 
 export type StructuredProductPolicy = {
   capability: GeomacroCreditCapability;
@@ -130,7 +136,9 @@ export const STRUCTURED_PRODUCT_REGISTRY: Record<
 
 export type StructuredTierPolicy = {
   tier: StructuredDataTierId;
+  access_surfaces: readonly StructuredAccessSurface[];
   included_capabilities: readonly GeomacroCreditCapability[];
+  api_access: boolean;
   history_mode: StructuredHistoryMode;
   max_subjects_per_request: number;
   max_structural_observations: number;
@@ -149,16 +157,13 @@ export const STRUCTURED_TIER_REGISTRY: Record<
 > = {
   free: {
     tier: "free",
-    included_capabilities: [
-      "intelligence_query",
-      "gri_read",
-      "structural_country_digest",
-      "structural_corridor_digest",
-    ],
-    history_mode: "latest_only",
-    max_subjects_per_request: 1,
-    max_structural_observations: 3,
-    max_evidence_references: 5,
+    access_surfaces: ["public_web"],
+    included_capabilities: [],
+    api_access: false,
+    history_mode: "none",
+    max_subjects_per_request: 0,
+    max_structural_observations: 0,
+    max_evidence_references: 0,
     export_mode: "none",
     signed_risk_objects: false,
     risk_gate: false,
@@ -168,6 +173,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
   },
   analyst_pilot: {
     tier: "analyst_pilot",
+    access_surfaces: ["paid_dashboard"],
     included_capabilities: [
       "intelligence_query",
       "gri_read",
@@ -176,6 +182,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
       "structural_country_profile",
       "structural_corridor_profile",
     ],
+    api_access: false,
     history_mode: "bounded_history",
     max_subjects_per_request: 2,
     max_structural_observations: 12,
@@ -189,6 +196,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
   },
   api_pilot: {
     tier: "api_pilot",
+    access_surfaces: ["paid_dashboard", "commercial_api", "agent_payment"],
     included_capabilities: [
       "intelligence_query",
       "gri_read",
@@ -199,6 +207,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
       "signed_risk_object",
       "risk_gate_bundle",
     ],
+    api_access: true,
     history_mode: "bounded_history",
     max_subjects_per_request: 2,
     max_structural_observations: 12,
@@ -212,6 +221,12 @@ export const STRUCTURED_TIER_REGISTRY: Record<
   },
   institutional: {
     tier: "institutional",
+    access_surfaces: [
+      "paid_dashboard",
+      "commercial_api",
+      "agent_payment",
+      "institutional_integration",
+    ],
     included_capabilities: [
       "intelligence_query",
       "gri_read",
@@ -222,6 +237,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
       "signed_risk_object",
       "risk_gate_bundle",
     ],
+    api_access: true,
     history_mode: "contracted_history",
     max_subjects_per_request: 10,
     max_structural_observations: 50,
@@ -236,30 +252,35 @@ export const STRUCTURED_TIER_REGISTRY: Record<
 };
 
 export const COMMERCIAL_OFFER_REGISTRY = {
-  free: {
-    offer_id: "free",
+  free_public_web: {
+    offer_id: "free_public_web",
     tier: "free",
     payment_required: false,
+    entitlement_kind: "public_web",
   },
   analyst_pilot_30d: {
     offer_id: "analyst_pilot_30d",
     tier: "analyst_pilot",
     payment_required: true,
+    entitlement_kind: "subscription",
   },
   api_risk_gate_pilot_30d: {
     offer_id: "api_risk_gate_pilot_30d",
     tier: "api_pilot",
     payment_required: true,
+    entitlement_kind: "subscription",
   },
   institutional_contract: {
     offer_id: "institutional_contract",
     tier: "institutional",
     payment_required: true,
+    entitlement_kind: "contract",
   },
   machine_risk_preflight: {
     offer_id: "machine_risk_preflight",
     tier: "api_pilot",
     payment_required: true,
+    entitlement_kind: "one_shot",
     one_shot_capability: "risk_gate_bundle",
   },
 } as const;
@@ -270,7 +291,8 @@ export function tierAllowsStructuredCapability(
   tier: StructuredDataTierId,
   capability: GeomacroCreditCapability,
 ): boolean {
-  return STRUCTURED_TIER_REGISTRY[tier].included_capabilities.includes(capability);
+  const policy = STRUCTURED_TIER_REGISTRY[tier];
+  return policy.api_access && policy.included_capabilities.includes(capability);
 }
 
 export function structuredDeliveryPolicy(
@@ -296,6 +318,7 @@ export function offerToCanonicalEntitlement(offerId: CommercialOfferId) {
     offer_id: offer.offer_id,
     tier: offer.tier,
     payment_required: offer.payment_required,
+    entitlement_kind: offer.entitlement_kind,
     one_shot_capability:
       "one_shot_capability" in offer ? offer.one_shot_capability : null,
   } as const;
