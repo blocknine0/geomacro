@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const route = readFileSync(
-  join(process.cwd(), "src/routes/api.commercial.structural.ts"),
+  join(process.cwd(), "server/api/commercial/structural.post.ts"),
   "utf8",
 );
 const access = readFileSync(
