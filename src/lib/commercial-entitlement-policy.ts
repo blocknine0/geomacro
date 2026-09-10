@@ -19,7 +19,13 @@ export type CanonicalGrantPolicy = {
     | "OFFER_TIER_MISMATCH"
     | "ONE_SHOT_CAPABILITY_MISMATCH";
   offer_id: CommercialOfferId | null;
-  entitlement_kind: "legacy_tier" | "subscription" | "contract" | "one_shot" | "public_web";
+  entitlement_kind:
+    | "legacy_tier"
+    | "subscription"
+    | "contract"
+    | "one_shot"
+    | "public_web"
+    | "testnet_pass";
   one_shot_capability: GeomacroCreditCapability | null;
 };
 
@@ -60,8 +66,6 @@ export function canonicalGrantPolicy(input: {
 
   const rawOfferId = metadata.offer_id;
   if (rawOfferId === undefined || rawOfferId === null || rawOfferId === "") {
-    // Backward-compatible only for pre-registry manual/private-pilot grants.
-    // New payment-created grants must always persist a canonical offer_id.
     return {
       allowed: true,
       code: "ALLOWED",
