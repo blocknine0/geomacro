@@ -1,0 +1,48 @@
+name: Risk Gate Core Resilience
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: In-process decision evaluations
+        required: false
+        default: "50000"
+  pull_request:
+    paths:
+      - "src/lib/risk-gate-engine.ts"
+      - "src/lib/risk-gate-contract.ts"
+      - "src/lib/risk-gate-explainability.ts"
+      - "src/lib/risk-object-contract.ts"
+      - "scripts/stress-risk-gate-core.ts"
+      - ".github/workflows/risk-gate-core-resilience.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  stress-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run deterministic Risk Gate core stress harness
+        env:
+          ITERATIONS: ${{ github.event.inputs.iterations || '30000' }}
+        run: bunx tsx scripts/stress-risk-gate-core.ts --iterations "$ITERATIONS"
+
+      - name: Upload stress evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-gate-core-stress
+          path: artifacts/risk-gate-core-stress.json
+          if-no-files-found: error
+          retention-days: 30
