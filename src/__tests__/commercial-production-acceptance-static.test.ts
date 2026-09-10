@@ -24,10 +24,12 @@ describe("commercial production acceptance tooling", () => {
     expect(provisioner).not.toContain('console.log(apiKey');
   });
 
-  it("is dry-run by default and refuses implicit credential reactivation or entitlement mutation", () => {
+  it("is dry-run by default and refuses implicit access-state reactivation or term mutation", () => {
     expect(provisioner).toContain('process.argv.includes("--write")');
+    expect(provisioner).toContain('Existing principal is not active; refusing implicit reactivation');
     expect(provisioner).toContain('Existing credential is disabled; refusing implicit re-enable');
     expect(provisioner).toContain('Entitlement reference conflict: refusing to change existing commercial terms');
+    expect(provisioner).toContain('Existing entitlement is not currently active; refusing implicit renewal/reactivation');
   });
 
   it("proves exact replay, mutated replay and invalid auth against production", () => {
