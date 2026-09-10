@@ -1,0 +1,193 @@
+name: Code scanning wave 3 autofix
+
+on:
+  push:
+    branches:
+      - fix/code-scanning-wave3-2026-09
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout security branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Apply targeted CodeQL hardening
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          # High #8: API credentials are high-entropy bearer secrets, not passwords.
+          # Protect their deterministic lookup digest with a server-only HMAC pepper.
+          path = "scripts/commercial/provision-commercial-api-pilot.ts"
+          replace_once(path,
+              'import { createHash } from "node:crypto";',
+              'import { createHmac } from "node:crypto";')
+          replace_once(path,
+              '''function sha256(value: string): string {\n  return createHash("sha256").update(value).digest("hex");\n}''',
+              '''function hashApiCredential(value: string): string {\n  const pepper = required("GEOMACRO_API_KEY_HASH_PEPPER");\n  if (pepper.length < 32) {\n    throw new Error("GEOMACRO_API_KEY_HASH_PEPPER must be at least 32 characters");\n  }\n  return createHmac("sha256", pepper).update(value).digest("hex");\n}''')
+          replace_once(path,
+              'const keyHash = sha256(apiKey);',
+              'const keyHash = hashApiCredential(apiKey);')
+
+          path = "src/lib/commercial-access.server.ts"
+          replace_once(path,
+              '''import {\n  createHash,\n} from "node:crypto";''',
+              '''import {\n  createHash,\n  createHmac,\n} from "node:crypto";''')
+          marker = '''function sha256(value: string): string {\n  return createHash("sha256").update(value).digest("hex");\n}\n'''
+          addition = marker + '''\nfunction hashApiCredential(value: string): string {\n  const pepper = String(process.env.GEOMACRO_API_KEY_HASH_PEPPER ?? "").trim();\n  if (pepper.length < 32) {\n    throw new CommercialAccessError(\n      503,\n      "COMMERCIAL_AUTH_NOT_CONFIGURED",\n      "Commercial API authentication is temporarily unavailable.",\n    );\n  }\n  return createHmac("sha256", pepper).update(value).digest("hex");\n}\n'''
+          replace_once(path, marker, addition)
+          replace_once(path,
+              'p_api_key_hash: sha256(token),',
+              'p_api_key_hash: hashApiCredential(token),')
+
+          # High #1: same HMAC-peppered lookup digest for legacy Risk Gate pilot keys.
+          path = "scripts/provision-risk-gate-client.mjs"
+          replace_once(path,
+              '''import {\n  createHash,\n  randomBytes,\n} from "node:crypto";''',
+              '''import {\n  createHmac,\n  randomBytes,\n} from "node:crypto";''')
+          replace_once(path,
+              '''const apiKeyHash =\n  createHash("sha256")\n    .update(apiKey)\n    .digest("hex");''',
+              '''const credentialPepper =\n  process.env.GEOMACRO_API_KEY_HASH_PEPPER?.trim();\n\nif (!credentialPepper || credentialPepper.length < 32) {\n  throw new Error(\n    "GEOMACRO_API_KEY_HASH_PEPPER must be configured with at least 32 characters",\n  );\n}\n\nconst apiKeyHash =\n  createHmac("sha256", credentialPepper)\n    .update(apiKey)\n    .digest("hex");''')
+          replace_once(path,
+              '"\\nStore this secret securely. Only its SHA-256 hash is persisted.",',
+              '"\\nStore this secret securely. Only its HMAC-SHA-256 digest is persisted.",')
+
+          path = "src/lib/risk-gate-api.server.ts"
+          replace_once(path,
+              '''  createHash,\n  randomUUID,''',
+              '''  createHash,\n  createHmac,\n  randomUUID,''')
+          sha_marker = '''function sha256(\n  value: unknown,\n): string {\n  const input =\n    typeof value === "string"\n      ? value\n      : JSON.stringify(value);\n\n  return createHash("sha256")\n    .update(input)\n    .digest("hex");\n}\n'''
+          cred_fn = sha_marker + '''\nfunction hashApiCredential(\n  value: string,\n): string {\n  const pepper =\n    String(\n      process.env\n        .GEOMACRO_API_KEY_HASH_PEPPER ??\n        "",\n    ).trim();\n\n  if (pepper.length < 32) {\n    throw new RiskGateApiError(\n      503,\n      "AUTH_BACKEND_NOT_CONFIGURED",\n      "Risk Gate authentication unavailable",\n    );\n  }\n\n  return createHmac(\n    "sha256",\n    pepper,\n  )\n    .update(value)\n    .digest("hex");\n}\n'''
+          replace_once(path, sha_marker, cred_fn)
+          replace_once(path,
+              '''  const tokenHash =\n    sha256(token);''',
+              '''  const tokenHash =\n    hashApiCredential(token);''')
+
+          # High #3: decode supported HTML entities in one pass only. Output from one
+          # entity is never re-fed into another decoder rule.
+          path = "scripts/ingest-news.js"
+          replace_once(path,
+              '''function stripHtml(value) {\n  if (!value) return '';\n  return String(value)\n    .replace(/<[^>]*>/g, ' ')\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;|&apos;/gi, "'")\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}''',
+              '''const HTML_ENTITY_VALUES = Object.freeze({\n  nbsp: ' ',\n  amp: '&',\n  quot: '\"',\n  apos: "'",\n  '#39': "'",\n  lt: '<',\n  gt: '>',\n});\n\nfunction decodeHtmlEntitiesOnce(value) {\n  return String(value).replace(\n    /&(nbsp|amp|quot|apos|lt|gt|#39);/gi,\n    (match, entity) =>\n      HTML_ENTITY_VALUES[String(entity).toLowerCase()] ?? match\n  );\n}\n\nfunction stripHtml(value) {\n  if (!value) return '';\n  return decodeHtmlEntitiesOnce(\n    String(value).replace(/<[^>]*>/g, ' ')\n  )\n    .replace(/\\s+/g, ' ')\n    .trim();\n}''')
+
+          # Medium #5/#6: detailed failures remain in protected operational tables,
+          # but HTTP callers receive only stable, non-sensitive error codes.
+          path = "supabase/functions/live-structure-intelligence/index.ts"
+          replace_once(path,
+              '''        error:\n          "STRUCTURING_FAILED",\n        detail:\n          message,''',
+              '''        error:\n          "STRUCTURING_FAILED",''')
+
+          path = "supabase/functions/live-gdelt-ingest/index.ts"
+          replace_once(path,
+              '''        ok: false,\n        error: "INGEST_FAILED",\n        detail: message,''',
+              '''        ok: false,\n        error: "INGEST_FAILED",''')
+
+          # High #4: percent-encode transaction hashes before inserting them into a
+          # DOM URL path. Also fail closed on tampered localStorage resume state.
+          path = "src/components/sections/bridge-section.tsx"
+          replace_once(path,
+              '''function loadPendingBridge(): PendingBridge | null {\n  try {\n    const raw = localStorage.getItem(PENDING_BRIDGE_KEY);\n    return raw ? (JSON.parse(raw) as PendingBridge) : null;\n  } catch {\n    return null;\n  }\n}''',
+              '''function loadPendingBridge(): PendingBridge | null {\n  try {\n    const raw = localStorage.getItem(PENDING_BRIDGE_KEY);\n    if (!raw) return null;\n    const parsed = JSON.parse(raw) as Partial<PendingBridge>;\n    if (\n      typeof parsed.sourceKey !== "string" ||\n      !(parsed.sourceKey in CCTP_CHAINS) ||\n      parsed.sourceKey === "arcTestnet" ||\n      typeof parsed.burnTxHash !== "string" ||\n      !/^0x[0-9a-fA-F]{64}$/.test(parsed.burnTxHash) ||\n      typeof parsed.amount !== "string" ||\n      !/^(?:0|[1-9]\\d*)(?:\\.\\d{1,6})?$/.test(parsed.amount)\n    ) {\n      clearPendingBridge();\n      return null;\n    }\n    return {\n      sourceKey: parsed.sourceKey,\n      burnTxHash: parsed.burnTxHash,\n      amount: parsed.amount,\n    };\n  } catch {\n    return null;\n  }\n}''')
+          replace_once(path,
+              'href={`${source.explorerUrl}/tx/${burnTxHash}`}',
+              'href={`${source.explorerUrl}/tx/${encodeURIComponent(burnTxHash)}`}')
+          replace_once(path,
+              'href={`${DEST.explorerUrl}/tx/${mintTxHash}`}',
+              'href={`${DEST.explorerUrl}/tx/${encodeURIComponent(mintTxHash)}`}')
+          replace_once(path,
+              'href={`${DEST.explorerUrl}/tx/${feeTxHash}`}',
+              'href={`${DEST.explorerUrl}/tx/${encodeURIComponent(feeTxHash)}`}')
+
+          env_path = Path('.env.example')
+          env_text = env_path.read_text()
+          marker = '# ---- Agentic-commerce technical proof (Arc Testnet only) ----\n'
+          block = '''# Server-only pepper for deterministic API credential lookup digests.\n# Generate at least 32 random bytes. Never prefix with VITE_, log it, or reuse\n# it as an API key. Rotating it requires reprovisioning affected API credentials.\nGEOMACRO_API_KEY_HASH_PEPPER=\n\n'''
+          if 'GEOMACRO_API_KEY_HASH_PEPPER=' not in env_text:
+              if marker not in env_text:
+                  raise SystemExit('.env.example marker missing')
+              env_path.write_text(env_text.replace(marker, block + marker, 1))
+
+          test = Path('src/__tests__/code-scanning-wave3-regressions.test.ts')
+          test.write_text(r'''import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const ROOT = process.cwd();
+const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
+
+describe("CodeQL wave 3 regressions", () => {
+  it("uses server-peppered HMAC digests for API credential lookup", () => {
+    for (const path of [
+      "scripts/commercial/provision-commercial-api-pilot.ts",
+      "scripts/provision-risk-gate-client.mjs",
+      "src/lib/commercial-access.server.ts",
+      "src/lib/risk-gate-api.server.ts",
+    ]) {
+      const source = read(path);
+      expect(source, path).toContain("GEOMACRO_API_KEY_HASH_PEPPER");
+      expect(source, path).toContain("createHmac");
+    }
+    expect(read("scripts/commercial/provision-commercial-api-pilot.ts")).not.toContain("sha256(apiKey)");
+    expect(read("scripts/provision-risk-gate-client.mjs")).not.toContain('createHash("sha256")\n    .update(apiKey)');
+  });
+
+  it("decodes supported HTML entities once instead of cascading decoders", () => {
+    const source = read("scripts/ingest-news.js");
+    expect(source).toContain("decodeHtmlEntitiesOnce");
+    expect(source).toContain("HTML_ENTITY_VALUES");
+    expect(source).not.toContain(".replace(/&amp;/gi, '&')");
+    expect(source).not.toContain(".replace(/&lt;/gi, '<')");
+  });
+
+  it("does not return caught internal error details from edge functions", () => {
+    for (const path of [
+      "supabase/functions/live-structure-intelligence/index.ts",
+      "supabase/functions/live-gdelt-ingest/index.ts",
+    ]) {
+      const source = read(path);
+      expect(source, path).not.toMatch(/error:\s*"(?:STRUCTURING_FAILED|INGEST_FAILED)"[\s\S]{0,80}detail:\s*message/);
+      expect(source, path).toContain("error_detail:");
+    }
+  });
+
+  it("encodes explorer transaction paths and validates persisted resume state", () => {
+    const source = read("src/components/sections/bridge-section.tsx");
+    expect(source).toContain("encodeURIComponent(burnTxHash)");
+    expect(source).toContain("encodeURIComponent(mintTxHash)");
+    expect(source).toContain("encodeURIComponent(feeTxHash)");
+    expect(source).toContain("/^0x[0-9a-fA-F]{64}$/.test(parsed.burnTxHash)");
+    expect(source).toContain("parsed.sourceKey in CCTP_CHAINS");
+  });
+});
+''')
+
+          # The one-shot patch workflow must not remain in the product tree.
+          Path('.github/workflows/code-scanning-wave3-autofix.yml').unlink()
+          PY
+
+      - name: Commit hardened code
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(security): resolve CodeQL wave 3 findings"
+          git push origin HEAD:fix/code-scanning-wave3-2026-09
