@@ -1,13 +1,12 @@
 // src/lib/swap.ts
 //
-// Wraps Circle's App Kit Swap capability (docs.arc.io/app-kit/swap).
-// Arc Testnet only supports swapping between USDC, EURC, and cirBTC — App
-// Kit supports more tokens on other chains, but we only ever call this
-// with chain: "Arc_Testnet", so we constrain the type to match.
+// Circle App Kit swap wrapper for Arc Testnet.
+// Geomacro intentionally supports only pairs that include USDC.
 import { AppKit } from "@circle-fin/app-kit";
 import { createEthersAdapterFromProvider } from "@circle-fin/adapter-ethers-v6";
 import { parseUnits, type Eip1193Provider } from "ethers";
 import {
+  TREASURY_ADDRESS,
   chargeExactProtocolFeeWei,
   computeProtocolFeeWei,
   formatFeeUsdc,
@@ -15,6 +14,9 @@ import {
 
 export type ArcSwapToken = "USDC" | "EURC" | "cirBTC";
 export const ARC_SWAP_TOKENS: ArcSwapToken[] = ["USDC", "EURC", "cirBTC"];
+export const DEFAULT_SWAP_SLIPPAGE_BPS = 50;
+export const MIN_SWAP_SLIPPAGE_BPS = 50;
+export const MAX_SWAP_SLIPPAGE_BPS = 500;
 
 let kitSingleton: AppKit | null = null;
 function getKit(): AppKit {
@@ -28,27 +30,36 @@ function getEthereumProvider(): Eip1193Provider {
   return eth;
 }
 
-// 🛡️ Same-spirit fix as the Bridge page's resume banner, but scoped to what
-// this SDK actually allows. Unlike CCTP (where tx.wait() hands back a burn
-// tx hash we can persist *before* the second async wait for Iris), kit.swap()
-// is a single opaque awaited call — there's no intermediate txHash checkpoint
-// to save mid-flight. So instead of a fully automated resume, we persist the
-// swap *intent* before calling, and on an interrupted session offer a manual
-// "check status by tx hash" path using the SDK's own getSwapStatus() — which
-// its own docs describe as "useful when resuming an in-flight swap from
-// persisted state."
-const PENDING_SWAP_KEY = "geomacro:swap:pending:v1";
+function assertSupportedPair(tokenIn: ArcSwapToken, tokenOut: ArcSwapToken) {
+  if (tokenIn === tokenOut) throw new Error("tokenIn and tokenOut must be different");
+  if (tokenIn !== "USDC" && tokenOut !== "USDC") {
+    throw new Error("Geomacro supports only USDC ↔ EURC and USDC ↔ cirBTC swaps.");
+  }
+}
 
-export type PendingSwapIntent = { tokenIn: ArcSwapToken; tokenOut: ArcSwapToken; amountIn: string; startedAt: number };
+function normalizeSlippageBps(value: number | undefined): number {
+  const candidate = Number.isFinite(value) ? Math.round(value as number) : DEFAULT_SWAP_SLIPPAGE_BPS;
+  return Math.min(MAX_SWAP_SLIPPAGE_BPS, Math.max(MIN_SWAP_SLIPPAGE_BPS, candidate));
+}
+
+const PENDING_SWAP_KEY = "geomacro:swap:pending:v2";
+
+export type PendingSwapIntent = {
+  tokenIn: ArcSwapToken;
+  tokenOut: ArcSwapToken;
+  amountIn: string;
+  slippageBps: number;
+  startedAt: number;
+};
 
 export function savePendingSwapIntent(intent: PendingSwapIntent) {
   try {
     localStorage.setItem(PENDING_SWAP_KEY, JSON.stringify(intent));
   } catch {
-    // localStorage unavailable — no resume banner possible, but the swap
-    // itself is unaffected either way.
+    // Recovery metadata is best-effort only.
   }
 }
+
 export function loadPendingSwapIntent(): PendingSwapIntent | null {
   try {
     const raw = localStorage.getItem(PENDING_SWAP_KEY);
@@ -57,6 +68,7 @@ export function loadPendingSwapIntent(): PendingSwapIntent | null {
     return null;
   }
 }
+
 export function clearPendingSwapIntent() {
   try {
     localStorage.removeItem(PENDING_SWAP_KEY);
@@ -68,43 +80,31 @@ export function clearPendingSwapIntent() {
 export type SwapQuoteParams = {
   tokenIn: ArcSwapToken;
   tokenOut: ArcSwapToken;
-  amountIn: string; // decimal string, e.g. "1.00" — NOT wei, App Kit handles decimals internally
+  amountIn: string;
+  slippageBps?: number;
 };
 
 export type ExecuteSwapParams = SwapQuoteParams & {
+  minimumOutput: string;
   geomacroFeeUsdc: string;
 };
 
-async function getSwapInputUsdValue(
-  token: ArcSwapToken,
-  amount: string,
-): Promise<string> {
-  const kit = getKit();
+async function getSwapInputUsdValue(token: ArcSwapToken, amount: string): Promise<string> {
+  if (token === "USDC") return amount;
 
+  const kit = getKit();
   const { rates } = await kit.getTokenRates({
     chain: "Arc_Testnet",
     tokens: [token],
   });
-
   const chainRates = rates["Arc_Testnet"] ?? {};
   const rate = Object.values(chainRates)[0];
-
-  if (!rate) {
-    if (token === "USDC") return amount;
-    throw new Error(`No Circle USD rate available for ${token}.`);
-  }
+  if (!rate) throw new Error(`No Circle USD rate available for ${token}.`);
 
   const price = Number(rate.priceUSD);
   const quantity = Number(amount);
-
-  if (!Number.isFinite(price) || price <= 0) {
-    throw new Error(`Invalid Circle USD rate for ${token}.`);
-  }
-
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new Error("Invalid swap amount.");
-  }
-
+  if (!Number.isFinite(price) || price <= 0) throw new Error(`Invalid Circle USD rate for ${token}.`);
+  if (!Number.isFinite(quantity) || quantity <= 0) throw new Error("Invalid swap amount.");
   return (quantity * price).toFixed(18);
 }
 
@@ -112,10 +112,12 @@ export type SwapQuote = {
   estimatedOutput: string;
   minimumOutput: string;
   geomacroFeeUsdc: string;
+  slippageBps: number;
+  feeMode: "circle_custom_fee" | "post_swap_usdc";
   fees: readonly {
     token: string;
     amount: string | null;
-    type: "provider" | "swap" | "gas" | "developer";
+    type: "provider" | "swap" | "gas" | "developer" | "kit";
   }[];
 };
 
@@ -126,72 +128,100 @@ export type SwapResult = {
   feeTxHash?: string;
   feeUsdc?: string;
   feeError?: string;
+  feeMode: "circle_custom_fee" | "post_swap_usdc";
 };
 
 export async function estimateArcSwap({
   tokenIn,
   tokenOut,
   amountIn,
+  slippageBps,
 }: SwapQuoteParams): Promise<SwapQuote> {
-  if (tokenIn === tokenOut) {
-    throw new Error("tokenIn and tokenOut must be different");
-  }
+  assertSupportedPair(tokenIn, tokenOut);
+  if (!amountIn || Number(amountIn) <= 0) throw new Error("Enter an amount greater than 0.");
 
-  if (!amountIn || Number(amountIn) <= 0) {
-    throw new Error("Enter an amount greater than 0.");
-  }
-
+  const normalizedSlippageBps = normalizeSlippageBps(slippageBps);
   const provider = getEthereumProvider();
   const adapter = await createEthersAdapterFromProvider({ provider });
   const kit = getKit();
+
+  const inputUsdValue = await getSwapInputUsdValue(tokenIn, amountIn);
+  const feeWei = computeProtocolFeeWei(parseUnits(inputUsdValue, 18));
+  const geomacroFeeUsdc = formatFeeUsdc(feeWei);
+  const feeMode = tokenIn === "USDC" ? "circle_custom_fee" : "post_swap_usdc";
 
   const estimate = await kit.estimateSwap({
     from: { adapter, chain: "Arc_Testnet" },
     tokenIn,
     tokenOut,
     amountIn,
+    config: {
+      allowanceStrategy: "permit",
+      slippageBps: normalizedSlippageBps,
+      ...(feeMode === "circle_custom_fee"
+        ? {
+            customFee: {
+              value: geomacroFeeUsdc,
+              recipientAddress: TREASURY_ADDRESS,
+            },
+          }
+        : {}),
+    },
   });
-
-  const inputUsdValue = await getSwapInputUsdValue(tokenIn, amountIn);
-  const feeWei = computeProtocolFeeWei(parseUnits(inputUsdValue, 18));
 
   return {
     estimatedOutput: estimate.estimatedOutput.amount,
     minimumOutput: estimate.stopLimit.amount,
-    geomacroFeeUsdc: formatFeeUsdc(feeWei),
-    fees: estimate.fees ?? [],
+    geomacroFeeUsdc,
+    slippageBps: normalizedSlippageBps,
+    feeMode,
+    fees: (estimate.fees ?? []) as SwapQuote["fees"],
   };
 }
 
-/**
- * Executes a same-chain swap on Arc Testnet using the connected browser
- * wallet. The protocol fee is charged separately after App Kit confirms
- * the same-chain swap transaction, so a rejected or reverted swap never
- * leaves the user paying a Geomacro fee for no swap. Persists the swap
- * intent to localStorage before calling so an interrupted session
- * (refresh/crash mid-await) can be surfaced to the user afterward, and
- * clears it once the call resolves either way (success or a clean failure
- * — see the UI layer for how an ambiguous outcome is handled).
- */
 export async function executeArcSwap({
   tokenIn,
   tokenOut,
   amountIn,
+  slippageBps,
+  minimumOutput,
   geomacroFeeUsdc,
 }: ExecuteSwapParams): Promise<SwapResult> {
-  if (tokenIn === tokenOut) throw new Error("tokenIn and tokenOut must be different");
+  assertSupportedPair(tokenIn, tokenOut);
+  if (!minimumOutput || Number(minimumOutput) <= 0) throw new Error("A valid minimum output is required.");
 
+  const normalizedSlippageBps = normalizeSlippageBps(slippageBps);
+  const feeMode = tokenIn === "USDC" ? "circle_custom_fee" : "post_swap_usdc";
   const provider = getEthereumProvider();
   const adapter = await createEthersAdapterFromProvider({ provider });
   const kit = getKit();
 
-  savePendingSwapIntent({ tokenIn, tokenOut, amountIn, startedAt: Date.now() });
+  savePendingSwapIntent({
+    tokenIn,
+    tokenOut,
+    amountIn,
+    slippageBps: normalizedSlippageBps,
+    startedAt: Date.now(),
+  });
 
   const result = await kit.swap({
     from: { adapter, chain: "Arc_Testnet" },
     tokenIn,
     tokenOut,
     amountIn,
+    config: {
+      allowanceStrategy: "permit",
+      slippageBps: normalizedSlippageBps,
+      stopLimit: minimumOutput,
+      ...(feeMode === "circle_custom_fee"
+        ? {
+            customFee: {
+              value: geomacroFeeUsdc,
+              recipientAddress: TREASURY_ADDRESS,
+            },
+          }
+        : {}),
+    },
   });
 
   if (result.progress.status !== "DONE") {
@@ -199,46 +229,50 @@ export async function executeArcSwap({
       txHash: result.txHash,
       amountOut: result.amountOut,
       status: result.progress.status,
+      feeMode,
     };
   }
 
   clearPendingSwapIntent();
 
-  // The swap itself is already complete at this point. Fee collection is a
-  // separate transaction and must never turn a successful swap into a
-  // reported swap failure.
-  try {
-    const fee = await chargeExactProtocolFeeWei(
-      parseUnits(geomacroFeeUsdc, 18),
-    );
+  // Circle custom fees are collected in the input token. To preserve the
+  // permanent Geomacro rule that its own fee is USDC-only, reverse swaps
+  // (EURC/cirBTC -> USDC) cannot use Circle customFee. They settle the swap
+  // first, then collect the quoted fee as native Arc USDC. USDC-input swaps
+  // use Circle's integrated custom fee and require no second Geomacro tx.
+  if (feeMode === "circle_custom_fee") {
+    return {
+      txHash: result.txHash,
+      amountOut: result.amountOut,
+      status: result.progress.status,
+      feeUsdc: geomacroFeeUsdc,
+      feeMode,
+    };
+  }
 
+  try {
+    const fee = await chargeExactProtocolFeeWei(parseUnits(geomacroFeeUsdc, 18));
     return {
       txHash: result.txHash,
       amountOut: result.amountOut,
       status: result.progress.status,
       feeTxHash: fee.txHash,
       feeUsdc: formatFeeUsdc(fee.feeWei),
+      feeMode,
     };
   } catch (error) {
     return {
       txHash: result.txHash,
       amountOut: result.amountOut,
       status: result.progress.status,
-      feeError:
-        error instanceof Error
-          ? error.message
-          : "Protocol fee collection failed after the swap completed.",
+      feeMode,
+      feeError: error instanceof Error
+        ? error.message
+        : "USDC protocol fee collection failed after the swap completed.",
     };
   }
 }
 
-/**
- * Checks a swap's status by tx hash — the same lookup the SDK docs describe
- * for resuming an in-flight swap from persisted state. Same-chain swaps on
- * Arc Testnet settle in one transaction, so this is mainly useful for the
- * manual "I have a tx hash, is it done?" recovery path after an interrupted
- * session where we never captured a hash automatically.
- */
 export async function checkArcSwapStatus(txHash: string): Promise<{ status: string; amountOut?: string }> {
   const kit = getKit();
   const status = await kit.getSwapStatus({
@@ -247,4 +281,3 @@ export async function checkArcSwapStatus(txHash: string): Promise<{ status: stri
   });
   return { status: status.progress.status, amountOut: status.destination?.amount };
 }
-
