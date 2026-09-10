@@ -35,22 +35,24 @@ jobs:
           set -euo pipefail
           file=".github/workflows/apply-risk-gate-production-migrations.yml"
           grep -q 'workflow_dispatch:' "$file"
-          grep -q 'supabase db push --dry-run' "$file"
-          grep -q 'supabase db push' "$file"
+          grep -q 'supabase db push --db-url' "$file"
+          grep -q 'supabase db push --db-url.*--dry-run' "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
+          grep -q 'SUPABASE_DB_URL' "$file"
 
           # Keep this workflow migration-only. Build forbidden command strings
           # from fragments so this validator does not match its own source text.
           forbidden_functions="supabase functions"' deploy'
           forbidden_secrets="supabase secrets"' set'
-          if grep -Fq "$forbidden_functions" "$file" || grep -Fq "$forbidden_secrets" "$file"; then
-            echo "::error title=Unexpected side effect::This workflow must be migration-only."
+          forbidden_link="supabase li"'nk'
+          if grep -Fq "$forbidden_functions" "$file" || grep -Fq "$forbidden_secrets" "$file" || grep -Fq "$forbidden_link" "$file"; then
+            echo "::error title=Unexpected side effect::This workflow must be direct-database migration-only and must not use Supabase Management API linking."
             exit 1
           fi
 
-          echo "Risk Gate migration workflow safety guardrails are present."
+          echo "Production migration workflow direct-database safety guardrails are present."
 
   migrate:
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
@@ -62,9 +64,8 @@ jobs:
       cancel-in-progress: false
     env:
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
     steps:
       - name: Checkout repository
@@ -72,42 +73,61 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate required production secrets and target
+      - name: Validate direct production database target
         shell: bash
         run: |
           set -euo pipefail
-          missing=0
-          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD; do
-            if [[ -z "${!name:-}" ]]; then
-              echo "::error title=Missing production secret::${name} is not configured."
-              missing=1
-            fi
-          done
-          if [[ "$missing" -ne 0 ]]; then
+          if [[ -z "${SUPABASE_PROJECT_ID:-}" ]]; then
+            echo "::error title=Missing production secret::SUPABASE_PROJECT_ID is not configured."
+            exit 1
+          fi
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error title=Missing production secret::SUPABASE_DB_URL is not configured. Use the Session pooler connection string from the authoritative project Connect dialog."
             exit 1
           fi
           if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
             echo "::error title=Wrong production target::Refusing to touch any Supabase project other than the authoritative Geomacro production ref."
             exit 1
           fi
-          echo "PASS: authoritative production Supabase project ref confirmed."
+
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const raw = process.env.SUPABASE_DB_URL;
+          let url;
+          try {
+            url = new URL(raw);
+          } catch {
+            throw new Error('SUPABASE_DB_URL must be a valid percent-encoded postgres connection URL');
+          }
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
+            throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
+          }
+          const directHost = `db.${ref}.supabase.co`;
+          const poolerHost = url.hostname.endsWith('.pooler.supabase.com');
+          const directMatch = url.hostname === directHost && url.username === 'postgres';
+          const poolerMatch = poolerHost && url.username === `postgres.${ref}`;
+          if (!directMatch && !poolerMatch) {
+            throw new Error('SUPABASE_DB_URL does not resolve to the authoritative Geomacro project. Use its direct or Session pooler connection string.');
+          }
+          if (!url.password) {
+            throw new Error('SUPABASE_DB_URL must contain the percent-encoded database password');
+          }
+          if (url.pathname !== '/postgres') {
+            throw new Error('SUPABASE_DB_URL must target the postgres database');
+          }
+          console.log('PASS: authoritative production database connection identity confirmed without printing credentials.');
+          NODE
 
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.117.0
 
-      - name: Link authoritative production project
-        shell: bash
-        run: |
-          set -euo pipefail
-          supabase link --project-ref "$SUPABASE_PROJECT_ID"
-
       - name: Show pending production migrations
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --dry-run | tee /tmp/risk-gate-migration-plan.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run | tee /tmp/risk-gate-migration-plan.txt
 
       - name: Stop after plan
         if: ${{ inputs.mode == 'plan' }}
@@ -120,14 +140,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push
+          supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Verify no migrations remain pending
         if: ${{ inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --dry-run | tee /tmp/risk-gate-migration-postcheck.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run | tee /tmp/risk-gate-migration-postcheck.txt
           if grep -Eq 'Would push|would push|Pending migrations|pending migrations' /tmp/risk-gate-migration-postcheck.txt; then
             echo "::warning title=Review post-check::Supabase reported text that may indicate pending migrations remain. Review this step output before live testing."
           fi
