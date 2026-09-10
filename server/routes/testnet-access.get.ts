@@ -6,7 +6,7 @@ export default defineEventHandler((event) => {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://x.com https://discord.com",
   });
 
   return `<!doctype html>
@@ -17,8 +17,9 @@ export default defineEventHandler((event) => {
 <title>Geomacro Testnet Access</title>
 <meta name="description" content="Test Geomacro risk intelligence with Testnet USDC, developer API keys and AI-agent integration." />
 <style>
-:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#07090d;color:#f4f6f8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#101b31 0,#07090d 34%)}main{max-width:1180px;margin:auto;padding:36px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px}.brand{font-size:20px;font-weight:750}.badge{font:12px ui-monospace,monospace;padding:7px 11px;border:1px solid #33425c;border-radius:999px;color:#b9c8dd}.hero{max-width:850px}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.12em;color:#91a8c8}.hero h1{font-size:52px;line-height:1.03;margin:15px 0 18px}.hero p{font-size:19px;line-height:1.65;color:#aab5c4;max-width:760px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}.card,.panel{background:#0d121b;border:1px solid #202a3a;border-radius:18px;padding:20px}.card strong{display:block;font-size:19px;margin-bottom:8px}.card p,.muted{color:#93a1b4;line-height:1.55;font-size:14px}.panel{margin-top:22px}.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}.step{border:1px solid #273348;background:#101722;border-radius:14px;padding:14px;min-height:98px}.n{font:11px ui-monospace,monospace;color:#7c91ad}.step b{display:block;margin-top:9px;font-size:14px}.access{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:22px}.price{font-size:36px;font-weight:800;margin:5px 0}.cta{display:inline-block;margin-top:10px;padding:11px 16px;border-radius:11px;background:#eef4ff;color:#0a1020;font-weight:750;text-decoration:none}.notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:#0a1018;border:1px solid #25324a;color:#91a0b5;font-size:13px;line-height:1.55}.preview{width:100%;border-radius:14px;border:1px solid #273247;background:#0a0e15}.chains{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.chains span{border:1px solid #2a364b;border-radius:999px;padding:6px 9px;font-size:12px;color:#aebbd0}@media(max-width:850px){.grid,.access{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}.hero h1{font-size:40px}}@media(max-width:520px){.steps{grid-template-columns:1fr}}
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#07090d;color:#f4f6f8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#101b31 0,#07090d 34%)}main{max-width:1180px;margin:auto;padding:36px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px}.brand{font-size:20px;font-weight:750}.badge{font:12px ui-monospace,monospace;padding:7px 11px;border:1px solid #33425c;border-radius:999px;color:#b9c8dd}.hero{max-width:850px}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.12em;color:#91a8c8}.hero h1{font-size:52px;line-height:1.03;margin:15px 0 18px}.hero p{font-size:19px;line-height:1.65;color:#aab5c4;max-width:760px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}.card,.panel{background:#0d121b;border:1px solid #202a3a;border-radius:18px;padding:20px}.card strong{display:block;font-size:19px;margin-bottom:8px}.card p,.muted{color:#93a1b4;line-height:1.55;font-size:14px}.panel{margin-top:22px}.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}.step{border:1px solid #273348;background:#101722;border-radius:14px;padding:14px;min-height:98px}.n{font:11px ui-monospace,monospace;color:#7c91ad}.step b{display:block;margin-top:9px;font-size:14px}.access{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:22px}.price{font-size:36px;font-weight:800;margin:5px 0}.notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:#0a1018;border:1px solid #25324a;color:#91a0b5;font-size:13px;line-height:1.55}.preview{width:100%;border-radius:14px;border:1px solid #273247;background:#0a0e15}.chains{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.chains span{border:1px solid #2a364b;border-radius:999px;padding:6px 9px;font-size:12px;color:#aebbd0}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:#aab7c8}input,select,button{width:100%;border:1px solid #2a3549;background:#0a1018;color:#eef3f8;border-radius:11px;padding:11px 12px;font:14px inherit}button{cursor:pointer;font-weight:700;background:#edf3ff;color:#0a1020}button.secondary{background:#111a29;color:#dbe7f8}.status-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}.status{border:1px solid #273348;border-radius:12px;padding:12px;background:#0a1018}.status span{display:block;font-size:11px;color:#8191a8;margin-bottom:6px}.status strong{font-size:13px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.actions button{width:auto}.mono{font:12px ui-monospace,monospace;word-break:break-all;color:#cbd7e8}.key-row{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid #202a3a;padding:12px 0}.key-row:first-child{border-top:0}.key-row strong,.key-row span{display:block}.key-row span{font-size:12px;color:#8796ab;margin-top:4px}.key-row button{width:auto;background:#111a29;color:#dbe7f8}.okline{min-height:22px;margin-top:10px;color:#9fb0c5;font-size:13px}.warning{color:#e7c98c}@media(max-width:850px){.grid,.access,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.steps,.status-grid{grid-template-columns:1fr 1fr}.hero h1{font-size:40px}}@media(max-width:520px){.steps,.status-grid{grid-template-columns:1fr}}
 </style>
+<script src="/testnet-access.js" defer></script>
 </head>
 <body>
 <main>
@@ -27,6 +28,7 @@ export default defineEventHandler((event) => {
     <div class="eyebrow">GEOPOLITICAL + MACRO RISK INTELLIGENCE</div>
     <h1>Test Geomacro inside your own product or AI agent.</h1>
     <p>Register once, verify your accounts and wallet, pay with supported Testnet USDC, then use the same governed Geomacro intelligence through the website, developer API or agent integration.</p>
+    <div id="globalStatus" class="okline"></div>
   </section>
 
   <section class="grid">
@@ -46,13 +48,70 @@ export default defineEventHandler((event) => {
     </div>
   </section>
 
+  <section id="registrationPanel" class="panel">
+    <div class="eyebrow">CREATE TESTER ACCOUNT</div>
+    <form id="registrationForm" class="form-grid">
+      <div class="field"><label for="profileNameInput">Profile name</label><input id="profileNameInput" maxlength="64" required autocomplete="name" /></div>
+      <div class="field"><label for="emailInput">Email</label><input id="emailInput" type="email" maxlength="254" required autocomplete="email" /></div>
+      <div class="field full"><button type="submit">Create tester account</button></div>
+    </form>
+    <div id="registrationStatus" class="okline"></div>
+    <div class="notice">By registering you accept the current Testnet Tester terms. Never enter a seed phrase or private key. Geomacro only asks your wallet to sign a non-transaction verification message.</div>
+  </section>
+
+  <section id="accountPanel" class="panel" hidden>
+    <div class="eyebrow">YOUR TESTER ACCOUNT</div>
+    <h2 id="profileStatus">Tester</h2>
+    <div class="status-grid">
+      <div class="status"><span>Email</span><strong id="emailStatus">Pending</strong></div>
+      <div class="status"><span>Wallet</span><strong id="walletStatus">Pending</strong></div>
+      <div class="status"><span>X</span><strong id="xStatus">Pending</strong></div>
+      <div class="status"><span>Discord</span><strong id="discordStatus">Pending</strong></div>
+      <div class="status"><span>Access</span><strong id="accessStatus">awaiting_payment</strong></div>
+    </div>
+    <div class="actions">
+      <button id="walletConnect" type="button" class="secondary">Connect & verify wallet</button>
+      <button id="xConnect" type="button" class="secondary">Connect X</button>
+      <button id="discordConnect" type="button" class="secondary">Connect Discord</button>
+    </div>
+    <div id="walletActionStatus" class="okline"></div>
+  </section>
+
+  <section id="paymentPanel" class="panel" hidden>
+    <div class="eyebrow">ACTIVATE TESTER PASS</div>
+    <div class="price">1.00 Testnet USDC</div>
+    <div class="muted">250 credits · 30 days · testing/demo only · never classified as commercial revenue.</div>
+    <div class="chains"><span>Arc Testnet</span><span>Ethereum Sepolia</span><span>Base Sepolia</span><span>Polygon Amoy</span><span>Arbitrum Sepolia</span><span>OP Sepolia</span><span>Avalanche Fuji</span><span>Unichain Sepolia</span><span>Linea Sepolia</span></div>
+    <div class="notice"><b>Dedicated Geomacro Testnet receiver</b><div id="receiverAddress" class="mono" style="margin-top:7px">Configuration pending</div><div class="actions"><button id="copyReceiver" type="button" class="secondary">Copy receiver</button></div></div>
+    <form id="paymentForm" class="form-grid">
+      <div class="field"><label for="chainSelect">Payment chain</label><select id="chainSelect"></select></div>
+      <div class="field"><label for="txHashInput">USDC transfer transaction hash</label><input id="txHashInput" placeholder="0x..." maxlength="66" required /></div>
+      <div class="field full"><button type="submit">Verify payment & activate access</button></div>
+    </form>
+    <div id="paymentStatus" class="okline"></div>
+    <div class="notice">Activation is fail-closed. The server verifies chain ID, official configured USDC contract, payer, dedicated receiver, transfer amount and receipt status before granting any credits.</div>
+  </section>
+
+  <section id="developerPanel" class="panel" hidden>
+    <div class="eyebrow">DEVELOPER + AGENT ACCESS</div>
+    <h2>Use Geomacro in your product or AI agent</h2>
+    <p class="muted">Create up to three scoped Testnet API keys. Each key expires with your tester entitlement and consumes the same 250-credit balance.</p>
+    <form id="developerKeyForm" class="form-grid">
+      <div class="field"><label for="keyLabelInput">Key label</label><input id="keyLabelInput" maxlength="80" placeholder="My agent test" /></div>
+      <div class="field"><label for="integrationTypeSelect">Integration</label><select id="integrationTypeSelect"><option value="product_api">Product API</option><option value="ai_agent">AI agent</option><option value="automation">Automation</option><option value="demo">Demo</option></select></div>
+      <div class="field full"><button type="submit">Create Testnet API key</button></div>
+    </form>
+    <div id="developerStatus" class="okline"></div>
+    <div id="issuedKeyBox" class="notice" hidden><b>Shown once</b><div id="issuedKey" class="mono" style="margin-top:7px"></div><div class="actions"><button id="copyIssuedKey" type="button" class="secondary">Copy API key</button></div></div>
+    <div id="developerKeyList" style="margin-top:12px"></div>
+  </section>
+
   <section class="access">
     <div class="panel" style="margin-top:0">
-      <div class="eyebrow">TESTER PASS</div>
-      <div class="price">1.00 Testnet USDC</div>
-      <div class="muted">250 credits · 30 days · testing/demo only · never classified as commercial revenue.</div>
-      <div class="chains"><span>Arc Testnet</span><span>Ethereum Sepolia</span><span>Base Sepolia</span><span>Polygon Amoy</span><span>Arbitrum Sepolia</span><span>OP Sepolia</span><span>Avalanche Fuji</span><span>Unichain Sepolia</span><span>Linea Sepolia</span></div>
-      <div class="notice">Activation is fail-closed. Registration must be complete and the server must verify the supported-chain USDC transfer to Geomacro's dedicated receiving wallet before access becomes active.</div>
+      <div class="eyebrow">SUPPORTED TESTNETS</div>
+      <div class="price">Multichain USDC</div>
+      <div class="muted">Users can activate the same tester entitlement from supported EVM testnets using configured USDC contracts. Unsupported chains fail closed.</div>
+      <div class="notice">Testnet balances and Testnet USDC have no monetary value. These transfers are technical access proofs and are never booked as Geomacro commercial revenue.</div>
     </div>
     <div class="panel" style="margin-top:0">
       <div class="eyebrow">SOCIAL CARD PREVIEW</div>
