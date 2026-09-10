@@ -178,11 +178,11 @@ create table if not exists public.commercial_usage_events (
   constraint commercial_usage_execution_boundary_check
     check (execution_authorized = false),
   constraint commercial_usage_response_hash_check
-    check (response_sha256 is null or response_sha256 ~ '^[0-9a-f]{64}$')
+    check (response_sha256 is null or response_sha256 ~ '^[0-9a-f]{64}$'),
+  constraint commercial_usage_request_unique
+    unique (principal_id, request_id, capability)
 );
 
-create unique index if not exists commercial_usage_request_unique
-  on public.commercial_usage_events (coalesce(principal_id::text, 'anonymous'), request_id, capability);
 create index if not exists commercial_usage_time_idx
   on public.commercial_usage_events (occurred_at desc);
 create index if not exists commercial_usage_capability_idx
