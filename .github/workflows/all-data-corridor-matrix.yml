@@ -1,0 +1,98 @@
+name: All Data Corridor Matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookback_hours:
+        description: "Recent live-event lookback window"
+        required: true
+        default: "72"
+        type: string
+      max_pairs:
+        description: "Fail closed if eligible directed pair count exceeds this cap"
+        required: true
+        default: "10000"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
+      HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+      CORRIDOR_MATRIX_LOOKBACK_HOURS: ${{ inputs.lookback_hours }}
+      CORRIDOR_MATRIX_MAX_PAIRS: ${{ inputs.max_pairs }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate server-only configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${APP_SUPABASE_URL:-}" || -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "::error::Authoritative Geomacro Supabase secrets are required."
+            exit 1
+          fi
+          if [[ -z "${HISTORICAL_SUPABASE_URL:-}" || -z "${HISTORICAL_SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "::warning::Historical Supabase secrets are not configured in this environment. Matrix will keep structural evidence NOT_CONFIGURED and emit acquisition actions instead of widening access."
+          fi
+          if ! [[ "${CORRIDOR_MATRIX_LOOKBACK_HOURS}" =~ ^[0-9]+$ ]] || [[ "${CORRIDOR_MATRIX_LOOKBACK_HOURS}" -lt 1 ]]; then
+            echo "::error::lookback_hours must be a positive integer."
+            exit 1
+          fi
+          if ! [[ "${CORRIDOR_MATRIX_MAX_PAIRS}" =~ ^[0-9]+$ ]] || [[ "${CORRIDOR_MATRIX_MAX_PAIRS}" -lt 1 ]]; then
+            echo "::error::max_pairs must be a positive integer."
+            exit 1
+          fi
+
+      - name: Build all governed country and directed-corridor evidence matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GITHUB_OUTPUT_FILE="$RUNNER_TEMP/all-data-corridor-matrix.json"
+          bun scripts/all-data-corridor-matrix.ts
+
+      - name: Verify non-authorizing evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = process.env.RUNNER_TEMP + '/all-data-corridor-matrix.json';
+          const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+          if (report?.acceptance?.execution_authorized !== false) {
+            throw new Error('execution_authorized must remain false');
+          }
+          if (report?.acceptance?.corridor_verified_for_production !== false) {
+            throw new Error('pilot corridor matrix must not claim production verification');
+          }
+          if (report?.structural_data?.methodology_status !== 'EVIDENCE_ONLY_NOT_IN_GRI_V1_2') {
+            throw new Error('structural evidence methodology boundary changed unexpectedly');
+          }
+          const pairCount = Number(report?.corridor_matrix?.directed_pair_count ?? -1);
+          if (pairCount < 0) throw new Error('corridor matrix missing directed pair count');
+          console.log(`PASS: ${pairCount} directed corridor(s), ${report.current_data.accepted_country_count} accepted country candidate(s).`);
+          NODE
+
+      - name: Upload governed matrix and missing-data plan
+        uses: actions/upload-artifact@v7
+        with:
+          name: all-data-corridor-matrix
+          path: ${{ runner.temp }}/all-data-corridor-matrix.json
+          if-no-files-found: error
+          retention-days: 30
