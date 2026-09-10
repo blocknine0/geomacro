@@ -75,6 +75,17 @@ function shortHash(hash: string) {
   return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
 
+function safeExplorerTxUrl(explorerUrl: string, hash: string) {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return undefined;
+  try {
+    const base = new URL(explorerUrl);
+    if (base.protocol !== "https:") return undefined;
+    return new URL(`/tx/${hash}`, `${base.origin}/`).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function getEthereum() {
   if (typeof window === "undefined") return null;
   return (window as unknown as { ethereum?: EthereumProvider }).ethereum ?? null;
@@ -526,7 +537,7 @@ export function BridgeSection() {
           <div className="space-y-2 border-t border-border/60 pt-4 text-sm">
             {burnTxHash && (
               <a
-                href={`${source.explorerUrl}/tx/${burnTxHash}`}
+                href={safeExplorerTxUrl(source.explorerUrl, burnTxHash)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
@@ -537,7 +548,7 @@ export function BridgeSection() {
             )}
             {mintTxHash && (
               <a
-                href={`${DEST.explorerUrl}/tx/${mintTxHash}`}
+                href={safeExplorerTxUrl(DEST.explorerUrl, mintTxHash)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
@@ -548,7 +559,7 @@ export function BridgeSection() {
             )}
             {feeTxHash && (
               <a
-                href={`${DEST.explorerUrl}/tx/${feeTxHash}`}
+                href={safeExplorerTxUrl(DEST.explorerUrl, feeTxHash)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground"

@@ -748,14 +748,25 @@ function extractDomain(url) {
 
 function stripHtml(value) {
   if (!value) return '';
-  return String(value)
+
+  const decoded = String(value).replace(
+    /&(nbsp|amp|quot|#39|apos|lt|gt);/gi,
+    (entity, name) => {
+      switch (String(name).toLowerCase()) {
+        case 'nbsp': return ' ';
+        case 'amp': return '&';
+        case 'quot': return '"';
+        case '#39':
+        case 'apos': return "'";
+        case 'lt': return '<';
+        case 'gt': return '>';
+        default: return entity;
+      }
+    }
+  );
+
+  return decoded
     .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
     .replace(/\s+/g, ' ')
     .trim();
 }
