@@ -19,6 +19,7 @@ import {
   ensureCommercialCreditAccount,
   resolveCommercialEntitlementForCapability,
 } from "../../../src/lib/commercial-access.server";
+import { buildFreeApiShare } from "../../../src/lib/free-api-share";
 import {
   structuredDeliveryPolicy,
 } from "../../../src/lib/structured-data-entitlement-registry";
@@ -65,11 +66,16 @@ const requestSchema = z.object({
 
 type StructuralCapability = z.infer<typeof structuralCapabilitySchema>;
 
+function opaqueRef(...parts: Array<string | null | undefined>): string {
+  return `gmp_${createHash("sha256")
+    .update(parts.filter(Boolean).join("|"))
+    .digest("hex")
+    .slice(0, 24)}`;
+}
+
 function publicObservation(row: StructuralObservation) {
   return {
-    observation_id: row.observation_id,
-    source_id: row.source_id,
-    source_record_id: row.source_record_id,
+    observation_ref: opaqueRef(row.source_id, row.source_record_id, row.observation_id),
     dimension: row.dimension,
     country_iso3: row.country_iso3,
     partner_country_iso3: row.partner_country_iso3,
@@ -81,10 +87,11 @@ function publicObservation(row: StructuralObservation) {
     unit: row.unit,
     event_type: row.event_type,
     signal_type: row.signal_type,
-    parser_version: row.parser_version,
     methodology_status: row.methodology_status,
     quality_status: row.quality_status,
-    normalized_hash: row.normalized_hash,
+    integrity_ref: row.normalized_hash
+      ? opaqueRef(row.normalized_hash)
+      : null,
     retrieved_at: row.retrieved_at,
   };
 }
@@ -104,7 +111,12 @@ function commercialPayload(
     .map(publicObservation);
 
   const coverage = context.metadata.coverage.map((row) => ({
-    source_id: row.source_id,
+    coverage_ref: opaqueRef(
+      row.source_id,
+      row.dimension,
+      row.country_iso3,
+      String(row.coverage_year ?? ""),
+    ),
     dimension: row.dimension,
     country_iso3: row.country_iso3,
     coverage_year: row.coverage_year,
@@ -126,6 +138,12 @@ function commercialPayload(
       composition_method: context.metadata.composition_method,
       route_modeling_status: context.metadata.route_modeling_status,
       direct_evidence_status: context.metadata.direct_evidence_status,
+    },
+    provenance: {
+      upstream_source_identity_disclosed: false,
+      upstream_source_url_disclosed: false,
+      internal_provenance_preserved: true,
+      customer_reference_mode: "opaque_refs",
     },
     note: context.note,
   };
@@ -151,14 +169,25 @@ function assertCapabilityMatchesSubject(
 
 function errorPayload(error: unknown) {
   if (error instanceof CommercialAccessError) {
+    const recharge = error.code === "INSUFFICIENT_CREDITS"
+      ? {
+          required: true,
+          url: "https://geomacro.live/contact?intent=api-credits",
+          message: "The included API allowance is exhausted. Recharge or upgrade to continue.",
+        }
+      : undefined;
+
     return {
       status: error.status,
       body: {
         ok: false,
         error: { code: error.code, message: error.message },
+        recharge,
         boundaries: {
           raw_data_included: false,
           private_warehouse_access: false,
+          upstream_source_identity_disclosed: false,
+          upstream_source_url_disclosed: false,
           execution_authorized: false,
         },
       },
@@ -181,6 +210,8 @@ function errorPayload(error: unknown) {
         boundaries: {
           raw_data_included: false,
           private_warehouse_access: false,
+          upstream_source_identity_disclosed: false,
+          upstream_source_url_disclosed: false,
           execution_authorized: false,
         },
       },
@@ -199,6 +230,8 @@ function errorPayload(error: unknown) {
       boundaries: {
         raw_data_included: false,
         private_warehouse_access: false,
+        upstream_source_identity_disclosed: false,
+        upstream_source_url_disclosed: false,
         execution_authorized: false,
       },
     },
@@ -256,7 +289,7 @@ export default defineEventHandler(async (event) => {
       throw new CommercialAccessError(
         403,
         "CAPABILITY_NOT_INCLUDED",
-        "The requested capability is not included in this Geomacro commercial API entitlement.",
+        "The requested capability is not included in this Geomacro API entitlement.",
       );
     }
     if (!policy.product.subject_types.includes(input.subject.type)) {
@@ -298,6 +331,12 @@ export default defineEventHandler(async (event) => {
       policy.tier.max_structural_observations,
       policy.tier.max_evidence_references,
     );
+    const share = tier === "free" && policy.tier.share_metadata_enabled
+      ? buildFreeApiShare({
+          capability: input.capability,
+          subject: input.subject as unknown as Record<string, unknown>,
+        })
+      : null;
     setResponseStatus(event, 200);
 
     return {
@@ -322,8 +361,10 @@ export default defineEventHandler(async (event) => {
         idempotent_replay: usage.idempotent_replay ?? false,
         history_mode: policy.tier.history_mode,
         export_mode: policy.tier.export_mode,
+        recharge_after_included_credits: policy.tier.recharge_after_included_credits,
       },
       data,
+      share,
       audit: {
         response_sha256: sha256Json(data),
         generated_at: new Date().toISOString(),
@@ -331,6 +372,8 @@ export default defineEventHandler(async (event) => {
       boundaries: {
         raw_data_included: policy.product.raw_data_included,
         private_warehouse_access: policy.product.private_warehouse_access,
+        upstream_source_identity_disclosed: policy.product.source_identity_disclosed,
+        upstream_source_url_disclosed: policy.product.source_url_disclosed,
         structured_delivery_only: true,
         execution_authorized: policy.product.execution_authorized,
         structural_data_is_gri_v1_2_input:
