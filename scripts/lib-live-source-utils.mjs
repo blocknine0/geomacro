@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto"
 import { createClient } from "@supabase/supabase-js"
+import {
+  assertCommercialEligibilityAllowed,
+} from "./commercial-source-policy.mjs"
 
 export function requireEnv(name) {
   const value =
@@ -251,6 +254,12 @@ export function buildObservation({
   commercialEligibilityStatus =
     "UNVERIFIED",
 }) {
+  const effectiveCommercialEligibilityStatus =
+    assertCommercialEligibilityAllowed(
+      sourceId,
+      commercialEligibilityStatus,
+    )
+
   const canonical = {
     source_id:
       sourceId,
@@ -321,7 +330,7 @@ export function buildObservation({
       qualityStatus,
 
     commercial_eligibility_status:
-      commercialEligibilityStatus,
+      effectiveCommercialEligibilityStatus,
   }
 }
 

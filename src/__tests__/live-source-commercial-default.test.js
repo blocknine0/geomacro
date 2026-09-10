@@ -24,12 +24,44 @@ describe("live external source commercial eligibility", () => {
     expect(observation.commercial_eligibility_status).toBe("UNVERIFIED");
   });
 
-  it("preserves an explicitly reviewed commercial eligibility status", () => {
+  it("rejects an unknown source that attempts to self-promote to VERIFIED", () => {
+    expect(() =>
+      buildObservation({
+        ...baseInput,
+        sourceRecordId: "record_2",
+        commercialEligibilityStatus: "VERIFIED",
+      }),
+    ).toThrow(/not approved for source test_source/);
+  });
+
+  it("allows VERIFIED only for a reviewed source in the runtime policy", () => {
     const observation = buildObservation({
       ...baseInput,
-      sourceRecordId: "record_2",
+      sourceId: "unhcr_refugee_statistics",
+      sourceRecordId: "record_3",
       commercialEligibilityStatus: "VERIFIED",
     });
     expect(observation.commercial_eligibility_status).toBe("VERIFIED");
+  });
+
+  it("preserves the derived-only boundary for ReliefWeb", () => {
+    const observation = buildObservation({
+      ...baseInput,
+      sourceId: "reliefweb",
+      sourceRecordId: "record_4",
+      commercialEligibilityStatus: "DERIVED_ONLY",
+    });
+    expect(observation.commercial_eligibility_status).toBe("DERIVED_ONLY");
+  });
+
+  it("does not allow ReliefWeb to escalate from DERIVED_ONLY to VERIFIED", () => {
+    expect(() =>
+      buildObservation({
+        ...baseInput,
+        sourceId: "reliefweb",
+        sourceRecordId: "record_5",
+        commercialEligibilityStatus: "VERIFIED",
+      }),
+    ).toThrow(/not approved for source reliefweb/);
   });
 });
