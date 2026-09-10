@@ -5,9 +5,13 @@ import {
   GEOMACRO_ACCESS_TIERS,
   GEOMACRO_CREDIT_CONTRACT_VERSION,
 } from "../../src/lib/commercial-access-contract";
+import {
+  STRUCTURED_DATA_REGISTRY_VERSION,
+  STRUCTURED_TIER_REGISTRY,
+} from "../../src/lib/structured-data-entitlement-registry";
 
 const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx";
-const ALLOWED_TIERS = new Set(["analyst_pilot", "api_pilot", "institutional"]);
+const ALLOWED_API_TIERS = new Set(["api_pilot", "institutional"]);
 
 function required(name: string): string {
   const value = String(process.env[name] ?? "").trim();
@@ -43,7 +47,11 @@ async function main() {
   if (projectRefOf(url) !== AUTHORITATIVE_PROJECT_REF) {
     throw new Error("Refusing to provision outside the authoritative Geomacro Supabase project");
   }
-  if (!ALLOWED_TIERS.has(tier)) throw new Error(`Unsupported pilot tier: ${tier}`);
+  if (!ALLOWED_API_TIERS.has(tier)) {
+    throw new Error(`Unsupported commercial API tier: ${tier}. Free and Analyst are not API-entitled.`);
+  }
+  const tierPolicy = STRUCTURED_TIER_REGISTRY[tier as "api_pilot" | "institutional"];
+  if (!tierPolicy.api_access) throw new Error(`Tier ${tier} is not API-enabled by the canonical registry`);
   if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 366) {
     throw new Error("COMMERCIAL_PILOT_DURATION_DAYS must be an integer between 1 and 366");
   }
@@ -75,6 +83,7 @@ async function main() {
     api_key_hash_prefix: keyHash.slice(0, 12),
     tier,
     included_credits: includedCredits,
+    registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
     contract_version: GEOMACRO_CREDIT_CONTRACT_VERSION,
     source_type: "manual_pilot",
     source_reference: reference,
@@ -166,7 +175,7 @@ async function main() {
 
   const existingGrant = await db
     .from("commercial_entitlement_grants")
-    .select("id,principal_id,tier,included_credits,contract_version,source_type,source_reference,status,starts_at,ends_at")
+    .select("id,principal_id,tier,included_credits,contract_version,source_type,source_reference,status,starts_at,ends_at,metadata")
     .eq("source_reference", reference)
     .eq("contract_version", GEOMACRO_CREDIT_CONTRACT_VERSION);
   if (existingGrant.error) throw existingGrant.error;
@@ -197,6 +206,9 @@ async function main() {
     ) {
       throw new Error("Existing entitlement is not currently active; refusing implicit renewal/reactivation");
     }
+    if (row.metadata?.structured_data_registry_version !== STRUCTURED_DATA_REGISTRY_VERSION) {
+      throw new Error("Existing entitlement uses a different structured data registry version");
+    }
   } else {
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + durationDays * 86_400_000);
@@ -212,6 +224,7 @@ async function main() {
       status: "active",
       metadata: {
         provisioner: "provision-commercial-api-pilot-v1",
+        structured_data_registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
         execution_authorized: false,
       },
     });
