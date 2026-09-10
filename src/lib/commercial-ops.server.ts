@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export type CommercialEnvironment = "testnet" | "mainnet" | "fiat" | "sandbox" | "internal";
@@ -13,6 +13,13 @@ export type CommercialAccessSurface =
 
 function sha256(value: string) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${stableJson(object[key])}`).join(",")}}`;
 }
 
 export function hashCommercialReference(value: string | null | undefined) {
@@ -192,6 +199,84 @@ export async function loadCommercialOpsDashboard(days = 30) {
       raw_request_body_exposed: false,
       raw_credentials_exposed: false,
       testnet_counts_as_commercial_revenue: false,
+    },
+  };
+}
+
+export async function publishCommercialProofSnapshot(input: {
+  title: string;
+  description?: string | null;
+  period_started_at: string;
+  period_ends_at: string;
+  environment_scope: CommercialEnvironment[];
+  expires_at?: string | null;
+}) {
+  const dashboard = await loadCommercialOpsDashboard(
+    Math.max(1, Math.ceil((Date.parse(input.period_ends_at) - Date.parse(input.period_started_at)) / 86_400_000)),
+  );
+  const allowedEnvironments = new Set(input.environment_scope);
+  const usage = dashboard.usage_rollup.filter((row: any) => allowedEnvironments.has(row.environment));
+  const payments = dashboard.payment_rollup.filter((row: any) => allowedEnvironments.has(row.environment));
+
+  const payload = {
+    proof_version: "commercial-proof-v1",
+    generated_at: new Date().toISOString(),
+    period_started_at: input.period_started_at,
+    period_ends_at: input.period_ends_at,
+    environments: input.environment_scope,
+    usage,
+    payments,
+    proof_boundaries: {
+      customer_identity_disclosed: false,
+      upstream_news_source_identity_disclosed: false,
+      raw_request_payload_disclosed: false,
+      raw_credentials_disclosed: false,
+      testnet_is_commercial_revenue: false,
+      mainnet_or_fiat_is_revenue_only_when_explicitly_classified: true,
+    },
+  };
+  const payloadHash = sha256(stableJson(payload));
+  const slug = `proof-${new Date().toISOString().slice(0, 10)}-${randomBytes(8).toString("hex")}`;
+  const db = requireRiskSupabase();
+  const { data, error } = await db
+    .from("commercial_proof_snapshots")
+    .insert({
+      slug,
+      title: input.title,
+      description: input.description ?? null,
+      period_started_at: input.period_started_at,
+      period_ends_at: input.period_ends_at,
+      environment_scope: input.environment_scope,
+      published_at: new Date().toISOString(),
+      expires_at: input.expires_at ?? null,
+      status: "published",
+      proof_version: "commercial-proof-v1",
+      redaction_version: "public-redaction-v1",
+      payload,
+      payload_sha256: payloadHash,
+    })
+    .select("id,slug,title,published_at,expires_at,payload_sha256")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function loadPublishedCommercialProof(slug: string) {
+  const db = requireRiskSupabase();
+  const { data, error } = await db
+    .from("commercial_proof_snapshots")
+    .select("slug,title,description,period_started_at,period_ends_at,environment_scope,published_at,expires_at,proof_version,redaction_version,payload,payload_sha256")
+    .eq("slug", slug)
+    .eq("status", "published")
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  if (data.expires_at && Date.parse(data.expires_at) <= Date.now()) return null;
+  return {
+    ...data,
+    integrity: {
+      payload_sha256_valid: sha256(stableJson(data.payload)) === data.payload_sha256,
     },
   };
 }
