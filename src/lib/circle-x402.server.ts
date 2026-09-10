@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import process from "node:process";
 import { BatchFacilitatorClient } from "@circle-fin/x402-batching/server";
+import { recordCommercialPaymentEvent } from "./commercial-ops.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export const CIRCLE_X402_NETWORK = "eip155:5042002" as const;
@@ -46,8 +47,6 @@ function paymentRequirements() {
     asset: CIRCLE_X402_ASSET,
     amount: CIRCLE_X402_PRICE_ATOMIC,
     payTo,
-    // Circle Gateway batching requires a multi-day authorization validity
-    // window. Match GatewayEvmScheme's 7-day-plus-buffer contract.
     maxTimeoutSeconds: CIRCLE_X402_MAX_TIMEOUT_SECONDS,
     extra: {
       name: "GatewayWalletBatched",
@@ -57,20 +56,10 @@ function paymentRequirements() {
   };
 }
 
-/**
- * Standards-based UTF-8/base64 helpers for Node, Vite SSR and edge runtimes.
- *
- * Do not import node:buffer here. The app's Worker/browser polyfill resolver
- * intentionally redirects that specifier, and importing it from this server
- * module can force Vite's SSR evaluator through the raw CommonJS `buffer`
- * package where `require` is unavailable.
- */
 function encodeUtf8Base64(value: string) {
   const bytes = new TextEncoder().encode(value);
   let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
+  for (const byte of bytes) binary += String.fromCharCode(byte);
   return globalThis.btoa(binary);
 }
 
@@ -157,6 +146,7 @@ export async function persistSettlementTelemetry(input: {
 }) {
   try {
     const db = requireRiskSupabase();
+    const settledAt = new Date().toISOString();
     const { data: requestRow, error: requestError } = await db
       .from("agent_api_requests")
       .insert({
@@ -166,7 +156,7 @@ export async function persistSettlementTelemetry(input: {
         status: "delivered",
         http_status: 200,
         response_code: "X402_SETTLED",
-        completed_at: new Date().toISOString(),
+        completed_at: settledAt,
       })
       .select("id")
       .single();
@@ -186,7 +176,7 @@ export async function persistSettlementTelemetry(input: {
         network: CIRCLE_X402_NETWORK,
         rail: "circle_gateway_batch",
         provider_reference: input.settlementReference,
-        settled_at: new Date().toISOString(),
+        settled_at: settledAt,
       })
       .select("id")
       .single();
@@ -199,6 +189,35 @@ export async function persistSettlementTelemetry(input: {
       .from("agent_api_requests")
       .update({ payment_id: paymentRow.id })
       .eq("id", requestRow.id);
+
+    await recordCommercialPaymentEvent({
+      environment: "testnet",
+      network_family: "evm",
+      network_name: "Arc Testnet",
+      chain_id: "5042002",
+      provider: "circle_gateway_x402",
+      provider_environment: "testnet",
+      payment_method: "x402",
+      payment_status: "settled",
+      revenue_classification: "testnet_non_revenue",
+      provider_payment_id: String(paymentRow.id),
+      provider_settlement_id: input.settlementReference,
+      asset_symbol: "USDC",
+      asset_contract: CIRCLE_X402_ASSET,
+      amount_atomic: CIRCLE_X402_PRICE_ATOMIC,
+      amount_decimal: Number(CIRCLE_X402_PRICE_USDC),
+      payer_reference: input.payer,
+      recipient_reference: sellerAddress(),
+      settled_at: settledAt,
+      reconciliation_status: "not_applicable",
+      commercial_revenue: false,
+      metadata: {
+        request_id: input.requestId,
+        rail: "circle_gateway_batch",
+        provider_reference_is_not_assumed_tx_hash: true,
+        technical_proof_only: true,
+      },
+    });
   } catch (error) {
     console.error("[circle-x402] telemetry persistence failed", error);
   }
@@ -213,8 +232,6 @@ export async function settleCircleX402(
   const requirements = paymentRequirements();
   const paymentPayload = decodePaymentHeader(header);
 
-  // Circle recommends settle() directly for production flows. It validates the
-  // payment and guarantees batched settlement without a separate verify call.
   const settled = await facilitator.settle(
     paymentPayload as Parameters<typeof facilitator.settle>[0],
     requirements as Parameters<typeof facilitator.settle>[1],
