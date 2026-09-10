@@ -1,13 +1,14 @@
 import {
   defineEventHandler,
   getQuery,
+  getRequestHeader,
   setResponseHeaders,
   setResponseStatus,
 } from "h3";
 
 import {
   loadCommercialOpsDashboard,
-  requireCommercialOpsAdmin,
+  requireCommercialOpsToken,
 } from "../../../src/lib/commercial-ops.server";
 
 export default defineEventHandler(async (event) => {
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
   });
 
   try {
-    requireCommercialOpsAdmin(event.node.req as unknown as Request);
+    requireCommercialOpsToken(getRequestHeader(event, "x-geomacro-ops-token"));
     const query = getQuery(event);
     const days = Number(query.days ?? 30);
     return {
