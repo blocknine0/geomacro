@@ -1,95 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { BrowserProvider, formatUnits, parseUnits } from "ethers";
-import { ArrowRight, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
-import { chargeProtocolFee, computeProtocolFeeWei, formatFeeUsdc } from "@/lib/protocol-fee";
-import { recordTxHistory } from "@/lib/tx-history.functions";
+import { CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  CCTP_CHAINS,
-  TOKEN_MESSENGER_V2,
-  MESSAGE_TRANSMITTER_V2,
-  FINALITY_FAST,
-  BYTES32_ZERO,
-  addressToBytes32,
-  pollIrisAttestation,
-  getUsdcContract,
-  getTokenMessengerContract,
-  getMessageTransmitterContract,
-  type CctpChain,
-  type IrisMessage,
-} from "@/lib/cctp";
-
-const DEST = CCTP_CHAINS.arcTestnet;
-const SOURCE_OPTIONS = Object.entries(CCTP_CHAINS).filter(([key]) => key !== "arcTestnet") as [
-  string,
-  CctpChain,
-][];
-
-type Phase = "idle" | "approving" | "burning" | "attesting" | "minting" | "done";
-
-// 🛡️ FIX: burnTxHash/irisMessage/phase were plain useState — a refresh (or
-// crash) between "burn confirmed" and "mint confirmed" lost all of it, with
-// no way to find the burn tx again. The USDC isn't actually lost (it's
-// sitting attested on Iris, waiting for receiveMessage()), but the user had
-// no way to discover that. Iris attestation lookups are stateless/idempotent
-// by burn-tx-hash, so persisting just {sourceKey, burnTxHash} is enough to
-// resume: re-poll Iris with the saved hash, get the message+attestation
-// back, and the mint step works exactly as if nothing happened.
-const PENDING_BRIDGE_KEY = "geomacro:bridge:pending:v1";
-
-type PendingBridge = { sourceKey: string; burnTxHash: string; amount: string };
-
-function savePendingBridge(pending: PendingBridge) {
-  try {
-    localStorage.setItem(PENDING_BRIDGE_KEY, JSON.stringify(pending));
-  } catch {
-    // localStorage unavailable (private browsing, etc.) — resume just won't
-    // be offered after a refresh; the funds are still safe on-chain either way.
-  }
-}
-function loadPendingBridge(): PendingBridge | null {
-  try {
-    const raw = localStorage.getItem(PENDING_BRIDGE_KEY);
-    return raw ? (JSON.parse(raw) as PendingBridge) : null;
-  } catch {
-    return null;
-  }
-}
-function clearPendingBridge() {
-  try {
-    localStorage.removeItem(PENDING_BRIDGE_KEY);
-  } catch {
-    // ignore
-  }
-}
-
-function shortHash(hash: string) {
-  return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
-}
-
-function safeExplorerTxUrl(explorerUrl: string, hash: string) {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return undefined;
-  try {
-    const base = new URL(explorerUrl);
-    if (base.protocol !== "https:") return undefined;
-    return new URL(`/tx/${hash}`, `${base.origin}/`).toString();
-  } catch {
-    return undefined;
-  }
-}
-
-function getEthereum() {
-  if (typeof window === "undefined") return null;
-  return (window as unknown as { ethereum?: EthereumProvider }).ethereum ?? null;
-}
+  BRIDGE_SOURCE_CHAINS,
+  estimateBridgeToArc,
+  executeBridgeToArc,
+  type BridgeEstimate,
+  type BridgeExecutionResult,
+  type BridgeSourceKey,
+} from "@/lib/bridge-app-kit";
+import { CCTP_CHAINS } from "@/lib/cctp";
+import { recordTxHistory } from "@/lib/tx-history.functions";
 
 interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -97,68 +20,54 @@ interface EthereumProvider {
   removeListener: (event: string, cb: (...args: unknown[]) => void) => void;
 }
 
+function getEthereum() {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as { ethereum?: EthereumProvider }).ethereum ?? null;
+}
+
+function shortHash(hash: string) {
+  return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
+}
+
+function safeTxUrl(explorerUrl: string, hash: string) {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) return undefined;
+  try {
+    const base = new URL(explorerUrl);
+    return new URL(`/tx/${hash}`, `${base.origin}/`).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export function BridgeSection() {
-  const [sourceKey, setSourceKey] = useState<string>(SOURCE_OPTIONS[0][0]);
-  const source = CCTP_CHAINS[sourceKey];
-
+  const [sourceKey, setSourceKey] = useState<BridgeSourceKey>("ethSepolia");
+  const sourceMeta = CCTP_CHAINS[sourceKey];
   const [address, setAddress] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
   const [currentChainIdHex, setCurrentChainIdHex] = useState<string | null>(null);
-
+  const [connecting, setConnecting] = useState(false);
   const [amount, setAmount] = useState("");
-  const [balance, setBalance] = useState<bigint>(0n);
-  const [allowance, setAllowance] = useState<bigint>(0n);
-
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [burnTxHash, setBurnTxHash] = useState<string | null>(null);
-  const [resumable, setResumable] = useState<PendingBridge | null>(null);
-  const [resuming, setResuming] = useState(false);
-  const [mintTxHash, setMintTxHash] = useState<string | null>(null);
-  const [feeTxHash, setFeeTxHash] = useState<string | null>(null);
-  const [feeUsdc, setFeeUsdc] = useState<string | null>(null);
-  const [feeError, setFeeError] = useState<string | null>(null);
-  const [irisMessage, setIrisMessage] = useState<IrisMessage | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const [estimate, setEstimate] = useState<BridgeEstimate | null>(null);
+  const [bridging, setBridging] = useState(false);
+  const [result, setResult] = useState<BridgeExecutionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const amountUnits = (() => {
-    try {
-      return amount ? parseUnits(amount, 6) : 0n; // source-chain USDC is standard 6-decimal ERC-20
-    } catch {
-      return 0n;
-    }
-  })();
-  const needsApproval = allowance < amountUnits;
-  const previewFeeUsdc = (() => {
-    try {
-      return amount ? formatFeeUsdc(computeProtocolFeeWei(parseUnits(amount, 18))) : null;
-    } catch {
-      return null;
-    }
-  })();
-  const onSourceChain = currentChainIdHex?.toLowerCase() === source.chainIdHex.toLowerCase();
-  const onArc = currentChainIdHex?.toLowerCase() === DEST.chainIdHex.toLowerCase();
+  const onSourceChain = currentChainIdHex?.toLowerCase() === sourceMeta.chainIdHex.toLowerCase();
 
-  // -- resume check: did a previous session leave a burn unminted? -----------
-  useEffect(() => {
-    const pending = loadPendingBridge();
-    if (pending) setResumable(pending);
-  }, []);
-
-  // -- wallet connect + chain tracking ---------------------------------------
   useEffect(() => {
     const eth = getEthereum();
     if (!eth) return;
-    eth.request({ method: "eth_accounts" }).then((accs) => {
-      const a = accs as string[];
-      if (a[0]) setAddress(a[0]);
-    });
-    eth.request({ method: "eth_chainId" }).then((id) => setCurrentChainIdHex(id as string));
+    eth.request({ method: "eth_accounts" }).then((accounts) => {
+      const list = accounts as string[];
+      setAddress(list[0] ?? null);
+    }).catch(() => undefined);
+    eth.request({ method: "eth_chainId" }).then((chainId) => setCurrentChainIdHex(String(chainId))).catch(() => undefined);
 
     const onAccountsChanged = (...args: unknown[]) => {
-      const accs = args[0] as string[];
-      setAddress(accs[0] ?? null);
+      const accounts = (args[0] as string[]) ?? [];
+      setAddress(accounts[0] ?? null);
     };
-    const onChainChanged = (...args: unknown[]) => setCurrentChainIdHex(args[0] as string);
+    const onChainChanged = (...args: unknown[]) => setCurrentChainIdHex(String(args[0] ?? ""));
     eth.on("accountsChanged", onAccountsChanged);
     eth.on("chainChanged", onChainChanged);
     return () => {
@@ -166,6 +75,31 @@ export function BridgeSection() {
       eth.removeListener("chainChanged", onChainChanged);
     };
   }, []);
+
+  useEffect(() => {
+    setEstimate(null);
+    setResult(null);
+    setError(null);
+    if (!address || !onSourceChain || !amount || Number(amount) <= 0) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setEstimating(true);
+      try {
+        const next = await estimateBridgeToArc(sourceKey, amount, address);
+        if (!cancelled) setEstimate(next);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not estimate bridge fees.");
+      } finally {
+        if (!cancelled) setEstimating(false);
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [address, onSourceChain, sourceKey, amount]);
 
   const connect = useCallback(async () => {
     const eth = getEthereum();
@@ -176,422 +110,184 @@ export function BridgeSection() {
     setConnecting(true);
     setError(null);
     try {
-      const accs = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-      setAddress(accs[0] ?? null);
+      const accounts = await eth.request({ method: "eth_requestAccounts" }) as string[];
+      setAddress(accounts[0] ?? null);
     } catch (e) {
-      setError((e as Error).message);
+      setError(e instanceof Error ? e.message : "Wallet connection failed.");
     } finally {
       setConnecting(false);
     }
   }, []);
 
-  const switchToChain = useCallback(async (chain: CctpChain) => {
+  const switchToSource = useCallback(async () => {
     const eth = getEthereum();
     if (!eth) return;
     setError(null);
     try {
-      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chain.chainIdHex }] });
-    } catch (switchErr) {
-      // 4902 = chain not yet added to the wallet
-      if ((switchErr as { code?: number })?.code === 4902 && chain.rpcUrl) {
-        await eth.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: chain.chainIdHex,
-            chainName: chain.name,
-            rpcUrls: [chain.rpcUrl],
-            blockExplorerUrls: [chain.explorerUrl],
-            nativeCurrency: chain.name === "Arc Testnet"
-              ? { name: "USDC", symbol: "USDC", decimals: 18 }
-              : { name: "ETH", symbol: "ETH", decimals: 18 },
-          }],
-        });
-      } else {
-        setError((switchErr as Error).message ?? "Failed to switch network");
-      }
-    }
-  }, []);
-
-  // -- balance/allowance refresh once wallet is on the source chain ---------
-  const refreshBalanceAndAllowance = useCallback(async () => {
-    if (!address || !onSourceChain) return;
-    const eth = getEthereum();
-    if (!eth) return;
-    const provider = new BrowserProvider(eth as never);
-    const usdc = getUsdcContract(source, provider);
-    const [bal, allow] = await Promise.all([
-      usdc.balanceOf(address) as Promise<bigint>,
-      usdc.allowance(address, TOKEN_MESSENGER_V2) as Promise<bigint>,
-    ]);
-    setBalance(bal);
-    setAllowance(allow);
-  }, [address, onSourceChain, source]);
-
-  useEffect(() => {
-    void refreshBalanceAndAllowance();
-  }, [refreshBalanceAndAllowance]);
-
-  // -- step handlers -----------------------------------------------------------
-  const handleApprove = useCallback(async () => {
-    if (!address) return;
-    setError(null);
-    setPhase("approving");
-    try {
-      const eth = getEthereum()!;
-      const provider = new BrowserProvider(eth as never);
-      const signer = await provider.getSigner();
-      const usdc = getUsdcContract(source, signer);
-      const tx = await usdc.approve(TOKEN_MESSENGER_V2, amountUnits);
-      await tx.wait();
-      await refreshBalanceAndAllowance();
-      setPhase("idle");
+      await eth.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: sourceMeta.chainIdHex }],
+      });
     } catch (e) {
-      setError((e as Error).message ?? "Approve failed");
-      setPhase("idle");
+      setError(e instanceof Error ? e.message : "Could not switch network.");
     }
-  }, [address, source, amountUnits, refreshBalanceAndAllowance]);
+  }, [sourceMeta.chainIdHex]);
 
-  const handleBurn = useCallback(async () => {
+  async function handleBridge() {
     if (!address) return;
-    if (amountUnits <= 0n) {
-      setError("Enter a positive amount");
+    if (!amount || Number(amount) <= 0) {
+      setError("Enter an amount greater than 0.");
       return;
     }
-    if (balance < amountUnits) {
-      setError("Insufficient USDC balance on source chain");
+    if (!estimate) {
+      setError("Wait for the current Circle bridge estimate before confirming.");
       return;
     }
+
+    setBridging(true);
     setError(null);
-    setPhase("burning");
+    setResult(null);
     try {
-      const eth = getEthereum()!;
-      const provider = new BrowserProvider(eth as never);
-      const signer = await provider.getSigner();
-      const tokenMessenger = getTokenMessengerContract(signer);
-      const tx = await tokenMessenger.depositForBurn(
-        amountUnits,
-        DEST.domain,
-        addressToBytes32(address),
-        source.usdc,
-        BYTES32_ZERO, // destinationCaller = permissionless, anyone can relay the mint
-        amountUnits / 1000n, // maxFee = 0.1% for Fast Transfer
-        FINALITY_FAST,
-      );
-      const receipt = await tx.wait();
-      setBurnTxHash(receipt.hash);
-      savePendingBridge({ sourceKey, burnTxHash: receipt.hash, amount });
-
-      setPhase("attesting");
-      const msg = await pollIrisAttestation(source.domain, receipt.hash, { network: "testnet" });
-      setIrisMessage(msg);
-      setPhase("idle"); // user now clicks "Switch to Arc & Mint"
-    } catch (e) {
-      setError((e as Error).message ?? "Burn failed");
-      setPhase("idle");
-    }
-  }, [address, amountUnits, balance, source]);
-
-  const handleMint = useCallback(async () => {
-    if (!irisMessage) return;
-    setError(null);
-    setPhase("minting");
-    try {
-      const eth = getEthereum()!;
-      const provider = new BrowserProvider(eth as never);
-      const signer = await provider.getSigner();
-      const messageTransmitter = getMessageTransmitterContract(signer);
-      const tx = await messageTransmitter.receiveMessage(irisMessage.message, irisMessage.attestation);
-      const receipt = await tx.wait();
-      setMintTxHash(receipt.hash);
-      setPhase("done");
-      clearPendingBridge();
-
-      // Fee is charged here (post-mint, on Arc) rather than on the source
-      // chain — the treasury address expects native Arc USDC, and source
-      // chains' native gas is ETH/AVAX, not USDC, so charging pre-burn would
-      // be a different asset entirely. A fee failure here doesn't touch the
-      // mint that already succeeded — it's surfaced separately so the user
-      // isn't blocked from their bridged funds over an unrelated fee issue.
-      let recordedFeeTxHash: string | undefined;
-      let recordedFeeUsdc: string | undefined;
-      try {
-        const feeAmountWei = parseUnits(amount || "0", 18);
-        const fee = await chargeProtocolFee(feeAmountWei);
-        setFeeTxHash(fee.txHash);
-        setFeeUsdc(formatFeeUsdc(fee.feeWei));
-        recordedFeeTxHash = fee.txHash;
-        recordedFeeUsdc = formatFeeUsdc(fee.feeWei);
-      } catch (feeErr) {
-        setFeeError((feeErr as Error).message ?? "Fee payment failed");
+      const next = await executeBridgeToArc(sourceKey, amount, address);
+      setResult(next);
+      if (next.state === "error") {
+        const failedStep = next.steps.find((step) => step.state === "error");
+        setError(failedStep?.errorMessage || "Circle bridge returned an error state.");
+        return;
       }
 
-      if (address) {
+      const primaryHash = next.mintTxHash || next.burnTxHash;
+      if (next.state === "success" && primaryHash) {
         try {
           await recordTxHistory({
             data: {
               walletAddress: address,
               type: "bridge",
-              txHash: receipt.hash,
+              txHash: primaryHash,
               tokenIn: "USDC",
               tokenOut: "USDC",
               amountIn: amount,
-              feeTxHash: recordedFeeTxHash,
-              feeUsdc: recordedFeeUsdc,
-              explorerUrl: `${DEST.explorerUrl}/tx/${receipt.hash}`,
+              feeUsdc: estimate.geomacroFeeUsdc,
+              explorerUrl: next.mintTxHash
+                ? safeTxUrl(CCTP_CHAINS.arcTestnet.explorerUrl, next.mintTxHash)
+                : safeTxUrl(sourceMeta.explorerUrl, next.burnTxHash || ""),
             },
           });
         } catch (historyErr) {
-          // The mint already succeeded — a history-recording failure
-          // shouldn't be shown as if the bridge itself failed.
           console.error("[BridgeSection] recordTxHistory failed", historyErr);
         }
       }
     } catch (e) {
-      setError((e as Error).message ?? "Mint failed");
-      setPhase("idle");
-    }
-  }, [irisMessage, amount]);
-
-  const reset = useCallback(() => {
-    setBurnTxHash(null);
-    setMintTxHash(null);
-    setIrisMessage(null);
-    setPhase("idle");
-    setError(null);
-    clearPendingBridge();
-    setResumable(null);
-    setFeeTxHash(null);
-    setFeeUsdc(null);
-    setFeeError(null);
-  }, []);
-
-  // Re-fetches the Iris attestation for a burn that already happened in a
-  // previous session — the burn is on-chain and irreversible either way, so
-  // this just gets the UI back to the same "ready to mint" state it would
-  // have been in if the page had never refreshed.
-  const handleResume = useCallback(async () => {
-    if (!resumable) return;
-    setResuming(true);
-    setError(null);
-    try {
-      const resumedSource = CCTP_CHAINS[resumable.sourceKey];
-      if (!resumedSource) throw new Error(`Unknown source chain: ${resumable.sourceKey}`);
-      const msg = await pollIrisAttestation(resumedSource.domain, resumable.burnTxHash, { network: "testnet" });
-      setSourceKey(resumable.sourceKey);
-      setAmount(resumable.amount);
-      setBurnTxHash(resumable.burnTxHash);
-      setIrisMessage(msg);
-      setPhase("idle"); // ready to mint
-      setResumable(null);
-    } catch (e) {
-      setError(
-        `Couldn't resume automatically (${(e as Error).message ?? "attestation not found"}). ` +
-          `If the burn really did go through, it's still safe on Iris — try again in a minute, or check the burn tx on the source chain's explorer.`,
-      );
+      setError(e instanceof Error ? e.message : "Bridge failed.");
     } finally {
-      setResuming(false);
+      setBridging(false);
     }
-  }, [resumable]);
-
-  const busy = phase !== "idle" && phase !== "done";
+  }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <div className="max-w-xl">
-        <h1 className="font-mono text-3xl tracking-tight">Bridge USDC to Arc</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Bring native USDC from supported CCTP testnets into Arc
-          Testnet via Circle's CCTP burn-and-mint protocol. Fast Transfer mode, ~15s finality.
-        </p>
-      </div>
-
-      {resumable && (
-        <div className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
-          <p className="text-sm font-medium text-amber-500">Unfinished bridge found</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            You burned USDC on a previous visit but never completed the mint on Arc. Your funds
-            aren't lost — they're attested and waiting. Burn tx:{" "}
-            <span className="font-mono">{shortHash(resumable.burnTxHash)}</span>
+    <div className="space-y-4">
+      <div className="rounded-lg border border-border/60 bg-card/40 p-6 space-y-6">
+        <div>
+          <p className="text-sm font-medium">Bridge USDC to Arc Testnet</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Circle App Kit handles CCTP V2 burn, attestation and destination forwarding. Geomacro's fee is collected as USDC inside the source bridge flow.
           </p>
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" onClick={handleResume} disabled={resuming}>
-              {resuming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Resume bridge
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                clearPendingBridge();
-                setResumable(null);
-              }}
-            >
-              Dismiss
-            </Button>
-          </div>
         </div>
-      )}
 
-      <div className="mt-10 space-y-6 rounded-lg border border-border/60 bg-card/40 p-6">
-        {/* wallet */}
         <div className="flex items-center justify-between rounded-md border border-border/60 px-4 py-3">
           <div className="text-sm">
             <div className="font-mono">Wallet</div>
-            <div className="text-xs text-muted-foreground">
-              {address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Not connected"}
-            </div>
+            <div className="text-xs text-muted-foreground">{address ?? "Not connected"}</div>
           </div>
-          <Button size="sm" variant={address ? "outline" : "default"} onClick={connect} disabled={connecting || !!address}>
-            {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : address ? "Connected" : "Connect"}
-          </Button>
-        </div>
-
-        {/* source + amount */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="text-xs font-mono text-muted-foreground">Source chain</label>
-            <Select value={sourceKey} onValueChange={(v) => { setSourceKey(v); reset(); }} disabled={busy}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map(([key, chain]) => (
-                  <SelectItem key={key} value={key}>
-                    {chain.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-mono text-muted-foreground">Amount (USDC)</label>
-            <Input
-              className="mt-1.5"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="10.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={busy}
-            />
-            {address && onSourceChain && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Balance: {formatUnits(balance, 6)} USDC
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-center gap-3 py-1 text-xs font-mono text-muted-foreground">
-          <span>{source.name}</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-          <span>Arc Testnet</span>
-        </div>
-
-        {/* step-by-step flow */}
-        {!irisMessage ? (
-          <div className="space-y-3">
-            {!onSourceChain ? (
-              <Button className="w-full" variant="outline" onClick={() => switchToChain(source)} disabled={!address || busy}>
-                Switch wallet to {source.name}
-              </Button>
-            ) : needsApproval ? (
-              <Button className="w-full" onClick={handleApprove} disabled={!address || busy || amountUnits <= 0n}>
-                {phase === "approving" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Approve USDC
-              </Button>
-            ) : (
-              <Button className="w-full" onClick={handleBurn} disabled={!address || busy || amountUnits <= 0n}>
-                {phase === "burning" || phase === "attesting" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {phase === "attesting" ? "Waiting for attestation…" : "Burn & Bridge"}
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {!onArc ? (
-              <Button className="w-full" variant="outline" onClick={() => switchToChain(DEST)} disabled={busy}>
-                Switch wallet to Arc Testnet
-              </Button>
-            ) : (
-              <>
-                <Button className="w-full" onClick={handleMint} disabled={busy || phase === "done"}>
-                  {phase === "minting" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {phase === "done" ? "Minted" : "Mint on Arc"}
-                </Button>
-                {phase !== "done" && previewFeeUsdc && (
-                  <p className="text-center text-xs text-muted-foreground">
-                    + ${previewFeeUsdc} protocol fee, charged separately right after mint
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        {/* tx links */}
-        {(burnTxHash || mintTxHash) && (
-          <div className="space-y-2 border-t border-border/60 pt-4 text-sm">
-            {burnTxHash && (
-              <a
-                href={safeExplorerTxUrl(source.explorerUrl, burnTxHash)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Burn tx: {shortHash(burnTxHash)} <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-            {mintTxHash && (
-              <a
-                href={safeExplorerTxUrl(DEST.explorerUrl, mintTxHash)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Mint tx: {shortHash(mintTxHash)} <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-            {feeTxHash && (
-              <a
-                href={safeExplorerTxUrl(DEST.explorerUrl, feeTxHash)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                Fee tx: {shortHash(feeTxHash)} (${feeUsdc}) <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-            {feeError && <p className="text-xs text-destructive">Fee payment didn't go through: {feeError}</p>}
-          </div>
-        )}
-
-        {phase === "done" && (
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-2 text-sm text-emerald-500">
-              <CheckCircle2 className="h-4 w-4" /> Bridge complete — USDC minted on Arc Testnet.
-            </p>
-            <Button size="sm" variant="ghost" onClick={reset}>
-              Bridge more
+          {!address ? (
+            <Button size="sm" onClick={connect} disabled={connecting}>
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
             </Button>
+          ) : !onSourceChain ? (
+            <Button size="sm" variant="secondary" onClick={() => void switchToSource()}>Switch to source</Button>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[1fr_160px]">
+          <Input
+            type="number"
+            min="0"
+            step="any"
+            placeholder="Amount USDC"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <Select value={sourceKey} onValueChange={(value) => setSourceKey(value as BridgeSourceKey)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(BRIDGE_SOURCE_CHAINS).map(([key, chain]) => (
+                <SelectItem key={key} value={key}>{chain.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {estimating && <p className="text-xs text-muted-foreground">Fetching Circle bridge estimate…</p>}
+
+        {estimate && (
+          <div className="rounded-md border border-border/60 bg-muted/20 p-4 text-xs">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Bridge amount</span>
+              <span className="font-mono">{amount} USDC</span>
+            </div>
+            <div className="mt-2 flex justify-between gap-4">
+              <span className="text-muted-foreground">Geomacro fee</span>
+              <span className="font-mono">{estimate.geomacroFeeUsdc} USDC</span>
+            </div>
+            {estimate.fees.length > 0 && (
+              <div className="mt-3 border-t border-border/60 pt-3">
+                <p className="mb-2 text-muted-foreground">Circle fee breakdown</p>
+                {estimate.fees.map((fee, index) => (
+                  <div key={`${fee.type}-${index}`} className="flex justify-between gap-4">
+                    <span>{fee.type}</span>
+                    <span className="font-mono">{fee.amount ?? "unavailable"} {fee.token}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+              App Kit requests batched approve/burn calls when the wallet supports EIP-5792. Circle Forwarding Service handles the Arc mint, so there is no separate Geomacro post-mint fee transaction.
+            </p>
+          </div>
+        )}
+
+        {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+
+        <Button className="w-full" disabled={!address || !onSourceChain || !estimate || estimating || bridging} onClick={handleBridge}>
+          {bridging ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bridge to Arc"}
+        </Button>
+
+        {result && result.state !== "error" && (
+          <div className="rounded-md border border-primary/40 bg-primary/10 p-4 text-sm">
+            <p className="flex items-center gap-2 text-primary">
+              {result.state === "success" ? <CheckCircle2 className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+              {result.state === "success" ? "Bridge completed." : "Bridge is pending."}
+            </p>
+            <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+              {result.steps.filter((step) => step.txHash).map((step) => {
+                const explorer = step.explorerUrl || (step.name === "mint"
+                  ? safeTxUrl(CCTP_CHAINS.arcTestnet.explorerUrl, step.txHash || "")
+                  : safeTxUrl(sourceMeta.explorerUrl, step.txHash || ""));
+                return (
+                  <div key={`${step.name}-${step.txHash}`} className="flex items-center justify-between gap-3">
+                    <span>{step.name}{step.batched ? " · batched" : ""}{step.forwarded ? " · forwarded" : ""}</span>
+                    {explorer ? (
+                      <a href={explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline">
+                        {shortHash(step.txHash || "")} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : <span className="font-mono">{shortHash(step.txHash || "")}</span>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
-
-      <p className="mt-6 text-xs text-muted-foreground">
-        Testnet only. You'll need testnet USDC on the source chain and native gas on both the
-        source chain and Arc (also USDC on Arc) — get both from the{" "}
-        <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="underline">
-          Circle Faucet
-        </a>
-        .
-      </p>
-    </main>
+    </div>
   );
 }
