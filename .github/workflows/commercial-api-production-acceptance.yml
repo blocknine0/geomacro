@@ -49,8 +49,10 @@ on:
       - ".github/workflows/commercial-api-production-acceptance.yml"
       - "scripts/commercial/**"
       - "src/lib/structured-data-entitlement-registry.ts"
+      - "src/lib/commercial-entitlement-policy.ts"
       - "src/__tests__/commercial-production-acceptance-static.test.ts"
       - "src/__tests__/structured-data-entitlement-registry.test.ts"
+      - "src/__tests__/commercial-entitlement-policy.test.ts"
 
 permissions:
   contents: read
@@ -83,7 +85,9 @@ jobs:
           grep -q 'https://geomacro.live' "$file"
           grep -q 'provision-commercial-api-pilot.ts --write' "$file"
           grep -q 'accept-commercial-api.ts' "$file"
-          if grep -q -- '- analyst_pilot' "$file"; then
+
+          analyst_option='- analyst_'"pilot"
+          if grep -Fq -- "$analyst_option" "$file"; then
             echo "::error::Analyst tier must not be provisioned with a commercial API credential."
             exit 1
           fi
