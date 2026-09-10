@@ -18,6 +18,8 @@ export type IntelEvent = {
   severity: number | null;
   /** Severity change written by the pipeline. null when never scored. */
   delta: number | null;
+  /** Public compatibility field. Upstream publisher identity is never populated. */
+  sourceName: null;
   createdAt: string;
   publishedAt: string | null;
 };
@@ -163,6 +165,7 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
           category: r.category ?? null,
           severity: num(r.severity),
           delta: num(r.delta),
+          sourceName: null,
           createdAt: String(r.created_at),
           publishedAt: r.published_at ?? null,
         }));
