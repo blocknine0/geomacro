@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { verifyMessage } from "ethers";
 
 import { requireRiskSupabase } from "./risk-supabase.server";
@@ -10,6 +10,14 @@ const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 function sha256(value: string) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function oauthStateDigest(value: string) {
+  const secret = String(process.env.TESTNET_OAUTH_COOKIE_SECRET ?? "").trim();
+  if (Buffer.byteLength(secret, "utf8") < 32) {
+    throw new Error("TESTNET_OAUTH_COOKIE_SECRET_TOO_SHORT");
+  }
+  return createHmac("sha256", secret).update(value).digest("hex");
 }
 
 function canonicalEmail(value: string) {
@@ -209,7 +217,7 @@ export async function issueTesterOauthState(input: { principalId: string; provid
   const insert = await db.from("testnet_oauth_states").insert({
     principal_id: input.principalId,
     provider: input.provider,
-    state_hash: sha256(state),
+    state_hash: oauthStateDigest(state),
     expires_at: expiresIn(OAUTH_STATE_TTL_MS),
   });
   if (insert.error) throw insert.error;
@@ -227,7 +235,7 @@ export async function consumeTesterOauthIdentity(input: {
   const state = await db.from("testnet_oauth_states")
     .select("id,provider,expires_at,consumed_at")
     .eq("principal_id", input.principalId)
-    .eq("state_hash", sha256(input.state))
+    .eq("state_hash", oauthStateDigest(input.state))
     .maybeSingle();
   if (state.error) throw state.error;
   if (!state.data || state.data.provider !== input.provider || state.data.consumed_at || state.data.expires_at <= now) {

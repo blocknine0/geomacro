@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody, setResponseHeaders } from "h3";
 
 import { createTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
+import { setTesterSessionCookie } from "../../../src/lib/testnet-tester-cookie.server";
 import { sendTestnetVerificationEmail } from "../../../src/lib/testnet-email-delivery.server";
 
 export default defineEventHandler(async (event) => {
@@ -24,11 +25,12 @@ export default defineEventHandler(async (event) => {
       verificationToken: result.email_verification_token,
     });
 
+    setTesterSessionCookie(event, result.session_token);
+
     return {
       ok: true,
       data: {
         principal_id: result.principal_id,
-        session_token: result.session_token,
         session_expires_at: result.session_expires_at,
         email_verification_expires_at: result.email_verification_expires_at,
         email_verification_sent: true,
