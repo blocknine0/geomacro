@@ -3,26 +3,15 @@
     "id": "geomacro",
     "name": "Geomacro Agent",
     "version": "geomacro-agent-v1",
-    "description": "Grounded geopolitical and macro risk intelligence for humans, software and AI agents.",
+    "description": "Grounded geopolitical and macro risk intelligence for software and AI agents through paid/private-pilot access.",
     "mode": "read_and_recommend",
     "execution_authorized": false
   },
   "endpoint": "https://geomacro.live/api/agent/risk",
   "capabilities": [
     {
-      "id": "intelligence_query",
-      "access": "public_free",
-      "method": "POST",
-      "content_type": "application/json",
-      "request_example": {
-        "capability": "intelligence_query",
-        "question": "What is changing in critical-mineral risk?",
-        "client_request_id": "optional-client-id"
-      }
-    },
-    {
       "id": "risk_preflight",
-      "access": "x402_technical_proof_or_private_pilot",
+      "access": "x402_technical_proof_or_paid_private_pilot",
       "method": "POST",
       "content_type": "application/json",
       "execution_authorized": false
@@ -35,17 +24,25 @@
     "synthetic_fallback_score": false
   },
   "boundaries": {
+    "free_api_access": false,
+    "free_structured_download": false,
     "financial_advice": false,
     "autonomous_execution": false,
     "wallet_custody": false,
     "transaction_signing": false,
     "sanctions_screening_replacement": false,
+    "raw_data_delivery": false,
     "corridor_model": "directional endpoint-composed pilot"
   },
   "commercial": {
-    "public_read": "available",
-    "risk_api": "private_pilot",
+    "structured_data_registry_version": "structured-entitlements-v1.0.0",
+    "credit_contract_version": "credits-v1.1.0",
+    "free_web": "public_website_dashboard_only",
+    "public_api": "not_available",
+    "public_structured_data_download": "not_available",
+    "commercial_structured_api": "/api/commercial/structural",
+    "risk_api": "paid_private_pilot",
     "institutional_sla": "not_generally_available",
-    "x402_price_note": "Current Arc Testnet x402 pricing is technical proof only and is not institutional pricing."
+    "x402_price_note": "Current Arc Testnet x402 pricing is technical proof only and is not institutional pricing or commercial revenue."
   }
 }
