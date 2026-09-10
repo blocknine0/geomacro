@@ -11,7 +11,7 @@ import {
 } from "vitest";
 
 const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/049_commercial_access_principals.sql"),
+  join(process.cwd(), "supabase/migrations/050_commercial_access_principals.sql"),
   "utf8",
 );
 
