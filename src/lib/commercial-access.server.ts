@@ -9,6 +9,9 @@ import {
   type GeomacroCreditCapability,
 } from "./commercial-access-contract";
 import {
+  tierAllowsStructuredCapability,
+} from "./structured-data-entitlement-registry";
+import {
   requireRiskSupabase,
 } from "./risk-supabase.server";
 
@@ -67,23 +70,7 @@ export function tierAllowsCapability(
   tier: CommercialTierId,
   capability: GeomacroCreditCapability,
 ): boolean {
-  if (!(capability in GEOMACRO_CREDIT_COSTS)) return false;
-
-  if (tier === "institutional" || tier === "api_pilot") return true;
-
-  if (tier === "analyst_pilot") {
-    return ![
-      "signed_risk_object",
-      "risk_gate_bundle",
-    ].includes(capability);
-  }
-
-  return [
-    "intelligence_query",
-    "gri_read",
-    "structural_country_digest",
-    "structural_corridor_digest",
-  ].includes(capability);
+  return tierAllowsStructuredCapability(tier, capability);
 }
 
 export function tierCreditAllocation(tier: CommercialTierId): number {
