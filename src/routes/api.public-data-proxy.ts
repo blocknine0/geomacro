@@ -23,6 +23,31 @@ const SAFE_RESPONSE_HEADERS = [
   "preference-applied",
 ] as const;
 
+const PRIVATE_SOURCE_KEYS = new Set([
+  "source_name",
+  "source_domain",
+  "source_url",
+  "sourceName",
+  "sourceDomain",
+  "sourceUrl",
+  "publisher",
+  "publisher_name",
+  "publisherName",
+]);
+
+function redactPrivateSourceIdentity(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactPrivateSourceIdentity);
+  if (!value || typeof value !== "object") return value;
+
+  const input = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(input)) {
+    if (PRIVATE_SOURCE_KEYS.has(key)) continue;
+    output[key] = redactPrivateSourceIdentity(nested);
+  }
+  return output;
+}
+
 function bad(status: number, message: string) {
   return new Response(JSON.stringify({ error: message }), {
     status,
@@ -92,7 +117,32 @@ async function handle(request: Request) {
     if (value) outHeaders.set(name, value);
   }
 
-  return new Response(request.method === "HEAD" ? null : response.body, {
+  if (request.method === "HEAD") {
+    return new Response(null, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: outHeaders,
+    });
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const text = await response.text();
+    try {
+      const parsedBody = JSON.parse(text) as unknown;
+      const redacted = redactPrivateSourceIdentity(parsedBody);
+      outHeaders.set("content-type", "application/json; charset=utf-8");
+      return new Response(JSON.stringify(redacted), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: outHeaders,
+      });
+    } catch {
+      return bad(502, "Public data backend returned invalid JSON");
+    }
+  }
+
+  return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
     headers: outHeaders,
