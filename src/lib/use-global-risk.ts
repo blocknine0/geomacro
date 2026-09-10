@@ -49,9 +49,23 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const next = await loadPublicRisk({ data: {} });
+        const result = await loadPublicRisk({ data: {} });
         if (cancelled) return;
 
+        if (!result.ok) {
+          hasData.current = false;
+          setData(null);
+          setUpdatedAt(null);
+          setError({
+            message: result.message,
+            detail: result.code,
+            retryable: true,
+          });
+          setStatus("error");
+          return;
+        }
+
+        const next = result.data;
         hasData.current = true;
         setData(next);
         const asOf = new Date(next.snapshotAsOf).getTime();
