@@ -1,0 +1,115 @@
+name: Commercial Pilot Readiness Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      origin_iso3:
+        description: "Origin ISO3 country code"
+        required: true
+        default: "IRN"
+        type: string
+      destination_iso3:
+        description: "Destination ISO3 country code"
+        required: true
+        default: "ARE"
+        type: string
+      require_verified:
+        description: "Fail unless the full current pilot reaches VERIFIED commercial readiness"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commercial-pilot-readiness
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GITHUB_OUTPUT_FILE: /tmp/commercial-pilot-readiness.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate inputs
+        id: subject
+        shell: bash
+        env:
+          RAW_ORIGIN: ${{ inputs.origin_iso3 }}
+          RAW_DESTINATION: ${{ inputs.destination_iso3 }}
+        run: |
+          set -euo pipefail
+          ORIGIN="$(printf '%s' "$RAW_ORIGIN" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          DESTINATION="$(printf '%s' "$RAW_DESTINATION" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          if ! [[ "$ORIGIN" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::origin_iso3 must be exactly three letters."
+            exit 1
+          fi
+          if ! [[ "$DESTINATION" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::destination_iso3 must be exactly three letters."
+            exit 1
+          fi
+          if [ "$ORIGIN" = "$DESTINATION" ]; then
+            echo "::error::Origin and destination must be different."
+            exit 1
+          fi
+          echo "origin=$ORIGIN" >> "$GITHUB_OUTPUT"
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate read-only readiness evidence
+        shell: bash
+        env:
+          ORIGIN: ${{ steps.subject.outputs.origin }}
+          DESTINATION: ${{ steps.subject.outputs.destination }}
+          REQUIRE_VERIFIED: ${{ inputs.require_verified }}
+        run: |
+          set -euo pipefail
+          ARGS=("$ORIGIN" "$DESTINATION")
+          if [ "$REQUIRE_VERIFIED" = "true" ]; then
+            ARGS+=("--require-verified")
+          fi
+          bun scripts/commercial-pilot-readiness-report.ts "${ARGS[@]}" | tee /tmp/commercial-pilot-readiness.log
+
+      - name: Guard evidence boundaries
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/commercial-pilot-readiness.json ]; then
+            node <<'NODE'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/commercial-pilot-readiness.json', 'utf8'));
+          if (result?.acceptance?.execution_authorized !== false) {
+            throw new Error('Readiness evidence must keep execution_authorized=false');
+          }
+          if (!result?.acceptance?.note?.includes('read-only readiness evidence')) {
+            throw new Error('Readiness evidence boundary note is missing');
+          }
+          NODE
+          fi
+
+      - name: Upload sanitized readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commercial-pilot-readiness-${{ github.run_id }}
+          path: |
+            /tmp/commercial-pilot-readiness.json
+            /tmp/commercial-pilot-readiness.log
+          if-no-files-found: warn
+          retention-days: 30
