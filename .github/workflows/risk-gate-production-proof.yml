@@ -1,0 +1,139 @@
+name: Risk Gate production proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      country_iso3:
+        description: "Country ISO3 with a fresh signed GRO"
+        required: true
+        default: "IRN"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      RISK_GATE_PROOF_API_KEY: ${{ secrets.RISK_GATE_PROOF_API_KEY }}
+      RISK_GATE_BASE_URL: https://geomacro.live
+      COUNTRY_ISO3: ${{ inputs.country_iso3 }}
+
+    steps:
+      - name: Validate proof configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${RISK_GATE_PROOF_API_KEY:-}" ]]; then
+            echo "::error title=Missing production proof secret::RISK_GATE_PROOF_API_KEY is not configured in GitHub Actions."
+            exit 1
+          fi
+          if [[ ! "$COUNTRY_ISO3" =~ ^[A-Za-z]{3}$ ]]; then
+            echo "::error title=Invalid country::country_iso3 must be exactly three letters."
+            exit 1
+          fi
+          echo "PASS: proof secret present and country input is structurally valid."
+
+      - name: Run authenticated success, replay and conflict proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v jq >/dev/null
+
+          iso3="$(printf '%s' "$COUNTRY_ISO3" | tr '[:lower:]' '[:upper:]')"
+          request_id="proof-$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_RUN_ID}"
+          endpoint="${RISK_GATE_BASE_URL%/}/api/risk-gate"
+
+          make_body() {
+            local continue_max="$1"
+            jq -cn \
+              --arg request_id "$request_id" \
+              --arg iso3 "$iso3" \
+              --argjson continue_max "$continue_max" \
+              '{
+                request_id: $request_id,
+                subject: {type:"country", country_iso3:$iso3},
+                action_context: {action_type:"production_proof", currency:"USDC"},
+                policy: {
+                  policy_id:"geomacro-production-proof",
+                  policy_version:"1.0",
+                  continue_max_score:$continue_max,
+                  reduce_limit_max_score:55,
+                  require_approval_max_score:75,
+                  minimum_confidence_for_auto_continue:0.8,
+                  require_commercial_verification_for_continue:true,
+                  max_positive_delta_for_auto_continue:10,
+                  hard_stop_driver_contributions:{sanctions:20}
+                }
+              }'
+          }
+
+          request_one="$(make_body 35)"
+          request_conflict="$(make_body 34)"
+
+          call_api() {
+            local body="$1"
+            local prefix="$2"
+            curl --silent --show-error --fail-with-body \
+              --connect-timeout 10 --max-time 30 \
+              -D "${prefix}.headers" \
+              -o "${prefix}.json" \
+              -w '%{http_code}' \
+              -X POST "$endpoint" \
+              -H "Authorization: Bearer ${RISK_GATE_PROOF_API_KEY}" \
+              -H 'Content-Type: application/json' \
+              --data-binary "$body"
+          }
+
+          status1="$(call_api "$request_one" first)"
+          [[ "$status1" == "200" ]] || { echo "First request HTTP $status1"; jq -c . first.json || true; exit 1; }
+          jq -e '.ok == true and .risk_gate.execution_authorized == false and (.audit_id|type=="string" and length>0)' first.json >/dev/null
+          first_audit="$(jq -r '.audit_id' first.json)"
+          first_decision="$(jq -r '.risk_gate.decision // "UNKNOWN"' first.json)"
+
+          status2="$(call_api "$request_one" replay)"
+          [[ "$status2" == "200" ]] || { echo "Replay request HTTP $status2"; jq -c . replay.json || true; exit 1; }
+          grep -qi '^X-Geomacro-Idempotent-Replay:[[:space:]]*true' replay.headers
+          jq -e --arg audit "$first_audit" '.ok == true and .risk_gate.execution_authorized == false and .audit_id == $audit' replay.json >/dev/null
+
+          set +e
+          status3="$(curl --silent --show-error \
+            --connect-timeout 10 --max-time 30 \
+            -D conflict.headers \
+            -o conflict.json \
+            -w '%{http_code}' \
+            -X POST "$endpoint" \
+            -H "Authorization: Bearer ${RISK_GATE_PROOF_API_KEY}" \
+            -H 'Content-Type: application/json' \
+            --data-binary "$request_conflict")"
+          curl_rc=$?
+          set -e
+          [[ "$curl_rc" -eq 0 ]] || { echo "Conflict request transport failed"; exit 1; }
+          [[ "$status3" == "409" ]] || { echo "Conflict request HTTP $status3"; jq -c . conflict.json || true; exit 1; }
+          jq -e '.ok == false and .error.code == "IDEMPOTENCY_CONFLICT" and .execution_authorized == false' conflict.json >/dev/null
+
+          jq -n \
+            --arg request_id "$request_id" \
+            --arg subject "$iso3" \
+            --arg audit_id "$first_audit" \
+            --arg decision "$first_decision" \
+            '{
+              proof:"PASS",
+              request_id:$request_id,
+              subject:{type:"country",id:$subject},
+              authenticated_success:{http_status:200,audit_id:$audit_id,decision:$decision,execution_authorized:false},
+              exact_replay:{http_status:200,same_audit_id:true,replay_header:true,execution_authorized:false},
+              changed_payload_conflict:{http_status:409,error_code:"IDEMPOTENCY_CONFLICT",execution_authorized:false}
+            }' | tee risk-gate-production-proof.json
+
+      - name: Upload redacted production proof artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: risk-gate-production-proof
+          path: risk-gate-production-proof.json
+          if-no-files-found: warn
+          retention-days: 30
