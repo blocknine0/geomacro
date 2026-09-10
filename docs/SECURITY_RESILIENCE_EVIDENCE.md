@@ -76,6 +76,26 @@ artifacts/risk-gate-core-stress.json
 
 The GitHub workflow `.github/workflows/risk-gate-core-resilience.yml` runs this harness without production credentials and uploads the JSON evidence artifact.
 
+### First recorded run
+
+GitHub Actions run `34433349586` completed successfully on 2026-09-10 with the following machine-readable result:
+
+```text
+iterations: 30000
+duration_ms: 64.513
+operations_per_second: 465025.61
+p50_ms: 0.001042
+p95_ms: 0.0051
+p99_ms: 0.006593
+CONTINUE: 7500
+REQUIRE_APPROVAL: 7500
+PAUSE: 15000
+execution_authorized_false: true
+artifact_sha256: 492b81899efb9a25791b8a42440db59db41189915b2604b820a625a8fc90aa1d
+```
+
+All four expected safety scenarios passed. These measurements are intentionally presented only as in-process decision-engine performance, not end-to-end API capacity.
+
 ## Scope limitation of the core harness
 
 The core stress harness deliberately excludes:
