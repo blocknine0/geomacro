@@ -13,18 +13,13 @@ export type PublicIntelligenceRow = {
   category: string | null;
   severity: number | null;
   delta: number | null;
-  source_name: string | null;
   created_at: string;
   published_at: string | null;
 };
 
 /**
  * Canonical public Intelligence read path.
- *
- * The browser no longer talks directly to Supabase for this product surface.
- * That keeps production independent of stale VITE_* values in the hosting
- * layer and guarantees Intelligence, Ask Geomacro and the GRI all read from
- * the same app-owned Supabase project.
+ * Upstream publisher identity and direct source URLs remain internal-only.
  */
 export const getPublicIntelligence = createServerFn({ method: "POST" })
   .validator((input: unknown) => EmptyInput.parse(input))
@@ -36,9 +31,7 @@ export const getPublicIntelligence = createServerFn({ method: "POST" })
     const since = new Date(Date.now() - 30 * DAY_MS).toISOString();
     const { data, error } = await supabase
       .from("events")
-      .select(
-        "id,source_title,summary,category,severity,delta,source_name,created_at,published_at",
-      )
+      .select("id,source_title,summary,category,severity,delta,created_at,published_at")
       .in("category", ["geopolitics", "macro", "rare_earth"])
       .gte("created_at", since)
       .order("created_at", { ascending: false })
