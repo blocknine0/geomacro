@@ -19,6 +19,7 @@ import {
   ensureCommercialCreditAccount,
   resolveCommercialEntitlementForCapability,
 } from "../../../src/lib/commercial-access.server";
+import { recordCommercialUsageEvent } from "../../../src/lib/commercial-ops.server";
 import {
   structuredDeliveryPolicy,
 } from "../../../src/lib/structured-data-entitlement-registry";
@@ -64,6 +65,8 @@ const requestSchema = z.object({
 });
 
 type StructuralCapability = z.infer<typeof structuralCapabilitySchema>;
+
+type StructuralSubject = z.infer<typeof requestSchema>["subject"];
 
 function publicObservation(row: StructuralObservation) {
   return {
@@ -133,6 +136,12 @@ function commercialPayload(
 
 function sha256Json(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function subjectKey(subject: StructuralSubject) {
+  return subject.type === "country"
+    ? subject.country_iso3.toUpperCase()
+    : `${subject.origin_country_iso3.toUpperCase()}>${subject.destination_country_iso3.toUpperCase()}`;
 }
 
 function assertCapabilityMatchesSubject(
@@ -207,6 +216,7 @@ function errorPayload(error: unknown) {
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, corsHeaders);
+  const startedAt = Date.now();
 
   try {
     const contentType = getRequestHeader(event, "content-type") ?? "";
@@ -298,12 +308,47 @@ export default defineEventHandler(async (event) => {
       policy.tier.max_structural_observations,
       policy.tier.max_evidence_references,
     );
-    setResponseStatus(event, 200);
+    const deliveryId = randomUUID();
+    const responseHash = sha256Json(data);
 
+    try {
+      await recordCommercialUsageEvent({
+        environment: "internal",
+        access_surface: "commercial_api",
+        principal_id: principal.principal_id,
+        principal_type: principal.principal_type,
+        entitlement_grant_id: entitlement.grant_id,
+        offer_id: entitlement.policy.offer_id,
+        tier,
+        registry_version: policy.registry_version,
+        contract_version: policy.credit_contract_version,
+        request_id: input.request_id,
+        delivery_id: deliveryId,
+        capability: input.capability,
+        subject_type: input.subject.type,
+        subject_key: subjectKey(input.subject),
+        credits_charged: usage.idempotent_replay ? 0 : usage.credit_cost ?? GEOMACRO_CREDIT_COSTS[input.capability],
+        credits_remaining: usage.credits_remaining ?? null,
+        idempotent_replay: usage.idempotent_replay ?? false,
+        http_status: 200,
+        latency_ms: Date.now() - startedAt,
+        success: true,
+        response_sha256: responseHash,
+        response_bytes: new TextEncoder().encode(JSON.stringify(data)).byteLength,
+        structural_observation_count: data.observations.length,
+        evidence_reference_count: data.coverage.length,
+        execution_authorized: false,
+        shareable: true,
+      });
+    } catch (telemetryError) {
+      console.error("[commercial-structural] operations ledger write failed", telemetryError);
+    }
+
+    setResponseStatus(event, 200);
     return {
       ok: true,
       request_id: input.request_id,
-      delivery_id: randomUUID(),
+      delivery_id: deliveryId,
       principal: {
         key_id: principal.key_id,
         type: principal.principal_type,
@@ -325,7 +370,7 @@ export default defineEventHandler(async (event) => {
       },
       data,
       audit: {
-        response_sha256: sha256Json(data),
+        response_sha256: responseHash,
         generated_at: new Date().toISOString(),
       },
       boundaries: {
