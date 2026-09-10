@@ -32,12 +32,11 @@ on:
         default: "manual-pilot:geomacro-first-api-pilot:v1"
         type: string
       tier:
-        description: "Commercial pilot tier"
+        description: "API-enabled commercial pilot tier"
         required: true
         default: api_pilot
         type: choice
         options:
-          - analyst_pilot
           - api_pilot
           - institutional
       duration_days:
@@ -49,7 +48,9 @@ on:
     paths:
       - ".github/workflows/commercial-api-production-acceptance.yml"
       - "scripts/commercial/**"
+      - "src/lib/structured-data-entitlement-registry.ts"
       - "src/__tests__/commercial-production-acceptance-static.test.ts"
+      - "src/__tests__/structured-data-entitlement-registry.test.ts"
 
 permissions:
   contents: read
@@ -82,9 +83,11 @@ jobs:
           grep -q 'https://geomacro.live' "$file"
           grep -q 'provision-commercial-api-pilot.ts --write' "$file"
           grep -q 'accept-commercial-api.ts' "$file"
+          if grep -q -- '- analyst_pilot' "$file"; then
+            echo "::error::Analyst tier must not be provisioned with a commercial API credential."
+            exit 1
+          fi
 
-          # Build forbidden trigger strings from fragments so this validator
-          # cannot match its own source text.
           forbidden_schedule='  sched'"ule:"
           forbidden_push='  pu'"sh:"
           if grep -Fq "$forbidden_schedule" "$file" || grep -Fq "$forbidden_push" "$file"; then
@@ -146,8 +149,8 @@ jobs:
             exit 1
           fi
           case "$COMMERCIAL_PILOT_TIER" in
-            analyst_pilot|api_pilot|institutional) ;;
-            *) echo "::error::Unsupported commercial pilot tier."; exit 1 ;;
+            api_pilot|institutional) ;;
+            *) echo "::error::Only API-enabled commercial tiers can receive API credentials."; exit 1 ;;
           esac
 
       - name: Produce sanitized provisioning plan
