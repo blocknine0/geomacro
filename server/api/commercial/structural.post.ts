@@ -20,6 +20,9 @@ import {
   resolveCommercialEntitlementTier,
 } from "../../../src/lib/commercial-access.server";
 import {
+  structuredDeliveryPolicy,
+} from "../../../src/lib/structured-data-entitlement-registry";
+import {
   loadStructuralContext,
   type StructuralContext,
   type StructuralObservation,
@@ -86,10 +89,18 @@ function publicObservation(row: StructuralObservation) {
   };
 }
 
-function commercialPayload(context: StructuralContext, capability: StructuralCapability) {
+function commercialPayload(
+  context: StructuralContext,
+  capability: StructuralCapability,
+  observationLimit: number,
+  evidenceLimit: number,
+) {
   const digest = capability.endsWith("_digest");
+  const effectiveObservationLimit = digest
+    ? Math.min(3, observationLimit)
+    : observationLimit;
   const observations = context.observations
-    .slice(0, digest ? 3 : 12)
+    .slice(0, effectiveObservationLimit)
     .map(publicObservation);
 
   const coverage = context.metadata.coverage.map((row) => ({
@@ -108,7 +119,7 @@ function commercialPayload(context: StructuralContext, capability: StructuralCap
     methodology_status: context.methodology_status,
     subject: context.subject,
     observations,
-    coverage: digest ? coverage.slice(0, 8) : coverage,
+    coverage: coverage.slice(0, evidenceLimit),
     serving: {
       layer: context.metadata.serving_layer,
       warehouse_methodology_status: context.metadata.warehouse_methodology_status,
@@ -233,6 +244,25 @@ export default defineEventHandler(async (event) => {
     assertCapabilityMatchesSubject(input.capability, input.subject.type);
 
     const tier = await resolveCommercialEntitlementTier(principal);
+    const policy = structuredDeliveryPolicy(
+      tier,
+      input.capability as GeomacroCreditCapability,
+    );
+    if (!policy.allowed) {
+      throw new CommercialAccessError(
+        403,
+        "CAPABILITY_NOT_INCLUDED",
+        "The requested capability is not included in this Geomacro commercial API entitlement.",
+      );
+    }
+    if (!policy.product.subject_types.includes(input.subject.type)) {
+      throw new CommercialAccessError(
+        400,
+        "CAPABILITY_SUBJECT_MISMATCH",
+        "The requested capability does not support this subject type.",
+      );
+    }
+
     const context = await loadStructuralContext(input.subject);
 
     if (context.status === "NOT_CONFIGURED") {
@@ -258,7 +288,12 @@ export default defineEventHandler(async (event) => {
       capability: input.capability as GeomacroCreditCapability,
     });
 
-    const data = commercialPayload(context, input.capability);
+    const data = commercialPayload(
+      context,
+      input.capability,
+      policy.tier.max_structural_observations,
+      policy.tier.max_evidence_references,
+    );
     setResponseStatus(event, 200);
 
     return {
@@ -270,12 +305,16 @@ export default defineEventHandler(async (event) => {
         type: principal.principal_type,
       },
       entitlement: {
+        registry_version: policy.registry_version,
+        credit_contract_version: policy.credit_contract_version,
         tier,
         capability: input.capability,
         credit_cost: usage.credit_cost ?? GEOMACRO_CREDIT_COSTS[input.capability],
         credits_remaining: usage.credits_remaining ?? null,
         period_ends_at: usage.period_ends_at ?? null,
         idempotent_replay: usage.idempotent_replay ?? false,
+        history_mode: policy.tier.history_mode,
+        export_mode: policy.tier.export_mode,
       },
       data,
       audit: {
@@ -283,11 +322,12 @@ export default defineEventHandler(async (event) => {
         generated_at: new Date().toISOString(),
       },
       boundaries: {
-        raw_data_included: false,
-        private_warehouse_access: false,
+        raw_data_included: policy.product.raw_data_included,
+        private_warehouse_access: policy.product.private_warehouse_access,
         structured_delivery_only: true,
-        execution_authorized: false,
-        structural_data_is_gri_v1_2_input: false,
+        execution_authorized: policy.product.execution_authorized,
+        structural_data_is_gri_v1_2_input:
+          policy.product.structural_data_is_gri_v1_2_input,
       },
     };
   } catch (error) {
