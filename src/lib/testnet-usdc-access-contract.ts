@@ -32,7 +32,7 @@ const keys: TestnetUsdcChainKey[] = [
   "lineaSepolia",
 ];
 
-export const TESTNET_USDC_CHAINS = Object.fromEntries(
+export const TESTNET_USDC_ACCESS_CHAINS = Object.fromEntries(
   keys.map((key) => {
     const chain = CCTP_CHAINS[key];
     if (!chain) throw new Error(`Missing CCTP testnet chain config: ${key}`);
@@ -68,8 +68,11 @@ export const TESTNET_USDC_CHAINS = Object.fromEntries(
   }
 >;
 
+// Backward-compatible alias for any internal work-in-progress callers.
+export const TESTNET_USDC_CHAINS = TESTNET_USDC_ACCESS_CHAINS;
+
 export function testnetChainById(chainId: number) {
-  return Object.values(TESTNET_USDC_CHAINS).find((chain) => chain.chain_id === chainId) ?? null;
+  return Object.values(TESTNET_USDC_ACCESS_CHAINS).find((chain) => chain.chain_id === chainId) ?? null;
 }
 
 export function requireTestnetUsdcReceiver(env: Record<string, string | undefined> = process.env) {
