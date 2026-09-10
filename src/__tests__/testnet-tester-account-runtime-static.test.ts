@@ -18,18 +18,23 @@ describe("testnet tester account runtime boundaries", () => {
     expect(migration).toContain("revoke all on table public.testnet_tester_sessions from PUBLIC, anon, authenticated");
   });
 
-  it("does not return the email verification token from public registration", () => {
+  it("does not return email verification or session tokens from public registration", () => {
     const route = read("../../server/api/testnet-tester/register.post.ts");
     expect(route).toContain("sendTestnetVerificationEmail");
+    expect(route).toContain("setTesterSessionCookie(event, result.session_token)");
     const returned = route.slice(route.indexOf("return {"));
     expect(returned).not.toContain("email_verification_token: result.email_verification_token");
+    expect(returned).not.toContain("session_token: result.session_token");
     expect(route).toContain("email_verification_sent: true");
   });
 
-  it("requires bearer tester sessions for sensitive account actions", () => {
+  it("requires a secure-cookie or bearer tester session for sensitive account actions", () => {
     const helper = read("../lib/testnet-tester-http.server.ts");
-    expect(helper).toContain("authorization");
-    expect(helper).toContain("Bearer");
+    const cookie = read("../lib/testnet-tester-cookie.server.ts");
+    expect(helper).toContain("testerSessionTokenFromRequest");
+    expect(cookie).toContain("authorization");
+    expect(cookie).toContain("Bearer");
+    expect(cookie).toContain("__Host-geomacro_test_session");
     for (const path of [
       "../../server/api/testnet-tester/me.get.ts",
       "../../server/api/testnet-tester/wallet-challenge.post.ts",
