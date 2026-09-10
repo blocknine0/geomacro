@@ -4627,7 +4627,7 @@ Deno.serve(async (req) => {
         error:
           "STRUCTURING_FAILED",
         detail:
-          message,
+          "Internal structuring failure. See private run diagnostics.",
       },
       500,
     );

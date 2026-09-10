@@ -782,7 +782,7 @@ Deno.serve(async (req) => {
       {
         ok: false,
         error: "INGEST_FAILED",
-        detail: message,
+        detail: "Internal ingestion failure. See private run diagnostics.",
       },
       500,
     );
