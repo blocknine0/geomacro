@@ -19,6 +19,6 @@ describe("commercial credit idempotency hardening", () => {
   it("keeps the credit debit atomic under the account row lock", () => {
     expect(migration).toContain("for update");
     expect(migration).toContain("credits_used = credits_used + p_credit_cost");
-    expect(migration).toContain("unique").not.toBeDefined;
+    expect(migration).toContain("insert into public.commercial_credit_usage");
   });
 });
