@@ -8,6 +8,24 @@ update public.testnet_tester_profiles
 set access_status='pending_verification', updated_at=now()
 where access_status='awaiting_payment';
 
+create or replace function public.normalize_testnet_tester_access_status()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.access_status = 'awaiting_payment' then
+    new.access_status := 'pending_verification';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_normalize_testnet_tester_access_status on public.testnet_tester_profiles;
+create trigger trg_normalize_testnet_tester_access_status
+before insert or update of access_status on public.testnet_tester_profiles
+for each row execute function public.normalize_testnet_tester_access_status();
+
 alter table public.testnet_tester_profiles
   add constraint testnet_tester_access_status_check
   check (access_status in ('pending_verification','active','expired','suspended','revoked'));
