@@ -16,17 +16,19 @@ import {
 } from "../lib/structured-data-entitlement-registry";
 
 describe("paid multichain testnet USDC tester access", () => {
-  it("requires payment and never counts testnet settlement as revenue", () => {
+  it("requires 0.5 Testnet USDC for a fixed 500-credit quota and never counts testnet settlement as revenue", () => {
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.free_access).toBe(false);
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.payment_required).toBe(true);
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.payment_is_real_revenue).toBe(false);
-    expect(TESTNET_USDC_ACCESS_PRICE_USDC).toBe("1.00");
-    expect(TESTNET_USDC_ACCESS_PRICE_ATOMIC).toBe(1_000_000n);
-    expect(TESTNET_USDC_ACCESS_CREDITS).toBe(250);
+    expect(TESTNET_USDC_ACCESS_PRICE_USDC).toBe("0.50");
+    expect(TESTNET_USDC_ACCESS_PRICE_ATOMIC).toBe(500_000n);
+    expect(TESTNET_USDC_ACCESS_CREDITS).toBe(500);
     expect(TESTNET_USDC_ACCESS_DURATION_DAYS).toBe(30);
+    expect(TESTNET_USDC_ACCESS_BOUNDARIES.credits_per_quota).toBe(500);
+    expect(TESTNET_USDC_ACCESS_BOUNDARIES.quota_price_usdc).toBe("0.50");
   });
 
-  it("supports the primary Circle testnets users are likely to hold USDC on", () => {
+  it("supports the configured multichain testnets", () => {
     expect(Object.keys(TESTNET_USDC_ACCESS_CHAINS)).toEqual([
       "arcTestnet",
       "ethSepolia",
