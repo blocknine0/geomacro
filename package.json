@@ -34,9 +34,9 @@
     "gri:source-diversity:enforce": "node scripts/check-gri-source-diversity.js --enforce"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^2.0.50",
+    "@ai-sdk/openai-compatible": "2.0.75",
     "@circle-fin/adapter-ethers-v6": "1.11.1",
-    "@circle-fin/app-kit": "1.13.0",
+    "@circle-fin/app-kit": "1.14.0",
     "@circle-fin/x402-batching": "3.4.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -73,7 +73,7 @@
     "@tanstack/router-plugin": "^1.168.18",
     "@x402/core": "2.25.0",
     "@x402/evm": "2.25.0",
-    "ai": "^6.0.199",
+    "ai": "6.0.280",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -121,8 +121,8 @@
     "tsx": "^4.23.13",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1",
-    "vitest": "^4.1.8"
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
   },
   "overrides": {
     "js-yaml": "^5.0.0",
