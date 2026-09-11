@@ -38,6 +38,13 @@
       show("paymentPanel", account.registration_status === "complete" && !active);
       show("developerPanel", active);
       show("feedbackPanel", active);
+      if (account.avatar_path) {
+        const preview = $("avatarPreview");
+        if (preview) {
+          preview.src = `/api/testnet-tester/avatar?v=${Date.now()}`;
+          preview.hidden = false;
+        }
+      }
       if (account.registration_status === "complete" && !active) await loadPaymentConfig();
       if (active) await loadDeveloperKeys();
       return account;
@@ -91,6 +98,23 @@
       await loadAccount();
     } catch (error) {
       text("walletActionStatus", error.message || "Wallet verification failed.");
+    }
+  }
+
+  async function uploadAvatar(event) {
+    event.preventDefault();
+    const file = $("avatarInput")?.files?.[0];
+    if (!file) return text("avatarStatus", "Choose a PNG, JPEG or WebP image first.");
+    if (file.size > 2 * 1024 * 1024) return text("avatarStatus", "Profile image must be 2 MB or smaller.");
+    const data = new FormData();
+    data.append("avatar", file);
+    text("avatarStatus", "Uploading profile image...");
+    try {
+      await json("/api/testnet-tester/avatar", { method: "POST", body: data });
+      text("avatarStatus", "Profile image updated.");
+      await loadAccount();
+    } catch (error) {
+      text("avatarStatus", error.message || "Profile image upload failed.");
     }
   }
 
@@ -197,6 +221,7 @@
   function bind() {
     $("registrationForm")?.addEventListener("submit", register);
     $("walletConnect")?.addEventListener("click", connectWallet);
+    $("avatarForm")?.addEventListener("submit", uploadAvatar);
     $("paymentForm")?.addEventListener("submit", claimPayment);
     $("developerKeyForm")?.addEventListener("submit", createDeveloperKey);
     $("copyReceiver")?.addEventListener("click", async () => {
