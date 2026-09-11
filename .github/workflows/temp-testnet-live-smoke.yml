@@ -27,9 +27,9 @@ jobs:
             access_code=$(curl -sS -L -o "$access" -w '%{http_code}' "$base/testnet-access")
             console_code=$(curl -sS -L -o "$console" -w '%{http_code}' "$base/testnet-console")
             home_code=$(curl -sS -L -o "$home" -w '%{http_code}' "$base/")
-            me_code=$(curl -sS -o /tmp/me.json -w '%{http_code}' "$base/api/testnet-tester/me")
-            config_code=$(curl -sS -o /tmp/config.json -w '%{http_code}' "$base/api/testnet-tester/config")
-            unknown_code=$(curl -sS -o /tmp/unknown.json -w '%{http_code}' "$base/api/testnet-tester/not-a-real-route")
+            me_code=$(curl -sS -L -o /tmp/me.json -w '%{http_code}' "$base/api/testnet-tester/me")
+            config_code=$(curl -sS -L -o /tmp/config.json -w '%{http_code}' "$base/api/testnet-tester/config")
+            unknown_code=$(curl -sS -L -o /tmp/unknown.json -w '%{http_code}' "$base/api/testnet-tester/not-a-real-route")
             card_code=$(curl -sS -L -G -o "$card" -w '%{http_code}' \
               --data-urlencode 'subject=USA > CHN' \
               --data-urlencode 'summary=Professional Testnet risk intelligence preview.' \
