@@ -1,0 +1,80 @@
+name: GOAT Corridor Refresh Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ops-goat-corridor-refresh-once.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-corridor-refresh-once
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_KEY_ID: geomacro-risk-2026-02
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate signing and authoritative database configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_SUPABASE_URL:-}" ] || [ -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::Authoritative Supabase secrets are missing."
+            exit 1
+          fi
+          if [ "${RISK_OBJECT_SIGNING_KEY_ID:-}" != "$EXPECTED_KEY_ID" ]; then
+            echo "::error::RISK_OBJECT_SIGNING_KEY_ID must equal $EXPECTED_KEY_ID."
+            exit 1
+          fi
+          if [ -z "${RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:-}" ]; then
+            echo "::error::Risk Object signing private key is missing."
+            exit 1
+          fi
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('Risk Object signing key must be Ed25519');
+          const publicB64 = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=${publicB64}\n`);
+          NODE
+
+      - name: Publish fresh USA and CHN endpoint objects and USA-CHN corridor object
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/test-corridor-risk-gate-preflight.ts USA CHN | tee /tmp/corridor-refresh.log
+
+      - name: Verify refresh evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"corridor_published": true' /tmp/corridor-refresh.log
+          grep -q '"signing_key_id": "geomacro-risk-2026-02"' /tmp/corridor-refresh.log
+          grep -q '"signature_valid": true' /tmp/corridor-refresh.log
+          echo 'Fresh signed USA>CHN corridor object verified.'
