@@ -1,0 +1,73 @@
+name: Security Resilience Gate
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/risk-*.ts"
+      - "src/lib/corridor-risk-*.ts"
+      - "src/__tests__/risk-*.test.ts"
+      - "scripts/stress-risk-gate-core.ts"
+      - "supabase/migrations/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/security-resilience-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-resilience:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: timeout 5m bun install --frozen-lockfile
+
+      - name: Block critical dependency advisories
+        run: timeout 3m bun audit --audit-level=critical
+
+      - name: Capture full dependency-audit evidence
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          timeout 3m bun audit 2>&1 | tee dependency-audit.txt
+          code=${PIPESTATUS[0]}
+          echo "bun_audit_exit=${code}" | tee -a dependency-audit.txt
+          exit 0
+
+      - name: Risk Gate abuse and fail-closed tests
+        run: >-
+          timeout 6m bunx vitest run
+          src/__tests__/risk-gate-api-parser.test.ts
+          src/__tests__/risk-gate-api-hardening.test.ts
+          src/__tests__/risk-gate-runtime-fail-closed.test.ts
+          src/__tests__/risk-gate-verification-fail-closed.test.ts
+          src/__tests__/risk-supabase-timeout.test.ts
+
+      - name: Database migration safety
+        run: timeout 3m bun run db:safety
+
+      - name: Deterministic Risk Gate stress run
+        run: timeout 4m bun run scripts/stress-risk-gate-core.ts --iterations 50000
+
+      - name: Production build
+        run: timeout 8m bun run build
+
+      - name: Upload security and resilience evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-resilience-${{ github.run_id }}
+          path: |
+            dependency-audit.txt
+            artifacts/risk-gate-core-stress.json
+          if-no-files-found: warn
+          retention-days: 90
