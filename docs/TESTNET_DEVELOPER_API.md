@@ -13,8 +13,6 @@ This document applies only to Geomacro Testnet access. It does not define mainne
 
 The 500-credit number is a usage cap, not a prepaid balance. A developer pays only when making a metered API call.
 
-Current credit costs and Testnet call prices:
-
 | Capability | Credits | Testnet USDC per call |
 | --- | ---: | ---: |
 | `intelligence_query` | 1 | 0.5 |
@@ -26,7 +24,25 @@ Current credit costs and Testnet call prices:
 | `signed_risk_object` | 10 | 5.0 |
 | `risk_gate_bundle` | 15 | 7.5 |
 
-Only capabilities with accepted external routes should be treated as currently callable. The table also records the Testnet pricing contract for capabilities that are still being wired to dedicated developer endpoints.
+All eight capabilities are served through the same canonical Testnet intelligence service. The browser tester console and developer credential API do not maintain separate risk data stores.
+
+## What Testnet users receive
+
+The Testnet API reads from the same Geomacro intelligence pipeline used by the product:
+
+`real-world evidence → normalized/classified provenance-preserving state → structured intelligence → governed API output`
+
+Depending on capability, responses can include:
+
+- grounded geopolitical and macro intelligence summaries;
+- the current verified Global Risk Index, previous score, change points and change attribution;
+- GRI coverage, weighted confidence, methodology/proof versions and integrity hashes;
+- governed country and directional-corridor structural observations and coverage metadata;
+- live severity context from the structured-event layer;
+- signed Geomacro Risk Objects with risk score, confidence, attribution, safe evidence references, methodology, provenance versions, verification state and integrity/signature fields;
+- Risk Gate decision context with the referenced signed Risk Object, structural context and canonical GRI context.
+
+Raw private-warehouse access and upstream news-source URLs/identities are not part of Testnet machine delivery. Risk Gate remains context-only and always returns `execution_authorized=false`.
 
 ## Developer credentials
 
@@ -43,14 +59,14 @@ A tester can keep up to three active Testnet developer credentials and can revok
 
 ## Authentication
 
-Send both credentials. The current route accepts either the Testnet Authorization scheme:
+Send both credentials. The Testnet developer endpoint accepts either:
 
 ```text
 Authorization: GeomacroTest <API_KEY>.<API_SECRET>
 Content-Type: application/json
 ```
 
-or the explicit pair headers:
+or:
 
 ```text
 X-Geomacro-Api-Key: <API_KEY>
@@ -60,20 +76,22 @@ Content-Type: application/json
 
 A Testnet API Key without its matching API Secret is rejected.
 
-## Pay-per-call flow
-
-Endpoint:
+## Developer endpoint
 
 ```text
-POST /api/commercial/structural
+POST /api/testnet/intelligence
 ```
+
+The browser tester console uses the same delivery service through its authenticated tester-session route. Developer integrations use the API Key + API Secret endpoint above.
+
+## Pay-per-call flow
 
 ### 1. Request a quote
 
-Send the request with the API credential pair and no payment proof:
+Example: country digest.
 
 ```bash
-curl -X POST "https://geomacro.live/api/commercial/structural" \
+curl -X POST "https://geomacro.live/api/testnet/intelligence" \
   -H "X-Geomacro-Api-Key: gmk_test_EXAMPLE" \
   -H "X-Geomacro-Api-Secret: gms_test_EXAMPLE" \
   -H "Content-Type: application/json" \
@@ -87,7 +105,7 @@ curl -X POST "https://geomacro.live/api/commercial/structural" \
   }'
 ```
 
-For a Testnet credential, the endpoint returns HTTP `402` with the exact payment quote. For `structural_country_digest`, that quote is 3 credits × 0.5 Testnet USDC = 1.5 Testnet USDC.
+The endpoint returns HTTP `402` with the exact quote. For this capability the amount is 3 credits × 0.5 Testnet USDC = 1.5 Testnet USDC.
 
 The quote includes the dedicated receiver, supported Testnet chains, required atomic amount, credit cost and pricing version.
 
@@ -102,7 +120,7 @@ Send the quoted Testnet USDC amount from the same verified tester wallet on one 
 ### 3. Retry the same request ID with payment proof
 
 ```bash
-curl -X POST "https://geomacro.live/api/commercial/structural" \
+curl -X POST "https://geomacro.live/api/testnet/intelligence" \
   -H "X-Geomacro-Api-Key: gmk_test_EXAMPLE" \
   -H "X-Geomacro-Api-Secret: gms_test_EXAMPLE" \
   -H "Content-Type: application/json" \
@@ -121,17 +139,63 @@ curl -X POST "https://geomacro.live/api/commercial/structural" \
   }'
 ```
 
-Geomacro verifies the chain identity, official Testnet USDC contract, payer wallet, dedicated receiver, confirmed receipt and minimum amount. The same transaction cannot pay for another request, and the same `request_id` cannot be rebound to a different capability or payment proof.
+Geomacro verifies the chain identity, Testnet USDC contract, payer wallet, dedicated receiver, confirmed receipt and required amount. The same transaction cannot pay for another request, and the same `request_id` cannot be rebound to a different capability or payment proof.
 
-Supported structured capabilities on the current external route:
+## Request shapes
 
-- `structural_country_digest`
-- `structural_corridor_digest`
-- `structural_country_profile`
-- `structural_corridor_profile`
+### Intelligence query
 
-The wider Testnet entitlement registry also contains intelligence, GRI, signed Risk Object, Risk Gate and agent scopes. Those capabilities should only be advertised as external developer endpoints after their dedicated routes pass the same end-to-end acceptance gate.
+```json
+{
+  "request_id": "query-request-0001",
+  "capability": "intelligence_query",
+  "question": "What geopolitical or macro risk changed recently?"
+}
+```
+
+### Global Risk Index
+
+```json
+{
+  "request_id": "gri-request-00001",
+  "capability": "gri_read",
+  "subject": { "type": "global" }
+}
+```
+
+### Signed Risk Object
+
+```json
+{
+  "request_id": "gro-request-00001",
+  "capability": "signed_risk_object",
+  "subject": { "type": "country", "country_iso3": "USA" }
+}
+```
+
+Country and corridor subjects are supported for signed Risk Objects when a compatible current object exists.
+
+### Risk Gate bundle
+
+```json
+{
+  "request_id": "gate-request-0001",
+  "capability": "risk_gate_bundle",
+  "subject": { "type": "country", "country_iso3": "USA" },
+  "policy_preset": "balanced",
+  "action_type": "agent_payment",
+  "amount_usdc": 5000
+}
+```
+
+Risk Gate policy presets are `balanced`, `cautious` and `strict`. The result provides decision context only. Geomacro does not authorize or submit the downstream action.
 
 ## Safety boundaries
 
-Testnet API responses do not provide raw private-warehouse access and do not authorize execution. Testnet settlement is never classified as commercial revenue. Mainnet and commercial production pricing are separate and are not changed by this Testnet contract.
+- Testnet only; Testnet settlements are non-revenue.
+- No upfront 250 Testnet USDC payment.
+- 500 credits is a 30-day maximum usage cap.
+- No raw private-warehouse customer access.
+- No upstream news-source URL/identity delivery in machine responses.
+- No execution authorization.
+- Mainnet and commercial production pricing are separate and unchanged by this Testnet contract.
