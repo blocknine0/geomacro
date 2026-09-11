@@ -12,6 +12,7 @@ import {
   type CommercialPrincipal,
   type CommercialResolvedEntitlement,
 } from "./commercial-access.server";
+import { recordCommercialPaymentEvent } from "./commercial-ops.server";
 import {
   TESTNET_API_CREDIT_PRICE_USDC,
   TESTNET_API_PRICING_VERSION,
@@ -28,6 +29,14 @@ import { verifyTestnetUsdcPayment } from "./testnet-usdc-payment-verification.se
 
 function sha256Text(value: string): string {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
+}
+
+function blockNumberDecimal(value: string): string | null {
+  try {
+    return BigInt(value).toString();
+  } catch {
+    return null;
+  }
 }
 
 export function testnetApiPaymentQuote(capability: GeomacroCreditCapability) {
@@ -68,19 +77,6 @@ async function assertCreditCapacity(input: {
     );
   }
 
-  const existingUsage = await db
-    .from("commercial_credit_usage")
-    .select("request_id")
-    .eq("account_id", accountResult.data.id)
-    .limit(1);
-  if (existingUsage.error) {
-    throw new CommercialAccessError(
-      503,
-      "COMMERCIAL_USAGE_UNAVAILABLE",
-      "Testnet usage accounting is temporarily unavailable.",
-    );
-  }
-
   const remaining =
     Number(accountResult.data.included_credits) - Number(accountResult.data.credits_used);
   const cost = GEOMACRO_CREDIT_COSTS[input.capability];
@@ -109,6 +105,7 @@ export type TestnetSettlementResult =
       quote: ReturnType<typeof testnetApiPaymentQuote>;
       usage: CommercialCreditResult;
       payment: {
+        payment_event_id: string;
         payment_model: "pay_per_call";
         chain_key: string;
         chain_id: number;
@@ -212,7 +209,7 @@ export async function settleTestnetApiCall(input: {
 
   const existingRequest = await db
     .from("testnet_usdc_payment_claims")
-    .select("id,tx_hash,capability,credit_cost,verification_status")
+    .select("id,tx_hash,capability,credit_cost,verification_status,payment_event_id")
     .eq("principal_id", input.principal.principal_id)
     .eq("request_id", input.request_id)
     .maybeSingle();
@@ -292,10 +289,90 @@ export async function settleTestnetApiCall(input: {
     throw error;
   }
 
+  const networkName = TESTNET_USDC_ACCESS_CHAINS[verified.chain_key].name;
+  const existingPaymentEvent = await db
+    .from("commercial_payment_events")
+    .select("id,principal_id,entitlement_grant_id")
+    .eq("network_name", networkName)
+    .eq("tx_hash", verified.tx_hash)
+    .maybeSingle();
+  if (existingPaymentEvent.error) {
+    throw new CommercialAccessError(
+      503,
+      "TESTNET_PAYMENT_RECONCILIATION_UNAVAILABLE",
+      "Testnet payment reconciliation is temporarily unavailable.",
+    );
+  }
+
+  let paymentEventId: string;
+  if (existingPaymentEvent.data) {
+    if (
+      existingPaymentEvent.data.principal_id &&
+      String(existingPaymentEvent.data.principal_id) !== input.principal.principal_id
+    ) {
+      throw new CommercialAccessError(
+        409,
+        "TESTNET_PAYMENT_RECONCILIATION_CONFLICT",
+        "This Testnet payment is already reconciled to a different principal.",
+      );
+    }
+    paymentEventId = String(existingPaymentEvent.data.id);
+  } else {
+    try {
+      paymentEventId = await recordCommercialPaymentEvent({
+        environment: "testnet",
+        network_family: "evm",
+        network_name: networkName,
+        chain_id: String(verified.chain_id),
+        provider: "direct_testnet_usdc",
+        provider_environment: "testnet",
+        payment_method: "onchain_usdc",
+        payment_status: "settled",
+        revenue_classification: "testnet_non_revenue",
+        provider_payment_id: `${verified.chain_id}:${verified.tx_hash}`,
+        idempotency_key: `testnet-api:${input.principal.principal_id}:${input.request_id}`,
+        principal_id: input.principal.principal_id,
+        entitlement_grant_id: input.entitlement.grant_id,
+        offer_id: input.entitlement.policy.offer_id,
+        tier: input.entitlement.tier,
+        asset_symbol: "USDC",
+        asset_contract: verified.usdc_contract,
+        amount_atomic: verified.amount_atomic,
+        amount_decimal: Number(verified.amount_usdc),
+        payer_reference: verified.payer_address,
+        recipient_reference: verified.recipient_address,
+        tx_hash: verified.tx_hash,
+        block_number: blockNumberDecimal(verified.block_number),
+        settled_at: new Date().toISOString(),
+        reconciliation_status: "matched",
+        reconciliation_reference: input.request_id,
+        commercial_revenue: false,
+        metadata: {
+          testnet_only: true,
+          request_id: input.request_id,
+          capability: input.capability,
+          credit_cost: GEOMACRO_CREDIT_COSTS[input.capability],
+          credit_price_testnet_usdc: TESTNET_API_CREDIT_PRICE_USDC,
+          required_amount_atomic: quote.amount_due_atomic,
+          pricing_version: TESTNET_API_PRICING_VERSION,
+          payment_model: "pay_per_call",
+          execution_authorized: false,
+        },
+      });
+    } catch (error) {
+      throw new CommercialAccessError(
+        503,
+        "TESTNET_PAYMENT_RECONCILIATION_FAILED",
+        "Testnet payment was verified but the central audit ledger could not be reconciled.",
+      );
+    }
+  }
+
   const finalize = await db
     .from("testnet_usdc_payment_claims")
     .update({
       verification_status: "verified",
+      payment_event_id: paymentEventId,
       verified_at: new Date().toISOString(),
       rejected_at: null,
       rejection_code: null,
@@ -315,6 +392,7 @@ export async function settleTestnetApiCall(input: {
     quote,
     usage,
     payment: {
+      payment_event_id: paymentEventId,
       payment_model: "pay_per_call",
       chain_key: verified.chain_key,
       chain_id: verified.chain_id,
