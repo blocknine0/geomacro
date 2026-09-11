@@ -152,7 +152,7 @@ describe("testnet USDC payment verification", () => {
       env: env(),
     });
 
-    expect(result).toEqual({ ok: false, code: "WRONG_PAYER" });
+    expect(result).toEqual({ ok: false, code: "UNDERPAYMENT" });
   });
 
   it("rejects a transfer emitted by a non-USDC token contract", async () => {
