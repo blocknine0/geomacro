@@ -1,7 +1,13 @@
 import { createError, defineEventHandler, readBody, setResponseHeaders } from "h3";
 
-import { createTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
-import { setTesterSessionCookie } from "../../../src/lib/testnet-tester-cookie.server";
+import {
+  createTestnetTesterAccount,
+  requireTestnetTesterSession,
+} from "../../../src/lib/testnet-tester-account.server";
+import {
+  setTesterSessionCookie,
+  testerSessionTokenFromRequest,
+} from "../../../src/lib/testnet-tester-cookie.server";
 
 type RegistrationFailureLike = {
   code?: unknown;
@@ -52,6 +58,24 @@ export default defineEventHandler(async (event) => {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
   });
+
+  const existingToken = testerSessionTokenFromRequest(event);
+  if (existingToken) {
+    try {
+      const existing = await requireTestnetTesterSession(existingToken);
+      return {
+        ok: true,
+        data: {
+          principal_id: existing.principalId,
+          registration_created: false,
+          next_step: "verify_wallet",
+        },
+        execution_authorized: false,
+      };
+    } catch {
+      // Invalid or expired sessions fall through to a fresh tester profile.
+    }
+  }
 
   const body = await readBody<Record<string, unknown>>(event);
 
