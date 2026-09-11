@@ -1,0 +1,125 @@
+name: GOAT Reset Known-Unreached Attempt Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ops-goat-reset-known-unreached-attempt.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-reset-known-unreached-attempt-once
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TARGET_IDEMPOTENCY_KEY: geomacro-goat-e2e-20260911-08
+    steps:
+      - name: Validate authoritative database configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_SUPABASE_URL:-}" ] || [ -z "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::Authoritative Supabase GitHub Actions secrets are missing."
+            exit 1
+          fi
+          case "$APP_SUPABASE_URL" in
+            https://ldpwajisioljyjtojvfx.supabase.co|https://ldpwajisioljyjtojvfx.supabase.co/) ;;
+            *) echo "::error::Refusing to mutate a non-authoritative Supabase project."; exit 1 ;;
+          esac
+
+      - name: Reconcile locally-ambiguous attempt proven not to reach provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const base = process.env.APP_SUPABASE_URL.replace(/\/$/, '');
+          const key = process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
+          const target = process.env.TARGET_IDEMPOTENCY_KEY;
+          const headers = {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          };
+
+          async function get(path) {
+            const response = await fetch(`${base}/rest/v1/${path}`, { headers });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`GET ${path.split('?')[0]} failed with ${response.status}: ${text.slice(0, 300)}`);
+            return text ? JSON.parse(text) : [];
+          }
+
+          const requests = await get(
+            `agent_goat_pilot_requests?select=request_id,idempotency_key,environment&` +
+            `idempotency_key=eq.${encodeURIComponent(target)}&limit=2`,
+          );
+          if (requests.length !== 1) {
+            throw new Error(`Expected exactly one pilot request for ${target}; found ${requests.length}`);
+          }
+          const requestId = requests[0].request_id;
+          if (requests[0].environment !== 'testnet3') {
+            throw new Error('Refusing to reconcile a non-Testnet3 request');
+          }
+
+          const [orders, challenges, fulfillments, claims] = await Promise.all([
+            get(`agent_goat_orders?select=request_id&request_id=eq.${requestId}&limit=1`),
+            get(`agent_goat_order_challenges?select=request_id&request_id=eq.${requestId}&limit=1`),
+            get(`agent_goat_pilot_fulfillments?select=request_id&request_id=eq.${requestId}&limit=1`),
+            get(`agent_goat_order_creation_claims?select=request_id,provider_creation_attempted_at,claimed_at,lease_expires_at&request_id=eq.${requestId}&limit=2`),
+          ]);
+
+          if (orders.length || challenges.length || fulfillments.length) {
+            throw new Error('Refusing reset because provider/order/payment evidence already exists');
+          }
+          if (claims.length !== 1) {
+            throw new Error(`Expected exactly one order-creation claim; found ${claims.length}`);
+          }
+          if (!claims[0].provider_creation_attempted_at) {
+            console.log('Claim is already safe to retry; no reset required.');
+            process.exit(0);
+          }
+
+          // The preceding worker failure was local HMAC API-key validation before
+          // any provider request was signed/sent. With no order/challenge/payment
+          // evidence present, clear only that false-positive attempted marker and
+          // expire the lease so the same idempotent request can safely reacquire it.
+          const now = new Date().toISOString();
+          const response = await fetch(
+            `${base}/rest/v1/agent_goat_order_creation_claims?request_id=eq.${requestId}`,
+            {
+              method: 'PATCH',
+              headers: { ...headers, Prefer: 'return=representation' },
+              body: JSON.stringify({
+                provider_creation_attempted_at: null,
+                lease_expires_at: now,
+                updated_at: now,
+              }),
+            },
+          );
+          const text = await response.text();
+          if (!response.ok) {
+            throw new Error(`Claim reset failed with ${response.status}: ${text.slice(0, 300)}`);
+          }
+          const updated = text ? JSON.parse(text) : [];
+          if (updated.length !== 1 || updated[0].provider_creation_attempted_at !== null) {
+            throw new Error('Claim reset did not produce the expected single safe row');
+          }
+
+          const verification = await get(
+            `agent_goat_order_creation_claims?select=request_id,provider_creation_attempted_at,lease_expires_at&request_id=eq.${requestId}&limit=1`,
+          );
+          if (verification.length !== 1 || verification[0].provider_creation_attempted_at !== null) {
+            throw new Error('Post-reset verification failed');
+          }
+
+          console.log(`Safely reset false-positive GOAT creation-attempt marker for ${target}.`);
+          console.log('Provider/order/payment evidence remains absent.');
+          NODE
