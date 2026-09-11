@@ -218,16 +218,25 @@ export const Route = createFileRoute("/api/goat/pilot/order")({
 
         try {
           const result = await prepareGoatPilotOrder(input);
-          return response(
-            result.body,
-            result.http_status,
-            result.http_status === 402
-              ? {
-                  "X-Geomacro-Payment-Provider": "goat_flow_x402",
-                  "X-Geomacro-Commercial-Revenue": "false",
-                }
-              : {},
-          );
+          if (result.http_status === 402) {
+            const commercialRevenue = result.body.environment === "mainnet";
+            return response(
+              {
+                ...result.body,
+                payment: {
+                  ...result.body.payment,
+                  commercial_revenue: commercialRevenue,
+                },
+              },
+              result.http_status,
+              {
+                "X-Geomacro-Payment-Provider": "goat_flow_x402",
+                "X-Geomacro-Commercial-Revenue": commercialRevenue ? "true" : "false",
+              },
+            );
+          }
+
+          return response(result.body, result.http_status);
         } catch (error) {
           if (error instanceof GoatPilotError) {
             return response(
