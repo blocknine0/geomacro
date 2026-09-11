@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'scripts/goat/testnet3-provider-dry-run.mjs'
-      - 'scripts/goat/testnet3-provider-diagnostic.mjs'
       - 'src/lib/goat-flow.server.ts'
       - 'src/lib/goat-pilot-**'
       - 'src/routes/api.goat.pilot.*'
@@ -52,13 +51,6 @@ jobs:
             echo "GOAT Testnet3 live provider dry run was not executed because one or more required repository secrets are unavailable in this workflow context." >> "$GITHUB_STEP_SUMMARY"
             echo "No merchant credential value was printed or inferred." >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Run sanitized provider diagnostic
-        if: steps.config.outputs.configured == 'true'
-        continue-on-error: true
-        env:
-          GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
-        run: node scripts/goat/testnet3-provider-diagnostic.mjs
 
       - name: Run no-payment Testnet3 provider dry run
         if: steps.config.outputs.configured == 'true'
