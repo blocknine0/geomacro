@@ -42,7 +42,7 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(migration).toContain("'idempotent_replay',true");
     expect(migration).toContain("'credits_granted',0");
     expect(migration).toContain("'testnet_non_revenue'");
-    expect(migration).toContain("commercial_revenue,false");
+    expect(migration).toContain("'commercial_revenue',false");
     expect(paymentService).toContain("commercial_revenue: false");
   });
 
