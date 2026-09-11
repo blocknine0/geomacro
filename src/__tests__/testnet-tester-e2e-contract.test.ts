@@ -11,21 +11,22 @@ const paymentService = read("src/lib/testnet-tester-payment.server.ts");
 const paymentRoute = read("server/api/testnet-tester/payment-claim.post.ts");
 const developer = read("src/lib/testnet-developer-access.server.ts");
 const commercialAccess = read("src/lib/commercial-access.server.ts");
+const structuralRoute = read("server/api/commercial/structural.post.ts");
 const browser = read("public/testnet-access.js");
 const consoleBrowser = read("public/testnet-console.js");
 const page = read("server/routes/testnet-access.get.ts");
 const ops = read("src/lib/commercial-ops.server.ts");
 const walletMigration = read("supabase/migrations/910_testnet_wallet_only_access.sql");
-const pricingMigration = read("supabase/migrations/911_testnet_api_pricing_alignment.sql");
+const meteredMigration = read("supabase/migrations/912_testnet_api_pay_per_call.sql");
 
 describe("Testnet tester end-to-end contract trial", () => {
-  it("uses wallet verification as the only identity gate", () => {
+  it("uses wallet verification as the only identity gate and provisions access without upfront payment", () => {
     expect(account).toContain("TESTNET_WALLET_ALREADY_REGISTERED");
     expect(account).toContain('registration_status: "complete"');
-    expect(walletMigration).toContain("wallet_verified_at is not null");
-    expect(walletMigration).not.toContain("email_verified_at is not null");
-    expect(walletMigration).not.toContain("x_connected_at is not null");
-    expect(walletMigration).not.toContain("discord_connected_at is not null");
+    expect(account).toContain("provision_testnet_metered_access");
+    expect(account).toContain('payment_model: "pay_per_call"');
+    expect(meteredMigration).toContain("wallet_verified_at is not null");
+    expect(meteredMigration).not.toContain("current_payment_event_id is not null");
     expect(page).toContain("No email, X-account or Discord connection is required");
   });
 
@@ -39,44 +40,50 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(page).toContain("Polygon Amoy");
   });
 
-  it("requires 0.5 Testnet USDC per credit for one fixed 500-credit quota", () => {
+  it("uses 500 credits as a cap and charges 0.5 Testnet USDC per consumed credit", () => {
     expect(pricing).toContain("TESTNET_API_CREDIT_PRICE_USDC = 0.5");
+    expect(pricing).toContain("TESTNET_API_CREDIT_PRICE_ATOMIC = 500_000n");
     expect(pricing).toContain("TESTNET_API_FIXED_CREDITS = 500");
-    expect(pricing).toContain("TESTNET_API_FIXED_QUOTA_USDC = 250");
-    expect(pricing).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC = 250_000_000n");
-    expect(paymentContract).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC");
-    expect(paymentVerifier).toContain("TESTNET_USDC_ACCESS_PRICE_ATOMIC");
-    expect(pricingMigration).toContain("amount_atomic >= 250000000");
-    expect(pricingMigration).toContain("amount_usdc >= 250");
-    expect(pricingMigration).toContain("'credit_price_testnet_usdc', 0.5");
-    expect(pricingMigration).toContain("'quota_price_usdc', 250");
-    expect(paymentService).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC");
-    expect(paymentRoute).toContain("TESTNET_API_FIXED_CREDITS");
-    expect(paymentRoute).toContain("TESTNET_API_CREDIT_PRICE_USDC");
-    expect(paymentRoute).toContain("TESTNET_API_FIXED_QUOTA_USDC");
+    expect(pricing).toContain('payment_model: "pay_per_call"');
+    expect(pricing).toContain("upfront_payment_required: false");
+    expect(paymentContract).toContain("credits_per_30_days: TESTNET_API_FIXED_CREDITS");
+    expect(paymentVerifier).toContain("minimum_amount_atomic?: bigint");
+    expect(meteredMigration).toContain("amount_atomic >= 500000");
+    expect(meteredMigration).toContain("max_credits_per_30_days");
+    expect(paymentService).toContain("TESTNET_UPFRONT_ACTIVATION_RETIRED");
+    expect(paymentRoute).toContain("TESTNET_UPFRONT_ACTIVATION_RETIRED");
   });
 
-  it("keeps payment replay bounded and Testnet non-revenue", () => {
-    expect(walletMigration).toContain("'idempotent_replay',true");
-    expect(walletMigration).toContain("'credits_granted',0");
-    expect(pricingMigration).toContain("testnet_non_revenue");
-    expect(paymentService).toContain("commercial_revenue: false");
-    expect(paymentRoute).toContain('payment_environment: "testnet"');
-    expect(paymentRoute).toContain("commercial_revenue: false");
+  it("returns a per-call 402 quote and binds one payment proof to one request id", () => {
+    expect(structuralRoute).toContain("TESTNET_PAYMENT_REQUIRED");
+    expect(structuralRoute).toContain("testnetApiCallPriceAtomic");
+    expect(structuralRoute).toContain("testnetApiCallPriceUsdc");
+    expect(structuralRoute).toContain("minimum_amount_atomic: requiredAtomic");
+    expect(structuralRoute).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
+    expect(structuralRoute).toContain("TESTNET_PAYMENT_IDEMPOTENCY_CONFLICT");
+    expect(meteredMigration).toContain("testnet_usdc_payment_claim_principal_request_unique");
+    expect(meteredMigration).toContain("request_id text");
+    expect(meteredMigration).toContain("capability text");
+    expect(meteredMigration).toContain("credit_cost integer");
   });
 
-  it("issues an API Key + one-time API Secret only after active tester entitlement", () => {
-    expect(developer).toContain('profile.access_status !== "active"');
-    expect(developer).toContain('grant.tier !== "testnet_tester"');
-    expect(developer).toContain("TESTNET_TESTER_ENTITLEMENT_NOT_ACTIVE");
+  it("issues an API Key + one-time API Secret after wallet verification", () => {
+    expect(developer).toContain("TESTNET_WALLET_VERIFICATION_REQUIRED");
+    expect(developer).toContain("provision_testnet_metered_access");
+    expect(developer).toContain('grant.metadata?.payment_model !== "pay_per_call"');
     expect(developer).toContain("const apiKey = `gmk_test_");
     expect(developer).toContain("const apiSecret = `gms_test_");
     expect(developer).toContain("api_key_hash: sha256(apiSecret)");
     expect(developer).toContain("api_secret: apiSecret");
     expect(commercialAccess).toContain("TESTNET_API_KEY_SECRET_REQUIRED");
-    expect(commercialAccess).toContain("GeomacroTest");
-    expect(page).toContain("API Key + API Secret");
     expect(browser).toContain("payload.data.api_secret");
+  });
+
+  it("keeps Testnet settlement non-revenue and execution unauthorized", () => {
+    expect(pricing).toContain("payment_is_real_revenue: false");
+    expect(structuralRoute).toContain("commercial_revenue: false");
+    expect(structuralRoute).toContain("execution_authorized: false");
+    expect(paymentVerifier).toContain('revenue_classification: "testnet_non_revenue"');
   });
 
   it("keeps the professional social-card to X flow after testing", () => {
@@ -87,13 +94,13 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(consoleBrowser).toContain("/api/testnet-tester/share");
   });
 
-  it("keeps owner-side usage and collection evidence available", () => {
+  it("keeps owner-side usage evidence available", () => {
     expect(ops).toContain("recent_usage");
     expect(ops).toContain("recent_payments");
     expect(ops).toContain("principal_id");
     expect(ops).toContain("tx_hash");
     expect(ops).toContain("network_name");
-    expect(ops).toContain("amount_decimal");
     expect(ops).toContain("credits_remaining");
+    expect(walletMigration).toContain("testnet_usdc_payment_claims");
   });
 });
