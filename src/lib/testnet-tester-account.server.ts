@@ -63,7 +63,7 @@ export async function createTestnetTesterAccount(input: { profileName: string; t
     terms_version: termsVersion,
     terms_accepted_at: new Date().toISOString(),
     registration_status: "pending",
-    access_status: "pending_verification",
+    access_status: "awaiting_payment",
   });
   if (profileInsert.error) throw profileInsert.error;
 
