@@ -27,10 +27,12 @@ describe("testnet tester registration boundary", () => {
     expect(pageSource).not.toContain("Connect Discord");
   });
 
-  it("describes the fixed quota and post-test X share-card flow", () => {
-    expect(pageSource).toContain("0.50 Testnet USDC");
-    expect(pageSource).toContain("500 credits");
+  it("describes canonical Testnet pricing, developer credentials and post-test X sharing", () => {
+    expect(pageSource).toContain("0.5 Testnet USDC per credit");
+    expect(pageSource).toContain("250 Testnet USDC");
+    expect(pageSource).toContain("500 fixed credits");
     expect(pageSource).toContain("one quota per verified wallet");
+    expect(pageSource).toContain("API Key + API Secret");
     expect(pageSource).toContain("TEST → CARD → X");
     expect(pageSource).toContain("Share result on X");
   });
