@@ -40,6 +40,7 @@ import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
 import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
+import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
 
@@ -198,6 +199,11 @@ const ApiDemoPreflightRoute = ApiDemoPreflightRouteImport.update({
   path: '/api/demo/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoatPilotArtifactRoute = ApiGoatPilotArtifactRouteImport.update({
+  id: '/api/goat/pilot/artifact',
+  path: '/api/goat/pilot/artifact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoatPilotOrderRoute = ApiGoatPilotOrderRouteImport.update({
   id: '/api/goat/pilot/order',
   path: '/api/goat/pilot/order',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
 }
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
 }
@@ -312,6 +320,7 @@ export interface FileRoutesById {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
 }
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
   fileRoutesByTo: FileRoutesByTo
@@ -384,6 +394,7 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
   id:
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
   fileRoutesById: FileRoutesById
@@ -455,6 +467,7 @@ export interface RootRouteChildren {
   ApiAgentRiskRoute: typeof ApiAgentRiskRoute
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
+  ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
 }
@@ -678,6 +691,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDemoPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/goat/pilot/artifact': {
+      id: '/api/goat/pilot/artifact'
+      path: '/api/goat/pilot/artifact'
+      fullPath: '/api/goat/pilot/artifact'
+      preLoaderRoute: typeof ApiGoatPilotArtifactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/goat/pilot/order': {
       id: '/api/goat/pilot/order'
       path: '/api/goat/pilot/order'
@@ -727,6 +747,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRiskRoute: ApiAgentRiskRoute,
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
+  ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
 }
