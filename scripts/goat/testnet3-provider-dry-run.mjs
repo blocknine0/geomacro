@@ -58,7 +58,7 @@ function signHeaders(body, apiKey, apiSecret) {
         safeScalar(value, key),
       ]),
     ),
-    api_key: safeScalar(apiKey, "api_key"),
+    api_key: apiKey,
     timestamp: safeScalar(timestamp, "timestamp"),
     nonce: safeScalar(nonce, "nonce"),
   };

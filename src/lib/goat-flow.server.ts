@@ -97,6 +97,7 @@ const EVM_ADDRESS = /^0x[a-fA-F0-9]{40}$/;
 const TX_HASH = /^0x[a-fA-F0-9]{64}$/;
 const INTEGER_STRING = /^(0|[1-9][0-9]{0,77})$/;
 const SAFE_SIGNED_SCALAR = /^[^&=\u0000-\u001F\u007F]{1,512}$/;
+const SAFE_CREDENTIAL_SCALAR = /^[^\u0000-\u001F\u007F]{1,512}$/;
 const KNOWN_STATUSES = new Set<GoatFlowOrderStatus>([
   "CHECKOUT_VERIFIED",
   "PAYMENT_CONFIRMED",
@@ -138,6 +139,13 @@ function safeId(value: string, field: string): string {
 function safeSignedScalar(value: string, field: string): string {
   if (!SAFE_SIGNED_SCALAR.test(value)) {
     throw new Error(`${field} contains unsupported HMAC delimiter/control characters`);
+  }
+  return value;
+}
+
+function safeCredentialScalar(value: string, field: string): string {
+  if (!SAFE_CREDENTIAL_SCALAR.test(value)) {
+    throw new Error(`${field} contains invalid control characters`);
   }
   return value;
 }
@@ -266,19 +274,19 @@ export function signGoatFlowRequest(
   nowSeconds = Math.floor(Date.now() / 1000),
   nonce = randomUUID(),
 ) {
-  safeSignedScalar(config.api_key, "api_key");
+  const apiKey = safeCredentialScalar(config.api_key, "api_key");
   safeSignedScalar(String(nowSeconds), "timestamp");
   safeSignedScalar(nonce, "nonce");
 
   const params = {
     ...stringifiedSignedBody(body),
-    api_key: config.api_key,
+    api_key: apiKey,
     timestamp: String(nowSeconds),
     nonce,
   };
 
   return {
-    "X-API-Key": config.api_key,
+    "X-API-Key": apiKey,
     "X-Timestamp": String(nowSeconds),
     "X-Nonce": nonce,
     "X-Sign": calculateGoatFlowSignature(params, config.api_secret),
