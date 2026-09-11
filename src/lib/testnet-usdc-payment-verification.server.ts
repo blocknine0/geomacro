@@ -113,9 +113,13 @@ export async function verifyTestnetUsdcPayment(input: {
   chain_key: string;
   tx_hash: string;
   expected_payer?: string | null;
+  minimum_amount_atomic?: bigint;
   env?: Record<string, string | undefined>;
 }): Promise<TestnetUsdcPaymentVerification> {
   const env = input.env ?? process.env;
+  const minimumAmountAtomic = input.minimum_amount_atomic ?? TESTNET_USDC_ACCESS_PRICE_ATOMIC;
+  if (minimumAmountAtomic < 1n) throw new Error("TESTNET_PAYMENT_MINIMUM_INVALID");
+
   if (!(input.chain_key in TESTNET_USDC_ACCESS_CHAINS)) {
     return { ok: false, code: "UNSUPPORTED_CHAIN" };
   }
@@ -188,7 +192,7 @@ export async function verifyTestnetUsdcPayment(input: {
     if (largestMatchingAmount === 0n && sawWrongRecipient) {
       return { ok: false, code: "WRONG_RECIPIENT" };
     }
-    if (largestMatchingAmount < TESTNET_USDC_ACCESS_PRICE_ATOMIC) {
+    if (largestMatchingAmount < minimumAmountAtomic) {
       return { ok: false, code: "UNDERPAYMENT" };
     }
 
