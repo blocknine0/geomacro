@@ -7,13 +7,15 @@ const migration = readFileSync("supabase/migrations/904_testnet_usdc_tester_acce
 const page = readFileSync("server/routes/testnet-access.get.ts", "utf8");
 const browser = readFileSync("public/testnet-access.js", "utf8");
 
-describe("paid testnet developer integration", () => {
-  it("issues credentials only after complete registration and active tester entitlement", () => {
-    expect(server).toContain('registration_status !== "complete"');
-    expect(server).toContain('access_status !== "active"');
+describe("metered testnet developer integration", () => {
+  it("issues credentials after wallet verification and provisions metered access without upfront payment", () => {
+    expect(server).toContain('profile.registration_status !== "complete"');
+    expect(server).toContain("!profile.wallet_verified_at");
+    expect(server).toContain("provision_testnet_metered_access");
     expect(server).toContain('grant.tier !== "testnet_tester"');
-    expect(server).toContain('grant.metadata?.offer_id !== "testnet_tester_pass_30d"');
-    expect(server).toContain("TESTNET_TESTER_ACCESS_NOT_ACTIVE");
+    expect(server).toContain('grant.metadata?.offer_id !== "testnet_tester_metered_30d"');
+    expect(server).toContain('grant.metadata?.payment_model !== "pay_per_call"');
+    expect(server).toContain("TESTNET_WALLET_VERIFICATION_REQUIRED");
     expect(server).toContain("TESTNET_TESTER_ENTITLEMENT_NOT_ACTIVE");
   });
 
@@ -26,6 +28,7 @@ describe("paid testnet developer integration", () => {
     expect(server).toContain("api_secret: apiSecret");
     expect(server).toContain("shown_once: true");
     expect(server).toContain('auth_scheme: "key_secret"');
+    expect(server).toContain('payment_model: "pay_per_call"');
     expect(page).toContain("API Key + API Secret");
     expect(browser).toContain("payload.data.api_secret");
   });
