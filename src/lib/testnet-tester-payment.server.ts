@@ -3,7 +3,13 @@ import { createHash } from "node:crypto";
 import { GEOMACRO_CREDIT_CONTRACT_VERSION } from "./commercial-access-contract";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { STRUCTURED_DATA_REGISTRY_VERSION } from "./structured-data-entitlement-registry";
-import { TESTNET_API_FIXED_QUOTA_ATOMIC } from "./testnet-api-pricing";
+import {
+  TESTNET_API_CREDIT_PRICE_USDC,
+  TESTNET_API_FIXED_CREDITS,
+  TESTNET_API_FIXED_QUOTA_ATOMIC,
+  TESTNET_API_FIXED_QUOTA_USDC,
+  TESTNET_API_PRICING_VERSION,
+} from "./testnet-api-pricing";
 import { TESTNET_USDC_ACCESS_CHAINS } from "./testnet-usdc-access-contract";
 import { verifyTestnetUsdcPayment } from "./testnet-usdc-payment-verification.server";
 
@@ -27,6 +33,56 @@ function sha256(value: string) {
 function decimalBlockNumber(hex: string) {
   if (!/^0x[0-9a-fA-F]+$/.test(hex)) throw new Error("Invalid verified block number");
   return BigInt(hex).toString();
+}
+
+async function alignTestnetPricingMetadata(input: {
+  entitlementGrantId: string;
+  paymentEventId: string;
+}) {
+  const db = requireRiskSupabase();
+  const metadataPatch = {
+    quota_credits: TESTNET_API_FIXED_CREDITS,
+    credit_price_testnet_usdc: TESTNET_API_CREDIT_PRICE_USDC,
+    quota_price_usdc: TESTNET_API_FIXED_QUOTA_USDC,
+    fixed_quota_per_verified_wallet: true,
+    testnet_api_pricing_version: TESTNET_API_PRICING_VERSION,
+    commercial_revenue: false,
+    execution_authorized: false,
+  };
+
+  const grant = await db
+    .from("commercial_entitlement_grants")
+    .select("metadata")
+    .eq("id", input.entitlementGrantId)
+    .maybeSingle();
+  if (grant.error || !grant.data) throw new Error("TESTNET_ENTITLEMENT_PRICING_ALIGNMENT_FAILED");
+  const grantUpdate = await db
+    .from("commercial_entitlement_grants")
+    .update({ metadata: { ...(grant.data.metadata ?? {}), ...metadataPatch } })
+    .eq("id", input.entitlementGrantId)
+    .eq("tier", "testnet_tester");
+  if (grantUpdate.error) throw new Error("TESTNET_ENTITLEMENT_PRICING_ALIGNMENT_FAILED");
+
+  const payment = await db
+    .from("commercial_payment_events")
+    .select("metadata,amount_atomic,amount_decimal,environment,commercial_revenue")
+    .eq("id", input.paymentEventId)
+    .maybeSingle();
+  if (payment.error || !payment.data) throw new Error("TESTNET_PAYMENT_PRICING_ALIGNMENT_FAILED");
+  if (
+    payment.data.environment !== "testnet" ||
+    payment.data.commercial_revenue !== false ||
+    BigInt(String(payment.data.amount_atomic)) < TESTNET_API_FIXED_QUOTA_ATOMIC ||
+    Number(payment.data.amount_decimal) < TESTNET_API_FIXED_QUOTA_USDC
+  ) {
+    throw new Error("TESTNET_PAYMENT_PRICING_ALIGNMENT_FAILED");
+  }
+  const paymentUpdate = await db
+    .from("commercial_payment_events")
+    .update({ metadata: { ...(payment.data.metadata ?? {}), ...metadataPatch } })
+    .eq("id", input.paymentEventId)
+    .eq("environment", "testnet");
+  if (paymentUpdate.error) throw new Error("TESTNET_PAYMENT_PRICING_ALIGNMENT_FAILED");
 }
 
 export async function activateTestnetTesterPayment(input: {
@@ -90,11 +146,19 @@ export async function activateTestnetTesterPayment(input: {
   const row = (data ?? {}) as Record<string, unknown>;
   if (row.ok !== true) return { ok: false, code: "TESTNET_ACTIVATION_FAILED" };
 
+  const entitlementGrantId = String(row.entitlement_grant_id);
+  const paymentEventId = String(row.payment_event_id);
+  try {
+    await alignTestnetPricingMetadata({ entitlementGrantId, paymentEventId });
+  } catch {
+    return { ok: false, code: "TESTNET_PRICING_ALIGNMENT_FAILED" };
+  }
+
   return {
     ok: true,
     idempotent_replay: row.idempotent_replay === true,
-    payment_event_id: String(row.payment_event_id),
-    entitlement_grant_id: String(row.entitlement_grant_id),
+    payment_event_id: paymentEventId,
+    entitlement_grant_id: entitlementGrantId,
     credits_granted: Number(row.credits_granted ?? 0),
     expires_at: row.expires_at ? String(row.expires_at) : null,
     commercial_revenue: false,
