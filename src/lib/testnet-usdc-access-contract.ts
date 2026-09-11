@@ -1,10 +1,10 @@
 import { CCTP_CHAINS } from "./cctp";
 
-export const TESTNET_USDC_ACCESS_VERSION = "testnet-usdc-access-v1.0.0" as const;
+export const TESTNET_USDC_ACCESS_VERSION = "testnet-usdc-access-v2.0.0" as const;
 export const TESTNET_USDC_ACCESS_OFFER_ID = "testnet_tester_pass_30d" as const;
-export const TESTNET_USDC_ACCESS_PRICE_USDC = "1.00" as const;
-export const TESTNET_USDC_ACCESS_PRICE_ATOMIC = 1_000_000n;
-export const TESTNET_USDC_ACCESS_CREDITS = 250 as const;
+export const TESTNET_USDC_ACCESS_PRICE_USDC = "0.50" as const;
+export const TESTNET_USDC_ACCESS_PRICE_ATOMIC = 500_000n;
+export const TESTNET_USDC_ACCESS_CREDITS = 500 as const;
 export const TESTNET_USDC_ACCESS_DURATION_DAYS = 30 as const;
 
 export const TESTNET_USDC_RECEIVER_ENV = "TESTNET_USDC_RECEIVER_ADDRESS" as const;
@@ -68,7 +68,6 @@ export const TESTNET_USDC_ACCESS_CHAINS = Object.fromEntries(
   }
 >;
 
-// Backward-compatible alias for any internal work-in-progress callers.
 export const TESTNET_USDC_CHAINS = TESTNET_USDC_ACCESS_CHAINS;
 
 export function testnetChainById(chainId: number) {
@@ -87,6 +86,8 @@ export const TESTNET_USDC_ACCESS_BOUNDARIES = {
   free_access: false,
   payment_required: true,
   payment_is_real_revenue: false,
+  credits_per_quota: 500,
+  quota_price_usdc: "0.50",
   transferable_credits: false,
   cash_redeemable_credits: false,
   raw_data_delivery: false,
