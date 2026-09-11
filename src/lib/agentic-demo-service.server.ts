@@ -170,11 +170,17 @@ export async function runAgenticPreflightDemo(
   const policy = demoPolicyFromPreset(parsed.policy_preset);
   const mode = options.mode ?? "PUBLIC_SANDBOX";
   const shouldRecordTelemetry = options.recordTelemetry ?? true;
-  const actionContext = {
+  const actionContext: {
+    action_type: string;
+    currency: "USDC";
+    amount?: number;
+  } = {
     action_type: parsed.action_type,
-    amount: parsed.amount_usdc,
     currency: "USDC",
   };
+  if (parsed.amount_usdc !== undefined) {
+    actionContext.amount = parsed.amount_usdc;
+  }
 
   try {
     const result =
