@@ -1,0 +1,40 @@
+name: Testnet Build Stress Verify
+
+on:
+  push:
+    branches:
+      - feat/arc-testnet-tester-completion
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Structural severity contract
+        run: bunx vitest run src/__tests__/testnet-structural-severity-console-static.test.ts src/__tests__/testnet-tester-e2e-contract.test.ts
+      - name: Database safety
+        run: bun run db:safety
+      - name: Synthetic 10k-user stress
+        env:
+          TESTNET_STRESS_USERS: "10000"
+          TESTNET_STRESS_REQUESTS_PER_USER: "20"
+        run: node scripts/testnet/stress-10000-users.mjs | tee testnet-stress-10000.json
+      - name: Production build
+        run: bun run build
+      - name: Upload stress evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: testnet-build-stress-${{ github.run_id }}
+          path: testnet-stress-10000.json
+          if-no-files-found: error
+          retention-days: 90
