@@ -11,14 +11,8 @@ const TRANSFER_TOPIC = id("Transfer(address,address,uint256)").toLowerCase();
 
 const RPC_ENV_BY_CHAIN: Record<TestnetUsdcChainKey, string> = {
   arcTestnet: "TESTNET_RPC_ARC",
-  ethSepolia: "TESTNET_RPC_ETH_SEPOLIA",
   baseSepolia: "TESTNET_RPC_BASE_SEPOLIA",
   polygonAmoy: "TESTNET_RPC_POLYGON_AMOY",
-  arbitrumSepolia: "TESTNET_RPC_ARBITRUM_SEPOLIA",
-  opSepolia: "TESTNET_RPC_OP_SEPOLIA",
-  avalancheFuji: "TESTNET_RPC_AVALANCHE_FUJI",
-  unichainSepolia: "TESTNET_RPC_UNICHAIN_SEPOLIA",
-  lineaSepolia: "TESTNET_RPC_LINEA_SEPOLIA",
 };
 
 export type TestnetUsdcPaymentVerification = {
