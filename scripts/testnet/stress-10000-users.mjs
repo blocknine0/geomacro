@@ -9,23 +9,16 @@ if (!Number.isInteger(USERS) || USERS < 1 || USERS > 100_000) {
   throw new Error("TESTNET_STRESS_USERS must be an integer between 1 and 100000");
 }
 
-const emailOwners = new Map();
 const walletOwners = new Map();
 const txClaims = new Map();
 const accounts = new Map();
-let duplicateEmailBlocked = 0;
 let duplicateWalletBlocked = 0;
 let replayedTx = 0;
 let usageAccepted = 0;
 let usageRejected = 0;
 let doubleCredit = 0;
 
-function activate({ userId, emailHash, walletHash, txHash }) {
-  const emailOwner = emailOwners.get(emailHash);
-  if (emailOwner && emailOwner !== userId) {
-    duplicateEmailBlocked += 1;
-    return { ok: false, code: "EMAIL_ALREADY_USED" };
-  }
+function activate({ userId, walletHash, txHash }) {
   const walletOwner = walletOwners.get(walletHash);
   if (walletOwner && walletOwner !== userId) {
     duplicateWalletBlocked += 1;
@@ -41,7 +34,6 @@ function activate({ userId, emailHash, walletHash, txHash }) {
 
   if (accounts.has(userId)) return { ok: false, code: "FIXED_QUOTA_ALREADY_ACTIVE" };
 
-  emailOwners.set(emailHash, userId);
   walletOwners.set(walletHash, userId);
   txClaims.set(txHash, userId);
   accounts.set(userId, { included: QUOTA, used: 0, requestIds: new Map() });
@@ -71,7 +63,6 @@ for (let i = 0; i < USERS; i += 1) {
   const userId = `user-${i}`;
   const activation = activate({
     userId,
-    emailHash: `email-${i}`,
     walletHash: `wallet-${i}`,
     txHash: `tx-${i}`,
   });
@@ -79,7 +70,6 @@ for (let i = 0; i < USERS; i += 1) {
 
   const replay = activate({
     userId,
-    emailHash: `email-${i}`,
     walletHash: `wallet-${i}`,
     txHash: `tx-${i}`,
   });
@@ -102,14 +92,7 @@ for (let i = 0; i < USERS; i += 1) {
 
 for (let i = 0; i < Math.min(USERS, 1000); i += 1) {
   activate({
-    userId: `duplicate-email-${i}`,
-    emailHash: `email-${i}`,
-    walletHash: `fresh-wallet-email-${i}`,
-    txHash: `fresh-tx-email-${i}`,
-  });
-  activate({
     userId: `duplicate-wallet-${i}`,
-    emailHash: `fresh-email-wallet-${i}`,
     walletHash: `wallet-${i}`,
     txHash: `fresh-tx-wallet-${i}`,
   });
@@ -121,7 +104,7 @@ const totalCreditsUsed = [...accounts.values()].reduce((sum, account) => sum + a
 
 const report = {
   ok: doubleCredit === 0 && accounts.size === USERS,
-  model: "synthetic_in_memory_contract_stress",
+  model: "synthetic_in_memory_wallet_only_contract_stress",
   users: USERS,
   requests_per_user_target: REQUESTS_PER_USER,
   active_accounts: accounts.size,
@@ -132,7 +115,6 @@ const report = {
   usage_rejected: usageRejected,
   exact_tx_replays: replayedTx,
   double_credit_events: doubleCredit,
-  duplicate_email_attempts_blocked: duplicateEmailBlocked,
   duplicate_wallet_attempts_blocked: duplicateWalletBlocked,
   elapsed_ms: Number(elapsedMs.toFixed(3)),
   users_per_second: Number((USERS / (elapsedMs / 1000)).toFixed(2)),
