@@ -1,0 +1,65 @@
+name: GOAT Provider Proof Free
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ops-goat-provider-proof-free.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-provider-proof-free
+  cancel-in-progress: false
+
+jobs:
+  provider-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
+      GOATX402_DRY_RUN_ARTIFACT_DIR: artifacts/goat-testnet3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Validate merchant secret presence without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GOATX402_API_KEY GOATX402_API_SECRET GOATX402_MERCHANT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is missing"
+              exit 1
+            fi
+          done
+
+      - name: Run no-payment Testnet3 provider dry run
+        run: node scripts/goat/testnet3-provider-dry-run.mjs
+
+      - name: Upload sanitized evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-provider-proof-free-${{ github.run_id }}
+          path: artifacts/goat-testnet3/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record safety boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Transaction submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Purpose: credential/HMAC compatibility and provider 402 proof only." >> "$GITHUB_STEP_SUMMARY"
