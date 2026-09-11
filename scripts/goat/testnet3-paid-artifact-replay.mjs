@@ -96,6 +96,18 @@ async function main() {
     "Paid artifact transaction hash does not match the already-submitted Testnet3 transfer.",
   );
   assert(artifact.body?.risk_object, "Paid artifact did not return the canonical Risk Object.");
+  assert(
+    artifact.body?.verification?.valid === true,
+    "Canonical paid Risk Object was not valid at fulfillment time.",
+  );
+  assert(
+    artifact.body?.verification?.cryptographic_valid === true,
+    "Canonical paid Risk Object was not cryptographically valid at fulfillment time.",
+  );
+  assert(
+    artifact.body?.verification?.fresh === true,
+    "Canonical paid Risk Object was not fresh at fulfillment time.",
+  );
 
   const publicVerification = await jsonRequest(
     "/api/risk-object-keys",
@@ -104,12 +116,32 @@ async function main() {
   );
 
   assert(publicVerification.body?.ok === true, "Public verification endpoint did not return ok=true.");
-  assert(publicVerification.body?.verification?.valid === true, "Canonical paid Risk Object is not publicly valid.");
+
+  const currentVerification = publicVerification.body?.verification;
   assert(
-    publicVerification.body?.verification?.cryptographic_valid === true,
-    "Canonical paid Risk Object did not pass cryptographic verification.",
+    currentVerification?.cryptographic_valid === true,
+    "Canonical paid Risk Object did not pass current cryptographic verification.",
   );
-  assert(publicVerification.body?.verification?.fresh === true, "Canonical paid Risk Object is not fresh.");
+  assert(
+    currentVerification?.contract_valid === true,
+    "Canonical paid Risk Object did not pass current contract verification.",
+  );
+
+  const currentlyValid =
+    currentVerification?.valid === true &&
+    currentVerification?.fresh === true;
+
+  const validHistoricalExpiry =
+    currentVerification?.valid === false &&
+    currentVerification?.status === "EXPIRED" &&
+    currentVerification?.fresh === false &&
+    Array.isArray(currentVerification?.reason_codes) &&
+    currentVerification.reason_codes.includes("artifact_expired");
+
+  assert(
+    currentlyValid || validHistoricalExpiry,
+    "Canonical paid Risk Object has an unexpected current verification state.",
+  );
 
   await mkdir(artifactDir, { recursive: true });
   const path = resolve(artifactDir, `${clientRequestId}-canonical-paid-artifact.json`);
