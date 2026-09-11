@@ -6,6 +6,9 @@ import {
 } from "zod";
 
 import {
+  evaluateGoatAgentSpend,
+} from "../lib/goat-agent-spend-policy";
+import {
   goatPilotCreateOrderSchema,
 } from "../lib/goat-pilot-contract";
 import {
@@ -90,6 +93,48 @@ function authFailure(error: unknown) {
   );
 }
 
+function spendPolicyFailure(maxPaymentAtomic: string) {
+  const configuredPrice = process.env.GOATX402_PILOT_AMOUNT_ATOMIC?.trim() ?? "";
+  const decision = evaluateGoatAgentSpend({
+    price_atomic: configuredPrice,
+    per_request_limit_atomic: maxPaymentAtomic,
+    window_limit_atomic: maxPaymentAtomic,
+  });
+
+  if (decision.reason === "INVALID_PRICE") {
+    return response(
+      {
+        ok: false,
+        error: {
+          code: "GOAT_PILOT_PRICE_NOT_CONFIGURED",
+          message: "GOAT partner-pilot price is unavailable.",
+          retryable: false,
+        },
+        execution_authorized: false,
+      },
+      503,
+    );
+  }
+
+  if (!decision.allowed) {
+    return response(
+      {
+        ok: false,
+        error: {
+          code: "GOAT_AGENT_SPEND_LIMIT_EXCEEDED",
+          message: "GOAT partner-pilot price exceeds the autonomous agent payment ceiling.",
+          retryable: false,
+        },
+        spend_policy: decision,
+        execution_authorized: false,
+      },
+      409,
+    );
+  }
+
+  return null;
+}
+
 export const Route = createFileRoute("/api/goat/pilot/order")({
   server: {
     handlers: {
@@ -164,6 +209,11 @@ export const Route = createFileRoute("/api/goat/pilot/order")({
             );
           }
           throw error;
+        }
+
+        if (input.max_payment_atomic) {
+          const blocked = spendPolicyFailure(input.max_payment_atomic);
+          if (blocked) return blocked;
         }
 
         try {
