@@ -45,7 +45,6 @@ export type TestnetUsdcPaymentVerification = {
     | "TX_NOT_CONFIRMED"
     | "TX_REVERTED"
     | "USDC_TRANSFER_NOT_FOUND"
-    | "WRONG_PAYER"
     | "WRONG_RECIPIENT"
     | "UNDERPAYMENT";
 };
@@ -160,7 +159,6 @@ export async function verifyTestnetUsdcPayment(input: {
     const expectedPayer = input.expected_payer ? normalizeAddress(input.expected_payer) : null;
 
     let sawUsdcTransfer = false;
-    let sawExpectedRecipientFromWrongPayer = false;
     let sawWrongRecipient = false;
     let largestMatchingAmount = 0n;
     let payer = "";
@@ -181,10 +179,7 @@ export async function verifyTestnetUsdcPayment(input: {
       const to = decodeTopicAddress(topics[2] ?? "");
       const amount = parseHexQuantity(log.data);
       if (!from || !to || amount === null) continue;
-      if (expectedPayer && from !== expectedPayer) {
-        if (toTopic === expectedRecipientTopic) sawExpectedRecipientFromWrongPayer = true;
-        continue;
-      }
+      if (expectedPayer && from !== expectedPayer) continue;
       if (toTopic !== expectedRecipientTopic) {
         sawWrongRecipient = true;
         continue;
@@ -196,9 +191,6 @@ export async function verifyTestnetUsdcPayment(input: {
     }
 
     if (!sawUsdcTransfer) return { ok: false, code: "USDC_TRANSFER_NOT_FOUND" };
-    if (largestMatchingAmount === 0n && sawExpectedRecipientFromWrongPayer) {
-      return { ok: false, code: "WRONG_PAYER" };
-    }
     if (largestMatchingAmount === 0n && sawWrongRecipient) {
       return { ok: false, code: "WRONG_RECIPIENT" };
     }
