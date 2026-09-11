@@ -97,6 +97,20 @@ function publicRiskObject(object: GeomacroRiskObject) {
     risk: object.risk,
     confidence: object.confidence,
     attribution: object.attribution,
+    evidence: object.evidence.map((item) => ({
+      event_id: item.event_id,
+      title: item.title,
+      event_type: item.event_type,
+      severity: item.severity,
+      confidence: item.confidence,
+      direction: item.direction,
+      last_seen_at: item.last_seen_at,
+      evidence_count: item.evidence_count,
+      independent_source_count: item.independent_source_count,
+    })),
+    evidence_coverage: object.evidence_coverage,
+    evidence_summary: object.evidence_summary,
+    provenance: object.provenance,
     verification: object.verification,
     commercial_eligibility: object.commercial_eligibility,
     integrity: object.integrity,
@@ -276,7 +290,7 @@ async function riskGateBundle(
       execution_authorized: false,
     },
     observationCount: structural.observationCount,
-    evidenceCount: structural.evidenceCount,
+    evidenceCount: Math.max(structural.evidenceCount, stored.evidence.length),
   };
 }
 
@@ -363,9 +377,7 @@ export async function runCanonicalTestnetIntelligence(input: {
       },
       subject_type: subject.type,
       subject_key: subjectKey(subject),
-      evidence_reference_count: Array.isArray(object.attribution?.drivers)
-        ? object.attribution.drivers.length
-        : 0,
+      evidence_reference_count: object.evidence.length,
       structural_observation_count: 0,
     };
   }
