@@ -171,13 +171,16 @@ function requirePilotRuntime() {
 }
 
 function riskInputFromCreate(input: GoatPilotCreateOrderRequest) {
-  return {
+  const result: Record<string, unknown> = {
     subject: input.subject,
     policy_preset: input.policy_preset,
     action_type: input.action_type,
-    amount_usdc: input.amount_usdc,
     client_request_id: input.client_request_id,
   };
+  if (input.amount_usdc !== undefined) {
+    result.amount_usdc = input.amount_usdc;
+  }
+  return result;
 }
 
 function safePreparedResource(prepared: Record<string, unknown>) {
