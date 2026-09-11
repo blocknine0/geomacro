@@ -1,6 +1,13 @@
 name: GOAT Acceptance Windows
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/__tests__/goat-*'
+      - 'scripts/goat/run-acceptance-window.sh'
+      - 'scripts/ops/compile-window-report.py'
+      - '.github/workflows/goat-acceptance-windows.yml'
   schedule:
     - cron: '15 0,6,12,18 12-16 9 *'
   workflow_dispatch:
@@ -17,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: goat-acceptance-window-${{ github.run_id }}
+  group: goat-acceptance-window-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -53,10 +60,9 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Record window boundary
+      - name: Record window
         if: always()
         shell: bash
         run: |
-          echo "Target program: 20 windows x 250 suite iterations = 5,000" >> "$GITHUB_STEP_SUMMARY"
-          echo "This workflow does not submit external transactions." >> "$GITHUB_STEP_SUMMARY"
+          echo "Target: 20 windows x 250 suite iterations = 5,000" >> "$GITHUB_STEP_SUMMARY"
           echo "Window id: $GOAT_ACCEPTANCE_WINDOW_ID" >> "$GITHUB_STEP_SUMMARY"
