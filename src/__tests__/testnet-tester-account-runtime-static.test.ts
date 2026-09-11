@@ -28,6 +28,17 @@ describe("testnet tester account runtime boundaries", () => {
     expect(route).toContain("email_verification_sent: true");
   });
 
+  it("maps registration infrastructure failures to safe public codes", () => {
+    const route = read("../../server/api/testnet-tester/register.post.ts");
+    expect(route).toContain("TESTNET_DATABASE_NOT_CONFIGURED");
+    expect(route).toContain("TESTNET_DATABASE_SCHEMA_MISSING");
+    expect(route).toContain("TESTNET_DATABASE_PERMISSION_DENIED");
+    expect(route).toContain("TESTNET_DATABASE_CONSTRAINT_FAILED");
+    expect(route).toContain("TESTNET_ACCOUNT_CONFLICT");
+    expect(route).toContain("statusMessage: code");
+    expect(route).not.toContain("statusMessage: rawMessage");
+  });
+
   it("requires a secure-cookie or bearer tester session for sensitive account actions", () => {
     const helper = read("../lib/testnet-tester-http.server.ts");
     const cookie = read("../lib/testnet-tester-cookie.server.ts");
