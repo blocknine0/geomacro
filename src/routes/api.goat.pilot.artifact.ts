@@ -154,7 +154,22 @@ async function handlePost(request: Request) {
     return jsonResponse({ ok: false, error: "RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION", execution_authorized: false }, 503);
   }
 
-  const verification = verifyPublicRiskObjectArtifact(storedRiskObject.payload);
+  const deliveredAt = new Date(fulfillment.delivered_at);
+  if (!Number.isFinite(deliveredAt.getTime())) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "GOAT_FULFILLMENT_TIMESTAMP_INVALID",
+        execution_authorized: false,
+      },
+      503,
+    );
+  }
+
+  const verification = verifyPublicRiskObjectArtifact(
+    storedRiskObject.payload,
+    { now: deliveredAt },
+  );
   if (!verification.valid || !verification.cryptographic_valid) {
     return jsonResponse(
       {
