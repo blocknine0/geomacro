@@ -80,14 +80,19 @@ function bearerToken(request: Request): string {
 }
 
 function pairedTestnetCredential(request: Request) {
-  const apiKey = (request.headers.get("x-geomacro-api-key") ?? "").trim();
-  const apiSecret = (request.headers.get("x-geomacro-api-secret") ?? "").trim();
+  const headerKey = (request.headers.get("x-geomacro-api-key") ?? "").trim();
+  const headerSecret = (request.headers.get("x-geomacro-api-secret") ?? "").trim();
+  const authorization = request.headers.get("authorization") ?? "";
+  const authMatch = authorization.match(/^GeomacroTest\s+([^\.\s]+)\.([^\s]+)$/i);
+  const apiKey = headerKey || authMatch?.[1]?.trim() || "";
+  const apiSecret = headerSecret || authMatch?.[2]?.trim() || "";
+
   if (!apiKey && !apiSecret) return null;
   if (!apiKey || !apiSecret) {
     throw new CommercialAccessError(
       401,
       "TESTNET_API_KEY_SECRET_REQUIRED",
-      "Both X-Geomacro-Api-Key and X-Geomacro-Api-Secret are required.",
+      "Both Testnet API Key and API Secret are required.",
     );
   }
   if (!/^gmk_test_[A-Za-z0-9_-]{20,}$/.test(apiKey) || !/^gms_test_[A-Za-z0-9_-]{32,}$/.test(apiSecret)) {
@@ -215,7 +220,7 @@ export async function authenticateCommercialApiRequest(
     throw new CommercialAccessError(
       401,
       "TESTNET_API_KEY_SECRET_REQUIRED",
-      "Testnet developer credentials require the API Key and API Secret headers.",
+      "Testnet developer credentials require API Key + API Secret authentication.",
     );
   }
 
