@@ -12,10 +12,13 @@ type RegistrationFailureLike = {
 function registrationFailureCode(error: unknown) {
   const candidate = (error ?? {}) as RegistrationFailureLike;
   const rawCode = String(candidate.code ?? "").trim();
-  const rawMessage = String(candidate.message ?? "").trim();
+  const rawMessage = String(candidate.message ?? error ?? "").trim();
 
   if (rawMessage === "TESTNET_EMAIL_DELIVERY_NOT_CONFIGURED") {
     return "TESTNET_EMAIL_DELIVERY_NOT_CONFIGURED";
+  }
+  if (/^TESTNET_EMAIL_DELIVERY_FAILED_\d{3}$/.test(rawMessage)) {
+    return rawMessage;
   }
   if (rawMessage === "Risk Supabase service-role client is not configured for the authoritative project") {
     return "TESTNET_DATABASE_NOT_CONFIGURED";
@@ -83,7 +86,7 @@ export default defineEventHandler(async (event) => {
       "TESTNET_DATABASE_NOT_CONFIGURED",
       "TESTNET_DATABASE_SCHEMA_MISSING",
       "TESTNET_DATABASE_PERMISSION_DENIED",
-    ].includes(code);
+    ].includes(code) || /^TESTNET_EMAIL_DELIVERY_FAILED_5\d{2}$/.test(code);
     throw createError({
       statusCode: configurationFailure ? 503 : 400,
       statusMessage: code,
