@@ -13,6 +13,8 @@ const payer = "0x2222222222222222222222222222222222222222";
 const other = "0x3333333333333333333333333333333333333333";
 const txHash = `0x${"ab".repeat(32)}`;
 const transferTopic = id("Transfer(address,address,uint256)");
+const exactQuotaAtomicHex = "0xee6b280"; // 250,000,000 atomic = 250 USDC
+const belowQuotaAtomicHex = "0xee6b27f"; // 249,999,999 atomic
 
 function topicAddress(address: string) {
   return zeroPadValue(address, 32);
@@ -37,7 +39,7 @@ afterEach(() => {
 });
 
 describe("testnet USDC payment verification", () => {
-  it("accepts the exact 0.5 USDC boundary on a confirmed supported-chain transfer to the dedicated receiver", async () => {
+  it("accepts the exact 250 USDC fixed-quota boundary on a confirmed supported-chain transfer to the dedicated receiver", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response(chain.chain_id_hex))
@@ -47,7 +49,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: "0x7a120",
+          data: exactQuotaAtomicHex,
         }],
       }));
     vi.stubGlobal("fetch", fetchMock);
@@ -64,8 +66,8 @@ describe("testnet USDC payment verification", () => {
       chain_key: "baseSepolia",
       payer_address: payer,
       recipient_address: receiver,
-      amount_atomic: "500000",
-      amount_usdc: "0.5",
+      amount_atomic: "250000000",
+      amount_usdc: "250",
       environment: "testnet",
       revenue_classification: "testnet_non_revenue",
     });
@@ -83,7 +85,7 @@ describe("testnet USDC payment verification", () => {
     expect(result).toEqual({ ok: false, code: "RPC_IDENTITY_MISMATCH" });
   });
 
-  it("rejects any amount below 0.5 USDC", async () => {
+  it("rejects any amount below the 250 Testnet USDC fixed-quota boundary", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
     vi.stubGlobal("fetch", vi.fn()
       .mockImplementationOnce(() => response(chain.chain_id_hex))
@@ -93,7 +95,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: "0x7a11f",
+          data: belowQuotaAtomicHex,
         }],
       })));
 
@@ -117,7 +119,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(other)],
-          data: "0x7a120",
+          data: exactQuotaAtomicHex,
         }],
       })));
 
@@ -141,7 +143,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(other), topicAddress(receiver)],
-          data: "0x7a120",
+          data: exactQuotaAtomicHex,
         }],
       })));
 
@@ -165,7 +167,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: other,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: "0x7a120",
+          data: exactQuotaAtomicHex,
         }],
       })));
 
