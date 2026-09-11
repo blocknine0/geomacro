@@ -18,14 +18,14 @@ describe("testnet tester account runtime boundaries", () => {
     expect(migration).toContain("revoke all on table public.testnet_tester_sessions from PUBLIC, anon, authenticated");
   });
 
-  it("does not return email verification or session tokens from public registration", () => {
+  it("keeps the tester session in a secure cookie and never returns the raw session token", () => {
     const route = read("../../server/api/testnet-tester/register.post.ts");
-    expect(route).toContain("sendTestnetVerificationEmail");
     expect(route).toContain("setTesterSessionCookie(event, result.session_token)");
+    expect(route).toContain('next_step: "verify_wallet"');
+    expect(route).not.toContain("sendTestnetVerificationEmail");
     const returned = route.slice(route.indexOf("return {"));
-    expect(returned).not.toContain("email_verification_token: result.email_verification_token");
     expect(returned).not.toContain("session_token: result.session_token");
-    expect(route).toContain("email_verification_sent: true");
+    expect(returned).not.toContain("email_verification_token");
   });
 
   it("maps registration infrastructure failures to safe public codes", () => {

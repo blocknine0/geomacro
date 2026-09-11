@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
-const registration = read("src/lib/testnet-tester-registration.server.ts");
 const account = read("src/lib/testnet-tester-account.server.ts");
 const paymentContract = read("src/lib/testnet-usdc-access-contract.ts");
 const paymentVerifier = read("src/lib/testnet-usdc-payment-verification.server.ts");
@@ -11,19 +10,30 @@ const paymentService = read("src/lib/testnet-tester-payment.server.ts");
 const paymentRoute = read("server/api/testnet-tester/payment-claim.post.ts");
 const developer = read("src/lib/testnet-developer-access.server.ts");
 const browser = read("public/testnet-access.js");
+const consoleBrowser = read("public/testnet-console.js");
 const page = read("server/routes/testnet-access.get.ts");
 const ops = read("src/lib/commercial-ops.server.ts");
-const migration = read("supabase/migrations/909_testnet_fixed_500_credit_quota.sql");
+const migration = read("supabase/migrations/910_testnet_wallet_only_access.sql");
 
 describe("Testnet tester end-to-end contract trial", () => {
-  it("locks registration to verified email, wallet, X and Discord", () => {
-    expect(registration).toContain("email_hash");
-    expect(registration).toContain("wallet_address_hash");
-    expect(account).toContain("registration_status");
-    expect(migration).toContain("email_verified_at is null");
-    expect(migration).toContain("wallet_verified_at is null");
-    expect(migration).toContain("x_connected_at is null");
-    expect(migration).toContain("discord_connected_at is null");
+  it("uses wallet verification as the only identity gate", () => {
+    expect(account).toContain("TESTNET_WALLET_ALREADY_REGISTERED");
+    expect(account).toContain('registration_status: "complete"');
+    expect(migration).toContain("wallet_verified_at is not null");
+    expect(migration).not.toContain("email_verified_at is not null");
+    expect(migration).not.toContain("x_connected_at is not null");
+    expect(migration).not.toContain("discord_connected_at is not null");
+    expect(page).toContain("No email, X-account or Discord connection is required");
+  });
+
+  it("supports only Arc Testnet, Base Sepolia and Polygon Amoy", () => {
+    expect(paymentContract).toContain('"arcTestnet"');
+    expect(paymentContract).toContain('"baseSepolia"');
+    expect(paymentContract).toContain('"polygonAmoy"');
+    expect(paymentContract).not.toContain('"ethSepolia"');
+    expect(page).toContain("Arc Testnet");
+    expect(page).toContain("Base Sepolia");
+    expect(page).toContain("Polygon Amoy");
   });
 
   it("requires 0.5 Testnet USDC and grants one fixed 500-credit quota", () => {
@@ -31,6 +41,7 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(paymentContract).toContain("TESTNET_USDC_ACCESS_PRICE_ATOMIC = 500_000n");
     expect(paymentContract).toContain("TESTNET_USDC_ACCESS_CREDITS = 500");
     expect(paymentVerifier).toContain("TESTNET_USDC_ACCESS_PRICE_ATOMIC");
+    expect(migration).toContain("amount_atomic >= 500000");
     expect(migration).toContain("p_amount_atomic < 500000");
     expect(migration).toContain("TESTNET_FIXED_QUOTA_ALREADY_ACTIVATED");
     expect(migration).toContain("'credits_granted',500");
@@ -50,20 +61,16 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(developer).toContain('profile.access_status !== "active"');
     expect(developer).toContain('grant.tier !== "testnet_tester"');
     expect(developer).toContain("TESTNET_TESTER_ENTITLEMENT_NOT_ACTIVE");
-    expect(page).toContain("Developer API keys");
+    expect(page).toContain("Use Geomacro in your product or AI agent");
     expect(browser).toContain('show("developerPanel", active)');
   });
 
-  it("hides repeat payment activation after account becomes active", () => {
-    expect(browser).toContain('show("paymentPanel", account.registration_status === "complete" && !active)');
-    expect(browser).toContain("This payment was already verified. No extra credits were granted.");
-  });
-
-  it("includes X feedback/shilling flow for active testers", () => {
-    expect(page).toContain("Post feedback on X");
-    expect(browser).toContain("twitter.com/intent/tweet");
-    expect(browser).toContain("xFeedbackButton");
-    expect(browser).toContain('show("feedbackPanel", active)');
+  it("keeps the professional social-card to X flow after testing", () => {
+    expect(page).toContain("TEST → CARD → X");
+    expect(consoleBrowser).toContain("Create share card");
+    expect(consoleBrowser).toContain("Share result on X");
+    expect(consoleBrowser).toContain("twitter.com/intent/tweet");
+    expect(consoleBrowser).toContain("/api/testnet-tester/share");
   });
 
   it("keeps owner-side usage and collection evidence available", () => {

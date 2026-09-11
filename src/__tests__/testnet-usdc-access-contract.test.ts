@@ -28,17 +28,11 @@ describe("paid multichain testnet USDC tester access", () => {
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.quota_price_usdc).toBe("0.50");
   });
 
-  it("supports the configured multichain testnets", () => {
+  it("supports only Arc Testnet, Base Sepolia and Polygon Amoy", () => {
     expect(Object.keys(TESTNET_USDC_ACCESS_CHAINS)).toEqual([
       "arcTestnet",
-      "ethSepolia",
       "baseSepolia",
       "polygonAmoy",
-      "arbitrumSepolia",
-      "opSepolia",
-      "avalancheFuji",
-      "unichainSepolia",
-      "lineaSepolia",
     ]);
     for (const chain of Object.values(TESTNET_USDC_ACCESS_CHAINS)) {
       expect(chain.payment_asset).toBe("USDC");
