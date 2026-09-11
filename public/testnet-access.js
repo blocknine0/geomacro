@@ -15,13 +15,36 @@
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload?.ok === false) {
-      throw new Error(payload?.statusMessage || payload?.message || response.statusText || "Request failed");
+      const errorCode = payload?.error
+        || payload?.statusMessage
+        || payload?.message
+        || payload?.data?.error
+        || response.statusText
+        || "Request failed";
+      throw new Error(String(errorCode));
     }
     return payload;
   };
 
   let walletAddress = "";
   let paymentConfig = null;
+  let registeredEmail = sessionStorage.getItem("geomacro_testnet_email") || "";
+
+  function ensureEmailResendButton(visible) {
+    const actions = $("accountPanel")?.querySelector(".actions");
+    if (!actions) return;
+    let button = $("emailResend");
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "emailResend";
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = "Resend verification email";
+      button.addEventListener("click", resendVerificationEmail);
+      actions.prepend(button);
+    }
+    button.hidden = !visible;
+  }
 
   async function loadAccount() {
     try {
@@ -39,6 +62,7 @@
       show("xConnect", !account.x_connected);
       show("discordConnect", !account.discord_connected);
       show("walletConnect", !account.wallet_verified);
+      ensureEmailResendButton(!account.email_verified);
       show("paymentPanel", account.registration_status === "complete" && !active);
       show("developerPanel", active);
       show("feedbackPanel", active);
@@ -52,12 +76,15 @@
       if (account.registration_status === "complete" && !active) await loadPaymentConfig();
       if (active) await loadDeveloperKeys();
       return account;
-    } catch {
+    } catch (error) {
       show("registrationPanel", true);
       show("accountPanel", false);
       show("paymentPanel", false);
       show("developerPanel", false);
       show("feedbackPanel", false);
+      if (error?.message && !/Tester session/i.test(error.message)) {
+        text("globalStatus", error.message);
+      }
       return null;
     }
   }
@@ -95,16 +122,47 @@
     event.preventDefault();
     const email = $("emailInput").value.trim();
     const profileName = $("profileNameInput").value.trim();
+    registeredEmail = email;
+    sessionStorage.setItem("geomacro_testnet_email", email);
     text("registrationStatus", "Creating account and sending verification email...");
     try {
-      await json("/api/testnet-tester/register", {
+      const payload = await json("/api/testnet-tester/register", {
         method: "POST",
         body: JSON.stringify({ email, profile_name: profileName, terms_version: "testnet-terms-v1" }),
       });
-      text("registrationStatus", "Account created. Check your email, then return here.");
+      if (payload?.data?.email_verification_sent) {
+        text("registrationStatus", "Account created. Check your email, then return here.");
+      } else {
+        const delivery = payload?.data?.email_delivery_status || "EMAIL_DELIVERY_PENDING";
+        text("registrationStatus", `Account created. Verification email was not delivered (${delivery}). Use Resend verification email.`);
+      }
       await loadAccount();
     } catch (error) {
       text("registrationStatus", error.message || "Registration failed.");
+    }
+  }
+
+  async function resendVerificationEmail() {
+    const email = registeredEmail || $("emailInput")?.value?.trim() || sessionStorage.getItem("geomacro_testnet_email") || "";
+    if (!email) {
+      text("globalStatus", "Enter the same registered email again to resend verification.");
+      show("registrationPanel", true);
+      return;
+    }
+    text("globalStatus", "Sending a new verification email...");
+    try {
+      const payload = await json("/api/testnet-tester/email-resend", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      if (payload?.data?.already_verified) {
+        text("globalStatus", "Email is already verified.");
+      } else {
+        text("globalStatus", "Verification email sent. Check your inbox and spam folder.");
+      }
+      await loadAccount();
+    } catch (error) {
+      text("globalStatus", error.message || "Could not resend verification email.");
     }
   }
 
@@ -258,6 +316,7 @@
   }
 
   function bind() {
+    if (registeredEmail && $("emailInput")) $("emailInput").value = registeredEmail;
     $("registrationForm")?.addEventListener("submit", register);
     $("walletConnect")?.addEventListener("click", connectWallet);
     $("avatarForm")?.addEventListener("submit", uploadAvatar);
