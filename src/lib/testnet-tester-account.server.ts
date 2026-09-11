@@ -39,78 +39,56 @@ function expiresIn(ms: number) {
 }
 
 export async function createTestnetTesterAccount(input: {
-  email: string;
   profileName: string;
   termsVersion: string;
 }) {
   const db = requireRiskSupabase();
-  const email = canonicalEmail(input.email);
   const profileName = String(input.profileName ?? "").trim();
   const termsVersion = String(input.termsVersion ?? "").trim();
   if (profileName.length < 2 || profileName.length > 64) throw new Error("INVALID_PROFILE_NAME");
   if (termsVersion.length < 2 || termsVersion.length > 64) throw new Error("INVALID_TERMS_VERSION");
 
-  const emailHash = sha256(email);
-  const existing = await db
-    .from("testnet_tester_profiles")
-    .select("principal_id,email_verified_at,registration_status,access_status")
-    .eq("email_hash", emailHash)
-    .maybeSingle();
-  if (existing.error) throw existing.error;
+  const nonce = randomBytes(24).toString("base64url");
+  const principalInsert = await db
+    .from("commercial_principals")
+    .insert({
+      principal_type: "wallet",
+      external_id: `pending_wallet:${nonce}`,
+      display_name: profileName,
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (principalInsert.error) throw principalInsert.error;
+  const principalId = principalInsert.data.id as string;
 
-  let principalId = existing.data?.principal_id as string | undefined;
-  if (!principalId) {
-    const principalInsert = await db
-      .from("commercial_principals")
-      .insert({
-        principal_type: "email",
-        external_id: `email_sha256:${emailHash}`,
-        display_name: profileName,
-        status: "active",
-      })
-      .select("id")
-      .single();
-    if (principalInsert.error) throw principalInsert.error;
-    principalId = principalInsert.data.id;
-
-    const profileInsert = await db.from("testnet_tester_profiles").insert({
-      principal_id: principalId,
-      profile_name: profileName,
-      email_hash: emailHash,
-      wallet_address_hash: sha256(`pending-wallet:${principalId}`),
-      x_account_id_hash: sha256(`pending-x:${principalId}`),
-      discord_account_id_hash: sha256(`pending-discord:${principalId}`),
-      terms_version: termsVersion,
-      terms_accepted_at: new Date().toISOString(),
-      registration_status: "pending",
-      access_status: "awaiting_payment",
-    });
-    if (profileInsert.error) throw profileInsert.error;
-  }
+  const profileInsert = await db.from("testnet_tester_profiles").insert({
+    principal_id: principalId,
+    profile_name: profileName,
+    email_hash: sha256(`unused-email:${nonce}`),
+    wallet_address_hash: sha256(`pending-wallet:${nonce}`),
+    x_account_id_hash: sha256(`unused-x:${nonce}`),
+    discord_account_id_hash: sha256(`unused-discord:${nonce}`),
+    terms_version: termsVersion,
+    terms_accepted_at: new Date().toISOString(),
+    registration_status: "pending",
+    access_status: "awaiting_payment",
+  });
+  if (profileInsert.error) throw profileInsert.error;
 
   const session = `gms_test_${randomBytes(32).toString("base64url")}`;
-  const emailToken = `gme_test_${randomBytes(32).toString("base64url")}`;
+  const sessionExpiresAt = expiresIn(SESSION_TTL_MS);
   const sessionInsert = await db.from("testnet_tester_sessions").insert({
     principal_id: principalId,
     session_token_hash: sha256(session),
-    expires_at: expiresIn(SESSION_TTL_MS),
+    expires_at: sessionExpiresAt,
   });
   if (sessionInsert.error) throw sessionInsert.error;
-
-  const challengeInsert = await db.from("testnet_email_verification_challenges").insert({
-    principal_id: principalId,
-    email_hash: emailHash,
-    token_hash: sha256(emailToken),
-    expires_at: expiresIn(EMAIL_CHALLENGE_TTL_MS),
-  });
-  if (challengeInsert.error) throw challengeInsert.error;
 
   return {
     principal_id: principalId,
     session_token: session,
-    session_expires_at: expiresIn(SESSION_TTL_MS),
-    email_verification_token: emailToken,
-    email_verification_expires_at: expiresIn(EMAIL_CHALLENGE_TTL_MS),
+    session_expires_at: sessionExpiresAt,
   } as const;
 }
 
@@ -131,6 +109,8 @@ export async function requireTestnetTesterSession(rawToken: string) {
   return { principalId: row.principal_id as string, sessionId: row.id as string };
 }
 
+// Legacy verification helper retained only for compatibility with old sessions.
+// New wallet-only tester registration never creates or requires email challenges.
 export async function verifyTestnetTesterEmail(input: { principalId: string; token: string }) {
   const db = requireRiskSupabase();
   const now = new Date().toISOString();
@@ -181,6 +161,7 @@ export async function verifyTestnetWalletSignature(input: {
 }) {
   const db = requireRiskSupabase();
   const walletAddress = canonicalAddress(input.walletAddress);
+  const walletHash = sha256(walletAddress);
   const now = new Date().toISOString();
   const challenge = await db
     .from("testnet_wallet_challenges")
@@ -192,7 +173,7 @@ export async function verifyTestnetWalletSignature(input: {
   if (!challenge.data || challenge.data.consumed_at || challenge.data.expires_at <= now) {
     throw new Error("WALLET_CHALLENGE_INVALID_OR_EXPIRED");
   }
-  if (challenge.data.wallet_address_hash !== sha256(walletAddress)) throw new Error("WALLET_CHALLENGE_ADDRESS_MISMATCH");
+  if (challenge.data.wallet_address_hash !== walletHash) throw new Error("WALLET_CHALLENGE_ADDRESS_MISMATCH");
   const requiredMessage = [
     "Geomacro Testnet Tester wallet verification",
     `Principal: ${input.principalId}`,
@@ -204,13 +185,37 @@ export async function verifyTestnetWalletSignature(input: {
   const recovered = canonicalAddress(verifyMessage(requiredMessage, input.signature));
   if (recovered !== walletAddress) throw new Error("WALLET_SIGNATURE_INVALID");
 
+  const duplicate = await db
+    .from("testnet_tester_profiles")
+    .select("principal_id")
+    .eq("wallet_address_hash", walletHash)
+    .neq("principal_id", input.principalId)
+    .maybeSingle();
+  if (duplicate.error) throw duplicate.error;
+  if (duplicate.data) throw new Error("TESTNET_WALLET_ALREADY_REGISTERED");
+
   const consume = await db.from("testnet_wallet_challenges").update({ consumed_at: now }).eq("id", challenge.data.id).is("consumed_at", null);
   if (consume.error) throw consume.error;
-  const update = await db.from("testnet_tester_profiles").update({ wallet_address_hash: sha256(walletAddress), wallet_verified_at: now, updated_at: now }).eq("principal_id", input.principalId);
-  if (update.error) throw update.error;
+
+  const profileUpdate = await db.from("testnet_tester_profiles").update({
+    wallet_address_hash: walletHash,
+    wallet_verified_at: now,
+    registration_status: "complete",
+    updated_at: now,
+  }).eq("principal_id", input.principalId);
+  if (profileUpdate.error) throw profileUpdate.error;
+
+  const principalUpdate = await db.from("commercial_principals").update({
+    principal_type: "wallet",
+    external_id: `wallet_sha256:${walletHash}`,
+    updated_at: now,
+  }).eq("id", input.principalId);
+  if (principalUpdate.error) throw principalUpdate.error;
+
   return { verified: true, wallet_address: walletAddress } as const;
 }
 
+// Legacy OAuth helpers remain for old sessions only. New wallet-only registration does not call them.
 export async function issueTesterOauthState(input: { principalId: string; provider: "x" | "discord" }) {
   const db = requireRiskSupabase();
   const state = `gmo_${randomBytes(24).toString("base64url")}`;
@@ -255,23 +260,20 @@ export async function consumeTesterOauthIdentity(input: {
 export async function loadTestnetTesterAccount(principalId: string) {
   const db = requireRiskSupabase();
   const profileResult = await db.from("testnet_tester_profiles")
-    .select("profile_name,avatar_path,email_verified_at,wallet_verified_at,x_connected_at,discord_connected_at,registration_status,access_status,current_entitlement_grant_id,updated_at")
+    .select("profile_name,avatar_path,wallet_verified_at,registration_status,access_status,current_entitlement_grant_id,updated_at")
     .eq("principal_id", principalId)
     .maybeSingle();
   if (profileResult.error) throw profileResult.error;
   if (!profileResult.data) throw new Error("TESTNET_PROFILE_NOT_FOUND");
   const p = profileResult.data;
-  const registrationComplete = Boolean(p.email_verified_at && p.wallet_verified_at && p.x_connected_at && p.discord_connected_at);
+  const registrationComplete = Boolean(p.wallet_verified_at);
   if (registrationComplete && p.registration_status === "pending") {
     await db.from("testnet_tester_profiles").update({ registration_status: "complete", updated_at: new Date().toISOString() }).eq("principal_id", principalId);
   }
   return {
     profile_name: p.profile_name,
     avatar_path: p.avatar_path,
-    email_verified: Boolean(p.email_verified_at),
     wallet_verified: Boolean(p.wallet_verified_at),
-    x_connected: Boolean(p.x_connected_at),
-    discord_connected: Boolean(p.discord_connected_at),
     registration_status: registrationComplete ? "complete" : p.registration_status,
     access_status: p.access_status,
     entitlement_grant_id: p.current_entitlement_grant_id,
