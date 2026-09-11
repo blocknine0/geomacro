@@ -30,7 +30,7 @@ describe("testnet tester payment activation", () => {
     expect(migration).toContain("'quota_credits',500");
     expect(migration).toContain("'quota_price_usdc',0.5");
     expect(migration).toContain("'credits_granted',500");
-    expect(migration).toContain("commercial_revenue,false");
+    expect(migration).toContain("'commercial_revenue',false");
   });
 
   it("verifies supported-chain identity, USDC contract, recipient and amount before activation", () => {
