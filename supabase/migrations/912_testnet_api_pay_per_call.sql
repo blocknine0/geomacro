@@ -2,6 +2,17 @@
 -- Testnet only. Historical settlement rows remain unchanged.
 
 alter table public.testnet_tester_profiles
+  drop constraint if exists testnet_tester_access_status_check;
+
+alter table public.testnet_tester_profiles
+  add constraint testnet_tester_access_status_check
+  check (access_status in ('pending_verification','active','expired','suspended','revoked'));
+
+update public.testnet_tester_profiles
+set access_status='pending_verification', updated_at=now()
+where access_status='awaiting_payment';
+
+alter table public.testnet_tester_profiles
   drop constraint if exists testnet_tester_activation_check;
 
 alter table public.testnet_tester_profiles
