@@ -194,6 +194,12 @@ export const COMMERCIAL_OFFER_REGISTRY = {
     payment_required: false,
     entitlement_kind: "public_web",
   },
+  testnet_tester_metered_30d: {
+    offer_id: "testnet_tester_metered_30d",
+    tier: "testnet_tester",
+    payment_required: true,
+    entitlement_kind: "testnet_pass",
+  },
   testnet_tester_pass_30d: {
     offer_id: "testnet_tester_pass_30d",
     tier: "testnet_tester",
