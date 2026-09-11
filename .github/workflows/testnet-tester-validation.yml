@@ -8,12 +8,16 @@ on:
       - "server/routes/testnet-access.get.ts"
       - "server/routes/testnet-console.get.ts"
       - "server/api/testnet-tester/**"
+      - "server/api/commercial/structural.post.ts"
       - "src/lib/testnet-*.ts"
-      - "src/lib/commercial-access-contract.ts"
+      - "src/lib/commercial-access*.ts"
+      - "src/lib/structured-data-entitlement-registry.ts"
       - "src/routes/api.demo.feedback.ts"
       - "src/__tests__/testnet-*.test.ts"
       - "supabase/migrations/909_testnet_fixed_500_credit_quota.sql"
       - "supabase/migrations/910_testnet_wallet_only_access.sql"
+      - "supabase/migrations/911_testnet_api_pricing_alignment.sql"
+      - "supabase/migrations/912_testnet_api_pay_per_call.sql"
       - "scripts/testnet/**"
       - ".github/workflows/testnet-tester-validation.yml"
   workflow_dispatch:
@@ -38,6 +42,7 @@ jobs:
       - name: Tester contract and end-to-end trial tests
         run: >-
           timeout 6m bunx vitest run
+          src/__tests__/testnet-api-v12-alignment.test.ts
           src/__tests__/testnet-usdc-access-contract.test.ts
           src/__tests__/testnet-usdc-payment-verification.test.ts
           src/__tests__/testnet-tester-payment-activation-static.test.ts
@@ -49,6 +54,8 @@ jobs:
           src/__tests__/testnet-feedback-e2e-static.test.ts
           src/__tests__/testnet-tester-e2e-contract.test.ts
           src/__tests__/testnet-structural-severity-console-static.test.ts
+          src/__tests__/testnet-developer-access-static.test.ts
+          src/__tests__/testnet-tester-account-runtime-static.test.ts
 
       - name: Migration safety
         run: timeout 3m bun run db:safety
