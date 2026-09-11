@@ -51,6 +51,58 @@
     show("paymentPanel", false);
   }
 
+  function mountDeveloperSetup() {
+    const panel = $("developerPanel");
+    if (!panel || $("testnetEndpointCapability")) return;
+
+    const block = document.createElement("div");
+    block.id = "testnetEndpointCapability";
+    block.className = "notice";
+    block.style.marginTop = "18px";
+
+    const heading = document.createElement("strong");
+    heading.textContent = "2. Endpoint & capability";
+
+    const helper = document.createElement("p");
+    helper.className = "muted";
+    helper.textContent = "Only external Testnet capabilities that are callable now are listed here.";
+
+    const grid = document.createElement("div");
+    grid.className = "form-grid";
+
+    const endpointField = document.createElement("div");
+    endpointField.className = "field";
+    const endpointLabel = document.createElement("label");
+    endpointLabel.htmlFor = "testnetEndpointSelect";
+    endpointLabel.textContent = "Endpoint";
+    const endpoint = document.createElement("select");
+    endpoint.id = "testnetEndpointSelect";
+    endpoint.innerHTML = '<option value="/api/commercial/structural">POST /api/commercial/structural</option>';
+    endpointField.append(endpointLabel, endpoint);
+
+    const capabilityField = document.createElement("div");
+    capabilityField.className = "field";
+    const capabilityLabel = document.createElement("label");
+    capabilityLabel.htmlFor = "testnetCapabilitySelect";
+    capabilityLabel.textContent = "Capability";
+    const capability = document.createElement("select");
+    capability.id = "testnetCapabilitySelect";
+    capability.innerHTML = [
+      '<option value="structural_country_digest">Country Digest · 3 credits · 1.5 Testnet USDC</option>',
+      '<option value="structural_corridor_digest">Corridor Digest · 5 credits · 2.5 Testnet USDC</option>',
+      '<option value="structural_country_profile">Country Profile · 8 credits · 4 Testnet USDC</option>',
+      '<option value="structural_corridor_profile">Corridor Profile · 12 credits · 6 Testnet USDC</option>',
+    ].join("");
+    capabilityField.append(capabilityLabel, capability);
+
+    grid.append(endpointField, capabilityField);
+    block.append(heading, helper, grid);
+
+    const keyList = $("developerKeyList");
+    if (keyList) keyList.insertAdjacentElement("afterend", block);
+    else panel.appendChild(block);
+  }
+
   async function loadAccount() {
     try {
       const payload = await json("/api/testnet-tester/me");
@@ -72,7 +124,10 @@
           preview.hidden = false;
         }
       }
-      if (active) await loadDeveloperKeys();
+      if (active) {
+        mountDeveloperSetup();
+        await loadDeveloperKeys();
+      }
       return account;
     } catch (error) {
       show("registrationPanel", true);
