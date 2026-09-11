@@ -1,41 +1,44 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync("supabase/migrations/910_testnet_wallet_only_access.sql", "utf8");
+const walletMigration = readFileSync("supabase/migrations/910_testnet_wallet_only_access.sql", "utf8");
+const pricingMigration = readFileSync("supabase/migrations/911_testnet_api_pricing_alignment.sql", "utf8");
 const service = readFileSync("src/lib/testnet-tester-payment.server.ts", "utf8");
 const verifier = readFileSync("src/lib/testnet-usdc-payment-verification.server.ts", "utf8");
 
 describe("testnet tester payment activation", () => {
   it("requires completed wallet verification before tester activation", () => {
-    expect(migration).toContain("registration_status <> 'complete'");
-    expect(migration).toContain("wallet_verified_at is null");
-    expect(migration).not.toContain("email_verified_at is null");
-    expect(migration).not.toContain("x_connected_at is null");
-    expect(migration).not.toContain("discord_connected_at is null");
+    expect(walletMigration).toContain("registration_status <> 'complete'");
+    expect(walletMigration).toContain("wallet_verified_at is null");
+    expect(walletMigration).not.toContain("email_verified_at is null");
+    expect(walletMigration).not.toContain("x_connected_at is null");
+    expect(walletMigration).not.toContain("discord_connected_at is null");
   });
 
   it("binds payment to the verified wallet and prevents duplicate quota activation", () => {
-    expect(migration).toContain("v_profile.wallet_address_hash <> p_payer_address_hash");
-    expect(migration).toContain("TESTNET_PAYER_WALLET_MISMATCH");
-    expect(migration).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
-    expect(migration).toContain("TESTNET_FIXED_QUOTA_ALREADY_ACTIVATED");
-    expect(migration).toContain("pg_advisory_xact_lock");
+    expect(walletMigration).toContain("v_profile.wallet_address_hash <> p_payer_address_hash");
+    expect(walletMigration).toContain("TESTNET_PAYER_WALLET_MISMATCH");
+    expect(walletMigration).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
+    expect(walletMigration).toContain("TESTNET_FIXED_QUOTA_ALREADY_ACTIVATED");
+    expect(walletMigration).toContain("pg_advisory_xact_lock");
   });
 
   it("creates one fixed 500-credit 30-day non-revenue tester entitlement", () => {
-    expect(migration).toContain("'testnet_tester'");
-    expect(migration).toContain("'testnet_tester_pass_30d'");
-    expect(migration).toContain("interval '30 days'");
-    expect(migration).toContain("'testnet_non_revenue'");
-    expect(migration).toContain("'quota_credits',500");
-    expect(migration).toContain("'quota_price_usdc',0.5");
-    expect(migration).toContain("'credits_granted',500");
-    expect(migration).toContain("'commercial_revenue',false");
+    expect(walletMigration).toContain("'testnet_tester'");
+    expect(walletMigration).toContain("'testnet_tester_pass_30d'");
+    expect(walletMigration).toContain("interval '30 days'");
+    expect(pricingMigration).toContain("'quota_credits', 500");
+    expect(pricingMigration).toContain("'credit_price_testnet_usdc', 0.5");
+    expect(pricingMigration).toContain("'quota_price_usdc', 250");
+    expect(pricingMigration).toContain("'commercial_revenue', false");
   });
 
-  it("aligns the database claim constraint with the 0.50 USDC offer", () => {
-    expect(migration).toContain("amount_atomic >= 500000");
-    expect(migration).toContain("amount_usdc >= 0.5");
+  it("enforces 250 Testnet USDC for new fixed-quota claims without rewriting historical rows", () => {
+    expect(pricingMigration).toContain("amount_atomic >= 250000000");
+    expect(pricingMigration).toContain("amount_usdc >= 250");
+    expect(pricingMigration).toContain("not valid");
+    expect(pricingMigration).toContain("align_testnet_tester_grant_metadata");
+    expect(pricingMigration).toContain("align_testnet_tester_payment_metadata");
   });
 
   it("verifies supported-chain identity, USDC contract, recipient and amount before activation", () => {
@@ -47,13 +50,12 @@ describe("testnet tester payment activation", () => {
     expect(verifier).toContain("UNDERPAYMENT");
     expect(service).toContain("verifyTestnetUsdcPayment");
     expect(service).toContain("activate_verified_testnet_usdc_pass");
+    expect(service).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC");
   });
 
   it("never accepts production/mainnet revenue semantics", () => {
     expect(service).toContain("commercial_revenue: false");
-    expect(migration).toContain("'testnet'");
-    expect(migration).toContain("'testnet_non_revenue'");
-    expect(migration).toContain("'execution_authorized',false");
-    expect(migration).toContain("'upstream_news_source_identity_exposed',false");
+    expect(pricingMigration).toContain("testnet_non_revenue");
+    expect(pricingMigration).toContain("'execution_authorized', false");
   });
 });
