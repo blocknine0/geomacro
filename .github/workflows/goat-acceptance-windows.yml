@@ -1,0 +1,62 @@
+name: GOAT Acceptance Windows
+
+on:
+  schedule:
+    - cron: '15 0,6,12,18 12-16 9 *'
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: Suite iterations for this window
+        required: false
+        default: '250'
+      window_id:
+        description: Optional window identifier
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-acceptance-window-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  acceptance-window:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GOAT_ACCEPTANCE_ITERATIONS: ${{ github.event.inputs.iterations || '250' }}
+      GOAT_ACCEPTANCE_WINDOW_ID: ${{ github.event.inputs.window_id || format('run-{0}', github.run_id) }}
+      GOAT_ACCEPTANCE_ARTIFACT_DIR: artifacts/goat-acceptance/windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run acceptance window
+        run: bash scripts/goat/run-acceptance-window.sh
+
+      - name: Upload window evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-acceptance-window-${{ github.run_id }}
+          path: artifacts/goat-acceptance/windows/*
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record window boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Target program: 20 windows x 250 suite iterations = 5,000" >> "$GITHUB_STEP_SUMMARY"
+          echo "This workflow does not submit external transactions." >> "$GITHUB_STEP_SUMMARY"
+          echo "Window id: $GOAT_ACCEPTANCE_WINDOW_ID" >> "$GITHUB_STEP_SUMMARY"
