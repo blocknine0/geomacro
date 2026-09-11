@@ -28,7 +28,7 @@ jobs:
       GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
       GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
       GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
-      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '1'
+      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
       GOATX402_DRY_RUN_ARTIFACT_DIR: artifacts/goat-testnet3
 
     steps:
@@ -56,6 +56,8 @@ jobs:
       - name: Run sanitized provider diagnostic
         if: steps.config.outputs.configured == 'true'
         continue-on-error: true
+        env:
+          GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
         run: node scripts/goat/testnet3-provider-diagnostic.mjs
 
       - name: Run no-payment Testnet3 provider dry run
