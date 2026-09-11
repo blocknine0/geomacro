@@ -10,6 +10,19 @@ function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+async function ensureMeteredEntitlement(principalId: string) {
+  const db = requireRiskSupabase();
+  const provision = await db.rpc("provision_testnet_metered_access", {
+    p_principal_id: principalId,
+    p_registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
+    p_contract_version: GEOMACRO_CREDIT_CONTRACT_VERSION,
+  });
+  if (provision.error) throw provision.error;
+  const result = (provision.data ?? {}) as Record<string, unknown>;
+  if (!result.ok) throw new Error(String(result.code ?? "TESTNET_METERED_ACCESS_PROVISION_FAILED"));
+  return String(result.entitlement_grant_id ?? "");
+}
+
 export async function issueTestnetDeveloperApiKey(input: {
   principalId: string;
   label?: string;
@@ -20,25 +33,21 @@ export async function issueTestnetDeveloperApiKey(input: {
 
   const profileQuery = await db
     .from("testnet_tester_profiles")
-    .select("id,registration_status,access_status,current_entitlement_grant_id")
+    .select("id,registration_status,wallet_verified_at")
     .eq("principal_id", input.principalId)
     .maybeSingle();
   if (profileQuery.error) throw profileQuery.error;
 
   const profile = profileQuery.data;
-  if (
-    !profile ||
-    profile.registration_status !== "complete" ||
-    profile.access_status !== "active" ||
-    !profile.current_entitlement_grant_id
-  ) {
-    throw new Error("TESTNET_TESTER_ACCESS_NOT_ACTIVE");
+  if (!profile || profile.registration_status !== "complete" || !profile.wallet_verified_at) {
+    throw new Error("TESTNET_WALLET_VERIFICATION_REQUIRED");
   }
 
+  const grantId = await ensureMeteredEntitlement(input.principalId);
   const grantQuery = await db
     .from("commercial_entitlement_grants")
     .select("id,tier,status,starts_at,ends_at,contract_version,metadata")
-    .eq("id", profile.current_entitlement_grant_id)
+    .eq("id", grantId)
     .eq("principal_id", input.principalId)
     .maybeSingle();
   if (grantQuery.error) throw grantQuery.error;
@@ -51,7 +60,8 @@ export async function issueTestnetDeveloperApiKey(input: {
     grant.contract_version !== GEOMACRO_CREDIT_CONTRACT_VERSION ||
     grant.starts_at > now ||
     grant.ends_at <= now ||
-    grant.metadata?.offer_id !== "testnet_tester_pass_30d" ||
+    grant.metadata?.offer_id !== "testnet_tester_metered_30d" ||
+    grant.metadata?.payment_model !== "pay_per_call" ||
     grant.metadata?.structured_data_registry_version !== STRUCTURED_DATA_REGISTRY_VERSION
   ) {
     throw new Error("TESTNET_TESTER_ENTITLEMENT_NOT_ACTIVE");
@@ -110,6 +120,9 @@ export async function issueTestnetDeveloperApiKey(input: {
     expires_at: credentialInsert.data.expires_at,
     shown_once: true,
     auth_scheme: "key_secret",
+    payment_model: "pay_per_call",
+    credit_price_testnet_usdc: 0.5,
+    max_credits_per_30_days: 500,
     scopes: [
       "commercial:read",
       "testnet:structured",
