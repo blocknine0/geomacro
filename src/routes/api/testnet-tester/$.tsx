@@ -9,6 +9,7 @@ import configGet from "../../../../server/api/testnet-tester/config.get";
 import developerKeyRevokePost from "../../../../server/api/testnet-tester/developer-key-revoke.post";
 import developerKeyPost from "../../../../server/api/testnet-tester/developer-key.post";
 import developerKeysGet from "../../../../server/api/testnet-tester/developer-keys.get";
+import emailResendPost from "../../../../server/api/testnet-tester/email-resend.post";
 import emailVerifyPost from "../../../../server/api/testnet-tester/email-verify.post";
 import intelligencePost from "../../../../server/api/testnet-tester/intelligence.post";
 import logoutPost from "../../../../server/api/testnet-tester/logout.post";
@@ -43,6 +44,7 @@ const POST_HANDLERS: Record<string, Handler> = {
   avatar: avatarPost as never,
   "developer-key": developerKeyPost as never,
   "developer-key-revoke": developerKeyRevokePost as never,
+  "email-resend": emailResendPost as never,
   "email-verify": emailVerifyPost as never,
   intelligence: intelligencePost as never,
   logout: logoutPost as never,
@@ -76,7 +78,6 @@ async function dispatch(
   const direct = table[path];
   if (direct) return runH3Handler(request, direct);
 
-  // Dynamic share-card slug route: /api/testnet-tester/share-card/<slug>
   if (method === "GET" && path.startsWith("share-card/")) {
     const slug = path.slice("share-card/".length);
     if (slug && !slug.includes("/")) {
