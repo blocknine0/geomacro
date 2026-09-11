@@ -28,21 +28,11 @@ const iso3 = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
 export const testnetIntelligenceSubjectSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("global") }),
   z.object({ type: z.literal("country"), country_iso3: iso3 }),
-  z
-    .object({
-      type: z.literal("corridor"),
-      origin_country_iso3: iso3,
-      destination_country_iso3: iso3,
-    })
-    .superRefine((value, ctx) => {
-      if (value.origin_country_iso3 === value.destination_country_iso3) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["destination_country_iso3"],
-          message: "Corridor origin and destination must differ",
-        });
-      }
-    }),
+  z.object({
+    type: z.literal("corridor"),
+    origin_country_iso3: iso3,
+    destination_country_iso3: iso3,
+  }),
 ]);
 
 export type TestnetIntelligenceSubject = z.infer<
@@ -70,6 +60,17 @@ export const testnetIntelligenceRequestSchema = z
   })
   .superRefine((value, ctx) => {
     const subject = value.subject;
+
+    if (
+      subject?.type === "corridor" &&
+      subject.origin_country_iso3 === subject.destination_country_iso3
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["subject", "destination_country_iso3"],
+        message: "Corridor origin and destination must differ",
+      });
+    }
 
     if (value.capability === "intelligence_query") {
       if (!value.question) {
