@@ -102,8 +102,7 @@ set included_credits = 500,
       'payment_asset', 'USDC',
       'commercial_revenue', false,
       'execution_authorized', false
-    ),
-    updated_at = now()
+    )
 where tier = 'testnet_tester' and status = 'active';
 
 create or replace function public.provision_testnet_metered_access(
