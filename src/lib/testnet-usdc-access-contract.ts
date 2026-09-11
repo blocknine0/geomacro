@@ -1,6 +1,6 @@
 import { CCTP_CHAINS } from "./cctp";
 
-export const TESTNET_USDC_ACCESS_VERSION = "testnet-usdc-access-v2.0.0" as const;
+export const TESTNET_USDC_ACCESS_VERSION = "testnet-usdc-access-v2.1.0" as const;
 export const TESTNET_USDC_ACCESS_OFFER_ID = "testnet_tester_pass_30d" as const;
 export const TESTNET_USDC_ACCESS_PRICE_USDC = "0.50" as const;
 export const TESTNET_USDC_ACCESS_PRICE_ATOMIC = 500_000n;
@@ -11,25 +11,13 @@ export const TESTNET_USDC_RECEIVER_ENV = "TESTNET_USDC_RECEIVER_ADDRESS" as cons
 
 export type TestnetUsdcChainKey =
   | "arcTestnet"
-  | "ethSepolia"
   | "baseSepolia"
-  | "polygonAmoy"
-  | "arbitrumSepolia"
-  | "opSepolia"
-  | "avalancheFuji"
-  | "unichainSepolia"
-  | "lineaSepolia";
+  | "polygonAmoy";
 
 const keys: TestnetUsdcChainKey[] = [
   "arcTestnet",
-  "ethSepolia",
   "baseSepolia",
   "polygonAmoy",
-  "arbitrumSepolia",
-  "opSepolia",
-  "avalancheFuji",
-  "unichainSepolia",
-  "lineaSepolia",
 ];
 
 export const TESTNET_USDC_ACCESS_CHAINS = Object.fromEntries(
