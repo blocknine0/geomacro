@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { GEOMACRO_CREDIT_CONTRACT_VERSION } from "./commercial-access-contract";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { STRUCTURED_DATA_REGISTRY_VERSION } from "./structured-data-entitlement-registry";
+import { TESTNET_API_FIXED_QUOTA_ATOMIC } from "./testnet-api-pricing";
 import { TESTNET_USDC_ACCESS_CHAINS } from "./testnet-usdc-access-contract";
 import { verifyTestnetUsdcPayment } from "./testnet-usdc-payment-verification.server";
 
@@ -49,6 +50,9 @@ export async function activateTestnetTesterPayment(input: {
     env: input.env,
   });
   if (!verification.ok) return verification;
+  if (BigInt(verification.amount_atomic) < TESTNET_API_FIXED_QUOTA_ATOMIC) {
+    return { ok: false, code: "UNDERPAYMENT" };
+  }
 
   const chain = TESTNET_USDC_ACCESS_CHAINS[verification.chain_key];
   const db = requireRiskSupabase();
