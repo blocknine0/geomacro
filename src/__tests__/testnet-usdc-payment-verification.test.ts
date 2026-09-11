@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe("testnet USDC payment verification", () => {
-  it("accepts only a confirmed supported-chain USDC transfer to the dedicated receiver", async () => {
+  it("accepts the exact 0.5 USDC boundary on a confirmed supported-chain transfer to the dedicated receiver", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
     const fetchMock = vi.fn()
       .mockImplementationOnce(() => response(chain.chain_id_hex))
@@ -47,7 +47,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: "0x0f4240",
+          data: "0x7a120",
         }],
       }));
     vi.stubGlobal("fetch", fetchMock);
@@ -64,8 +64,8 @@ describe("testnet USDC payment verification", () => {
       chain_key: "baseSepolia",
       payer_address: payer,
       recipient_address: receiver,
-      amount_atomic: "1000000",
-      amount_usdc: "1",
+      amount_atomic: "500000",
+      amount_usdc: "0.5",
       environment: "testnet",
       revenue_classification: "testnet_non_revenue",
     });
@@ -83,7 +83,7 @@ describe("testnet USDC payment verification", () => {
     expect(result).toEqual({ ok: false, code: "RPC_IDENTITY_MISMATCH" });
   });
 
-  it("rejects underpayment", async () => {
+  it("rejects any amount below 0.5 USDC", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
     vi.stubGlobal("fetch", vi.fn()
       .mockImplementationOnce(() => response(chain.chain_id_hex))
@@ -93,7 +93,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: "0x0f423f",
+          data: "0x7a11f",
         }],
       })));
 
@@ -116,7 +116,7 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(other)],
-          data: "0x0f4240",
+          data: "0x7a120",
         }],
       })));
 
