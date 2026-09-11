@@ -1,17 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync("supabase/migrations/909_testnet_fixed_500_credit_quota.sql", "utf8");
+const migration = readFileSync("supabase/migrations/910_testnet_wallet_only_access.sql", "utf8");
 const service = readFileSync("src/lib/testnet-tester-payment.server.ts", "utf8");
 const verifier = readFileSync("src/lib/testnet-usdc-payment-verification.server.ts", "utf8");
 
 describe("testnet tester payment activation", () => {
-  it("requires completed registration before tester activation", () => {
+  it("requires completed wallet verification before tester activation", () => {
     expect(migration).toContain("registration_status <> 'complete'");
-    expect(migration).toContain("email_verified_at is null");
     expect(migration).toContain("wallet_verified_at is null");
-    expect(migration).toContain("x_connected_at is null");
-    expect(migration).toContain("discord_connected_at is null");
+    expect(migration).not.toContain("email_verified_at is null");
+    expect(migration).not.toContain("x_connected_at is null");
+    expect(migration).not.toContain("discord_connected_at is null");
   });
 
   it("binds payment to the verified wallet and prevents duplicate quota activation", () => {
@@ -31,6 +31,11 @@ describe("testnet tester payment activation", () => {
     expect(migration).toContain("'quota_price_usdc',0.5");
     expect(migration).toContain("'credits_granted',500");
     expect(migration).toContain("'commercial_revenue',false");
+  });
+
+  it("aligns the database claim constraint with the 0.50 USDC offer", () => {
+    expect(migration).toContain("amount_atomic >= 500000");
+    expect(migration).toContain("amount_usdc >= 0.5");
   });
 
   it("verifies supported-chain identity, USDC contract, recipient and amount before activation", () => {
