@@ -33,7 +33,23 @@
   };
 
   let walletAddress = "";
-  let paymentConfig = null;
+
+  function applyPayPerCallCopy() {
+    const hero = document.querySelector(".hero p");
+    if (hero) hero.textContent = "Create a tester profile, verify one EVM wallet, create an API Key + API Secret, then pay only for each Testnet API call. There is no upfront Testnet USDC activation payment.";
+    const cards = document.querySelectorAll(".grid .card");
+    if (cards[0]) cards[0].querySelector("p").textContent = "No email, X-account or Discord connection is required. One verified wallet gets Testnet developer access.";
+    if (cards[1]) {
+      cards[1].querySelector("strong").textContent = "500-credit Testnet cap";
+      cards[1].querySelector("p").textContent = "0.5 Testnet USDC per credit, paid per API call. 500 credits is the 30-day usage cap, not an upfront purchase.";
+    }
+    const steps = document.querySelectorAll(".steps .step");
+    if (steps[2]) {
+      steps[2].querySelector("b").textContent = "Create key & call API";
+      steps[2].querySelector(".muted").textContent = "402 quote → pay only for that call → retry with proof";
+    }
+    show("paymentPanel", false);
+  }
 
   async function loadAccount() {
     try {
@@ -44,9 +60,9 @@
       show("accountPanel", true);
       text("profileStatus", account.profile_name || "Tester");
       text("walletStatus", account.wallet_verified ? "Verified" : "Pending");
-      text("accessStatus", account.access_status || "awaiting_payment");
+      text("accessStatus", account.access_status || "pending");
       show("walletConnect", !account.wallet_verified);
-      show("paymentPanel", account.registration_status === "complete" && !active);
+      show("paymentPanel", false);
       show("developerPanel", active);
       show("feedbackPanel", active);
       if (account.avatar_path) {
@@ -56,7 +72,6 @@
           preview.hidden = false;
         }
       }
-      if (account.registration_status === "complete" && !active) await loadPaymentConfig();
       if (active) await loadDeveloperKeys();
       return account;
     } catch (error) {
@@ -77,7 +92,7 @@
     try {
       await json("/api/testnet-tester/register", {
         method: "POST",
-        body: JSON.stringify({ profile_name: profileName, terms_version: "testnet-terms-v2-wallet-only" }),
+        body: JSON.stringify({ profile_name: profileName, terms_version: "testnet-terms-v3-pay-per-call" }),
       });
       text("registrationStatus", "Profile created. Connect and verify your wallet next.");
       await loadAccount();
@@ -105,7 +120,7 @@
         method: "POST",
         body: JSON.stringify({ wallet_address: walletAddress, nonce: challenge.data.nonce, message, signature }),
       });
-      text("walletActionStatus", "Wallet verified. You can now activate the 500-credit Testnet quota.");
+      text("walletActionStatus", "Wallet verified. Developer access is active. Pay only when an API call returns a Testnet 402 quote.");
       await loadAccount();
     } catch (error) {
       text("walletActionStatus", error.message || "Wallet verification failed.");
@@ -129,64 +144,6 @@
     }
   }
 
-  function renderCanonicalPricing(config) {
-    const total = String(config?.fixed_quota_usdc ?? config?.price_usdc ?? "250");
-    const perCredit = String(config?.credit_price_usdc ?? "0.5");
-    const credits = String(config?.credits ?? 500);
-    const price = document.querySelector("#paymentPanel .price");
-    if (price) price.textContent = `${total} Testnet USDC`;
-    const summary = document.querySelector("#paymentPanel .price + .muted");
-    if (summary) summary.textContent = `${credits} fixed credits · ${perCredit} Testnet USDC per credit · 30 days · one quota per verified wallet · Testnet only · non-revenue.`;
-  }
-
-  async function loadPaymentConfig() {
-    try {
-      const payload = await json("/api/testnet-tester/config");
-      paymentConfig = payload.data;
-      renderCanonicalPricing(paymentConfig);
-      text("receiverAddress", paymentConfig.receiver_address);
-      const select = $("chainSelect");
-      if (select) {
-        select.innerHTML = "";
-        paymentConfig.chains.forEach((chain) => {
-          const option = document.createElement("option");
-          option.value = chain.key;
-          option.textContent = `${chain.name} · ${chain.payment_asset}`;
-          select.appendChild(option);
-        });
-      }
-    } catch (error) {
-      text("paymentStatus", error.message || "Payment configuration is not ready yet.");
-    }
-  }
-
-  async function claimPayment(event) {
-    event.preventDefault();
-    const chainKey = $("chainSelect").value;
-    const txHash = $("txHashInput").value.trim();
-    if (!walletAddress && window.ethereum?.request) {
-      const accounts = await window.ethereum.request({ method: "eth_accounts" });
-      walletAddress = String(accounts?.[0] || "");
-    }
-    if (!walletAddress) {
-      text("paymentStatus", "Connect the same verified wallet before claiming payment.");
-      return;
-    }
-    text("paymentStatus", "Verifying Testnet USDC transfer onchain...");
-    try {
-      const payload = await json("/api/testnet-tester/payment-claim", {
-        method: "POST",
-        body: JSON.stringify({ chain_key: chainKey, tx_hash: txHash, payer_address: walletAddress }),
-      });
-      text("paymentStatus", payload.data.idempotent_replay
-        ? "This payment was already verified. No extra credits were granted."
-        : "Access active. Fixed 500-credit tester quota granted.");
-      await loadAccount();
-    } catch (error) {
-      text("paymentStatus", error.message || "Payment verification failed.");
-    }
-  }
-
   async function submitTesterFeedback(event) {
     event.preventDefault();
     text("testerFeedbackStatus", "Sending feedback...");
@@ -197,11 +154,7 @@
           demo_mode: "OTHER",
           tester_type: $("feedbackTesterType").value,
           rating: Number($("feedbackRating").value),
-          would_integrate: $("feedbackWouldIntegrate").value === "yes"
-            ? true
-            : $("feedbackWouldIntegrate").value === "no"
-              ? false
-              : null,
+          would_integrate: $("feedbackWouldIntegrate").value === "yes" ? true : $("feedbackWouldIntegrate").value === "no" ? false : null,
           outcome: $("feedbackOutcome").value,
           most_valuable: $("feedbackMostValuable").value.trim(),
           friction: $("feedbackFriction").value.trim(),
@@ -263,7 +216,7 @@
       const apiSecret = String(payload.data.api_secret || "");
       text("issuedKey", `API Key: ${apiKey}\nAPI Secret: ${apiSecret}`);
       show("issuedKeyBox", true);
-      text("developerStatus", "Copy both values now. The API Secret will not be shown again.");
+      text("developerStatus", "Copy both values now. No upfront payment is required. Each API call will quote its own Testnet USDC amount.");
       await loadDeveloperKeys();
     } catch (error) {
       text("developerStatus", error.message || "Could not create developer credentials.");
@@ -274,12 +227,8 @@
     $("registrationForm")?.addEventListener("submit", register);
     $("walletConnect")?.addEventListener("click", connectWallet);
     $("avatarForm")?.addEventListener("submit", uploadAvatar);
-    $("paymentForm")?.addEventListener("submit", claimPayment);
     $("testerFeedbackForm")?.addEventListener("submit", submitTesterFeedback);
     $("developerKeyForm")?.addEventListener("submit", createDeveloperKey);
-    $("copyReceiver")?.addEventListener("click", async () => {
-      if (paymentConfig?.receiver_address) await navigator.clipboard.writeText(paymentConfig.receiver_address);
-    });
     $("copyIssuedKey")?.addEventListener("click", async () => {
       const pair = $("issuedKey")?.textContent || "";
       if (pair) await navigator.clipboard.writeText(pair);
@@ -287,6 +236,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    applyPayPerCallCopy();
     bind();
     await loadAccount();
   });
