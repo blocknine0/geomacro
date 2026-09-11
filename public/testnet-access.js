@@ -2,23 +2,34 @@
   const $ = (id) => document.getElementById(id);
   const text = (id, value) => { const el = $(id); if (el) el.textContent = String(value ?? ""); };
   const show = (id, visible = true) => { const el = $(id); if (el) el.hidden = !visible; };
+  const TESTNET_REQUEST_TIMEOUT_MS = 30_000;
   const json = async (url, options = {}) => {
     const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
-    const response = await fetch(url, {
-      credentials: "same-origin",
-      headers: {
-        accept: "application/json",
-        ...(!isFormData && options.body ? { "content-type": "application/json" } : {}),
-        ...(options.headers || {}),
-      },
-      ...options,
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload?.ok === false) {
-      const errorCode = payload?.error || payload?.statusMessage || payload?.message || payload?.data?.error || response.statusText || "Request failed";
-      throw new Error(String(errorCode));
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(new DOMException("Request timed out", "TimeoutError")), TESTNET_REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        headers: {
+          accept: "application/json",
+          ...(!isFormData && options.body ? { "content-type": "application/json" } : {}),
+          ...(options.headers || {}),
+        },
+        ...options,
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok === false) {
+        const errorCode = payload?.error || payload?.statusMessage || payload?.message || payload?.data?.error || response.statusText || "Request failed";
+        throw new Error(String(errorCode));
+      }
+      return payload;
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error("Request timed out. Please try again.");
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return payload;
   };
 
   let walletAddress = "";
@@ -165,6 +176,34 @@
     }
   }
 
+  async function submitTesterFeedback(event) {
+    event.preventDefault();
+    text("testerFeedbackStatus", "Sending feedback...");
+    try {
+      const payload = await json("/api/demo/feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          demo_mode: "OTHER",
+          tester_type: $("feedbackTesterType").value,
+          rating: Number($("feedbackRating").value),
+          would_integrate: $("feedbackWouldIntegrate").value === "yes"
+            ? true
+            : $("feedbackWouldIntegrate").value === "no"
+              ? false
+              : null,
+          outcome: $("feedbackOutcome").value,
+          most_valuable: $("feedbackMostValuable").value.trim(),
+          friction: $("feedbackFriction").value.trim(),
+          missing_capability: $("feedbackMissingCapability").value.trim(),
+        }),
+      });
+      text("testerFeedbackStatus", payload.message || "Feedback saved. Thank you.");
+      $("testerFeedbackForm")?.reset();
+    } catch (error) {
+      text("testerFeedbackStatus", error.message || "Feedback could not be saved.");
+    }
+  }
+
   async function loadDeveloperKeys() {
     try {
       const payload = await json("/api/testnet-tester/developer-keys");
@@ -223,6 +262,7 @@
     $("walletConnect")?.addEventListener("click", connectWallet);
     $("avatarForm")?.addEventListener("submit", uploadAvatar);
     $("paymentForm")?.addEventListener("submit", claimPayment);
+    $("testerFeedbackForm")?.addEventListener("submit", submitTesterFeedback);
     $("developerKeyForm")?.addEventListener("submit", createDeveloperKey);
     $("copyReceiver")?.addEventListener("click", async () => {
       if (paymentConfig?.receiver_address) await navigator.clipboard.writeText(paymentConfig.receiver_address);
