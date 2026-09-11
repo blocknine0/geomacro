@@ -1,0 +1,35 @@
+name: Live Tester Smoke Temp
+
+on:
+  push:
+    branches:
+      - chore/live-tester-smoke
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe live tester routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in /testnet-access /testnet-console /api/testnet-tester/config; do
+            url="https://geomacro.live${path}"
+            echo "=== ${url} ==="
+            code=$(curl -sS -L -o body.txt -w '%{http_code}' --max-time 20 "$url" || true)
+            echo "HTTP ${code}"
+            head -c 2000 body.txt || true
+            echo
+            if [[ "$path" == "/api/testnet-tester/config" ]]; then
+              [[ "$code" == "200" ]] || { echo "config endpoint not ready"; exit 1; }
+              grep -q '"price_usdc":"0.50"' body.txt || grep -q '"price_usdc": "0.50"' body.txt || { echo "0.50 USDC config missing"; exit 1; }
+              grep -q '500' body.txt || { echo "500-credit config missing"; exit 1; }
+            else
+              [[ "$code" == "200" ]] || { echo "route not ready"; exit 1; }
+            fi
+          done
