@@ -325,11 +325,15 @@ async function authenticatedRequest(
       ...headers,
     },
     body: body === null ? undefined : JSON.stringify(body),
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(
       Math.min(REQUEST_TIMEOUT_MS, Math.max(1, options?.timeout_ms ?? REQUEST_TIMEOUT_MS)),
     ),
   });
+
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error("GOAT Flow redirect rejected");
+  }
 
   const parsed = await boundedJsonResponse(response);
   const expected402 = response.status === 402 && options?.expect_402 === true;
@@ -345,9 +349,14 @@ async function publicRequest(path: string): Promise<Record<string, unknown>> {
   const config = requireGoatFlowConfig();
   const response = await fetch(`${config.api_url}${path}`, {
     method: "GET",
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
+
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error("GOAT Flow redirect rejected");
+  }
+
   const parsed = await boundedJsonResponse(response);
   if (!response.ok) {
     throw new Error(`GOAT Flow public request failed with status ${response.status}`);
