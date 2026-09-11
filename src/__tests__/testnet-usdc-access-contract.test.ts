@@ -11,21 +11,32 @@ import {
   TESTNET_USDC_RECEIVER_ENV,
 } from "../lib/testnet-usdc-access-contract";
 import {
+  TESTNET_API_CREDIT_PRICE_USDC,
+  TESTNET_API_FIXED_CREDITS,
+  TESTNET_API_FIXED_QUOTA_ATOMIC,
+  TESTNET_API_FIXED_QUOTA_USDC,
+} from "../lib/testnet-api-pricing";
+import {
   COMMERCIAL_OFFER_REGISTRY,
   STRUCTURED_TIER_REGISTRY,
 } from "../lib/structured-data-entitlement-registry";
 
 describe("paid multichain testnet USDC tester access", () => {
-  it("requires 0.5 Testnet USDC for a fixed 500-credit quota and never counts testnet settlement as revenue", () => {
+  it("uses 0.5 Testnet USDC per credit for one fixed 500-credit, 250-USDC Testnet quota", () => {
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.free_access).toBe(false);
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.payment_required).toBe(true);
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.payment_is_real_revenue).toBe(false);
-    expect(TESTNET_USDC_ACCESS_PRICE_USDC).toBe("0.50");
-    expect(TESTNET_USDC_ACCESS_PRICE_ATOMIC).toBe(500_000n);
+    expect(TESTNET_API_CREDIT_PRICE_USDC).toBe(0.5);
+    expect(TESTNET_API_FIXED_CREDITS).toBe(500);
+    expect(TESTNET_API_FIXED_QUOTA_USDC).toBe(250);
+    expect(TESTNET_API_FIXED_QUOTA_ATOMIC).toBe(250_000_000n);
+    expect(TESTNET_USDC_ACCESS_PRICE_USDC).toBe("250");
+    expect(TESTNET_USDC_ACCESS_PRICE_ATOMIC).toBe(250_000_000n);
     expect(TESTNET_USDC_ACCESS_CREDITS).toBe(500);
     expect(TESTNET_USDC_ACCESS_DURATION_DAYS).toBe(30);
     expect(TESTNET_USDC_ACCESS_BOUNDARIES.credits_per_quota).toBe(500);
-    expect(TESTNET_USDC_ACCESS_BOUNDARIES.quota_price_usdc).toBe("0.50");
+    expect(TESTNET_USDC_ACCESS_BOUNDARIES.credit_price_usdc).toBe("0.5");
+    expect(TESTNET_USDC_ACCESS_BOUNDARIES.quota_price_usdc).toBe("250");
   });
 
   it("supports only Arc Testnet, Base Sepolia and Polygon Amoy", () => {
