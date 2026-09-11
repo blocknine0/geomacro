@@ -1,0 +1,104 @@
+name: Temp Testnet Live Smoke
+
+on:
+  push:
+    branches:
+      - chore/testnet-live-smoke-rc
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for publish propagation
+        run: sleep 20
+      - name: Smoke Lovable production
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://geomacro.lovable.app"
+          access_body=$(mktemp)
+          console_body=$(mktemp)
+          card_body=$(mktemp)
+          home_body=$(mktemp)
+
+          code=$(curl -sS -L -o "$access_body" -w '%{http_code}' "$base/testnet-access")
+          test "$code" = "200"
+          grep -q 'GET TESTNET USDC' "$access_body"
+          grep -q 'geomacro-logo.png' "$access_body"
+          grep -q '0.50 Testnet USDC' "$access_body"
+          grep -q '500 credits' "$access_body"
+
+          code=$(curl -sS -L -o "$console_body" -w '%{http_code}' "$base/testnet-console")
+          test "$code" = "200"
+          grep -q 'TESTNET INTELLIGENCE' "$console_body"
+          grep -q 'geomacro-logo.png' "$console_body"
+
+          me_code=$(curl -sS -o /tmp/me.json -w '%{http_code}' "$base/api/testnet-tester/me")
+          test "$me_code" != "404"
+          test "$me_code" -ge 400
+
+          config_code=$(curl -sS -o /tmp/config.json -w '%{http_code}' "$base/api/testnet-tester/config")
+          test "$config_code" != "404"
+          test "$config_code" -ge 400
+
+          card_code=$(curl -sS -G -o "$card_body" -w '%{http_code}' \
+            --data-urlencode 'subject=USA > CHN' \
+            --data-urlencode 'summary=Professional Testnet risk intelligence preview.' \
+            --data-urlencode 'score=73' \
+            --data-urlencode 'delta=-2.1' \
+            --data-urlencode 'confidence=84' \
+            --data-urlencode 'chain=Arc Testnet' \
+            "$base/api/testnet-tester/card")
+          test "$card_code" = "200"
+          grep -q 'TESTNET · RISK INTELLIGENCE' "$card_body"
+          grep -q 'geomacro.live' "$card_body"
+          grep -q 'data:image/png;base64,' "$card_body"
+
+          unknown_code=$(curl -sS -o /tmp/unknown.json -w '%{http_code}' "$base/api/testnet-tester/not-a-real-route")
+          test "$unknown_code" = "404"
+
+          code=$(curl -sS -L -o "$home_body" -w '%{http_code}' "$base/")
+          test "$code" = "200"
+          if grep -q '>Testnet Access<' "$home_body"; then
+            echo 'Testnet Access must remain hidden from public nav before real E2E acceptance.' >&2
+            exit 1
+          fi
+
+          echo "Lovable production smoke passed"
+          echo "me_status=$me_code config_status=$config_code unknown_status=$unknown_code"
+
+      - name: Smoke custom domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://geomacro.live"
+          access_body=$(mktemp)
+          console_body=$(mktemp)
+          home_body=$(mktemp)
+
+          code=$(curl -sS -L -o "$access_body" -w '%{http_code}' "$base/testnet-access")
+          test "$code" = "200"
+          grep -q 'GET TESTNET USDC' "$access_body"
+          grep -q 'geomacro-logo.png' "$access_body"
+
+          code=$(curl -sS -L -o "$console_body" -w '%{http_code}' "$base/testnet-console")
+          test "$code" = "200"
+          grep -q 'TESTNET INTELLIGENCE' "$console_body"
+
+          me_code=$(curl -sS -o /tmp/custom-me.json -w '%{http_code}' "$base/api/testnet-tester/me")
+          test "$me_code" != "404"
+          test "$me_code" -ge 400
+
+          code=$(curl -sS -L -o "$home_body" -w '%{http_code}' "$base/")
+          test "$code" = "200"
+          if grep -q '>Testnet Access<' "$home_body"; then
+            echo 'Testnet Access must remain hidden from custom-domain nav.' >&2
+            exit 1
+          fi
+
+          echo "Custom-domain smoke passed"
+          echo "me_status=$me_code"
