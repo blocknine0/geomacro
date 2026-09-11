@@ -14,6 +14,60 @@ const AUTHORITATIVE_RISK_PROJECT_REF =
   "ldpwajisioljyjtojvfx";
 
 
+/**
+ * Hard upper bound for privileged Risk Object / Risk Gate database calls.
+ *
+ * A degraded database must fail closed instead of leaving authenticated
+ * commercial requests hanging indefinitely. Keep this conservative enough
+ * for normal WAN latency while still producing a deterministic failure.
+ */
+export const RISK_SUPABASE_REQUEST_TIMEOUT_MS =
+  15_000;
+
+
+export function createRiskSupabaseRequestSignal(
+  upstreamSignal?: AbortSignal | null,
+  timeoutMs = RISK_SUPABASE_REQUEST_TIMEOUT_MS,
+): AbortSignal {
+  if (
+    !Number.isFinite(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > 60_000
+  ) {
+    throw new Error(
+      "Risk Supabase timeout must be between 1 and 60000 milliseconds",
+    );
+  }
+
+  const deadlineSignal =
+    AbortSignal.timeout(timeoutMs);
+
+  return upstreamSignal
+    ? AbortSignal.any([
+        upstreamSignal,
+        deadlineSignal,
+      ])
+    : deadlineSignal;
+}
+
+
+function riskSupabaseFetch(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+): ReturnType<typeof fetch> {
+  return globalThis.fetch(
+    input,
+    {
+      ...init,
+      signal:
+        createRiskSupabaseRequestSignal(
+          init?.signal,
+        ),
+    },
+  );
+}
+
+
 function projectRefOf(
   url: string,
 ): string | null {
@@ -48,6 +102,7 @@ function projectRefOf(
  * - never falls back to anon
  * - never expose this client to browser code
  * - only the authoritative Risk project is accepted
+ * - every network request has a hard deadline and fails closed on timeout
  */
 export function
 getRiskSupabase():
@@ -103,6 +158,10 @@ getRiskSupabase():
         auth: {
           persistSession: false,
           autoRefreshToken: false,
+        },
+        global: {
+          fetch:
+            riskSupabaseFetch,
         },
       },
     );
