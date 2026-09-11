@@ -48,6 +48,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  nitro: {
+    // Geomacro's Nitro handlers live under ./server/{api,routes,...}.
+    // Nitro 3 does not scan this directory unless it is explicitly configured.
+    serverDir: "./server",
+  },
   vite: {
     plugins: [polyfillResolver()],
     resolve: {
