@@ -31,13 +31,15 @@ describe("testnet tester registration boundary", () => {
     }
   });
 
-  it("requires all four identity checks before tester access is described as active", () => {
+  it("requires the full tester identity flow before the fixed quota is described", () => {
     expect(pageSource).toContain("Verify email");
     expect(pageSource).toContain("Connect wallet");
     expect(pageSource).toContain("Connect X");
     expect(pageSource).toContain("Connect Discord");
     expect(pageSource).toContain("Complete profile");
-    expect(pageSource).toContain("1.00 Testnet USDC");
-    expect(pageSource).toContain("250 credits");
+    expect(pageSource).toContain("0.50 Testnet USDC");
+    expect(pageSource).toContain("500 credits");
+    expect(pageSource).toContain("one quota per verified email + wallet");
+    expect(pageSource).toContain("Post feedback on X");
   });
 });

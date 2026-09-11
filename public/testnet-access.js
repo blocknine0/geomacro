@@ -27,6 +27,7 @@
     try {
       const payload = await json("/api/testnet-tester/me");
       const account = payload.data;
+      const active = account.access_status === "active";
       show("registrationPanel", false);
       show("accountPanel", true);
       text("profileStatus", account.profile_name || "Tester");
@@ -38,8 +39,9 @@
       show("xConnect", !account.x_connected);
       show("discordConnect", !account.discord_connected);
       show("walletConnect", !account.wallet_verified);
-      show("paymentPanel", account.registration_status === "complete");
-      show("developerPanel", account.access_status === "active");
+      show("paymentPanel", account.registration_status === "complete" && !active);
+      show("developerPanel", active);
+      show("feedbackPanel", active);
       if (account.avatar_path) {
         const preview = $("avatarPreview");
         if (preview) {
@@ -47,14 +49,15 @@
           preview.hidden = false;
         }
       }
-      if (account.registration_status === "complete") await loadPaymentConfig();
-      if (account.access_status === "active") await loadDeveloperKeys();
+      if (account.registration_status === "complete" && !active) await loadPaymentConfig();
+      if (active) await loadDeveloperKeys();
       return account;
     } catch {
       show("registrationPanel", true);
       show("accountPanel", false);
       show("paymentPanel", false);
       show("developerPanel", false);
+      show("feedbackPanel", false);
       return null;
     }
   }
@@ -119,18 +122,10 @@
         body: JSON.stringify({ wallet_address: walletAddress }),
       });
       const message = challenge.data.message;
-      const signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, walletAddress],
-      });
+      const signature = await window.ethereum.request({ method: "personal_sign", params: [message, walletAddress] });
       await json("/api/testnet-tester/wallet-verify", {
         method: "POST",
-        body: JSON.stringify({
-          wallet_address: walletAddress,
-          nonce: challenge.data.nonce,
-          message,
-          signature,
-        }),
+        body: JSON.stringify({ wallet_address: walletAddress, nonce: challenge.data.nonce, message, signature }),
       });
       text("walletActionStatus", "Wallet verified.");
       await loadAccount();
@@ -142,14 +137,8 @@
   async function uploadAvatar(event) {
     event.preventDefault();
     const file = $("avatarInput")?.files?.[0];
-    if (!file) {
-      text("avatarStatus", "Choose a PNG, JPEG or WebP image first.");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      text("avatarStatus", "Profile image must be 2 MB or smaller.");
-      return;
-    }
+    if (!file) return text("avatarStatus", "Choose a PNG, JPEG or WebP image first.");
+    if (file.size > 2 * 1024 * 1024) return text("avatarStatus", "Profile image must be 2 MB or smaller.");
     const data = new FormData();
     data.append("avatar", file);
     text("avatarStatus", "Uploading profile image...");
@@ -200,7 +189,9 @@
         method: "POST",
         body: JSON.stringify({ chain_key: chainKey, tx_hash: txHash, payer_address: walletAddress }),
       });
-      text("paymentStatus", `Access active. ${payload.data.credits_granted} credits granted.`);
+      text("paymentStatus", payload.data.idempotent_replay
+        ? "This payment was already verified. No extra credits were granted."
+        : "Access active. Fixed 500-credit tester quota granted.");
       await loadAccount();
     } catch (error) {
       text("paymentStatus", error.message || "Payment verification failed.");
@@ -228,10 +219,7 @@
           button.type = "button";
           button.textContent = "Revoke";
           button.addEventListener("click", async () => {
-            await json("/api/testnet-tester/developer-key-revoke", {
-              method: "POST",
-              body: JSON.stringify({ credential_id: key.credential_id }),
-            });
+            await json("/api/testnet-tester/developer-key-revoke", { method: "POST", body: JSON.stringify({ credential_id: key.credential_id }) });
             await loadDeveloperKeys();
           });
           row.appendChild(button);
@@ -254,8 +242,7 @@
           integration_type: $("integrationTypeSelect").value,
         }),
       });
-      const key = payload.data.api_key;
-      text("issuedKey", key);
+      text("issuedKey", payload.data.api_key);
       show("issuedKeyBox", true);
       text("developerStatus", "Copy this key now. It will not be shown again.");
       await loadDeveloperKeys();
@@ -264,12 +251,19 @@
     }
   }
 
+  function openXFeedback() {
+    const message = "I’m testing Geomacro’s geopolitical and macro risk intelligence on Testnet. Tried the product/API flow and sharing feedback here. @geomacro_live #Geomacro";
+    const url = `${location.origin}/testnet-access`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+  }
+
   function bind() {
     $("registrationForm")?.addEventListener("submit", register);
     $("walletConnect")?.addEventListener("click", connectWallet);
     $("avatarForm")?.addEventListener("submit", uploadAvatar);
     $("paymentForm")?.addEventListener("submit", claimPayment);
     $("developerKeyForm")?.addEventListener("submit", createDeveloperKey);
+    $("xFeedbackButton")?.addEventListener("click", openXFeedback);
     $("xConnect")?.addEventListener("click", () => { location.href = "/api/testnet-tester/oauth/x/start"; });
     $("discordConnect")?.addEventListener("click", () => { location.href = "/api/testnet-tester/oauth/discord/start"; });
     $("copyReceiver")?.addEventListener("click", async () => {

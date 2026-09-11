@@ -39,8 +39,8 @@ export const GEOMACRO_ACCESS_TIERS = {
   testnet_tester: {
     id: "testnet_tester",
     label: "Testnet USDC Tester Pass",
-    credits_per_30_days: 250,
-    pricing_reference: "1.00 testnet USDC / 30 days",
+    credits_per_30_days: 500,
+    pricing_reference: "0.50 testnet USDC for one fixed 500-credit trial quota",
     access_mode: "paid_testnet_api_and_demo",
     structured_data: {
       api_access: true,
@@ -58,6 +58,9 @@ export const GEOMACRO_ACCESS_TIERS = {
       execution_authorized: false,
       payment_environment: "testnet_only",
       payment_asset: "USDC",
+      quota_credits: 500,
+      quota_price_testnet_usdc: 0.5,
+      one_quota_per_verified_email_and_wallet: true,
       commercial_revenue: false,
     },
   },

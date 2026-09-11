@@ -27,21 +27,21 @@ export default defineEventHandler((event) => {
   <section class="hero">
     <div class="eyebrow">GEOPOLITICAL + MACRO RISK INTELLIGENCE</div>
     <h1>Test Geomacro inside your own product or AI agent.</h1>
-    <p>Register once, verify your accounts and wallet, pay with supported Testnet USDC, then use the same governed Geomacro intelligence through the website, developer API or agent integration.</p>
+    <p>Register once, verify your email, wallet, X and Discord, activate one fixed 500-credit tester quota with 0.50 Testnet USDC, then use Geomacro through the website, developer API or agent integration.</p>
     <div id="globalStatus" class="okline"></div>
   </section>
 
   <section class="grid">
-    <div class="card"><strong>250 test credits</strong><p>Bounded structural country and corridor intelligence, signed Risk Objects and Risk Gate test access for 30 days.</p></div>
-    <div class="card"><strong>Developer API keys</strong><p>Create scoped test keys for your app, AI agent, automation or demo. Keys expire with the tester entitlement.</p></div>
-    <div class="card"><strong>Shareable intelligence</strong><p>Turn eligible outputs into branded social cards for X, LinkedIn, Reddit, WhatsApp and Telegram without exposing upstream news sources.</p></div>
+    <div class="card"><strong>500 fixed test credits</strong><p>One tester quota per verified email + wallet identity. Credits are for testing/demo use only and expire with the tester entitlement.</p></div>
+    <div class="card"><strong>Developer API keys</strong><p>Create scoped test keys for your app, AI agent, automation or demo. Keys consume the same fixed 500-credit balance.</p></div>
+    <div class="card"><strong>Share + feedback on X</strong><p>Test the product, then post your experience publicly on X. Geomacro-branded share cards remain available for eligible outputs.</p></div>
   </section>
 
   <section class="panel">
     <div class="eyebrow">REGISTRATION</div>
     <div class="steps">
-      <div class="step"><span class="n">01</span><b>Verify email</b><div class="muted">Account identity</div></div>
-      <div class="step"><span class="n">02</span><b>Connect wallet</b><div class="muted">Signature verification</div></div>
+      <div class="step"><span class="n">01</span><b>Verify email</b><div class="muted">Unique tester identity</div></div>
+      <div class="step"><span class="n">02</span><b>Connect wallet</b><div class="muted">Unique wallet identity</div></div>
       <div class="step"><span class="n">03</span><b>Connect X</b><div class="muted">OAuth verification</div></div>
       <div class="step"><span class="n">04</span><b>Connect Discord</b><div class="muted">OAuth verification</div></div>
       <div class="step"><span class="n">05</span><b>Complete profile</b><div class="muted">Name + optional image</div></div>
@@ -86,24 +86,24 @@ export default defineEventHandler((event) => {
   </section>
 
   <section id="paymentPanel" class="panel" hidden>
-    <div class="eyebrow">ACTIVATE TESTER PASS</div>
-    <div class="price">1.00 Testnet USDC</div>
-    <div class="muted">250 credits · 30 days · testing/demo only · never classified as commercial revenue.</div>
+    <div class="eyebrow">ACTIVATE FIXED TESTER QUOTA</div>
+    <div class="price">0.50 Testnet USDC</div>
+    <div class="muted">500 credits · 30 days · one quota per verified email + wallet · testing/demo only · never classified as commercial revenue.</div>
     <div class="chains"><span>Arc Testnet</span><span>Ethereum Sepolia</span><span>Base Sepolia</span><span>Polygon Amoy</span><span>Arbitrum Sepolia</span><span>OP Sepolia</span><span>Avalanche Fuji</span><span>Unichain Sepolia</span><span>Linea Sepolia</span></div>
-    <div class="notice"><b>Dedicated Geomacro Testnet receiver</b><div id="receiverAddress" class="mono" style="margin-top:7px">Configuration pending</div><div class="actions"><button id="copyReceiver" type="button" class="secondary">Copy receiver</button></div></div>
+    <div class="notice"><b>Dedicated Geomacro Testnet fee receiver</b><div id="receiverAddress" class="mono" style="margin-top:7px">Configuration pending</div><div class="actions"><button id="copyReceiver" type="button" class="secondary">Copy receiver</button></div></div>
     <form id="paymentForm" class="form-grid">
       <div class="field"><label for="chainSelect">Payment chain</label><select id="chainSelect"></select></div>
       <div class="field"><label for="txHashInput">USDC transfer transaction hash</label><input id="txHashInput" placeholder="0x..." maxlength="66" required /></div>
-      <div class="field full"><button type="submit">Verify payment & activate access</button></div>
+      <div class="field full"><button type="submit">Verify payment & activate 500 credits</button></div>
     </form>
     <div id="paymentStatus" class="okline"></div>
-    <div class="notice">Activation is fail-closed. The server verifies chain ID, official configured USDC contract, payer, dedicated receiver, transfer amount and receipt status before granting any credits.</div>
+    <div class="notice">Activation is fail-closed. The server verifies chain ID, configured Testnet USDC contract, verified payer wallet, dedicated receiver, amount and receipt status. The same email or wallet cannot receive a second tester quota.</div>
   </section>
 
   <section id="developerPanel" class="panel" hidden>
     <div class="eyebrow">DEVELOPER + AGENT ACCESS</div>
     <h2>Use Geomacro in your product or AI agent</h2>
-    <p class="muted">Create up to three scoped Testnet API keys. Each key expires with your tester entitlement and consumes the same 250-credit balance.</p>
+    <p class="muted">Create up to three scoped Testnet API keys. Each key expires with your tester entitlement and consumes the same fixed 500-credit balance.</p>
     <form id="developerKeyForm" class="form-grid">
       <div class="field"><label for="keyLabelInput">Key label</label><input id="keyLabelInput" maxlength="80" placeholder="My agent test" /></div>
       <div class="field"><label for="integrationTypeSelect">Integration</label><select id="integrationTypeSelect"><option value="product_api">Product API</option><option value="ai_agent">AI agent</option><option value="automation">Automation</option><option value="demo">Demo</option></select></div>
@@ -114,11 +114,18 @@ export default defineEventHandler((event) => {
     <div id="developerKeyList" style="margin-top:12px"></div>
   </section>
 
+  <section id="feedbackPanel" class="panel" hidden>
+    <div class="eyebrow">PUBLIC TESTER FEEDBACK</div>
+    <h2>Tell people what you tested on X</h2>
+    <p class="muted">Post what worked, what felt confusing, and what you want Geomacro to improve. Public tester feedback also helps other builders discover the project.</p>
+    <div class="actions"><button id="xFeedbackButton" type="button">Post feedback on X</button></div>
+  </section>
+
   <section class="access">
     <div class="panel" style="margin-top:0">
       <div class="eyebrow">SUPPORTED TESTNETS</div>
-      <div class="price">Multichain USDC</div>
-      <div class="muted">Users can activate the same tester entitlement from supported EVM testnets using configured USDC contracts. Unsupported chains fail closed.</div>
+      <div class="price">Multichain Testnet USDC</div>
+      <div class="muted">Users can activate the same fixed tester entitlement from supported EVM testnets using configured USDC contracts. Unsupported chains fail closed.</div>
       <div class="notice">Testnet balances and Testnet USDC have no monetary value. These transfers are technical access proofs and are never booked as Geomacro commercial revenue.</div>
     </div>
     <div class="panel" style="margin-top:0">

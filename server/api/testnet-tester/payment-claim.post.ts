@@ -19,5 +19,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: result.code.slice(0, 120) });
   }
 
-  return { ok: true, data: result, execution_authorized: false };
+  return {
+    ok: true,
+    data: {
+      ...result,
+      credits_granted: result.idempotent_replay ? 0 : 500,
+      quota_credits: 500,
+      quota_price_usdc: "0.50",
+      fixed_quota: true,
+    },
+    execution_authorized: false,
+  };
 });

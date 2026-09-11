@@ -11,7 +11,7 @@ export type TestnetTesterPaymentActivation = {
   idempotent_replay: boolean;
   payment_event_id: string;
   entitlement_grant_id: string;
-  credits_granted: 250;
+  credits_granted: number;
   expires_at: string | null;
   commercial_revenue: false;
 } | {
@@ -77,6 +77,8 @@ export async function activateTestnetTesterPayment(input: {
       "TESTNET_PAYMENT_ALREADY_CLAIMED",
       "TESTNET_PAYMENT_RECONCILIATION_REQUIRED",
       "TESTNET_PAYMENT_CLAIM_STATE_CONFLICT",
+      "TESTNET_FIXED_QUOTA_ALREADY_ACTIVATED",
+      "TESTNET_USDC_UNDERPAYMENT",
     ].find((code) => message.includes(code));
     return { ok: false, code: knownCode ?? "TESTNET_ACTIVATION_FAILED" };
   }
@@ -89,7 +91,7 @@ export async function activateTestnetTesterPayment(input: {
     idempotent_replay: row.idempotent_replay === true,
     payment_event_id: String(row.payment_event_id),
     entitlement_grant_id: String(row.entitlement_grant_id),
-    credits_granted: 250,
+    credits_granted: Number(row.credits_granted ?? 0),
     expires_at: row.expires_at ? String(row.expires_at) : null,
     commercial_revenue: false,
   };

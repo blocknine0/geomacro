@@ -1,0 +1,67 @@
+name: Testnet Tester Validation
+
+on:
+  pull_request:
+    paths:
+      - "public/testnet-access.js"
+      - "public/testnet-console.js"
+      - "server/routes/testnet-access.get.ts"
+      - "server/routes/testnet-console.get.ts"
+      - "server/api/testnet-tester/**"
+      - "src/lib/testnet-*.ts"
+      - "src/lib/commercial-access-contract.ts"
+      - "src/__tests__/testnet-*.test.ts"
+      - "supabase/migrations/909_testnet_fixed_500_credit_quota.sql"
+      - "scripts/testnet/**"
+      - ".github/workflows/testnet-tester-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Tester contract and end-to-end trial tests
+        run: >-
+          bunx vitest run
+          src/__tests__/testnet-usdc-access-contract.test.ts
+          src/__tests__/testnet-usdc-payment-verification.test.ts
+          src/__tests__/testnet-tester-payment-activation-static.test.ts
+          src/__tests__/testnet-tester-registration-static.test.ts
+          src/__tests__/testnet-oauth-browser-wiring-static.test.ts
+          src/__tests__/testnet-avatar-storage-static.test.ts
+          src/__tests__/testnet-tester-e2e-contract.test.ts
+          src/__tests__/testnet-structural-severity-console-static.test.ts
+
+      - name: Migration safety
+        run: bun run db:safety
+
+      - name: Synthetic 10k-user stress model
+        env:
+          TESTNET_STRESS_USERS: "10000"
+          TESTNET_STRESS_REQUESTS_PER_USER: "20"
+        run: node scripts/testnet/stress-10000-users.mjs | tee testnet-stress-10000.json
+
+      - name: Build
+        run: bun run build
+
+      - name: Upload stress evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testnet-tester-stress-${{ github.run_id }}
+          path: testnet-stress-10000.json
+          if-no-files-found: warn
+          retention-days: 90
