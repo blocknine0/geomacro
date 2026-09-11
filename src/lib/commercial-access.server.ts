@@ -79,6 +79,97 @@ function bearerToken(request: Request): string {
   return token;
 }
 
+function pairedTestnetCredential(request: Request) {
+  const apiKey = (request.headers.get("x-geomacro-api-key") ?? "").trim();
+  const apiSecret = (request.headers.get("x-geomacro-api-secret") ?? "").trim();
+  if (!apiKey && !apiSecret) return null;
+  if (!apiKey || !apiSecret) {
+    throw new CommercialAccessError(
+      401,
+      "TESTNET_API_KEY_SECRET_REQUIRED",
+      "Both X-Geomacro-Api-Key and X-Geomacro-Api-Secret are required.",
+    );
+  }
+  if (!/^gmk_test_[A-Za-z0-9_-]{20,}$/.test(apiKey) || !/^gms_test_[A-Za-z0-9_-]{32,}$/.test(apiSecret)) {
+    throw new CommercialAccessError(
+      401,
+      "TESTNET_API_CREDENTIAL_INVALID",
+      "The Testnet API credential pair is invalid.",
+    );
+  }
+  return { apiKey, apiSecret } as const;
+}
+
+async function authenticateTestnetDeveloperPair(input: {
+  apiKey: string;
+  apiSecret: string;
+}): Promise<CommercialPrincipal> {
+  const db = requireRiskSupabase();
+  const now = new Date().toISOString();
+  const credentialResult = await db
+    .from("commercial_api_credentials")
+    .select("id,principal_id,key_id,enabled,scopes,expires_at,revoked_at")
+    .eq("key_id", input.apiKey)
+    .eq("api_key_hash", sha256(input.apiSecret))
+    .maybeSingle();
+
+  if (credentialResult.error) {
+    throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
+  }
+  const credential = credentialResult.data;
+  if (
+    !credential ||
+    credential.enabled !== true ||
+    credential.revoked_at ||
+    (credential.expires_at && credential.expires_at <= now)
+  ) {
+    throw new CommercialAccessError(401, "TESTNET_API_CREDENTIAL_DENIED", "The Testnet API credential pair is not authorized.");
+  }
+
+  const mappingResult = await db
+    .from("testnet_developer_credentials")
+    .select("id,enabled,revoked_at")
+    .eq("commercial_api_credential_id", credential.id)
+    .eq("principal_id", credential.principal_id)
+    .maybeSingle();
+  if (mappingResult.error) {
+    throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
+  }
+  if (!mappingResult.data || mappingResult.data.enabled !== true || mappingResult.data.revoked_at) {
+    throw new CommercialAccessError(401, "TESTNET_API_CREDENTIAL_DENIED", "The Testnet API credential pair is not authorized.");
+  }
+
+  const principalResult = await db
+    .from("commercial_principals")
+    .select("id,principal_type,external_id,status")
+    .eq("id", credential.principal_id)
+    .maybeSingle();
+  if (principalResult.error) {
+    throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
+  }
+  const principal = principalResult.data;
+  if (!principal || principal.status !== "active") {
+    throw new CommercialAccessError(401, "PRINCIPAL_NOT_ACTIVE", "The Testnet API principal is not active.");
+  }
+
+  const touch = await db
+    .from("commercial_api_credentials")
+    .update({ last_used_at: now })
+    .eq("id", credential.id)
+    .eq("principal_id", credential.principal_id);
+  if (touch.error) {
+    throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
+  }
+
+  return {
+    principal_id: String(principal.id),
+    principal_type: String(principal.principal_type),
+    principal_external_id: String(principal.external_id),
+    key_id: String(credential.key_id),
+    scopes: Array.isArray(credential.scopes) ? credential.scopes.map(String) : [],
+  };
+}
+
 export function tierAllowsCapability(
   tier: CommercialTierId,
   capability: GeomacroCreditCapability,
@@ -95,6 +186,9 @@ export function tierCreditAllocation(tier: CommercialTierId): number {
 export async function authenticateCommercialApiRequest(
   request: Request,
 ): Promise<CommercialPrincipal> {
+  const paired = pairedTestnetCredential(request);
+  if (paired) return authenticateTestnetDeveloperPair(paired);
+
   const token = bearerToken(request);
   const db = requireRiskSupabase();
   const { data, error } = await db.rpc("resolve_commercial_api_principal", {
@@ -115,6 +209,13 @@ export async function authenticateCommercialApiRequest(
       401,
       String(row?.code ?? "COMMERCIAL_API_KEY_DENIED"),
       "The commercial API credential is not authorized.",
+    );
+  }
+  if (String(row.key_id ?? "").startsWith("gmk_test_")) {
+    throw new CommercialAccessError(
+      401,
+      "TESTNET_API_KEY_SECRET_REQUIRED",
+      "Testnet developer credentials require the API Key and API Secret headers.",
     );
   }
 
