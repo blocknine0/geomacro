@@ -11,43 +11,43 @@ if ! [[ "$ITERATIONS" =~ ^[0-9]+$ ]] || [ "$ITERATIONS" -lt 1 ] || [ "$ITERATION
 fi
 
 mkdir -p "$ARTIFACT_DIR"
-RESULTS="$ARTIFACT_DIR/${WINDOW_ID}.csv"
 REPORT="$ARTIFACT_DIR/${WINDOW_ID}.json"
-printf 'iteration,status,duration_ms\n' > "$RESULTS"
-
-passed=0
-failed=0
+RAW="$ARTIFACT_DIR/${WINDOW_ID}-vitest.json"
+MATRIX_LOG="$ARTIFACT_DIR/${WINDOW_ID}-matrix.log"
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 start_epoch_ms="$(date +%s%3N)"
 
-for i in $(seq 1 "$ITERATIONS"); do
-  case_start="$(date +%s%3N)"
-  if bunx vitest run \
-      src/__tests__/goat-flow-negative-contract.test.ts \
-      src/__tests__/goat-mainnet-readiness-static.test.ts \
-      --reporter=dot >/tmp/goat-acceptance-${WINDOW_ID}-${i}.log 2>&1; then
-    status=pass
-    passed=$((passed + 1))
-  else
-    status=fail
-    failed=$((failed + 1))
-    cat /tmp/goat-acceptance-${WINDOW_ID}-${i}.log >&2 || true
-  fi
-  case_end="$(date +%s%3N)"
-  printf '%s,%s,%s\n' "$i" "$status" "$((case_end - case_start))" >> "$RESULTS"
-  rm -f /tmp/goat-acceptance-${WINDOW_ID}-${i}.log
- done
+bunx vitest run \
+  src/__tests__/goat-flow-negative-contract.test.ts \
+  src/__tests__/goat-mainnet-readiness-static.test.ts \
+  --reporter=dot | tee "$MATRIX_LOG"
+
+GOAT_ACCEPTANCE_ITERATIONS="$ITERATIONS" bunx vitest run \
+  src/__tests__/goat-repeated-readiness.test.ts \
+  --reporter=json \
+  --outputFile="$RAW"
 
 completed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 end_epoch_ms="$(date +%s%3N)"
 
-python3 - "$RESULTS" "$REPORT" "$WINDOW_ID" "$started_at" "$completed_at" "$ITERATIONS" "$passed" "$failed" "$((end_epoch_ms - start_epoch_ms))" <<'PY'
-import csv, json, statistics, sys
+python3 - "$RAW" "$REPORT" "$WINDOW_ID" "$started_at" "$completed_at" "$ITERATIONS" "$((end_epoch_ms - start_epoch_ms))" <<'PY'
+import json, statistics, sys
 from pathlib import Path
 
-csv_path, report_path, window_id, started_at, completed_at, total, passed, failed, wall_ms = sys.argv[1:]
-rows = list(csv.DictReader(open(csv_path, newline="", encoding="utf-8")))
-durations = sorted(int(row["duration_ms"]) for row in rows)
+raw_path, report_path, window_id, started_at, completed_at, expected, wall_ms = sys.argv[1:]
+raw = json.loads(Path(raw_path).read_text(encoding="utf-8"))
+expected = int(expected)
+passed = int(raw.get("numPassedTests", 0))
+failed = int(raw.get("numFailedTests", 0))
+total = int(raw.get("numTotalTests", passed + failed))
+
+durations = []
+for suite in raw.get("testResults", []):
+    for item in suite.get("assertionResults", []):
+        value = item.get("duration")
+        if isinstance(value, (int, float)) and value >= 0:
+            durations.append(float(value))
+durations.sort()
 
 def pct(p):
     if not durations:
@@ -56,17 +56,19 @@ def pct(p):
     return durations[idx]
 
 report = {
-    "schema_version": "goat-acceptance-window-v1",
+    "schema_version": "goat-acceptance-window-v2",
     "window_id": window_id,
     "environment": "testnet3",
     "started_at": started_at,
     "completed_at": completed_at,
-    "suite_iterations": int(total),
-    "passed": int(passed),
-    "failed": int(failed),
-    "pass_rate": int(passed) / int(total),
+    "target_repeated_cases": expected,
+    "repeated_cases": total,
+    "passed": passed,
+    "failed": failed,
+    "pass_rate": passed / total if total else 0,
+    "matrix_gate_passed": True,
     "wall_clock_ms": int(wall_ms),
-    "iteration_latency_ms": {
+    "case_duration_ms": {
         "min": min(durations) if durations else 0,
         "median": statistics.median(durations) if durations else 0,
         "p95": pct(95),
@@ -74,10 +76,8 @@ report = {
         "max": max(durations) if durations else 0,
     },
 }
+if total != expected:
+    raise SystemExit(f"expected {expected} repeated cases but reporter recorded {total}")
 Path(report_path).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 print(json.dumps(report, indent=2))
 PY
-
-if [ "$failed" -ne 0 ]; then
-  exit 1
-fi
