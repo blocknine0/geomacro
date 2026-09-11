@@ -145,6 +145,7 @@ const REFERENCE_NAV = [
 ] as const;
 
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
+const TESTNET_ACCESS_URL = "/testnet-access";
 
 function TechnicalProofMenu() {
   return (
@@ -200,6 +201,26 @@ function MobileGroup({
   );
 }
 
+function MobileTestnetAccess() {
+  return (
+    <div>
+      <p className="px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+        Tester access
+      </p>
+      <div className="mt-1">
+        <SheetClose asChild>
+          <a
+            href={TESTNET_ACCESS_URL}
+            className="block rounded-md px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted"
+          >
+            Testnet Access
+          </a>
+        </SheetClose>
+      </div>
+    </div>
+  );
+}
+
 export function SiteShell({ children }: { children: ReactNode }) {
   const { network, address } = useWallet();
   const activeNet = network ?? preferredNetwork();
@@ -231,6 +252,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   </SheetHeader>
                   <nav className="mt-7 space-y-6" aria-label="Mobile navigation">
                     <MobileGroup title="Intelligence products" items={PRIMARY_NAV} />
+                    <MobileTestnetAccess />
                     <MobileGroup title="Reference" items={REFERENCE_NAV} />
                     <MobileGroup title="Technical proof" items={technicalMobile} />
                     {accountMobile.length > 0 ? <MobileGroup title="Account" items={accountMobile} /> : null}
@@ -254,6 +276,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 </Link>
               ))}
               <TechnicalProofMenu />
+              <a
+                href={TESTNET_ACCESS_URL}
+                className="whitespace-nowrap rounded-md border border-primary/30 bg-primary/[0.05] px-2.5 py-1.5 font-medium text-foreground transition hover:border-primary/50 hover:bg-primary/[0.09]"
+              >
+                Testnet Access
+              </a>
             </nav>
 
             <div className="flex min-w-[44px] items-center justify-end gap-2">
@@ -293,6 +321,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
                   <Link to="/risk-gate" className="hover:text-foreground">Risk Gate</Link>
                   <Link to="/data-api" className="hover:text-foreground">Data & API</Link>
+                  <a href={TESTNET_ACCESS_URL} className="hover:text-foreground">Testnet Access</a>
                 </div>
               </div>
               <div>
