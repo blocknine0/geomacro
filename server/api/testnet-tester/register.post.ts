@@ -23,7 +23,13 @@ function registrationFailureCode(error: unknown) {
   if (rawMessage === "Risk Supabase service-role client is not configured for the authoritative project") {
     return "TESTNET_DATABASE_NOT_CONFIGURED";
   }
-  if (rawCode === "42P01" || /relation .* does not exist/i.test(rawMessage)) {
+  if (
+    rawCode === "42P01" ||
+    rawCode === "PGRST204" ||
+    rawCode === "PGRST205" ||
+    /relation .* does not exist/i.test(rawMessage) ||
+    /schema cache/i.test(rawMessage)
+  ) {
     return "TESTNET_DATABASE_SCHEMA_MISSING";
   }
   if (rawCode === "42501") {
@@ -46,6 +52,16 @@ function registrationFailureCode(error: unknown) {
   return "TESTER_REGISTRATION_FAILED";
 }
 
+function registrationFailureStatus(code: string) {
+  const configurationFailure = [
+    "TESTNET_EMAIL_DELIVERY_NOT_CONFIGURED",
+    "TESTNET_DATABASE_NOT_CONFIGURED",
+    "TESTNET_DATABASE_SCHEMA_MISSING",
+    "TESTNET_DATABASE_PERMISSION_DENIED",
+  ].includes(code) || /^TESTNET_EMAIL_DELIVERY_FAILED_5\d{2}$/.test(code);
+  return configurationFailure ? 503 : 400;
+}
+
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
     "Cache-Control": "no-store",
@@ -55,19 +71,30 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<Record<string, unknown>>(event);
   const email = String(body?.email ?? "");
 
+  let result: Awaited<ReturnType<typeof createTestnetTesterAccount>>;
   try {
-    const result = await createTestnetTesterAccount({
+    result = await createTestnetTesterAccount({
       email,
       profileName: String(body?.profile_name ?? ""),
       termsVersion: String(body?.terms_version ?? "testnet-terms-v1"),
     });
+  } catch (error) {
+    const code = registrationFailureCode(error);
+    throw createError({
+      statusCode: registrationFailureStatus(code),
+      statusMessage: code,
+    });
+  }
 
+  // Persist the authenticated tester session as soon as the account state exists.
+  // Email provider outages must not orphan a successfully-created account.
+  setTesterSessionCookie(event, result.session_token);
+
+  try {
     await sendTestnetVerificationEmail({
       to: email,
       verificationToken: result.email_verification_token,
     });
-
-    setTesterSessionCookie(event, result.session_token);
 
     return {
       ok: true,
@@ -76,20 +103,24 @@ export default defineEventHandler(async (event) => {
         session_expires_at: result.session_expires_at,
         email_verification_expires_at: result.email_verification_expires_at,
         email_verification_sent: true,
+        registration_created: true,
       },
       execution_authorized: false,
     };
   } catch (error) {
-    const code = registrationFailureCode(error);
-    const configurationFailure = [
-      "TESTNET_EMAIL_DELIVERY_NOT_CONFIGURED",
-      "TESTNET_DATABASE_NOT_CONFIGURED",
-      "TESTNET_DATABASE_SCHEMA_MISSING",
-      "TESTNET_DATABASE_PERMISSION_DENIED",
-    ].includes(code) || /^TESTNET_EMAIL_DELIVERY_FAILED_5\d{2}$/.test(code);
-    throw createError({
-      statusCode: configurationFailure ? 503 : 400,
-      statusMessage: code,
-    });
+    const deliveryCode = registrationFailureCode(error);
+    return {
+      ok: true,
+      data: {
+        principal_id: result.principal_id,
+        session_expires_at: result.session_expires_at,
+        email_verification_expires_at: result.email_verification_expires_at,
+        email_verification_sent: false,
+        email_delivery_status: deliveryCode,
+        registration_created: true,
+        retry_available: true,
+      },
+      execution_authorized: false,
+    };
   }
 });
