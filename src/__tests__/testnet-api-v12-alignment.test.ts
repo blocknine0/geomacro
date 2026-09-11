@@ -12,33 +12,37 @@ const paymentRoute = read("server/api/testnet-tester/payment-claim.post.ts");
 const developer = read("src/lib/testnet-developer-access.server.ts");
 const commercialAccess = read("src/lib/commercial-access.server.ts");
 const structuralRoute = read("server/api/commercial/structural.post.ts");
-const page = read("server/routes/testnet-access.get.ts");
 const browser = read("public/testnet-access.js");
-const migration = read("supabase/migrations/911_testnet_api_pricing_alignment.sql");
+const migration = read("supabase/migrations/912_testnet_api_pay_per_call.sql");
 
-describe("Testnet API v1.2 alignment gate", () => {
-  it("locks pricing to Testnet only: 0.5 per credit, 500 credits, 250 total", () => {
+describe("Testnet API pay-per-call alignment gate", () => {
+  it("locks Testnet pricing to 0.5 per credit with no upfront purchase", () => {
     expect(pricing).toContain("TESTNET_API_CREDIT_PRICE_USDC = 0.5");
+    expect(pricing).toContain("TESTNET_API_CREDIT_PRICE_ATOMIC = 500_000n");
     expect(pricing).toContain("TESTNET_API_FIXED_CREDITS = 500");
-    expect(pricing).toContain("TESTNET_API_FIXED_QUOTA_USDC = 250");
-    expect(pricing).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC = 250_000_000n");
+    expect(pricing).toContain('payment_model: "pay_per_call"');
+    expect(pricing).toContain("upfront_payment_required: false");
     expect(pricing).toContain('environment: "testnet"');
     expect(pricing).toContain("applies_to_mainnet: false");
-    expect(accessContract).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC");
-    expect(paymentVerifier).toContain("TESTNET_USDC_ACCESS_PRICE_ATOMIC");
-    expect(paymentService).toContain("TESTNET_API_FIXED_QUOTA_ATOMIC");
-    expect(configRoute).toContain("TESTNET_API_CREDIT_PRICE_USDC");
-    expect(paymentRoute).toContain("TESTNET_API_FIXED_QUOTA_USDC");
+    expect(accessContract).toContain('payment_model: "pay_per_call"');
+    expect(accessContract).toContain("upfront_payment_required: false");
+    expect(paymentVerifier).toContain("minimum_amount_atomic?: bigint");
+    expect(configRoute).toContain('payment_model: "pay_per_call"');
+    expect(configRoute).toContain("upfront_payment_required: false");
+    expect(paymentService).toContain("TESTNET_UPFRONT_ACTIVATION_RETIRED");
+    expect(paymentRoute).toContain("TESTNET_UPFRONT_ACTIVATION_RETIRED");
   });
 
-  it("enforces the current pricing contract in the database without rewriting historical rows", () => {
-    expect(migration).toContain("amount_atomic >= 250000000");
-    expect(migration).toContain("amount_usdc >= 250");
-    expect(migration).toContain("not valid");
-    expect(migration).toContain("align_testnet_tester_grant_metadata");
-    expect(migration).toContain("align_testnet_tester_payment_metadata");
-    expect(migration).toContain("testnet-api-pricing-v1.0.0");
-    expect(migration).toContain("testnet_non_revenue");
+  it("provisions wallet-verified metered access and relaxes the claim floor to one credit", () => {
+    expect(migration).toContain("amount_atomic >= 500000");
+    expect(migration).toContain("amount_usdc >= 0.5");
+    expect(migration).toContain("provision_testnet_metered_access");
+    expect(migration).toContain("testnet_tester_metered_30d");
+    expect(migration).toContain("max_credits_per_30_days");
+    expect(migration).toContain("pay_per_call");
+    expect(migration).toContain("upfront_payment_required");
+    expect(migration).toContain("request_id text");
+    expect(migration).toContain("credit_cost integer");
   });
 
   it("creates a one-time API Key + API Secret pair and stores only the secret hash", () => {
@@ -47,23 +51,25 @@ describe("Testnet API v1.2 alignment gate", () => {
     expect(developer).toContain("api_key_hash: sha256(apiSecret)");
     expect(developer).toContain("api_secret: apiSecret");
     expect(developer).toContain("shown_once: true");
+    expect(developer).toContain("provision_testnet_metered_access");
     expect(commercialAccess).toContain("TESTNET_API_KEY_SECRET_REQUIRED");
     expect(commercialAccess).toContain("TESTNET_API_CREDENTIAL_DENIED");
-    expect(commercialAccess).toContain("GeomacroTest");
   });
 
-  it("keeps the external structural endpoint compatible with the paired Authorization scheme", () => {
-    expect(structuralRoute).toContain('getRequestHeader(event, "authorization")');
-    expect(structuralRoute).toContain("authenticateCommercialApiRequest");
-    expect(structuralRoute).toContain('"Access-Control-Allow-Headers": "Authorization, Content-Type"');
+  it("requires a 402 per-call proof on the external structural endpoint", () => {
+    expect(structuralRoute).toContain("TESTNET_PAYMENT_REQUIRED");
+    expect(structuralRoute).toContain("testnetApiCallPriceAtomic");
+    expect(structuralRoute).toContain("minimum_amount_atomic: requiredAtomic");
+    expect(structuralRoute).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
+    expect(structuralRoute).toContain('"X-Geomacro-Api-Key"'.toLowerCase().replaceAll('"', ''));
+    expect(structuralRoute.toLowerCase()).toContain("x-geomacro-api-secret");
   });
 
-  it("renders the same pricing and credential-pair contract in the Testnet UI", () => {
-    expect(page).toContain("0.5 Testnet USDC per credit");
-    expect(page).toContain("250 Testnet USDC");
-    expect(page).toContain("API Key + API Secret");
-    expect(browser).toContain("renderCanonicalPricing");
+  it("renders pay-per-call guidance and keeps the credential pair visible once", () => {
+    expect(browser).toContain("There is no upfront Testnet USDC activation payment");
+    expect(browser).toContain("402 quote");
     expect(browser).toContain("payload.data.api_secret");
     expect(browser).toContain("Copy both values now");
+    expect(browser).not.toContain("claimPayment(event)");
   });
 });
