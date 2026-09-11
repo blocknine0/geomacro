@@ -22,7 +22,7 @@ export default defineEventHandler((event) => {
     "Content-Type": "image/svg+xml; charset=utf-8",
     "Cache-Control": "public, max-age=300, s-maxage=300",
     "X-Content-Type-Options": "nosniff",
-    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
     "X-Robots-Tag": "noindex, nofollow",
   });
 

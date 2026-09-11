@@ -5,6 +5,7 @@ import {
   renderTestnetSocialCardSvg,
   TESTNET_SOCIAL_CARD_VERSION,
 } from "../lib/testnet-social-card";
+import { GEOMACRO_LOGO_DATA_URI } from "../lib/geomacro-logo-embedded";
 
 describe("testnet social card", () => {
   it("renders a bounded branded 1200x630 card", () => {
@@ -18,10 +19,12 @@ describe("testnet social card", () => {
       profile_name: "Pallab",
     });
 
-    expect(TESTNET_SOCIAL_CARD_VERSION).toBe("geomacro-testnet-card-v1");
+    expect(TESTNET_SOCIAL_CARD_VERSION).toBe("geomacro-testnet-card-v2");
     expect(svg).toContain('width="1200" height="630"');
     expect(svg).toContain("Geomacro");
-    expect(svg).toContain("TESTNET · USDC ACCESS");
+    expect(svg).toContain("TESTNET · RISK INTELLIGENCE");
+    expect(svg).toContain("data:image/png;base64,");
+    expect(svg).toContain("ARC TESTNET");
     expect(svg).toContain("geomacro.live");
     expect(svg).toContain("Shared by Pallab");
   });
@@ -42,6 +45,17 @@ describe("testnet social card", () => {
     expect(svg).not.toContain("<script>alert(1)</script>");
     expect(svg).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(svg).toContain("A &amp; B &lt; C");
+  });
+
+  it("uses the official Geomacro logo asset rather than a drawn substitute", () => {
+    const svg = renderTestnetSocialCardSvg({
+      subject: "IRN",
+      summary: "Country risk context.",
+    });
+
+    expect(svg).toContain(`href="${GEOMACRO_LOGO_DATA_URI}"`);
+    expect(svg).toContain("<image");
+    expect(svg).toContain("Geomacro Testnet Intelligence");
   });
 
   it("contains no upstream source identity fields", () => {
