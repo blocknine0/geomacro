@@ -1,7 +1,9 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { verifyMessage } from "ethers";
 
+import { GEOMACRO_CREDIT_CONTRACT_VERSION } from "./commercial-access-contract";
 import { requireRiskSupabase } from "./risk-supabase.server";
+import { STRUCTURED_DATA_REGISTRY_VERSION } from "./structured-data-entitlement-registry";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const EMAIL_CHALLENGE_TTL_MS = 20 * 60 * 1000;
@@ -212,7 +214,22 @@ export async function verifyTestnetWalletSignature(input: {
   }).eq("id", input.principalId);
   if (principalUpdate.error) throw principalUpdate.error;
 
-  return { verified: true, wallet_address: walletAddress } as const;
+  const provision = await db.rpc("provision_testnet_metered_access", {
+    p_principal_id: input.principalId,
+    p_registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
+    p_contract_version: GEOMACRO_CREDIT_CONTRACT_VERSION,
+  });
+  if (provision.error) throw provision.error;
+  const provisioned = (provision.data ?? {}) as Record<string, unknown>;
+  if (!provisioned.ok) throw new Error(String(provisioned.code ?? "TESTNET_METERED_ACCESS_PROVISION_FAILED"));
+
+  return {
+    verified: true,
+    wallet_address: walletAddress,
+    access_status: "active",
+    payment_model: "pay_per_call",
+    max_credits_per_30_days: 500,
+  } as const;
 }
 
 // Legacy OAuth helpers remain for old sessions only. New wallet-only registration does not call them.
