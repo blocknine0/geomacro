@@ -31,13 +31,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Tester contract tests
+      - name: Tester contract and end-to-end trial tests
         run: >-
           bunx vitest run
           src/__tests__/testnet-usdc-access-contract.test.ts
+          src/__tests__/testnet-usdc-payment-verification.test.ts
+          src/__tests__/testnet-tester-payment-activation-static.test.ts
           src/__tests__/testnet-tester-registration-static.test.ts
           src/__tests__/testnet-oauth-browser-wiring-static.test.ts
           src/__tests__/testnet-avatar-storage-static.test.ts
+          src/__tests__/testnet-tester-e2e-contract.test.ts
 
       - name: Migration safety
         run: bun run db:safety
