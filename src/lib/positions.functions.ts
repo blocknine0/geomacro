@@ -4,7 +4,7 @@ import { assertSameOrigin } from "./origin-guard";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { jwtVerify } from "jose";
-import { Interface, JsonRpcProvider } from "ethers";
+import { Contract, Interface, JsonRpcProvider } from "ethers";
 
 const LEGACY_AGENT_ARENA_ADDRESS = "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CURRENT_AGENT_ARENA_ADDRESS = "0x2F874FB07084a22D2bB314D0762Af57Cb1856868";
@@ -14,6 +14,7 @@ const VALID_AGENT_ARENA_ADDRESSES = new Set([
   CURRENT_AGENT_ARENA_ADDRESS.toLowerCase(),
 ]);
 const STAKE_ABI = ["function stake(string marketId, uint8 side) payable"];
+const CLAIM_STATE_ABI = ["function claimed(string marketId, address user) view returns (bool)"];
 const stakeInterface = new Interface(STAKE_ABI);
 const SIDE_CODE_MAP: Record<"HAWK" | "DOVE", number> = { HAWK: 1, DOVE: 2 };
 const ARC_TESTNET_RPC_URLS = [
@@ -77,8 +78,6 @@ async function verifyStakeTx(params: {
       return;
     } catch (err) {
       lastErr = err;
-      // Only retry other RPCs on transient network errors; verification
-      // failures (mismatch) should still surface — rethrow immediately.
       const msg = (err as Error)?.message ?? "";
       const transient =
         msg.includes("Transaction not found") ||
@@ -91,6 +90,30 @@ async function verifyStakeTx(params: {
   throw new Error(
     `Could not verify transaction on Arc RPC: ${(lastErr as Error)?.message ?? "unknown error"}`,
   );
+}
+
+async function readClaimedOnChain(params: {
+  marketId: string;
+  walletAddress: string;
+  contractAddress: string;
+}): Promise<boolean | null> {
+  const contractAddress = params.contractAddress.toLowerCase();
+  if (!VALID_AGENT_ARENA_ADDRESSES.has(contractAddress)) return null;
+
+  for (const url of ARC_TESTNET_RPC_URLS) {
+    try {
+      const provider = new JsonRpcProvider(url);
+      const contract = new Contract(params.contractAddress, CLAIM_STATE_ABI, provider);
+      return Boolean(await contract.claimed(`mkt_${params.marketId}`, params.walletAddress));
+    } catch (err) {
+      console.warn("[portfolio] claimed() read failed", {
+        marketId: params.marketId,
+        rpc: url,
+        error: (err as Error)?.message ?? String(err),
+      });
+    }
+  }
+  return null;
 }
 
 const RecordStakeInput = z.object({
@@ -124,8 +147,6 @@ export const recordStake = createServerFn({ method: "POST" })
       global: { headers: { Authorization: `Bearer ${data.token}` } },
     });
 
-    // The on-chain marketId is deterministically derived from the events UUID
-    // (see marketIdFromEventId in src/lib/arena-markets.ts).
     await verifyStakeTx({
       txHash: data.txHash,
       expectedFrom: walletAddress,
@@ -220,7 +241,6 @@ export const recordClaim = createServerFn({ method: "POST" })
 
 const TokenOnly = z.object({ token: z.string().min(1) });
 
-// url আর anonKey return করা হচ্ছে — events anon fetch-এর জন্য
 async function verifyTokenAndClient(token: string) {
   const jwtSecret = process.env.APP_SUPABASE_JWT_SECRET;
   const url = process.env.APP_SUPABASE_URL;
@@ -256,9 +276,6 @@ export type PortfolioPosition = {
     category: string | null;
     source_url: string | null;
     resolution_at: string | null;
-    /** Which deployed contract this market lives on (V1 legacy or V2) —
-     * required so claimOnContract() targets the right one. Falls back to
-     * OLD_CONTRACT_ADDRESS in the UI if this is null (pre-cutover rows). */
     market_address: string | null;
   } | null;
 };
@@ -282,8 +299,6 @@ export const getMyPositions = createServerFn({ method: "POST" })
 
     let eventsById: Record<string, PortfolioPosition["event"]> = {};
     if (ids.length > 0) {
-      // anon client ব্যবহার করছি — events_anon_read policy anon role-এর জন্য,
-      // authenticated JWT দিয়ে সেই policy match করে না
       const anonSupabase = createClient(url, anonKey);
       const { data: evs } = await anonSupabase
         .from("events")
@@ -292,6 +307,60 @@ export const getMyPositions = createServerFn({ method: "POST" })
       for (const e of evs ?? []) {
         eventsById[e.id as string] = e as PortfolioPosition["event"];
       }
+    }
+
+    // Reconcile stale DB state before the portfolio is rendered. A wallet can
+    // already have claimed successfully on-chain while the browser/server failed
+    // before recordClaim() updated Supabase. In that case the old UI kept showing
+    // the position under Pending Claims and every retry reverted with
+    // "Already claimed". The contract's claimed() mapping is the source of truth.
+    for (const position of positions) {
+      if (position.status !== "pending_claim") continue;
+      const event = eventsById[position.market_id];
+      const contractAddress = event?.market_address || LEGACY_AGENT_ARENA_ADDRESS;
+      const alreadyClaimed = await readClaimedOnChain({
+        marketId: position.market_id,
+        walletAddress,
+        contractAddress,
+      });
+      if (alreadyClaimed !== true) continue;
+
+      const claimedAt = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from("positions")
+        .update({ status: "claimed", claimed_at: claimedAt })
+        .eq("wallet_address", walletAddress)
+        .eq("market_id", position.market_id)
+        .eq("status", "pending_claim");
+      if (updateError) {
+        console.error("[portfolio] failed to reconcile claimed position", updateError.message);
+        continue;
+      }
+
+      const { data: existingHistory } = await supabase
+        .from("wallet_balance_history")
+        .select("id")
+        .eq("wallet_address", walletAddress)
+        .eq("market_id", position.market_id)
+        .eq("event_type", "claim")
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingHistory) {
+        const { error: historyError } = await supabase.from("wallet_balance_history").insert({
+          wallet_address: walletAddress,
+          balance: position.payout_amount ?? 0,
+          event_type: "claim",
+          market_id: position.market_id,
+          amount_delta: position.payout_amount ?? 0,
+        });
+        if (historyError) {
+          console.error("[portfolio] claim history reconciliation failed", historyError.message);
+        }
+      }
+
+      position.status = "claimed";
+      position.claimed_at = claimedAt;
     }
 
     const withEvents: PortfolioPosition[] = positions.map((p) => ({
