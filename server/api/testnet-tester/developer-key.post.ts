@@ -18,7 +18,11 @@ export default defineEventHandler(async (event) => {
       label: String(body?.label ?? "Default test integration"),
       integrationType: rawType,
     });
-    return { ok: true, data: result, warning: "Store this API key now. It will not be shown again." };
+    return {
+      ok: true,
+      data: result,
+      warning: "Store both the API Key and API Secret now. The API Secret will not be shown again.",
+    };
   } catch (error) {
     const code = error instanceof Error ? error.message : "TESTNET_DEVELOPER_KEY_FAILED";
     throw createError({ statusCode: 400, statusMessage: code.slice(0, 120) });

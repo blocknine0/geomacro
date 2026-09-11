@@ -129,10 +129,21 @@
     }
   }
 
+  function renderCanonicalPricing(config) {
+    const total = String(config?.fixed_quota_usdc ?? config?.price_usdc ?? "250");
+    const perCredit = String(config?.credit_price_usdc ?? "0.5");
+    const credits = String(config?.credits ?? 500);
+    const price = document.querySelector("#paymentPanel .price");
+    if (price) price.textContent = `${total} Testnet USDC`;
+    const summary = document.querySelector("#paymentPanel .price + .muted");
+    if (summary) summary.textContent = `${credits} fixed credits · ${perCredit} Testnet USDC per credit · 30 days · one quota per verified wallet · Testnet only · non-revenue.`;
+  }
+
   async function loadPaymentConfig() {
     try {
       const payload = await json("/api/testnet-tester/config");
       paymentConfig = payload.data;
+      renderCanonicalPricing(paymentConfig);
       text("receiverAddress", paymentConfig.receiver_address);
       const select = $("chainSelect");
       if (select) {
@@ -239,7 +250,7 @@
 
   async function createDeveloperKey(event) {
     event.preventDefault();
-    text("developerStatus", "Creating scoped Testnet API key...");
+    text("developerStatus", "Creating scoped Testnet API key and secret...");
     try {
       const payload = await json("/api/testnet-tester/developer-key", {
         method: "POST",
@@ -248,12 +259,14 @@
           integration_type: $("integrationTypeSelect").value,
         }),
       });
-      text("issuedKey", payload.data.api_key);
+      const apiKey = String(payload.data.api_key || "");
+      const apiSecret = String(payload.data.api_secret || "");
+      text("issuedKey", `API Key: ${apiKey}\nAPI Secret: ${apiSecret}`);
       show("issuedKeyBox", true);
-      text("developerStatus", "Copy this key now. It will not be shown again.");
+      text("developerStatus", "Copy both values now. The API Secret will not be shown again.");
       await loadDeveloperKeys();
     } catch (error) {
-      text("developerStatus", error.message || "Could not create developer key.");
+      text("developerStatus", error.message || "Could not create developer credentials.");
     }
   }
 
@@ -268,8 +281,8 @@
       if (paymentConfig?.receiver_address) await navigator.clipboard.writeText(paymentConfig.receiver_address);
     });
     $("copyIssuedKey")?.addEventListener("click", async () => {
-      const key = $("issuedKey")?.textContent || "";
-      if (key) await navigator.clipboard.writeText(key);
+      const pair = $("issuedKey")?.textContent || "";
+      if (pair) await navigator.clipboard.writeText(pair);
     });
   }
 

@@ -68,16 +68,15 @@ export async function issueTestnetDeveloperApiKey(input: {
     throw new Error("TESTNET_DEVELOPER_KEY_LIMIT_REACHED");
   }
 
-  const plaintext = `gmk_test_${randomBytes(32).toString("base64url")}`;
-  const apiKeyHash = sha256(plaintext);
-  const keyId = `gmk_test_${apiKeyHash.slice(0, 20)}`;
+  const apiKey = `gmk_test_${randomBytes(20).toString("base64url")}`;
+  const apiSecret = `gms_test_${randomBytes(32).toString("base64url")}`;
 
   const credentialInsert = await db
     .from("commercial_api_credentials")
     .insert({
       principal_id: input.principalId,
-      key_id: keyId,
-      api_key_hash: apiKeyHash,
+      key_id: apiKey,
+      api_key_hash: sha256(apiSecret),
       enabled: true,
       scopes: [
         "commercial:read",
@@ -105,10 +104,12 @@ export async function issueTestnetDeveloperApiKey(input: {
   }
 
   return {
-    api_key: plaintext,
+    api_key: apiKey,
+    api_secret: apiSecret,
     key_id: credentialInsert.data.key_id,
     expires_at: credentialInsert.data.expires_at,
     shown_once: true,
+    auth_scheme: "key_secret",
     scopes: [
       "commercial:read",
       "testnet:structured",

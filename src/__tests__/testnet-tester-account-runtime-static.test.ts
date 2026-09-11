@@ -65,12 +65,14 @@ describe("testnet tester account runtime boundaries", () => {
     expect(runtime).toContain("WALLET_CHALLENGE_MESSAGE_MISMATCH");
   });
 
-  it("keeps developer keys tied to active testnet entitlements", () => {
+  it("keeps developer credentials tied to active testnet entitlements and returns the secret once", () => {
     const route = read("../../server/api/testnet-tester/developer-key.post.ts");
     const service = read("../lib/testnet-developer-access.server.ts");
-    expect(route).toContain("shown again");
+    expect(route).toContain("API Key and API Secret");
+    expect(route).toContain("will not be shown again");
     expect(service).toContain('grant.tier !== "testnet_tester"');
     expect(service).toContain("TESTNET_DEVELOPER_KEY_LIMIT_REACHED");
-    expect(service).toContain("api_key_hash");
+    expect(service).toContain("api_key_hash: sha256(apiSecret)");
+    expect(service).toContain("api_secret: apiSecret");
   });
 });
