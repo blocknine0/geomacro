@@ -58,10 +58,7 @@ function signHeaders(body, apiKey, apiSecret) {
         safeScalar(value, key),
       ]),
     ),
-    // GOAT-generated API keys are trusted credential material. They may
-    // contain signing delimiters such as '='; only control characters are
-    // rejected below. User-controlled body fields remain delimiter-safe.
-    api_key: apiKey,
+    api_key: safeScalar(apiKey, "api_key"),
     timestamp: safeScalar(timestamp, "timestamp"),
     nonce: safeScalar(nonce, "nonce"),
   };
