@@ -7,6 +7,7 @@ on:
       - "public/testnet-console.js"
       - "server/routes/testnet-access.get.ts"
       - "server/routes/testnet-console.get.ts"
+      - "server/api/testnet/**"
       - "server/api/testnet-tester/**"
       - "server/api/commercial/structural.post.ts"
       - "src/lib/testnet-*.ts"
@@ -43,6 +44,7 @@ jobs:
         run: >-
           timeout 6m bunx vitest run
           src/__tests__/testnet-api-v12-alignment.test.ts
+          src/__tests__/testnet-intelligence-capability-parity.test.ts
           src/__tests__/testnet-usdc-access-contract.test.ts
           src/__tests__/testnet-usdc-payment-verification.test.ts
           src/__tests__/testnet-tester-payment-activation-static.test.ts
