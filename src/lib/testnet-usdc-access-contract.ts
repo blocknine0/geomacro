@@ -1,16 +1,15 @@
 import { CCTP_CHAINS } from "./cctp";
 import {
+  TESTNET_API_CREDIT_PRICE_ATOMIC,
   TESTNET_API_CREDIT_PRICE_USDC,
   TESTNET_API_FIXED_CREDITS,
-  TESTNET_API_FIXED_QUOTA_ATOMIC,
-  TESTNET_API_FIXED_QUOTA_USDC,
   TESTNET_API_PRICING_VERSION,
 } from "./testnet-api-pricing";
 
-export const TESTNET_USDC_ACCESS_VERSION = "testnet-usdc-access-v2.2.0" as const;
-export const TESTNET_USDC_ACCESS_OFFER_ID = "testnet_tester_pass_30d" as const;
-export const TESTNET_USDC_ACCESS_PRICE_USDC = String(TESTNET_API_FIXED_QUOTA_USDC);
-export const TESTNET_USDC_ACCESS_PRICE_ATOMIC = TESTNET_API_FIXED_QUOTA_ATOMIC;
+export const TESTNET_USDC_ACCESS_VERSION = "testnet-usdc-access-v2.3.0" as const;
+export const TESTNET_USDC_ACCESS_OFFER_ID = "testnet_tester_metered_30d" as const;
+export const TESTNET_USDC_ACCESS_PRICE_USDC = String(TESTNET_API_CREDIT_PRICE_USDC);
+export const TESTNET_USDC_ACCESS_PRICE_ATOMIC = TESTNET_API_CREDIT_PRICE_ATOMIC;
 export const TESTNET_USDC_ACCESS_CREDITS = TESTNET_API_FIXED_CREDITS;
 export const TESTNET_USDC_ACCESS_DURATION_DAYS = 30 as const;
 
@@ -80,10 +79,12 @@ export function requireTestnetUsdcReceiver(env: Record<string, string | undefine
 export const TESTNET_USDC_ACCESS_BOUNDARIES = {
   free_access: false,
   payment_required: true,
+  payment_model: "pay_per_call",
+  upfront_payment_required: false,
   payment_is_real_revenue: false,
-  credits_per_quota: TESTNET_API_FIXED_CREDITS,
+  credits_per_30_days: TESTNET_API_FIXED_CREDITS,
   credit_price_usdc: String(TESTNET_API_CREDIT_PRICE_USDC),
-  quota_price_usdc: String(TESTNET_API_FIXED_QUOTA_USDC),
+  minimum_call_price_usdc: String(TESTNET_API_CREDIT_PRICE_USDC),
   pricing_version: TESTNET_API_PRICING_VERSION,
   transferable_credits: false,
   cash_redeemable_credits: false,
