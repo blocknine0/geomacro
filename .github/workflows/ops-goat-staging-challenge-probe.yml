@@ -1,0 +1,59 @@
+name: GOAT Staging Challenge Probe Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ops-goat-staging-challenge-probe.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-staging-challenge-probe-once
+  cancel-in-progress: false
+
+jobs:
+  challenge-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: goat-testnet3-paid-proof
+    env:
+      GEOMACRO_GOAT_PILOT_BASE_URL: ${{ secrets.GEOMACRO_GOAT_PILOT_BASE_URL }}
+      GEOMACRO_GOAT_PILOT_EXPECTED_HOST: ${{ secrets.GEOMACRO_GOAT_PILOT_EXPECTED_HOST }}
+      GEOMACRO_GOAT_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GEOMACRO_GOAT_TEST_PAYER_ADDRESS: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_ADDRESS }}
+      GEOMACRO_GOAT_CLIENT_REQUEST_ID: geomacro-goat-challenge-${{ github.run_id }}
+      GEOMACRO_GOAT_E2E_ARTIFACT_DIR: artifacts/goat-testnet3-challenge
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify one live staging 402 challenge without payment
+        run: node scripts/goat/testnet3-e2e.mjs
+
+      - name: Upload sanitized challenge evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-testnet3-challenge-${{ github.run_id }}
+          path: artifacts/goat-testnet3-challenge/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "GOAT Testnet3 challenge-only probe" >> "$GITHUB_STEP_SUMMARY"
+          echo "Token transfer submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Execution authorization: false" >> "$GITHUB_STEP_SUMMARY"
