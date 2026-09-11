@@ -1,20 +1,17 @@
 import { id, zeroPadValue } from "ethers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  verifyTestnetUsdcPayment,
-} from "../lib/testnet-usdc-payment-verification.server";
-import {
-  TESTNET_USDC_ACCESS_CHAINS,
-} from "../lib/testnet-usdc-access-contract";
+import { verifyTestnetUsdcPayment } from "../lib/testnet-usdc-payment-verification.server";
+import { TESTNET_USDC_ACCESS_CHAINS } from "../lib/testnet-usdc-access-contract";
 
 const receiver = "0x1111111111111111111111111111111111111111";
 const payer = "0x2222222222222222222222222222222222222222";
 const other = "0x3333333333333333333333333333333333333333";
 const txHash = `0x${"ab".repeat(32)}`;
 const transferTopic = id("Transfer(address,address,uint256)");
-const exactQuotaAtomicHex = "0xee6b280"; // 250,000,000 atomic = 250 USDC
-const belowQuotaAtomicHex = "0xee6b27f"; // 249,999,999 atomic
+const oneCreditHex = "0x7a120"; // 500,000 atomic = 0.5 USDC
+const belowOneCreditHex = "0x7a11f";
+const twelveCreditHex = "0x5b8d80"; // 6,000,000 atomic = 6 USDC
 
 function topicAddress(address: string) {
   return zeroPadValue(address, 32);
@@ -39,9 +36,9 @@ afterEach(() => {
 });
 
 describe("testnet USDC payment verification", () => {
-  it("accepts the exact 250 USDC fixed-quota boundary on a confirmed supported-chain transfer to the dedicated receiver", async () => {
+  it("accepts the exact one-credit 0.5 USDC boundary by default", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
-    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", vi.fn()
       .mockImplementationOnce(() => response(chain.chain_id_hex))
       .mockImplementationOnce(() => response({
         status: "0x1",
@@ -49,10 +46,9 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: exactQuotaAtomicHex,
+          data: oneCreditHex,
         }],
-      }));
-    vi.stubGlobal("fetch", fetchMock);
+      })));
 
     const result = await verifyTestnetUsdcPayment({
       chain_key: "baseSepolia",
@@ -66,26 +62,14 @@ describe("testnet USDC payment verification", () => {
       chain_key: "baseSepolia",
       payer_address: payer,
       recipient_address: receiver,
-      amount_atomic: "250000000",
-      amount_usdc: "250",
+      amount_atomic: "500000",
+      amount_usdc: "0.5",
       environment: "testnet",
       revenue_classification: "testnet_non_revenue",
     });
   });
 
-  it("fails closed when the configured RPC is for the wrong chain", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => response("0xaa36a7")));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      env: env(),
-    });
-
-    expect(result).toEqual({ ok: false, code: "RPC_IDENTITY_MISMATCH" });
-  });
-
-  it("rejects any amount below the 250 Testnet USDC fixed-quota boundary", async () => {
+  it("supports a capability-specific dynamic minimum", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
     vi.stubGlobal("fetch", vi.fn()
       .mockImplementationOnce(() => response(chain.chain_id_hex))
@@ -95,7 +79,38 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: belowQuotaAtomicHex,
+          data: twelveCreditHex,
+        }],
+      })));
+
+    const result = await verifyTestnetUsdcPayment({
+      chain_key: "baseSepolia",
+      tx_hash: txHash,
+      expected_payer: payer,
+      minimum_amount_atomic: 6_000_000n,
+      env: env(),
+    });
+
+    expect(result).toMatchObject({ ok: true, amount_atomic: "6000000", amount_usdc: "6" });
+  });
+
+  it("fails closed when the configured RPC is for the wrong chain", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => response("0xaa36a7")));
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, env: env() });
+    expect(result).toEqual({ ok: false, code: "RPC_IDENTITY_MISMATCH" });
+  });
+
+  it("rejects any amount below the requested payment boundary", async () => {
+    const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
+    vi.stubGlobal("fetch", vi.fn()
+      .mockImplementationOnce(() => response(chain.chain_id_hex))
+      .mockImplementationOnce(() => response({
+        status: "0x1",
+        blockNumber: "0x123",
+        logs: [{
+          address: chain.usdc_address,
+          topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
+          data: belowOneCreditHex,
         }],
       })));
 
@@ -105,7 +120,6 @@ describe("testnet USDC payment verification", () => {
       expected_payer: payer,
       env: env(),
     });
-
     expect(result).toEqual({ ok: false, code: "UNDERPAYMENT" });
   });
 
@@ -119,17 +133,10 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(payer), topicAddress(other)],
-          data: exactQuotaAtomicHex,
+          data: oneCreditHex,
         }],
       })));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      expected_payer: payer,
-      env: env(),
-    });
-
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, expected_payer: payer, env: env() });
     expect(result).toEqual({ ok: false, code: "WRONG_RECIPIENT" });
   });
 
@@ -143,17 +150,10 @@ describe("testnet USDC payment verification", () => {
         logs: [{
           address: chain.usdc_address,
           topics: [transferTopic, topicAddress(other), topicAddress(receiver)],
-          data: exactQuotaAtomicHex,
+          data: oneCreditHex,
         }],
       })));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      expected_payer: payer,
-      env: env(),
-    });
-
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, expected_payer: payer, env: env() });
     expect(result).toEqual({ ok: false, code: "UNDERPAYMENT" });
   });
 
@@ -164,80 +164,35 @@ describe("testnet USDC payment verification", () => {
       .mockImplementationOnce(() => response({
         status: "0x1",
         blockNumber: "0x123",
-        logs: [{
-          address: other,
-          topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
-          data: exactQuotaAtomicHex,
-        }],
+        logs: [{ address: other, topics: [transferTopic, topicAddress(payer), topicAddress(receiver)], data: oneCreditHex }],
       })));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      expected_payer: payer,
-      env: env(),
-    });
-
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, expected_payer: payer, env: env() });
     expect(result).toEqual({ ok: false, code: "USDC_TRANSFER_NOT_FOUND" });
   });
 
   it("rejects missing or unconfirmed receipts", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
-    vi.stubGlobal("fetch", vi.fn()
-      .mockImplementationOnce(() => response(chain.chain_id_hex))
-      .mockImplementationOnce(() => response(null)));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      expected_payer: payer,
-      env: env(),
-    });
-
+    vi.stubGlobal("fetch", vi.fn().mockImplementationOnce(() => response(chain.chain_id_hex)).mockImplementationOnce(() => response(null)));
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, expected_payer: payer, env: env() });
     expect(result).toEqual({ ok: false, code: "TX_NOT_CONFIRMED" });
   });
 
   it("rejects reverted transactions", async () => {
     const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
-    vi.stubGlobal("fetch", vi.fn()
-      .mockImplementationOnce(() => response(chain.chain_id_hex))
-      .mockImplementationOnce(() => response({ status: "0x0", blockNumber: "0x123", logs: [] })));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      expected_payer: payer,
-      env: env(),
-    });
-
+    vi.stubGlobal("fetch", vi.fn().mockImplementationOnce(() => response(chain.chain_id_hex)).mockImplementationOnce(() => response({ status: "0x0", blockNumber: "0x123", logs: [] })));
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, expected_payer: payer, env: env() });
     expect(result).toEqual({ ok: false, code: "TX_REVERTED" });
   });
 
   it("fails closed when the RPC is unavailable", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
-
-    const result = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: txHash,
-      expected_payer: payer,
-      env: env(),
-    });
-
+    const result = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: txHash, expected_payer: payer, env: env() });
     expect(result).toEqual({ ok: false, code: "RPC_UNAVAILABLE" });
   });
 
   it("rejects unsupported chains and malformed transaction hashes before RPC", async () => {
-    const unsupported = await verifyTestnetUsdcPayment({
-      chain_key: "ethereum-mainnet",
-      tx_hash: txHash,
-      env: env(),
-    });
-    const malformed = await verifyTestnetUsdcPayment({
-      chain_key: "baseSepolia",
-      tx_hash: "0x1234",
-      env: env(),
-    });
-
+    const unsupported = await verifyTestnetUsdcPayment({ chain_key: "ethereum-mainnet", tx_hash: txHash, env: env() });
+    const malformed = await verifyTestnetUsdcPayment({ chain_key: "baseSepolia", tx_hash: "0x1234", env: env() });
     expect(unsupported).toEqual({ ok: false, code: "UNSUPPORTED_CHAIN" });
     expect(malformed).toEqual({ ok: false, code: "INVALID_TX_HASH" });
   });
