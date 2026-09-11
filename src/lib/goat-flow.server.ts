@@ -266,7 +266,11 @@ export function signGoatFlowRequest(
   nowSeconds = Math.floor(Date.now() / 1000),
   nonce = randomUUID(),
 ) {
-  safeSignedScalar(config.api_key, "api_key");
+  // The API key is a server-controlled GOAT credential, not a user-supplied
+  // signed body scalar. Provider-generated keys may legitimately contain
+  // delimiter characters, so only the credential control-character checks in
+  // requireGoatFlowConfig() apply here. User-controlled/body scalars remain
+  // delimiter-restricted below.
   safeSignedScalar(String(nowSeconds), "timestamp");
   safeSignedScalar(nonce, "nonce");
 
