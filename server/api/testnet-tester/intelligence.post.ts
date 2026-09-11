@@ -2,6 +2,7 @@ import { createError, defineEventHandler, readBody, setResponseHeaders } from "h
 import { z } from "zod";
 
 import { runTestnetBrowserIntelligence } from "../../../src/lib/testnet-browser-intelligence.server";
+import { buildTestnetIntelligenceAnswer } from "../../../src/lib/testnet-intelligence-answer.server";
 import { loadTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
 
@@ -37,13 +38,19 @@ export default defineEventHandler(async (event) => {
 
   try {
     const input = schema.parse(await readBody(event));
-    const data = await runTestnetBrowserIntelligence({
+    const intelligence = await runTestnetBrowserIntelligence({
       principalId: session.principalId,
       requestId: input.request_id,
       capability: input.capability,
       subject: input.subject,
     });
-    return { ok: true, data };
+    return {
+      ok: true,
+      data: {
+        ...intelligence,
+        answer: buildTestnetIntelligenceAnswer(intelligence.data),
+      },
+    };
   } catch (error) {
     const code = error instanceof Error ? error.message : "TESTNET_INTELLIGENCE_FAILED";
     const statusCode = code === "STRUCTURAL_DATA_UNAVAILABLE" ? 404 : code === "STRUCTURAL_DATA_NOT_CONFIGURED" ? 503 : 400;
