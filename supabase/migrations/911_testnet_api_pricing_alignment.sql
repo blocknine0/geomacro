@@ -39,5 +39,37 @@ create trigger align_testnet_tester_grant_metadata_trigger
 before insert or update on public.commercial_entitlement_grants
 for each row execute function public.align_testnet_tester_grant_metadata();
 
+create or replace function public.align_testnet_tester_payment_metadata()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.environment = 'testnet'
+     and new.offer_id = 'testnet_tester_pass_30d'
+     and new.tier = 'testnet_tester' then
+    new.commercial_revenue := false;
+    new.revenue_classification := 'testnet_non_revenue';
+    new.metadata := coalesce(new.metadata, '{}'::jsonb) || jsonb_build_object(
+      'testnet_only', true,
+      'quota_credits', 500,
+      'credit_price_testnet_usdc', 0.5,
+      'quota_price_usdc', 250,
+      'fixed_quota_per_verified_wallet', true,
+      'testnet_api_pricing_version', 'testnet-api-pricing-v1.0.0',
+      'commercial_revenue', false,
+      'execution_authorized', false
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists align_testnet_tester_payment_metadata_trigger
+  on public.commercial_payment_events;
+create trigger align_testnet_tester_payment_metadata_trigger
+before insert or update on public.commercial_payment_events
+for each row execute function public.align_testnet_tester_payment_metadata();
+
 comment on table public.testnet_usdc_payment_claims is
   'Testnet-only wallet activation claims. New fixed 500-credit activations require 250 Testnet USDC total and remain non-revenue.';
