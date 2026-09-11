@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "public/testnet-access.js"
+      - "public/testnet-console.js"
       - "server/routes/testnet-access.get.ts"
+      - "server/routes/testnet-console.get.ts"
       - "server/api/testnet-tester/**"
       - "src/lib/testnet-*.ts"
       - "src/lib/commercial-access-contract.ts"
@@ -41,6 +43,7 @@ jobs:
           src/__tests__/testnet-oauth-browser-wiring-static.test.ts
           src/__tests__/testnet-avatar-storage-static.test.ts
           src/__tests__/testnet-tester-e2e-contract.test.ts
+          src/__tests__/testnet-structural-severity-console-static.test.ts
 
       - name: Migration safety
         run: bun run db:safety
