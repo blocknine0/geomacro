@@ -10,6 +10,7 @@ import { GEOMACRO_CREDIT_COSTS } from "./commercial-access-contract";
 import { recordCommercialUsageEvent } from "./commercial-ops.server";
 import { structuredDeliveryPolicy } from "./structured-data-entitlement-registry";
 import { loadStructuralContext } from "./structural-context.server";
+import { loadTestnetLiveSeverity } from "./testnet-live-severity.server";
 
 export type TestnetBrowserCapability =
   | "structural_country_digest"
@@ -51,7 +52,10 @@ export async function runTestnetBrowserIntelligence(input: {
   if (entitlement.tier !== "testnet_tester") throw new Error("TESTNET_TESTER_ENTITLEMENT_REQUIRED");
 
   const policy = structuredDeliveryPolicy(entitlement.tier, input.capability);
-  const context = await loadStructuralContext(input.subject);
+  const [context, severity] = await Promise.all([
+    loadStructuralContext(input.subject),
+    loadTestnetLiveSeverity(input.subject),
+  ]);
   if (context.status === "NOT_CONFIGURED") throw new Error("STRUCTURAL_DATA_NOT_CONFIGURED");
   if (context.status === "UNAVAILABLE") throw new Error("STRUCTURAL_DATA_UNAVAILABLE");
 
@@ -71,6 +75,7 @@ export async function runTestnetBrowserIntelligence(input: {
     status: context.status,
     methodology_status: context.methodology_status,
     subject: context.subject,
+    severity,
     observations: context.observations.slice(0, observationLimit).map((row) => ({
       observation_id: row.observation_id,
       source_id: row.source_id,
@@ -126,7 +131,13 @@ export async function runTestnetBrowserIntelligence(input: {
     evidence_reference_count: data.coverage.length,
     execution_authorized: false,
     shareable: true,
-    metadata: { tester_surface: "browser", quota_credits: 500 },
+    metadata: {
+      tester_surface: "browser",
+      quota_credits: 500,
+      latest_severity: severity.latest_severity,
+      max_recent_severity: severity.max_recent_severity,
+      severity_event_count: severity.events.length,
+    },
   });
 
   return {
