@@ -16,10 +16,17 @@ const clientRequestId = z
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{3,127}$/);
 
+const positiveAtomicAmount = z
+  .string()
+  .trim()
+  .regex(/^[1-9][0-9]{0,77}$/);
+
 /**
  * A GOAT partner-pilot order always requires a buyer-controlled wallet address
- * and a stable client request ID. Price/token/payment terms are server-owned and
- * therefore deliberately absent from the caller-controlled schema.
+ * and a stable client request ID. Server price/token terms remain server-owned.
+ * The optional max_payment_atomic is only a buyer policy ceiling: it cannot
+ * lower or rewrite the server price and lets an autonomous agent fail closed
+ * before an over-budget challenge/order is prepared.
  */
 export const goatPilotCreateOrderSchema =
   agenticDemoRequestSchema
@@ -31,6 +38,8 @@ export const goatPilotCreateOrderSchema =
         clientRequestId,
       payer_address:
         evmAddress,
+      max_payment_atomic:
+        positiveAtomicAmount.optional(),
     });
 
 export type GoatPilotCreateOrderRequest =
