@@ -1,4 +1,4 @@
-export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.1.0" as const;
+export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.2.0" as const;
 
 export const GEOMACRO_CREDIT_COSTS = {
   intelligence_query: 1,
@@ -16,24 +16,25 @@ export type GeomacroCreditCapability = keyof typeof GEOMACRO_CREDIT_COSTS;
 export const GEOMACRO_ACCESS_TIERS = {
   free: {
     id: "free",
-    label: "Free Explorer",
-    credits_per_30_days: 0,
+    label: "Free API Explorer",
+    credits_per_30_days: 100,
     public_price_usd: 0,
-    access_mode: "public_web_only",
+    access_mode: "public_web_plus_bounded_free_api",
     structured_data: {
-      api_access: false,
+      api_access: true,
       structured_download: false,
       raw_data_access: false,
-      governed_structured_data_only: false,
+      governed_structured_data_only: true,
       latest_snapshot_only: true,
-      max_subjects_per_request: 0,
-      max_structural_observations_per_response: 0,
+      max_subjects_per_request: 1,
+      max_structural_observations_per_response: 3,
       max_evidence_references_per_answer: 0,
-      coverage_mode: "public_website_summary",
-      provenance_mode: "no_upstream_news_source_identity",
+      coverage_mode: "bounded_current_digest",
+      provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: false,
       signed_risk_objects: false,
       risk_gate: false,
+      recharge_required_after_allowance: true,
     },
   },
   testnet_tester: {
@@ -128,13 +129,18 @@ export const GEOMACRO_ACCESS_TIERS = {
 } as const;
 
 export const GEOMACRO_DATA_POLICY = {
-  free_api_access: false,
+  free_api_access: true,
+  free_api_credits_per_30_days: 100,
+  free_api_structural_digest: true,
   free_structured_download: false,
+  recharge_required_after_free_allowance: true,
   commercial_api_requires_paid_entitlement: true,
   raw_customer_delivery: false,
   private_warehouse_customer_access: false,
   review_gated_source_delivery: false,
   upstream_news_source_identity_delivery: false,
+  upstream_news_source_url_delivery: false,
+  customer_payload_uses_opaque_provenance_refs: true,
   missing_data_becomes_zero_risk: false,
   structural_data_is_gri_v1_2_input: false,
   structural_data_is_gro_v0_2_weight: false,
