@@ -100,6 +100,7 @@ describe("testnet USDC payment verification", () => {
     const result = await verifyTestnetUsdcPayment({
       chain_key: "baseSepolia",
       tx_hash: txHash,
+      expected_payer: payer,
       env: env(),
     });
 
@@ -123,10 +124,104 @@ describe("testnet USDC payment verification", () => {
     const result = await verifyTestnetUsdcPayment({
       chain_key: "baseSepolia",
       tx_hash: txHash,
+      expected_payer: payer,
       env: env(),
     });
 
     expect(result).toEqual({ ok: false, code: "WRONG_RECIPIENT" });
+  });
+
+  it("rejects a transfer to the correct receiver when it came from another wallet", async () => {
+    const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
+    vi.stubGlobal("fetch", vi.fn()
+      .mockImplementationOnce(() => response(chain.chain_id_hex))
+      .mockImplementationOnce(() => response({
+        status: "0x1",
+        blockNumber: "0x123",
+        logs: [{
+          address: chain.usdc_address,
+          topics: [transferTopic, topicAddress(other), topicAddress(receiver)],
+          data: "0x7a120",
+        }],
+      })));
+
+    const result = await verifyTestnetUsdcPayment({
+      chain_key: "baseSepolia",
+      tx_hash: txHash,
+      expected_payer: payer,
+      env: env(),
+    });
+
+    expect(result).toEqual({ ok: false, code: "WRONG_PAYER" });
+  });
+
+  it("rejects a transfer emitted by a non-USDC token contract", async () => {
+    const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
+    vi.stubGlobal("fetch", vi.fn()
+      .mockImplementationOnce(() => response(chain.chain_id_hex))
+      .mockImplementationOnce(() => response({
+        status: "0x1",
+        blockNumber: "0x123",
+        logs: [{
+          address: other,
+          topics: [transferTopic, topicAddress(payer), topicAddress(receiver)],
+          data: "0x7a120",
+        }],
+      })));
+
+    const result = await verifyTestnetUsdcPayment({
+      chain_key: "baseSepolia",
+      tx_hash: txHash,
+      expected_payer: payer,
+      env: env(),
+    });
+
+    expect(result).toEqual({ ok: false, code: "USDC_TRANSFER_NOT_FOUND" });
+  });
+
+  it("rejects missing or unconfirmed receipts", async () => {
+    const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
+    vi.stubGlobal("fetch", vi.fn()
+      .mockImplementationOnce(() => response(chain.chain_id_hex))
+      .mockImplementationOnce(() => response(null)));
+
+    const result = await verifyTestnetUsdcPayment({
+      chain_key: "baseSepolia",
+      tx_hash: txHash,
+      expected_payer: payer,
+      env: env(),
+    });
+
+    expect(result).toEqual({ ok: false, code: "TX_NOT_CONFIRMED" });
+  });
+
+  it("rejects reverted transactions", async () => {
+    const chain = TESTNET_USDC_ACCESS_CHAINS.baseSepolia;
+    vi.stubGlobal("fetch", vi.fn()
+      .mockImplementationOnce(() => response(chain.chain_id_hex))
+      .mockImplementationOnce(() => response({ status: "0x0", blockNumber: "0x123", logs: [] })));
+
+    const result = await verifyTestnetUsdcPayment({
+      chain_key: "baseSepolia",
+      tx_hash: txHash,
+      expected_payer: payer,
+      env: env(),
+    });
+
+    expect(result).toEqual({ ok: false, code: "TX_REVERTED" });
+  });
+
+  it("fails closed when the RPC is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+
+    const result = await verifyTestnetUsdcPayment({
+      chain_key: "baseSepolia",
+      tx_hash: txHash,
+      expected_payer: payer,
+      env: env(),
+    });
+
+    expect(result).toEqual({ ok: false, code: "RPC_UNAVAILABLE" });
   });
 
   it("rejects unsupported chains and malformed transaction hashes before RPC", async () => {

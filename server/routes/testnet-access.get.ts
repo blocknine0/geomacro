@@ -17,26 +17,24 @@ export default defineEventHandler((event) => {
 <title>Geomacro Testnet Access</title>
 <meta name="description" content="Test Geomacro risk intelligence with Testnet USDC, developer API keys and AI-agent integration." />
 <style>
-:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#07090d;color:#f4f6f8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#101b31 0,#07090d 34%)}main{max-width:1180px;margin:auto;padding:36px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px}.brand{font-size:20px;font-weight:750}.badge{font:12px ui-monospace,monospace;padding:7px 11px;border:1px solid #33425c;border-radius:999px;color:#b9c8dd}.hero{max-width:850px}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.12em;color:#91a8c8}.hero h1{font-size:52px;line-height:1.03;margin:15px 0 18px}.hero p{font-size:19px;line-height:1.65;color:#aab5c4;max-width:760px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}.card,.panel{background:#0d121b;border:1px solid #202a3a;border-radius:18px;padding:20px}.card strong{display:block;font-size:19px;margin-bottom:8px}.card p,.muted{color:#93a1b4;line-height:1.55;font-size:14px}.panel{margin-top:22px}.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}.step{border:1px solid #273348;background:#101722;border-radius:14px;padding:14px;min-height:98px}.n{font:11px ui-monospace,monospace;color:#7c91ad}.step b{display:block;margin-top:9px;font-size:14px}.access{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:22px}.price{font-size:36px;font-weight:800;margin:5px 0}.notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:#0a1018;border:1px solid #25324a;color:#91a0b5;font-size:13px;line-height:1.55}.preview{width:100%;border-radius:14px;border:1px solid #273247;background:#0a0e15}.chains{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.chains span{border:1px solid #2a364b;border-radius:999px;padding:6px 9px;font-size:12px;color:#aebbd0}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:#aab7c8}input,select,button{width:100%;border:1px solid #2a3549;background:#0a1018;color:#eef3f8;border-radius:11px;padding:11px 12px;font:14px inherit}button{cursor:pointer;font-weight:700;background:#edf3ff;color:#0a1020}button.secondary{background:#111a29;color:#dbe7f8}.status-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}.status{border:1px solid #273348;border-radius:12px;padding:12px;background:#0a1018}.status span{display:block;font-size:11px;color:#8191a8;margin-bottom:6px}.status strong{font-size:13px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.actions button{width:auto}.mono{font:12px ui-monospace,monospace;word-break:break-all;color:#cbd7e8}.key-row{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid #202a3a;padding:12px 0}.key-row:first-child{border-top:0}.key-row strong,.key-row span{display:block}.key-row span{font-size:12px;color:#8796ab;margin-top:4px}.key-row button{width:auto;background:#111a29;color:#dbe7f8}.okline{min-height:22px;margin-top:10px;color:#9fb0c5;font-size:13px}.profile-tools{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid #202a3a}.avatar{width:82px;height:82px;border-radius:18px;object-fit:cover;border:1px solid #31405a;background:#090e16}@media(max-width:850px){.grid,.access,.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.steps,.status-grid{grid-template-columns:1fr 1fr}.hero h1{font-size:40px}}@media(max-width:520px){.steps,.status-grid,.profile-tools{grid-template-columns:1fr}.avatar{width:72px;height:72px}}
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#080d16;color:#f4f2ea;--line:rgba(255,255,255,.08);--card:rgba(255,255,255,.035);--amber:#ff9d19;--muted:#979fab}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1100px 520px at 12% -10%,rgba(255,157,25,.10) 0,rgba(8,13,22,0) 60%),#080d16}main{max-width:1180px;margin:auto;padding:36px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:72px}.brand img{display:block;height:40px;width:auto}.badge{font:12px ui-monospace,monospace;padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--card)}.hero{max-width:850px}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.12em;color:var(--amber)}.hero h1{font-size:52px;line-height:1.03;margin:15px 0 18px;letter-spacing:-.02em}.hero p{font-size:19px;line-height:1.65;color:var(--muted);max-width:760px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}.card,.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}.card strong{display:block;font-size:19px;margin-bottom:8px}.card p,.muted{color:var(--muted);line-height:1.55;font-size:14px}.panel{margin-top:22px}.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}.step{border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:12px;padding:14px;min-height:98px}.n{font:11px ui-monospace,monospace;color:var(--amber)}.step b{display:block;margin-top:9px;font-size:14px}.access{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:22px}.price{font-size:36px;font-weight:800;margin:5px 0;color:var(--amber);letter-spacing:-.02em}.notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--muted);font-size:13px;line-height:1.55}.preview{width:100%;border-radius:14px;border:1px solid var(--line);background:#0a0f18}.faucets{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.faucet{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:9px}.faucet b{font-size:14px;font-weight:650}.faucet a{display:inline-block;text-align:center;text-decoration:none;font-size:13px;font-weight:700;border-radius:10px;padding:8px 10px;border:1px solid rgba(255,157,25,.35);background:rgba(255,157,25,.10);color:var(--amber)}.faucet a:hover{background:rgba(255,157,25,.18)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:var(--muted)}input,select,button{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.02);color:#f4f2ea;border-radius:10px;padding:11px 12px;font:14px inherit}button{cursor:pointer;font-weight:700;background:var(--amber);color:#0d1117;border-color:transparent}button:hover{filter:brightness(1.06)}button.secondary{background:rgba(255,255,255,.04);color:#f4f2ea;border:1px solid var(--line)}.status-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}.status{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}.status span{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}.status strong{font-size:13px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.actions button{width:auto}.mono{font:12px ui-monospace,monospace;word-break:break-all;color:#e6e3da}.key-row{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid var(--line);padding:12px 0}.key-row:first-child{border-top:0}.key-row strong,.key-row span{display:block}.key-row span{font-size:12px;color:var(--muted);margin-top:4px}.key-row button{width:auto;background:rgba(255,255,255,.04);color:#f4f2ea;border:1px solid var(--line)}.okline{min-height:22px;margin-top:10px;color:var(--muted);font-size:13px}.profile-tools{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.avatar{width:82px;height:82px;border-radius:16px;object-fit:cover;border:1px solid var(--line);background:#0a0f18}@media(max-width:850px){.grid,.access,.form-grid,.faucets{grid-template-columns:1fr}.field.full{grid-column:auto}.steps,.status-grid{grid-template-columns:1fr 1fr}.hero h1{font-size:40px}}@media(max-width:520px){.steps,.status-grid,.profile-tools{grid-template-columns:1fr}.avatar{width:72px;height:72px}}
 </style>
 <script src="/testnet-access.js" defer></script>
 </head>
 <body>
 <main>
-  <div class="nav"><div class="brand">Geomacro</div><div class="badge">TESTNET · USDC ACCESS</div></div>
+  <div class="nav"><div class="brand"><img src="/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/geomacro-logo.png" alt="Geomacro" height="40" /></div><div class="badge">TESTNET · USDC ACCESS</div></div>
   <section class="hero">
     <div class="eyebrow">GEOPOLITICAL + MACRO RISK INTELLIGENCE</div>
     <h1>Test Geomacro inside your own product or AI agent.</h1>
     <p>Register once, verify your email, wallet, X and Discord, activate one fixed 500-credit tester quota with 0.50 Testnet USDC, then use Geomacro through the website, developer API or agent integration.</p>
     <div id="globalStatus" class="okline"></div>
   </section>
-
   <section class="grid">
     <div class="card"><strong>500 fixed test credits</strong><p>One tester quota per verified email + wallet identity. Credits are for testing/demo use only and expire with the tester entitlement.</p></div>
     <div class="card"><strong>Developer API keys</strong><p>Create scoped test keys for your app, AI agent, automation or demo. Keys consume the same fixed 500-credit balance.</p></div>
     <div class="card"><strong>Share + feedback on X</strong><p>Test the product, then post your experience publicly on X. Geomacro-branded share cards remain available for eligible outputs.</p></div>
   </section>
-
   <section class="panel">
     <div class="eyebrow">REGISTRATION</div>
     <div class="steps">
@@ -47,7 +45,6 @@ export default defineEventHandler((event) => {
       <div class="step"><span class="n">05</span><b>Complete profile</b><div class="muted">Name + optional image</div></div>
     </div>
   </section>
-
   <section id="registrationPanel" class="panel">
     <div class="eyebrow">CREATE TESTER ACCOUNT</div>
     <form id="registrationForm" class="form-grid">
@@ -58,7 +55,6 @@ export default defineEventHandler((event) => {
     <div id="registrationStatus" class="okline"></div>
     <div class="notice">By registering you accept the current Testnet Tester terms. Never enter a seed phrase or private key. Geomacro only asks your wallet to sign a non-transaction verification message.</div>
   </section>
-
   <section id="accountPanel" class="panel" hidden>
     <div class="eyebrow">YOUR TESTER ACCOUNT</div>
     <h2 id="profileStatus">Tester</h2>
@@ -84,12 +80,23 @@ export default defineEventHandler((event) => {
       </form>
     </div>
   </section>
-
   <section id="paymentPanel" class="panel" hidden>
     <div class="eyebrow">ACTIVATE FIXED TESTER QUOTA</div>
     <div class="price">0.50 Testnet USDC</div>
     <div class="muted">500 credits · 30 days · one quota per verified email + wallet · testing/demo only · never classified as commercial revenue.</div>
-    <div class="chains"><span>Arc Testnet</span><span>Ethereum Sepolia</span><span>Base Sepolia</span><span>Polygon Amoy</span><span>Arbitrum Sepolia</span><span>OP Sepolia</span><span>Avalanche Fuji</span><span>Unichain Sepolia</span><span>Linea Sepolia</span></div>
+    <div class="eyebrow" style="margin-top:16px">SUPPORTED PAYMENT CHAINS · GET TESTNET USDC</div>
+    <div class="faucets">
+      <div class="faucet"><b>Arc Testnet</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Ethereum Sepolia</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Base Sepolia</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Polygon Amoy</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Arbitrum Sepolia</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>OP Sepolia</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Avalanche Fuji</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Unichain Sepolia</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+      <div class="faucet"><b>Linea Sepolia</b><a href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get Testnet USDC</a></div>
+    </div>
+    <div class="notice">Testnet USDC comes from the official Circle faucet at faucet.circle.com. You may also need a small amount of the network's native gas token from that network's own public faucet before the transfer will confirm.</div>
     <div class="notice"><b>Dedicated Geomacro Testnet fee receiver</b><div id="receiverAddress" class="mono" style="margin-top:7px">Configuration pending</div><div class="actions"><button id="copyReceiver" type="button" class="secondary">Copy receiver</button></div></div>
     <form id="paymentForm" class="form-grid">
       <div class="field"><label for="chainSelect">Payment chain</label><select id="chainSelect"></select></div>
@@ -99,7 +106,6 @@ export default defineEventHandler((event) => {
     <div id="paymentStatus" class="okline"></div>
     <div class="notice">Activation is fail-closed. The server verifies chain ID, configured Testnet USDC contract, verified payer wallet, dedicated receiver, amount and receipt status. The same email or wallet cannot receive a second tester quota.</div>
   </section>
-
   <section id="developerPanel" class="panel" hidden>
     <div class="eyebrow">DEVELOPER + AGENT ACCESS</div>
     <h2>Use Geomacro in your product or AI agent</h2>
@@ -113,14 +119,12 @@ export default defineEventHandler((event) => {
     <div id="issuedKeyBox" class="notice" hidden><b>Shown once</b><div id="issuedKey" class="mono" style="margin-top:7px"></div><div class="actions"><button id="copyIssuedKey" type="button" class="secondary">Copy API key</button></div></div>
     <div id="developerKeyList" style="margin-top:12px"></div>
   </section>
-
   <section id="feedbackPanel" class="panel" hidden>
     <div class="eyebrow">PUBLIC TESTER FEEDBACK</div>
     <h2>Tell people what you tested on X</h2>
     <p class="muted">Post what worked, what felt confusing, and what you want Geomacro to improve. Public tester feedback also helps other builders discover the project.</p>
     <div class="actions"><button id="xFeedbackButton" type="button">Post feedback on X</button></div>
   </section>
-
   <section class="access">
     <div class="panel" style="margin-top:0">
       <div class="eyebrow">SUPPORTED TESTNETS</div>

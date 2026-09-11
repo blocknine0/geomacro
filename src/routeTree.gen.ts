@@ -29,6 +29,8 @@ import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RiskGateRouteImport } from './routes/risk-gate'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as TestnetAccessRouteImport } from './routes/testnet-access'
+import { Route as TestnetConsoleRouteImport } from './routes/testnet-console'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiPublicDataProxyRouteImport } from './routes/api.public-data-proxy'
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
@@ -40,6 +42,7 @@ import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
 import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
+import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
@@ -144,6 +147,16 @@ const RoadmapRoute = RoadmapRouteImport.update({
   path: '/roadmap',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TestnetAccessRoute = TestnetAccessRouteImport.update({
+  id: '/testnet-access',
+  path: '/testnet-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestnetConsoleRoute = TestnetConsoleRouteImport.update({
+  id: '/testnet-console',
+  path: '/testnet-console',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -199,6 +212,11 @@ const ApiDemoPreflightRoute = ApiDemoPreflightRouteImport.update({
   path: '/api/demo/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
+  id: '/api/testnet-tester/$',
+  path: '/api/testnet-tester/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoatPilotArtifactRoute = ApiGoatPilotArtifactRouteImport.update({
   id: '/api/goat/pilot/artifact',
   path: '/api/goat/pilot/artifact',
@@ -236,6 +254,8 @@ export interface FileRoutesByFullPath {
   '/research': typeof ResearchRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/testnet-access': typeof TestnetAccessRoute
+  '/testnet-console': typeof TestnetConsoleRoute
   '/api/health': typeof ApiHealthRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
@@ -247,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -272,6 +293,8 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/testnet-access': typeof TestnetAccessRoute
+  '/testnet-console': typeof TestnetConsoleRoute
   '/api/health': typeof ApiHealthRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
@@ -283,6 +306,7 @@ export interface FileRoutesByTo {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -309,6 +333,8 @@ export interface FileRoutesById {
   '/research': typeof ResearchRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/testnet-access': typeof TestnetAccessRoute
+  '/testnet-console': typeof TestnetConsoleRoute
   '/api/health': typeof ApiHealthRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
@@ -320,6 +346,7 @@ export interface FileRoutesById {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -347,6 +374,8 @@ export interface FileRouteTypes {
     | '/research'
     | '/risk-gate'
     | '/roadmap'
+    | '/testnet-access'
+    | '/testnet-console'
     | '/api/health'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
@@ -358,6 +387,7 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/testnet-tester/$'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -383,6 +413,8 @@ export interface FileRouteTypes {
     | '/research'
     | '/risk-gate'
     | '/roadmap'
+    | '/testnet-access'
+    | '/testnet-console'
     | '/api/health'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
@@ -394,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/testnet-tester/$'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -419,6 +452,8 @@ export interface FileRouteTypes {
     | '/research'
     | '/risk-gate'
     | '/roadmap'
+    | '/testnet-access'
+    | '/testnet-console'
     | '/api/health'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
@@ -430,6 +465,7 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/testnet-tester/$'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -456,6 +492,8 @@ export interface RootRouteChildren {
   ResearchRoute: typeof ResearchRoute
   RiskGateRoute: typeof RiskGateRoute
   RoadmapRoute: typeof RoadmapRoute
+  TestnetAccessRoute: typeof TestnetAccessRoute
+  TestnetConsoleRoute: typeof TestnetConsoleRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiPublicDataProxyRoute: typeof ApiPublicDataProxyRoute
   ApiRiskGateRoute: typeof ApiRiskGateRoute
@@ -467,6 +505,7 @@ export interface RootRouteChildren {
   ApiAgentRiskRoute: typeof ApiAgentRiskRoute
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
+  ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
@@ -614,6 +653,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoadmapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/testnet-access': {
+      id: '/testnet-access'
+      path: '/testnet-access'
+      fullPath: '/testnet-access'
+      preLoaderRoute: typeof TestnetAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/testnet-console': {
+      id: '/testnet-console'
+      path: '/testnet-console'
+      fullPath: '/testnet-console'
+      preLoaderRoute: typeof TestnetConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -691,6 +744,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDemoPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/testnet-tester/$': {
+      id: '/api/testnet-tester/$'
+      path: '/api/testnet-tester/$'
+      fullPath: '/api/testnet-tester/$'
+      preLoaderRoute: typeof ApiTestnetTesterSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/goat/pilot/artifact': {
       id: '/api/goat/pilot/artifact'
       path: '/api/goat/pilot/artifact'
@@ -736,6 +796,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResearchRoute: ResearchRoute,
   RiskGateRoute: RiskGateRoute,
   RoadmapRoute: RoadmapRoute,
+  TestnetAccessRoute: TestnetAccessRoute,
+  TestnetConsoleRoute: TestnetConsoleRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiPublicDataProxyRoute: ApiPublicDataProxyRoute,
   ApiRiskGateRoute: ApiRiskGateRoute,
@@ -747,6 +809,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRiskRoute: ApiAgentRiskRoute,
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
+  ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
