@@ -1,0 +1,172 @@
+name: GOAT Testnet3 Local Paid Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      client_request_id:
+        description: 'Optional deterministic request ID for the challenge-only readiness probe'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goat-testnet3-local-paid-readiness
+  cancel-in-progress: false
+
+jobs:
+  local-paid-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: goat-testnet3-paid-proof
+    env:
+      GOATX402_ENVIRONMENT: testnet3
+      GOATX402_API_URL: https://flow-api.testnet3.goat.network
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GOATX402_PILOT_TOKEN_SYMBOL: USDC
+      GOATX402_PILOT_AMOUNT_ATOMIC: '100000'
+      GOATX402_MAINNET_COMMERCIAL_ENABLED: 'false'
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      GEOMACRO_GOAT_PILOT_BASE_URL: http://127.0.0.1:4173
+      GEOMACRO_GOAT_PILOT_EXPECTED_HOST: 127.0.0.1
+      GEOMACRO_GOAT_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GEOMACRO_GOAT_TEST_PAYER_ADDRESS: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_ADDRESS }}
+      GEOMACRO_GOAT_CLIENT_REQUEST_ID: ${{ inputs.client_request_id }}
+      GEOMACRO_GOAT_E2E_ARTIFACT_DIR: artifacts/goat-testnet3-local-readiness
+      HAS_GOAT_TEST_PAYER_PRIVATE_KEY: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY != '' }}
+
+    steps:
+      - name: Record no-payment boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Mode: challenge-only paid-readiness preflight" >> "$GITHUB_STEP_SUMMARY"
+          echo "Token transfer submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Private key loaded into runtime: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate protected environment prerequisites without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            GOATX402_API_KEY \
+            GOATX402_API_SECRET \
+            GOATX402_MERCHANT_ID \
+            GOATX402_PILOT_ACCESS_TOKEN \
+            APP_SUPABASE_URL \
+            APP_SUPABASE_SERVICE_ROLE_KEY \
+            RISK_OBJECT_SIGNING_KEY_ID \
+            RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 \
+            GEOMACRO_GOAT_TEST_PAYER_ADDRESS; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is missing from environment goat-testnet3-paid-proof"
+              missing=1
+            fi
+          done
+          if [ "$HAS_GOAT_TEST_PAYER_PRIVATE_KEY" != "true" ]; then
+            echo "::error::GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY is missing from environment goat-testnet3-paid-proof"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          if [ "$RISK_OBJECT_SIGNING_KEY_ID" != "geomacro-risk-2026-02" ]; then
+            echo "::error::Unexpected Risk Object signing generation"
+            exit 1
+          fi
+          if ! printf '%s' "$GEOMACRO_GOAT_TEST_PAYER_ADDRESS" | grep -Eq '^0x[0-9a-fA-F]{40}$'; then
+            echo "::error::GEOMACRO_GOAT_TEST_PAYER_ADDRESS is not a valid EVM address"
+            exit 1
+          fi
+          echo "Protected prerequisite names are present; secret values were not printed." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout exact workflow ref
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Derive matching Risk Object public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('Risk Object signing key must be Ed25519');
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=${publicB64}\n`);
+          NODE
+
+      - name: Refresh signed USA and CHN corridor intelligence
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/test-corridor-risk-gate-preflight.ts USA CHN > /tmp/corridor-refresh.log
+          grep -q 'signature_valid' /tmp/corridor-refresh.log
+
+      - name: Start isolated local Geomacro server
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run dev --host 127.0.0.1 --port 4173 > /tmp/geomacro-local.log 2>&1 &
+          echo $! > /tmp/geomacro-local.pid
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4173/ >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            tail -200 /tmp/geomacro-local.log || true
+            echo "::error::Local Geomacro server did not become ready"
+            exit 1
+          fi
+
+      - name: Execute challenge-only GOAT Testnet3 readiness probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset GEOMACRO_GOAT_TESTNET_E2E_ACK
+          unset GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY
+          node scripts/goat/testnet3-e2e.mjs
+
+      - name: Upload sanitized readiness evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-testnet3-local-paid-readiness-${{ github.run_id }}
+          path: artifacts/goat-testnet3-local-readiness/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record readiness result
+        if: success()
+        shell: bash
+        run: |
+          echo "Result: READY FOR EXPLICIT PAID TESTNET3 E2E" >> "$GITHUB_STEP_SUMMARY"
+          echo "Next workflow: GOAT Testnet3 Local Paid E2E Proof" >> "$GITHUB_STEP_SUMMARY"
+          echo "Paid workflow still requires the exact acknowledgement GOAT_TESTNET3_USDC." >> "$GITHUB_STEP_SUMMARY"
