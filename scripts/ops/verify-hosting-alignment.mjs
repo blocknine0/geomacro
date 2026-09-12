@@ -140,7 +140,10 @@ if (!env.includes(EXPECTED_SUPABASE_REF)) {
 
 const deploymentConfig = read("docs/TESTNET_TESTER_DEPLOYMENT_CONFIG.md");
 for (const marker of [
-  "wallet-only",
+  "wallet-first",
+  "EIP-4361",
+  "resume that existing account instead of creating a duplicate",
+  "same verified wallet must never create another tester profile",
   "no upfront Testnet USDC activation payment",
   "TESTNET_RPC_ARC",
   "TESTNET_RPC_BASE_SEPOLIA",
@@ -153,7 +156,7 @@ for (const marker of [
     fail(`Testnet deployment configuration is missing ${marker}`);
   }
 }
-pass("Testnet deployment guide matches the wallet-only pay-per-call launch contract");
+pass("Testnet deployment guide matches the wallet-first EIP-4361 pay-per-call launch contract");
 
 const browserFiles = walk("src").filter(
   (path) =>
