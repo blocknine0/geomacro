@@ -41,6 +41,7 @@ jobs:
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'SUPABASE_DB_URL' "$file"
+          grep -q '2>&1 | tee /tmp/ucdp-migration-plan.txt' "$file"
           echo "UCDP production migration guardrails are present."
 
   migrate:
@@ -108,7 +109,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run --include-all | tee /tmp/ucdp-migration-plan.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run --include-all 2>&1 | tee /tmp/ucdp-migration-plan.txt
 
       - name: Fail closed unless only UCDP 053 and 054 are pending
         shell: bash
@@ -146,7 +147,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run --include-all | tee /tmp/ucdp-postcheck.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run --include-all 2>&1 | tee /tmp/ucdp-postcheck.txt
           if grep -Eq '053_ucdp_candidate_live_ingest\.sql|054_ucdp_candidate_transport_alignment\.sql' /tmp/ucdp-postcheck.txt; then
             echo "::error title=UCDP migration post-check failed::053 or 054 is still pending."
             exit 1
