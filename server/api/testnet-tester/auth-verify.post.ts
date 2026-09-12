@@ -6,6 +6,7 @@ import {
   setTesterSessionCookie,
   testerSessionTokenFromRequest,
 } from "../../../src/lib/testnet-tester-cookie.server";
+import { assertTestnetAuthSameOrigin } from "../../../src/lib/testnet-origin-guard.server";
 import {
   authenticateTestnetDeveloperWallet,
   retireSupersededTesterSession,
@@ -23,18 +24,20 @@ export default defineEventHandler(async (event) => {
     "X-Content-Type-Options": "nosniff",
   });
 
-  const previousToken = testerSessionTokenFromRequest(event);
-  let previousSession: { principalId: string; sessionId: string } | null = null;
-  if (previousToken) {
-    try {
-      previousSession = await requireTestnetTesterSession(previousToken);
-    } catch {
-      clearTesterSessionCookie(event);
-    }
-  }
-
-  const body = await readBody<Record<string, unknown>>(event);
   try {
+    assertTestnetAuthSameOrigin(event);
+
+    const previousToken = testerSessionTokenFromRequest(event);
+    let previousSession: { principalId: string; sessionId: string } | null = null;
+    if (previousToken) {
+      try {
+        previousSession = await requireTestnetTesterSession(previousToken);
+      } catch {
+        clearTesterSessionCookie(event);
+      }
+    }
+
+    const body = await readBody<Record<string, unknown>>(event);
     const result = await authenticateTestnetDeveloperWallet({
       walletAddress: String(body?.wallet_address ?? ""),
       chainId: body?.chain_id,
@@ -62,6 +65,8 @@ export default defineEventHandler(async (event) => {
     const { session_token: _privateSessionToken, ...publicResult } = result;
     return { ok: true, data: publicResult, execution_authorized: false };
   } catch (error) {
-    throw createError({ statusCode: 400, statusMessage: publicCode(error) });
+    const code = publicCode(error);
+    const forbidden = code === "TESTNET_AUTH_ORIGIN_REQUIRED" || code === "TESTNET_AUTH_ORIGIN_FORBIDDEN";
+    throw createError({ statusCode: forbidden ? 403 : 400, statusMessage: code });
   }
 });
