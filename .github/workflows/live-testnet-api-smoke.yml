@@ -1,0 +1,124 @@
+name: Live Testnet API Smoke
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/live-testnet-api-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://geomacro.live
+    steps:
+      - name: Verify Testnet access page is live
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -D "$headers" -o "$body" -w '%{http_code}' "$BASE_URL/testnet-access")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Testnet access page unavailable::Expected 200 from /testnet-access, got $code."
+            head -c 500 "$body" || true
+            exit 1
+          fi
+          for marker in \
+            'Verify once. Pay only for the API call you use.' \
+            '500-credit usage cap' \
+            'API Key + API Secret' \
+            'Receive HTTP 402'
+          do
+            if ! grep -Fq "$marker" "$body"; then
+              title="$(grep -Eo '<title>[^<]+' "$body" | head -1 | sed 's/<title>//' || true)"
+              h1="$(grep -Eo '<h1[^>]*>[^<]+' "$body" | head -1 | sed -E 's/<h1[^>]*>//' || true)"
+              echo "Hosted title: ${title:-unknown}"
+              echo "Hosted H1: ${h1:-unknown}"
+              echo "Hosting response headers:"
+              grep -Ei '^(server:|x-vercel-|x-powered-by:|cf-ray:|via:|x-lovable|x-render-|x-served-by:)' "$headers" || true
+              echo "::error title=Hosted Testnet page is stale::Missing marker: $marker"
+              exit 1
+            fi
+          done
+
+          echo "Edge security/cache headers observed:"
+          grep -Ei '^(cache-control:|x-content-type-options:|content-security-policy:|server:|cf-ray:)' "$headers" || true
+          if ! grep -Fqi 'x-content-type-options: nosniff' "$headers"; then
+            echo "::warning title=Edge header normalized::x-content-type-options: nosniff was not visible at the public edge. Static security-header CI remains the source-level control; this live smoke continues to the API authorization boundary."
+          fi
+          if ! grep -Eqi '^cache-control:.*no-store' "$headers"; then
+            echo "::warning title=Edge cache policy normalized::Origin no-store was not visible at the public edge. This does not by itself indicate a stale deployment because the current pay-per-call markers are present."
+          fi
+          echo "PASS: /testnet-access is live with the current pay-per-call contract."
+
+      - name: Verify tester config fails closed without a session
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet-tester/config")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "401" ]]; then
+            echo "::error title=Tester config boundary failed::Expected 401 without a tester session, got $code."
+            head -c 800 "$body" || true
+            exit 1
+          fi
+          if grep -Eqi 'receiver_address|capability_prices|gmk_test_|gms_test_' "$body"; then
+            echo "::error title=Unauthenticated tester data leak::Protected Testnet config fields appeared in an unauthenticated response."
+            cat "$body"
+            exit 1
+          fi
+          echo "PASS: protected tester config returns 401 without session data leakage."
+
+      - name: Verify developer API fails closed without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            --data '{"request_id":"live-smoke-unauth-001","capability":"gri_read","subject":{"type":"global"}}' \
+            "$BASE_URL/api/testnet/intelligence")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "401" ]]; then
+            echo "::error title=Developer API auth boundary failed::Expected 401 without credentials, got $code."
+            head -c 800 "$body" || true
+            exit 1
+          fi
+          grep -Fq 'COMMERCIAL_API_KEY_REQUIRED' "$body"
+          if grep -Eqi 'display_score|raw_score|risk_object|payment_event_id|credits_remaining' "$body"; then
+            echo "::error title=Unauthenticated premium data leak::Protected intelligence fields appeared in an unauthenticated response."
+            cat "$body"
+            exit 1
+          fi
+          echo "PASS: developer API returns 401 and no premium intelligence without credentials."
+
+      - name: Verify paired Testnet credentials are enforced
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            -H 'x-geomacro-api-key: gmk_test_invalid_but_long_enough_1234567890' \
+            --data '{"request_id":"live-smoke-half-auth-001","capability":"gri_read","subject":{"type":"global"}}' \
+            "$BASE_URL/api/testnet/intelligence")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "401" ]]; then
+            echo "::error title=Paired credential boundary failed::Expected 401 with only the Testnet API key, got $code."
+            head -c 800 "$body" || true
+            exit 1
+          fi
+          grep -Fq 'TESTNET_API_KEY_SECRET_REQUIRED' "$body"
+          echo "PASS: Testnet API requires API Key + API Secret as a pair."
+
+      - name: Summary
+        run: |
+          echo "Live Testnet API unauthenticated boundary smoke passed."
+          echo "This smoke intentionally does not sign a wallet message, move Testnet USDC, or consume credits."
