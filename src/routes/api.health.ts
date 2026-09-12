@@ -14,6 +14,14 @@ export const Route =
               ok: true,
               service:
                 "geomacro",
+              alignment_contract:
+                "github-main-external-supabase-lovable-v1",
+              source_authority:
+                "github-main",
+              database_authority:
+                "external-supabase",
+              supabase_project_ref:
+                "ldpwajisioljyjtojvfx",
             },
             {
               status: 200,
