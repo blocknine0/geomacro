@@ -19,12 +19,19 @@ const access = await request("/testnet-access");
 assert(access.response.status === 200, `/testnet-access expected 200, got ${access.response.status}`);
 for (const marker of [
   "Test Geomacro intelligence and create your own API credentials.",
+  "WALLET SIGN-IN",
+  "testnet-wallet-first-v2.js",
+  "wallet-first-v2",
   "500-credit usage cap",
   "API Key + API Secret",
   "Receive HTTP 402",
 ]) {
   assert(access.text.includes(marker), `/testnet-access missing marker: ${marker}`);
 }
+assert(
+  (access.response.headers.get("x-geomacro-testnet-auth-flow") || "") === "wallet-first-v2",
+  "/testnet-access is not serving the canonical wallet-first-v2 deployment",
+);
 assert((access.response.headers.get("cache-control") || "").toLowerCase().includes("no-store"), "/testnet-access missing Cache-Control: no-store");
 assert((access.response.headers.get("x-content-type-options") || "").toLowerCase() === "nosniff", "/testnet-access missing X-Content-Type-Options: nosniff");
 
@@ -60,5 +67,5 @@ const halfAuth = await request("/api/testnet/intelligence", {
 assert(halfAuth.response.status === 401, `half-auth request expected 401, got ${halfAuth.response.status}`);
 assert(halfAuth.text.includes("TESTNET_API_KEY_SECRET_REQUIRED"), "developer API did not enforce API Key + API Secret pair");
 
-console.log("PASS: live Testnet API unauthenticated boundary smoke passed.");
+console.log("PASS: live Testnet API wallet-first deployment and unauthenticated boundary smoke passed.");
 console.log("NOTE: wallet signature, Testnet USDC settlement, 402 retry, credit consumption and signed GRO verification require a real tester wallet and are intentionally not automated here.");
