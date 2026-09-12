@@ -1,12 +1,35 @@
 (() => {
   const $ = (id) => document.getElementById(id);
-  const text = (id, value) => { const el = $(id); if (el) el.textContent = String(value ?? ""); };
-  const show = (id, visible = true) => { const el = $(id); if (el) el.hidden = !visible; };
+  const text = (id, value) => {
+    const el = $(id);
+    if (el) el.textContent = String(value ?? "");
+  };
+  const show = (id, visible = true) => {
+    const el = $(id);
+    if (el) el.hidden = !visible;
+  };
   const TESTNET_REQUEST_TIMEOUT_MS = 30_000;
+
+  function firstString(...values) {
+    for (const value of values) {
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return "";
+  }
+
+  function browserErrorMessage(error, fallback = "Request failed") {
+    if (error?.code === 4001) return "Wallet request was cancelled.";
+    return firstString(error?.message, error?.shortMessage, error?.reason) || fallback;
+  }
+
   const json = async (url, options = {}) => {
     const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(new DOMException("Request timed out", "TimeoutError")), TESTNET_REQUEST_TIMEOUT_MS);
+    const timeoutId = setTimeout(
+      () => controller.abort(new DOMException("Request timed out", "TimeoutError")),
+      TESTNET_REQUEST_TIMEOUT_MS,
+    );
+
     try {
       const response = await fetch(url, {
         credentials: "same-origin",
@@ -18,10 +41,22 @@
         ...options,
         signal: controller.signal,
       });
+
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload?.ok === false) {
-        const errorCode = payload?.error || payload?.statusMessage || payload?.message || payload?.data?.error || response.statusText || "Request failed";
-        throw new Error(String(errorCode));
+        const nested = payload && typeof payload.data === "object" ? payload.data : {};
+        const message = firstString(
+          payload?.error,
+          payload?.statusMessage,
+          payload?.message,
+          nested?.error,
+          nested?.statusMessage,
+          nested?.message,
+          response.statusText,
+        );
+        const error = new Error(message || `Request failed (${response.status})`);
+        error.status = response.status;
+        throw error;
       }
       return payload;
     } catch (error) {
@@ -33,10 +68,67 @@
   };
 
   let walletAddress = "";
+  const announcedWallets = [];
+
+  function rememberWalletProvider(detail) {
+    const provider = detail?.provider;
+    if (!provider?.request) return;
+    if (announcedWallets.some((entry) => entry.provider === provider)) return;
+    announcedWallets.push({
+      provider,
+      name: firstString(detail?.info?.name) || "EVM wallet",
+    });
+  }
+
+  window.addEventListener("eip6963:announceProvider", (event) => rememberWalletProvider(event.detail));
+  try {
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+  } catch {
+    // Legacy injected wallets are handled by window.ethereum below.
+  }
+
+  function injectedWalletProvider() {
+    if (announcedWallets.length > 0) return announcedWallets[0];
+    if (window.ethereum?.request) return { provider: window.ethereum, name: "EVM wallet" };
+    return null;
+  }
+
+  function utf8ToHex(value) {
+    const bytes = new TextEncoder().encode(String(value));
+    return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  async function personalSign(provider, message, address) {
+    const hexMessage = utf8ToHex(message);
+    try {
+      return await provider.request({
+        method: "personal_sign",
+        params: [hexMessage, address],
+      });
+    } catch (error) {
+      if (error?.code === 4001) throw error;
+      const messageText = browserErrorMessage(error, "");
+      if (!/param|argument|address|data|invalid/i.test(messageText)) throw error;
+      return provider.request({
+        method: "personal_sign",
+        params: [address, hexMessage],
+      });
+    }
+  }
+
+  function clearBooleanErrorArtifact(id) {
+    const el = $(id);
+    if (!el) return;
+    const value = String(el.textContent || "").trim().toLowerCase();
+    if (value === "true" || value === "false") el.textContent = "";
+  }
 
   function applyPayPerCallCopy() {
     const hero = document.querySelector(".hero p");
-    if (hero) hero.textContent = "Create a tester profile, verify one EVM wallet, create an API Key + API Secret, then pay only for each Testnet API call. There is no upfront Testnet USDC activation payment.";
+    if (hero) {
+      hero.textContent =
+        "Create a tester profile, verify one EVM wallet, create an API Key + API Secret, then pay only for each Testnet API call. There is no upfront Testnet USDC activation payment.";
+    }
     const cards = document.querySelectorAll(".grid .card");
     if (cards[0]) cards[0].querySelector("p").textContent = "Create a tester profile and verify one EVM wallet to activate Testnet developer access.";
     if (cards[1]) {
@@ -56,6 +148,7 @@
       const payload = await json("/api/testnet-tester/me");
       const account = payload.data;
       const active = account.access_status === "active";
+      text("globalStatus", "");
       show("registrationPanel", false);
       show("accountPanel", true);
       text("profileStatus", account.profile_name || "Tester");
@@ -80,7 +173,8 @@
       show("paymentPanel", false);
       show("developerPanel", false);
       show("feedbackPanel", false);
-      if (error?.message && !/Tester session/i.test(error.message)) text("globalStatus", error.message);
+      if (error?.status !== 401) text("globalStatus", browserErrorMessage(error));
+      else text("globalStatus", "");
       return null;
     }
   }
@@ -92,38 +186,76 @@
     try {
       await json("/api/testnet-tester/register", {
         method: "POST",
-        body: JSON.stringify({ profile_name: profileName, terms_version: "testnet-terms-v3-pay-per-call" }),
+        body: JSON.stringify({
+          profile_name: profileName,
+          terms_version: "testnet-terms-v3-pay-per-call",
+        }),
       });
       text("registrationStatus", "Profile created. Connect and verify your wallet next.");
       await loadAccount();
     } catch (error) {
-      text("registrationStatus", error.message || "Registration failed.");
+      text("registrationStatus", browserErrorMessage(error, "Registration failed."));
     }
   }
 
   async function connectWallet() {
-    if (!window.ethereum?.request) {
-      text("walletActionStatus", "No injected EVM wallet detected.");
+    const button = $("walletConnect");
+    const wallet = injectedWalletProvider();
+    if (!wallet) {
+      const embedded = (() => {
+        try {
+          return window.top !== window.self;
+        } catch {
+          return true;
+        }
+      })();
+      text(
+        "walletActionStatus",
+        embedded
+          ? "Wallet extensions are usually unavailable inside embedded previews. Open https://geomacro.live/testnet-access directly in a normal browser tab with your EVM wallet extension enabled."
+          : "No injected EVM wallet detected. Enable Rabby, MetaMask or another EIP-1193 wallet extension and reload this page.",
+      );
       return;
     }
+
+    if (button) button.disabled = true;
+    text("walletActionStatus", `Opening ${wallet.name}...`);
+
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      walletAddress = String(accounts?.[0] || "");
-      if (!walletAddress) throw new Error("Wallet account unavailable");
+      const accounts = await wallet.provider.request({ method: "eth_requestAccounts" });
+      walletAddress = String(accounts?.[0] || "").trim();
+      if (!/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) throw new Error("Wallet account unavailable");
+
+      text("walletActionStatus", "Wallet connected. Preparing the verification message...");
       const challenge = await json("/api/testnet-tester/wallet-challenge", {
         method: "POST",
         body: JSON.stringify({ wallet_address: walletAddress }),
       });
-      const message = challenge.data.message;
-      const signature = await window.ethereum.request({ method: "personal_sign", params: [message, walletAddress] });
+
+      const challengeMessage = String(challenge?.data?.message || "");
+      const nonce = String(challenge?.data?.nonce || "");
+      if (!challengeMessage || !nonce) throw new Error("Wallet verification challenge is incomplete.");
+
+      text("walletActionStatus", "Approve the message signature in your wallet. This does not authorize funds or a transaction.");
+      const signature = await personalSign(wallet.provider, challengeMessage, walletAddress);
+
+      text("walletActionStatus", "Signature received. Verifying wallet...");
       await json("/api/testnet-tester/wallet-verify", {
         method: "POST",
-        body: JSON.stringify({ wallet_address: walletAddress, nonce: challenge.data.nonce, message, signature }),
+        body: JSON.stringify({
+          wallet_address: walletAddress,
+          nonce,
+          message: challengeMessage,
+          signature,
+        }),
       });
-      text("walletActionStatus", "Wallet verified. Developer access is active. Pay only when an API call returns a Testnet 402 quote.");
+
+      text("walletActionStatus", "Wallet verified. Developer access is active. Loading API credential tools...");
       await loadAccount();
     } catch (error) {
-      text("walletActionStatus", error.message || "Wallet verification failed.");
+      text("walletActionStatus", browserErrorMessage(error, "Wallet verification failed."));
+    } finally {
+      if (button) button.disabled = false;
     }
   }
 
@@ -140,7 +272,7 @@
       text("avatarStatus", "Profile image updated.");
       await loadAccount();
     } catch (error) {
-      text("avatarStatus", error.message || "Profile image upload failed.");
+      text("avatarStatus", browserErrorMessage(error, "Profile image upload failed."));
     }
   }
 
@@ -154,7 +286,12 @@
           demo_mode: "OTHER",
           tester_type: $("feedbackTesterType").value,
           rating: Number($("feedbackRating").value),
-          would_integrate: $("feedbackWouldIntegrate").value === "yes" ? true : $("feedbackWouldIntegrate").value === "no" ? false : null,
+          would_integrate:
+            $("feedbackWouldIntegrate").value === "yes"
+              ? true
+              : $("feedbackWouldIntegrate").value === "no"
+                ? false
+                : null,
           outcome: $("feedbackOutcome").value,
           most_valuable: $("feedbackMostValuable").value.trim(),
           friction: $("feedbackFriction").value.trim(),
@@ -164,7 +301,7 @@
       text("testerFeedbackStatus", payload.message || "Feedback saved. Thank you.");
       $("testerFeedbackForm")?.reset();
     } catch (error) {
-      text("testerFeedbackStatus", error.message || "Feedback could not be saved.");
+      text("testerFeedbackStatus", browserErrorMessage(error, "Feedback could not be saved."));
     }
   }
 
@@ -189,15 +326,22 @@
           button.type = "button";
           button.textContent = "Revoke";
           button.addEventListener("click", async () => {
-            await json("/api/testnet-tester/developer-key-revoke", { method: "POST", body: JSON.stringify({ credential_id: key.credential_id }) });
-            await loadDeveloperKeys();
+            try {
+              await json("/api/testnet-tester/developer-key-revoke", {
+                method: "POST",
+                body: JSON.stringify({ credential_id: key.credential_id }),
+              });
+              await loadDeveloperKeys();
+            } catch (error) {
+              text("developerStatus", browserErrorMessage(error, "Could not revoke developer credentials."));
+            }
           });
           row.appendChild(button);
         }
         list.appendChild(row);
       });
     } catch (error) {
-      text("developerStatus", error.message || "Could not load developer keys.");
+      text("developerStatus", browserErrorMessage(error, "Could not load developer keys."));
     }
   }
 
@@ -216,10 +360,13 @@
       const apiSecret = String(payload.data.api_secret || "");
       text("issuedKey", `API Key: ${apiKey}\nAPI Secret: ${apiSecret}`);
       show("issuedKeyBox", true);
-      text("developerStatus", "Copy both values now. No upfront payment is required. Each API call will quote its own Testnet USDC amount.");
+      text(
+        "developerStatus",
+        "Copy both values now. No upfront payment is required. Each API call will quote its own Testnet USDC amount.",
+      );
       await loadDeveloperKeys();
     } catch (error) {
-      text("developerStatus", error.message || "Could not create developer credentials.");
+      text("developerStatus", browserErrorMessage(error, "Could not create developer credentials."));
     }
   }
 
@@ -238,6 +385,8 @@
   document.addEventListener("DOMContentLoaded", async () => {
     applyPayPerCallCopy();
     bind();
+    clearBooleanErrorArtifact("globalStatus");
+    clearBooleanErrorArtifact("walletActionStatus");
     await loadAccount();
   });
 })();
