@@ -1,4 +1,4 @@
-name: Apply Risk Gate production migrations
+name: Apply Production Supabase Migrations
 
 on:
   workflow_dispatch:
