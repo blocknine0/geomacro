@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { runH3Handler } from "@/lib/testnet-h3-bridge";
-import testnetAccessHandler from "../../server/routes/testnet-access.get";
+import testnetAccessHandler from "../../server/routes/testnet-access-wallet-first.get";
 
 export const Route = createFileRoute("/testnet-access")({
   server: {
