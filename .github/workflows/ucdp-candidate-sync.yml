@@ -24,6 +24,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      UCDP_API_TOKEN: ${{ secrets.UCDP_API_TOKEN }}
       UCDP_CANDIDATE_VERSION: ${{ inputs.candidate_version || vars.UCDP_CANDIDATE_VERSION || '26.0.7' }}
       UCDP_MAX_UNMAPPED_ROWS: "0"
 
@@ -38,6 +39,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Validate authenticated UCDP Candidate API access
+        run: bun scripts/fetch-ucdp-ged-dry-run.mjs
 
       - name: Sync governed current Candidate evidence
         run: bun scripts/ingest-ucdp-candidate-live.mjs --write
