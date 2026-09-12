@@ -295,7 +295,7 @@ function RunCard({
   jobsLoading: boolean;
   onInspectJobs: () => void;
 }) {
-  const acceptanceArtifact = run.artifacts.find((artifact) => artifact.name.startsWith("goat-acceptance-window-"));
+  const acceptanceArtifact = run.conclusion === "success" ? run.artifacts.find((artifact) => artifact.name.startsWith("goat-acceptance-window-")) : undefined;
   const providerArtifact = run.artifacts.find((artifact) => artifact.name.startsWith("goat-testnet3-provider-dry-run-"));
   const stage = deriveStage(run, Boolean(acceptanceArtifact), Boolean(providerArtifact), jobs);
 
@@ -422,7 +422,7 @@ function InfoCard({ title, children }: { title: string; children: string }) {
 }
 
 function hasAcceptanceArtifact(run: RunRow) {
-  return run.artifacts.some((artifact) => artifact.name.startsWith("goat-acceptance-window-"));
+  return run.conclusion === "success" && run.artifacts.some((artifact) => artifact.name.startsWith("goat-acceptance-window-"));
 }
 
 function hasProviderArtifact(run: RunRow) {
