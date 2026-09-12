@@ -1,6 +1,13 @@
 name: UCDP Candidate Current Sync
 
 on:
+  pull_request:
+    paths:
+      - "scripts/fetch-ucdp-ged-dry-run.mjs"
+      - "scripts/ingest-ucdp-candidate-live.mjs"
+      - ".github/workflows/ucdp-candidate-sync.yml"
+      - "supabase/migrations/053_ucdp_candidate_live_ingest.sql"
+      - "supabase/migrations/054_ucdp_candidate_transport_alignment.sql"
   workflow_dispatch:
     inputs:
       candidate_version:
@@ -14,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ucdp-candidate-current-sync
+  group: ucdp-candidate-current-sync-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -44,4 +51,5 @@ jobs:
         run: bun scripts/fetch-ucdp-ged-dry-run.mjs
 
       - name: Sync governed current Candidate evidence
+        if: github.event_name != 'pull_request'
         run: bun scripts/ingest-ucdp-candidate-live.mjs --write
