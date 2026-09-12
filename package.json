@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
-    "@circle-fin/adapter-ethers-v6": "1.11.1",
+    "@circle-fin/adapter-ethers-v6": "1.11.2",
     "@circle-fin/app-kit": "1.14.0",
     "@circle-fin/x402-batching": "3.4.0",
     "@hookform/resolvers": "^5.2.2",
@@ -126,10 +126,14 @@
   },
   "overrides": {
     "js-yaml": "^5.0.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "stream-json": "3.5.0",
+    "toml": "4.2.0"
   },
   "resolutions": {
     "js-yaml": "^5.0.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "stream-json": "3.5.0",
+    "toml": "4.2.0"
   }
 }
