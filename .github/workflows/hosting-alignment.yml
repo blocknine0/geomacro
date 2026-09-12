@@ -1,0 +1,53 @@
+name: Hosting Alignment
+
+on:
+  pull_request:
+    paths:
+      - ".env.example"
+      - "package.json"
+      - "bun.lock"
+      - "vite.config.ts"
+      - "src/**"
+      - "server/**"
+      - "scripts/ops/verify-hosting-alignment.mjs"
+      - ".github/workflows/hosting-alignment.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".env.example"
+      - "package.json"
+      - "bun.lock"
+      - "vite.config.ts"
+      - "src/**"
+      - "server/**"
+      - "scripts/ops/verify-hosting-alignment.mjs"
+      - ".github/workflows/hosting-alignment.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify GitHub Supabase Lovable alignment
+        run: bun run hosting:verify
+
+      - name: Verify public data boundary
+        run: bunx vitest run src/__tests__/public-data-proxy-contract.test.ts
+
+      - name: Verify Lovable-compatible production build
+        run: bun run build

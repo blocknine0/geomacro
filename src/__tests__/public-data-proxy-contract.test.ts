@@ -18,6 +18,12 @@ describe("public data proxy contract", () => {
     expect(proxy).toContain("APP_SUPABASE_ANON_KEY");
     expect(proxy).not.toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
     expect(client).toContain("/api/public-data-proxy?target=");
+    expect(client).toContain('const PUBLIC_READ_PROXY_KEY = "public-read-proxy"');
+    expect(client).toContain("ldpwajisioljyjtojvfx");
+    expect(client).toContain("Unsupported public data operation");
+    expect(client).not.toContain("import.meta.env.VITE_SUPABASE_URL");
+    expect(client).not.toContain("import.meta.env.VITE_SUPABASE_ANON_KEY");
+    expect(client).not.toContain("import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY");
     expect(client).not.toMatch(/eyJhbGciOi/);
   });
 
@@ -29,6 +35,22 @@ describe("public data proxy contract", () => {
     expect(client).toContain('if (prop === "removeChannel")');
     expect(dispute).toContain("setInterval(() => void loadAll(), 3000)");
     expect(dispute).not.toContain("realtimeChannelName");
+  });
+
+  it("documents the complete hosted Supabase server env contract", () => {
+    const env = read(".env.example");
+    const appClient = read("src/lib/supabase-app.server.ts");
+    const riskClient = read("src/lib/risk-supabase.server.ts");
+
+    expect(env).toContain("APP_SUPABASE_URL=");
+    expect(env).toContain("APP_SUPABASE_ANON_KEY=");
+    expect(env).toContain("APP_SUPABASE_SERVICE_ROLE_KEY=");
+    expect(env).toContain("SUPABASE_URL=");
+    expect(env).toContain("SUPABASE_SERVICE_ROLE_KEY=");
+    expect(env).toContain("ldpwajisioljyjtojvfx");
+    expect(appClient).toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
+    expect(riskClient).toContain("ldpwajisioljyjtojvfx");
+    expect(riskClient).not.toContain("APP_SUPABASE_ANON_KEY");
   });
 
   it("mounts bridge and swap browser integrations after hydration", () => {

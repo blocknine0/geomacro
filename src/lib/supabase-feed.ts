@@ -4,12 +4,12 @@ import type { EventStage } from "./event-stage";
 /**
  * Public browser read client.
  *
- * Production rule: browser-visible Supabase credentials are not a source of
- * truth. Lovable/hosting platforms can inject their own VITE_SUPABASE_* pair,
- * which previously caused Arena and older public read surfaces to authenticate
- * against the wrong project. Every PostgREST GET/HEAD is therefore sent to a
- * same-origin, read-only server proxy. The proxy uses APP_SUPABASE_ANON_KEY,
- * applies a table allowlist and rejects writes.
+ * Production rule: browser-visible Supabase credentials are never a source of
+ * truth. Lovable/hosting platforms may inject their own VITE_SUPABASE_* values,
+ * so this client deliberately ignores all hosting-provided Supabase env vars.
+ * Every PostgREST GET/HEAD is sent to a same-origin, read-only server proxy.
+ * The proxy uses APP_SUPABASE_URL + APP_SUPABASE_ANON_KEY, applies a table
+ * allowlist and rejects writes.
  *
  * Realtime is deliberately disabled on this public client. The two historical
  * realtime consumers (Arena refresh and jury/dispute status) already have
@@ -21,15 +21,10 @@ const AUTHORITATIVE_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const AUTHORITATIVE_SUPABASE_URL =
   `https://${AUTHORITATIVE_SUPABASE_PROJECT_REF}.supabase.co`;
 
-const configuredUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const configuredAnonKey =
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ??
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined);
-
-const clientUrl = configuredUrl?.includes(AUTHORITATIVE_SUPABASE_PROJECT_REF)
-  ? configuredUrl
-  : AUTHORITATIVE_SUPABASE_URL;
-const clientKey = configuredAnonKey?.trim() || "public-read-proxy";
+// The browser never talks directly to PostgREST, auth, storage or realtime via
+// this client. A non-secret placeholder key keeps the Supabase query-builder API
+// intact while the custom fetch below routes every allowed read to our server.
+const PUBLIC_READ_PROXY_KEY = "public-read-proxy";
 
 async function publicReadFetch(
   input: RequestInfo | URL,
@@ -62,10 +57,16 @@ async function publicReadFetch(
     });
   }
 
-  return fetch(request);
+  // This client is intentionally scoped to read-only PostgREST query building.
+  // Any accidental non-REST use fails closed instead of falling through to a
+  // hosting-selected Supabase project.
+  return new Response(JSON.stringify({ error: "Unsupported public data operation" }), {
+    status: 405,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
 }
 
-const rawPublicClient = createClient(clientUrl, clientKey, {
+const rawPublicClient = createClient(AUTHORITATIVE_SUPABASE_URL, PUBLIC_READ_PROXY_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
   global: { fetch: publicReadFetch },
 });
