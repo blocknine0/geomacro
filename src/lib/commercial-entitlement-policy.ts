@@ -25,6 +25,7 @@ export type CanonicalGrantPolicy = {
     | "contract"
     | "one_shot"
     | "public_web"
+    | "testnet_metered_access"
     | "testnet_pass";
   one_shot_capability: GeomacroCreditCapability | null;
 };
