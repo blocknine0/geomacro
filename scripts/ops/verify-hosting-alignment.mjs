@@ -80,14 +80,42 @@ for (const name of [
   "APP_SUPABASE_SERVICE_ROLE_KEY=",
   "SUPABASE_URL=",
   "SUPABASE_SERVICE_ROLE_KEY=",
+  "HISTORICAL_SUPABASE_URL=",
+  "HISTORICAL_SUPABASE_SERVICE_ROLE_KEY=",
+  "TESTNET_USDC_RECEIVER_ADDRESS=",
+  "TESTNET_RPC_ARC=",
+  "TESTNET_RPC_BASE_SEPOLIA=",
+  "TESTNET_RPC_POLYGON_AMOY=",
+  "PUBLIC_SITE_URL=https://geomacro.live",
+  "RISK_OBJECT_SIGNING_KEY_ID=",
+  "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64=",
+  "RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=",
+  "RISK_OBJECT_VERIFY_KEYS_JSON=",
 ]) {
   if (!env.includes(name)) fail(`.env.example is missing ${name}`);
 }
 if (!env.includes(EXPECTED_SUPABASE_REF)) {
   fail(".env.example must name the authoritative Supabase project ref");
 } else {
-  pass("runtime Supabase env contract is documented");
+  pass("runtime Supabase and Testnet launch env contracts are documented");
 }
+
+const deploymentConfig = read("docs/TESTNET_TESTER_DEPLOYMENT_CONFIG.md");
+for (const marker of [
+  "wallet-only",
+  "no upfront Testnet USDC activation payment",
+  "TESTNET_RPC_ARC",
+  "TESTNET_RPC_BASE_SEPOLIA",
+  "TESTNET_RPC_POLYGON_AMOY",
+  "signed_risk_object",
+  "risk_gate_bundle",
+  "8/8 capability pass",
+]) {
+  if (!deploymentConfig.includes(marker)) {
+    fail(`Testnet deployment configuration is missing ${marker}`);
+  }
+}
+pass("Testnet deployment guide matches the wallet-only pay-per-call launch contract");
 
 const browserFiles = walk("src").filter(
   (path) =>
@@ -176,5 +204,5 @@ requireText(".github/workflows/live-testnet-api-smoke.yml", ALIGNMENT_CONTRACT, 
 requireText("docs/HOSTING_ALIGNMENT.md", "Publish changes", "zero-credit publish workflow");
 
 if (!process.exitCode) {
-  console.log("\nPASS: GitHub source, Lovable-compatible build, browser data boundary and authoritative Supabase runtime are aligned.");
+  console.log("\nPASS: GitHub source, Lovable-compatible build, browser data boundary and authoritative Supabase/Testnet runtime contracts are aligned.");
 }
