@@ -20,6 +20,7 @@ start_epoch_ms="$(date +%s%3N)"
 bunx vitest run \
   src/__tests__/goat-flow-negative-contract.test.ts \
   src/__tests__/goat-mainnet-readiness-static.test.ts \
+  src/__tests__/goat-docs-operational-contract.test.ts \
   --reporter=dot | tee "$MATRIX_LOG"
 
 GOAT_ACCEPTANCE_ITERATIONS="$ITERATIONS" bunx vitest run \
