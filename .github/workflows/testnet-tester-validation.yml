@@ -5,6 +5,7 @@ on:
     paths:
       - "public/testnet-access.js"
       - "public/testnet-console.js"
+      - "public/testnet-console-pricing.js"
       - "server/routes/testnet-access.get.ts"
       - "server/routes/testnet-console.get.ts"
       - "server/api/testnet/**"
@@ -20,6 +21,7 @@ on:
       - "supabase/migrations/911_testnet_api_pricing_alignment.sql"
       - "supabase/migrations/912_testnet_api_pay_per_call.sql"
       - "supabase/migrations/913_testnet_pay_per_call_runtime_hardening.sql"
+      - "supabase/migrations/914_testnet_exact_request_binding.sql"
       - "scripts/testnet/**"
       - ".github/workflows/testnet-tester-validation.yml"
   workflow_dispatch:
@@ -61,6 +63,7 @@ jobs:
           src/__tests__/testnet-structural-severity-console-static.test.ts
           src/__tests__/testnet-developer-access-static.test.ts
           src/__tests__/testnet-tester-account-runtime-static.test.ts
+          src/__tests__/testnet-credential-payment-e2e.test.ts
 
       - name: Migration safety
         run: timeout 3m bun run db:safety
