@@ -142,7 +142,7 @@ const deploymentConfig = read("docs/TESTNET_TESTER_DEPLOYMENT_CONFIG.md");
 for (const marker of [
   "wallet-first",
   "EIP-4361",
-  "Existing accounts resume automatically",
+  "resume that existing account instead of creating a duplicate",
   "same verified wallet must never create another tester profile",
   "no upfront Testnet USDC activation payment",
   "TESTNET_RPC_ARC",
