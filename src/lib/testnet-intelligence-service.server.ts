@@ -24,6 +24,12 @@ function requestSubjectType(request: TestnetIntelligenceRequest) {
   return request.subject?.type ?? "global";
 }
 
+function asRecord(value: unknown): Record<string, any> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : null;
+}
+
 export type TestnetAccessSurface = "testnet_tester" | "commercial_api";
 
 export type TestnetIntelligenceServiceResult =
@@ -144,15 +150,28 @@ export async function deliverTestnetIntelligence(input: {
   const responseSha256 = sha256Json(delivery.data);
   const usage = settlement.usage;
   const creditCost = usage.credit_cost ?? GEOMACRO_CREDIT_COSTS[request.capability];
+  const deliveredData = asRecord(delivery.data);
+  const deliveredRiskObject = asRecord(deliveredData?.risk_object);
+  const riskGate = asRecord(deliveredData?.risk_gate);
+  const riskObjectId = deliveredRiskObject?.object_id
+    ? String(deliveredRiskObject.object_id)
+    : null;
+  const riskObjectVersion = deliveredRiskObject?.schema_version
+    ? String(deliveredRiskObject.schema_version)
+    : null;
+  const riskGateDecision = riskGate?.decision
+    ? String(riskGate.decision)
+    : null;
 
   let usageEventId: string | null = null;
   try {
     usageEventId = await recordCommercialUsageEvent({
       environment: "testnet",
-      access_surface: input.access_surface as never,
+      access_surface: input.access_surface,
       principal_id: principal.principal_id,
       principal_type: principal.principal_type,
       entitlement_grant_id: entitlement.grant_id,
+      payment_event_id: settlement.payment.payment_event_id,
       offer_id: entitlement.policy.offer_id,
       tier: entitlement.tier,
       registry_version: policy.registry_version,
@@ -171,6 +190,13 @@ export async function deliverTestnetIntelligence(input: {
       response_bytes: new TextEncoder().encode(JSON.stringify(delivery.data)).byteLength,
       structural_observation_count: delivery.structural_observation_count,
       evidence_reference_count: delivery.evidence_reference_count,
+      risk_object_id: riskObjectId,
+      risk_object_version: riskObjectVersion,
+      risk_object_signed:
+        request.capability === "signed_risk_object" ||
+        request.capability === "risk_gate_bundle",
+      risk_gate_included: request.capability === "risk_gate_bundle",
+      risk_gate_decision: riskGateDecision,
       execution_authorized: false,
       shareable: true,
       metadata: {
@@ -208,6 +234,7 @@ export async function deliverTestnetIntelligence(input: {
       payment: settlement.payment,
       data: delivery.data,
       audit: {
+        payment_event_id: settlement.payment.payment_event_id,
         response_sha256: responseSha256,
         generated_at: new Date().toISOString(),
       },
