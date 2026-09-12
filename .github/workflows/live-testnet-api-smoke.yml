@@ -36,6 +36,10 @@ jobs:
             'Receive HTTP 402'
           do
             if ! grep -Fq "$marker" "$body"; then
+              title="$(grep -Eo '<title>[^<]+' "$body" | head -1 | sed 's/<title>//' || true)"
+              h1="$(grep -Eo '<h1[^>]*>[^<]+' "$body" | head -1 | sed -E 's/<h1[^>]*>//' || true)"
+              echo "Hosted title: ${title:-unknown}"
+              echo "Hosted H1: ${h1:-unknown}"
               echo "::error title=Hosted Testnet page is stale::Missing marker: $marker"
               exit 1
             fi
