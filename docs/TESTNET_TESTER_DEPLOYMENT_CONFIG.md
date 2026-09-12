@@ -1,6 +1,6 @@
 # Geomacro Testnet Tester deployment configuration
 
-This is the launch configuration for the current wallet-only, pay-per-call Testnet Developer API. It does not define mainnet or production commercial pricing.
+This is the launch configuration for the current wallet-first, pay-per-call Testnet Developer API. It does not define mainnet or production commercial pricing.
 
 ## Source authorities
 
@@ -43,17 +43,22 @@ Private signing material is server-only. Public verification material may be exp
 
 ## Current tester identity flow
 
-The public Testnet launch uses only profile + wallet identity:
+The public Testnet launch uses the verified EVM wallet as the primary identity. It is wallet-first rather than profile-first:
 
-1. create a tester profile;
-2. receive a secure tester session;
-3. connect one EVM wallet;
-4. sign the exact non-transaction verification message;
-5. Geomacro verifies the signature and provisions the `testnet_tester_metered_30d` entitlement;
-6. create API Key + API Secret credentials;
-7. use the developer API.
+1. connect one EVM wallet;
+2. request a short-lived, one-time EIP-4361 sign-in challenge;
+3. sign the exact message containing domain, URI, version, wallet chain ID, nonce, issued time and expiration time;
+4. the server verifies the signature and atomically consumes the one-time nonce;
+5. if the wallet already owns a Testnet tester account, resume that existing account instead of creating a duplicate;
+6. if the wallet is new, create one tester account after signature verification. A display name is optional and is used only for this first creation;
+7. provision or resume the `testnet_tester_metered_30d` entitlement;
+8. rotate to a secure HttpOnly tester session whose raw token is never returned to browser JavaScript;
+9. create API Key + API Secret credentials;
+10. use the developer API.
 
-There is no email verification, X account connection or Discord connection in the current product flow. Those identity integrations are retired from the runtime and are not launch configuration. There is also no upfront Testnet USDC activation payment. Wallet verification does not authorize a transaction or funds movement.
+Repeated sign-in with the same verified wallet must never create another tester profile. Any stale pre-wallet-first pending session is revoked only after a fresh successful wallet proof and successful canonical-account sign-in.
+
+There is no email verification, X account connection or Discord connection in the current product flow. Those identity integrations are retired from the runtime and are not launch configuration. There is also no upfront Testnet USDC activation payment. Wallet sign-in is a message signature only and does not authorize a transaction or funds movement.
 
 ## X sharing after a successful test
 
@@ -74,13 +79,15 @@ For each paid request:
 1. authenticate with Testnet API Key + API Secret;
 2. send the capability request without payment proof;
 3. capability/data availability is preflighted before payment;
-4. receive HTTP `402` with exact credit cost, required Testnet USDC amount, receiver and supported-chain details;
-5. send exactly the quoted Testnet USDC from the same verified tester wallet;
-6. retry the same `request_id` with `chain_key`, `tx_hash` and `payer_address`;
-7. runtime verifies RPC chain identity, USDC contract, payer, recipient, confirmation and required amount;
-8. credits are consumed exactly once and canonical intelligence is delivered.
+4. receive HTTP `402` with exact credit cost, required Testnet USDC amount, receiver, supported-chain details and an exact-request fingerprint;
+5. persist the exact request/quote state before opening any wallet payment;
+6. send exactly the quoted Testnet USDC from the same verified tester wallet;
+7. preserve the transaction hash immediately after submission;
+8. retry the exact same `request_id` and payload with `chain_key`, `tx_hash` and `payer_address`;
+9. runtime verifies exact-request binding, RPC chain identity, USDC contract, payer, recipient, confirmation and required amount;
+10. credits are consumed exactly once and canonical intelligence is delivered.
 
-The same payment transaction cannot be reused for another request. Exact retries are idempotent and must not create a second charge or credit consumption.
+The same payment transaction cannot be reused for another request. Exact retries are idempotent and must not create a second charge or credit consumption. Reload/timeout recovery must reuse the preserved transaction proof and must not initiate a second transfer.
 
 ## Full Testnet API surface
 
@@ -112,20 +119,23 @@ Do not call the Testnet API launch complete until all of these pass on the publi
 
 1. `/api/health` reports the current GitHub/Supabase/Lovable alignment contract.
 2. `/api/testnet/manifest` returns all eight capabilities and canonical pay-per-call pricing.
-3. `/testnet-access` shows the profile + wallet-only, no-upfront-payment flow.
+3. `/testnet-access` shows the wallet-first, no-upfront-payment flow.
 4. Unauthenticated `/api/testnet/account` and `/api/testnet/intelligence` fail closed with no premium data leakage.
-5. One real tester completes profile → wallet signature → entitlement → API Key + Secret.
-6. `GET /api/testnet/account` returns the active 500-credit account without consuming credits.
-7. A real unpaid intelligence request returns the exact HTTP 402 quote.
-8. A real Testnet USDC payment from the verified wallet unlocks the same request and decrements credits exactly once.
-9. Exact replay produces no double payment/credit consumption.
-10. Negative cases pass for wrong wallet, wrong chain, wrong token, wrong receiver, underpayment, reused transaction, conflicting `request_id`, revoked credential and timeout/retry.
-11. `intelligence_query`, `gri_read`, structural country/corridor, signed GRO and Risk Gate bundle are exercised with compatible live subjects. Prefer an 8/8 capability pass before opening public testing.
-12. Returned signed GRO payload hash and Ed25519 signature are independently verified.
-13. Risk Gate always reports `execution_authorized=false`.
-14. A successful result can create the Geomacro share card and open one X post composer without X account connection or OAuth.
-15. Security, resilience and database replay gates are green and launch evidence is retained.
+5. A new wallet completes EIP-4361 sign-in → account creation → entitlement → secure session → API Key + Secret.
+6. The same wallet signs in again and resumes the same principal/profile with no duplicate account.
+7. A wallet already registered under the earlier flow signs in and is recovered to its existing canonical tester account instead of receiving `TESTNET_WALLET_ALREADY_REGISTERED`.
+8. `GET /api/testnet/account` returns the active 500-credit account without consuming credits.
+9. A real unpaid intelligence request returns the exact HTTP 402 quote and exact-request fingerprint.
+10. A real Testnet USDC payment from the verified wallet unlocks the exact same request and decrements credits exactly once.
+11. Deliberate timeout/reload after transaction submission reuses the same transaction hash and produces no second transfer prompt or duplicate charge.
+12. Exact replay produces no second credit consumption, while the same `request_id` with changed payload is rejected.
+13. Negative cases pass for wrong wallet, wrong chain, wrong token, wrong receiver, underpayment, reused transaction, stale/replayed proof, revoked credential, concurrent clicks/retries and invalid API responses.
+14. `intelligence_query`, `gri_read`, structural country/corridor, signed GRO and Risk Gate bundle are exercised with compatible live subjects. Prefer an 8/8 capability pass before opening public testing.
+15. Returned signed GRO payload hash and Ed25519 signature are independently verified.
+16. Risk Gate always reports `execution_authorized=false`.
+17. A successful result can create the Geomacro share card and open one X post composer without X account connection or OAuth.
+18. Security, resilience and database replay gates are green and launch evidence is retained.
 
-Preserve request IDs, key IDs but never secrets, chain, transaction hash, Testnet amount, payment/usage event IDs, credits before/after, timestamps, response hashes and verification results.
+Preserve request IDs, request fingerprints, key IDs but never secrets, wallet address, sign-in chain, payment chain, transaction hash, Testnet amount, payment/usage event IDs, credits before/after, timestamps, response hashes, duplicate-charge count and verification results.
 
 `execution_authorized` remains false throughout the Testnet tester program.
