@@ -1,6 +1,7 @@
 import { createError, defineEventHandler, readBody, setResponseHeaders } from "h3";
 
 import { verifyTestnetWalletSignature } from "../../../src/lib/testnet-tester-account.server";
+import { setTesterSessionCookie } from "../../../src/lib/testnet-tester-cookie.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
 
 function publicWalletVerificationCode(error: unknown) {
@@ -16,12 +17,20 @@ export default defineEventHandler(async (event) => {
   try {
     const result = await verifyTestnetWalletSignature({
       principalId: session.principalId,
+      sessionId: session.sessionId,
       walletAddress: String(body?.wallet_address ?? ""),
       nonce: String(body?.nonce ?? ""),
       message: String(body?.message ?? ""),
       signature: String(body?.signature ?? ""),
     });
-    return { ok: true, data: result };
+
+    const rotated = result as typeof result & { replacement_session_token?: string };
+    if (rotated.replacement_session_token) {
+      setTesterSessionCookie(event, rotated.replacement_session_token);
+    }
+    const { replacement_session_token: _privateSessionToken, ...publicResult } = rotated;
+
+    return { ok: true, data: publicResult };
   } catch (error) {
     const code = publicWalletVerificationCode(error);
     throw createError({ statusCode: 400, statusMessage: code });
