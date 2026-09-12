@@ -48,8 +48,9 @@ describe("UCDP Candidate live evidence boundary", () => {
     expect(sourcePolicy).toContain('allowed_statuses: Object.freeze(["VERIFIED"])');
   });
 
-  it("uses governed UCDP country-id mappings for known legacy labels", () => {
+  it("uses governed UCDP country-id mappings for known legacy/current labels", () => {
     expect(ingest).toContain('"490": "COD"');
+    expect(ingest).toContain('"640": "TUR"');
     expect(ingest).toContain('"775": "MMR"');
     expect(ingest).toContain("UCDP_GW_COUNTRY_ID_TO_ISO3");
     expect(ingest).toContain("registry.byIso3.has(mappedFromCountryId)");
@@ -60,5 +61,6 @@ describe("UCDP Candidate live evidence boundary", () => {
     expect(ingest).toContain('official.replace(/\\s*\\([^)]*\\)\\s*$/, "").trim()');
     expect(ingest).toContain("countryIso3FromName(withoutTrailingParenthetical, registry)");
     expect(ingest).not.toContain('UCDP_MAX_UNMAPPED_ROWS ?? "89"');
+    expect(ingest).not.toContain('UCDP_MAX_UNMAPPED_ROWS ?? "1"');
   });
 });
