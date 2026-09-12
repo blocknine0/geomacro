@@ -40,6 +40,8 @@ jobs:
               h1="$(grep -Eo '<h1[^>]*>[^<]+' "$body" | head -1 | sed -E 's/<h1[^>]*>//' || true)"
               echo "Hosted title: ${title:-unknown}"
               echo "Hosted H1: ${h1:-unknown}"
+              echo "Hosting response headers:"
+              grep -Ei '^(server:|x-vercel-|x-powered-by:|cf-ray:|via:|x-lovable|x-render-|x-served-by:)' "$headers" || true
               echo "::error title=Hosted Testnet page is stale::Missing marker: $marker"
               exit 1
             fi
