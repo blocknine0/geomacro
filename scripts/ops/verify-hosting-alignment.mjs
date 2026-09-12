@@ -107,6 +107,20 @@ if (forbiddenBrowserEnv.length) {
   pass("browser source is independent of hosting-injected Supabase credentials");
 }
 
+const operationalFiles = walk("scripts").filter((path) => /\.(mjs|cjs|js|ts)$/.test(path));
+const forbiddenOperationalEnv = [];
+for (const path of operationalFiles) {
+  const value = read(path);
+  if (/\bVITE_SUPABASE_(URL|ANON_KEY|PUBLISHABLE_KEY)\b/.test(value)) {
+    forbiddenOperationalEnv.push(path);
+  }
+}
+if (forbiddenOperationalEnv.length) {
+  fail(`server/ops scripts still accept browser Supabase env: ${forbiddenOperationalEnv.join(", ")}`);
+} else {
+  pass("server/ops scripts use only server-side Supabase credentials");
+}
+
 const feed = read("src/lib/supabase-feed.ts");
 for (const marker of [
   EXPECTED_SUPABASE_REF,
@@ -143,13 +157,14 @@ else pass("Risk Object/Risk Gate DB client is service-role-only and project-pinn
 for (const path of [
   "scripts/diagnose-risk-object-event-window.ts",
   "scripts/diagnose-live-fragment-backlog.ts",
+  "scripts/export-admitted-events-for-structure.mjs",
 ]) {
   const value = read(path);
   if (value.includes("VITE_SUPABASE_URL")) fail(`${path} must not use browser Supabase env`);
   if (!value.includes("APP_SUPABASE_URL")) fail(`${path} must accept APP_SUPABASE_URL`);
   if (!value.includes("APP_SUPABASE_SERVICE_ROLE_KEY")) fail(`${path} must accept APP_SUPABASE_SERVICE_ROLE_KEY`);
 }
-pass("diagnostic scripts use server-only Supabase credentials");
+pass("privileged diagnostics/export paths use server-only Supabase credentials");
 
 requireText("src/routes/api.health.ts", ALIGNMENT_CONTRACT, "deployment alignment contract");
 requireText("src/routes/api.health.ts", EXPECTED_SUPABASE_REF, "authoritative Supabase project marker");
