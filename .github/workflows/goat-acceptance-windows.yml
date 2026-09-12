@@ -6,15 +6,19 @@ on:
     paths:
       - 'src/__tests__/goat-*'
       - 'scripts/goat/run-acceptance-window.sh'
+      - 'scripts/goat/testnet3-provider-dry-run.mjs'
       - '.github/workflows/goat-acceptance-windows.yml'
   schedule:
-    # 20 windows total, all complete by 14 Sep 2026 IST.
-    # 12-13 Sep IST: 7 windows/day at 00:30, 03:30, 06:30, 09:30, 12:30, 15:30, 18:30.
-    - cron: '0 19,22 11-12 9 *'
-    - cron: '0 1,4,7,10,13 12-13 9 *'
-    # 14 Sep IST: final 6 windows at 00:30, 03:30, 06:30, 09:30, 12:30, 15:30.
-    - cron: '0 19,22 13 9 *'
-    - cron: '0 1,4,7,10 14 9 *'
+    # 20-window reliability program. Use minute 7 instead of minute 0 because
+    # GitHub documents that scheduled workflows are most likely to be delayed
+    # or dropped at the start of the hour.
+    # 12-13 Sep IST: nominal 00:30, 03:30, 06:30, 09:30, 12:30, 15:30, 18:30
+    # windows now start at 00:37, 03:37, 06:37, 09:37, 12:37, 15:37, 18:37.
+    - cron: '7 19,22 11-12 9 *'
+    - cron: '7 1,4,7,10,13 12-13 9 *'
+    # 14 Sep IST: final nominal windows likewise run seven minutes off-hour.
+    - cron: '7 19,22 13 9 *'
+    - cron: '7 1,4,7,10 14 9 *'
   workflow_dispatch:
     inputs:
       iterations:
@@ -30,7 +34,7 @@ permissions:
 
 concurrency:
   group: goat-acceptance-window-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   acceptance-window:
@@ -72,3 +76,60 @@ jobs:
           echo "Target: 20 windows x 250 repeated cases = 5,000" >> "$GITHUB_STEP_SUMMARY"
           echo "Program deadline: 14 September 2026 IST" >> "$GITHUB_STEP_SUMMARY"
           echo "Window id: $GOAT_ACCEPTANCE_WINDOW_ID" >> "$GITHUB_STEP_SUMMARY"
+          echo "Scheduler hardening: minute 7 UTC offset avoids GitHub's top-of-hour high-load period." >> "$GITHUB_STEP_SUMMARY"
+
+  provider-dry-run:
+    # Pull requests do not receive repository secrets. Scheduled/manual acceptance
+    # windows do, so attach the live provider observation only to those runs.
+    if: github.event_name != 'pull_request'
+    needs: acceptance-window
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
+      GOATX402_DRY_RUN_ARTIFACT_DIR: artifacts/goat-testnet3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Validate merchant configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GOATX402_API_KEY GOATX402_API_SECRET GOATX402_MERCHANT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is missing; provider acceptance evidence cannot be collected."
+              exit 1
+            fi
+          done
+          echo "Required GOAT Testnet3 merchant secrets are present. Values were not printed." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run no-payment Testnet3 provider dry run
+        run: node scripts/goat/testnet3-provider-dry-run.mjs
+
+      - name: Upload sanitized provider evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-testnet3-provider-dry-run-${{ github.run_id }}
+          path: artifacts/goat-testnet3/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record no-payment boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Provider observation is part of acceptance run $GITHUB_RUN_ID." >> "$GITHUB_STEP_SUMMARY"
+          echo "Transaction submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "The provider dry run creates a Testnet3 402 challenge with a random payer address for which no private key exists, then performs an authenticated order read only." >> "$GITHUB_STEP_SUMMARY"
