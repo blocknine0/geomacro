@@ -62,7 +62,9 @@ describe("multichain Testnet USDC developer access", () => {
     expect(COMMERCIAL_OFFER_REGISTRY.testnet_tester_metered_30d).toMatchObject({
       tier: "testnet_tester",
       payment_required: true,
-      entitlement_kind: "testnet_pass",
+      payment_model: "pay_per_call",
+      upfront_payment_required: false,
+      entitlement_kind: "testnet_metered_access",
     });
     expect(STRUCTURED_TIER_REGISTRY.testnet_tester.api_access).toBe(true);
     expect(STRUCTURED_TIER_REGISTRY.testnet_tester.max_subjects_per_request).toBe(1);
