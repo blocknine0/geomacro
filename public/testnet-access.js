@@ -38,7 +38,7 @@
     const hero = document.querySelector(".hero p");
     if (hero) hero.textContent = "Create a tester profile, verify one EVM wallet, create an API Key + API Secret, then pay only for each Testnet API call. There is no upfront Testnet USDC activation payment.";
     const cards = document.querySelectorAll(".grid .card");
-    if (cards[0]) cards[0].querySelector("p").textContent = "No email, X-account or Discord connection is required. One verified wallet gets Testnet developer access.";
+    if (cards[0]) cards[0].querySelector("p").textContent = "Create a tester profile and verify one EVM wallet to activate Testnet developer access.";
     if (cards[1]) {
       cards[1].querySelector("strong").textContent = "500-credit Testnet cap";
       cards[1].querySelector("p").textContent = "0.5 Testnet USDC per credit, paid per API call. 500 credits is the 30-day usage cap, not an upfront purchase.";
