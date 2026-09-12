@@ -26,6 +26,7 @@
     "db:safety": "node scripts/db/check-migration-safety.mjs",
     "db:target": "node scripts/db/assert-authoritative-supabase.mjs",
     "db:verify-core": "node scripts/db/verify-core-schema.mjs",
+    "hosting:verify": "node scripts/ops/verify-hosting-alignment.mjs",
     "agentic:x402:e2e": "node scripts/agentic/x402-e2e.mjs",
     "agentic:resilience": "node scripts/agentic/staging-resilience.mjs",
     "test:app": "vitest run src",
