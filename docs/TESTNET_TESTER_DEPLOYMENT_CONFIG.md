@@ -43,7 +43,7 @@ Private signing material is server-only. Public verification material may be exp
 
 ## Current tester identity flow
 
-The public Testnet launch is wallet-only:
+The public Testnet launch uses only profile + wallet identity:
 
 1. create a tester profile;
 2. receive a secure tester session;
@@ -53,9 +53,13 @@ The public Testnet launch is wallet-only:
 6. create API Key + API Secret credentials;
 7. use the developer API.
 
-There is no upfront Testnet USDC activation payment. Wallet verification does not authorize a transaction or funds movement.
+There is no email verification, X account connection or Discord connection in the current product flow. Those identity integrations are retired from the runtime and are not launch configuration. There is also no upfront Testnet USDC activation payment. Wallet verification does not authorize a transaction or funds movement.
 
-Email, X and Discord are not required for the current Testnet API launch. Their existing routes are optional integrations only. If they are intentionally enabled later, configure the corresponding `RESEND_*`, `TESTNET_OAUTH_COOKIE_SECRET`, X OAuth and Discord OAuth variables and provider callback URLs separately.
+## X sharing after a successful test
+
+X is used only as an optional outbound share action after a real Testnet result is delivered. The tester does not connect an X account to Geomacro.
+
+The Testnet Console can create the existing professional Geomacro result card and open an X post composer with the result link. No X OAuth token, X account ID or social-login credential is requested or stored. This is a growth/share CTA only and never gates API access, credits, payment or intelligence delivery.
 
 ## Pay-per-call contract
 
@@ -108,7 +112,7 @@ Do not call the Testnet API launch complete until all of these pass on the publi
 
 1. `/api/health` reports the current GitHub/Supabase/Lovable alignment contract.
 2. `/api/testnet/manifest` returns all eight capabilities and canonical pay-per-call pricing.
-3. `/testnet-access` shows the wallet-only, no-upfront-payment flow.
+3. `/testnet-access` shows the profile + wallet-only, no-upfront-payment flow.
 4. Unauthenticated `/api/testnet/account` and `/api/testnet/intelligence` fail closed with no premium data leakage.
 5. One real tester completes profile → wallet signature → entitlement → API Key + Secret.
 6. `GET /api/testnet/account` returns the active 500-credit account without consuming credits.
@@ -119,17 +123,9 @@ Do not call the Testnet API launch complete until all of these pass on the publi
 11. `intelligence_query`, `gri_read`, structural country/corridor, signed GRO and Risk Gate bundle are exercised with compatible live subjects. Prefer an 8/8 capability pass before opening public testing.
 12. Returned signed GRO payload hash and Ed25519 signature are independently verified.
 13. Risk Gate always reports `execution_authorized=false`.
-14. Security, resilience and database replay gates are green and launch evidence is retained.
+14. A successful result can create the Geomacro share card and open one X post composer without X account connection or OAuth.
+15. Security, resilience and database replay gates are green and launch evidence is retained.
 
 Preserve request IDs, key IDs but never secrets, chain, transaction hash, Testnet amount, payment/usage event IDs, credits before/after, timestamps, response hashes and verification results.
-
-## Optional social/email routes
-
-If optional X/Discord OAuth is enabled later, exact callback URLs are:
-
-- X: `https://geomacro.live/api/testnet-tester/oauth/x/callback`
-- Discord: `https://geomacro.live/api/testnet-tester/oauth/discord/callback`
-
-These optional identity integrations are not a prerequisite for Testnet Developer API access.
 
 `execution_authorized` remains false throughout the Testnet tester program.
