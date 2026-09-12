@@ -46,6 +46,9 @@ function cookieName(provider: TesterOauthProvider) {
 }
 
 function signCookiePayload(payload: string, secret: string) {
+  // This is a short-lived OAuth-cookie MAC using a server-only key of at least 32 bytes,
+  // not password storage. HMAC-SHA-256 is the intended construction here.
+  // codeql[js/insufficient-password-hash]
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
