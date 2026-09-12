@@ -5,8 +5,43 @@
 -- does not rewrite historical Testnet settlement records.
 -- =============================================================================
 
--- Keep every future testnet_tester grant aligned with the canonical metered
--- contract, regardless of which privileged server path creates or updates it.
+-- Supersede the v1.0 fixed-pass grant trigger from migration 911. Keep exactly
+-- one canonical trigger and actively remove legacy fixed-quota metadata keys.
+create or replace function public.align_testnet_tester_grant_metadata()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.tier = 'testnet_tester' then
+    new.included_credits := 500;
+    new.metadata := (
+      coalesce(new.metadata, '{}'::jsonb)
+      - 'quota_price_usdc'
+      - 'quota_credits'
+      - 'fixed_quota_per_verified_wallet'
+      - 'fixed_quota_per_verified_email_and_wallet'
+    ) || jsonb_build_object(
+      'offer_id', 'testnet_tester_metered_30d',
+      'entitlement_kind', 'testnet_metered_access',
+      'structured_data_registry_version', 'structured-entitlements-v1.1.0',
+      'max_credits_per_30_days', 500,
+      'credit_price_testnet_usdc', 0.5,
+      'payment_model', 'pay_per_call',
+      'upfront_payment_required', false,
+      'testnet_api_pricing_version', 'testnet-api-pricing-v1.1.0',
+      'payment_environment', 'testnet',
+      'payment_asset', 'USDC',
+      'commercial_revenue', false,
+      'execution_authorized', false
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists align_testnet_tester_grant_metadata_trigger
+  on public.commercial_entitlement_grants;
 drop trigger if exists trg_align_testnet_tester_grant_metadata
   on public.commercial_entitlement_grants;
 
@@ -14,6 +49,54 @@ create trigger trg_align_testnet_tester_grant_metadata
 before insert or update on public.commercial_entitlement_grants
 for each row
 execute function public.align_testnet_tester_grant_metadata();
+
+-- Reconcile any currently active Testnet grant without changing its historical
+-- identity or validity window. The BEFORE trigger rewrites metadata only.
+update public.commercial_entitlement_grants
+set included_credits = included_credits
+where tier = 'testnet_tester' and status = 'active';
+
+-- Supersede migration 911's fixed-250 payment metadata trigger. Every new
+-- Testnet tester payment is one metered API-call settlement and is non-revenue.
+create or replace function public.align_testnet_tester_payment_metadata()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.environment = 'testnet' and new.tier = 'testnet_tester' then
+    new.commercial_revenue := false;
+    new.revenue_classification := 'testnet_non_revenue';
+    new.metadata := (
+      coalesce(new.metadata, '{}'::jsonb)
+      - 'quota_price_usdc'
+      - 'quota_credits'
+      - 'fixed_quota_per_verified_wallet'
+      - 'fixed_quota_per_verified_email_and_wallet'
+    ) || jsonb_build_object(
+      'testnet_only', true,
+      'max_credits_per_30_days', 500,
+      'credit_price_testnet_usdc', 0.5,
+      'payment_model', 'pay_per_call',
+      'upfront_payment_required', false,
+      'testnet_api_pricing_version', 'testnet-api-pricing-v1.1.0',
+      'commercial_revenue', false,
+      'execution_authorized', false
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists align_testnet_tester_payment_metadata_trigger
+  on public.commercial_payment_events;
+drop trigger if exists trg_align_testnet_tester_payment_metadata
+  on public.commercial_payment_events;
+
+create trigger trg_align_testnet_tester_payment_metadata
+before insert or update on public.commercial_payment_events
+for each row
+execute function public.align_testnet_tester_payment_metadata();
 
 -- New pay-per-call claims carry enough information to reconcile one payment to
 -- one request/capability. Historical activation claims may keep these fields
