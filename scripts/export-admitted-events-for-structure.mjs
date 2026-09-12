@@ -181,8 +181,7 @@ function mapEvent(row) {
 async function main() {
   const supabaseUrl =
     process.env.SUPABASE_URL ??
-    process.env.APP_SUPABASE_URL ??
-    process.env.VITE_SUPABASE_URL;
+    process.env.APP_SUPABASE_URL;
 
   const serviceKey =
     process.env
@@ -195,7 +194,7 @@ async function main() {
     !serviceKey
   ) {
     throw new Error(
-      "Supabase server credentials are required",
+      "Authoritative Supabase server credentials are required",
     );
   }
 
