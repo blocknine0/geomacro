@@ -30,6 +30,13 @@
     return null;
   }
 
+  function walletChainId(value) {
+    const raw = String(value ?? "").trim();
+    const parsed = /^0x[0-9a-f]+$/i.test(raw) ? Number.parseInt(raw, 16) : Number(raw);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error("TESTNET_SIGNIN_CHAIN_INVALID");
+    return parsed;
+  }
+
   function utf8ToHex(value) {
     const bytes = new TextEncoder().encode(String(value));
     return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
@@ -90,6 +97,7 @@
     if (error?.code === 4001) return "Wallet request was cancelled.";
     const code = firstString(error?.message, error?.shortMessage, error?.reason);
     const messages = {
+      TESTNET_SIGNIN_CHAIN_INVALID: "The wallet returned an invalid EVM chain ID. Switch to a normal EVM network and try again.",
       TESTNET_SIGNIN_CHALLENGE_EXPIRED: "The sign-in request expired. Try again.",
       TESTNET_SIGNIN_CHALLENGE_USED_OR_EXPIRED: "That sign-in request was already used or expired. Try again.",
       TESTNET_SIGNIN_MESSAGE_MISMATCH: "The wallet sign-in message did not match the server challenge.",
@@ -126,14 +134,17 @@
       const accounts = await wallet.provider.request({ method: "eth_requestAccounts" });
       const walletAddress = String(accounts?.[0] || "").trim();
       if (!/^0x[0-9a-fA-F]{40}$/.test(walletAddress)) throw new Error("INVALID_WALLET_ADDRESS");
+      const chainId = walletChainId(await wallet.provider.request({ method: "eth_chainId" }));
 
-      setStatus("Preparing a one-time wallet sign-in message...");
+      setStatus("Preparing a one-time EIP-4361 wallet sign-in message...");
       const challenge = await json("/api/testnet-tester/auth-challenge", {
         method: "POST",
-        body: JSON.stringify({ wallet_address: walletAddress }),
+        body: JSON.stringify({ wallet_address: walletAddress, chain_id: chainId }),
       });
       const data = challenge.data || {};
-      if (!data.message || !data.nonce || !data.issued_at) throw new Error("TESTNET_SIGNIN_CHALLENGE_FAILED");
+      if (!data.message || !data.nonce || !data.issued_at || Number(data.chain_id) !== chainId) {
+        throw new Error("TESTNET_SIGNIN_CHALLENGE_FAILED");
+      }
 
       setStatus("Approve the sign-in message in your wallet. This is not a transaction and cannot move funds.");
       const signature = await personalSign(wallet.provider, String(data.message), walletAddress);
@@ -143,6 +154,7 @@
         method: "POST",
         body: JSON.stringify({
           wallet_address: walletAddress,
+          chain_id: data.chain_id,
           nonce: data.nonce,
           issued_at: data.issued_at,
           message: data.message,
