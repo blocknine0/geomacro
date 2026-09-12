@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - "public/testnet-access.js"
+      - "public/testnet-wallet-first.js"
       - "public/testnet-console.js"
       - "public/testnet-console-pricing.js"
       - "server/routes/testnet-access.get.ts"
+      - "server/routes/testnet-access-wallet-first.get.ts"
       - "server/routes/testnet-console.get.ts"
       - "server/api/testnet/**"
       - "server/api/testnet-tester/**"
@@ -15,6 +17,8 @@ on:
       - "src/lib/commercial-access*.ts"
       - "src/lib/structured-data-entitlement-registry.ts"
       - "src/routes/api.demo.feedback.ts"
+      - "src/routes/testnet-access.tsx"
+      - "src/routes/api/testnet-tester/**"
       - "src/__tests__/testnet-*.test.ts"
       - "supabase/migrations/909_testnet_fixed_500_credit_quota.sql"
       - "supabase/migrations/910_testnet_wallet_only_access.sql"
@@ -55,6 +59,7 @@ jobs:
           src/__tests__/testnet-tester-payment-activation-static.test.ts
           src/__tests__/testnet-tester-registration-static.test.ts
           src/__tests__/testnet-wallet-only-registration-static.test.ts
+          src/__tests__/testnet-wallet-first-auth-static.test.ts
           src/__tests__/testnet-oauth-browser-wiring-static.test.ts
           src/__tests__/testnet-avatar-storage-static.test.ts
           src/__tests__/testnet-share-flow-static.test.ts
