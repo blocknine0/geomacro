@@ -18,6 +18,7 @@ import { preflightTestnetIntelligenceAvailability } from "../../../src/lib/testn
 import {
   deliverTestnetIntelligence,
 } from "../../../src/lib/testnet-intelligence-service.server";
+import { bindTestnetIntelligenceRequest } from "../../../src/lib/testnet-request-binding.server";
 import { loadTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
 
@@ -49,13 +50,17 @@ export default defineEventHandler(async (event) => {
   try {
     const request = testnetIntelligenceRequestSchema.parse(await readBody(event));
     await preflightTestnetIntelligenceAvailability(request);
+    const requestBinding = await bindTestnetIntelligenceRequest({ principal, request });
     const result = await deliverTestnetIntelligence({
       principal,
       request,
       access_surface: "testnet_tester",
     });
     setResponseStatus(event, result.status);
-    return result.body;
+    return {
+      ...result.body,
+      request_binding: requestBinding,
+    };
   } catch (error) {
     if (error instanceof CommercialAccessError) {
       setResponseStatus(event, error.status);
