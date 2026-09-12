@@ -94,6 +94,7 @@ function publicRiskObject(object: GeomacroRiskObject) {
     issuer: object.issuer,
     subject: object.subject,
     methodology_version: object.methodology_version,
+    corridor_context: object.corridor_context ?? null,
     risk: object.risk,
     confidence: object.confidence,
     attribution: object.attribution,
