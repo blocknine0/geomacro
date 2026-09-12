@@ -50,6 +50,7 @@ The complete Testnet machine-readable product surface is:
 
 - `intelligence_query`: stored geopolitical and macro intelligence Q&A with summary, what changed, why it matters, Geomacro view, confidence flags, GRI context, bounded evidence references and provenance;
 - `gri_read`: canonical global GRI with current/previous display and raw score, exact delta, coverage, weighted confidence, event/source/story counts, methodology/proof versions, proof/evidence/calculation/input/methodology/disposition/change hashes, reconciliation residuals, mathematical change attribution, top driver and freshness age;
+- GRI change attribution includes quantified drivers, the top driver, reconciliation residual and change residual so score movement remains machine-auditable;
 - `structural_country_digest` / `structural_country_profile`: country structural intelligence, current Testnet live severity, observations, coverage, provenance IDs, timestamps, normalized hashes, methodology status and quality status;
 - `structural_corridor_digest` / `structural_corridor_profile`: directional corridor structural intelligence with the same provenance/coverage fields plus corridor composition context;
 - `signed_risk_object`: latest compatible canonical signed Geomacro Risk Object for a country or corridor plus current public cryptographic verification;
