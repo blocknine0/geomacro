@@ -50,6 +50,10 @@ jobs:
       - name: Validate authenticated UCDP Candidate API access
         run: bun scripts/fetch-ucdp-ged-dry-run.mjs
 
+      - name: Validate full Candidate release without database writes
+        if: github.event_name == 'pull_request'
+        run: bun scripts/ingest-ucdp-candidate-live.mjs
+
       - name: Sync governed current Candidate evidence
         if: github.event_name != 'pull_request'
         run: bun scripts/ingest-ucdp-candidate-live.mjs --write
