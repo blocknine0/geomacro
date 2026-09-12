@@ -18,6 +18,7 @@ import { preflightTestnetIntelligenceAvailability } from "../../../src/lib/testn
 import {
   deliverTestnetIntelligence,
 } from "../../../src/lib/testnet-intelligence-service.server";
+import { bindTestnetIntelligenceRequest } from "../../../src/lib/testnet-request-binding.server";
 
 const MAX_BODY_BYTES = 12 * 1024;
 
@@ -133,6 +134,8 @@ export default defineEventHandler(async (event) => {
     const principal = await authenticateCommercialApiRequest(authRequest);
     const request = testnetIntelligenceRequestSchema.parse(raw);
     await preflightTestnetIntelligenceAvailability(request);
+
+    const requestBinding = await bindTestnetIntelligenceRequest({ principal, request });
     const result = await deliverTestnetIntelligence({
       principal,
       request,
@@ -140,7 +143,10 @@ export default defineEventHandler(async (event) => {
     });
 
     setResponseStatus(event, result.status);
-    return result.body;
+    return {
+      ...result.body,
+      request_binding: requestBinding,
+    };
   } catch (error) {
     const result = failure(error);
     setResponseStatus(event, result.status);
