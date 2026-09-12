@@ -134,3 +134,183 @@ jobs:
           echo "Transaction submitted: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
           echo "The provider dry run creates a Testnet3 402 challenge with a random payer address for which no private key exists, then performs an authenticated order read only." >> "$GITHUB_STEP_SUMMARY"
+
+  update-github-dashboard:
+    name: Update GOAT GitHub dashboard
+    if: ${{ always() && github.event_name != 'pull_request' }}
+    needs:
+      - acceptance-window
+      - provider-dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - name: Refresh issue #243 from GitHub Actions evidence
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = 243;
+            const targetWindows = 20;
+            const casesPerWindow = 250;
+            const targetCases = 5000;
+
+            const { data: runData } = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'goat-acceptance-windows.yml',
+              branch: 'main',
+              event: 'schedule',
+              per_page: 100,
+            });
+
+            const runs = runData.workflow_runs
+              .filter((run) => run.event === 'schedule')
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .slice(0, targetWindows);
+
+            const rows = [];
+            let acceptedWindows = 0;
+            let providerPassed = 0;
+            let latestAcceptanceArtifact = null;
+            let latestProviderArtifact = null;
+            let latestFailure = null;
+
+            const fmtIst = (iso) => new Intl.DateTimeFormat('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              dateStyle: 'medium',
+              timeStyle: 'medium',
+              hour12: true,
+            }).format(new Date(iso)) + ' IST';
+
+            const short = (sha) => (sha || '').slice(0, 10);
+            const safe = (value) => String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ');
+            const artifactInfo = (artifact) => {
+              if (!artifact) return '⚠️ missing';
+              const digest = artifact.digest ? artifact.digest.replace('sha256:', '').slice(0, 16) + '…' : 'digest unavailable';
+              const expiry = artifact.expires_at ? fmtIst(artifact.expires_at) : 'unknown expiry';
+              return `ID \`${artifact.id}\` · ${artifact.size_in_bytes} B · \`${digest}\` · expires ${expiry}`;
+            };
+
+            for (const run of runs) {
+              const [{ data: artifactData }, { data: jobData }] = await Promise.all([
+                github.rest.actions.listWorkflowRunArtifacts({ owner, repo, run_id: run.id, per_page: 100 }),
+                github.rest.actions.listJobsForWorkflowRun({ owner, repo, run_id: run.id, per_page: 100 }),
+              ]);
+
+              const artifacts = artifactData.artifacts || [];
+              const jobs = jobData.jobs || [];
+              const acceptanceArtifact = artifacts.find((a) => a.name === `goat-acceptance-window-${run.id}`);
+              const providerArtifact = artifacts.find((a) => a.name === `goat-testnet3-provider-dry-run-${run.id}`);
+              const acceptanceJob = jobs.find((j) => j.name.toLowerCase().includes('acceptance'));
+              const providerJob = jobs.find((j) => j.name.includes('Provider Dry Run'));
+
+              const acceptancePass = run.conclusion === 'success' && acceptanceJob?.conclusion === 'success' && Boolean(acceptanceArtifact);
+              const providerPass = providerJob?.conclusion === 'success' && Boolean(providerArtifact);
+
+              if (acceptancePass) acceptedWindows += 1;
+              if (providerPass) providerPassed += 1;
+              if (!latestAcceptanceArtifact && acceptanceArtifact) latestAcceptanceArtifact = acceptanceArtifact;
+              if (!latestProviderArtifact && providerArtifact) latestProviderArtifact = providerArtifact;
+
+              const failedJob = jobs.find((j) => ['failure', 'cancelled', 'timed_out', 'action_required'].includes(j.conclusion));
+              const failedStep = failedJob?.steps?.find((s) => ['failure', 'cancelled', 'timed_out'].includes(s.conclusion));
+              const failure = failedJob ? `${failedJob.name}${failedStep ? ` → ${failedStep.name}` : ''}` : null;
+              if (!latestFailure && failure) latestFailure = { run, failure };
+
+              const runStatus = run.status === 'completed' ? (run.conclusion === 'success' ? '✅ success' : `❌ ${run.conclusion}`) : `🟦 ${run.status}`;
+              const acceptanceStatus = acceptancePass ? '✅ 250 / 250' : (run.conclusion === 'failure' ? '❌ failed' : '⚠️ not verified');
+              const matrixStatus = acceptancePass ? '✅ PASS' : '⚠️ not verified';
+              const providerStatus = providerPass ? '✅ PASS' : (providerJob?.conclusion === 'failure' ? '❌ FAIL' : '⚠️ incomplete');
+              const failedStage = failure ? `❌ ${safe(failure)}` : '—';
+
+              rows.push(`| [#${run.run_number}](${run.html_url}) | ${fmtIst(run.created_at)} | ${runStatus} | ${acceptanceStatus} | ${matrixStatus} | ${providerStatus} | ${acceptanceArtifact ? `\`${acceptanceArtifact.id}\`` : '—'} | ${providerArtifact ? `\`${providerArtifact.id}\`` : '—'} | \`${short(run.head_sha)}\` | ${failedStage} |`);
+            }
+
+            const repeatedCases = Math.min(acceptedWindows * casesPerWindow, targetCases);
+            const latest = runs[0];
+            const overall = acceptedWindows >= targetWindows && repeatedCases >= targetCases && providerPassed > 0
+              ? '🟢 PASS'
+              : latestFailure ? '🟠 ATTENTION' : '🟡 IN PROGRESS';
+
+            const currentAcceptance = '${{ needs.acceptance-window.result }}';
+            const currentProvider = '${{ needs.provider-dry-run.result }}';
+            const currentRunUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const body = `# GOAT Testnet3 Live Acceptance Dashboard
+
+            > **Overall:** ${overall}  
+            > **Updated:** ${fmtIst(new Date().toISOString())}  
+            > **Source:** GitHub Actions + preserved artifacts  
+            > **Safety:** This dashboard only reads GitHub evidence and updates this issue. It does not dispatch a paid workflow, access a payment key, sign a wallet message, or submit a transaction.
+
+            ## Progress
+
+            | Metric | Current | Target | Status |
+            |---|---:|---:|---|
+            | Accepted scheduled windows | **${acceptedWindows}** | **${targetWindows}** | ${acceptedWindows >= targetWindows ? '✅' : '🟡'} |
+            | Repeated cases represented | **${repeatedCases.toLocaleString()}** | **${targetCases.toLocaleString()}** | ${repeatedCases >= targetCases ? '✅' : '🟡'} |
+            | Cases per accepted window | **${casesPerWindow}** | **${casesPerWindow}** | ✅ |
+            | Provider-passed scheduled windows | **${providerPassed}** | evidence required | ${providerPassed > 0 ? '✅' : '⚠️'} |
+
+            ## Current workflow cycle
+
+            - **Run:** [${context.runId}](${currentRunUrl})
+            - **Acceptance job result:** \`${currentAcceptance}\`
+            - **Provider dry-run result:** \`${currentProvider}\`
+            - **Transaction submitted by provider dry run:** **false**
+            - **Commercial revenue:** **false**
+
+            ## Latest scheduled evidence
+
+            ${latest ? `- **Latest scheduled run:** [#${latest.run_number}](${latest.html_url}) / \`${latest.id}\`
+            - **Started:** ${fmtIst(latest.created_at)}
+            - **Commit:** [\`${short(latest.head_sha)}\`](https://github.com/${owner}/${repo}/commit/${latest.head_sha})` : '- No scheduled run returned.'}
+            - **Latest acceptance artifact:** ${artifactInfo(latestAcceptanceArtifact)}
+            - **Latest provider artifact:** ${artifactInfo(latestProviderArtifact)}
+            ${latestFailure ? `- **Latest failed stage:** [run ${latestFailure.run.id}](${latestFailure.run.html_url}) → **${safe(latestFailure.failure)}**` : '- **Latest failed stage:** none in the displayed scheduled runs'}
+
+            ## Window-by-window detailed report
+
+            A window is counted only when the acceptance job succeeds **and** its acceptance artifact is preserved. Provider status is passed only when the provider job succeeds **and** the provider artifact exists. A failed workflow is never masked by artifact presence.
+
+            | Run | Started (IST) | Workflow | 250 repeated cases | Matrix gate | Provider dry run | Acceptance artifact | Provider artifact | Commit | Failed stage |
+            |---|---|---|---|---|---|---|---|---|---|
+            ${rows.length ? rows.join('\n') : '| — | — | — | — | — | — | — | — | — | — |'}
+
+            ## Evidence interpretation
+
+            - **250 repeated cases:** a successful acceptance job plus preserved \`goat-acceptance-window-<run_id>\` artifact.
+            - **Full matrix:** the acceptance runner fails the job when its full matrix gate does not pass; therefore only an accepted window is shown as matrix PASS.
+            - **Provider:** a successful \`GOAT Testnet3 Provider Dry Run (No Payment)\` job plus preserved provider artifact.
+            - **Missing scheduled window:** remains missing and is **not** inferred as a pass.
+            - **Artifacts:** preserved for 90 days by the workflow. Run links expose exact jobs, steps and logs.
+
+            ## Program configuration
+
+            - Target: **20 windows × 250 repeated cases = 5,000 cases**
+            - Schedule hardening: windows are offset to minute **07** to avoid GitHub's top-of-hour high-load period.
+            - Provider observation: **no-payment / no-transaction** only.
+            - Repository source of truth: \`blocknine0/geomacro\` on \`main\`.
+
+            ---
+            _Auto-maintained by \`.github/workflows/goat-acceptance-windows.yml\`. If a stage fails, this issue reports the failed job/step rather than converting it into success._`;
+
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number,
+              body: body.replace(/^            /gm, ''),
+            });
+
+            core.summary
+              .addHeading('GOAT Testnet3 acceptance dashboard')
+              .addRaw(`Overall: ${overall}\n\n`)
+              .addRaw(`Accepted windows: ${acceptedWindows}/${targetWindows}\n\n`)
+              .addRaw(`Repeated cases represented: ${repeatedCases}/${targetCases}\n\n`)
+              .addLink('Open permanent GitHub dashboard', `https://github.com/${owner}/${repo}/issues/${issue_number}`)
+              .write();
