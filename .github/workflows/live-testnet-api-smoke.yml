@@ -16,6 +16,24 @@ jobs:
     env:
       BASE_URL: https://geomacro.live
     steps:
+      - name: Verify live deployment alignment contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Health endpoint unavailable::Expected 200 from /api/health, got $code."
+            cat "$body" || true
+            exit 1
+          fi
+          grep -Fq '"alignment_contract":"github-main-external-supabase-lovable-v1"' "$body"
+          grep -Fq '"source_authority":"github-main"' "$body"
+          grep -Fq '"database_authority":"external-supabase"' "$body"
+          grep -Fq '"supabase_project_ref":"ldpwajisioljyjtojvfx"' "$body"
+          echo "PASS: live deployment exposes the GitHub/Supabase/Lovable alignment contract."
+
       - name: Verify Testnet access page is live
         shell: bash
         run: |
