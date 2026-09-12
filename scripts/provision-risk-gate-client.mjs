@@ -90,6 +90,9 @@ const apiKey =
 
 
 const apiKeyHash =
+  // This bearer token contains 256 bits of CSPRNG output and is not a human password.
+  // A deterministic SHA-256 digest is required for exact server-side lookup without storing the token.
+  // codeql[js/insufficient-password-hash]
   createHash("sha256")
     .update(apiKey)
     .digest("hex");
