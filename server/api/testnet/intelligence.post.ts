@@ -14,6 +14,7 @@ import {
 import {
   testnetIntelligenceRequestSchema,
 } from "../../../src/lib/testnet-intelligence-contract";
+import { preflightTestnetIntelligenceAvailability } from "../../../src/lib/testnet-intelligence-preflight.server";
 import {
   deliverTestnetIntelligence,
 } from "../../../src/lib/testnet-intelligence-service.server";
@@ -131,6 +132,7 @@ export default defineEventHandler(async (event) => {
     });
     const principal = await authenticateCommercialApiRequest(authRequest);
     const request = testnetIntelligenceRequestSchema.parse(raw);
+    await preflightTestnetIntelligenceAvailability(request);
     const result = await deliverTestnetIntelligence({
       principal,
       request,

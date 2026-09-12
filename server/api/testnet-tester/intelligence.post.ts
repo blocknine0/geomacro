@@ -14,6 +14,7 @@ import {
 import {
   testnetIntelligenceRequestSchema,
 } from "../../../src/lib/testnet-intelligence-contract";
+import { preflightTestnetIntelligenceAvailability } from "../../../src/lib/testnet-intelligence-preflight.server";
 import {
   deliverTestnetIntelligence,
 } from "../../../src/lib/testnet-intelligence-service.server";
@@ -47,6 +48,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const request = testnetIntelligenceRequestSchema.parse(await readBody(event));
+    await preflightTestnetIntelligenceAvailability(request);
     const result = await deliverTestnetIntelligence({
       principal,
       request,
