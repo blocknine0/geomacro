@@ -9,8 +9,11 @@ on:
       - "vite.config.ts"
       - "src/**"
       - "server/**"
+      - "docs/HOSTING_ALIGNMENT.md"
+      - "docs/TESTNET_TESTER_DEPLOYMENT_CONFIG.md"
       - "scripts/ops/verify-hosting-alignment.mjs"
       - ".github/workflows/hosting-alignment.yml"
+      - ".github/workflows/sync-lovable-main.yml"
   push:
     branches:
       - main
@@ -21,8 +24,11 @@ on:
       - "vite.config.ts"
       - "src/**"
       - "server/**"
+      - "docs/HOSTING_ALIGNMENT.md"
+      - "docs/TESTNET_TESTER_DEPLOYMENT_CONFIG.md"
       - "scripts/ops/verify-hosting-alignment.mjs"
       - ".github/workflows/hosting-alignment.yml"
+      - ".github/workflows/sync-lovable-main.yml"
 
 permissions:
   contents: read

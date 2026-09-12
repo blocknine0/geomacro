@@ -6,6 +6,9 @@ import { join, relative } from "node:path";
 const ROOT = process.cwd();
 const EXPECTED_SUPABASE_REF = "ldpwajisioljyjtojvfx";
 const ALIGNMENT_CONTRACT = "github-main-external-supabase-lovable-v1";
+const LOVABLE_MIRROR_REPO = "blocknine0/geomacro-160c8e56";
+const LOVABLE_MIRROR_WORKFLOW = ".github/workflows/sync-lovable-main.yml";
+const LOVABLE_MIRROR_SECRET = "LOVABLE_MIRROR_TOKEN";
 
 function read(path) {
   return readFileSync(join(ROOT, path), "utf8");
@@ -72,6 +75,41 @@ if (!vite.includes('from "@lovable.dev/vite-tanstack-config"')) {
 } else {
   pass("Vite remains Lovable-compatible without using the Lovable agent");
 }
+
+const mirrorWorkflow = read(LOVABLE_MIRROR_WORKFLOW);
+for (const marker of [
+  LOVABLE_MIRROR_REPO,
+  LOVABLE_MIRROR_SECRET,
+  "workflow_dispatch:",
+  "rsync -a --delete",
+  "--exclude '.github/workflows/'",
+  "--exclude '.lovable/'",
+  ".geomacro-canonical-main",
+  "git push origin HEAD:main",
+]) {
+  if (!mirrorWorkflow.includes(marker)) {
+    fail(`${LOVABLE_MIRROR_WORKFLOW} is missing ${marker}`);
+  }
+}
+if (!mirrorWorkflow.includes("if: github.repository == 'blocknine0/geomacro'")) {
+  fail("Lovable mirror workflow must run only from the canonical repository");
+} else {
+  pass("canonical main has a one-way Lovable mirror workflow");
+}
+
+const hostingDoc = read("docs/HOSTING_ALIGNMENT.md");
+for (const marker of [
+  "blocknine0/geomacro` `main`",
+  LOVABLE_MIRROR_REPO,
+  LOVABLE_MIRROR_SECRET,
+  "one way",
+  "Publish changes",
+]) {
+  if (!hostingDoc.includes(marker)) {
+    fail(`HOSTING_ALIGNMENT.md is missing ${marker}`);
+  }
+}
+pass("hosting documentation names the canonical repo, Lovable mirror and zero-credit publish path");
 
 const env = read(".env.example");
 for (const name of [
@@ -204,5 +242,5 @@ requireText(".github/workflows/live-testnet-api-smoke.yml", ALIGNMENT_CONTRACT, 
 requireText("docs/HOSTING_ALIGNMENT.md", "Publish changes", "zero-credit publish workflow");
 
 if (!process.exitCode) {
-  console.log("\nPASS: GitHub source, Lovable-compatible build, browser data boundary and authoritative Supabase/Testnet runtime contracts are aligned.");
+  console.log("\nPASS: canonical GitHub source, one-way Lovable mirror, browser data boundary and authoritative Supabase/Testnet runtime contracts are aligned.");
 }
