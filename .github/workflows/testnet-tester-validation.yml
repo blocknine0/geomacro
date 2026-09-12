@@ -19,6 +19,7 @@ on:
       - "supabase/migrations/910_testnet_wallet_only_access.sql"
       - "supabase/migrations/911_testnet_api_pricing_alignment.sql"
       - "supabase/migrations/912_testnet_api_pay_per_call.sql"
+      - "supabase/migrations/913_testnet_pay_per_call_runtime_hardening.sql"
       - "scripts/testnet/**"
       - ".github/workflows/testnet-tester-validation.yml"
   workflow_dispatch:
