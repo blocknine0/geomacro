@@ -42,11 +42,16 @@
         signal: controller.signal,
       });
 
-      const payload = await response.json().catch(() => ({}));
+      const payload = await response.json().catch(() => null);
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        throw new Error("The server returned an invalid API response. Reload the page and try again.");
+      }
       if (!response.ok || payload?.ok === false) {
         const nested = payload && typeof payload.data === "object" ? payload.data : {};
         const message = firstString(
           payload?.error,
+          payload?.error?.message,
+          payload?.error?.code,
           payload?.statusMessage,
           payload?.message,
           nested?.error,
@@ -68,6 +73,7 @@
   };
 
   let walletAddress = "";
+  let registrationPending = false;
   const announcedWallets = [];
 
   function rememberWalletProvider(detail) {
@@ -154,7 +160,9 @@
       text("profileStatus", account.profile_name || "Tester");
       text("walletStatus", account.wallet_verified ? "Verified" : "Pending");
       text("accessStatus", account.access_status || "pending");
-      show("walletConnect", !account.wallet_verified);
+      // A signature can succeed before entitlement provisioning fails. Allow
+      // another verification attempt instead of stranding the tester here.
+      show("walletConnect", !account.wallet_verified || !active);
       show("paymentPanel", false);
       show("developerPanel", active);
       show("feedbackPanel", active);
@@ -181,6 +189,8 @@
 
   async function register(event) {
     event.preventDefault();
+    if (registrationPending) return;
+    registrationPending = true;
     const profileName = $("profileNameInput").value.trim();
     text("registrationStatus", "Creating tester profile...");
     try {
@@ -195,6 +205,8 @@
       await loadAccount();
     } catch (error) {
       text("registrationStatus", browserErrorMessage(error, "Registration failed."));
+    } finally {
+      registrationPending = false;
     }
   }
 

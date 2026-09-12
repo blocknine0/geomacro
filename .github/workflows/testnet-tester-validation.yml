@@ -44,6 +44,8 @@ jobs:
       - name: Tester contract and end-to-end trial tests
         run: >-
           timeout 6m bunx vitest run
+          src/__tests__/testnet-console-payment-recovery.test.ts
+          src/__tests__/testnet-access-browser-errors.test.ts
           src/__tests__/testnet-api-v12-alignment.test.ts
           src/__tests__/testnet-intelligence-capability-parity.test.ts
           src/__tests__/testnet-usdc-access-contract.test.ts

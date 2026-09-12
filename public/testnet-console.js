@@ -26,8 +26,12 @@
         ...(options.headers || {}),
       },
       ...options,
+      signal: AbortSignal.timeout(30_000),
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => null);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new Error("The server returned an invalid API response. Retry the same request; do not send another payment.");
+    }
     return { response, payload };
   }
 
@@ -109,6 +113,16 @@
     let lastShare = null;
     let pendingRequest = null;
     let pendingQuote = null;
+    let pendingPayment = null;
+    let busy = false;
+    const recoveryKey = `geomacro-testnet-payment:${account.entitlement_grant_id}`;
+
+    function saveRecovery() {
+      // Session-scoped recovery contains no API credentials or session tokens.
+      sessionStorage.setItem(recoveryKey, JSON.stringify({
+        request: pendingRequest, quote: pendingQuote, payment: pendingPayment,
+      }));
+    }
 
     const panel = el("section", { className: "panel", id: "testerConsolePanel" });
     panel.appendChild(el("div", { className: "eyebrow", text: "TRY GEOMACRO" }));
@@ -221,6 +235,7 @@
     else document.querySelector("main")?.appendChild(panel);
 
     function syncFields() {
+      if (busy || pendingPayment) return;
       const value = capability.value;
       const isQuery = value === "intelligence_query";
       const isGri = value === "gri_read";
@@ -289,6 +304,7 @@
       });
 
       if (response.status === 402 && payload?.error?.code === "TESTNET_PAYMENT_REQUIRED") {
+        if (pendingPayment) throw new Error("Payment already submitted. Retry verification with the saved transaction; do not pay again.");
         pendingRequest = request;
         pendingQuote = payload.payment;
         chainSelect.innerHTML = "";
@@ -306,7 +322,7 @@
         return;
       }
 
-      if (!response.ok || payload?.ok === false) {
+      if (!response.ok || payload?.ok !== true) {
         throw new Error(
           payload?.error?.message ||
             payload?.error?.code ||
@@ -326,10 +342,43 @@
       credits.textContent = `Credits remaining: ${payload.entitlement?.credits_remaining ?? "unknown"} · Cost: ${payload.entitlement?.credit_cost ?? "unknown"} credits · Paid: ${payload.payment?.amount_due_usdc ?? "unknown"} Testnet USDC`;
       createShare.hidden = !payload.usage_event_id;
       shareX.hidden = true;
+      pendingRequest = null;
+      pendingQuote = null;
+      pendingPayment = null;
+      try { sessionStorage.removeItem(recoveryKey); } catch {
+        // Delivery succeeded. A stale saved proof is safe to retry, not repay.
+      }
+    }
+
+    function setBusy(value) {
+      busy = value;
+      const locked = value || Boolean(pendingPayment);
+      for (const control of [capability, question, subjectType, origin, destination, policy, actionType, amount, runButton, chainSelect]) {
+        control.disabled = locked;
+      }
+      payButton.disabled = value;
+      payButton.textContent = pendingPayment ? "Retry existing payment (no new transfer)" : "Pay Testnet USDC & retry";
+    }
+
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(recoveryKey) || "null");
+      if (saved?.payment && saved?.request && saved?.quote) {
+        pendingRequest = saved.request;
+        pendingQuote = saved.quote;
+        pendingPayment = saved.payment;
+        paymentBox.hidden = false;
+        quoteText.textContent = `Saved transaction: ${pendingPayment.tx_hash}`;
+        status.textContent = "An earlier payment needs verification. Retry it without sending another transfer.";
+        setBusy(false);
+      }
+    } catch {
+      status.textContent = "Payment recovery storage is unavailable. Enable session storage before making a payment.";
     }
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (busy || pendingPayment) return;
+      setBusy(true);
       status.textContent = "Preparing Testnet API call quote...";
       output.hidden = true;
       createShare.hidden = true;
@@ -340,24 +389,33 @@
         await executeRequest(buildRequest());
       } catch (error) {
         status.textContent = error.message || "Testnet intelligence request failed.";
+      } finally {
+        setBusy(false);
       }
     });
 
     payButton.addEventListener("click", async () => {
-      if (!pendingRequest || !pendingQuote) return;
-      if (!window.ethereum?.request) {
+      if (busy || !pendingRequest || !pendingQuote) return;
+      if (!pendingPayment && !window.ethereum?.request) {
         status.textContent = "No injected EVM wallet detected.";
         return;
       }
 
       const chain = (pendingQuote.supported_chains || []).find((item) => item.key === chainSelect.value);
-      if (!chain) {
+      if (!pendingPayment && !chain) {
         status.textContent = "Choose a supported Testnet payment network.";
         return;
       }
 
-      payButton.disabled = true;
+      setBusy(true);
       try {
+        if (pendingPayment) {
+          status.textContent = "Retrying the saved transaction proof. No new payment will be sent.";
+          await executeRequest({ ...pendingRequest, payment: pendingPayment });
+          return;
+        }
+        // Verify recovery storage is writable before requesting any transfer.
+        saveRecovery();
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         const payer = String(accounts?.[0] || "");
         if (!payer) throw new Error("Wallet account unavailable.");
@@ -368,6 +426,11 @@
             method: "wallet_switchEthereumChain",
             params: [{ chainId: chain.chain_id_hex }],
           });
+        }
+
+        const selectedChain = await window.ethereum.request({ method: "eth_chainId" });
+        if (BigInt(selectedChain) !== BigInt(chain.chain_id_hex)) {
+          throw new Error("Wallet network does not match the quoted Testnet chain. No payment was sent.");
         }
 
         status.textContent = `Confirm ${pendingQuote.amount_due_usdc} Testnet USDC in your wallet...`;
@@ -386,21 +449,27 @@
           ],
         });
 
+        // Preserve proof BEFORE receipt polling or API delivery can fail.
+        pendingPayment = {
+          chain_key: chain.key,
+          tx_hash: String(txHash),
+          payer_address: payer,
+        };
+        saveRecovery();
+        quoteText.textContent = `Submitted transaction: ${pendingPayment.tx_hash}`;
         status.textContent = "Testnet USDC sent. Waiting for confirmation before retrying the same request...";
         await waitForReceipt(String(txHash));
         const retry = {
           ...pendingRequest,
-          payment: {
-            chain_key: chain.key,
-            tx_hash: String(txHash),
-            payer_address: payer,
-          },
+          payment: pendingPayment,
         };
         await executeRequest(retry);
       } catch (error) {
-        status.textContent = error.message || "Testnet payment or retry failed.";
+        status.textContent = pendingPayment
+          ? `Payment submitted (${pendingPayment.tx_hash}). ${error.message || "Verification failed."} Use Retry existing payment; do not pay again.`
+          : error.message || "Testnet payment or retry failed.";
       } finally {
-        payButton.disabled = false;
+        setBusy(false);
       }
     });
 
