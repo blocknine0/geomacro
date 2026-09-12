@@ -107,7 +107,11 @@ if (forbiddenBrowserEnv.length) {
   pass("browser source is independent of hosting-injected Supabase credentials");
 }
 
-const operationalFiles = walk("scripts").filter((path) => /\.(mjs|cjs|js|ts)$/.test(path));
+const operationalFiles = walk("scripts").filter(
+  (path) =>
+    /\.(mjs|cjs|js|ts)$/.test(path) &&
+    path !== "scripts/ops/verify-hosting-alignment.mjs",
+);
 const forbiddenOperationalEnv = [];
 for (const path of operationalFiles) {
   const value = read(path);
