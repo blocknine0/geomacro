@@ -87,37 +87,36 @@ function publicCoverage(row: {
   };
 }
 
-function publicRiskObject(object: GeomacroRiskObject) {
-  return {
-    schema_version: object.schema_version,
-    object_id: object.object_id,
-    issuer: object.issuer,
-    subject: object.subject,
-    methodology_version: object.methodology_version,
-    corridor_context: object.corridor_context ?? null,
-    risk: object.risk,
-    confidence: object.confidence,
-    attribution: object.attribution,
-    evidence: object.evidence.map((item) => ({
-      event_id: item.event_id,
-      title: item.title,
-      event_type: item.event_type,
-      severity: item.severity,
-      confidence: item.confidence,
-      direction: item.direction,
-      last_seen_at: item.last_seen_at,
-      evidence_count: item.evidence_count,
-      independent_source_count: item.independent_source_count,
-    })),
-    evidence_coverage: object.evidence_coverage,
-    evidence_summary: object.evidence_summary,
-    provenance: object.provenance,
-    verification: object.verification,
-    commercial_eligibility: object.commercial_eligibility,
-    integrity: object.integrity,
-    generated_at: object.generated_at,
-    expires_at: object.expires_at,
-  };
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function containsForbiddenPublicSourceKeys(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsForbiddenPublicSourceKeys);
+  const record = asRecord(value);
+  if (!record) return false;
+
+  for (const [key, child] of Object.entries(record)) {
+    if (/^(source_url|source_name|publisher|publisher_name|raw_payload|raw_content)$/i.test(key)) {
+      return true;
+    }
+    if (containsForbiddenPublicSourceKeys(child)) return true;
+  }
+  return false;
+}
+
+export function publicRiskObject(object: GeomacroRiskObject): GeomacroRiskObject {
+  if (containsForbiddenPublicSourceKeys(object)) {
+    throw new Error("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
+  }
+
+  // A signed GRO must be delivered byte-for-byte at the object shape level.
+  // Projecting or adding fields changes the canonical payload hash and makes
+  // the returned artifact impossible for a client to verify independently.
+  return object;
 }
 
 async function loadVerifiedRiskObject(subject: Exclude<TestnetIntelligenceSubject, { type: "global" }>) {
@@ -129,7 +128,9 @@ async function loadVerifiedRiskObject(subject: Exclude<TestnetIntelligenceSubjec
 
   if (!object) throw new Error("SIGNED_RISK_OBJECT_UNAVAILABLE");
   const verification = verifyPublicRiskObjectArtifact(object);
-  if (!verification.valid) throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  if (!verification.valid || !verification.cryptographic_valid) {
+    throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  }
   return { object, verification };
 }
 
@@ -260,7 +261,9 @@ async function riskGateBundle(
   const stored = await getRiskObjectByObjectId(result.context.risk_object_id);
   if (!stored) throw new Error("SIGNED_RISK_OBJECT_UNAVAILABLE");
   const verification = verifyPublicRiskObjectArtifact(stored);
-  if (!verification.valid) throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  if (!verification.valid || !verification.cryptographic_valid) {
+    throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  }
 
   const [structural, gri] = await Promise.all([
     structuralData(
