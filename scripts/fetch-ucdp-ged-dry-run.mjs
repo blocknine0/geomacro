@@ -2,31 +2,23 @@ const API_BASE =
   "https://ucdpapi.pcr.uu.se";
 
 const DATASET_VERSION =
-  "26.1";
+  (process.env.UCDP_CANDIDATE_VERSION ?? "26.0.7").trim();
 
 const TOKEN =
   process.env.UCDP_API_TOKEN?.trim() ??
   "";
 
-const PAGE_SIZE =
-  Number(
-    process.env.UCDP_PAGE_SIZE ??
-    "2",
-  );
+const PAGE_SIZE = 1;
 
-if (
-  !Number.isInteger(PAGE_SIZE) ||
-  PAGE_SIZE < 1 ||
-  PAGE_SIZE > 1000
-) {
+if (!/^\d{2}\.0\.\d{1,2}$/.test(DATASET_VERSION)) {
   throw new Error(
-    "UCDP_PAGE_SIZE must be an integer between 1 and 1000",
+    "UCDP_CANDIDATE_VERSION must look like 26.0.7",
   );
 }
 
 console.log({
   source:
-    "UCDP GED",
+    "UCDP Candidate Events Dataset",
 
   version:
     DATASET_VERSION,
@@ -37,23 +29,18 @@ console.log({
   token_configured:
     Boolean(TOKEN),
 
+  api_requests_planned:
+    1,
+
   mode:
     "DRY_RUN_NO_DATABASE_WRITE",
 });
 
-
 if (!TOKEN) {
-  console.log(
-    "SKIP: UCDP_API_TOKEN not configured",
+  throw new Error(
+    "UCDP_API_TOKEN not configured",
   );
-
-  console.log(
-    "PASS: TOKEN ABSENCE FAILS CLOSED WITHOUT NETWORK INGESTION",
-  );
-
-  process.exit(0);
 }
-
 
 const url =
   new URL(
@@ -71,7 +58,6 @@ url.searchParams.set(
   "1",
 );
 
-
 const response =
   await fetch(
     url,
@@ -86,7 +72,6 @@ const response =
     },
   );
 
-
 console.log({
   http_status:
     response.status,
@@ -97,20 +82,14 @@ console.log({
     ),
 });
 
-
 if (!response.ok) {
-  const body =
-    await response.text();
-
   throw new Error(
-    `UCDP request failed ${response.status}: ${body.slice(0, 300)}`,
+    `UCDP request failed with HTTP ${response.status}`,
   );
 }
 
-
 const data =
   await response.json();
-
 
 if (
   !data ||
@@ -122,7 +101,6 @@ if (
   );
 }
 
-
 if (
   !Array.isArray(
     data.Result,
@@ -133,6 +111,28 @@ if (
   );
 }
 
+if (data.Result.length !== 1) {
+  throw new Error(
+    `Expected exactly one UCDP Candidate row; received ${data.Result.length}`,
+  );
+}
+
+const first =
+  data.Result[0];
+
+for (const field of [
+  "id",
+  "country",
+  "date_start",
+  "date_end",
+  "best",
+]) {
+  if (!(field in first)) {
+    throw new Error(
+      `UCDP Candidate response missing required field: ${field}`,
+    );
+  }
+}
 
 console.log({
   total_count:
@@ -143,84 +143,20 @@ console.log({
 
   returned_rows:
     data.Result.length,
+
+  first_record_id:
+    first.id,
+
+  first_record_country:
+    first.country,
 });
 
-
-const first =
-  data.Result[0] ??
-  null;
-
-
-if (!first) {
-  throw new Error(
-    "UCDP returned no GED rows",
-  );
-}
-
-
 console.log(
-  "FIRST RECORD KEYS:",
-  Object.keys(first).sort(),
-);
-
-
-console.log(
-  "FIRST RECORD SAMPLE:",
-  {
-    id:
-      first.id,
-
-    year:
-      first.year,
-
-    country:
-      first.country,
-
-    country_id:
-      first.country_id,
-
-    date_start:
-      first.date_start,
-
-    date_end:
-      first.date_end,
-
-    type_of_violence:
-      first.type_of_violence,
-
-    conflict_new_id:
-      first.conflict_new_id,
-
-    dyad_new_id:
-      first.dyad_new_id,
-
-    best:
-      first.best,
-
-    low:
-      first.low,
-
-    high:
-      first.high,
-
-    deaths_civilians:
-      first.deaths_civilians,
-
-    latitude:
-      first.latitude,
-
-    longitude:
-      first.longitude,
-  },
-);
-
-
-console.log(
-  "PASS: UCDP GED RESPONSE SHAPE VERIFIED",
+  "PASS: UCDP CANDIDATE AUTHENTICATED API ACCESS VERIFIED",
 );
 
 console.log(
-  "PASS: DATASET VERSION PINNED TO 26.1",
+  "PASS: EXACTLY ONE UCDP API REQUEST USED",
 );
 
 console.log(
