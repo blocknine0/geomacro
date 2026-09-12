@@ -9,6 +9,7 @@ on:
       - "scripts/stress-risk-gate-core.ts"
       - "supabase/migrations/**"
       - "package.json"
+      - "package-lock.json"
       - "bun.lock"
       - ".github/workflows/security-resilience-gate.yml"
   workflow_dispatch:
@@ -26,6 +27,16 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+
+      - name: Enforce canonical Bun lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f bun.lock
+          if [[ -e package-lock.json ]]; then
+            echo "::error title=Non-canonical lockfile::package-lock.json must not be committed. Geomacro uses packageManager bun@1.4.2 and bun.lock is the canonical dependency lockfile."
+            exit 1
+          fi
 
       - name: Install locked dependencies
         run: timeout 5m bun install --frozen-lockfile
