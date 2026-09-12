@@ -106,6 +106,13 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).not.toContain("sourceUrl: row.sourceUrl");
   });
 
+  it("preserves corridor composition context in public Risk Object delivery", () => {
+    const runner = read("src/lib/testnet-intelligence-capability.server.ts");
+    expect(runner).toContain("corridor_context: object.corridor_context ?? null");
+    expect(runner).toContain("risk_object: publicRiskObject(stored)");
+    expect(runner).toContain("risk_object: publicRiskObject(object)");
+  });
+
   it("requires per-call payment proof before credit consumption and protects replay", () => {
     const payment = read("src/lib/testnet-api-payment.server.ts");
     const migration = read("supabase/migrations/912_testnet_api_pay_per_call.sql");
