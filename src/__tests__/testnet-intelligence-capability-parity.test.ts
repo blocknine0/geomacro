@@ -109,20 +109,33 @@ describe("Testnet canonical intelligence capability parity", () => {
   it("requires per-call payment proof before credit consumption and protects replay", () => {
     const payment = read("src/lib/testnet-api-payment.server.ts");
     const migration = read("supabase/migrations/912_testnet_api_pay_per_call.sql");
+    const hardening = read("supabase/migrations/913_testnet_pay_per_call_runtime_hardening.sql");
 
     expect(payment).toContain('payment_model: "pay_per_call"');
     expect(payment).toContain("verifyTestnetUsdcPayment");
     expect(payment).toContain("TESTNET_PAYER_WALLET_MISMATCH");
     expect(payment).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
     expect(payment).toContain("consumeCommercialCapability");
+    expect(payment).toContain("recordCommercialPaymentEvent");
+    expect(payment).toContain("payment_event_id: paymentEventId");
     expect(migration).toContain("testnet_usdc_payment_claim_principal_request_unique");
     expect(migration).toContain("upfront_payment_required', false");
+    expect(hardening).toContain("testnet_usdc_pay_per_call_shape_check");
+    expect(hardening).toContain("trg_align_testnet_tester_grant_metadata");
   });
 
-  it("keeps machine delivery fail-closed and source-redacted", () => {
+  it("retires the historical upfront activation RPC at the database boundary", () => {
+    const hardening = read("supabase/migrations/913_testnet_pay_per_call_runtime_hardening.sql");
+    expect(hardening).toContain("create or replace function public.activate_verified_testnet_usdc_pass");
+    expect(hardening).toContain("TESTNET_UPFRONT_ACTIVATION_RETIRED");
+    expect(hardening).toContain("from PUBLIC, anon, authenticated, service_role");
+  });
+
+  it("keeps machine delivery fail-closed, payment-linked and source-redacted", () => {
     const service = read("src/lib/testnet-intelligence-service.server.ts");
     const runner = read("src/lib/testnet-intelligence-capability.server.ts");
 
+    expect(service).toContain("payment_event_id: settlement.payment.payment_event_id");
     expect(service).toContain("raw_data_included: false");
     expect(service).toContain("private_warehouse_access: false");
     expect(service).toContain("upstream_news_source_identity_exposed: false");
