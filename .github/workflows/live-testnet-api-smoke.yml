@@ -22,12 +22,24 @@ jobs:
           set -euo pipefail
           body="$(mktemp)"
           headers="$(mktemp)"
-          code="$(curl --retry 4 --retry-all-errors --retry-delay 3 -sS -D "$headers" -o "$body" -w '%{http_code}' "$BASE_URL/testnet-access")"
-          test "$code" = "200"
-          grep -Fq 'Verify once. Pay only for the API call you use.' "$body"
-          grep -Fq '500-credit usage cap' "$body"
-          grep -Fq 'API Key + API Secret' "$body"
-          grep -Fq 'Receive HTTP 402' "$body"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -D "$headers" -o "$body" -w '%{http_code}' "$BASE_URL/testnet-access")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Testnet access page unavailable::Expected 200 from /testnet-access, got $code."
+            head -c 500 "$body" || true
+            exit 1
+          fi
+          for marker in \
+            'Verify once. Pay only for the API call you use.' \
+            '500-credit usage cap' \
+            'API Key + API Secret' \
+            'Receive HTTP 402'
+          do
+            if ! grep -Fq "$marker" "$body"; then
+              echo "::error title=Hosted Testnet page is stale::Missing marker: $marker"
+              exit 1
+            fi
+          done
           grep -Fqi 'cache-control: no-store' "$headers"
           grep -Fqi 'x-content-type-options: nosniff' "$headers"
           echo "PASS: /testnet-access is live with pay-per-call copy and security headers."
@@ -37,7 +49,8 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet-tester/config")"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet-tester/config")"
+          echo "Final HTTP status: $code"
           test "$code" = "401"
           if grep -Eqi 'receiver_address|capability_prices|gmk_test_|gms_test_' "$body"; then
             echo "::error title=Unauthenticated tester data leak::Protected Testnet config fields appeared in an unauthenticated response."
@@ -51,10 +64,11 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' \
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' \
             -H 'content-type: application/json' \
             --data '{"request_id":"live-smoke-unauth-001","capability":"gri_read","subject":{"type":"global"}}' \
             "$BASE_URL/api/testnet/intelligence")"
+          echo "Final HTTP status: $code"
           test "$code" = "401"
           grep -Fq 'COMMERCIAL_API_KEY_REQUIRED' "$body"
           if grep -Eqi 'display_score|raw_score|risk_object|payment_event_id|credits_remaining' "$body"; then
@@ -69,11 +83,12 @@ jobs:
         run: |
           set -euo pipefail
           body="$(mktemp)"
-          code="$(curl --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' \
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' \
             -H 'content-type: application/json' \
             -H 'x-geomacro-api-key: gmk_test_invalid_but_long_enough_1234567890' \
             --data '{"request_id":"live-smoke-half-auth-001","capability":"gri_read","subject":{"type":"global"}}' \
             "$BASE_URL/api/testnet/intelligence")"
+          echo "Final HTTP status: $code"
           test "$code" = "401"
           grep -Fq 'TESTNET_API_KEY_SECRET_REQUIRED' "$body"
           echo "PASS: Testnet API requires API Key + API Secret as a pair."
