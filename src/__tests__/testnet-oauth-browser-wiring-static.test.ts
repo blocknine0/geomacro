@@ -1,11 +1,12 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
+const exists = (path: string) => existsSync(join(ROOT, path));
 
-describe("Testnet tester OAuth and browser wiring", () => {
+describe("Testnet tester identity and X sharing boundary", () => {
   it("keeps the tester session in a secure HttpOnly __Host cookie", () => {
     const cookie = read("src/lib/testnet-tester-cookie.server.ts");
     const register = read("server/api/testnet-tester/register.post.ts");
@@ -18,51 +19,52 @@ describe("Testnet tester OAuth and browser wiring", () => {
     expect(register).not.toContain("session_token: result.session_token");
   });
 
-  it("integrity-protects short-lived OAuth browser state and PKCE material", () => {
-    const oauth = read("src/lib/testnet-oauth.server.ts");
-    expect(oauth).toContain("TESTNET_OAUTH_COOKIE_SECRET");
-    expect(oauth).toContain('createHmac("sha256", secret)');
-    expect(oauth).toContain("timingSafeEqual");
-    expect(oauth).toContain("httpOnly: true");
-    expect(oauth).toContain("secure: true");
-    expect(oauth).toContain('sameSite: "lax"');
-    expect(oauth).toContain("TESTNET_OAUTH_COOKIE_SECRET_TOO_SHORT");
-  });
-
-  it("uses X OAuth Authorization Code + PKCE and minimal users.read scope", () => {
-    const oauth = read("src/lib/testnet-oauth.server.ts");
-    expect(oauth).toContain("https://x.com/i/oauth2/authorize");
-    expect(oauth).toContain("https://api.x.com/2/oauth2/token");
-    expect(oauth).toContain("https://api.x.com/2/users/me");
-    expect(oauth).toContain('url.searchParams.set("scope", "users.read")');
-    expect(oauth).toContain('url.searchParams.set("code_challenge_method", "S256")');
-    expect(oauth).toContain("code_verifier: input.verifier");
-  });
-
-  it("uses Discord OAuth identify only and never persists provider tokens", () => {
-    const oauth = read("src/lib/testnet-oauth.server.ts");
-    const migration = read("supabase/migrations/906_testnet_tester_sessions.sql");
-    expect(oauth).toContain("https://discord.com/oauth2/authorize");
-    expect(oauth).toContain("https://discord.com/api/v10/oauth2/token");
-    expect(oauth).toContain("https://discord.com/api/v10/users/@me");
-    expect(oauth).toContain('url.searchParams.set("scope", "identify")');
-    expect(migration).not.toMatch(/access_token|refresh_token/i);
-  });
-
-  it("requires server session auth for legacy OAuth, retired activation and developer credential actions", () => {
+  it("removes tester email verification and social OAuth runtime routes", () => {
     for (const path of [
+      "src/lib/testnet-oauth.server.ts",
+      "src/lib/testnet-email-delivery.server.ts",
+      "src/lib/testnet-email-recovery.server.ts",
+      "server/api/testnet-tester/email-resend.post.ts",
+      "server/api/testnet-tester/email-verify.post.ts",
       "server/api/testnet-tester/oauth/x/start.get.ts",
       "server/api/testnet-tester/oauth/x/callback.get.ts",
       "server/api/testnet-tester/oauth/discord/start.get.ts",
       "server/api/testnet-tester/oauth/discord/callback.get.ts",
-      "server/api/testnet-tester/config.get.ts",
-      "server/api/testnet-tester/payment-claim.post.ts",
-      "server/api/testnet-tester/developer-key.post.ts",
-      "server/api/testnet-tester/developer-keys.get.ts",
-      "server/api/testnet-tester/developer-key-revoke.post.ts",
     ]) {
-      expect(read(path), path).toContain("requireTesterPrincipal(event)");
+      expect(exists(path), path).toBe(false);
     }
+  });
+
+  it("keeps profile plus verified wallet as the only tester identity path", () => {
+    const account = read("src/lib/testnet-tester-account.server.ts");
+    const browser = read("public/testnet-access.js");
+    const page = read("server/routes/testnet-access.get.ts");
+
+    expect(account).toContain("issueTestnetWalletChallenge");
+    expect(account).toContain("verifyTestnetWalletSignature");
+    expect(account).toContain("provision_testnet_metered_access");
+    expect(account).not.toContain("verifyTestnetTesterEmail");
+    expect(account).not.toContain("issueTesterOauthState");
+    expect(account).not.toContain("consumeTesterOauthIdentity");
+    expect(browser).toContain("personal_sign");
+    expect(browser).not.toContain("email-resend");
+    expect(browser).not.toContain("email-verify");
+    expect(browser).not.toContain("oauth/x");
+    expect(browser).not.toContain("oauth/discord");
+    expect(page).toContain("Profile + wallet");
+  });
+
+  it("uses X only as an outbound result-sharing action", () => {
+    const consoleBrowser = read("public/testnet-console.js");
+    const page = read("server/routes/testnet-access.get.ts");
+
+    expect(consoleBrowser).toContain("/api/testnet-tester/share");
+    expect(consoleBrowser).toContain("/api/testnet-tester/share-event");
+    expect(consoleBrowser).toContain('platform: "x"');
+    expect(consoleBrowser).toContain("twitter.com/intent/tweet");
+    expect(consoleBrowser).not.toContain("oauth/x");
+    expect(page).toContain("TEST → X → FEEDBACK");
+    expect(page).toContain("open one X post");
   });
 
   it("keeps upstream source identities and wallet secrets out of the browser tester bundle", () => {
