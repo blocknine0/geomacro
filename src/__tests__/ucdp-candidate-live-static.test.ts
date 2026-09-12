@@ -27,6 +27,11 @@ const sourcePolicy = readFileSync(
   "utf8",
 );
 
+const workflow = readFileSync(
+  new URL("../../.github/workflows/ucdp-candidate-sync.yml", import.meta.url),
+  "utf8",
+);
+
 describe("UCDP Candidate live evidence boundary", () => {
   it("keeps current Candidate data separate from finalized historical UCDP", () => {
     expect(migration).toContain("'ucdp_candidate'");
@@ -62,5 +67,27 @@ describe("UCDP Candidate live evidence boundary", () => {
     expect(ingest).toContain("countryIso3FromName(withoutTrailingParenthetical, registry)");
     expect(ingest).not.toContain('UCDP_MAX_UNMAPPED_ROWS ?? "89"');
     expect(ingest).not.toContain('UCDP_MAX_UNMAPPED_ROWS ?? "1"');
+  });
+
+  it("preserves provisional fatality anomalies as non-commercial PARTIAL evidence", () => {
+    expect(ingest).toContain("FATALITY_INTERVAL_NOT_ORDERED");
+    expect(ingest).toContain("BEST_COMPONENT_SUM_MISMATCH");
+    expect(ingest).toContain("fatality_interval_consistent");
+    expect(ingest).toContain("best_component_sum_consistent");
+    expect(ingest).toContain('qualityStatus === "VERIFIED" ? "VERIFIED" : "UNVERIFIED"');
+    expect(ingest).not.toContain('reason: "invalid_fatality_interval"');
+  });
+
+  it("still fails closed on malformed or negative fatality values", () => {
+    expect(ingest).toContain("function parseDeathField");
+    expect(ingest).toContain('reason: "invalid_fatality_value"');
+    expect(ingest).toContain('reason: "missing_or_invalid_best_deaths"');
+  });
+
+  it("runs the full Candidate release as a no-write PR validation", () => {
+    expect(workflow).toContain("Validate full Candidate release without database writes");
+    expect(workflow).toContain("if: github.event_name == 'pull_request'");
+    expect(workflow).toContain("run: bun scripts/ingest-ucdp-candidate-live.mjs");
+    expect(workflow).toContain("run: bun scripts/ingest-ucdp-candidate-live.mjs --write");
   });
 });

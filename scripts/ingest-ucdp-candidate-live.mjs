@@ -54,6 +54,14 @@ const retrievedAt = new Date().toISOString()
 const db = createDb()
 const registry = await loadCountryRegistry(db)
 
+function parseDeathField(value) {
+  const text = String(value ?? "").trim()
+  if (!text) return { value: null, invalid: false }
+  const numeric = Number(text)
+  const invalid = !Number.isFinite(numeric) || numeric < 0 || !Number.isInteger(numeric)
+  return { value: invalid ? null : numeric, invalid }
+}
+
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") return null
   const numeric = Number(value)
@@ -127,15 +135,14 @@ if (!rows.length) {
 const observations = []
 const rejected = []
 const seenIds = new Set()
+const intervalAnomalyRows = []
+const componentSumAnomalyRows = []
 
 for (const row of rows) {
   const eventId = String(row?.id ?? "").trim()
   const countryIso3 = eventIso3(row)
   const observedAt = isoDate(row?.date_end)
   const startAt = isoDate(row?.date_start)
-  const best = numberOrNull(row?.best)
-  const low = numberOrNull(row?.low)
-  const high = numberOrNull(row?.high)
 
   if (!eventId) {
     rejected.push({ reason: "missing_source_record_id" })
@@ -162,20 +169,84 @@ for (const row of rows) {
     continue
   }
 
-  if (best === null || best < 0) {
+  const deathFields = {
+    best: parseDeathField(row?.best),
+    low: parseDeathField(row?.low),
+    high: parseDeathField(row?.high),
+    deaths_a: parseDeathField(row?.deaths_a),
+    deaths_b: parseDeathField(row?.deaths_b),
+    deaths_civilians: parseDeathField(row?.deaths_civilians),
+    deaths_unknown: parseDeathField(row?.deaths_unknown),
+  }
+
+  const invalidDeathField = Object.entries(deathFields).find(([, parsed]) => parsed.invalid)
+  if (invalidDeathField) {
+    rejected.push({
+      reason: "invalid_fatality_value",
+      source_record_id: eventId,
+      field: invalidDeathField[0],
+    })
+    continue
+  }
+
+  const best = deathFields.best.value
+  const low = deathFields.low.value
+  const high = deathFields.high.value
+  if (best === null) {
     rejected.push({ reason: "missing_or_invalid_best_deaths", source_record_id: eventId })
     continue
   }
 
-  if (
-    (low !== null && (low < 0 || low > best)) ||
-    (high !== null && (high < 0 || best > high))
-  ) {
-    rejected.push({ reason: "invalid_fatality_interval", source_record_id: eventId })
-    continue
-  }
+  // Candidate is intentionally provisional. UCDP documents low, best and high
+  // as separate source-derived estimates and flags uncertain death coding via
+  // code_status. Do not rewrite or discard an official best estimate merely
+  // because the current monthly low/best/high ordering is temporarily
+  // inconsistent. Preserve the raw bounds, downgrade the row to PARTIAL, and
+  // keep it outside VERIFIED-only risk consumers until UCDP revises it.
+  const fatalityIntervalConsistent =
+    (low === null || low <= best) &&
+    (high === null || best <= high) &&
+    (low === null || high === null || low <= high)
+
+  const components = [
+    deathFields.deaths_a.value,
+    deathFields.deaths_b.value,
+    deathFields.deaths_civilians.value,
+    deathFields.deaths_unknown.value,
+  ]
+  const allComponentsPresent = components.every((value) => value !== null)
+  const bestComponentSumConsistent = allComponentsPresent
+    ? components.reduce((sum, value) => sum + value, 0) === best
+    : null
 
   const codeStatus = String(row?.code_status ?? "").trim()
+  const candidateQualityReasons = []
+  if (codeStatus.toLowerCase() !== "clear") {
+    candidateQualityReasons.push("CODE_STATUS_NOT_CLEAR")
+  }
+  if (!fatalityIntervalConsistent) {
+    candidateQualityReasons.push("FATALITY_INTERVAL_NOT_ORDERED")
+    intervalAnomalyRows.push({
+      source_record_id: eventId,
+      code_status: codeStatus || null,
+      low,
+      best,
+      high,
+    })
+  }
+  if (bestComponentSumConsistent === false) {
+    candidateQualityReasons.push("BEST_COMPONENT_SUM_MISMATCH")
+    componentSumAnomalyRows.push({
+      source_record_id: eventId,
+      code_status: codeStatus || null,
+      best,
+      component_sum: components.reduce((sum, value) => sum + value, 0),
+    })
+  }
+
+  const qualityStatus = candidateQualityReasons.length === 0 ? "VERIFIED" : "PARTIAL"
+  const commercialEligibilityStatus =
+    qualityStatus === "VERIFIED" ? "VERIFIED" : "UNVERIFIED"
 
   observations.push(
     buildObservation({
@@ -207,10 +278,16 @@ for (const row of rows) {
         code_status: codeStatus || null,
         date_start: startAt,
         date_end: observedAt,
+        deaths_best: best,
         deaths_low: low,
         deaths_high: high,
-        deaths_civilians: numberOrNull(row?.deaths_civilians),
-        deaths_unknown: numberOrNull(row?.deaths_unknown),
+        deaths_a: deathFields.deaths_a.value,
+        deaths_b: deathFields.deaths_b.value,
+        deaths_civilians: deathFields.deaths_civilians.value,
+        deaths_unknown: deathFields.deaths_unknown.value,
+        fatality_interval_consistent: fatalityIntervalConsistent,
+        best_component_sum_consistent: bestComponentSumConsistent,
+        candidate_quality_reasons: candidateQualityReasons,
         latitude: numberOrNull(row?.latitude),
         longitude: numberOrNull(row?.longitude),
         country_id_gw: row?.country_id || null,
@@ -219,8 +296,8 @@ for (const row of rows) {
         candidate_status: "PROVISIONAL_UNTIL_FINAL_ANNUAL_GED",
       },
       rawPayload: row,
-      qualityStatus: codeStatus.toLowerCase() === "clear" ? "VERIFIED" : "PARTIAL",
-      commercialEligibilityStatus: "VERIFIED",
+      qualityStatus,
+      commercialEligibilityStatus,
     }),
   )
 }
@@ -237,7 +314,14 @@ if (unmapped.length > MAX_UNMAPPED_ROWS) {
 
 if (otherRejected > 0) {
   console.error("REJECTED SAMPLE", rejected.slice(0, 25))
-  throw new Error(`${otherRejected} UCDP rows failed validation; no database write performed`)
+  throw new Error(`${otherRejected} UCDP rows failed structural validation; no database write performed`)
+}
+
+if (intervalAnomalyRows.length) {
+  console.warn("UCDP PROVISIONAL FATALITY INTERVAL SAMPLE", intervalAnomalyRows.slice(0, 25))
+}
+if (componentSumAnomalyRows.length) {
+  console.warn("UCDP PROVISIONAL COMPONENT SUM SAMPLE", componentSumAnomalyRows.slice(0, 25))
 }
 
 const attempted = WRITE ? await upsertObservations(db, observations) : 0
@@ -247,7 +331,10 @@ console.log({
   dataset_version: VERSION,
   download_rows: rows.length,
   normalized_observations: observations.length,
+  verified_quality_rows: observations.filter((row) => row.quality_status === "VERIFIED").length,
   partial_quality_rows: observations.filter((row) => row.quality_status === "PARTIAL").length,
+  interval_anomaly_rows: intervalAnomalyRows.length,
+  component_sum_anomaly_rows: componentSumAnomalyRows.length,
   rejected_rows: rejected.length,
   observations_attempted: attempted,
   write_enabled: WRITE,
