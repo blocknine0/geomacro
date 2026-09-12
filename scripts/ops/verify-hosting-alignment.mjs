@@ -5,6 +5,7 @@ import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
 const EXPECTED_SUPABASE_REF = "ldpwajisioljyjtojvfx";
+const ALIGNMENT_CONTRACT = "github-main-external-supabase-lovable-v1";
 
 function read(path) {
   return readFileSync(join(ROOT, path), "utf8");
@@ -53,6 +54,12 @@ const pkg = JSON.parse(read("package.json"));
 if (pkg.packageManager !== "bun@1.4.2") fail("packageManager must remain bun@1.4.2");
 else pass("Bun toolchain is pinned");
 
+if (pkg.scripts?.["hosting:verify"] !== "node scripts/ops/verify-hosting-alignment.mjs") {
+  fail("package.json must expose the canonical hosting:verify command");
+} else {
+  pass("hosting alignment has a stable local/CI command");
+}
+
 if (!pkg.devDependencies?.["@lovable.dev/vite-tanstack-config"]) {
   fail("Lovable TanStack Vite compatibility package is missing");
 } else {
@@ -82,7 +89,11 @@ if (!env.includes(EXPECTED_SUPABASE_REF)) {
   pass("runtime Supabase env contract is documented");
 }
 
-const browserFiles = walk("src").filter((path) => /\.(ts|tsx|js|jsx)$/.test(path));
+const browserFiles = walk("src").filter(
+  (path) =>
+    /\.(ts|tsx|js|jsx)$/.test(path) &&
+    !path.includes("/__tests__/"),
+);
 const forbiddenBrowserEnv = [];
 for (const path of browserFiles) {
   const value = read(path);
@@ -140,7 +151,10 @@ for (const path of [
 }
 pass("diagnostic scripts use server-only Supabase credentials");
 
-requireText("src/routes/api.health.ts", 'service:\n                "geomacro"', "stable health endpoint");
+requireText("src/routes/api.health.ts", ALIGNMENT_CONTRACT, "deployment alignment contract");
+requireText("src/routes/api.health.ts", EXPECTED_SUPABASE_REF, "authoritative Supabase project marker");
+requireText(".github/workflows/live-testnet-api-smoke.yml", ALIGNMENT_CONTRACT, "live alignment smoke marker");
+requireText("docs/HOSTING_ALIGNMENT.md", "Publish changes", "zero-credit publish workflow");
 
 if (!process.exitCode) {
   console.log("\nPASS: GitHub source, Lovable-compatible build, browser data boundary and authoritative Supabase runtime are aligned.");
