@@ -6,6 +6,7 @@ import { requireRiskSupabase } from "./risk-supabase.server";
 import { STRUCTURED_DATA_REGISTRY_VERSION } from "./structured-data-entitlement-registry";
 
 const TESTNET_SIWE_DOMAIN = "geomacro.live";
+const TESTNET_SIWE_URI = "https://geomacro.live/testnet-access";
 const TESTNET_SIWE_TTL_MS = 5 * 60 * 1000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const TERMS_VERSION = "testnet-terms-v4-wallet-first-siwe";
@@ -20,6 +21,12 @@ function canonicalAddress(value: string) {
   return address;
 }
 
+function canonicalChainId(value: unknown) {
+  const chainId = Number(value);
+  if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error("TESTNET_SIGNIN_CHAIN_INVALID");
+  return chainId;
+}
+
 function profileName(value: string | undefined, walletAddress: string) {
   const supplied = String(value ?? "").trim();
   if (supplied) {
@@ -29,8 +36,27 @@ function profileName(value: string | undefined, walletAddress: string) {
   return `Tester ${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
 }
 
-export function buildTestnetDeveloperSiweMessage(address: string, nonce: string, issuedAt: number) {
-  return `${TESTNET_SIWE_DOMAIN} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to Geomacro Testnet Developer Access. This signature does not authorize funds or transactions.\n\nNonce: ${nonce}\nIssued At: ${issuedAt}`;
+export function buildTestnetDeveloperSiweMessage(
+  address: string,
+  nonce: string,
+  issuedAt: number,
+  chainId: number,
+) {
+  const issuedAtIso = new Date(issuedAt).toISOString();
+  const expiresAtIso = new Date(issuedAt + TESTNET_SIWE_TTL_MS).toISOString();
+  return [
+    `${TESTNET_SIWE_DOMAIN} wants you to sign in with your Ethereum account:`,
+    address,
+    "",
+    "Sign in to Geomacro Testnet Developer Access. This signature does not authorize funds or transactions.",
+    "",
+    `URI: ${TESTNET_SIWE_URI}`,
+    "Version: 1",
+    `Chain ID: ${chainId}`,
+    `Nonce: ${nonce}`,
+    `Issued At: ${issuedAtIso}`,
+    `Expiration Time: ${expiresAtIso}`,
+  ].join("\n");
 }
 
 async function provisionTestnetMeteredAccess(principalId: string) {
@@ -121,9 +147,13 @@ async function createWalletFirstProfile(walletAddress: string, requestedProfileN
   return inserted.data;
 }
 
-export async function issueTestnetDeveloperWalletChallenge(walletAddressInput: string) {
+export async function issueTestnetDeveloperWalletChallenge(
+  walletAddressInput: string,
+  chainIdInput: unknown,
+) {
   const db = requireRiskSupabase();
   const walletAddress = canonicalAddress(walletAddressInput);
+  const chainId = canonicalChainId(chainIdInput);
   const nonce = randomBytes(32).toString("hex");
   const issuedAt = Date.now();
   const expiresAt = new Date(issuedAt + TESTNET_SIWE_TTL_MS).toISOString();
@@ -142,15 +172,17 @@ export async function issueTestnetDeveloperWalletChallenge(walletAddressInput: s
 
   return {
     wallet_address: walletAddress,
+    chain_id: chainId,
     nonce,
     issued_at: issuedAt,
     expires_at: expiresAt,
-    message: buildTestnetDeveloperSiweMessage(walletAddress, nonce, issuedAt),
+    message: buildTestnetDeveloperSiweMessage(walletAddress, nonce, issuedAt, chainId),
   } as const;
 }
 
 export async function authenticateTestnetDeveloperWallet(input: {
   walletAddress: string;
+  chainId: unknown;
   nonce: string;
   issuedAt: number;
   message: string;
@@ -159,13 +191,19 @@ export async function authenticateTestnetDeveloperWallet(input: {
 }) {
   const db = requireRiskSupabase();
   const walletAddress = canonicalAddress(input.walletAddress);
+  const chainId = canonicalChainId(input.chainId);
   const issuedAt = Number(input.issuedAt);
   const age = Date.now() - issuedAt;
   if (!Number.isFinite(issuedAt) || issuedAt <= 0 || age < 0 || age > TESTNET_SIWE_TTL_MS) {
     throw new Error("TESTNET_SIGNIN_CHALLENGE_EXPIRED");
   }
 
-  const expectedMessage = buildTestnetDeveloperSiweMessage(walletAddress, String(input.nonce ?? ""), issuedAt);
+  const expectedMessage = buildTestnetDeveloperSiweMessage(
+    walletAddress,
+    String(input.nonce ?? ""),
+    issuedAt,
+    chainId,
+  );
   if (input.message !== expectedMessage) throw new Error("TESTNET_SIGNIN_MESSAGE_MISMATCH");
 
   let recovered: string;
