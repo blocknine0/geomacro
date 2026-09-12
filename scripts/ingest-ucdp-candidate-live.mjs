@@ -27,6 +27,7 @@ const WRITE = process.argv.includes("--write")
 // live country registry.
 const UCDP_GW_COUNTRY_ID_TO_ISO3 = Object.freeze({
   "490": "COD", // DR Congo (Zaire)
+  "640": "TUR", // Turkey
   "775": "MMR", // Myanmar (Burma)
 })
 
