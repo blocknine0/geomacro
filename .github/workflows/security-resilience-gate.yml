@@ -11,6 +11,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "bun.lock"
+      - "docs/security/DEPENDENCY_EXCEPTIONS.md"
       - ".github/workflows/security-resilience-gate.yml"
   workflow_dispatch:
 
@@ -22,37 +23,73 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
-      - uses: oven-sh/setup-bun@v2
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.2
+          bun-version: "1.4.2"
 
-      - name: Enforce canonical Bun lockfile
+      - name: Enforce canonical dependency contract
         shell: bash
         run: |
           set -euo pipefail
           test -f bun.lock
           if [[ -e package-lock.json ]]; then
-            echo "::error title=Non-canonical lockfile::package-lock.json must not be committed. Geomacro uses packageManager bun@1.4.2 and bun.lock is the canonical dependency lockfile."
+            echo "::error title=Non-canonical lockfile::package-lock.json must not be committed. Geomacro uses bun@1.4.2 and bun.lock as the canonical dependency lockfile."
             exit 1
           fi
+          bun -e '
+            const p = await Bun.file("package.json").json();
+            if (p.packageManager !== "bun@1.4.2") throw new Error("packageManager must remain bun@1.4.2");
+            if (p.overrides?.toml !== "4.2.0") throw new Error("toml override must remain patched at 4.2.0");
+            if (p.overrides?.["stream-json"] !== "3.5.0") throw new Error("stream-json override must remain patched at 3.5.0");
+          '
 
       - name: Install locked dependencies
         run: timeout 5m bun install --frozen-lockfile
 
-      - name: Block critical dependency advisories
-        run: timeout 3m bun audit --audit-level=critical
-
-      - name: Capture full dependency-audit evidence
-        continue-on-error: true
+      - name: Enforce dependency advisory policy
         shell: bash
         run: |
           set +e
           timeout 3m bun audit 2>&1 | tee dependency-audit.txt
-          code=${PIPESTATUS[0]}
-          echo "bun_audit_exit=${code}" | tee -a dependency-audit.txt
-          exit 0
+          audit_code=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$audit_code" -eq 0 ]]; then
+            echo "PASS: canonical dependency graph has no known advisories."
+            exit 0
+          fi
+
+          today="$(date -u +%F)"
+          expiry="2026-10-12"
+          if [[ "$today" > "$expiry" ]]; then
+            echo "::error title=Dependency exception expired::The elliptic upstream exception expired on ${expiry}. Re-review or remove it before release."
+            exit 1
+          fi
+
+          if ! grep -Fq 'elliptic@6.6.1' dependency-audit.txt || \
+             ! grep -Fq 'GHSA-848j-6mx2-7j84' dependency-audit.txt || \
+             ! grep -Fq '1 vulnerability (1 low)' dependency-audit.txt; then
+            echo "::error title=Unexpected dependency advisory::Only the documented elliptic@6.6.1 low advisory may remain temporarily."
+            exit 1
+          fi
+
+          if grep -Eqi '(^|[[:space:]])(critical|high|moderate):|^[[:alnum:]@._/-]+@[0-9].*$' dependency-audit.txt; then
+            package_headers="$(grep -Ec '^[[:alnum:]@._/-]+@[0-9]' dependency-audit.txt || true)"
+            if [[ "$package_headers" -ne 1 ]]; then
+              echo "::error title=Additional dependency advisory::Expected exactly one vulnerable package entry, found ${package_headers}."
+              exit 1
+            fi
+            if grep -Eqi '(^|[[:space:]])(critical|high|moderate):' dependency-audit.txt; then
+              echo "::error title=Dependency severity gate::Critical, high, or moderate advisories are not permitted."
+              exit 1
+            fi
+          fi
+
+          echo "PASS with bounded exception: GHSA-848j-6mx2-7j84 is the only residual advisory; exception expires ${expiry}."
 
       - name: Risk Gate abuse and fail-closed tests
         run: >-
@@ -74,7 +111,7 @@ jobs:
 
       - name: Upload security and resilience evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: security-resilience-${{ github.run_id }}
           path: |
