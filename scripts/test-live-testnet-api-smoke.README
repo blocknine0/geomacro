@@ -1,0 +1,1 @@
+This live smoke is intentionally non-transactional. It validates hosted route availability and unauthenticated fail-closed boundaries only. Real-wallet signing and Testnet USDC settlement are performed separately as evidence-backed live E2E.
