@@ -15,6 +15,10 @@ export const COMMERCIAL_SOURCE_POLICY = Object.freeze({
     allowed_statuses: Object.freeze(["VERIFIED"]),
     reviewed_on: "2026-09-10",
   }),
+  ucdp_candidate: Object.freeze({
+    allowed_statuses: Object.freeze(["VERIFIED"]),
+    reviewed_on: "2026-09-12",
+  }),
   usgs_mcs: Object.freeze({
     allowed_statuses: Object.freeze(["VERIFIED"]),
     reviewed_on: "2026-09-10",
