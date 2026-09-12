@@ -9,6 +9,7 @@ describe("live Testnet API smoke contract", () => {
   it("checks the hosted access page and unauthenticated fail-closed boundaries without moving funds", () => {
     const workflow = read(".github/workflows/live-testnet-api-smoke.yml");
     const script = read("scripts/test-live-testnet-api-smoke.mjs");
+    const accessPage = read("server/routes/testnet-access.get.ts");
 
     expect(workflow).toContain("https://geomacro.live");
     expect(workflow).toContain("/testnet-access");
@@ -17,6 +18,11 @@ describe("live Testnet API smoke contract", () => {
     expect(workflow).toContain("COMMERCIAL_API_KEY_REQUIRED");
     expect(workflow).toContain("TESTNET_API_KEY_SECRET_REQUIRED");
     expect(workflow).not.toContain("private key");
+
+    const currentMarker = "Test Geomacro intelligence and create your own API credentials.";
+    expect(accessPage).toContain(currentMarker);
+    expect(script).toContain(currentMarker);
+    expect(script).not.toContain("Verify once. Pay only for the API call you use.");
 
     expect(script).toContain("wallet signature");
     expect(script).toContain("Testnet USDC settlement");
