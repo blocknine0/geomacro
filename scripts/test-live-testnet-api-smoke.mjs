@@ -18,7 +18,7 @@ function assert(condition, message) {
 const access = await request("/testnet-access");
 assert(access.response.status === 200, `/testnet-access expected 200, got ${access.response.status}`);
 for (const marker of [
-  "Verify once. Pay only for the API call you use.",
+  "Test Geomacro intelligence and create your own API credentials.",
   "500-credit usage cap",
   "API Key + API Secret",
   "Receive HTTP 402",

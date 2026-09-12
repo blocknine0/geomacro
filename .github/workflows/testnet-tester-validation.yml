@@ -64,6 +64,7 @@ jobs:
           src/__tests__/testnet-developer-access-static.test.ts
           src/__tests__/testnet-tester-account-runtime-static.test.ts
           src/__tests__/testnet-credential-payment-e2e.test.ts
+          src/__tests__/testnet-credential-bridge-runtime.test.ts
 
       - name: Migration safety
         run: timeout 3m bun run db:safety
