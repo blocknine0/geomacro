@@ -64,6 +64,36 @@ describe("testnet tester account runtime boundaries", () => {
     expect(runtime).toContain("WALLET_CHALLENGE_MESSAGE_MISMATCH");
   });
 
+  it("does not consume a signed challenge before identity persistence and entitlement provisioning", () => {
+    const runtime = read("../lib/testnet-tester-account.server.ts");
+    const verifyStart = runtime.indexOf("export async function verifyTestnetWalletSignature");
+    const verifyEnd = runtime.indexOf("export async function loadTestnetTesterAccount");
+    const verify = runtime.slice(verifyStart, verifyEnd);
+    expect(verify).toContain("await provisionTestnetMeteredAccess(input.principalId)");
+    expect(verify).toContain('.update({ consumed_at: now })');
+    expect(verify.indexOf("await provisionTestnetMeteredAccess(input.principalId)")).toBeLessThan(
+      verify.indexOf('.update({ consumed_at: now })'),
+    );
+    expect(verify.indexOf('wallet_verified_at: now')).toBeLessThan(
+      verify.indexOf("await provisionTestnetMeteredAccess(input.principalId)"),
+    );
+  });
+
+  it("self-heals a verified wallet left in pending_verification", () => {
+    const runtime = read("../lib/testnet-tester-account.server.ts");
+    const account = runtime.slice(runtime.indexOf("export async function loadTestnetTesterAccount"));
+    expect(account).toContain('p.access_status === "pending_verification"');
+    expect(account).toContain("await provisionTestnetMeteredAccess(principalId)");
+    expect(account).toContain("recovery_required: recoveryRequired");
+  });
+
+  it("maps wallet verification failures to safe public codes", () => {
+    const route = read("../../server/api/testnet-tester/wallet-verify.post.ts");
+    expect(route).toContain("publicWalletVerificationCode");
+    expect(route).toContain("WALLET_VERIFICATION_FAILED");
+    expect(route).toContain("statusMessage: code");
+  });
+
   it("keeps developer credentials tied to active testnet entitlements and returns the secret once", () => {
     const route = read("../../server/api/testnet-tester/developer-key.post.ts");
     const service = read("../lib/testnet-developer-access.server.ts");
