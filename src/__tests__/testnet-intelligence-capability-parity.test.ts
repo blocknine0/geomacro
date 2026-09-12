@@ -106,11 +106,16 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).not.toContain("sourceUrl: row.sourceUrl");
   });
 
-  it("preserves corridor composition context in public Risk Object delivery", () => {
+  it("delivers the canonical signed Risk Object without invalidating its payload hash", () => {
     const runner = read("src/lib/testnet-intelligence-capability.server.ts");
-    expect(runner).toContain("corridor_context: object.corridor_context ?? null");
+    expect(runner).toContain("export function publicRiskObject");
+    expect(runner).toContain("return object;");
+    expect(runner).toContain("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
+    expect(runner).toContain("!verification.valid || !verification.cryptographic_valid");
     expect(runner).toContain("risk_object: publicRiskObject(stored)");
     expect(runner).toContain("risk_object: publicRiskObject(object)");
+    expect(runner).not.toContain("corridor_context: object.corridor_context ?? null");
+    expect(runner).not.toContain("evidence: object.evidence.map");
   });
 
   it("requires per-call payment proof before credit consumption and protects replay", () => {
@@ -149,5 +154,6 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(service).toContain("execution_authorized: false");
     expect(runner).toContain("upstream_source_urls_exposed: false");
     expect(runner).toContain("public_verification");
+    expect(runner).toContain("containsForbiddenPublicSourceKeys");
   });
 });
