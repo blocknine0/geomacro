@@ -31,6 +31,9 @@ function projectRefOf(url: string): string | null {
 }
 
 function sha256(value: string): string {
+  // COMMERCIAL_PILOT_API_KEY is an opaque API bearer credential managed as a secret,
+  // not a user password. Its deterministic digest is the database lookup identifier.
+  // codeql[js/insufficient-password-hash]
   return createHash("sha256").update(value).digest("hex");
 }
 
