@@ -4,6 +4,8 @@
 
 Geomacro uses three deliberately separated layers:
 
+GitHub `main` remains the application source authority; in this project that means `blocknine0/geomacro:main`.
+
 1. **GitHub `blocknine0/geomacro` `main`** is the application source authority. Code, routes, UI, server handlers, tests and deployment contracts are changed through reviewed GitHub branches and pull requests.
 2. **External Supabase project `ldpwajisioljyjtojvfx`** is the production application database authority. Lovable Cloud or hosting-injected Supabase projects must never silently replace it.
 3. **Lovable hosting** is the frontend/SSR hosting surface. The existing Lovable project is linked to the Lovable-created GitHub repository `blocknine0/geomacro-160c8e56`, so canonical `main` is mirrored one way into that repository before Lovable picks up the change.
