@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/__tests__/goat-*'
+      - 'public/goat-test-dashboard.html'
       - 'scripts/goat/run-acceptance-window.sh'
       - 'scripts/goat/testnet3-provider-dry-run.mjs'
       - '.github/workflows/goat-acceptance-windows.yml'
