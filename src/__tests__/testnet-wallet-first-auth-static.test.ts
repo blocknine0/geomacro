@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 const auth = read("src/lib/testnet-wallet-first-auth.server.ts");
+const originGuard = read("src/lib/testnet-origin-guard.server.ts");
 const challenge = read("server/api/testnet-tester/auth-challenge.post.ts");
 const verify = read("server/api/testnet-tester/auth-verify.post.ts");
 const browser = read("public/testnet-wallet-first.js");
@@ -31,6 +32,17 @@ describe("wallet-first Testnet developer onboarding", () => {
     expect(browser).toContain("chain_id: chainId");
     expect(siweMigration).toContain("consumed_at is null");
     expect(siweMigration).toContain("expires_at > now()");
+  });
+
+  it("requires same-origin browser authentication before challenge or verification", () => {
+    expect(originGuard).toContain('getHeader(event, "origin")');
+    expect(originGuard).toContain('getHeader(event, "host")');
+    expect(originGuard).toContain("TESTNET_AUTH_ORIGIN_REQUIRED");
+    expect(originGuard).toContain("TESTNET_AUTH_ORIGIN_FORBIDDEN");
+    expect(challenge).toContain("assertTestnetAuthSameOrigin(event)");
+    expect(verify).toContain("assertTestnetAuthSameOrigin(event)");
+    expect(challenge).toContain("forbidden ? 403 : 400");
+    expect(verify).toContain("forbidden ? 403 : 400");
   });
 
   it("resumes an existing wallet account and creates only when the wallet is new", () => {
