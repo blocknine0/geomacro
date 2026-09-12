@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Plan validates only UCDP 053/054 are pending. Apply inserts those two migrations into production history."
+        description: "Plan validates the exact reviewed pending migration set. Apply pushes only that validated set to production."
         required: true
         default: plan
         type: choice
         options:
           - plan
           - apply
+
   pull_request:
     paths:
       - ".github/workflows/apply-ucdp-production-migrations.yml"
@@ -23,35 +24,46 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Validate UCDP migration safety guardrails
+      - name: Validate production migration safety guardrails
         shell: bash
         run: |
           set -euo pipefail
+
           file=".github/workflows/apply-ucdp-production-migrations.yml"
+
           grep -q 'workflow_dispatch:' "$file"
           grep -q -- '--include-all' "$file"
+
           grep -q '053_ucdp_candidate_live_ingest.sql' "$file"
           grep -q '054_ucdp_candidate_transport_alignment.sql' "$file"
+          grep -q '912_testnet_api_pay_per_call.sql' "$file"
+          grep -q '913_testnet_pay_per_call_runtime_hardening.sql' "$file"
+
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'SUPABASE_DB_URL' "$file"
           grep -q '2>&1 | tee /tmp/ucdp-migration-plan.txt' "$file"
-          echo "UCDP production migration guardrails are present."
+          grep -q '2>&1 | tee /tmp/ucdp-postcheck.txt' "$file"
+
+          echo "Production migration guardrails are present."
 
   migrate:
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
+
     concurrency:
       group: ucdp-production-migrations
       cancel-in-progress: false
+
     env:
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
@@ -67,14 +79,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           if [[ -z "${SUPABASE_PROJECT_ID:-}" ]]; then
             echo "::error title=Missing production secret::SUPABASE_PROJECT_ID is not configured."
             exit 1
           fi
+
           if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
             echo "::error title=Missing production secret::SUPABASE_DB_URL is not configured."
             exit 1
           fi
+
           if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
             echo "::error title=Wrong production target::Refusing to touch any Supabase project other than the authoritative Geomacro production ref."
             exit 1
@@ -83,21 +98,41 @@ jobs:
           node <<'NODE'
           const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
           const raw = process.env.SUPABASE_DB_URL;
+
           const url = new URL(raw);
+
           if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
-            throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
+            throw new Error(
+              'SUPABASE_DB_URL must use postgres:// or postgresql://'
+            );
           }
+
           const directHost = `db.${ref}.supabase.co`;
           const poolerHost = url.hostname.endsWith('.pooler.supabase.com');
-          const directMatch = url.hostname === directHost && url.username === 'postgres';
-          const poolerMatch = poolerHost && url.username === `postgres.${ref}`;
+
+          const directMatch =
+            url.hostname === directHost &&
+            url.username === 'postgres';
+
+          const poolerMatch =
+            poolerHost &&
+            url.username === `postgres.${ref}`;
+
           if (!directMatch && !poolerMatch) {
-            throw new Error('SUPABASE_DB_URL does not resolve to the authoritative Geomacro project.');
+            throw new Error(
+              'SUPABASE_DB_URL does not resolve to the authoritative Geomacro project.'
+            );
           }
+
           if (!url.password || url.pathname !== '/postgres') {
-            throw new Error('SUPABASE_DB_URL must contain a password and target /postgres');
+            throw new Error(
+              'SUPABASE_DB_URL must contain a password and target /postgres'
+            );
           }
-          console.log('PASS: authoritative production database identity confirmed.');
+
+          console.log(
+            'PASS: authoritative production database identity confirmed.'
+          );
           NODE
 
       - name: Install pinned Supabase CLI
@@ -105,51 +140,85 @@ jobs:
         with:
           version: 2.117.0
 
-      - name: Show out-of-order migration plan
+      - name: Show guarded production migration plan
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run --include-all 2>&1 | tee /tmp/ucdp-migration-plan.txt
 
-      - name: Fail closed unless only UCDP 053 and 054 are pending
+          supabase db push \
+            --db-url "$SUPABASE_DB_URL" \
+            --dry-run \
+            --include-all \
+            2>&1 | tee /tmp/ucdp-migration-plan.txt
+
+      - name: Fail closed unless exact reviewed migration set is pending
         shell: bash
         run: |
           set -euo pipefail
-          grep -Eo '[0-9]{3}_[A-Za-z0-9_]+\.sql' /tmp/ucdp-migration-plan.txt | sort -u > /tmp/ucdp-pending.txt || true
+
+          grep -Eo '[0-9]{3}_[A-Za-z0-9_]+\.sql' \
+            /tmp/ucdp-migration-plan.txt \
+            | sort -u \
+            > /tmp/ucdp-pending.txt || true
+
           cat > /tmp/ucdp-expected.txt <<'EOF'
           053_ucdp_candidate_live_ingest.sql
           054_ucdp_candidate_transport_alignment.sql
+          912_testnet_api_pay_per_call.sql
+          913_testnet_pay_per_call_runtime_hardening.sql
           EOF
-          sort -u /tmp/ucdp-expected.txt -o /tmp/ucdp-expected.txt
+
+          sort -u /tmp/ucdp-expected.txt \
+            -o /tmp/ucdp-expected.txt
 
           echo "Pending migration files detected:"
           cat /tmp/ucdp-pending.txt
 
-          if ! diff -u /tmp/ucdp-expected.txt /tmp/ucdp-pending.txt; then
-            echo "::error title=Unexpected migration set::Refusing to apply. Expected exactly UCDP migrations 053 and 054."
+          if ! diff -u \
+            /tmp/ucdp-expected.txt \
+            /tmp/ucdp-pending.txt
+          then
+            echo "::error title=Unexpected migration set::Refusing to apply. Expected exactly migrations 053, 054, 912 and 913."
             exit 1
           fi
-          echo "PASS: pending migration set is exactly UCDP 053 and 054."
+
+          echo "PASS: pending migration set is exactly 053, 054, 912 and 913."
 
       - name: Stop after plan
         if: ${{ inputs.mode == 'plan' }}
-        run: echo "Plan validated. No production database changes were applied."
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Plan validated. No production database changes were applied."
 
-      - name: Apply only validated UCDP migrations
+      - name: Apply validated production migrations
         if: ${{ inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --include-all
 
-      - name: Verify UCDP migrations are no longer pending
+          supabase db push \
+            --db-url "$SUPABASE_DB_URL" \
+            --include-all
+
+      - name: Verify validated migrations are no longer pending
         if: ${{ inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run --include-all 2>&1 | tee /tmp/ucdp-postcheck.txt
-          if grep -Eq '053_ucdp_candidate_live_ingest\.sql|054_ucdp_candidate_transport_alignment\.sql' /tmp/ucdp-postcheck.txt; then
-            echo "::error title=UCDP migration post-check failed::053 or 054 is still pending."
+
+          supabase db push \
+            --db-url "$SUPABASE_DB_URL" \
+            --dry-run \
+            --include-all \
+            2>&1 | tee /tmp/ucdp-postcheck.txt
+
+          if grep -Eq \
+            '053_ucdp_candidate_live_ingest\.sql|054_ucdp_candidate_transport_alignment\.sql|912_testnet_api_pay_per_call\.sql|913_testnet_pay_per_call_runtime_hardening\.sql' \
+            /tmp/ucdp-postcheck.txt
+          then
+            echo "::error title=Production migration post-check failed::One or more validated migrations are still pending."
             exit 1
           fi
-          echo "PASS: UCDP 053 and 054 are recorded as applied."
+
+          echo "PASS: migrations 053, 054, 912 and 913 are recorded as applied."
