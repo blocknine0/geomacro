@@ -21,6 +21,13 @@ const VERSION = (process.env.UCDP_CANDIDATE_VERSION ?? "26.0.7").trim()
 const MAX_UNMAPPED_ROWS = Number(process.env.UCDP_MAX_UNMAPPED_ROWS ?? "0")
 const WRITE = process.argv.includes("--write")
 
+// UCDP uses Gleditsch-Ward country identifiers. Keep source-specific aliases
+// explicit and narrow instead of weakening the shared country-name resolver.
+// UCDP country_id 490 is the Democratic Republic of the Congo (Zaire).
+const UCDP_GW_COUNTRY_ID_TO_ISO3 = Object.freeze({
+  "490": "COD",
+})
+
 if (!/^\d{2}\.0\.\d{1,2}$/.test(VERSION)) {
   throw new Error("UCDP_CANDIDATE_VERSION must look like 26.0.7")
 }
@@ -60,6 +67,13 @@ function eventIso3(row) {
     const direct = normalizeIso3(value)
     if (direct && registry.byIso3.has(direct)) return direct
   }
+
+  const countryId = String(row?.country_id ?? "").trim()
+  const mappedFromCountryId = UCDP_GW_COUNTRY_ID_TO_ISO3[countryId] ?? null
+  if (mappedFromCountryId && registry.byIso3.has(mappedFromCountryId)) {
+    return mappedFromCountryId
+  }
+
   return countryIso3FromName(String(row?.country ?? ""), registry)
 }
 
