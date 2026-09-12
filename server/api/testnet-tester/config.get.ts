@@ -8,9 +8,12 @@ import {
 import {
   TESTNET_API_CREDIT_PRICE_USDC,
   TESTNET_API_FIXED_CREDITS,
-  TESTNET_API_FIXED_QUOTA_USDC,
   TESTNET_API_PRICING_VERSION,
 } from "../../../src/lib/testnet-api-pricing";
+import {
+  TESTNET_INTELLIGENCE_CAPABILITIES,
+  TESTNET_INTELLIGENCE_PRICE_TABLE,
+} from "../../../src/lib/testnet-intelligence-contract";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
 
 export default defineEventHandler(async (event) => {
@@ -26,10 +29,13 @@ export default defineEventHandler(async (event) => {
       data: {
         receiver_address: requireTestnetUsdcReceiver(),
         credit_price_usdc: TESTNET_API_CREDIT_PRICE_USDC,
-        quota_price_usdc: TESTNET_API_FIXED_QUOTA_USDC,
-        credits: TESTNET_API_FIXED_CREDITS,
+        max_credits_per_30_days: TESTNET_API_FIXED_CREDITS,
         duration_days: TESTNET_USDC_ACCESS_DURATION_DAYS,
         pricing_version: TESTNET_API_PRICING_VERSION,
+        payment_model: "pay_per_call",
+        upfront_payment_required: false,
+        capabilities: TESTNET_INTELLIGENCE_CAPABILITIES,
+        capability_prices: TESTNET_INTELLIGENCE_PRICE_TABLE,
         chains: Object.values(TESTNET_USDC_ACCESS_CHAINS),
         payment_environment: "testnet",
         commercial_revenue: false,

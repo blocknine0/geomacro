@@ -5,6 +5,7 @@ export type CommercialEnvironment = "testnet" | "mainnet" | "fiat" | "sandbox" |
 export type CommercialAccessSurface =
   | "public_web"
   | "free_api"
+  | "testnet_tester"
   | "paid_dashboard"
   | "commercial_api"
   | "agent_payment"
@@ -217,7 +218,6 @@ export async function publishCommercialProofSnapshot(input: {
   const allowedEnvironments = new Set(input.environment_scope);
   const usage = dashboard.usage_rollup.filter((row: any) => allowedEnvironments.has(row.environment));
   const payments = dashboard.payment_rollup.filter((row: any) => allowedEnvironments.has(row.environment));
-
   const payload = {
     proof_version: "commercial-proof-v1",
     generated_at: new Date().toISOString(),

@@ -49,7 +49,7 @@ describe("Testnet tester OAuth and browser wiring", () => {
     expect(migration).not.toMatch(/access_token|refresh_token/i);
   });
 
-  it("requires server session auth for OAuth, payment and developer credential actions", () => {
+  it("requires server session auth for legacy OAuth, retired activation and developer credential actions", () => {
     for (const path of [
       "server/api/testnet-tester/oauth/x/start.get.ts",
       "server/api/testnet-tester/oauth/x/callback.get.ts",
@@ -69,7 +69,8 @@ describe("Testnet tester OAuth and browser wiring", () => {
     const browser = read("public/testnet-access.js");
     expect(browser).not.toMatch(/source_url|source_name|publisher|private[_ -]?key|seed phrase/i);
     expect(browser).toContain("personal_sign");
-    expect(browser).toContain("/api/testnet-tester/payment-claim");
+    expect(browser).not.toContain("/api/testnet-tester/payment-claim");
     expect(browser).toContain("/api/testnet-tester/developer-key");
+    expect(browser).toContain("402 quote");
   });
 });

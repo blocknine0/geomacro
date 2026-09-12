@@ -1,27 +1,24 @@
-import { createError, defineEventHandler, readBody, setResponseHeaders } from "h3";
-import { z } from "zod";
+import {
+  createError,
+  defineEventHandler,
+  readBody,
+  setResponseHeaders,
+  setResponseStatus,
+} from "h3";
+import { ZodError } from "zod";
 
-import { runTestnetBrowserIntelligence } from "../../../src/lib/testnet-browser-intelligence.server";
+import {
+  CommercialAccessError,
+  type CommercialPrincipal,
+} from "../../../src/lib/commercial-access.server";
+import {
+  testnetIntelligenceRequestSchema,
+} from "../../../src/lib/testnet-intelligence-contract";
+import {
+  deliverTestnetIntelligence,
+} from "../../../src/lib/testnet-intelligence-service.server";
 import { loadTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
-
-const schema = z.object({
-  request_id: z.string().trim().min(8).max(160),
-  capability: z.enum([
-    "structural_country_digest",
-    "structural_corridor_digest",
-    "structural_country_profile",
-    "structural_corridor_profile",
-  ]),
-  subject: z.discriminatedUnion("type", [
-    z.object({ type: z.literal("country"), country_iso3: z.string().trim().regex(/^[A-Za-z]{3}$/) }),
-    z.object({
-      type: z.literal("corridor"),
-      origin_country_iso3: z.string().trim().regex(/^[A-Za-z]{3}$/),
-      destination_country_iso3: z.string().trim().regex(/^[A-Za-z]{3}$/),
-    }),
-  ]),
-});
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
@@ -35,18 +32,78 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "TESTNET_TESTER_ACCESS_NOT_ACTIVE" });
   }
 
+  const principal: CommercialPrincipal = {
+    principal_id: session.principalId,
+    principal_type: "testnet_tester",
+    principal_external_id: "browser_session",
+    key_id: "tester_browser_session",
+    scopes: [
+      "testnet:structured",
+      "testnet:risk-object",
+      "testnet:risk-gate",
+      "testnet:agent",
+    ],
+  };
+
   try {
-    const input = schema.parse(await readBody(event));
-    const data = await runTestnetBrowserIntelligence({
-      principalId: session.principalId,
-      requestId: input.request_id,
-      capability: input.capability,
-      subject: input.subject,
+    const request = testnetIntelligenceRequestSchema.parse(await readBody(event));
+    const result = await deliverTestnetIntelligence({
+      principal,
+      request,
+      access_surface: "testnet_tester",
     });
-    return { ok: true, data };
+    setResponseStatus(event, result.status);
+    return result.body;
   } catch (error) {
-    const code = error instanceof Error ? error.message : "TESTNET_INTELLIGENCE_FAILED";
-    const statusCode = code === "STRUCTURAL_DATA_UNAVAILABLE" ? 404 : code === "STRUCTURAL_DATA_NOT_CONFIGURED" ? 503 : 400;
-    throw createError({ statusCode, statusMessage: code.slice(0, 120) });
+    if (error instanceof CommercialAccessError) {
+      setResponseStatus(event, error.status);
+      return {
+        ok: false,
+        error: { code: error.code, message: error.message },
+        boundaries: {
+          raw_data_included: false,
+          private_warehouse_access: false,
+          upstream_news_source_identity_exposed: false,
+          execution_authorized: false,
+        },
+      };
+    }
+
+    if (error instanceof ZodError) {
+      setResponseStatus(event, 400);
+      return {
+        ok: false,
+        error: {
+          code: "INVALID_TESTNET_INTELLIGENCE_REQUEST",
+          message: "Testnet intelligence request fields are invalid.",
+          issues: error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
+        boundaries: {
+          raw_data_included: false,
+          private_warehouse_access: false,
+          upstream_news_source_identity_exposed: false,
+          execution_authorized: false,
+        },
+      };
+    }
+
+    console.error("[testnet-tester-intelligence] request failed", error);
+    setResponseStatus(event, 503);
+    return {
+      ok: false,
+      error: {
+        code: "TESTNET_INTELLIGENCE_UNAVAILABLE",
+        message: "Testnet intelligence is temporarily unavailable.",
+      },
+      boundaries: {
+        raw_data_included: false,
+        private_warehouse_access: false,
+        upstream_news_source_identity_exposed: false,
+        execution_authorized: false,
+      },
+    };
   }
 });

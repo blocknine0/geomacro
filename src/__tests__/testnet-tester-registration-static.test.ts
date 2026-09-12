@@ -27,13 +27,14 @@ describe("testnet tester registration boundary", () => {
     expect(pageSource).not.toContain("Connect Discord");
   });
 
-  it("describes canonical Testnet pricing, developer credentials and post-test X sharing", () => {
+  it("describes canonical Testnet pay-per-call pricing, developer credentials and post-test X sharing", () => {
     expect(pageSource).toContain("0.5 Testnet USDC per credit");
-    expect(pageSource).toContain("250 Testnet USDC");
-    expect(pageSource).toContain("500 fixed credits");
-    expect(pageSource).toContain("one quota per verified wallet");
+    expect(pageSource).toContain("500-credit usage cap");
+    expect(pageSource).toContain("not a prepaid balance");
+    expect(pageSource).toContain("There is no upfront Testnet USDC activation payment");
     expect(pageSource).toContain("API Key + API Secret");
+    expect(pageSource).toContain("HTTP 402");
     expect(pageSource).toContain("TEST → CARD → X");
-    expect(pageSource).toContain("Share result on X");
+    expect(pageSource).toContain("share the result on X");
   });
 });
