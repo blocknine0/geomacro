@@ -23,6 +23,20 @@ jobs:
         with:
           bun-version: "1.4.2"
 
+      - name: Inspect latest Circle package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== @circle-fin/app-kit latest ==='
+          npm view @circle-fin/app-kit@latest version dependencies --json
+          echo '=== @circle-fin/adapter-ethers-v6 latest ==='
+          npm view @circle-fin/adapter-ethers-v6@latest version dependencies peerDependencies --json
+          echo '=== @circle-fin/adapter-viem-v2 latest ==='
+          npm view @circle-fin/adapter-viem-v2@latest version dependencies peerDependencies --json
+          echo '=== vulnerable owners ==='
+          npm view @coral-xyz/anchor@latest version dependencies --json
+          npm view jayson@latest version dependencies --json
+
       - name: Install canonical lockfile
         run: bun install --frozen-lockfile
 
