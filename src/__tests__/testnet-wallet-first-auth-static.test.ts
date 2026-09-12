@@ -7,8 +7,8 @@ const auth = read("src/lib/testnet-wallet-first-auth.server.ts");
 const originGuard = read("src/lib/testnet-origin-guard.server.ts");
 const challenge = read("server/api/testnet-tester/auth-challenge.post.ts");
 const verify = read("server/api/testnet-tester/auth-verify.post.ts");
-const browser = read("public/testnet-wallet-first.js");
-const wrapper = read("server/routes/testnet-access-wallet-first.get.ts");
+const browser = read("public/testnet-wallet-first-v2.js");
+const canonicalPage = read("server/routes/testnet-access-canonical-wallet-first.get.ts");
 const mountedRoute = read("src/routes/testnet-access.tsx");
 const wildcard = read("src/routes/api/testnet-tester/$.tsx");
 const siweMigration = read("supabase/migrations/034_siwe_single_use_nonce.sql");
@@ -63,17 +63,20 @@ describe("wallet-first Testnet developer onboarding", () => {
     expect(verify).not.toContain("session_token: result.session_token");
   });
 
-  it("mounts public Testnet access on wallet-first endpoints and browser orchestration", () => {
+  it("mounts one canonical cache-busted wallet-first page instead of a fragile legacy wrapper", () => {
     expect(wildcard).toContain('"auth-challenge": authChallengePost');
     expect(wildcard).toContain('"auth-verify": authVerifyPost');
-    expect(mountedRoute).toContain("testnet-access-wallet-first.get");
-    expect(wrapper).toContain("/testnet-wallet-first.js");
-    expect(wrapper).toContain("Wallet sign-in");
-    expect(wrapper).toContain("Connect wallet & sign in");
+    expect(mountedRoute).toContain("testnet-access-canonical-wallet-first.get");
+    expect(canonicalPage).toContain('AUTH_FLOW = "wallet-first-v2"');
+    expect(canonicalPage).toContain('AUTH_SCRIPT = "/testnet-wallet-first-v2.js"');
+    expect(canonicalPage).toContain("X-Geomacro-Testnet-Auth-Flow");
+    expect(canonicalPage).toContain("WALLET SIGN-IN");
     expect(browser).toContain('json("/api/testnet-tester/auth-challenge"');
     expect(browser).toContain('json("/api/testnet-tester/auth-verify"');
     expect(browser).toContain("Existing developer account resumed");
     expect(browser).toContain("stopImmediatePropagation");
+    expect(browser).toContain("TESTNET_WALLET_ALREADY_REGISTERED");
+    expect(browser).toContain("window.__GEOMACRO_TESTNET_AUTH_FLOW__ = AUTH_FLOW");
   });
 
   it("keeps challenge and verification responses fail-closed and non-executing", () => {
