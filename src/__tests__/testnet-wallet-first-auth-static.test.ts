@@ -13,12 +13,22 @@ const wildcard = read("src/routes/api/testnet-tester/$.tsx");
 const siweMigration = read("supabase/migrations/034_siwe_single_use_nonce.sql");
 
 describe("wallet-first Testnet developer onboarding", () => {
-  it("uses the existing single-use SIWE nonce ledger instead of profile-first identity", () => {
+  it("uses one-time SIWE replay protection with full EIP-4361 identity fields", () => {
     expect(auth).toContain('from("siwe_login_nonces")');
     expect(auth).toContain('db.rpc("consume_siwe_login_nonce"');
     expect(auth).toContain("verifyMessage(expectedMessage");
     expect(auth).toContain("Sign in to Geomacro Testnet Developer Access");
     expect(auth).toContain("This signature does not authorize funds or transactions.");
+    expect(auth).toContain('URI: ${TESTNET_SIWE_URI}');
+    expect(auth).toContain('"Version: 1"');
+    expect(auth).toContain('Chain ID: ${chainId}');
+    expect(auth).toContain('Nonce: ${nonce}');
+    expect(auth).toContain('Issued At: ${issuedAtIso}');
+    expect(auth).toContain('Expiration Time: ${expiresAtIso}');
+    expect(challenge).toContain("body?.chain_id");
+    expect(verify).toContain("chainId: body?.chain_id");
+    expect(browser).toContain('method: "eth_chainId"');
+    expect(browser).toContain("chain_id: chainId");
     expect(siweMigration).toContain("consumed_at is null");
     expect(siweMigration).toContain("expires_at > now()");
   });
