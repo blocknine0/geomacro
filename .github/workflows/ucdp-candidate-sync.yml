@@ -1,0 +1,43 @@
+name: UCDP Candidate Current Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_version:
+        description: "Monthly UCDP Candidate version, for example 26.0.7"
+        required: false
+        default: "26.0.7"
+  schedule:
+    - cron: "17 3 16 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ucdp-candidate-current-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      UCDP_CANDIDATE_VERSION: ${{ inputs.candidate_version || vars.UCDP_CANDIDATE_VERSION || '26.0.7' }}
+      UCDP_MAX_UNMAPPED_ROWS: "0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Sync governed current Candidate evidence
+        run: bun scripts/ingest-ucdp-candidate-live.mjs --write
