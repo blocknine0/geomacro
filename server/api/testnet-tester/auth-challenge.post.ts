@@ -16,7 +16,10 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody<Record<string, unknown>>(event);
   try {
-    const data = await issueTestnetDeveloperWalletChallenge(String(body?.wallet_address ?? ""));
+    const data = await issueTestnetDeveloperWalletChallenge(
+      String(body?.wallet_address ?? ""),
+      body?.chain_id,
+    );
     return { ok: true, data, execution_authorized: false };
   } catch (error) {
     throw createError({ statusCode: 400, statusMessage: publicCode(error) });
