@@ -5,10 +5,12 @@ on:
     paths:
       - "public/testnet-access.js"
       - "public/testnet-wallet-first.js"
+      - "public/testnet-wallet-first-v2.js"
       - "public/testnet-console.js"
       - "public/testnet-console-pricing.js"
       - "server/routes/testnet-access.get.ts"
       - "server/routes/testnet-access-wallet-first.get.ts"
+      - "server/routes/testnet-access-canonical-wallet-first.get.ts"
       - "server/routes/testnet-console.get.ts"
       - "server/api/testnet/**"
       - "server/api/testnet-tester/**"
