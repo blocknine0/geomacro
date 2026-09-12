@@ -22,6 +22,21 @@ function expiresIn(ms: number) {
   return new Date(Date.now() + ms).toISOString();
 }
 
+async function provisionTestnetMeteredAccess(principalId: string) {
+  const db = requireRiskSupabase();
+  const provision = await db.rpc("provision_testnet_metered_access", {
+    p_principal_id: principalId,
+    p_registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
+    p_contract_version: GEOMACRO_CREDIT_CONTRACT_VERSION,
+  });
+  if (provision.error) throw provision.error;
+  const provisioned = (provision.data ?? {}) as Record<string, unknown>;
+  if (!provisioned.ok) {
+    throw new Error(String(provisioned.code ?? "TESTNET_METERED_ACCESS_PROVISION_FAILED"));
+  }
+  return provisioned;
+}
+
 export async function createTestnetTesterAccount(input: { profileName: string; termsVersion: string }) {
   const db = requireRiskSupabase();
   const profileName = String(input.profileName ?? "").trim();
@@ -126,9 +141,9 @@ export async function verifyTestnetWalletSignature(input: { principalId: string;
   if (duplicate.error) throw duplicate.error;
   if (duplicate.data) throw new Error("TESTNET_WALLET_ALREADY_REGISTERED");
 
-  const consume = await db.from("testnet_wallet_challenges").update({ consumed_at: now }).eq("id", challenge.data.id).is("consumed_at", null);
-  if (consume.error) throw consume.error;
-
+  // Persist the verified identity first. Do not consume the challenge until the
+  // entitlement has also been provisioned, otherwise a transient DB/RPC failure
+  // can strand a successfully signed tester in pending_verification.
   const profileUpdate = await db.from("testnet_tester_profiles").update({
     wallet_address_hash: walletHash,
     wallet_verified_at: now,
@@ -144,35 +159,62 @@ export async function verifyTestnetWalletSignature(input: { principalId: string;
   }).eq("id", input.principalId);
   if (principalUpdate.error) throw principalUpdate.error;
 
-  const provision = await db.rpc("provision_testnet_metered_access", {
-    p_principal_id: input.principalId,
-    p_registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
-    p_contract_version: GEOMACRO_CREDIT_CONTRACT_VERSION,
-  });
-  if (provision.error) throw provision.error;
-  const provisioned = (provision.data ?? {}) as Record<string, unknown>;
-  if (!provisioned.ok) throw new Error(String(provisioned.code ?? "TESTNET_METERED_ACCESS_PROVISION_FAILED"));
+  await provisionTestnetMeteredAccess(input.principalId);
+
+  const consume = await db.from("testnet_wallet_challenges")
+    .update({ consumed_at: now })
+    .eq("id", challenge.data.id)
+    .is("consumed_at", null)
+    .select("id")
+    .maybeSingle();
+  if (consume.error) throw consume.error;
+  if (!consume.data) throw new Error("WALLET_CHALLENGE_ALREADY_CONSUMED");
 
   return { verified: true, wallet_address: walletAddress, access_status: "active", payment_model: "pay_per_call", max_credits_per_30_days: 500 } as const;
 }
 
 export async function loadTestnetTesterAccount(principalId: string) {
   const db = requireRiskSupabase();
-  const profileResult = await db.from("testnet_tester_profiles").select("profile_name,avatar_path,wallet_verified_at,registration_status,access_status,current_entitlement_grant_id,updated_at").eq("principal_id", principalId).maybeSingle();
+  const selectProfile = () => db.from("testnet_tester_profiles")
+    .select("profile_name,avatar_path,wallet_verified_at,registration_status,access_status,current_entitlement_grant_id,updated_at")
+    .eq("principal_id", principalId)
+    .maybeSingle();
+
+  let profileResult = await selectProfile();
   if (profileResult.error) throw profileResult.error;
   if (!profileResult.data) throw new Error("TESTNET_PROFILE_NOT_FOUND");
-  const p = profileResult.data;
+  let p = profileResult.data;
   const registrationComplete = Boolean(p.wallet_verified_at);
+
   if (registrationComplete && p.registration_status === "pending") {
-    await db.from("testnet_tester_profiles").update({ registration_status: "complete", updated_at: new Date().toISOString() }).eq("principal_id", principalId);
+    const registrationUpdate = await db.from("testnet_tester_profiles")
+      .update({ registration_status: "complete", updated_at: new Date().toISOString() })
+      .eq("principal_id", principalId);
+    if (registrationUpdate.error) throw registrationUpdate.error;
+    p = { ...p, registration_status: "complete" };
   }
+
+  let recoveryRequired = false;
+  if (registrationComplete && p.access_status === "pending_verification") {
+    try {
+      await provisionTestnetMeteredAccess(principalId);
+      profileResult = await selectProfile();
+      if (profileResult.error) throw profileResult.error;
+      if (profileResult.data) p = profileResult.data;
+    } catch (error) {
+      console.error("[testnet-tester-account] metered access recovery failed", error);
+      recoveryRequired = true;
+    }
+  }
+
   return {
     profile_name: p.profile_name,
     avatar_path: p.avatar_path,
     wallet_verified: Boolean(p.wallet_verified_at),
-    registration_status: registrationComplete ? "complete" : p.registration_status,
+    registration_status: Boolean(p.wallet_verified_at) ? "complete" : p.registration_status,
     access_status: p.access_status,
     entitlement_grant_id: p.current_entitlement_grant_id,
+    recovery_required: recoveryRequired,
     execution_authorized: false,
   } as const;
 }
