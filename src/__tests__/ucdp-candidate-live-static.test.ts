@@ -47,4 +47,11 @@ describe("UCDP Candidate live evidence boundary", () => {
     expect(sourcePolicy).toContain("ucdp_candidate");
     expect(sourcePolicy).toContain('allowed_statuses: Object.freeze(["VERIFIED"])');
   });
+
+  it("uses a narrow governed UCDP country-id crosswalk for DRC", () => {
+    expect(ingest).toContain('"490": "COD"');
+    expect(ingest).toContain("UCDP_GW_COUNTRY_ID_TO_ISO3");
+    expect(ingest).toContain("registry.byIso3.has(mappedFromCountryId)");
+    expect(ingest).not.toContain('UCDP_MAX_UNMAPPED_ROWS ?? "160"');
+  });
 });
