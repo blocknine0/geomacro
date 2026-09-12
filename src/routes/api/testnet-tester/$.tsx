@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { runH3Handler } from "@/lib/testnet-h3-bridge";
 
+import authChallengePost from "../../../../server/api/testnet-tester/auth-challenge.post";
+import authVerifyPost from "../../../../server/api/testnet-tester/auth-verify.post";
 import avatarGet from "../../../../server/api/testnet-tester/avatar.get";
 import avatarPost from "../../../../server/api/testnet-tester/avatar.post";
 import cardGet from "../../../../server/api/testnet-tester/card.get";
@@ -31,6 +33,8 @@ const GET_HANDLERS: Record<string, Handler> = {
 };
 
 const POST_HANDLERS: Record<string, Handler> = {
+  "auth-challenge": authChallengePost as never,
+  "auth-verify": authVerifyPost as never,
   avatar: avatarPost as never,
   "developer-key": developerKeyPost as never,
   "developer-key-revoke": developerKeyRevokePost as never,
