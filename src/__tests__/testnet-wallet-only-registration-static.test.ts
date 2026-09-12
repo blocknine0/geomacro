@@ -12,12 +12,17 @@ describe("wallet-only tester registration", () => {
     expect(register).not.toContain("sendTestnetVerificationEmail");
     expect(account).toContain("TESTNET_WALLET_ALREADY_REGISTERED");
     expect(account).toContain('registration_status: "complete"');
+    expect(account).not.toContain("verifyTestnetTesterEmail");
+    expect(account).not.toContain("issueTesterOauthState");
+    expect(account).not.toContain("consumeTesterOauthIdentity");
   });
 
   it("keeps email and social OAuth out of the browser flow", () => {
     expect(browser).not.toContain("email-resend");
+    expect(browser).not.toContain("email-verify");
     expect(browser).not.toContain("oauth/x");
     expect(browser).not.toContain("oauth/discord");
-    expect(page).toContain("Wallet-only identity");
+    expect(page).toContain("Profile + wallet");
+    expect(page).toContain("Create a tester profile and verify one EVM wallet");
   });
 });
