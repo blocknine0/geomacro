@@ -25,9 +25,13 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(account).toContain('registration_status: "complete"');
     expect(account).toContain("provision_testnet_metered_access");
     expect(account).toContain('payment_model: "pay_per_call"');
+    expect(account).not.toContain("verifyTestnetTesterEmail");
+    expect(account).not.toContain("issueTesterOauthState");
+    expect(account).not.toContain("consumeTesterOauthIdentity");
     expect(meteredMigration).toContain("wallet_verified_at is not null");
     expect(meteredMigration).not.toContain("current_payment_event_id is not null");
-    expect(page).toContain("No email, X-account or Discord connection is required");
+    expect(page).toContain("Profile + wallet");
+    expect(page).toContain("Create a tester profile and verify one EVM wallet");
   });
 
   it("supports only Arc Testnet, Base Sepolia and Polygon Amoy", () => {
@@ -86,12 +90,16 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(paymentVerifier).toContain('revenue_classification: "testnet_non_revenue"');
   });
 
-  it("keeps the professional social-card to X flow after testing", () => {
-    expect(page).toContain("TEST → CARD → X");
+  it("keeps X as a result-share CTA rather than an identity connection", () => {
+    expect(page).toContain("TEST → X → FEEDBACK");
+    expect(page).toContain("open one X post");
     expect(consoleBrowser).toContain("Create share card");
     expect(consoleBrowser).toContain("Share result on X");
     expect(consoleBrowser).toContain("twitter.com/intent/tweet");
     expect(consoleBrowser).toContain("/api/testnet-tester/share");
+    expect(consoleBrowser).not.toContain("oauth/x");
+    expect(browser).not.toContain("oauth/x");
+    expect(browser).not.toContain("oauth/discord");
   });
 
   it("keeps owner-side usage evidence available", () => {

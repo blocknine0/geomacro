@@ -19,8 +19,8 @@ describe("testnet tester registration boundary", () => {
     expect(accountSource).not.toContain("seed_phrase:");
   });
 
-  it("does not require email or social OAuth in the new tester flow", () => {
-    expect(pageSource).toContain("Wallet-only identity");
+  it("uses only profile plus wallet in the tester flow", () => {
+    expect(pageSource).toContain("Profile + wallet");
     expect(pageSource).toContain("Connect & verify wallet");
     expect(pageSource).not.toContain("Verify email");
     expect(pageSource).not.toContain("Connect X");
@@ -34,7 +34,7 @@ describe("testnet tester registration boundary", () => {
     expect(pageSource).toContain("There is no upfront Testnet USDC activation payment");
     expect(pageSource).toContain("API Key + API Secret");
     expect(pageSource).toContain("HTTP 402");
-    expect(pageSource).toContain("TEST → CARD → X");
-    expect(pageSource).toContain("share the result on X");
+    expect(pageSource).toContain("TEST → X → FEEDBACK");
+    expect(pageSource).toContain("open one X post");
   });
 });

@@ -33,7 +33,7 @@ export default defineEventHandler((event) => {
   </section>
 
   <section class="grid">
-    <div class="card"><strong>Wallet-only identity</strong><p>No email, X-account or Discord connection is required. One verified wallet receives Testnet developer access.</p></div>
+    <div class="card"><strong>Profile + wallet</strong><p>Create a tester profile and verify one EVM wallet to activate Testnet developer access.</p></div>
     <div class="card"><strong>500-credit usage cap</strong><p>500 credits is the 30-day Testnet usage limit, not a prepaid balance. One credit costs 0.5 Testnet USDC when consumed.</p></div>
     <div class="card"><strong>API Key + API Secret</strong><p>Create a credential pair for a product, AI agent, automation or demo. The secret is shown once and only its hash is stored.</p></div>
   </section>
@@ -92,9 +92,9 @@ export default defineEventHandler((event) => {
   </section>
 
   <section id="feedbackPanel" class="panel" hidden>
-    <div class="eyebrow">TEST → CARD → X → FEEDBACK</div>
-    <h2>Run a real intelligence test and tell us what blocked you.</h2>
-    <p class="muted">Use the Testnet Console, run an eligible request, create the Geomacro share card, share the result on X if useful, then send structured feedback. Feedback storage excludes your IP address and wallet address.</p>
+    <div class="eyebrow">TEST → X → FEEDBACK</div>
+    <h2>Run a real intelligence test, share one result, and tell us what blocked you.</h2>
+    <p class="muted">Use the Testnet Console and run an eligible request. After a successful result, create the Geomacro result card and open one X post with the public result link. Then send structured feedback. Feedback storage excludes your IP address and wallet address.</p>
     <div class="actions"><a href="/testnet-console">Open Testnet Console</a></div>
     <form id="testerFeedbackForm" class="form-grid">
       <div class="field"><label for="feedbackTesterType">Testing as</label><select id="feedbackTesterType"><option value="builder">Builder</option><option value="agent_project">AI agent project</option><option value="institution">Institution</option><option value="researcher">Researcher</option><option value="other">Other</option></select></div>

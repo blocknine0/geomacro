@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { verifyMessage } from "ethers";
 
 import { GEOMACRO_CREDIT_CONTRACT_VERSION } from "./commercial-access-contract";
@@ -6,24 +6,10 @@ import { requireRiskSupabase } from "./risk-supabase.server";
 import { STRUCTURED_DATA_REGISTRY_VERSION } from "./structured-data-entitlement-registry";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const EMAIL_CHALLENGE_TTL_MS = 20 * 60 * 1000;
 const WALLET_CHALLENGE_TTL_MS = 10 * 60 * 1000;
-const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 function sha256(value: string) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function oauthStateDigest(value: string) {
-  const secret = String(process.env.TESTNET_OAUTH_COOKIE_SECRET ?? "").trim();
-  if (Buffer.byteLength(secret, "utf8") < 32) throw new Error("TESTNET_OAUTH_COOKIE_SECRET_TOO_SHORT");
-  return createHmac("sha256", secret).update(value).digest("hex");
-}
-
-function canonicalEmail(value: string) {
-  const email = String(value ?? "").trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new Error("INVALID_EMAIL");
-  return email;
 }
 
 function canonicalAddress(value: string) {
@@ -53,17 +39,20 @@ export async function createTestnetTesterAccount(input: { profileName: string; t
   if (principalInsert.error) throw principalInsert.error;
   const principalId = principalInsert.data.id as string;
 
+  // Legacy columns remain non-null in the existing schema, but they are no
+  // longer identity inputs or launch requirements. Store opaque placeholders
+  // only until a future schema cleanup migration removes those historical fields.
   const profileInsert = await db.from("testnet_tester_profiles").insert({
     principal_id: principalId,
     profile_name: profileName,
-    email_hash: sha256(`unused-email:${nonce}`),
+    email_hash: sha256(`unused:${nonce}:1`),
     wallet_address_hash: sha256(`pending-wallet:${nonce}`),
-    x_account_id_hash: sha256(`unused-x:${nonce}`),
-    discord_account_id_hash: sha256(`unused-discord:${nonce}`),
+    x_account_id_hash: sha256(`unused:${nonce}:2`),
+    discord_account_id_hash: sha256(`unused:${nonce}:3`),
     terms_version: termsVersion,
     terms_accepted_at: new Date().toISOString(),
     registration_status: "pending",
-    access_status: "awaiting_payment",
+    access_status: "pending_verification",
   });
   if (profileInsert.error) throw profileInsert.error;
 
@@ -90,19 +79,6 @@ export async function requireTestnetTesterSession(rawToken: string) {
   if (!row || row.revoked_at || row.expires_at <= now) throw new Error("TESTER_SESSION_NOT_AUTHORIZED");
   await db.from("testnet_tester_sessions").update({ last_seen_at: now }).eq("id", row.id);
   return { principalId: row.principal_id as string, sessionId: row.id as string };
-}
-
-export async function verifyTestnetTesterEmail(input: { principalId: string; token: string }) {
-  const db = requireRiskSupabase();
-  const now = new Date().toISOString();
-  const challenge = await db.from("testnet_email_verification_challenges").select("id,expires_at,consumed_at").eq("principal_id", input.principalId).eq("token_hash", sha256(String(input.token ?? ""))).maybeSingle();
-  if (challenge.error) throw challenge.error;
-  if (!challenge.data || challenge.data.consumed_at || challenge.data.expires_at <= now) throw new Error("EMAIL_VERIFICATION_INVALID_OR_EXPIRED");
-  const consume = await db.from("testnet_email_verification_challenges").update({ consumed_at: now }).eq("id", challenge.data.id).is("consumed_at", null);
-  if (consume.error) throw consume.error;
-  const update = await db.from("testnet_tester_profiles").update({ email_verified_at: now, updated_at: now }).eq("principal_id", input.principalId);
-  if (update.error) throw update.error;
-  return { verified: true } as const;
 }
 
 export async function issueTestnetWalletChallenge(input: { principalId: string; walletAddress: string }) {
@@ -178,31 +154,6 @@ export async function verifyTestnetWalletSignature(input: { principalId: string;
   if (!provisioned.ok) throw new Error(String(provisioned.code ?? "TESTNET_METERED_ACCESS_PROVISION_FAILED"));
 
   return { verified: true, wallet_address: walletAddress, access_status: "active", payment_model: "pay_per_call", max_credits_per_30_days: 500 } as const;
-}
-
-export async function issueTesterOauthState(input: { principalId: string; provider: "x" | "discord" }) {
-  const db = requireRiskSupabase();
-  const state = `gmo_${randomBytes(24).toString("base64url")}`;
-  const insert = await db.from("testnet_oauth_states").insert({ principal_id: input.principalId, provider: input.provider, state_hash: oauthStateDigest(state), expires_at: expiresIn(OAUTH_STATE_TTL_MS) });
-  if (insert.error) throw insert.error;
-  return { state, expires_at: expiresIn(OAUTH_STATE_TTL_MS) } as const;
-}
-
-export async function consumeTesterOauthIdentity(input: { principalId: string; provider: "x" | "discord"; state: string; providerAccountId: string }) {
-  const db = requireRiskSupabase();
-  const now = new Date().toISOString();
-  const state = await db.from("testnet_oauth_states").select("id,provider,expires_at,consumed_at").eq("principal_id", input.principalId).eq("state_hash", oauthStateDigest(input.state)).maybeSingle();
-  if (state.error) throw state.error;
-  if (!state.data || state.data.provider !== input.provider || state.data.consumed_at || state.data.expires_at <= now) throw new Error("OAUTH_STATE_INVALID_OR_EXPIRED");
-  const accountId = String(input.providerAccountId ?? "").trim();
-  if (!accountId || accountId.length > 256) throw new Error("INVALID_PROVIDER_ACCOUNT_ID");
-  const field = input.provider === "x" ? "x_account_id_hash" : "discord_account_id_hash";
-  const connectedField = input.provider === "x" ? "x_connected_at" : "discord_connected_at";
-  const consume = await db.from("testnet_oauth_states").update({ consumed_at: now }).eq("id", state.data.id).is("consumed_at", null);
-  if (consume.error) throw consume.error;
-  const update = await db.from("testnet_tester_profiles").update({ [field]: sha256(accountId), [connectedField]: now, updated_at: now }).eq("principal_id", input.principalId);
-  if (update.error) throw update.error;
-  return { connected: true, provider: input.provider } as const;
 }
 
 export async function loadTestnetTesterAccount(principalId: string) {

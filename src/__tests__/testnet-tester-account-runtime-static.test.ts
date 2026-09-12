@@ -50,7 +50,6 @@ describe("testnet tester account runtime boundaries", () => {
       "../../server/api/testnet-tester/me.get.ts",
       "../../server/api/testnet-tester/wallet-challenge.post.ts",
       "../../server/api/testnet-tester/wallet-verify.post.ts",
-      "../../server/api/testnet-tester/email-verify.post.ts",
       "../../server/api/testnet-tester/developer-key.post.ts",
       "../../server/api/testnet-tester/payment-claim.post.ts",
     ]) {
