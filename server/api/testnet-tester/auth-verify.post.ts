@@ -37,6 +37,7 @@ export default defineEventHandler(async (event) => {
   try {
     const result = await authenticateTestnetDeveloperWallet({
       walletAddress: String(body?.wallet_address ?? ""),
+      chainId: body?.chain_id,
       nonce: String(body?.nonce ?? ""),
       issuedAt: Number(body?.issued_at ?? 0),
       message: String(body?.message ?? ""),
