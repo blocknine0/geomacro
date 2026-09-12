@@ -1,0 +1,75 @@
+name: Sync Canonical Main to Lovable
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-canonical-main-to-lovable
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LOVABLE_MIRROR_REPOSITORY: blocknine0/geomacro-160c8e56
+      LOVABLE_MIRROR_TOKEN: ${{ secrets.LOVABLE_MIRROR_TOKEN }}
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          path: canonical
+
+      - name: Detect mirror credential
+        id: mirror-token
+        shell: bash
+        run: |
+          if [[ -n "${LOVABLE_MIRROR_TOKEN:-}" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Lovable mirror credential is configured."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::LOVABLE_MIRROR_TOKEN is not configured. The canonical repository remains authoritative, but automatic Lovable mirroring is paused."
+          fi
+
+      - name: Mirror canonical tree into Lovable-linked repository
+        if: steps.mirror-token.outputs.configured == 'true'
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+
+          gh auth setup-git
+          gh repo clone "$LOVABLE_MIRROR_REPOSITORY" lovable-mirror -- --branch main --single-branch --depth 1
+
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude '.github/workflows/' \
+            --exclude '.lovable/' \
+            canonical/ lovable-mirror/
+
+          cd lovable-mirror
+          printf '%s\n' "${GITHUB_SHA}" > .geomacro-canonical-main
+
+          git config user.name "Geomacro Canonical Sync"
+          git config user.email "160921639+blocknine0@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Lovable mirror already matches canonical main ${GITHUB_SHA}."
+            exit 0
+          fi
+
+          git commit -m "sync: canonical main ${GITHUB_SHA:0:12}"
+          git push origin HEAD:main
+
+          echo "Mirrored canonical main ${GITHUB_SHA} to ${LOVABLE_MIRROR_REPOSITORY}:main."
