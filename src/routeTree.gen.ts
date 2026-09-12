@@ -21,7 +21,6 @@ import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as GlobalRiskRouteImport } from './routes/global-risk'
-import { Route as GoatTestDashboardRouteImport } from './routes/goat-test-dashboard'
 import { Route as InstitutionalRouteImport } from './routes/institutional'
 import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as OnchainRouteImport } from './routes/onchain'
@@ -106,11 +105,6 @@ const FeedRoute = FeedRouteImport.update({
 const GlobalRiskRoute = GlobalRiskRouteImport.update({
   id: '/global-risk',
   path: '/global-risk',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GoatTestDashboardRoute = GoatTestDashboardRouteImport.update({
-  id: '/goat-test-dashboard',
-  path: '/goat-test-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InstitutionalRoute = InstitutionalRouteImport.update({
@@ -252,7 +246,6 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
-  '/goat-test-dashboard': typeof GoatTestDashboardRoute
   '/institutional': typeof InstitutionalRoute
   '/intelligence': typeof IntelligenceRoute
   '/onchain': typeof OnchainRoute
@@ -292,7 +285,6 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
-  '/goat-test-dashboard': typeof GoatTestDashboardRoute
   '/institutional': typeof InstitutionalRoute
   '/intelligence': typeof IntelligenceRoute
   '/onchain': typeof OnchainRoute
@@ -333,7 +325,6 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
-  '/goat-test-dashboard': typeof GoatTestDashboardRoute
   '/institutional': typeof InstitutionalRoute
   '/intelligence': typeof IntelligenceRoute
   '/onchain': typeof OnchainRoute
@@ -375,7 +366,6 @@ export interface FileRouteTypes {
     | '/docs'
     | '/feed'
     | '/global-risk'
-    | '/goat-test-dashboard'
     | '/institutional'
     | '/intelligence'
     | '/onchain'
@@ -415,7 +405,6 @@ export interface FileRouteTypes {
     | '/docs'
     | '/feed'
     | '/global-risk'
-    | '/goat-test-dashboard'
     | '/institutional'
     | '/intelligence'
     | '/onchain'
@@ -455,7 +444,6 @@ export interface FileRouteTypes {
     | '/docs'
     | '/feed'
     | '/global-risk'
-    | '/goat-test-dashboard'
     | '/institutional'
     | '/intelligence'
     | '/onchain'
@@ -496,7 +484,6 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   FeedRoute: typeof FeedRoute
   GlobalRiskRoute: typeof GlobalRiskRoute
-  GoatTestDashboardRoute: typeof GoatTestDashboardRoute
   InstitutionalRoute: typeof InstitutionalRoute
   IntelligenceRoute: typeof IntelligenceRoute
   OnchainRoute: typeof OnchainRoute
@@ -608,13 +595,6 @@ declare module '@tanstack/react-router' {
       path: '/global-risk'
       fullPath: '/global-risk'
       preLoaderRoute: typeof GlobalRiskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/goat-test-dashboard': {
-      id: '/goat-test-dashboard'
-      path: '/goat-test-dashboard'
-      fullPath: '/goat-test-dashboard'
-      preLoaderRoute: typeof GoatTestDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/institutional': {
@@ -808,7 +788,6 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRoute,
   FeedRoute: FeedRoute,
   GlobalRiskRoute: GlobalRiskRoute,
-  GoatTestDashboardRoute: GoatTestDashboardRoute,
   InstitutionalRoute: InstitutionalRoute,
   IntelligenceRoute: IntelligenceRoute,
   OnchainRoute: OnchainRoute,
