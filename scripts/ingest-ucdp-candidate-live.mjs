@@ -23,9 +23,11 @@ const WRITE = process.argv.includes("--write")
 
 // UCDP uses Gleditsch-Ward country identifiers. Keep source-specific aliases
 // explicit and narrow instead of weakening the shared country-name resolver.
-// UCDP country_id 490 is the Democratic Republic of the Congo (Zaire).
+// These mappings are used only when the resulting ISO3 exists in the enabled
+// live country registry.
 const UCDP_GW_COUNTRY_ID_TO_ISO3 = Object.freeze({
-  "490": "COD",
+  "490": "COD", // DR Congo (Zaire)
+  "775": "MMR", // Myanmar (Burma)
 })
 
 if (!/^\d{2}\.0\.\d{1,2}$/.test(VERSION)) {
@@ -62,6 +64,25 @@ function isoDate(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+function ucdpOfficialCountryIso3(value) {
+  const official = String(value ?? "").replace(/\s+/g, " ").trim()
+  if (!official) return null
+
+  const exact = countryIso3FromName(official, registry)
+  if (exact) return exact
+
+  // UCDP retains historical/legacy labels in trailing parentheses, for example
+  // "Myanmar (Burma)" and "Yemen (North Yemen)". Mirror the governed historical
+  // importer: retry only the same official location label with that trailing
+  // qualifier removed. Actor names are never used for country inference.
+  const withoutTrailingParenthetical = official.replace(/\s*\([^)]*\)\s*$/, "").trim()
+  if (!withoutTrailingParenthetical || withoutTrailingParenthetical === official) {
+    return null
+  }
+
+  return countryIso3FromName(withoutTrailingParenthetical, registry)
+}
+
 function eventIso3(row) {
   for (const value of [row?.country_iso3, row?.isocc, row?.iso3]) {
     const direct = normalizeIso3(value)
@@ -74,7 +95,7 @@ function eventIso3(row) {
     return mappedFromCountryId
   }
 
-  return countryIso3FromName(String(row?.country ?? ""), registry)
+  return ucdpOfficialCountryIso3(row?.country)
 }
 
 console.log("===== UCDP CANDIDATE CURRENT EVIDENCE INGESTION =====")
