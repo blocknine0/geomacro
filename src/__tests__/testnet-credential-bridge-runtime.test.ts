@@ -8,22 +8,32 @@ const apiSecret = `gms_test_${"s".repeat(40)}`;
 const grantId = "grant-runtime-one";
 const requestId = "runtime-request-0001";
 const fingerprint = "a".repeat(64);
-const storageKey = "geomacro-testnet-api-credential:v1";
 
-function harness(options: { response?: Response; credential?: boolean } = {}) {
+async function harness(options: { response?: Response; credential?: boolean } = {}) {
   const calls: Array<{ url: string; init: any }> = [];
-  const storage = new Map<string, string>();
-  if (options.credential !== false) {
-    storage.set(
-      storageKey,
-      JSON.stringify({
-        api_key: apiKey,
-        api_secret: apiSecret,
-        key_id: apiKey,
-        entitlement_grant_id: grantId,
-      }),
-    );
+  const nodes: any[] = [];
+  const listeners: Record<string, any> = {};
+
+  function element(tag: string) {
+    const node: any = {
+      tag,
+      id: "",
+      value: "",
+      textContent: "",
+      className: "",
+      children: [],
+      listeners: {},
+      disabled: false,
+      appendChild(child: any) { this.children.push(child); child.parentNode = this; },
+      append(...children: any[]) { children.forEach((child) => this.appendChild(child)); },
+      addEventListener(name: string, listener: any) { this.listeners[name] = listener; },
+    };
+    nodes.push(node);
+    return node;
   }
+
+  const anchor = element("div");
+  anchor.id = "consoleAnchor";
 
   const nativeFetch = vi.fn(async (input: string | Request, init: any = {}) => {
     const url = typeof input === "string" ? input : input.url;
@@ -70,22 +80,24 @@ function harness(options: { response?: Response; credential?: boolean } = {}) {
     fetch: nativeFetch,
     location: { href: "https://geomacro.live/testnet-console" },
   };
-  const listeners: Record<string, any> = {};
   const documentObject: any = {
     addEventListener: (name: string, listener: any) => {
       listeners[name] = listener;
     },
-    getElementById: () => null,
+    getElementById: (id: string) => nodes.find((node) => node.id === id) ?? null,
+    createElement: element,
+  };
+  const forbiddenStorage = {
+    getItem() { throw new Error("Credential bridge must not read browser storage"); },
+    setItem() { throw new Error("Credential bridge must not write browser storage"); },
+    removeItem() { throw new Error("Credential bridge must not mutate browser storage"); },
   };
 
   runInNewContext(script, {
     window: windowObject,
     document: documentObject,
-    sessionStorage: {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => storage.set(key, value),
-      removeItem: (key: string) => storage.delete(key),
-    },
+    sessionStorage: forbiddenStorage,
+    localStorage: forbiddenStorage,
     Headers,
     Response,
     Request,
@@ -97,7 +109,18 @@ function harness(options: { response?: Response; credential?: boolean } = {}) {
     clearTimeout,
   });
 
-  return { windowObject, nativeFetch, calls, storage, listeners };
+  await listeners.DOMContentLoaded?.();
+
+  if (options.credential !== false) {
+    const input = nodes.find((node) => node.id === "testerCredentialPair");
+    const verify = nodes.find((node) => node.textContent === "Verify credential & continue");
+    expect(input).toBeTruthy();
+    expect(verify).toBeTruthy();
+    input.value = `API Key: ${apiKey}\nAPI Secret: ${apiSecret}`;
+    await verify.listeners.click();
+  }
+
+  return { windowObject, nativeFetch, calls, nodes, listeners };
 }
 
 function paidRequest() {
@@ -113,8 +136,8 @@ function paidRequest() {
 }
 
 describe("Testnet developer credential browser bridge runtime", () => {
-  it("validates the stored Key + Secret and rewrites the paid call to the developer API", async () => {
-    const app = harness();
+  it("keeps the verified Key + Secret in memory and rewrites the paid call to the developer API", async () => {
+    const app = await harness();
     const response = await app.windowObject.fetch("/api/testnet-tester/intelligence", paidRequest());
 
     expect(response.status).toBe(402);
@@ -125,10 +148,12 @@ describe("Testnet developer credential browser bridge runtime", () => {
     );
     expect(developerCall!.init.body).toBe(paidRequest().body);
     expect(app.calls.some((entry) => entry.url === "/api/testnet/account")).toBe(true);
+    expect(script).not.toContain("sessionStorage");
+    expect(script).not.toContain("localStorage");
   });
 
   it("blocks the paid surface when no developer credential is loaded", async () => {
-    const app = harness({ credential: false });
+    const app = await harness({ credential: false });
     const response = await app.windowObject.fetch("/api/testnet-tester/intelligence", paidRequest());
     const payload = await response.json();
 
@@ -138,7 +163,7 @@ describe("Testnet developer credential browser bridge runtime", () => {
   });
 
   it("fails closed if a 402 quote is missing the exact request fingerprint", async () => {
-    const app = harness({
+    const app = await harness({
       response: Response.json(
         {
           ok: false,
@@ -158,7 +183,7 @@ describe("Testnet developer credential browser bridge runtime", () => {
   });
 
   it("accepts a delivered result only when credential, entitlement and request binding all match", async () => {
-    const app = harness({
+    const app = await harness({
       response: Response.json({
         ok: true,
         principal: { key_id: apiKey },
@@ -175,7 +200,7 @@ describe("Testnet developer credential browser bridge runtime", () => {
   });
 
   it("rejects a result bound to a different entitlement even if the HTTP response is 200", async () => {
-    const app = harness({
+    const app = await harness({
       response: Response.json({
         ok: true,
         principal: { key_id: apiKey },
