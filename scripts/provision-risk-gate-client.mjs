@@ -1,5 +1,5 @@
 import {
-  createHash,
+  createHmac,
   randomBytes,
 } from "node:crypto";
 
@@ -85,16 +85,25 @@ if (
 }
 
 
+const credentialPepper =
+  process.env.GEOMACRO_API_CREDENTIAL_PEPPER?.trim() ||
+  serviceKey;
+
+if (credentialPepper.length < 32) {
+  throw new Error(
+    "Server-only API credential pepper must be at least 32 characters",
+  );
+}
+
+
 const apiKey =
   `gmrk_${randomBytes(32).toString("hex")}`;
 
 
 const apiKeyHash =
-  // This bearer token contains 256 bits of CSPRNG output and is not a human password.
-  // A deterministic SHA-256 digest is required for exact server-side lookup without storing the token.
-  // codeql[js/insufficient-password-hash]
-  createHash("sha256")
-    .update(apiKey)
+  createHmac("sha256", credentialPepper)
+    .update("geomacro-api-credential-v1\0risk-gate-bearer\0", "utf8")
+    .update(apiKey, "utf8")
     .digest("hex");
 
 
@@ -176,9 +185,4 @@ console.log(
 
 console.log(
   apiKey,
-);
-
-
-console.log(
-  "\nStore this secret securely. Only its SHA-256 hash is persisted.",
 );
