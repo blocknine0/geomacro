@@ -12,8 +12,5 @@ export type FeedEvent = {
   severity: number;
   confidence: number;
   delta: number;
-  sourceUrl: string;
-  sourceTitle: string;
-  sourceName: string;
   publishedAt: string;
 };
