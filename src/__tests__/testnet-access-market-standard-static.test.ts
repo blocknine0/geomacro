@@ -9,15 +9,18 @@ const browserApi = readFileSync("server/api/testnet-tester/intelligence.post.ts"
 describe("Testnet access market-standard UX", () => {
   it("keeps public browser testing separate from optional developer credentials", () => {
     expect(page).toContain("Public Testnet access");
-    expect(page).toContain("No developer API key required");
+    expect(page).toContain("Normal users");
+    expect(page).toContain("public identifiers, not secrets");
     expect(page).toContain("Open Public Testnet Console");
     expect(page).toContain("Developer integrations (optional)");
+    expect(page).toContain("Developers");
   });
 
   it("supports explicit wallet sign-out and permission disconnect", () => {
     expect(page).toContain("/api/testnet-tester/logout");
     expect(page).toContain("Disconnect wallet");
     expect(page).toContain("wallet_revokePermissions");
+    expect(page).toContain('method: "eth_accounts"');
   });
 
   it("lists durable API keys while making API Secret one-time only", () => {
