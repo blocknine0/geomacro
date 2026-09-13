@@ -130,6 +130,7 @@ const PRIMARY_NAV = [
 ] as const;
 
 const TECHNICAL_NAV = [
+  { to: "/testnet-access", label: "Testnet API", description: "Wallet-first developer API and pay-per-call Testnet USDC access" },
   { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and Circle x402 access" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
   { to: "/arena", label: "Prediction Markets", description: "Testnet application and feedback layer" },
@@ -306,6 +307,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Technical Proof</p>
                 <div className="mt-3 flex flex-col gap-2">
+                  <Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>
                   <Link to="/demo" className="hover:text-foreground">Agentic Commerce Demo</Link>
                   <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
                   <Link to="/arena" className="hover:text-foreground">Prediction Markets</Link>

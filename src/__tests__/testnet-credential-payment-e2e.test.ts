@@ -68,8 +68,8 @@ describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", ()
     expect(migration).toContain("grant all on table public.testnet_api_request_bindings to service_role");
   });
 
-  it("keeps Testnet Access out of public navigation until the live E2E acceptance gate passes", () => {
-    expect(siteShell).not.toContain('href="/testnet-access"');
-    expect(siteShell).not.toContain('to: "/testnet-access"');
+  it("surfaces Testnet API under Technical Proof for live deployment verification", () => {
+    expect(siteShell).toContain('{ to: "/testnet-access", label: "Testnet API"');
+    expect(siteShell).toContain('<Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>');
   });
 });
