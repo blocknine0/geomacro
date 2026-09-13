@@ -13,8 +13,8 @@ const migration = read("supabase/migrations/914_testnet_exact_request_binding.sq
 const siteShell = read("src/components/site-shell.tsx");
 
 describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", () => {
-  it("uses the issued API Key + API Secret on the canonical developer endpoint", () => {
-    expect(consoleBridge).toContain('CREDENTIAL_KEY = "geomacro-testnet-api-credential:v1"');
+  it("uses the issued API Key + API Secret from page memory on the canonical developer endpoint", () => {
+    expect(consoleBridge).toContain("let inMemoryCredential = null");
     expect(consoleBridge).toContain("/api/testnet/account");
     expect(consoleBridge).toContain("GeomacroTest ${credential.api_key}.${credential.api_secret}");
     expect(consoleBridge).toContain('nativeFetch("/api/testnet/intelligence"');
@@ -22,6 +22,7 @@ describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", ()
     expect(consoleBridge).toContain("entitlement_grant_id");
     expect(consoleBridge).not.toContain("sessionStorage");
     expect(consoleBridge).not.toContain("localStorage");
+    expect(consoleBridge).not.toContain("geomacro-testnet-api-credential:v1");
     expect(consoleBridge).toContain("never written to browser storage");
   });
 
