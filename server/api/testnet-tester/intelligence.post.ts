@@ -1,6 +1,7 @@
 import {
   createError,
   defineEventHandler,
+  getRequestHeader,
   readBody,
   setResponseHeaders,
   setResponseStatus,
@@ -19,8 +20,32 @@ import {
   deliverTestnetIntelligence,
 } from "../../../src/lib/testnet-intelligence-service.server";
 import { bindTestnetIntelligenceRequest } from "../../../src/lib/testnet-request-binding.server";
+import {
+  testnetPublicAccessByApiKey,
+} from "../../../src/lib/testnet-public-access-contract";
+import {
+  acquireTestnetPublicSlot,
+  checkTestnetPublicRateLimit,
+} from "../../../src/lib/testnet-public-protection.server";
 import { loadTestnetTesterAccount } from "../../../src/lib/testnet-tester-account.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
+
+function publicFailure(event: unknown, status: number, code: string, message: string, retryAfter?: number) {
+  setResponseStatus(event as never, status);
+  if (retryAfter) {
+    setResponseHeaders(event as never, { "Retry-After": String(retryAfter) });
+  }
+  return {
+    ok: false,
+    error: { code, message },
+    boundaries: {
+      raw_data_included: false,
+      private_warehouse_access: false,
+      upstream_news_source_identity_exposed: false,
+      execution_authorized: false,
+    },
+  };
+}
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
@@ -34,11 +59,50 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "TESTNET_TESTER_ACCESS_NOT_ACTIVE" });
   }
 
+  const publicApiKey = getRequestHeader(event, "x-geomacro-public-key") ?? "";
+  const publicAccess = testnetPublicAccessByApiKey(publicApiKey);
+  if (!publicAccess) {
+    return publicFailure(
+      event,
+      401,
+      "TESTNET_PUBLIC_API_KEY_REQUIRED",
+      "Choose one of the three published Geomacro Testnet public API keys.",
+    );
+  }
+
+  const rate = checkTestnetPublicRateLimit({
+    principalId: session.principalId,
+    publicApiKey: publicAccess.public_api_key,
+  });
+  if (!rate.allowed) {
+    return publicFailure(
+      event,
+      429,
+      "TESTNET_PUBLIC_RATE_LIMITED",
+      "Too many public Testnet requests. Retry after the indicated delay.",
+      rate.retryAfterSeconds,
+    );
+  }
+
+  const release = acquireTestnetPublicSlot({
+    principalId: session.principalId,
+    publicApiKey: publicAccess.public_api_key,
+  });
+  if (!release) {
+    return publicFailure(
+      event,
+      429,
+      "TESTNET_PUBLIC_CONCURRENCY_LIMITED",
+      "Too many Testnet requests are already in progress. Retry shortly.",
+      2,
+    );
+  }
+
   const principal: CommercialPrincipal = {
     principal_id: session.principalId,
     principal_type: "testnet_tester",
-    principal_external_id: "browser_session",
-    key_id: "tester_browser_session",
+    principal_external_id: `browser_session:${publicAccess.chain_key}`,
+    key_id: publicAccess.public_api_key,
     scopes: [
       "testnet:structured",
       "testnet:risk-object",
@@ -49,6 +113,14 @@ export default defineEventHandler(async (event) => {
 
   try {
     const request = testnetIntelligenceRequestSchema.parse(await readBody(event));
+    if (request.payment && request.payment.chain_key !== publicAccess.chain_key) {
+      throw new CommercialAccessError(
+        400,
+        "TESTNET_PUBLIC_KEY_PAYMENT_CHAIN_MISMATCH",
+        `This public API key is bound to ${publicAccess.label}. Use the matching Testnet payment chain.`,
+      );
+    }
+
     await preflightTestnetIntelligenceAvailability(request);
     const requestBinding = await bindTestnetIntelligenceRequest({ principal, request });
     const result = await deliverTestnetIntelligence({
@@ -56,9 +128,36 @@ export default defineEventHandler(async (event) => {
       request,
       access_surface: "testnet_tester",
     });
+
     setResponseStatus(event, result.status);
+    if (result.status === 402) {
+      const supportedChains = result.body.payment.supported_chains.filter(
+        (chain) => chain.key === publicAccess.chain_key,
+      );
+      return {
+        ...result.body,
+        payment: {
+          ...result.body.payment,
+          supported_chains: supportedChains,
+        },
+        public_access: {
+          chain_key: publicAccess.chain_key,
+          label: publicAccess.label,
+          public_api_key: publicAccess.public_api_key,
+          public_key_is_secret: false,
+        },
+        request_binding: requestBinding,
+      };
+    }
+
     return {
       ...result.body,
+      public_access: {
+        chain_key: publicAccess.chain_key,
+        label: publicAccess.label,
+        public_api_key: publicAccess.public_api_key,
+        public_key_is_secret: false,
+      },
       request_binding: requestBinding,
     };
   } catch (error) {
@@ -112,5 +211,7 @@ export default defineEventHandler(async (event) => {
         execution_authorized: false,
       },
     };
+  } finally {
+    release();
   }
 });
