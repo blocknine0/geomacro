@@ -240,7 +240,7 @@ function TestnetAccessPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14" data-testnet-auth-flow={AUTH_FLOW}>
       <section className="rounded-2xl border border-border/70 bg-card/30 p-6 sm:p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Hidden Testnet Developer Access</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Testnet Developer Access</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">CLIENT WALLET-FIRST V3</span>
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">TESTNET · NON-REVENUE</span>
