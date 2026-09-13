@@ -1,0 +1,128 @@
+name: Testnet Dashboard Live Smoke
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/testnet-dashboard-live-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testnet-dashboard-live-smoke
+  cancel-in-progress: true
+
+jobs:
+  live-dashboard-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BACKEND_BASE_URL: https://geomacro.live
+      DASHBOARD_URL: https://blocknine0.github.io/geomacro-testnet-dashboard/
+    steps:
+      - name: Verify public dashboard feed for 7D, 30D and 90D
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for days in 7 30 90; do
+            body="$(mktemp)"
+            headers="$(mktemp)"
+            code="$(curl -L --retry 5 --retry-all-errors --retry-delay 5 \
+              --connect-timeout 15 --max-time 60 \
+              -sS -D "$headers" -o "$body" -w '%{http_code}' \
+              "$BACKEND_BASE_URL/api/testnet/dashboard?days=$days")"
+
+            echo "days=$days HTTP=$code"
+            if [[ "$code" != "200" ]]; then
+              echo "::error title=Dashboard feed unavailable::Expected HTTP 200 for days=$days, got $code."
+              head -c 1200 "$body" || true
+              exit 1
+            fi
+
+            grep -Eqi '^content-type:.*application/json' "$headers" || {
+              echo "::error title=Dashboard feed is not JSON::Missing application/json Content-Type for days=$days."
+              head -c 1200 "$body" || true
+              exit 1
+            }
+
+            grep -Eqi '^access-control-allow-origin:[[:space:]]*\*' "$headers" || {
+              echo "::error title=Dashboard CORS boundary missing::Expected Access-Control-Allow-Origin: *."
+              cat "$headers"
+              exit 1
+            }
+
+            grep -Eqi '^cache-control:.*public' "$headers" || {
+              echo "::error title=Dashboard cache contract missing::Expected a public Cache-Control policy."
+              cat "$headers"
+              exit 1
+            }
+
+            jq -e --argjson days "$days" '
+              .ok == true
+              and .data.window.days == $days
+              and .data.program.environment == "testnet"
+              and .data.program.identity_model == "wallet_first_eip4361"
+              and .data.program.payment_model == "pay_per_call"
+              and .data.program.payment_asset == "USDC"
+              and .data.program.commercial_revenue == false
+              and .data.program.execution_authorized == false
+              and .data.boundaries.public_read_only == true
+              and .data.boundaries.customer_identity_exposed == false
+              and .data.boundaries.wallet_address_exposed == false
+              and .data.boundaries.transaction_hash_exposed == false
+              and .data.boundaries.request_id_exposed == false
+              and .data.boundaries.subject_or_query_exposed == false
+              and .data.boundaries.raw_credentials_exposed == false
+              and .data.boundaries.raw_request_body_exposed == false
+              and .data.boundaries.upstream_news_source_identity_exposed == false
+              and .data.boundaries.testnet_counts_as_commercial_revenue == false
+              and .data.overview.execution_authorized_violation_count == 0
+              and ([.data.recent_activity[]? | .execution_authorized == false] | all)
+              and ([.data.recent_payments[]? | .commercial_revenue == false] | all)
+              and ([.data.recent_activity[]? | (has("wallet_address") or has("transaction_hash") or has("request_id") or has("query") or has("subject") or has("api_key") or has("api_secret"))] | any | not)
+              and ([.data.recent_payments[]? | (has("wallet_address") or has("transaction_hash") or has("request_id") or has("api_key") or has("api_secret"))] | any | not)
+            ' "$body" >/dev/null || {
+              echo "::error title=Dashboard feed contract failed::Public Testnet feed violated its data, safety, or privacy contract for days=$days."
+              jq '{ok, window: .data.window, program: .data.program, overview: .data.overview, boundaries: .data.boundaries}' "$body" || cat "$body"
+              exit 1
+            }
+
+            echo "PASS: days=$days feed is JSON, CORS-enabled, privacy-safe and execution_authorized=false."
+          done
+
+      - name: Verify public dashboard page deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 5 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 15 --max-time 60 \
+            -sS -o "$body" -w '%{http_code}' "$DASHBOARD_URL")"
+
+          echo "Dashboard HTTP=$code"
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Dashboard page unavailable::Expected HTTP 200 from GitHub Pages, got $code."
+            head -c 1200 "$body" || true
+            exit 1
+          fi
+
+          grep -Fq 'Testnet operations dashboard' "$body"
+          grep -Fq "https://geomacro.live/api/testnet/dashboard" "$body"
+          grep -Fq 'Testnet activity is technical proof only and is never reported as commercial revenue.' "$body"
+
+          if grep -Eqi 'service[_ -]?role|SUPABASE_SERVICE_ROLE|private[_ -]?key|gmk_test_[A-Za-z0-9_-]{16,}|gms_test_[A-Za-z0-9_-]{16,}' "$body"; then
+            echo "::error title=Potential secret exposed in public dashboard::A secret-like marker appeared in the deployed dashboard HTML."
+            exit 1
+          fi
+
+          echo "PASS: GitHub Pages dashboard is deployed and points only to the public redacted feed."
+
+      - name: Summary
+        run: |
+          echo "PASS: Geomacro Testnet dashboard end-to-end live smoke passed."
