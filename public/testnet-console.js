@@ -100,13 +100,20 @@
 
   async function boot() {
     let account;
+    let config;
     try {
       account = (await requireJson("/api/testnet-tester/me")).data;
+      config = (await requireJson("/api/testnet-tester/config")).data;
     } catch {
       return;
     }
     if (account?.access_status !== "active") return;
     if (document.getElementById("testerConsolePanel")) return;
+
+    const publicChains = Array.isArray(config?.chains)
+      ? config.chains.filter((chain) => chain?.public_api_key && chain?.key)
+      : [];
+    if (publicChains.length !== 3) return;
 
     let lastResult = null;
     let lastRequest = null;
@@ -117,20 +124,36 @@
     let busy = false;
     const recoveryKey = `geomacro-testnet-payment:${account.entitlement_grant_id}`;
 
+    const publicNetwork = el("select", { id: "testerPublicNetwork" });
+    publicChains.forEach((chain) => {
+      publicNetwork.appendChild(
+        el("option", {
+          value: chain.public_api_key,
+          text: `${chain.name} · ${chain.public_api_key}`,
+        }),
+      );
+    });
+
+    function selectedPublicChain() {
+      return publicChains.find((chain) => chain.public_api_key === publicNetwork.value) || null;
+    }
+
     function saveRecovery() {
-      // Session-scoped recovery contains no API credentials or session tokens.
       sessionStorage.setItem(recoveryKey, JSON.stringify({
-        request: pendingRequest, quote: pendingQuote, payment: pendingPayment,
+        request: pendingRequest,
+        quote: pendingQuote,
+        payment: pendingPayment,
+        public_api_key: publicNetwork.value,
       }));
     }
 
     const panel = el("section", { className: "panel", id: "testerConsolePanel" });
-    panel.appendChild(el("div", { className: "eyebrow", text: "TRY GEOMACRO" }));
+    panel.appendChild(el("div", { className: "eyebrow", text: "PUBLIC TESTNET CONSOLE" }));
     panel.appendChild(el("h2", { text: "Run a pay-per-call Testnet intelligence request" }));
     panel.appendChild(
       el("p", {
         className: "muted",
-        text: "All capabilities below use the same canonical Geomacro intelligence state. No upfront Testnet USDC payment is required.",
+        text: "No developer API credentials are required here. Choose one of the three public Testnet client keys, receive an HTTP 402 quote, pay only that call, and retry the exact same request with proof.",
       }),
     );
 
@@ -172,6 +195,7 @@
     const amount = el("input", { id: "testerAmount", type: "number", min: "0.000001", step: "any", placeholder: "Optional USDC amount" });
 
     const form = el("form", { className: "form-grid", id: "testerConsoleForm" });
+    const publicNetworkField = makeField("Public Testnet API key / payment network", publicNetwork, true);
     const capabilityField = makeField("Capability", capability, true);
     const questionField = makeField("Question", question, true);
     const subjectTypeField = makeField("Risk subject", subjectType);
@@ -181,6 +205,7 @@
     const actionField = makeField("Action context", actionType);
     const amountField = makeField("Amount (optional)", amount);
     form.append(
+      publicNetworkField,
       capabilityField,
       questionField,
       subjectTypeField,
@@ -199,7 +224,7 @@
     const status = el("div", { className: "okline", id: "testerConsoleStatus" });
     const credits = el("div", {
       className: "notice",
-      text: "500 credits is your 30-day usage cap. Credits are consumed only after the matching Testnet USDC call payment is verified.",
+      text: "500 credits is your 30-day usage cap. Credits are consumed only after the matching Testnet USDC call payment is verified. Public keys are identifiers, not secrets.",
     });
 
     const paymentBox = el("div", { className: "notice", id: "testerPaymentBox" });
@@ -234,8 +259,15 @@
     if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling);
     else document.querySelector("main")?.appendChild(panel);
 
-    function syncFields() {
+    function resetQuote() {
       if (busy || pendingPayment) return;
+      paymentBox.hidden = true;
+      pendingRequest = null;
+      pendingQuote = null;
+    }
+
+    function syncFields() {
+      resetQuote();
       const value = capability.value;
       const isQuery = value === "intelligence_query";
       const isGri = value === "gri_read";
@@ -253,13 +285,11 @@
       policyField.hidden = !isGate;
       actionField.hidden = !isGate;
       amountField.hidden = !isGate;
-      paymentBox.hidden = true;
-      pendingRequest = null;
-      pendingQuote = null;
     }
 
     capability.addEventListener("change", syncFields);
     subjectType.addEventListener("change", syncFields);
+    publicNetwork.addEventListener("change", resetQuote);
     syncFields();
 
     function buildRequest() {
@@ -298,10 +328,18 @@
     }
 
     async function executeRequest(request) {
+      const publicChain = selectedPublicChain();
+      if (!publicChain) throw new Error("Choose a valid public Testnet API key.");
       const { response, payload } = await requestJson("/api/testnet-tester/intelligence", {
         method: "POST",
+        headers: { "x-geomacro-public-key": publicChain.public_api_key },
         body: JSON.stringify(request),
       });
+
+      if (response.status === 429) {
+        const retryAfter = response.headers.get("retry-after");
+        throw new Error(`${payload?.error?.message || "Testnet request rate limited."}${retryAfter ? ` Retry after ${retryAfter}s.` : ""}`);
+      }
 
       if (response.status === 402 && payload?.error?.code === "TESTNET_PAYMENT_REQUIRED") {
         if (pendingPayment) throw new Error("Payment already submitted. Retry verification with the saved transaction; do not pay again.");
@@ -316,9 +354,9 @@
             }),
           );
         });
-        quoteText.textContent = `${payload.payment.credit_cost} credit${payload.payment.credit_cost === 1 ? "" : "s"} × ${payload.payment.credit_price_usdc} Testnet USDC = ${payload.payment.amount_due_usdc} Testnet USDC. No upfront payment.`;
+        quoteText.textContent = `${payload.payment.credit_cost} credit${payload.payment.credit_cost === 1 ? "" : "s"} × ${payload.payment.credit_price_usdc} Testnet USDC = ${payload.payment.amount_due_usdc} Testnet USDC. Public key: ${publicChain.public_api_key}.`;
         paymentBox.hidden = false;
-        status.textContent = "Price quote ready. Pay only this call amount, then the same request will retry automatically.";
+        status.textContent = "Price quote ready. Pay only this call amount, then the exact same request will retry automatically.";
         return;
       }
 
@@ -353,7 +391,7 @@
     function setBusy(value) {
       busy = value;
       const locked = value || Boolean(pendingPayment);
-      for (const control of [capability, question, subjectType, origin, destination, policy, actionType, amount, runButton, chainSelect]) {
+      for (const control of [publicNetwork, capability, question, subjectType, origin, destination, policy, actionType, amount, runButton, chainSelect]) {
         control.disabled = locked;
       }
       payButton.disabled = value;
@@ -362,11 +400,18 @@
 
     try {
       const saved = JSON.parse(sessionStorage.getItem(recoveryKey) || "null");
+      if (saved?.public_api_key && publicChains.some((chain) => chain.public_api_key === saved.public_api_key)) {
+        publicNetwork.value = saved.public_api_key;
+      }
       if (saved?.payment && saved?.request && saved?.quote) {
         pendingRequest = saved.request;
         pendingQuote = saved.quote;
         pendingPayment = saved.payment;
         paymentBox.hidden = false;
+        chainSelect.innerHTML = "";
+        (pendingQuote.supported_chains || []).forEach((chain) => {
+          chainSelect.appendChild(el("option", { value: chain.key, text: `${chain.name} · ${pendingQuote.amount_due_usdc} Testnet USDC` }));
+        });
         quoteText.textContent = `Saved transaction: ${pendingPayment.tx_hash}`;
         status.textContent = "An earlier payment needs verification. Retry it without sending another transfer.";
         setBusy(false);
@@ -403,7 +448,7 @@
 
       const chain = (pendingQuote.supported_chains || []).find((item) => item.key === chainSelect.value);
       if (!pendingPayment && !chain) {
-        status.textContent = "Choose a supported Testnet payment network.";
+        status.textContent = "Choose the Testnet payment network bound to the selected public API key.";
         return;
       }
 
@@ -414,7 +459,6 @@
           await executeRequest({ ...pendingRequest, payment: pendingPayment });
           return;
         }
-        // Verify recovery storage is writable before requesting any transfer.
         saveRecovery();
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         const payer = String(accounts?.[0] || "");
@@ -441,15 +485,11 @@
               from: payer,
               to: chain.usdc_address,
               value: "0x0",
-              data: erc20TransferData(
-                pendingQuote.receiver_address,
-                pendingQuote.amount_due_atomic,
-              ),
+              data: erc20TransferData(pendingQuote.receiver_address, pendingQuote.amount_due_atomic),
             },
           ],
         });
 
-        // Preserve proof BEFORE receipt polling or API delivery can fail.
         pendingPayment = {
           chain_key: chain.key,
           tx_hash: String(txHash),
@@ -459,11 +499,7 @@
         quoteText.textContent = `Submitted transaction: ${pendingPayment.tx_hash}`;
         status.textContent = "Testnet USDC sent. Waiting for confirmation before retrying the same request...";
         await waitForReceipt(String(txHash));
-        const retry = {
-          ...pendingRequest,
-          payment: pendingPayment,
-        };
-        await executeRequest(retry);
+        await executeRequest({ ...pendingRequest, payment: pendingPayment });
       } catch (error) {
         status.textContent = pendingPayment
           ? `Payment submitted (${pendingPayment.tx_hash}). ${error.message || "Verification failed."} Use Retry existing payment; do not pay again.`

@@ -5,7 +5,30 @@ import { describe, expect, it, vi } from "vitest";
 const script = readFileSync("public/testnet-console.js", "utf8");
 const tx = `0x${"a".repeat(64)}`;
 const payer = `0x${"1".repeat(40)}`;
-const chain = { key: "arcTestnet", chain_id_hex: "0x4cef52", usdc_address: `0x${"2".repeat(40)}`, name: "Arc Testnet" };
+const chain = {
+  key: "arcTestnet",
+  chain_id_hex: "0x4cef52",
+  usdc_address: `0x${"2".repeat(40)}`,
+  name: "Arc Testnet",
+  public_api_key: "gmk_public_arc_testnet_v1",
+};
+const publicChains = [
+  chain,
+  {
+    key: "baseSepolia",
+    chain_id_hex: "0x14a34",
+    usdc_address: `0x${"4".repeat(40)}`,
+    name: "Base Sepolia",
+    public_api_key: "gmk_public_base_sepolia_v1",
+  },
+  {
+    key: "polygonAmoy",
+    chain_id_hex: "0x13882",
+    usdc_address: `0x${"5".repeat(40)}`,
+    name: "Polygon Amoy",
+    public_api_key: "gmk_public_polygon_amoy_v1",
+  },
+];
 const quote = { supported_chains: [chain], credit_cost: 1, credit_price_usdc: 0.5, amount_due_usdc: 0.5, amount_due_atomic: "500000", receiver_address: `0x${"3".repeat(40)}` };
 const success = { ok: true, data: {}, entitlement: { credits_remaining: 499, credit_cost: 1 }, payment: { amount_due_usdc: 0.5 } };
 
@@ -27,11 +50,14 @@ async function browser(options: { receiptFailure?: boolean; deliveryFailure?: bo
   let boot: any;
   const storage = options.storage ?? new Map<string, string>();
   const bodies: any[] = [];
+  const requestHeaders: any[] = [];
   let deliveries = 0;
-  const fetch = vi.fn(async (url: string, init: any) => {
+  const fetch = vi.fn(async (url: string, init: any = {}) => {
     if (url.endsWith("/me")) return Response.json({ ok: true, data: { access_status: "active", entitlement_grant_id: "grant-one" } });
+    if (url.endsWith("/config")) return Response.json({ ok: true, data: { chains: publicChains } });
     const body = JSON.parse(init.body);
     bodies.push(body);
+    requestHeaders.push(init.headers ?? {});
     if (!body.payment) return Response.json({ ok: false, error: { code: "TESTNET_PAYMENT_REQUIRED" }, payment: quote }, { status: 402 });
     deliveries++;
     if (deliveries === 1 && options.deliveryFailure) throw new Error("API timeout");
@@ -59,13 +85,14 @@ async function browser(options: { receiptFailure?: boolean; deliveryFailure?: bo
   const submit = () => ids.get("testerConsoleForm").listeners.submit({ preventDefault() {} });
   const pay = () => nodes.find(n => n.listeners.click && String(n.textContent).startsWith("Pay Testnet"))
     ?? nodes.find(n => String(n.textContent).startsWith("Retry existing"));
-  return { ids, wallet, bodies, storage, submit, clickPay: () => pay().listeners.click(), sendCount: () => wallet.mock.calls.filter(([arg]) => arg.method === "eth_sendTransaction").length };
+  return { ids, wallet, bodies, requestHeaders, storage, submit, clickPay: () => pay().listeners.click(), sendCount: () => wallet.mock.calls.filter(([arg]) => arg.method === "eth_sendTransaction").length };
 }
 
 describe("browser Testnet payment recovery", () => {
   it.each(["receiptFailure", "deliveryFailure", "htmlDelivery"] as const)("does not send twice after %s", async failure => {
     const app = await browser({ [failure]: true });
     await app.submit();
+    expect(app.requestHeaders[0]["x-geomacro-public-key"]).toBe(chain.public_api_key);
     await app.clickPay();
     expect(app.sendCount()).toBe(1);
     expect(app.storage.size).toBe(1);
@@ -80,13 +107,15 @@ describe("browser Testnet payment recovery", () => {
     expect(app.storage.size).toBe(0);
   });
 
-  it("recovers the exact submitted request and proof after reload without another wallet request", async () => {
+  it("recovers the exact submitted request, public key and proof after reload without another wallet request", async () => {
     const first = await browser({ receiptFailure: true });
     await first.submit();
     await first.clickPay();
+    expect(JSON.parse(first.storage.values().next().value as string).public_api_key).toBe(chain.public_api_key);
     const reloaded = await browser({ storage: first.storage });
     await reloaded.clickPay();
     expect(reloaded.wallet).not.toHaveBeenCalled();
+    expect(reloaded.requestHeaders[0]["x-geomacro-public-key"]).toBe(chain.public_api_key);
     expect(reloaded.bodies[0]).toEqual({ ...first.bodies[0], payment: { chain_key: chain.key, tx_hash: tx, payer_address: payer } });
   });
 
@@ -97,6 +126,7 @@ describe("browser Testnet payment recovery", () => {
     expect(app.sendCount()).toBe(0);
     expect(app.ids.get("testerConsoleStatus").textContent).toContain("No payment was sent");
   });
+
   it("ignores concurrent quote and payment clicks", async () => {
     const app = await browser();
     await Promise.all([app.submit(), app.submit()]);

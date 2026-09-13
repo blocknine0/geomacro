@@ -14,6 +14,14 @@ import {
   TESTNET_INTELLIGENCE_CAPABILITIES,
   TESTNET_INTELLIGENCE_PRICE_TABLE,
 } from "../../../src/lib/testnet-intelligence-contract";
+import {
+  TESTNET_PUBLIC_ACCESS_BOUNDARIES,
+  TESTNET_PUBLIC_ACCESS_VERSION,
+  TESTNET_PUBLIC_API_KEYS,
+} from "../../../src/lib/testnet-public-access-contract";
+import {
+  TESTNET_PUBLIC_PROTECTION_POLICY,
+} from "../../../src/lib/testnet-public-protection.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
 
 export default defineEventHandler(async (event) => {
@@ -24,6 +32,11 @@ export default defineEventHandler(async (event) => {
 
   await requireTesterPrincipal(event);
   try {
+    const chains = Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => ({
+      ...chain,
+      public_api_key: TESTNET_PUBLIC_API_KEYS[chain.key].public_api_key,
+    }));
+
     return {
       ok: true,
       data: {
@@ -36,7 +49,10 @@ export default defineEventHandler(async (event) => {
         upfront_payment_required: false,
         capabilities: TESTNET_INTELLIGENCE_CAPABILITIES,
         capability_prices: TESTNET_INTELLIGENCE_PRICE_TABLE,
-        chains: Object.values(TESTNET_USDC_ACCESS_CHAINS),
+        chains,
+        public_access_version: TESTNET_PUBLIC_ACCESS_VERSION,
+        public_access_boundaries: TESTNET_PUBLIC_ACCESS_BOUNDARIES,
+        public_protection_policy: TESTNET_PUBLIC_PROTECTION_POLICY,
         payment_environment: "testnet",
         commercial_revenue: false,
       },
