@@ -73,6 +73,7 @@ jobs:
           src/__tests__/testnet-credential-payment-e2e.test.ts
           src/__tests__/testnet-credential-bridge-runtime.test.ts
           src/__tests__/testnet-access-market-standard-static.test.ts
+          src/__tests__/testnet-access-ux-social-static.test.ts
           src/__tests__/testnet-public-protection.test.ts
 
       - name: Migration safety
