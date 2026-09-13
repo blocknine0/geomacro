@@ -11,6 +11,7 @@ import {
 import { recordCommercialUsageEvent } from "./commercial-ops.server";
 import { structuredDeliveryPolicy } from "./structured-data-entitlement-registry";
 import { settleTestnetApiCall } from "./testnet-api-payment.server";
+import { loadTestnetAssistiveContext } from "./testnet-assistive-context.server";
 import { runCanonicalTestnetIntelligence } from "./testnet-intelligence-capability.server";
 import type { TestnetIntelligenceRequest } from "./testnet-intelligence-contract";
 
@@ -124,6 +125,21 @@ export async function deliverTestnetIntelligence(input: {
       max_structural_observations: policy.tier.max_structural_observations,
       max_evidence_references: policy.tier.max_evidence_references,
     });
+
+    const assistiveContext = await loadTestnetAssistiveContext(request);
+    delivery = {
+      ...delivery,
+      data: {
+        ...delivery.data,
+        assistive_context: assistiveContext,
+      },
+      structural_observation_count:
+        delivery.structural_observation_count +
+        assistiveContext.supplemental_counts.structural_observation_count,
+      evidence_reference_count:
+        delivery.evidence_reference_count +
+        assistiveContext.supplemental_counts.evidence_reference_count,
+    };
   } catch (error) {
     const code = error instanceof Error ? error.message : "TESTNET_INTELLIGENCE_UNAVAILABLE";
     if (
