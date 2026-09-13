@@ -18,9 +18,11 @@ vi.mock("../lib/corridor-risk-gate-service.server", () => ({
   evaluateCorridorRiskGate: mocks.evaluateCorridorRiskGate,
 }));
 
+import { apiCredentialDigest } from "../lib/api-credential-hash.server";
 import { handleExternalRiskGateRequest } from "../lib/risk-gate-api.server";
 
 const API_KEY = "g".repeat(64);
+const TEST_PEPPER = "risk-gate-runtime-test-pepper".padEnd(64, "x");
 
 function body() {
   return {
@@ -75,9 +77,7 @@ function makeDb(options: DbOptions = {}) {
       : {
           client_id: "client_test",
           display_name: "Test client",
-          api_key_hash: await import("node:crypto").then(({ createHash }) =>
-            createHash("sha256").update(API_KEY).digest("hex"),
-          ),
+          api_key_hash: apiCredentialDigest(API_KEY, "risk-gate-bearer"),
           enabled: options.enabled ?? true,
           requests_per_minute: 60,
         },
@@ -118,6 +118,7 @@ function makeDb(options: DbOptions = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("GEOMACRO_API_CREDENTIAL_PEPPER", TEST_PEPPER);
   mocks.evaluateCountryRiskGate.mockResolvedValue({
     response: {
       decision: "CONTINUE",
@@ -134,6 +135,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("Risk Gate runtime fail-closed matrix", () => {
