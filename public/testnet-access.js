@@ -74,6 +74,7 @@
 
   let walletAddress = "";
   let registrationPending = false;
+  let avatarPresent = false;
   const announcedWallets = [];
 
   function rememberWalletProvider(detail) {
@@ -149,6 +150,52 @@
     show("paymentPanel", false);
   }
 
+  function ensureAvatarChangeAction() {
+    const form = $("avatarForm");
+    if (!form) return null;
+    let action = $("avatarChangeAction");
+    if (action) return action;
+
+    action = document.createElement("div");
+    action.id = "avatarChangeAction";
+    action.className = "actions field full";
+    action.hidden = true;
+
+    const button = document.createElement("button");
+    button.id = "avatarChangeButton";
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = "Change profile image";
+    button.addEventListener("click", () => {
+      setAvatarEditorState(true, true);
+      text("avatarStatus", "Choose a new profile image, then save the change.");
+      $("avatarInput")?.click();
+    });
+
+    action.appendChild(button);
+    form.appendChild(action);
+    return action;
+  }
+
+  function setAvatarEditorState(editing, hasAvatar = avatarPresent) {
+    avatarPresent = Boolean(hasAvatar);
+    const input = $("avatarInput");
+    const inputField = input?.closest(".field");
+    const submitButton = $("avatarForm")?.querySelector('button[type="submit"]');
+    const submitField = submitButton?.closest(".field");
+    const action = ensureAvatarChangeAction();
+
+    if (inputField) inputField.hidden = avatarPresent && !editing;
+    if (submitField) submitField.hidden = avatarPresent && !editing;
+    if (action) action.hidden = !avatarPresent || editing;
+
+    if (submitButton) {
+      submitButton.textContent = avatarPresent ? "Save new profile image" : "Upload profile image";
+    }
+
+    if (input && avatarPresent && !editing) input.value = "";
+  }
+
   async function loadAccount() {
     try {
       const payload = await json("/api/testnet-tester/me");
@@ -166,13 +213,26 @@
       show("paymentPanel", false);
       show("developerPanel", active);
       show("feedbackPanel", active);
+
+      const preview = $("avatarPreview");
       if (account.avatar_path) {
-        const preview = $("avatarPreview");
+        avatarPresent = true;
         if (preview) {
           preview.src = `/api/testnet-tester/avatar?v=${Date.now()}`;
           preview.hidden = false;
         }
+        setAvatarEditorState(false, true);
+        text("avatarStatus", "Profile image saved ✓");
+      } else {
+        avatarPresent = false;
+        if (preview) {
+          preview.removeAttribute("src");
+          preview.hidden = true;
+        }
+        setAvatarEditorState(true, false);
+        text("avatarStatus", "");
       }
+
       if (active) await loadDeveloperKeys();
       return account;
     } catch (error) {
@@ -278,11 +338,13 @@
     if (file.size > 2 * 1024 * 1024) return text("avatarStatus", "Profile image must be 2 MB or smaller.");
     const data = new FormData();
     data.append("avatar", file);
-    text("avatarStatus", "Uploading profile image...");
+    text("avatarStatus", avatarPresent ? "Saving new profile image..." : "Uploading profile image...");
     try {
       await json("/api/testnet-tester/avatar", { method: "POST", body: data });
-      text("avatarStatus", "Profile image updated.");
+      const input = $("avatarInput");
+      if (input) input.value = "";
       await loadAccount();
+      text("avatarStatus", "Profile image saved ✓");
     } catch (error) {
       text("avatarStatus", browserErrorMessage(error, "Profile image upload failed."));
     }
@@ -396,6 +458,7 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     applyPayPerCallCopy();
+    ensureAvatarChangeAction();
     bind();
     clearBooleanErrorArtifact("globalStatus");
     clearBooleanErrorArtifact("walletActionStatus");
