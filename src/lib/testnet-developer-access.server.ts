@@ -1,14 +1,11 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 import { GEOMACRO_CREDIT_CONTRACT_VERSION } from "./commercial-access-contract";
+import { apiCredentialDigest } from "./api-credential-hash.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { STRUCTURED_DATA_REGISTRY_VERSION } from "./structured-data-entitlement-registry";
 
 export type TestnetIntegrationType = "product_api" | "ai_agent" | "automation" | "demo";
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
 
 async function ensureMeteredEntitlement(principalId: string) {
   const db = requireRiskSupabase();
@@ -86,7 +83,7 @@ export async function issueTestnetDeveloperApiKey(input: {
     .insert({
       principal_id: input.principalId,
       key_id: apiKey,
-      api_key_hash: sha256(apiSecret),
+      api_key_hash: apiCredentialDigest(apiSecret, "testnet-api-secret"),
       enabled: true,
       scopes: [
         "commercial:read",

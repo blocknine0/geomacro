@@ -42,7 +42,10 @@ describe("Testnet access market-standard UX", () => {
   it("binds the public console to a public key and matching payment chain", () => {
     expect(consoleJs).toContain("x-geomacro-public-key");
     expect(consoleJs).toContain("public_api_key");
-    expect(consoleJs).toContain("public_api_key: publicNetwork.value");
+    expect(consoleJs).toContain("selectedPublicChain");
+    expect(consoleJs).toContain(
+      'headers: { "x-geomacro-public-key": publicChain.public_api_key }',
+    );
     expect(browserApi).toContain("TESTNET_PUBLIC_KEY_PAYMENT_CHAIN_MISMATCH");
     expect(browserApi).toContain("TESTNET_PUBLIC_RATE_LIMITED");
     expect(browserApi).toContain("TESTNET_PUBLIC_CONCURRENCY_LIMITED");

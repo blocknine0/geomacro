@@ -101,7 +101,7 @@ describe("testnet tester account runtime boundaries", () => {
     expect(route).toContain("will not be shown again");
     expect(service).toContain('grant.tier !== "testnet_tester"');
     expect(service).toContain("TESTNET_DEVELOPER_KEY_LIMIT_REACHED");
-    expect(service).toContain("api_key_hash: sha256(apiSecret)");
+    expect(service).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
     expect(service).toContain("api_secret: apiSecret");
   });
 });

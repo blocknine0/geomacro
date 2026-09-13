@@ -1,10 +1,10 @@
-import { createHash } from "node:crypto";
 import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
 import {
   GEOMACRO_ACCESS_TIERS,
   GEOMACRO_CREDIT_CONTRACT_VERSION,
 } from "../../src/lib/commercial-access-contract";
+import { apiCredentialDigest } from "../../src/lib/api-credential-hash.server";
 import {
   STRUCTURED_DATA_REGISTRY_VERSION,
   STRUCTURED_TIER_REGISTRY,
@@ -28,13 +28,6 @@ function projectRefOf(url: string): string | null {
   } catch {
     return null;
   }
-}
-
-function sha256(value: string): string {
-  // COMMERCIAL_PILOT_API_KEY is an opaque API bearer credential managed as a secret,
-  // not a user password. Its deterministic digest is the database lookup identifier.
-  // codeql[js/insufficient-password-hash]
-  return createHash("sha256").update(value).digest("hex");
 }
 
 function canonicalOfferForTier(tier: "api_pilot" | "institutional"): CommercialOfferId {
@@ -77,7 +70,7 @@ async function main() {
   }
 
   const offerId = canonicalOfferForTier(typedTier);
-  const keyHash = sha256(apiKey);
+  const keyHash = apiCredentialDigest(apiKey, "commercial-bearer");
   const keyId = `gmk_${keyHash.slice(0, 24)}`;
   const tierConfig = GEOMACRO_ACCESS_TIERS[typedTier];
   const includedCredits = "credits_per_30_days" in tierConfig
@@ -93,6 +86,7 @@ async function main() {
     display_name: displayName,
     key_id: keyId,
     api_key_hash_prefix: keyHash.slice(0, 12),
+    credential_digest: "hmac-sha256-v1",
     tier,
     offer_id: offerId,
     included_credits: includedCredits,
@@ -152,21 +146,36 @@ async function main() {
     principal = insertPrincipal.data;
   }
 
-  const existingCredential = await db
+  let existingCredential = await db
     .from("commercial_api_credentials")
     .select("id,principal_id,key_id,api_key_hash,enabled,revoked_at")
-    .or(`key_id.eq.${keyId},api_key_hash.eq.${keyHash}`);
+    .eq("api_key_hash", keyHash);
   if (existingCredential.error) throw existingCredential.error;
+
+  if ((existingCredential.data ?? []).length === 0) {
+    const upgrade = await db.rpc("upgrade_commercial_api_credential_hash", {
+      p_key_id: null,
+      p_presented_credential: apiKey,
+      p_hmac_hash: keyHash,
+    });
+    if (upgrade.error) throw upgrade.error;
+    if ((upgrade.data as Record<string, unknown> | null)?.upgraded === true) {
+      existingCredential = await db
+        .from("commercial_api_credentials")
+        .select("id,principal_id,key_id,api_key_hash,enabled,revoked_at")
+        .eq("api_key_hash", keyHash);
+      if (existingCredential.error) throw existingCredential.error;
+    }
+  }
 
   const credentialRows = existingCredential.data ?? [];
   if (credentialRows.length > 1) {
-    throw new Error("Credential identity conflict: key id/hash resolve to different records");
+    throw new Error("Credential identity conflict: keyed digest resolves to multiple records");
   }
   if (credentialRows.length === 1) {
     const row = credentialRows[0];
     if (
       row.principal_id !== principal.id ||
-      row.key_id !== keyId ||
       row.api_key_hash !== keyHash ||
       row.revoked_at !== null
     ) {

@@ -77,7 +77,7 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(developer).toContain('grant.metadata?.payment_model !== "pay_per_call"');
     expect(developer).toContain("const apiKey = `gmk_test_");
     expect(developer).toContain("const apiSecret = `gms_test_");
-    expect(developer).toContain("api_key_hash: sha256(apiSecret)");
+    expect(developer).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
     expect(developer).toContain("api_secret: apiSecret");
     expect(commercialAccess).toContain("TESTNET_API_KEY_SECRET_REQUIRED");
     expect(browser).toContain("payload.data.api_secret");

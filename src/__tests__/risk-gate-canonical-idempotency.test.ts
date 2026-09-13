@@ -97,7 +97,7 @@ describe(
     );
 
     it(
-      "locks the Risk Gate wrapper to canonical payload hashing without changing bearer-token hashing",
+      "locks request hashing to canonical SHA-256 while bearer credentials use keyed HMAC",
       () => {
         const source = readFileSync(
           "src/lib/risk-gate-idempotency.server.ts",
@@ -108,7 +108,10 @@ describe(
           "requestHash = sha256Text(\n      canonicalJson(payload),",
         );
         expect(source).toContain(
-          "const tokenHash = sha256Text(token);",
+          "const tokenHash = apiCredentialDigest(",
+        );
+        expect(source).toContain(
+          '"risk-gate-bearer",',
         );
         expect(source).toContain(
           "execution_authorized: false",
