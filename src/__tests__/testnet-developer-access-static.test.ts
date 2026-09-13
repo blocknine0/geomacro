@@ -19,11 +19,11 @@ describe("metered testnet developer integration", () => {
     expect(server).toContain("TESTNET_TESTER_ENTITLEMENT_NOT_ACTIVE");
   });
 
-  it("returns a high-entropy API Key + API Secret once and persists only the secret hash", () => {
+  it("returns a high-entropy API Key + API Secret once and persists only the keyed secret digest", () => {
     expect(server).toContain('const apiKey = `gmk_test_${randomBytes(20).toString("base64url")}`');
     expect(server).toContain('const apiSecret = `gms_test_${randomBytes(32).toString("base64url")}`');
     expect(server).toContain("key_id: apiKey");
-    expect(server).toContain("api_key_hash: sha256(apiSecret)");
+    expect(server).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
     expect(server).toContain("api_key: apiKey");
     expect(server).toContain("api_secret: apiSecret");
     expect(server).toContain("shown_once: true");
@@ -37,7 +37,7 @@ describe("metered testnet developer integration", () => {
     expect(access).toContain("TESTNET_API_KEY_SECRET_REQUIRED");
     expect(access).toContain("TESTNET_API_CREDENTIAL_DENIED");
     expect(access).toContain("GeomacroTest");
-    expect(access).toContain("sha256(input.apiSecret)");
+    expect(access).toContain('apiCredentialDigest(input.apiSecret, "testnet-api-secret")');
     expect(access).toContain('startsWith("gmk_test_")');
   });
 
