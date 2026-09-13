@@ -80,7 +80,7 @@ function IntelligencePage() {
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Follow the geopolitical and macro developments currently shaping risk. Each event keeps its recorded score, movement, source context and timestamp so you can inspect the underlying record rather than a separate display-only ranking.
+          Follow the geopolitical and macro developments currently shaping risk. Each event keeps its recorded score, movement and timestamp so you can inspect the structured intelligence record rather than a separate display-only ranking.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">You do not need a wallet to read or research this intelligence.</p>
       </header>
@@ -92,7 +92,7 @@ function IntelligencePage() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search events, sources or categories"
+            placeholder="Search events or categories"
             className="pl-9"
           />
         </label>
@@ -183,7 +183,7 @@ function IntelligencePage() {
                   <dl className="mt-5 grid grid-cols-2 gap-3 text-xs">
                     <Metric label="Evidence" value={String(globalRisk.data.eventCount)} />
                     <Metric label="Stories" value={String(globalRisk.data.independentStoryCount)} />
-                    <Metric label="Sources" value={globalRisk.data.sourceCount === null ? "—" : String(globalRisk.data.sourceCount)} />
+                    <Metric label="Inputs" value={globalRisk.data.sourceCount === null ? "—" : String(globalRisk.data.sourceCount)} />
                     <Metric label="Coverage" value={`${Math.round(globalRisk.data.coverage * 100)}%`} />
                   </dl>
                 </>
@@ -239,7 +239,7 @@ function IntelCard({ event }: { event: IntelEvent }) {
       </h3>
       {event.summary ? <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{event.summary}</p> : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5 text-xs text-muted-foreground">
-        <span>{event.sourceName ?? "Source recorded"} · {formatDate(event.publishedAt ?? event.createdAt)}</span>
+        <span>{formatDate(event.publishedAt ?? event.createdAt)}</span>
         {event.delta !== null && event.delta !== 0 ? <RiskTrend delta={Math.round(event.delta)} /> : null}
       </div>
     </article>
