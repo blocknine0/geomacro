@@ -45,10 +45,10 @@ describe("Testnet API pay-per-call alignment gate", () => {
     expect(migration).toContain("credit_cost integer");
   });
 
-  it("creates a one-time API Key + API Secret pair and stores only the secret hash", () => {
+  it("creates a one-time API Key + API Secret pair and stores only a keyed secret digest", () => {
     expect(developer).toContain("const apiKey = `gmk_test_");
     expect(developer).toContain("const apiSecret = `gms_test_");
-    expect(developer).toContain("api_key_hash: sha256(apiSecret)");
+    expect(developer).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
     expect(developer).toContain("api_secret: apiSecret");
     expect(developer).toContain("shown_once: true");
     expect(developer).toContain("provision_testnet_metered_access");
