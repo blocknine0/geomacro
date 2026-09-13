@@ -32,7 +32,7 @@ const publicChains = [
 const quote = { supported_chains: [chain], credit_cost: 1, credit_price_usdc: 0.5, amount_due_usdc: 0.5, amount_due_atomic: "500000", receiver_address: `0x${"3".repeat(40)}` };
 const success = { ok: true, data: {}, entitlement: { credits_remaining: 499, credit_cost: 1 }, payment: { amount_due_usdc: 0.5 } };
 
-async function browser(options: { receiptFailure?: boolean; deliveryFailure?: boolean; htmlDelivery?: boolean; wrongChain?: boolean; storage?: Map<string, string> } = {}) {
+async function browser(options: { receiptFailure?: boolean; deliveryFailure?: boolean; htmlDelivery?: boolean; wrongChain?: boolean } = {}) {
   const ids = new Map<string, any>();
   const nodes: any[] = [];
   function element(tag: string) {
@@ -48,7 +48,6 @@ async function browser(options: { receiptFailure?: boolean; deliveryFailure?: bo
   }
   const main = element("main");
   let boot: any;
-  const storage = options.storage ?? new Map<string, string>();
   const bodies: any[] = [];
   const requestHeaders: any[] = [];
   let deliveries = 0;
@@ -75,48 +74,56 @@ async function browser(options: { receiptFailure?: boolean; deliveryFailure?: bo
     }
     throw new Error(method);
   });
+  const forbiddenStorage = {
+    getItem() { throw new Error("Testnet console must not read browser storage"); },
+    setItem() { throw new Error("Testnet console must not write browser storage"); },
+    removeItem() { throw new Error("Testnet console must not mutate browser storage"); },
+  };
   runInNewContext(script, {
     document: { createElement: element, getElementById: (id: string) => ids.get(id), querySelector: () => main, addEventListener: (_: string, fn: any) => { boot = fn; } },
     window: { ethereum: { request: wallet } },
-    sessionStorage: { setItem: (k: string, v: string) => storage.set(k, v), getItem: (k: string) => storage.get(k) ?? null, removeItem: (k: string) => storage.delete(k) },
+    sessionStorage: forbiddenStorage,
+    localStorage: forbiddenStorage,
     fetch, crypto: { randomUUID: () => "fixed-request-0001" }, AbortSignal, setTimeout, TextEncoder,
   });
   await boot();
   const submit = () => ids.get("testerConsoleForm").listeners.submit({ preventDefault() {} });
   const pay = () => nodes.find(n => n.listeners.click && String(n.textContent).startsWith("Pay Testnet"))
     ?? nodes.find(n => String(n.textContent).startsWith("Retry existing"));
-  return { ids, wallet, bodies, requestHeaders, storage, submit, clickPay: () => pay().listeners.click(), sendCount: () => wallet.mock.calls.filter(([arg]) => arg.method === "eth_sendTransaction").length };
+  return { ids, wallet, bodies, requestHeaders, submit, clickPay: () => pay().listeners.click(), sendCount: () => wallet.mock.calls.filter(([arg]) => arg.method === "eth_sendTransaction").length };
 }
 
 describe("browser Testnet payment recovery", () => {
-  it.each(["receiptFailure", "deliveryFailure", "htmlDelivery"] as const)("does not send twice after %s", async failure => {
+  it.each(["receiptFailure", "deliveryFailure", "htmlDelivery"] as const)("does not send twice after %s in the same tab", async failure => {
     const app = await browser({ [failure]: true });
     await app.submit();
     expect(app.requestHeaders[0]["x-geomacro-public-key"]).toBe(chain.public_api_key);
     await app.clickPay();
     expect(app.sendCount()).toBe(1);
-    expect(app.storage.size).toBe(1);
     expect(app.ids.get("testerConsoleStatus").textContent).not.toContain("Delivered successfully");
-    // A new quote must not discard an already-sent payment.
+    // A new quote must not discard an already-sent in-memory payment proof.
     await app.submit();
     await app.clickPay();
     expect(app.sendCount()).toBe(1);
     expect(app.bodies.at(-1).request_id).toBe(app.bodies[0].request_id);
     expect(app.bodies.at(-1).payment.tx_hash).toBe(tx);
     expect(app.ids.get("testerConsoleStatus").textContent).toContain("Delivered successfully");
-    expect(app.storage.size).toBe(0);
   });
 
-  it("recovers the exact submitted request, public key and proof after reload without another wallet request", async () => {
+  it("never persists payment proof or request recovery state in Web Storage", async () => {
+    expect(script).not.toContain("sessionStorage");
+    expect(script).not.toContain("localStorage");
     const first = await browser({ receiptFailure: true });
     await first.submit();
     await first.clickPay();
-    expect(JSON.parse(first.storage.values().next().value as string).public_api_key).toBe(chain.public_api_key);
-    const reloaded = await browser({ storage: first.storage });
+    expect(first.sendCount()).toBe(1);
+
+    // A fresh page has no payment proof by design, so it cannot silently retry
+    // or send another transfer without the user starting a new quoted request.
+    const reloaded = await browser();
     await reloaded.clickPay();
     expect(reloaded.wallet).not.toHaveBeenCalled();
-    expect(reloaded.requestHeaders[0]["x-geomacro-public-key"]).toBe(chain.public_api_key);
-    expect(reloaded.bodies[0]).toEqual({ ...first.bodies[0], payment: { chain_key: chain.key, tx_hash: tx, payer_address: payer } });
+    expect(reloaded.bodies).toHaveLength(0);
   });
 
   it("blocks a transfer if the wallet stays on the wrong chain", async () => {
