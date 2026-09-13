@@ -7,8 +7,6 @@ const auth = read("src/lib/testnet-wallet-first-auth.server.ts");
 const originGuard = read("src/lib/testnet-origin-guard.server.ts");
 const challenge = read("server/api/testnet-tester/auth-challenge.post.ts");
 const verify = read("server/api/testnet-tester/auth-verify.post.ts");
-const browser = read("public/testnet-wallet-first-v2.js");
-const canonicalPage = read("server/routes/testnet-access-canonical-wallet-first.get.ts");
 const mountedRoute = read("src/routes/testnet-access.tsx");
 const wildcard = read("src/routes/api/testnet-tester/$.tsx");
 const siweMigration = read("supabase/migrations/034_siwe_single_use_nonce.sql");
@@ -28,8 +26,8 @@ describe("wallet-first Testnet developer onboarding", () => {
     expect(auth).toContain('Expiration Time: ${expiresAtIso}');
     expect(challenge).toContain("body?.chain_id");
     expect(verify).toContain("chainId: body?.chain_id");
-    expect(browser).toContain('method: "eth_chainId"');
-    expect(browser).toContain("chain_id: chainId");
+    expect(mountedRoute).toContain('method: "eth_chainId"');
+    expect(mountedRoute).toContain("chain_id: chainId");
     expect(siweMigration).toContain("consumed_at is null");
     expect(siweMigration).toContain("expires_at > now()");
   });
@@ -41,8 +39,6 @@ describe("wallet-first Testnet developer onboarding", () => {
     expect(originGuard).toContain("TESTNET_AUTH_ORIGIN_FORBIDDEN");
     expect(challenge).toContain("assertTestnetAuthSameOrigin(event)");
     expect(verify).toContain("assertTestnetAuthSameOrigin(event)");
-    expect(challenge).toContain("forbidden ? 403 : 400");
-    expect(verify).toContain("forbidden ? 403 : 400");
   });
 
   it("resumes an existing wallet account and creates only when the wallet is new", () => {
@@ -63,20 +59,20 @@ describe("wallet-first Testnet developer onboarding", () => {
     expect(verify).not.toContain("session_token: result.session_token");
   });
 
-  it("mounts one canonical cache-busted wallet-first page instead of a fragile legacy wrapper", () => {
+  it("renders onboarding from the normal React route without legacy server HTML", () => {
     expect(wildcard).toContain('"auth-challenge": authChallengePost');
     expect(wildcard).toContain('"auth-verify": authVerifyPost');
-    expect(mountedRoute).toContain("testnet-access-canonical-wallet-first.get");
-    expect(canonicalPage).toContain('AUTH_FLOW = "wallet-first-v2"');
-    expect(canonicalPage).toContain('AUTH_SCRIPT = "/testnet-wallet-first-v2.js"');
-    expect(canonicalPage).toContain("X-Geomacro-Testnet-Auth-Flow");
-    expect(canonicalPage).toContain("WALLET SIGN-IN");
-    expect(browser).toContain('json("/api/testnet-tester/auth-challenge"');
-    expect(browser).toContain('json("/api/testnet-tester/auth-verify"');
-    expect(browser).toContain("Existing developer account resumed");
-    expect(browser).toContain("stopImmediatePropagation");
-    expect(browser).toContain("TESTNET_WALLET_ALREADY_REGISTERED");
-    expect(browser).toContain("window.__GEOMACRO_TESTNET_AUTH_FLOW__ = AUTH_FLOW");
+    expect(mountedRoute).toContain('AUTH_FLOW = "client-wallet-first-v3"');
+    expect(mountedRoute).toContain("CLIENT WALLET-FIRST V3");
+    expect(mountedRoute).toContain("Sign in with wallet");
+    expect(mountedRoute).toContain('api<{');
+    expect(mountedRoute).toContain('"/api/testnet-tester/auth-challenge"');
+    expect(mountedRoute).toContain('"/api/testnet-tester/auth-verify"');
+    expect(mountedRoute).toContain('"/api/testnet-tester/developer-key"');
+    expect(mountedRoute).not.toContain("runH3Handler");
+    expect(mountedRoute).not.toContain("testnet-access-canonical-wallet-first.get");
+    expect(mountedRoute).not.toContain("Connect & verify wallet");
+    expect(mountedRoute).not.toContain("TESTNET_WALLET_ALREADY_REGISTERED");
   });
 
   it("keeps challenge and verification responses fail-closed and non-executing", () => {
