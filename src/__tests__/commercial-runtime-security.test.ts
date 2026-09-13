@@ -86,12 +86,13 @@ describe("commercial runtime security baseline", () => {
     ]) {
       const source = read(path);
       expectPinnedActions(path);
-      expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
+      expect(source, path).toContain("github.ref == 'refs/heads/main'");
       expect(source, path).toContain("assert-authoritative-supabase.mjs");
       expect(source, path).not.toMatch(/\bnpm install\b/);
     }
 
     const ingest = read(".github/workflows/auto-ingest-news.yml");
+    expect(ingest).toContain("github.repository == 'blocknine0/geomacro'");
     expect(ingest).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(ingest).toContain("Prediction-market creation is not part of this");
 
