@@ -5,7 +5,6 @@ export const FEED_CATEGORIES = ["geopolitics", "rare-earth", "macro"] as const;
 export type FeedCategory = (typeof FEED_CATEGORIES)[number];
 
 export type FeedEvent = {
-  eventId: string;
   category: FeedCategory;
   narrative: string;
   summary: string;
@@ -13,5 +12,8 @@ export type FeedEvent = {
   severity: number;
   confidence: number;
   delta: number;
+  sourceUrl: string;
+  sourceTitle: string;
+  sourceName: string;
   publishedAt: string;
 };
