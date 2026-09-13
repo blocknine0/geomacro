@@ -53,7 +53,7 @@ export function FeedSection() {
   }
 
   async function publishLiveEvent(e: FeedEvent) {
-    return publishOnchain(e.sourceUrl);
+    return publishOnchain(e.eventId);
   }
 
   return (
