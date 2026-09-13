@@ -111,22 +111,29 @@ async function loadSubjectContext(subject: StructuralSubject, observationLimit: 
     loadTestnetLiveSeverity(subject),
   ]);
 
+  const observations = context.observations.slice(0, observationLimit).map(publicObservation);
+  const coverage = context.metadata.coverage
+    .slice(0, TESTNET_STRUCTURAL_TEST_LIMITS.max_evidence_references)
+    .map(publicCoverage);
+
   return {
-    status: context.status,
-    methodology_status: context.methodology_status,
-    subject: context.subject,
-    observations: context.observations.slice(0, observationLimit).map(publicObservation),
-    coverage: context.metadata.coverage
-      .slice(0, TESTNET_STRUCTURAL_TEST_LIMITS.max_evidence_references)
-      .map(publicCoverage),
-    live_severity: liveSeverity,
-    serving: {
-      layer: context.metadata.serving_layer,
-      warehouse_methodology_status: context.metadata.warehouse_methodology_status,
-      composition_method: context.metadata.composition_method,
-      route_modeling_status: context.metadata.route_modeling_status,
-      direct_evidence_status: context.metadata.direct_evidence_status,
+    payload: {
+      status: context.status,
+      methodology_status: context.methodology_status,
+      subject: context.subject,
+      observations,
+      coverage,
+      live_severity: liveSeverity,
+      serving: {
+        layer: context.metadata.serving_layer,
+        warehouse_methodology_status: context.metadata.warehouse_methodology_status,
+        composition_method: context.metadata.composition_method,
+        route_modeling_status: context.metadata.route_modeling_status,
+        direct_evidence_status: context.metadata.direct_evidence_status,
+      },
     },
+    observation_count: observations.length,
+    evidence_reference_count: coverage.length,
   };
 }
 
@@ -136,6 +143,8 @@ export async function loadTestnetAssistiveContext(request: TestnetIntelligenceRe
 
   let structured_context: Record<string, unknown>;
   let live_severity: Record<string, unknown> | null = null;
+  let structuralObservationCount = 0;
+  let evidenceReferenceCount = 0;
 
   if (primaryAlreadyIncludesStructural) {
     structured_context = {
@@ -150,8 +159,10 @@ export async function loadTestnetAssistiveContext(request: TestnetIntelligenceRe
       request.subject,
       TESTNET_STRUCTURAL_TEST_LIMITS.profile_structural_observations,
     );
-    structured_context = subjectContext;
-    live_severity = subjectContext.live_severity as Record<string, unknown>;
+    structured_context = subjectContext.payload;
+    live_severity = subjectContext.payload.live_severity as Record<string, unknown>;
+    structuralObservationCount = subjectContext.observation_count;
+    evidenceReferenceCount = subjectContext.evidence_reference_count;
   } else {
     structured_context = {
       status: "PRIMARY_PAYLOAD_IS_STRUCTURED",
@@ -169,5 +180,9 @@ export async function loadTestnetAssistiveContext(request: TestnetIntelligenceRe
     assistance: TESTNET_ASSISTANCE_BOUNDARIES,
     structured_context,
     live_severity,
+    supplemental_counts: {
+      structural_observation_count: structuralObservationCount,
+      evidence_reference_count: evidenceReferenceCount,
+    },
   } as const;
 }
