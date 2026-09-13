@@ -11,7 +11,7 @@ const mountedRoute = read("src/routes/testnet-access.tsx");
 const wildcard = read("src/routes/api/testnet-tester/$.tsx");
 const siweMigration = read("supabase/migrations/034_siwe_single_use_nonce.sql");
 
-describe("wallet-first Testnet developer onboarding", () => {
+describe("wallet-first Testnet onboarding", () => {
   it("uses one-time SIWE replay protection with full EIP-4361 identity fields", () => {
     expect(auth).toContain('from("siwe_login_nonces")');
     expect(auth).toContain('db.rpc("consume_siwe_login_nonce"');
@@ -59,16 +59,21 @@ describe("wallet-first Testnet developer onboarding", () => {
     expect(verify).not.toContain("session_token: result.session_token");
   });
 
-  it("renders onboarding from the normal React route without legacy server HTML", () => {
+  it("renders permanent public plus optional developer onboarding from the normal React route", () => {
     expect(wildcard).toContain('"auth-challenge": authChallengePost');
     expect(wildcard).toContain('"auth-verify": authVerifyPost');
-    expect(mountedRoute).toContain('AUTH_FLOW = "client-wallet-first-v3"');
-    expect(mountedRoute).toContain("CLIENT WALLET-FIRST V3");
+    expect(mountedRoute).toContain('AUTH_FLOW = "client-wallet-first-v4-public-developer"');
+    expect(mountedRoute).toContain("PUBLIC TESTER + DEVELOPER API");
     expect(mountedRoute).toContain("Sign in with wallet");
+    expect(mountedRoute).toContain("Disconnect wallet");
+    expect(mountedRoute).toContain("Public Testnet access");
+    expect(mountedRoute).toContain("Developer integrations (optional)");
     expect(mountedRoute).toContain('api<{');
     expect(mountedRoute).toContain('"/api/testnet-tester/auth-challenge"');
     expect(mountedRoute).toContain('"/api/testnet-tester/auth-verify"');
     expect(mountedRoute).toContain('"/api/testnet-tester/developer-key"');
+    expect(mountedRoute).toContain('"/api/testnet-tester/developer-keys"');
+    expect(mountedRoute).toContain('"/api/testnet-tester/logout"');
     expect(mountedRoute).not.toContain("runH3Handler");
     expect(mountedRoute).not.toContain("testnet-access-canonical-wallet-first.get");
     expect(mountedRoute).not.toContain("Connect & verify wallet");
