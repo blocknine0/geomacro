@@ -7,6 +7,9 @@ import {
 import {
   requireRiskSupabase,
 } from "./risk-supabase.server";
+import {
+  apiCredentialDigest,
+} from "./api-credential-hash.server";
 
 import {
   evaluateCountryRiskGate,
@@ -1039,16 +1042,16 @@ authenticateClient(
     );
 
   const tokenHash =
-    sha256(token);
+    apiCredentialDigest(
+      token,
+      "risk-gate-bearer",
+    );
 
   const db =
     requireRiskSupabase();
 
-  const {
-    data,
-    error,
-  } =
-    await db
+  const lookup = async () =>
+    db
       .from(
         "risk_gate_api_clients",
       )
@@ -1067,7 +1070,10 @@ authenticateClient(
       )
       .maybeSingle();
 
-  if (error) {
+  let result =
+    await lookup();
+
+  if (result.error) {
     throw new RiskGateApiError(
       503,
       "AUTH_BACKEND_UNAVAILABLE",
@@ -1075,7 +1081,42 @@ authenticateClient(
     );
   }
 
-  if (!data) {
+  if (!result.data) {
+    const upgrade =
+      await db.rpc(
+        "upgrade_risk_gate_api_client_hash",
+        {
+          p_presented_credential: token,
+          p_hmac_hash: tokenHash,
+        },
+      );
+
+    if (upgrade.error) {
+      throw new RiskGateApiError(
+        503,
+        "AUTH_BACKEND_UNAVAILABLE",
+        "Risk Gate authentication unavailable",
+      );
+    }
+
+    if (
+      (upgrade.data as Record<string, unknown> | null)
+        ?.upgraded === true
+    ) {
+      result =
+        await lookup();
+
+      if (result.error) {
+        throw new RiskGateApiError(
+          503,
+          "AUTH_BACKEND_UNAVAILABLE",
+          "Risk Gate authentication unavailable",
+        );
+      }
+    }
+  }
+
+  if (!result.data) {
     throw new RiskGateApiError(
       401,
       "INVALID_API_KEY",
@@ -1084,7 +1125,7 @@ authenticateClient(
   }
 
   const client =
-    data as unknown as ApiClientRow;
+    result.data as unknown as ApiClientRow;
 
   if (
     !secureHashEqual(

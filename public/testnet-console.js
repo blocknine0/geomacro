@@ -122,7 +122,6 @@
     let pendingQuote = null;
     let pendingPayment = null;
     let busy = false;
-    const recoveryKey = `geomacro-testnet-payment:${account.entitlement_grant_id}`;
 
     const publicNetwork = el("select", { id: "testerPublicNetwork" });
     publicChains.forEach((chain) => {
@@ -139,12 +138,7 @@
     }
 
     function saveRecovery() {
-      sessionStorage.setItem(recoveryKey, JSON.stringify({
-        request: pendingRequest,
-        quote: pendingQuote,
-        payment: pendingPayment,
-        public_api_key: publicNetwork.value,
-      }));
+      // Intentionally memory-only: never persist request, wallet or payment proof.
     }
 
     const panel = el("section", { className: "panel", id: "testerConsolePanel" });
@@ -383,9 +377,6 @@
       pendingRequest = null;
       pendingQuote = null;
       pendingPayment = null;
-      try { sessionStorage.removeItem(recoveryKey); } catch {
-        // Delivery succeeded. A stale saved proof is safe to retry, not repay.
-      }
     }
 
     function setBusy(value) {
@@ -398,27 +389,7 @@
       payButton.textContent = pendingPayment ? "Retry existing payment (no new transfer)" : "Pay Testnet USDC & retry";
     }
 
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(recoveryKey) || "null");
-      if (saved?.public_api_key && publicChains.some((chain) => chain.public_api_key === saved.public_api_key)) {
-        publicNetwork.value = saved.public_api_key;
-      }
-      if (saved?.payment && saved?.request && saved?.quote) {
-        pendingRequest = saved.request;
-        pendingQuote = saved.quote;
-        pendingPayment = saved.payment;
-        paymentBox.hidden = false;
-        chainSelect.innerHTML = "";
-        (pendingQuote.supported_chains || []).forEach((chain) => {
-          chainSelect.appendChild(el("option", { value: chain.key, text: `${chain.name} · ${pendingQuote.amount_due_usdc} Testnet USDC` }));
-        });
-        quoteText.textContent = `Saved transaction: ${pendingPayment.tx_hash}`;
-        status.textContent = "An earlier payment needs verification. Retry it without sending another transfer.";
-        setBusy(false);
-      }
-    } catch {
-      status.textContent = "Payment recovery storage is unavailable. Enable session storage before making a payment.";
-    }
+    status.textContent = "Payment proofs stay only in memory. Do not refresh after submitting a Testnet payment; retry the existing payment in this tab if verification is delayed.";
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();

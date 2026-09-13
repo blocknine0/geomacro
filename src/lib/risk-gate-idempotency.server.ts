@@ -7,6 +7,9 @@ import {
   canonicalJson,
 } from "./canonical-json";
 import {
+  apiCredentialDigest,
+} from "./api-credential-hash.server";
+import {
   handleExternalRiskGateRequest,
   readExternalRiskGateJsonBody,
 } from "./risk-gate-api.server";
@@ -125,22 +128,43 @@ async function identifyClient(
   const token = extractBearerToken(request);
   if (!token) return null;
 
-  const tokenHash = sha256Text(token);
+  const tokenHash = apiCredentialDigest(
+    token,
+    "risk-gate-bearer",
+  );
   const db = requireRiskSupabase();
-  const { data, error } = await db
-    .from("risk_gate_api_clients")
-    .select("client_id,api_key_hash,enabled")
-    .eq("api_key_hash", tokenHash)
-    .maybeSingle();
 
-  if (
-    error ||
-    !data
-  ) {
-    return null;
+  const lookup = async () =>
+    db
+      .from("risk_gate_api_clients")
+      .select("client_id,api_key_hash,enabled")
+      .eq("api_key_hash", tokenHash)
+      .maybeSingle();
+
+  let result = await lookup();
+  if (result.error) return null;
+
+  if (!result.data) {
+    const upgrade = await db.rpc(
+      "upgrade_risk_gate_api_client_hash",
+      {
+        p_presented_credential: token,
+        p_hmac_hash: tokenHash,
+      },
+    );
+    if (upgrade.error) return null;
+    if (
+      (upgrade.data as Record<string, unknown> | null)
+        ?.upgraded === true
+    ) {
+      result = await lookup();
+      if (result.error) return null;
+    }
   }
 
-  const client = data as unknown as ApiClientRow;
+  if (!result.data) return null;
+
+  const client = result.data as unknown as ApiClientRow;
   if (
     !client.enabled ||
     !secureHashEqual(client.api_key_hash, tokenHash)

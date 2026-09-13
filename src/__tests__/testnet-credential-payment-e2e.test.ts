@@ -20,8 +20,9 @@ describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", ()
     expect(consoleBridge).toContain('nativeFetch("/api/testnet/intelligence"');
     expect(consoleBridge).toContain('requestPath(input) !== "/api/testnet-tester/intelligence"');
     expect(consoleBridge).toContain("entitlement_grant_id");
-    expect(consoleBridge).toContain("sessionStorage");
+    expect(consoleBridge).not.toContain("sessionStorage");
     expect(consoleBridge).not.toContain("localStorage");
+    expect(consoleBridge).toContain("never written to browser storage");
   });
 
   it("requires a server exact-request binding before a wallet payment can proceed", () => {

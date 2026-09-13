@@ -1,7 +1,7 @@
 (() => {
-  const CREDENTIAL_KEY = "geomacro-testnet-api-credential:v1";
   const nativeFetch = window.fetch.bind(window);
   let validatedKey = "";
+  let inMemoryCredential = null;
 
   const capabilityNames = {
     intelligence_query: "Intelligence query",
@@ -43,11 +43,7 @@
   }
 
   function storedCredential() {
-    try {
-      return credentialShape(JSON.parse(sessionStorage.getItem(CREDENTIAL_KEY) || "null"));
-    } catch {
-      return null;
-    }
+    return credentialShape(inMemoryCredential);
   }
 
   function parseCredentialPair(text) {
@@ -106,7 +102,7 @@
       key_id: external.principal.key_id,
       entitlement_grant_id: external.entitlement.grant_id,
     };
-    if (persist) sessionStorage.setItem(CREDENTIAL_KEY, JSON.stringify(verified));
+    if (persist) inMemoryCredential = verified;
     validatedKey = verified.api_key;
     return verified;
   }
@@ -210,7 +206,7 @@
     title.textContent = "Developer API credential";
     const help = document.createElement("p");
     help.className = "muted";
-    help.textContent = "Paste the two-line API Key + API Secret copy from Testnet Access. It is kept only in this tab's session storage so reload can verify an already-submitted payment without sending another transfer.";
+    help.textContent = "Paste the two-line API Key + API Secret copy from Testnet Access. The secret stays only in page memory and is never written to browser storage. Reloading requires you to paste it again.";
 
     const input = document.createElement("textarea");
     input.id = "testerCredentialPair";
@@ -254,7 +250,7 @@
     });
 
     clear.addEventListener("click", () => {
-      sessionStorage.removeItem(CREDENTIAL_KEY);
+      inMemoryCredential = null;
       validatedKey = "";
       input.value = "";
       refreshStatus();
