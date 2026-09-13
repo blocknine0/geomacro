@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportClientError } from "../lib/error-reporting";
+import { installClipboardCompatibility } from "../lib/clipboard-compat";
 import { SiteShell } from "../components/site-shell";
 import { WalletProvider } from "../hooks/WalletProvider";
 
@@ -127,6 +128,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    installClipboardCompatibility();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
