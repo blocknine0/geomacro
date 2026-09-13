@@ -8,6 +8,11 @@ import {
   TESTNET_API_PRICING_VERSION,
 } from "./testnet-api-pricing";
 import {
+  TESTNET_ASSISTANCE_BOUNDARIES,
+  TESTNET_DATA_DELIVERY_VERSION,
+  TESTNET_STRUCTURAL_TEST_LIMITS,
+} from "./testnet-data-delivery-contract";
+import {
   TESTNET_INTELLIGENCE_API_VERSION,
   TESTNET_INTELLIGENCE_CAPABILITIES,
   TESTNET_INTELLIGENCE_CAPABILITY_CATALOG,
@@ -29,6 +34,7 @@ export function testnetDeveloperApiManifest() {
   return {
     manifest_version: TESTNET_DEVELOPER_API_MANIFEST_VERSION,
     api_version: TESTNET_INTELLIGENCE_API_VERSION,
+    data_delivery_version: TESTNET_DATA_DELIVERY_VERSION,
     registry_version: STRUCTURED_DATA_REGISTRY_VERSION,
     pricing_version: TESTNET_API_PRICING_VERSION,
     payment_contract_version: TESTNET_USDC_ACCESS_VERSION,
@@ -76,7 +82,11 @@ export function testnetDeveloperApiManifest() {
       signed_risk_objects: tier.signed_risk_objects,
       risk_gate: tier.risk_gate,
       execution_authorized: tier.execution_authorized,
+      testing_limits: TESTNET_STRUCTURAL_TEST_LIMITS,
+      same_allowance_for_public_and_developer:
+        TESTNET_STRUCTURAL_TEST_LIMITS.public_and_developer_same_allowance,
     },
+    assistance: TESTNET_ASSISTANCE_BOUNDARIES,
     pricing: {
       model: "pay_per_call",
       upfront_payment_required: false,
