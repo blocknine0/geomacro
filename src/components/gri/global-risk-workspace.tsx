@@ -188,7 +188,7 @@ export function GlobalRiskWorkspace() {
                   {event.source_title ?? "Stored intelligence event"}
                 </Link>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {event.source_name ?? event.source_domain ?? "Source recorded"} · {formatDate(event.published_at ?? event.created_at)}
+                  Evidence recorded · {formatDate(event.published_at ?? event.created_at)}
                 </p>
               </div>
               <Metric label="Severity" value={event.severity === null ? "—" : fmt(event.severity, 1)} />
@@ -198,6 +198,9 @@ export function GlobalRiskWorkspace() {
             <div className="p-5"><Unavailable text="No current evidence rows are available for this verified window." /></div>
           )}
         </div>
+        <p className="mt-3 text-xs leading-6 text-muted-foreground">
+          Upstream publisher identities are intentionally withheld from the public GRI workspace. Aggregate source diversity remains reflected in the source count and verification proof.
+        </p>
       </Section>
 
       <Section eyebrow="Methodology" title="How this index is calculated" copy="The live score is deterministic and versioned. Repeated reporting of one development cannot create unlimited influence.">
