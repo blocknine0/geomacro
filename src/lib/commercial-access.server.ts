@@ -1,8 +1,4 @@
 import {
-  createHash,
-} from "node:crypto";
-
-import {
   GEOMACRO_ACCESS_TIERS,
   GEOMACRO_CREDIT_CONTRACT_VERSION,
   GEOMACRO_CREDIT_COSTS,
@@ -19,6 +15,9 @@ import {
 import {
   requireRiskSupabase,
 } from "./risk-supabase.server";
+import {
+  apiCredentialDigest,
+} from "./api-credential-hash.server";
 
 export type CommercialTierId = keyof typeof GEOMACRO_ACCESS_TIERS;
 
@@ -57,10 +56,6 @@ export class CommercialAccessError extends Error {
     this.status = status;
     this.code = code;
   }
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
 }
 
 function bearerToken(request: Request): string {
@@ -111,16 +106,41 @@ async function authenticateTestnetDeveloperPair(input: {
 }): Promise<CommercialPrincipal> {
   const db = requireRiskSupabase();
   const now = new Date().toISOString();
-  const credentialResult = await db
+  const keyedHash = apiCredentialDigest(input.apiSecret, "testnet-api-secret");
+
+  let credentialResult = await db
     .from("commercial_api_credentials")
     .select("id,principal_id,key_id,enabled,scopes,expires_at,revoked_at")
     .eq("key_id", input.apiKey)
-    .eq("api_key_hash", sha256(input.apiSecret))
+    .eq("api_key_hash", keyedHash)
     .maybeSingle();
 
   if (credentialResult.error) {
     throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
   }
+
+  if (!credentialResult.data) {
+    const upgrade = await db.rpc("upgrade_commercial_api_credential_hash", {
+      p_key_id: input.apiKey,
+      p_presented_credential: input.apiSecret,
+      p_hmac_hash: keyedHash,
+    });
+    if (upgrade.error) {
+      throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
+    }
+    if ((upgrade.data as Record<string, unknown> | null)?.upgraded === true) {
+      credentialResult = await db
+        .from("commercial_api_credentials")
+        .select("id,principal_id,key_id,enabled,scopes,expires_at,revoked_at")
+        .eq("key_id", input.apiKey)
+        .eq("api_key_hash", keyedHash)
+        .maybeSingle();
+      if (credentialResult.error) {
+        throw new CommercialAccessError(503, "COMMERCIAL_AUTH_UNAVAILABLE", "Commercial API authentication is temporarily unavailable.");
+      }
+    }
+  }
+
   const credential = credentialResult.data;
   if (
     !credential ||
@@ -196,11 +216,13 @@ export async function authenticateCommercialApiRequest(
 
   const token = bearerToken(request);
   const db = requireRiskSupabase();
-  const { data, error } = await db.rpc("resolve_commercial_api_principal", {
-    p_api_key_hash: sha256(token),
+  const keyedHash = apiCredentialDigest(token, "commercial-bearer");
+
+  let resolution = await db.rpc("resolve_commercial_api_principal", {
+    p_api_key_hash: keyedHash,
   });
 
-  if (error) {
+  if (resolution.error) {
     throw new CommercialAccessError(
       503,
       "COMMERCIAL_AUTH_UNAVAILABLE",
@@ -208,7 +230,35 @@ export async function authenticateCommercialApiRequest(
     );
   }
 
-  const row = data as Record<string, unknown> | null;
+  let row = resolution.data as Record<string, unknown> | null;
+  if (!row?.ok && String(row?.code ?? "") === "API_KEY_NOT_AUTHORIZED") {
+    const upgrade = await db.rpc("upgrade_commercial_api_credential_hash", {
+      p_key_id: null,
+      p_presented_credential: token,
+      p_hmac_hash: keyedHash,
+    });
+    if (upgrade.error) {
+      throw new CommercialAccessError(
+        503,
+        "COMMERCIAL_AUTH_UNAVAILABLE",
+        "Commercial API authentication is temporarily unavailable.",
+      );
+    }
+    if ((upgrade.data as Record<string, unknown> | null)?.upgraded === true) {
+      resolution = await db.rpc("resolve_commercial_api_principal", {
+        p_api_key_hash: keyedHash,
+      });
+      if (resolution.error) {
+        throw new CommercialAccessError(
+          503,
+          "COMMERCIAL_AUTH_UNAVAILABLE",
+          "Commercial API authentication is temporarily unavailable.",
+        );
+      }
+      row = resolution.data as Record<string, unknown> | null;
+    }
+  }
+
   if (!row?.ok) {
     throw new CommercialAccessError(
       401,
