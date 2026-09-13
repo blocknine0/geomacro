@@ -52,6 +52,13 @@ jobs:
           gh auth setup-git
           gh repo clone "$LOVABLE_MIRROR_REPOSITORY" lovable-mirror -- --branch main --single-branch --depth 1
 
+          # The Lovable-linked repository is a deployment mirror only.
+          # Never allow canonical scheduled/privileged GitHub Actions to execute
+          # there: secrets are intentionally kept in the authoritative repo and
+          # duplicate cron jobs could double-write Supabase or submit duplicate
+          # onchain transactions. Remove any legacy workflow files on every sync.
+          rm -rf lovable-mirror/.github/workflows
+
           rsync -a --delete \
             --exclude '.git/' \
             --exclude '.github/workflows/' \

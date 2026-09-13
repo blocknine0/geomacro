@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   ingest-news:
-    if: github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -74,7 +74,45 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/export-admitted-events-for-structure.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          max_attempts=3
+          attempt=1
+
+          while [ "$attempt" -le "$max_attempts" ]; do
+            log_file="$(mktemp)"
+            echo "Structured intelligence export attempt ${attempt}/${max_attempts}"
+
+            set +e
+            node scripts/export-admitted-events-for-structure.mjs 2>&1 | tee "$log_file"
+            status=${PIPESTATUS[0]}
+            set -e
+
+            if [ "$status" -eq 0 ]; then
+              rm -f "$log_file"
+              exit 0
+            fi
+
+            if ! grep -Eqi 'gateway timeout|bad gateway|service unavailable|connection reset|fetch failed|timed? out|status[^0-9]*(502|503|504)' "$log_file"; then
+              echo "Non-transient export failure detected; not retrying."
+              rm -f "$log_file"
+              exit "$status"
+            fi
+
+            rm -f "$log_file"
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "Transient export failure persisted after ${max_attempts} attempts."
+              exit "$status"
+            fi
+
+            sleep_seconds=$((attempt * 10))
+            echo "Transient Supabase/network failure detected. Retrying in ${sleep_seconds}s."
+            sleep "$sleep_seconds"
+            attempt=$((attempt + 1))
+          done
 
       - name: Structure fresh Geomacro intelligence
         env:
@@ -87,7 +125,12 @@ jobs:
             exit 1
           fi
 
-          curl --fail-with-body -sS -X POST \
+          curl --fail-with-body -sS \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 2 \
+            --retry-max-time 60 \
+            -X POST \
             "${SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
             -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
             -H "Content-Type: application/json"
