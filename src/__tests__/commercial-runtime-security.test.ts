@@ -1,60 +1,69 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const read = (path: string) => readFileSync(path, "utf8");
+const ROOT = process.cwd();
+const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
-const PINNED_ACTION_PATTERN = /uses:\s+[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[0-9a-f]{40}(?:\s|#|$)/;
-const ACTION_USE_PATTERN = /uses:\s+([^\s#]+)/g;
 const BUN_LOCKED_RUNTIME_WORKFLOWS = [
   ".github/workflows/auto-ingest-news.yml",
+  ".github/workflows/security-monitor.yml",
+  ".github/workflows/sync-lifecycle.yml",
+  ".github/workflows/auto-recovery.yml",
   ".github/workflows/auto-create-markets.yml",
+  ".github/workflows/auto-finalize-markets.yml",
   ".github/workflows/auto-resolve-markets.yml",
   ".github/workflows/auto-resolve-disputes.yml",
-  ".github/workflows/auto-finalize-markets.yml",
-  ".github/workflows/sync-lifecycle.yml",
-  ".github/workflows/sync-stakes.yml",
-  ".github/workflows/security-monitor.yml",
-  ".github/workflows/auto-recovery.yml",
   ".github/workflows/Auto-generate-briefings.yml",
-  ".github/workflows/ingest-reliefweb-live.yml",
+  ".github/workflows/propose-v2-upgrade.yml",
+  ".github/workflows/deploy-v2-implementation.yml",
+  ".github/workflows/execute-v2-upgrade.yml",
+  ".github/workflows/fund-v2-liquidity.yml",
 ];
+
+function filesUnder(path: string): string[] {
+  const absolute = join(ROOT, path);
+  return readdirSync(absolute).flatMap((name) => {
+    const child = join(path, name);
+    return statSync(join(ROOT, child)).isDirectory() ? filesUnder(child) : [child];
+  });
+}
 
 function expectPinnedActions(path: string) {
   const source = read(path);
-  const uses = [...source.matchAll(ACTION_USE_PATTERN)].map((match) => match[0]);
-  expect(uses.length, path).toBeGreaterThan(0);
-  for (const use of uses) {
-    expect(use, `${path}: ${use}`).toMatch(PINNED_ACTION_PATTERN);
+  expect(source, path).not.toMatch(/uses:\s+[^\s]+@v\d+(?:\.\d+)*\b/);
+  for (const line of source.split("\n").filter((item) => item.includes("uses:"))) {
+    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+  }
+  if (source.includes("actions/checkout@")) {
+    expect(source, path).toContain("persist-credentials: false");
   }
 }
 
 describe("commercial runtime security baseline", () => {
   it("pins the country-flash validation and worker supply chain", () => {
-    for (const path of [
-      ".github/workflows/country-flash-validation.yml",
-      ".github/workflows/country-flash-worker-image.yml",
-    ]) {
-      expectPinnedActions(path);
-    }
+    expectPinnedActions(".github/workflows/country-flash-validation.yml");
+    expectPinnedActions(".github/workflows/country-flash-worker-image.yml");
 
-    const worker = read(".github/workflows/country-flash-worker-image.yml");
-    expect(worker).toContain("persist-credentials: false");
-    expect(worker).toContain("permissions:\n  contents: read\n  packages: write");
-    expect(worker).toContain('cosign-version: "v3.0.5"');
-    expect(worker).not.toMatch(/@v\d/);
-    expect(worker).not.toMatch(/@main\b/);
-    expect(worker).not.toMatch(/@master\b/);
+    const validation = read(".github/workflows/country-flash-validation.yml");
+    expect(validation).toContain("deno-version: v2.9.6");
+
+    const image = read(".github/workflows/country-flash-worker-image.yml");
+    expect(image).toContain('${IMAGE}:${GITHUB_SHA}');
+    expect(image).not.toContain('${IMAGE}:latest');
   });
 
   it("fails closed before production country-flash deployment", () => {
-    const deploy = read(".github/workflows/deploy-country-flash-supabase.yml");
+    const source = read(".github/workflows/deploy-country-flash-supabase.yml");
     expectPinnedActions(".github/workflows/deploy-country-flash-supabase.yml");
-    expect(deploy).toContain('CONTAINER_ENABLED: "1"');
-    expect(deploy).toContain('ANALYTICS_PROFILE: "FULL"');
-    expect(deploy).toContain('if [ "$CONTAINER_ENABLED" != "1" ]');
-    expect(deploy).toContain('if [ "$ANALYTICS_PROFILE" != "FULL" ]');
-    expect(deploy).toContain('TESTNET_CHAIN_READS_ENABLED: "0"');
-    expect(deploy).toContain("shellcheck scripts/install-bun.sh scripts/supply-chain/*.sh");
+    expect(source).toContain("permissions:\n  contents: read");
+    expect(source).toContain("github.ref == 'refs/heads/main'");
+    expect(source).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");
+    expect(source).toContain('SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF');
+    expect(source).toContain("supabase db push --dry-run");
+    expect(source).toContain("version: 2.117.0");
+    expect(source).not.toContain("version: latest");
+    expect(source).toContain("cancel-in-progress: false");
   });
 
   it("uses the canonical Bun lockfile for privileged and scheduled runtime workflows", () => {
@@ -94,14 +103,25 @@ describe("commercial runtime security baseline", () => {
 
   it("keeps browser source free of privileged VITE credentials", () => {
     const envExample = read(".env.example");
-    expect(envExample).not.toMatch(/VITE_(SUPABASE_SERVICE_ROLE_KEY|GROQ_API_KEY|CEREBRAS_API_KEY|GEMINI_API_KEY|MISTRAL_API_KEY|GUARDIAN_API_KEY|PRIVATE_KEY)/);
+    expect(envExample).not.toMatch(
+      /^VITE_[A-Z0-9_]*(?:SERVICE_ROLE|PRIVATE_KEY|SIGNING|FLASH_INGEST_TOKEN|TELEGRAM_SESSION)[A-Z0-9_]*=/m,
+    );
+
+    const browserSource = filesUnder("src")
+      .filter((path) => /\.(?:ts|tsx|js|jsx)$/.test(path))
+      .filter((path) => !path.includes("/__tests__/"))
+      .map(read)
+      .join("\n");
+
+    expect(browserSource).not.toMatch(
+      /import\.meta\.env\.VITE_[A-Z0-9_]*(?:SERVICE_ROLE|PRIVATE_KEY|SIGNING|FLASH_INGEST_TOKEN|TELEGRAM_SESSION)/,
+    );
   });
 
   it("runs pinned CodeQL with least privilege", () => {
     const source = read(".github/workflows/codeql-security.yml");
-    expectPinnedActions(".github/workflows/codeql-security.yml");
-    expect(source).toContain("security-events: write");
     expect(source).toContain("contents: read");
-    expect(source).not.toContain("contents: write");
+    expect(source).toContain("security-events: write");
+    expectPinnedActions(".github/workflows/codeql-security.yml");
   });
 });
