@@ -1,0 +1,50 @@
+name: WGI Political Stability Global Sync
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ingest-wgi-political-stability-live.ts"
+      - "src/lib/risk-gate-v2-political-governance-module-state.ts"
+      - "src/lib/risk-gate-v2-political-governance-module-state.server.ts"
+      - ".github/workflows/wgi-political-stability-sync.yml"
+      - "supabase/migrations/918_risk_gate_v2_global_source_manifests.sql"
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 15 1,4,7,10 *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wgi-political-stability-global-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run political-governance module tests
+        run: bun test src/__tests__/risk-gate-v2-governed-module-builders.test.ts src/__tests__/risk-gate-v2-support-readiness.test.ts
+
+      - name: Validate all enabled sovereign WGI bundles without writes
+        run: bun scripts/ingest-wgi-political-stability-live.ts
+
+      - name: Persist governed WGI observations and release manifest
+        if: github.event_name != 'pull_request'
+        run: bun scripts/ingest-wgi-political-stability-live.ts --write
