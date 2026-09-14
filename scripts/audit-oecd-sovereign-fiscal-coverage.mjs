@@ -30,7 +30,6 @@ async function fetchWithRetry(url) {
     try {
       const response = await fetch(url, {
         headers: {
-          accept: "text/csv, application/vnd.sdmx.data+csv;version=2.0.0;q=0.9",
           "user-agent": "Geomacro-OECD-Fiscal-Coverage-Audit/1.0",
         },
       })
@@ -123,9 +122,12 @@ function daysBetween(a, b) {
 }
 
 async function auditConcept(concept) {
-  const url =
-    `${BASE}/Q..${concept.measure}.PT_B1GQ.S13` +
-    `?startPeriod=${encodeURIComponent(START_PERIOD)}&dimensionAtObservation=AllDimensions`
+  const params = new URLSearchParams({
+    startPeriod: START_PERIOD,
+    dimensionAtObservation: "AllDimensions",
+    format: "csvfile",
+  })
+  const url = `${BASE}/Q..${concept.measure}.PT_B1GQ.S13?${params.toString()}`
   const response = await fetchWithRetry(url)
   const text = await response.text()
   if (!text.trim()) throw new Error(`OECD ${concept.id} returned an empty body`)
