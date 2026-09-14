@@ -74,6 +74,22 @@ function sha256(value) {
     .digest("hex")
 }
 
+function ageDays(observedAt, asOf) {
+  if (!observedAt) return Number.POSITIVE_INFINITY
+  const observed = new Date(observedAt)
+  const evaluation = new Date(asOf)
+  if (
+    Number.isNaN(observed.getTime()) ||
+    Number.isNaN(evaluation.getTime())
+  ) {
+    return Number.POSITIVE_INFINITY
+  }
+  return Math.max(
+    0,
+    (evaluation.getTime() - observed.getTime()) / 86_400_000,
+  )
+}
+
 const registry = await db
   .from("live_country_registry")
   .select("iso3,country_name")
@@ -105,6 +121,7 @@ for (const country of wbCountries) {
 const registryIso3 = new Set((registry.data ?? []).map((row) => row.iso3))
 let inserted = 0
 let skipped = 0
+const fetchedByMetric = {}
 
 for (const indicator of INDICATORS) {
   console.log(`Fetching ${indicator.id} from WDI source ${WORLD_BANK_API_SOURCE_ID}...`)
@@ -121,6 +138,7 @@ for (const indicator of INDICATORS) {
   const json = await response.json()
   const rows = Array.isArray(json) ? json[1] ?? [] : []
   const observations = []
+  const retrievedAt = new Date().toISOString()
 
   for (const row of rows) {
     if (row?.value === null || row?.value === undefined) {
@@ -139,6 +157,8 @@ for (const indicator of INDICATORS) {
       ? `${year}-12-31T00:00:00.000Z`
       : null
 
+    // Keep the normalized identity semantic and stable. Retrieval time is
+    // provenance about this ingestion run, not part of the observation itself.
     const canonical = {
       source_id: SOURCE_ID,
       source_record_id: `${WORLD_BANK_API_SOURCE_ID}:${indicator.id}:${iso3}:${year}`,
@@ -161,7 +181,6 @@ for (const indicator of INDICATORS) {
           "Latest available World Development Indicators observation from the explicitly pinned World Bank API source",
         licence: WORLD_BANK_DATASET_LICENCE,
         licence_reference: WORLD_BANK_DATASET_TERMS_URL,
-        retrieved_at: new Date().toISOString(),
       },
     }
 
@@ -170,6 +189,10 @@ for (const indicator of INDICATORS) {
     observations.push({
       observation_id: `wb_${normalizedHash.slice(0, 32)}`,
       ...canonical,
+      provenance: {
+        ...canonical.provenance,
+        retrieved_at: retrievedAt,
+      },
       raw_payload: row,
       raw_hash: rawHash,
       normalized_hash: normalizedHash,
@@ -178,6 +201,8 @@ for (const indicator of INDICATORS) {
         COMMERCIAL_ELIGIBILITY_STATUS,
     })
   }
+
+  fetchedByMetric[indicator.metric] = observations.length
 
   for (let i = 0; i < observations.length; i += 250) {
     const batch = observations.slice(i, i + 250)
@@ -197,21 +222,57 @@ console.log({
   dataset: WORLD_BANK_DATASET_NAME,
   world_bank_api_source_id: WORLD_BANK_API_SOURCE_ID,
   attempted_observations: inserted,
+  fetched_by_metric: fetchedByMetric,
   skipped,
 })
 
-const summary = await db
-  .from("live_external_observations")
-  .select("country_iso3,metric")
-  .eq("source_id", SOURCE_ID)
-  .limit(50000)
-if (summary.error) throw summary.error
+const asOf = new Date().toISOString()
+const persistedMetricEvidence = {}
+for (const indicator of INDICATORS) {
+  const summary = await db
+    .from("live_world_bank_indicator_latest")
+    .select("country_iso3,metric,observed_at")
+    .eq("metric", indicator.metric)
+    .limit(1000)
+  if (summary.error) throw summary.error
 
-const countries = new Set((summary.data ?? []).map((row) => row.country_iso3).filter(Boolean))
-const metrics = new Set((summary.data ?? []).map((row) => row.metric).filter(Boolean))
+  const rows = summary.data ?? []
+  const yearDistribution = {}
+  let freshOrAgingPeers = 0
+  for (const row of rows) {
+    const year = row.observed_at
+      ? String(new Date(row.observed_at).getUTCFullYear())
+      : "unknown"
+    yearDistribution[year] = (yearDistribution[year] ?? 0) + 1
+    if (ageDays(row.observed_at, asOf) <= 800) {
+      freshOrAgingPeers++
+    }
+  }
+
+  persistedMetricEvidence[indicator.metric] = {
+    latest_country_rows: rows.length,
+    fresh_or_aging_peer_count: freshOrAgingPeers,
+    latest_year_distribution: yearDistribution,
+  }
+}
+
+const allCountries = new Set()
+for (const evidence of Object.values(persistedMetricEvidence)) {
+  if (evidence.latest_country_rows > 0) {
+    // Aggregate country count is reported separately below from the view.
+  }
+}
+const countrySummary = await db
+  .from("live_world_bank_indicator_latest")
+  .select("country_iso3")
+  .limit(1000)
+if (countrySummary.error) throw countrySummary.error
+for (const row of countrySummary.data ?? []) {
+  if (row.country_iso3) allCountries.add(row.country_iso3)
+}
+
 console.log({
-  persisted_rows: summary.data?.length ?? 0,
-  countries_covered: countries.size,
-  metrics: [...metrics].sort(),
+  latest_view_country_count_lower_bound: allCountries.size,
+  persisted_metric_evidence: persistedMetricEvidence,
 })
 console.log("PASS: WORLD BANK LIVE MACRO INGESTION COMPLETE")
