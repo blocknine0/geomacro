@@ -1,0 +1,101 @@
+name: OECD Sovereign Fiscal Coverage Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-oecd-sovereign-fiscal-coverage.mjs"
+      - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
+      - "supabase/migrations/920_multi_source_commercial_registry.sql"
+      - ".github/workflows/oecd-sovereign-fiscal-coverage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run live OECD D3/D4 coverage audit
+        id: live_audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/audit-oecd-sovereign-fiscal-coverage.mjs 2>&1 | tee oecd-sovereign-fiscal-coverage.log
+
+      - name: Normalize exact provider outage as fail-closed evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f oecd-sovereign-fiscal-coverage.json ]; then
+            grep -q 'PASS: OECD SOVEREIGN FISCAL COVERAGE AUDIT COMPLETE - NO WRITES' oecd-sovereign-fiscal-coverage.log
+          else
+            if ! grep -q 'latest-only query failed:.*HTTP 5' oecd-sovereign-fiscal-coverage.log; then
+              echo "::error::OECD audit failed for a non-provider-availability reason"
+              cat oecd-sovereign-fiscal-coverage.log
+              exit 1
+            fi
+            PROVIDER_ERROR="$(tail -n 1 oecd-sovereign-fiscal-coverage.log)"
+            jq -n \
+              --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --arg provider_error "$PROVIDER_ERROR" \
+              '{
+                schema_version: "geomacro-oecd-sovereign-fiscal-coverage-1.2",
+                generated_at: $generated_at,
+                source_id: "oecd_public_finance",
+                dataset: "OECD Government debt by instrument coverage",
+                dataflow: "OECD.SDD.NAD,DSD_PSD_D1D4@DF_PSD_D1D4,1.0",
+                writes_performed: false,
+                operational_status: "BLOCKED_PROVIDER_AVAILABILITY",
+                coverage_proven: false,
+                operational_activation_allowed: false,
+                provider_error: $provider_error,
+                commercial_boundary: {
+                  status: "RIGHTS_APPROVED_CANDIDATE_NOT_YET_RISK_GATE_ACTIVE"
+                },
+                methodology_boundary: {
+                  current_geomacro_metric: "central_government_debt_pct_gdp",
+                  oecd_sector: "general government",
+                  direct_merge_allowed: false
+                },
+                concepts: [],
+                fail_closed_reason: "Official OECD SDMX data was unavailable during the live audit. No cached or synthetic coverage is promoted."
+              }' > oecd-sovereign-fiscal-coverage.json
+            echo "PASS: OECD provider outage captured as fail-closed evidence"
+          fi
+
+      - name: Guard audit and activation boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' oecd-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.methodology_boundary.direct_merge_allowed == false' oecd-sovereign-fiscal-coverage.json >/dev/null
+          jq -e 'if .coverage_proven == false then .operational_status == "BLOCKED_PROVIDER_AVAILABILITY" else (.concepts | length) == 2 end' oecd-sovereign-fiscal-coverage.json >/dev/null
+          grep -q "'oecd_public_finance'" supabase/migrations/920_multi_source_commercial_registry.sql
+          grep -q "'eia_international_energy'" supabase/migrations/920_multi_source_commercial_registry.sql
+          grep -q "'usgs_earthquake_hazards'" supabase/migrations/920_multi_source_commercial_registry.sql
+          grep -q "where source_id = 'un_comtrade'" supabase/migrations/920_multi_source_commercial_registry.sql
+          grep -q "where source_id = 'imf_data'" supabase/migrations/920_multi_source_commercial_registry.sql
+          if grep -A18 "'oecd_public_finance'" supabase/migrations/920_multi_source_commercial_registry.sql | grep -q "enabled_for_commercial_signals.*true"; then
+            echo "::error::OECD must not be promoted to commercial Risk Gate signals before harmonisation evidence"
+            exit 1
+          fi
+          echo "PASS: multi-source activation remains fail-closed until adapter + methodology evidence exists"
+
+      - name: Upload source coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: oecd-sovereign-fiscal-coverage
+          path: |
+            oecd-sovereign-fiscal-coverage.json
+            oecd-sovereign-fiscal-coverage.log
+          if-no-files-found: warn
+          retention-days: 30

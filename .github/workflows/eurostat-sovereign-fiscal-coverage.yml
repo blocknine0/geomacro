@@ -1,0 +1,57 @@
+name: Eurostat Sovereign Fiscal Coverage Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-eurostat-sovereign-fiscal-coverage.mjs"
+      - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
+      - "supabase/migrations/920_multi_source_commercial_registry.sql"
+      - ".github/workflows/eurostat-sovereign-fiscal-coverage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run live Eurostat fiscal coverage audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-eurostat-sovereign-fiscal-coverage.mjs 2>&1 | tee eurostat-sovereign-fiscal-coverage.log
+          grep -q 'PASS: EUROSTAT SOVEREIGN FISCAL COVERAGE AUDIT COMPLETE - NO WRITES' eurostat-sovereign-fiscal-coverage.log
+          jq -e '.writes_performed == false' eurostat-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.structure_proof.required_codes_verified == true' eurostat-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.methodology_boundary.direct_merge_with_world_bank_central_government_debt_allowed == false' eurostat-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.coverage.fresh_or_aging_geo_count > 0' eurostat-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.activation.operational_activation_allowed == false' eurostat-sovereign-fiscal-coverage.json >/dev/null
+
+      - name: Guard source registry boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "'eurostat_government_finance'" supabase/migrations/920_multi_source_commercial_registry.sql
+          if grep -A18 "'eurostat_government_finance'" supabase/migrations/920_multi_source_commercial_registry.sql | grep -q "enabled_for_commercial_signals.*true"; then
+            echo "::error::Eurostat must not be promoted before harmonisation and production census proof"
+            exit 1
+          fi
+          echo "PASS: Eurostat remains candidate-only until methodology and production evidence close"
+
+      - name: Upload Eurostat coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eurostat-sovereign-fiscal-coverage
+          path: |
+            eurostat-sovereign-fiscal-coverage.json
+            eurostat-sovereign-fiscal-coverage.log
+          if-no-files-found: warn
+          retention-days: 30
