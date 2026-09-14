@@ -1,0 +1,136 @@
+name: USGS MCS Production Diagnostic
+
+on:
+  push:
+    branches:
+      - diag/usgs-mcs-production-semantics
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout canonical code
+        uses: actions/checkout@v7
+
+      - name: Inspect authoritative MCS release and production rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { parseCsv } from './scripts/lib-live-source-utils.mjs';
+
+          const ids = [
+            '696a75d5d4be0228872d3bf8',
+            '69837e43b66b01367d7ec7c7',
+          ];
+
+          let selected = null;
+          for (const id of ids) {
+            const url = `https://www.sciencebase.gov/catalog/item/${id}?format=json`;
+            const response = await fetch(url, { headers: { accept: 'application/json' } });
+            console.log(`SCIENCEBASE ${id} HTTP ${response.status}`);
+            if (!response.ok) continue;
+            const item = await response.json();
+            console.log(JSON.stringify({
+              id,
+              title: item.title ?? null,
+              provenance: item.provenance ?? null,
+              files: (item.files ?? []).map((file) => ({
+                name: file.name ?? file.title ?? null,
+                size: file.size ?? null,
+                downloadUri: file.downloadUri ?? null,
+              })),
+            }, null, 2));
+
+            const file = (item.files ?? []).find((entry) =>
+              String(entry.name ?? entry.title ?? '').toLowerCase() ===
+              'mcs2026_commodities_data.csv'.toLowerCase(),
+            );
+            if (!selected && file?.downloadUri) {
+              selected = { id, item, file };
+            }
+          }
+
+          if (!selected) {
+            throw new Error('Authoritative MCS2026_Commodities_Data.csv was not found in ScienceBase metadata');
+          }
+
+          const fileResponse = await fetch(selected.file.downloadUri);
+          if (!fileResponse.ok) {
+            throw new Error(`USGS CSV download failed with HTTP ${fileResponse.status}`);
+          }
+          const bytes = Buffer.from(await fileResponse.arrayBuffer());
+          const sha256 = createHash('sha256').update(bytes).digest('hex');
+          const text = new TextDecoder('windows-1252').decode(bytes);
+          const rows = parseCsv(text);
+
+          const criticalRows = rows.filter((row) =>
+            String(row['Is critical mineral 2025'] ?? '').trim().toLowerCase() === 'yes',
+          );
+          const productionRows = criticalRows.filter((row) => {
+            const statistic = String(row.Statistics ?? '').trim().toLowerCase();
+            return statistic.includes('production') && !statistic.includes('capacity');
+          });
+
+          const comboCounts = new Map();
+          const commodityMap = new Map();
+          for (const row of productionRows) {
+            const commodity = String(row.Commodity ?? '').trim();
+            const combo = JSON.stringify({
+              section: String(row.Section ?? '').trim(),
+              statistics: String(row.Statistics ?? '').trim(),
+              statistics_detail: String(row.Statistics_detail ?? '').trim(),
+              unit: String(row.Unit ?? '').trim(),
+            });
+            comboCounts.set(combo, (comboCounts.get(combo) ?? 0) + 1);
+
+            const item = commodityMap.get(commodity) ?? {
+              row_count: 0,
+              combinations: new Set(),
+              years: new Set(),
+              numeric_2025_rows: 0,
+              non_numeric_2025_rows: 0,
+            };
+            item.row_count += 1;
+            item.combinations.add(combo);
+            item.years.add(String(row.Year ?? '').trim());
+            if (String(row.Year ?? '').trim() === '2025') {
+              const raw = String(row.Value ?? '').trim().replaceAll(',', '');
+              if (raw !== '' && Number.isFinite(Number(raw))) item.numeric_2025_rows += 1;
+              else item.non_numeric_2025_rows += 1;
+            }
+            commodityMap.set(commodity, item);
+          }
+
+          const combinations = [...comboCounts.entries()]
+            .map(([combo, count]) => ({ ...JSON.parse(combo), count }))
+            .sort((a, b) => b.count - a.count || a.statistics.localeCompare(b.statistics));
+          const commodities = [...commodityMap.entries()]
+            .map(([commodity, item]) => ({
+              commodity,
+              row_count: item.row_count,
+              years: [...item.years].sort(),
+              numeric_2025_rows: item.numeric_2025_rows,
+              non_numeric_2025_rows: item.non_numeric_2025_rows,
+              combinations: [...item.combinations].map((value) => JSON.parse(value)),
+            }))
+            .sort((a, b) => a.commodity.localeCompare(b.commodity));
+
+          console.log('USGS_MCS_PRODUCTION_DIAGNOSTIC');
+          console.log(JSON.stringify({
+            selected_sciencebase_item: selected.id,
+            selected_file: selected.file.name ?? selected.file.title,
+            byte_length: bytes.length,
+            sha256,
+            total_rows: rows.length,
+            critical_rows: criticalRows.length,
+            critical_production_rows: productionRows.length,
+            production_combinations: combinations,
+            commodities,
+          }, null, 2));
+          NODE
