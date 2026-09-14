@@ -22,7 +22,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run live ADB KIDB SDMX fiscal discovery
+      - name: Run exact ADB KIDB PPG external-debt coverage audit
         id: discovery
         continue-on-error: true
         shell: bash
@@ -30,7 +30,7 @@ jobs:
           set -o pipefail
           node scripts/audit-adb-kidb-sdmx-fiscal-discovery.mjs 2>&1 | tee adb-key-indicators-fiscal-discovery.log
 
-      - name: Enforce discovery and activation boundaries
+      - name: Enforce source and methodology boundaries
         shell: bash
         run: |
           set -euo pipefail
@@ -38,18 +38,22 @@ jobs:
           jq -e '.writes_performed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.production_activation_allowed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.scoring_changed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.exact_series.dataflow == "DF_EXT"' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.exact_series.indicator_code == "DT_DOD_DPPG_CD"' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.exact_series.label_verified == true' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.discovery_only == true' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.debt_definition_harmonised == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.cross_source_value_pooling_allowed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.direct_sovereign_fiscal_fallback_allowed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.not_equivalent_to_wdi_central_government_debt == true' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.not_equivalent_to_eurostat_general_government_debt == true' adb-key-indicators-fiscal-discovery.json >/dev/null
-          jq -e '.owning_flow != null and .target_indicator.code != null' adb-key-indicators-fiscal-discovery.json >/dev/null
-          jq -e '.sample_query.observed_economy_count > 0' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.methodology_boundary.country_registry_and_sovereignty_match_required_before_support_claim == true' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.coverage_summary.observed_2022_2024_count >= 20' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.coverage_summary.production_supported_country_count_added == 0' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.api_contract.documented_rate_limit == "20 queries/minute"' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.api_contract.enforced_inter_request_delay_ms >= 3000' adb-key-indicators-fiscal-discovery.json >/dev/null
-          grep -q 'PASS: ADB KIDB SDMX FISCAL DISCOVERY COMPLETE - NO WRITES, NO SCORING' adb-key-indicators-fiscal-discovery.log
-          echo "PASS: ADB KIDB SDMX source is discoverable while production scoring remains fail-closed"
+          grep -q 'PASS: ADB EXACT PPG EXTERNAL-DEBT COVERAGE AUDIT COMPLETE - NO WRITES, NO SCORING' adb-key-indicators-fiscal-discovery.log
+          echo "PASS: exact ADB PPG external-debt coverage proven without promoting sovereign-fiscal support"
 
       - name: Upload ADB discovery evidence
         if: always()
