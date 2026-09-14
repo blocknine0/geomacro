@@ -80,9 +80,7 @@ async function loadPinnedReleaseBytes() {
       const sourceFileSha256 = createHash("sha256").update(bytes).digest("hex")
 
       if (sourceFileSha256 !== EXPECTED_SOURCE_FILE_SHA256) {
-        failures.push(
-          `${itemId}: unexpected source hash ${sourceFileSha256}`,
-        )
+        failures.push(`${itemId}: unexpected source hash ${sourceFileSha256}`)
         continue
       }
 
@@ -104,6 +102,15 @@ async function loadPinnedReleaseBytes() {
   )
 }
 
+function canonical(value) {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+}
+
 const db = createDb()
 const registry = await loadCountryRegistry(db)
 
@@ -113,9 +120,7 @@ console.log({ mode: WRITE ? "WRITE" : "DRY_RUN" })
 const release = await loadPinnedReleaseBytes()
 const text = new TextDecoder("windows-1252").decode(release.bytes)
 const rows = parseCsv(text)
-if (!rows.length) {
-  throw new Error("USGS CSV parsed zero rows")
-}
+if (!rows.length) throw new Error("USGS CSV parsed zero rows")
 
 const years = rows
   .map((row) => Number(row.Year))
@@ -125,9 +130,7 @@ const years = rows
       year >= 1900 &&
       year <= new Date().getUTCFullYear(),
   )
-if (!years.length) {
-  throw new Error("No valid USGS observation years found")
-}
+if (!years.length) throw new Error("No valid USGS observation years found")
 const latestYear = Math.max(...years)
 
 function slug(value) {
@@ -142,11 +145,7 @@ function slug(value) {
 }
 
 function isCriticalMineralRow(row) {
-  return (
-    String(row?.["Is critical mineral 2025"] ?? "")
-      .trim()
-      .toLowerCase() === "yes"
-  )
+  return canonical(row?.["Is critical mineral 2025"]) === "yes"
 }
 
 const currentRows = rows.filter(
@@ -166,13 +165,17 @@ console.log({
 
 const observations = []
 let unmappedCountries = 0
+let aggregateOtherCountryRows = 0
 let nonNumericRows = 0
 let missingCommodityRows = 0
 
 for (const row of currentRows) {
   const countryName = String(row.Country ?? "").trim()
-  const iso3 = countryIso3FromName(countryName, registry)
-  if (!iso3) {
+  const isOtherCountriesAggregate = canonical(countryName) === "other countries"
+  const iso3 = isOtherCountriesAggregate
+    ? null
+    : countryIso3FromName(countryName, registry)
+  if (!iso3 && !isOtherCountriesAggregate) {
     unmappedCountries++
     continue
   }
@@ -183,11 +186,14 @@ for (const row of currentRows) {
     continue
   }
 
-  const numeric = Number(String(row.Value ?? "").replace(/,/g, "").trim())
-  if (!Number.isFinite(numeric)) {
+  const rawNumeric = String(row.Value ?? "").replace(/,/g, "").trim()
+  const numeric = Number(rawNumeric)
+  if (!rawNumeric || !Number.isFinite(numeric) || numeric < 0) {
     nonNumericRows++
     continue
   }
+
+  if (isOtherCountriesAggregate) aggregateOtherCountryRows++
 
   const section = String(row.Section ?? "").trim()
   const statistic = String(row.Statistics ?? "").trim()
@@ -198,12 +204,14 @@ for (const row of currentRows) {
   const observedAt = `${latestYear}-12-31T00:00:00.000Z`
 
   // Hash the complete authoritative row rather than a lossy synthetic key.
-  // This prevents collisions such as the MCS U.S. salient-statistics row and
-  // the separate world-production row sharing country/commodity/metric text.
+  // This prevents collisions between similarly-labelled MCS rows. The stable
+  // OTHER_COUNTRIES key preserves an explicitly published aggregate residual
+  // without pretending it is an ISO country.
   const sourceRowSha256 = sha256(row)
+  const countryKey = iso3 ?? "OTHER_COUNTRIES"
   const sourceRecordId = [
     latestYear,
-    iso3,
+    countryKey,
     slug(commodity),
     release.sourceFileSha256.slice(0, 12),
     sourceRowSha256.slice(0, 24),
@@ -216,15 +224,12 @@ for (const row of currentRows) {
       category: "CRITICAL_MINERALS",
       countryIso3: iso3,
       observedAt,
-      // Do not invent a publication timestamp.
       publishedAt: null,
       metric,
       valueNumeric: numeric,
       unit,
       commodity,
       signalType: "critical_mineral_supply_state",
-      // Persist the stable canonical ScienceBase item URL, not whichever
-      // mirrored storage URL happened to serve the pinned bytes.
       sourceUrl: SCIENCEBASE_ITEM_URL,
       provenance: {
         release: RELEASE,
@@ -238,6 +243,10 @@ for (const row of currentRows) {
         critical_mineral_flag: String(
           row["Is critical mineral 2025"] ?? "",
         ).trim(),
+        aggregate_bucket: isOtherCountriesAggregate
+          ? "OTHER_COUNTRIES"
+          : null,
+        source_country_label: countryName || null,
         source_file: release.sourceFileName,
         source_file_sha256: release.sourceFileSha256,
         source_row_sha256: sourceRowSha256,
@@ -261,9 +270,12 @@ if (new Set(normalizedHashes).size !== normalizedHashes.length) {
 console.log({
   normalized_observations: observations.length,
   unmapped_country_rows: unmappedCountries,
+  aggregate_other_countries_rows: aggregateOtherCountryRows,
   non_numeric_rows: nonNumericRows,
   missing_commodity_rows: missingCommodityRows,
-  countries: new Set(observations.map((row) => row.country_iso3)).size,
+  countries: new Set(
+    observations.map((row) => row.country_iso3).filter(Boolean),
+  ).size,
   commodities: new Set(observations.map((row) => row.commodity)).size,
   metrics: new Set(observations.map((row) => row.metric)).size,
   unique_source_record_ids: new Set(sourceRecordIds).size,
