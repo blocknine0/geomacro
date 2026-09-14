@@ -21,6 +21,11 @@ const currentYear = new Date().getUTCFullYear();
 const MIN_YEAR = Number(process.env.WGI_MIN_YEAR ?? String(currentYear - 3));
 const MAX_YEAR = Number(process.env.WGI_MAX_YEAR ?? String(currentYear));
 
+// Source-coverage exceptions are explicit, tiny and reviewable. A country on
+// this list remains fail-closed for political_governance until an independently
+// governed source/methodology is promoted. Never silently drop a new gap.
+const EXPECTED_WGI_SOURCE_GAPS = new Set(["VAT"]);
+
 if (!Number.isInteger(MIN_YEAR) || !Number.isInteger(MAX_YEAR) || MIN_YEAR > MAX_YEAR) {
   throw new Error("Invalid WGI_MIN_YEAR/WGI_MAX_YEAR range");
 }
@@ -89,14 +94,27 @@ for (const [key, rows] of byCountryYear) {
 }
 
 const missingCountries = sovereignRegistry.filter((iso3) => !latestByCountry.has(iso3));
-if (missingCountries.length > 0) {
+const unexpectedMissingCountries = missingCountries.filter(
+  (iso3) => !EXPECTED_WGI_SOURCE_GAPS.has(iso3),
+);
+const staleExpectedGaps = [...EXPECTED_WGI_SOURCE_GAPS].filter(
+  (iso3) => sovereignSet.has(iso3) && latestByCountry.has(iso3),
+);
+
+if (unexpectedMissingCountries.length > 0) {
   throw new Error(
-    `WGI global write blocked: ${missingCountries.length} enabled sovereign countries lack a complete six-indicator bundle: ${missingCountries.join(",")}`,
+    `WGI global write blocked: unexpected sovereign coverage gaps: ${unexpectedMissingCountries.join(",")}`,
+  );
+}
+if (staleExpectedGaps.length > 0) {
+  throw new Error(
+    `WGI source-gap registry is stale because data is now available for: ${staleExpectedGaps.join(",")}. Remove the exception before writing.`,
   );
 }
 
+const coveredSovereigns = sovereignRegistry.filter((iso3) => latestByCountry.has(iso3));
 const observations = [];
-for (const iso3 of sovereignRegistry) {
+for (const iso3 of coveredSovereigns) {
   const selected = latestByCountry.get(iso3)!;
   const result = buildWgiPoliticalStabilityBundle(selected.rows);
   if (result.status !== "ACCEPTED") {
@@ -114,8 +132,10 @@ for (const iso3 of sovereignRegistry) {
   );
 }
 
-if (observations.length !== sovereignRegistry.length) {
-  throw new Error(`WGI sovereign reconciliation failed: ${observations.length}/${sovereignRegistry.length}`);
+if (observations.length + missingCountries.length !== sovereignRegistry.length) {
+  throw new Error(
+    `WGI sovereign reconciliation failed: ${observations.length} covered + ${missingCountries.length} explicit gaps != ${sovereignRegistry.length}`,
+  );
 }
 
 const yearDistribution = Object.fromEntries(
@@ -129,6 +149,7 @@ const yearDistribution = Object.fromEntries(
 const observedTimes = observations
   .map((row) => new Date(row.observed_at).getTime())
   .filter(Number.isFinite);
+if (!observedTimes.length) throw new Error("WGI produced zero governed sovereign observations");
 const coverageStart = new Date(Math.min(...observedTimes)).toISOString();
 const coverageEnd = new Date(Math.max(...observedTimes)).toISOString();
 const latestYear = Math.max(...[...latestByCountry.values()].map((value) => value.year));
@@ -152,9 +173,12 @@ const manifestCore = {
     requested_year_range: [MIN_YEAR, MAX_YEAR],
     sovereign_denominator: sovereignRegistry.length,
     complete_sovereign_bundles: observations.length,
+    explicit_source_gaps: missingCountries,
+    expected_source_gap_registry: [...EXPECTED_WGI_SOURCE_GAPS].sort(),
     latest_complete_year_distribution: yearDistribution,
     raw_redistribution: false,
     methodology_status: "RISK_GATE_V2_POLITICAL_GOVERNANCE_INPUT",
+    gap_policy: "Explicit source gaps remain fail-closed; any new unregistered gap blocks the write.",
   },
 };
 const manifest = { ...manifestCore, manifest_hash: sha256(manifestCore) };
@@ -173,7 +197,7 @@ console.log(JSON.stringify({
   mode: WRITE ? "WRITE" : "DRY_RUN",
   sovereign_denominator: sovereignRegistry.length,
   complete_sovereign_bundles: observations.length,
-  missing_sovereigns: missingCountries,
+  explicit_source_gaps: missingCountries,
   rejected_country_year_bundles: rejected.length,
   latest_complete_year_distribution: yearDistribution,
   observations_attempted: attempted,
@@ -188,6 +212,6 @@ console.log(JSON.stringify({
 
 console.log(
   WRITE
-    ? "PASS: WGI GLOBAL GOVERNANCE INGESTION + RELEASE MANIFEST WRITTEN"
-    : "PASS: WGI GLOBAL GOVERNANCE DRY RUN CLEAN; DATABASE UNCHANGED",
+    ? "PASS: WGI GLOBAL GOVERNANCE INGESTION + EXPLICIT GAP MANIFEST WRITTEN"
+    : "PASS: WGI GLOBAL GOVERNANCE DRY RUN CLEAN WITH EXPLICIT SOURCE GAPS; DATABASE UNCHANGED",
 );
