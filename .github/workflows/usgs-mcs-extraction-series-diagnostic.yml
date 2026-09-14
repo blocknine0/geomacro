@@ -1,0 +1,183 @@
+name: USGS MCS Extraction Series Diagnostic
+
+on:
+  push:
+    branches:
+      - feat/risk-gate-v2-energy-extraction
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout canonical code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Inspect exact extraction-series coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import {
+            createDb,
+            countryIso3FromName,
+            loadCountryRegistry,
+            parseCsv,
+          } from './scripts/lib-live-source-utils.mjs';
+
+          const PROJECT = 'ldpwajisioljyjtojvfx';
+          const ITEM_IDS = ['69837e43b66b01367d7ec7c7', '696a75d5d4be0228872d3bf8'];
+          const FILE = 'MCS2026_Commodities_Data.csv';
+          const HASH = '582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5';
+          const db = createDb();
+          const projectRef = new URL(process.env.SUPABASE_URL).hostname.split('.')[0];
+          if (projectRef !== PROJECT) throw new Error(`Refusing non-authoritative Supabase project ${projectRef}`);
+          const registry = await loadCountryRegistry(db);
+
+          let bytes = null;
+          let selectedItem = null;
+          for (const id of ITEM_IDS) {
+            const meta = await fetch(`https://www.sciencebase.gov/catalog/item/${id}?format=json`);
+            if (!meta.ok) continue;
+            const json = await meta.json();
+            const file = (json.files ?? []).find((x) => String(x.name ?? '') === FILE);
+            const url = file?.url ?? file?.downloadUri;
+            if (!url) continue;
+            const response = await fetch(url);
+            if (!response.ok) continue;
+            const candidate = Buffer.from(await response.arrayBuffer());
+            const digest = createHash('sha256').update(candidate).digest('hex');
+            if (digest !== HASH) continue;
+            bytes = candidate;
+            selectedItem = id;
+            break;
+          }
+          if (!bytes) throw new Error('Pinned USGS MCS release could not be loaded');
+
+          const text = new TextDecoder('windows-1252').decode(bytes);
+          const rows = parseCsv(text);
+          const years = rows.map((r) => Number(r.Year)).filter(Number.isInteger);
+          const year = Math.max(...years);
+          const canonical = (v) => String(v ?? '').normalize('NFKD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase().replace(/\s+/g, ' ');
+          const current = rows.filter((row) => Number(row.Year) === year && canonical(row['Is critical mineral 2025']) === 'yes');
+
+          function isExtractionCandidate(row) {
+            const section = canonical(row.Section);
+            const statistic = canonical(row.Statistics);
+            const detail = canonical(row.Statistics_detail);
+            return (
+              section.startsWith('world ') &&
+              statistic === 'production' &&
+              detail.includes('mine production') &&
+              !detail.includes('rounded') &&
+              !detail.includes('refinery') &&
+              !detail.includes('smelter') &&
+              !detail.includes('secondary')
+            );
+          }
+
+          const candidateRows = current.filter(isExtractionCandidate);
+          const seriesMap = new Map();
+          const unmappedNames = new Map();
+          for (const row of candidateRows) {
+            const commodity = String(row.Commodity ?? '').trim();
+            const section = String(row.Section ?? '').trim();
+            const detail = String(row.Statistics_detail ?? '').trim();
+            const unit = String(row.Unit ?? '').trim();
+            const key = JSON.stringify({ commodity, section, detail, unit });
+            const item = seriesMap.get(key) ?? {
+              commodity, section, detail, unit,
+              source_rows: 0,
+              mapped_rows: 0,
+              positive_mapped_rows: 0,
+              mapped_countries: new Set(),
+              unmapped: new Map(),
+              non_numeric: 0,
+              zero_rows: 0,
+            };
+            item.source_rows += 1;
+            const rawValue = String(row.Value ?? '').replaceAll(',', '').trim();
+            const value = Number(rawValue);
+            if (!rawValue || !Number.isFinite(value) || value < 0) {
+              item.non_numeric += 1;
+              seriesMap.set(key, item);
+              continue;
+            }
+            const countryName = String(row.Country ?? '').trim();
+            const iso3 = countryIso3FromName(countryName, registry);
+            if (!iso3) {
+              item.unmapped.set(countryName, (item.unmapped.get(countryName) ?? 0) + 1);
+              unmappedNames.set(countryName, (unmappedNames.get(countryName) ?? 0) + 1);
+              seriesMap.set(key, item);
+              continue;
+            }
+            item.mapped_rows += 1;
+            item.mapped_countries.add(iso3);
+            if (value > 0) item.positive_mapped_rows += 1;
+            else item.zero_rows += 1;
+            seriesMap.set(key, item);
+          }
+
+          const series = [...seriesMap.values()].map((item) => ({
+            commodity: item.commodity,
+            section: item.section,
+            detail: item.detail,
+            unit: item.unit,
+            source_rows: item.source_rows,
+            mapped_rows: item.mapped_rows,
+            mapped_country_count: item.mapped_countries.size,
+            positive_mapped_rows: item.positive_mapped_rows,
+            non_numeric: item.non_numeric,
+            zero_rows: item.zero_rows,
+            unmapped: [...item.unmapped.entries()].map(([name, count]) => ({ name, count })),
+          })).sort((a,b) => a.commodity.localeCompare(b.commodity) || a.section.localeCompare(b.section) || a.detail.localeCompare(b.detail));
+
+          const byCommodity = new Map();
+          for (const item of series) {
+            const list = byCommodity.get(item.commodity) ?? [];
+            list.push(item);
+            byCommodity.set(item.commodity, list);
+          }
+          const promotable = [];
+          const blocked = [];
+          for (const [commodity, items] of [...byCommodity.entries()].sort(([a],[b]) => a.localeCompare(b))) {
+            const clean = items.filter((item) => item.non_numeric === 0 && item.unmapped.length === 0 && item.mapped_country_count >= 2 && item.positive_mapped_rows >= 2);
+            if (items.length === 1 && clean.length === 1) promotable.push({ commodity, series: clean[0] });
+            else blocked.push({ commodity, reason: items.length !== 1 ? 'AMBIGUOUS_SERIES' : 'INCOMPLETE_SERIES', series: items });
+          }
+
+          const report = {
+            authoritative_project_ref: projectRef,
+            source_file: FILE,
+            source_file_sha256: HASH,
+            selected_sciencebase_item: selectedItem,
+            latest_year: year,
+            current_critical_rows: current.length,
+            exact_extraction_candidate_rows: candidateRows.length,
+            exact_extraction_series_count: series.length,
+            promotable_series_count: promotable.length,
+            blocked_series_count: blocked.length,
+            promotable,
+            blocked,
+            all_unmapped_names: [...unmappedNames.entries()].map(([name,count]) => ({name,count})).sort((a,b) => b.count-a.count || a.name.localeCompare(b.name)),
+            writes_performed: false,
+          };
+          console.log('USGS_MCS_EXTRACTION_SERIES_DIAGNOSTIC');
+          console.log(JSON.stringify(report, null, 2));
+          console.log('PASS: extraction-series diagnostic completed read-only');
+          NODE
