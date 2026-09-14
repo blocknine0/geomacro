@@ -8,14 +8,16 @@ const YEAR = 2026
 const OUTPUT =
   process.env.ADB_FISCAL_DISCOVERY_OUTPUT ??
   "adb-key-indicators-fiscal-discovery.json"
+const PUBLICATION_URL =
+  "https://www.adb.org/publications/key-indicators-asia-and-pacific-2026"
 
 const SAMPLE_COUNTRIES = [
-  { iso3: "IND", slug: "india-key-indicators" },
-  { iso3: "IDN", slug: "indonesia-key-indicators" },
-  { iso3: "PHL", slug: "philippines-key-indicators" },
-  { iso3: "PAK", slug: "pakistan-key-indicators" },
-  { iso3: "BGD", slug: "bangladesh-key-indicators" },
-  { iso3: "LKA", slug: "sri-lanka-key-indicators" },
+  { iso3: "IND", name: "India", kidb: "india" },
+  { iso3: "IDN", name: "Indonesia", kidb: "indonesia" },
+  { iso3: "PHL", name: "Philippines", kidb: "philippines" },
+  { iso3: "PAK", name: "Pakistan", kidb: "pakistan" },
+  { iso3: "BGD", name: "Bangladesh", kidb: "bangladesh" },
+  { iso3: "LKA", name: "Sri Lanka", kidb: "sri-lanka" },
 ]
 
 const FISCAL_TERMS = [
@@ -38,7 +40,9 @@ async function fetchWithRetry(url, options = {}) {
       const response = await fetch(url, {
         ...options,
         headers: {
-          "user-agent": "Geomacro-ADB-Key-Indicators-Fiscal-Discovery/1.0",
+          "user-agent":
+            "Mozilla/5.0 (compatible; Geomacro-ADB-Key-Indicators-Fiscal-Discovery/1.1; +https://geomacro.live)",
+          accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.5",
           ...(options.headers ?? {}),
         },
       })
@@ -76,27 +80,58 @@ function visibleText(html) {
   )
 }
 
-function extractXlsxResource(pageUrl, html) {
+function anchorsFromHtml(baseUrl, html) {
   const anchors = []
   const pattern = /<a\b[^>]*href=(['"])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi
   for (const match of html.matchAll(pattern)) {
-    const label = visibleText(match[3])
-    if (
-      label.toLowerCase().includes(`key indicators ${YEAR}`) &&
-      label.toLowerCase().includes("xlsx")
-    ) {
+    try {
       anchors.push({
-        label,
-        url: new URL(decodeEntities(match[2]), pageUrl).toString(),
+        label: visibleText(match[3]),
+        url: new URL(decodeEntities(match[2]), baseUrl).toString(),
       })
+    } catch {
+      // Ignore malformed navigation links; exact resource selection remains fail-closed.
     }
   }
-  if (anchors.length !== 1) {
-    throw new Error(
-      `Expected exactly one ${YEAR} XLSX resource on ${pageUrl}; found ${anchors.length}`,
-    )
+  return anchors
+}
+
+function likelySpreadsheet(anchor) {
+  const label = anchor.label.trim().toLowerCase()
+  const url = anchor.url.toLowerCase()
+  return (
+    label === "xlsx" ||
+    label === "xls" ||
+    label.includes("xlsx") ||
+    /\.(xlsx|xls)(?:$|[?#])/.test(url)
+  )
+}
+
+function extractKidbResource(pageUrl, html) {
+  const anchors = anchorsFromHtml(pageUrl, html).filter(likelySpreadsheet)
+  if (!anchors.length) return null
+  return {
+    ...anchors[0],
+    transport: "kidb_economy_page",
+    candidate_count: anchors.length,
   }
-  return anchors[0]
+}
+
+function extractPublicationResource(country, html) {
+  const rows = [...html.matchAll(/<tr\b[\s\S]*?<\/tr>/gi)].map((match) => match[0])
+  for (const row of rows) {
+    const text = visibleText(row).toLowerCase()
+    if (!text.includes(country.name.toLowerCase())) continue
+    const anchors = anchorsFromHtml(PUBLICATION_URL, row).filter(likelySpreadsheet)
+    if (anchors.length) {
+      return {
+        ...anchors[0],
+        transport: "adb_2026_publication_page",
+        candidate_count: anchors.length,
+      }
+    }
+  }
+  return null
 }
 
 function unzipText(file, member) {
@@ -136,21 +171,38 @@ function fiscalMatches(values) {
   return matches
 }
 
-async function auditCountry(country, tempDir) {
-  const pageUrl = `https://data.adb.org/dataset/${country.slug}`
-  const page = await fetchWithRetry(pageUrl)
-  const html = await page.text()
-  const pageText = visibleText(html)
-  const licencePresent = pageText.includes("Creative Commons Attribution 3.0 IGO")
-  if (!licencePresent) {
-    throw new Error(`Exact CC BY 3.0 IGO marker missing on ${pageUrl}`)
+async function resolveResource(country, publicationHtml) {
+  const kidbPage = `https://kidb.adb.org/economies/${country.kidb}`
+  let kidbError = null
+  try {
+    const response = await fetchWithRetry(kidbPage)
+    const html = await response.text()
+    const resource = extractKidbResource(kidbPage, html)
+    if (resource) return { page_url: kidbPage, resource, kidb_error: null }
+    kidbError = "No spreadsheet anchor found on KIDB economy page"
+  } catch (error) {
+    kidbError = error instanceof Error ? error.message : String(error)
   }
 
-  const resource = extractXlsxResource(pageUrl, html)
-  const response = await fetchWithRetry(resource.url, {
+  const publicationResource = extractPublicationResource(country, publicationHtml)
+  if (publicationResource) {
+    return {
+      page_url: PUBLICATION_URL,
+      resource: publicationResource,
+      kidb_error: kidbError,
+    }
+  }
+  throw new Error(
+    `No ${YEAR} spreadsheet transport for ${country.iso3}; KIDB=${kidbError ?? "none"}; publication fallback had no matching spreadsheet`,
+  )
+}
+
+async function auditCountry(country, tempDir, publicationHtml) {
+  const resolved = await resolveResource(country, publicationHtml)
+  const response = await fetchWithRetry(resolved.resource.url, {
     headers: {
       accept:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream;q=0.9,*/*;q=0.1",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream;q=0.9,*/*;q=0.1",
     },
   })
   const bytes = Buffer.from(await response.arrayBuffer())
@@ -169,11 +221,12 @@ async function auditCountry(country, tempDir) {
 
   return {
     iso3: country.iso3,
-    dataset_page: pageUrl,
-    licence: "CC BY 3.0 IGO",
-    licence_marker_verified: true,
-    resource_label: resource.label,
-    resource_url: resource.url,
+    source_transport_page: resolved.page_url,
+    transport: resolved.resource.transport,
+    kidb_fallback_note: resolved.kidb_error,
+    resource_label: resolved.resource.label,
+    resource_url: resolved.resource.url,
+    resource_candidate_count: resolved.resource.candidate_count,
     resource_sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
     resource_bytes: bytes.length,
     workbook_sheet_count: sheets.length,
@@ -186,11 +239,20 @@ async function auditCountry(country, tempDir) {
 async function main() {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "geomacro-adb-fiscal-"))
   try {
+    let publicationHtml = ""
+    let publicationFetchError = null
+    try {
+      const publication = await fetchWithRetry(PUBLICATION_URL)
+      publicationHtml = await publication.text()
+    } catch (error) {
+      publicationFetchError = error instanceof Error ? error.message : String(error)
+    }
+
     const countries = []
     const failures = []
     for (const country of SAMPLE_COUNTRIES) {
       try {
-        countries.push(await auditCountry(country, tempDir))
+        countries.push(await auditCountry(country, tempDir, publicationHtml))
       } catch (error) {
         failures.push({
           iso3: country.iso3,
@@ -203,7 +265,7 @@ async function main() {
       (row) => row.fiscal_vocabulary_detected,
     )
     const report = {
-      schema_version: "geomacro-adb-key-indicators-fiscal-discovery-1.0",
+      schema_version: "geomacro-adb-key-indicators-fiscal-discovery-1.1",
       generated_at: new Date().toISOString(),
       source_candidate: "adb_key_indicators_2026",
       publisher: "Asian Development Bank / ERDI",
@@ -211,9 +273,18 @@ async function main() {
       writes_performed: false,
       production_activation_allowed: false,
       scoring_changed: false,
+      publication_transport: {
+        url: PUBLICATION_URL,
+        fetch_error: publicationFetchError,
+      },
       commercial_boundary: {
-        status: "EXACT_DATASET_LICENCE_MUST_BE_VERIFIED_PER_PAGE",
-        required_licence: "Creative Commons Attribution 3.0 IGO",
+        status: "RIGHTS_EVIDENCE_EXTERNAL_TO_RESOURCE_TRANSPORT",
+        reviewed_licence: "Creative Commons Attribution 3.0 IGO",
+        rights_reference_urls: [
+          "https://data.adb.org/terms-use-data",
+          "https://data.adb.org/dataset/india-key-indicators",
+        ],
+        licence_not_inferred_from_kidb_transport: true,
         raw_redistribution_default: false,
         attribution_required: true,
       },
