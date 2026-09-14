@@ -6,6 +6,7 @@ import {
 } from "./risk-gate-v2-geopolitical-security-module-state";
 
 const UCDP_PAGE_SIZE = 1_000;
+const UCDP_SOURCE_ID = "ucdp_candidate";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -23,6 +24,47 @@ function validTimestamp(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+async function fetchCleanReleaseManifest(asOf: string) {
+  const db = requireRiskSupabase();
+  const result = await db
+    .from("live_source_release_manifests")
+    .select("release_id,retrieved_at,coverage_start,coverage_end,manifest_hash,metadata")
+    .eq("source_id", UCDP_SOURCE_ID)
+    .eq("write_completed", true)
+    .eq("rejected_rows", 0)
+    .eq("unmapped_rows", 0)
+    .lte("retrieved_at", asOf)
+    .order("retrieved_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (result.error) throw result.error;
+  if (!result.data) return null;
+
+  const metadata = asRecord(result.data.metadata);
+  const releaseRank = Number(metadata.release_rank ?? 0);
+  const retrievedAt = validTimestamp(result.data.retrieved_at);
+  const coverageEnd = validTimestamp(result.data.coverage_end);
+  const manifestHash = String(result.data.manifest_hash ?? "").trim();
+
+  if (
+    !Number.isInteger(releaseRank) ||
+    releaseRank <= 0 ||
+    !retrievedAt ||
+    !coverageEnd ||
+    !/^[0-9a-f]{64}$/.test(manifestHash)
+  ) {
+    return null;
+  }
+
+  return {
+    release_rank: releaseRank,
+    retrieved_at: retrievedAt,
+    coverage_end: coverageEnd,
+    manifest_hash: manifestHash,
+  };
 }
 
 async function fetchCandidateRows(asOf: string) {
@@ -44,7 +86,6 @@ async function fetchCandidateRows(asOf: string) {
         country_iso3,
         value_numeric,
         observed_at,
-        ingested_at,
         provenance,
         quality_status,
         commercial_eligibility_status
@@ -84,11 +125,7 @@ async function fetchPopulationByCountry(asOf: string) {
 
   if (result.error) throw result.error;
 
-  const byCountry = new Map<
-    string,
-    { population: number; observed_at: string }
-  >();
-
+  const byCountry = new Map<string, { population: number; observed_at: string }>();
   for (const row of result.data ?? []) {
     const iso3 =
       typeof row.country_iso3 === "string"
@@ -107,7 +144,6 @@ async function fetchPopulationByCountry(asOf: string) {
     }
     byCountry.set(iso3, { population, observed_at: observedAt });
   }
-
   return byCountry;
 }
 
@@ -138,43 +174,33 @@ export async function generateRiskGateV2GeopoliticalSecurityModuleState(input: {
     throw new Error("Risk Gate v2 conflict as_of must be a valid timestamp");
   }
 
-  const [candidateRows, populationByCountry, countryIso3] = await Promise.all([
-    fetchCandidateRows(asOf.toISOString()),
-    fetchPopulationByCountry(asOf.toISOString()),
-    fetchEnabledCountryIso3(),
-  ]);
+  const [manifest, candidateRows, populationByCountry, countryIso3] =
+    await Promise.all([
+      fetchCleanReleaseManifest(asOf.toISOString()),
+      fetchCandidateRows(asOf.toISOString()),
+      fetchPopulationByCountry(asOf.toISOString()),
+      fetchEnabledCountryIso3(),
+    ]);
 
-  if (candidateRows.length === 0) return null;
+  if (!manifest) return null;
 
-  let sourceRetrievedAt: string | null = null;
+  const releaseRows = candidateRows.filter((row) => {
+    const provenance = asRecord(row.provenance);
+    return Number(provenance.release_rank ?? 0) === manifest.release_rank;
+  });
+
+  const blockedCountries = new Set<string>();
   const aggregates = new Map<
     string,
     { verified_event_count: number; excluded_event_count: number; deaths: number }
   >();
 
-  for (const row of candidateRows) {
-    const provenance = asRecord(row.provenance);
-    const retrievedAt =
-      validTimestamp(provenance.retrieved_at) ?? validTimestamp(row.ingested_at);
-    if (
-      retrievedAt &&
-      (!sourceRetrievedAt ||
-        new Date(retrievedAt).getTime() > new Date(sourceRetrievedAt).getTime())
-    ) {
-      sourceRetrievedAt = retrievedAt;
-    }
-
+  for (const row of releaseRows) {
     const iso3 =
       typeof row.country_iso3 === "string"
         ? row.country_iso3.trim().toUpperCase()
         : "";
     if (!/^[A-Z]{3}$/.test(iso3)) continue;
-
-    const aggregate = aggregates.get(iso3) ?? {
-      verified_event_count: 0,
-      excluded_event_count: 0,
-      deaths: 0,
-    };
 
     const deaths = numeric(row.value_numeric);
     const admitted =
@@ -183,19 +209,25 @@ export async function generateRiskGateV2GeopoliticalSecurityModuleState(input: {
       deaths !== null &&
       deaths >= 0;
 
+    const aggregate = aggregates.get(iso3) ?? {
+      verified_event_count: 0,
+      excluded_event_count: 0,
+      deaths: 0,
+    };
+
     if (admitted) {
       aggregate.verified_event_count += 1;
-      aggregate.deaths += deaths;
+      aggregate.deaths += deaths!;
     } else {
       aggregate.excluded_event_count += 1;
+      blockedCountries.add(iso3);
     }
     aggregates.set(iso3, aggregate);
   }
 
-  if (!sourceRetrievedAt) return null;
-
   const countries: RiskGateV2ConflictCountryInput[] = [];
   for (const iso3 of countryIso3) {
+    if (blockedCountries.has(iso3)) continue;
     const population = populationByCountry.get(iso3);
     if (!population) continue;
     const aggregate = aggregates.get(iso3) ?? {
@@ -208,16 +240,20 @@ export async function generateRiskGateV2GeopoliticalSecurityModuleState(input: {
       population: population.population,
       population_observed_at: population.observed_at,
       verified_event_count: aggregate.verified_event_count,
-      excluded_event_count: aggregate.excluded_event_count,
+      excluded_event_count: 0,
       best_estimate_deaths: aggregate.deaths,
     });
+  }
+
+  if (blockedCountries.has(input.country_iso3.trim().toUpperCase())) {
+    return null;
   }
 
   return buildRiskGateV2GeopoliticalSecurityModuleState({
     country_iso3: input.country_iso3,
     current: {
       as_of: asOf.toISOString(),
-      source_retrieved_at: sourceRetrievedAt,
+      source_retrieved_at: manifest.retrieved_at,
       countries,
     },
     generated_at: input.generated_at ?? new Date().toISOString(),
