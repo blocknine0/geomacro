@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -42,7 +42,20 @@ jobs:
       - name: Run political-governance module tests
         run: bun test src/__tests__/risk-gate-v2-governed-module-builders.test.ts src/__tests__/risk-gate-v2-support-readiness.test.ts
 
+      - name: Record Dependabot live-source boundary
+        if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+        run: echo "Dependabot pull requests do not receive repository secrets; live WGI validation is intentionally skipped while deterministic module tests still run." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate required live-source configuration
+        if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::APP_SUPABASE_URL is required for live WGI validation"; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is required for live WGI validation"; exit 1; }
+
       - name: Validate all enabled sovereign WGI bundles without writes
+        if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
         run: bun scripts/ingest-wgi-political-stability-live.ts
 
       - name: Persist governed WGI observations and release manifest

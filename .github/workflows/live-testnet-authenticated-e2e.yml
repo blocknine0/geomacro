@@ -69,7 +69,7 @@ jobs:
           echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Risk Gate execution authorization: false" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload sanitized E2E evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: live-testnet-authenticated-e2e-${{ github.run_id }}
           path: artifacts/testnet-live-e2e/*.json

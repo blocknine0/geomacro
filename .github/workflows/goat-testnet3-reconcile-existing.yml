@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload sanitized reconciliation evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: goat-testnet3-existing-payment-reconciliation-${{ github.run_id }}
           path: artifacts/goat-testnet3-reconcile/*.json
