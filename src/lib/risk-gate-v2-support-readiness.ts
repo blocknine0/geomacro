@@ -4,7 +4,7 @@ import type {
 } from "./risk-gate-v2-taxonomy";
 
 export const RISK_GATE_V2_SUPPORT_READINESS_VERSION =
-  "risk-gate-v2-support-readiness-0.4.0" as const;
+  "risk-gate-v2-support-readiness-0.5.0" as const;
 
 export type RiskGateV2SupportStatus =
   | "SUPPORTED"
@@ -140,14 +140,14 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
   },
   energy_commodities: {
     module: "energy_commodities",
-    status: "BLOCKED_METHODOLOGY",
-    coverage_ceiling: "INSUFFICIENT",
+    status: "SUPPORTED",
+    coverage_ceiling: "LIMITED",
     governed_sources: ["usgs_mcs"],
     blockers: [
-      "USGS mineral quantities need dependency/concentration context; energy and food coverage are incomplete.",
+      "Current supported scope is verified critical-mineral extraction concentration only. Commodities with withheld, nonnumeric, ambiguous or incomplete extraction series fail closed; energy, food, price shocks and active commodity disruptions are not yet scored.",
     ],
     promotion_requirements: [
-      "Implement critical-mineral concentration/dependency scoring and add governed energy/food signals.",
+      "Add governed net-import reliance and major-source dependency signals, then version energy, food and market-price transmission methodologies before raising coverage.",
     ],
   },
   regulatory_legal: {
