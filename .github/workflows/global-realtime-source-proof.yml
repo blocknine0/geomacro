@@ -1,0 +1,47 @@
+name: Global Realtime Source Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-global-realtime-source-freshness.mjs"
+      - "supabase/migrations/920_multi_source_commercial_registry.sql"
+      - ".github/workflows/global-realtime-source-proof.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prove live source freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-realtime-source-freshness.mjs | tee global-realtime-source-freshness.log
+          grep -q 'PASS: GLOBAL REALTIME SOURCE FRESHNESS PROOF COMPLETE - NO WRITES' global-realtime-source-freshness.log
+          jq -e '.writes_performed == false' global-realtime-source-freshness.json >/dev/null
+          jq -e '.claim_boundary.source_absence_never_becomes_zero_risk == true' global-realtime-source-freshness.json >/dev/null
+          jq -e '.summary.failed_sources == 0' global-realtime-source-freshness.json >/dev/null
+          jq -e '.checks | map(.source_id) | index("gdelt_v2_events") != null' global-realtime-source-freshness.json >/dev/null
+          jq -e '.checks | map(.source_id) | index("usgs_earthquake_hazards") != null' global-realtime-source-freshness.json >/dev/null
+
+      - name: Upload freshness evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: global-realtime-source-freshness
+          path: |
+            global-realtime-source-freshness.json
+            global-realtime-source-freshness.log
+          if-no-files-found: warn
+          retention-days: 30
