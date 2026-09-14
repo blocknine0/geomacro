@@ -1,0 +1,178 @@
+name: Dan Commercial Readiness Evidence v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/dan-commercial-readiness-v2.yml"
+      - "scripts/select-commercial-country-pair.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dan-commercial-readiness-evidence-v2
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      LIVE_BASE_URL: https://geomacro.live
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+
+      - name: Run trust-boundary regression tests
+        run: |
+          bun test \
+            src/__tests__/risk-object-signing.test.ts \
+            src/__tests__/risk-object-public-verification.test.ts \
+            src/__tests__/risk-object-key-lifecycle.test.ts \
+            src/__tests__/testnet-public-developer-page-static.test.ts
+
+      - name: Select current verified country pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/select-commercial-country-pair.ts | tee dan-pair-selection.json
+          origin="$(jq -r '.origin_country_iso3' dan-pair-selection.json)"
+          destination="$(jq -r '.destination_country_iso3' dan-pair-selection.json)"
+          test "$origin" != "null"
+          test "$destination" != "null"
+          test "$origin" != "$destination"
+          echo "DAN_ORIGIN=$origin" >> "$GITHUB_ENV"
+          echo "DAN_DESTINATION=$destination" >> "$GITHUB_ENV"
+
+      - name: Publish and verify selected country proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/publish-country-risk-object.ts "$DAN_ORIGIN" | tee dan-country-origin.json
+          bun scripts/publish-country-risk-object.ts "$DAN_DESTINATION" | tee dan-country-destination.json
+          for file in dan-country-origin.json dan-country-destination.json; do
+            jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+              .published == true and
+              .context.published == true and
+              .integrity.signature_present == true and
+              .integrity.signature_valid == true and
+              .integrity.signing_key_id == $key_id and
+              .commercial_eligibility.status == "VERIFIED" and
+              .verification.status == "VERIFIED"
+            ' "$file" >/dev/null
+          done
+
+      - name: Run selected corridor preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/test-corridor-risk-gate-preflight.ts "$DAN_ORIGIN" "$DAN_DESTINATION" | tee dan-corridor-preflight.log
+
+      - name: Verify public trust endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
+            "${LIVE_BASE_URL%/}/api/risk-object-keys" > dan-risk-object-keys.json
+          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+            .ok == true and
+            .signature_scheme == "Ed25519" and
+            (.keys | any(.key_id == $key_id and .status != "revoked"))
+          ' dan-risk-object-keys.json >/dev/null
+
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
+            "${LIVE_BASE_URL%/}/api/risk-gate-readiness" > dan-risk-gate-readiness.json
+          jq -e '
+            .status == "ready" and
+            .checks.database == true and
+            .checks.audit_store == true and
+            .checks.verification_keys == true and
+            .checks.fresh_country_risk_object == true and
+            .checks.publisher_signing == true
+          ' dan-risk-gate-readiness.json >/dev/null
+
+      - name: Verify live wallet-first Testnet route
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
+            "${LIVE_BASE_URL%/}/testnet-access" > dan-testnet-access.html
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('dan-testnet-access.html', 'utf8');
+          const walletFirst = html.indexOf('/testnet-wallet-first-v2.js');
+          const legacy = html.indexOf('/testnet-access.js');
+          if (walletFirst < 0 || legacy < 0 || walletFirst >= legacy) process.exit(1);
+          NODE
+
+      - name: Build redacted readiness summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg commit "$GITHUB_SHA" \
+            --arg origin "$DAN_ORIGIN" \
+            --arg destination "$DAN_DESTINATION" \
+            --slurpfile pair dan-pair-selection.json \
+            --slurpfile origin_obj dan-country-origin.json \
+            --slurpfile destination_obj dan-country-destination.json \
+            --slurpfile readiness dan-risk-gate-readiness.json \
+            '{
+              proof:"PASS",
+              purpose:"Dan Griffith pre-conversation commercial readiness evidence",
+              generated_at:$generated_at,
+              commit:$commit,
+              pair_selection:$pair[0],
+              countries:[
+                {country:$origin,object_id:$origin_obj[0].object_id,score:$origin_obj[0].risk.score,confidence:$origin_obj[0].confidence,commercial_eligibility:$origin_obj[0].commercial_eligibility.status,verification:$origin_obj[0].verification.status,signature_valid:$origin_obj[0].integrity.signature_valid},
+                {country:$destination,object_id:$destination_obj[0].object_id,score:$destination_obj[0].risk.score,confidence:$destination_obj[0].confidence,commercial_eligibility:$destination_obj[0].commercial_eligibility.status,verification:$destination_obj[0].verification.status,signature_valid:$destination_obj[0].integrity.signature_valid}
+              ],
+              live_readiness:$readiness[0],
+              testnet_access:{wallet_first_auth_live:true},
+              claims_boundary:[
+                "The country pair is selected from current runtime evidence and is not a permanent whitelist.",
+                "Country proof is controlled-pilot evidence, not a general SLA claim.",
+                "Corridor methodology remains pilot-labelled.",
+                "Geomacro provides decision context and does not grant customer execution authority."
+              ]
+            }' > dan-commercial-readiness-summary.json
+          cat dan-commercial-readiness-summary.json
+
+      - name: Upload redacted evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dan-commercial-readiness-evidence-v2
+          path: |
+            dan-pair-selection.json
+            dan-country-origin.json
+            dan-country-destination.json
+            dan-commercial-readiness-summary.json
+            dan-corridor-preflight.log
+            dan-risk-gate-readiness.json
+          if-no-files-found: warn
+          retention-days: 30
