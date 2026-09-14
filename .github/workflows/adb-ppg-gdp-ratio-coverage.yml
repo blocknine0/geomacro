@@ -1,0 +1,58 @@
+name: ADB PPG Debt to GDP Ratio Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-adb-ppg-gdp-ratio-coverage.mjs"
+      - ".github/workflows/adb-ppg-gdp-ratio-coverage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ratio-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run same-source same-year ADB PPG/GDP coverage proof
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/audit-adb-ppg-gdp-ratio-coverage.mjs 2>&1 | tee adb-ppg-gdp-ratio-coverage.log
+
+      - name: Enforce methodology boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s adb-ppg-gdp-ratio-coverage.json
+          jq -e '.writes_performed == false' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.scoring_changed == false' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.production_activation_allowed == false' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.methodology_id == "adb-ppg-external-debt-to-gdp-shadow-v1"' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.same_publisher_required == true' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.same_year_required == true' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.raw_absolute_debt_peer_scoring_allowed == false' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.cross_source_value_pooling_allowed == false' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.production_module_state_allowed == false' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.methodology_boundary.shadow_only == true' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.coverage_summary.peer_minimum_met == true' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          jq -e '.coverage_summary.ratio_ready_count >= 20' adb-ppg-gdp-ratio-coverage.json >/dev/null
+          grep -q 'PASS: ADB PPG EXTERNAL-DEBT / GDP RATIO COVERAGE PROVEN - SHADOW ONLY' adb-ppg-gdp-ratio-coverage.log
+          echo "PASS: normalized ADB PPG/GDP ratio has a sufficient shadow peer universe and remains non-production"
+
+      - name: Upload ratio proof
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: adb-ppg-gdp-ratio-coverage
+          path: |
+            adb-ppg-gdp-ratio-coverage.json
+            adb-ppg-gdp-ratio-coverage.log
+          if-no-files-found: warn
+          retention-days: 30
