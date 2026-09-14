@@ -1,0 +1,230 @@
+name: Eurostat Sovereign Fiscal Production Promotion
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - "src/lib/risk-gate-v2-sovereign-fiscal-fallback.ts"
+      - "src/__tests__/risk-gate-v2-sovereign-fiscal-fallback.test.ts"
+      - "supabase/migrations/925_enable_eurostat_sovereign_fiscal_signals.sql"
+      - ".github/workflows/eurostat-sovereign-fiscal-promotion.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - "src/lib/risk-gate-v2-sovereign-fiscal-fallback.ts"
+      - "src/__tests__/risk-gate-v2-sovereign-fiscal-fallback.test.ts"
+      - "supabase/migrations/925_enable_eurostat_sovereign_fiscal_signals.sql"
+      - ".github/workflows/eurostat-sovereign-fiscal-promotion.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eurostat-sovereign-fiscal-promotion-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run fiscal fallback and Eurostat methodology tests
+        run: |
+          bunx vitest run \
+            src/__tests__/risk-gate-v2-sovereign-fiscal-fallback.test.ts \
+            src/__tests__/risk-gate-v2-eurostat-sovereign-fiscal.test.ts
+
+      - name: Guard concept isolation and promotion boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "enabled_for_commercial_signals = true" supabase/migrations/925_enable_eurostat_sovereign_fiscal_signals.sql
+          grep -q "generateRiskGateV2EurostatSovereignFiscalModuleState" src/lib/risk-gate-v2-macro-module-state.server.ts
+          grep -q "baseStates.some((state) => state.module === \"sovereign_fiscal\")" src/lib/risk-gate-v2-macro-module-state.server.ts
+          grep -q "raw values and peer universes" src/lib/risk-gate-v2-sovereign-fiscal-fallback.ts
+          echo 'PASS: Eurostat is a fallback-only fiscal methodology and cannot blend with WDI fiscal peers.'
+
+  production-promotion:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EUROSTAT_SHADOW_CENSUS_OUTPUT: eurostat-prepromotion-shadow-census.json
+      GLOBAL_RISK_GATE_CENSUS_OUTPUT: eurostat-postpromotion-global-census.json
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
+          test -n "${SUPABASE_URL:-}" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"; exit 1; }
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const api = new URL(process.env.SUPABASE_URL);
+          const direct = db.hostname === `db.${ref}.supabase.co` && db.username === 'postgres';
+          const pooler = db.hostname.endsWith('.pooler.supabase.com') && db.username === `postgres.${ref}`;
+          if (!['postgres:', 'postgresql:'].includes(db.protocol) || (!direct && !pooler)) throw new Error('SUPABASE_DB_URL is not the authoritative production database');
+          if (!db.password || db.pathname !== '/postgres') throw new Error('Invalid production database URL');
+          if (api.hostname !== `${ref}.supabase.co`) throw new Error('SUPABASE_URL is not the authoritative production API');
+          console.log('PASS: authoritative production database and API identities confirmed.');
+          NODE
+
+      - name: Verify pre-promotion source and release evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          test "$state" = 'COMMERCIAL_OK|true|false' || { echo "::error::Unexpected pre-promotion Eurostat state: $state"; exit 1; }
+          peers="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_eurostat_government_debt_latest")"
+          test "$peers" -ge 20 || { echo "::error::Eurostat latest view has only $peers rows"; exit 1; }
+          manifest="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select verified_rows || '|' || partial_rows || '|' || rejected_rows || '|' || unmapped_rows || '|' || write_completed::text from public.live_source_release_manifests where source_id='eurostat_government_finance' order by coverage_end desc nulls last, retrieved_at desc limit 1")"
+          IFS='|' read -r verified partial rejected unmapped written <<< "$manifest"
+          test "$written" = 'true' || { echo "::error::Eurostat latest manifest is not write-complete"; exit 1; }
+          test "$verified" -ge 20 || { echo "::error::Eurostat latest manifest has only $verified verified rows"; exit 1; }
+          test "$partial" = '0' && test "$rejected" = '0' && test "$unmapped" = '0' || { echo "::error::Eurostat latest manifest is not clean: $manifest"; exit 1; }
+          printf '{"source_state":"%s","latest_view_rows":%s,"manifest":"%s"}\n' "$state" "$peers" "$manifest" | tee eurostat-prepromotion-source-evidence.json
+
+      - name: Reproduce shadow baseline immediately before promotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-eurostat-sovereign-fiscal-shadow-census.ts > eurostat-prepromotion-shadow-census.log 2>&1
+          test -s "$EUROSTAT_SHADOW_CENSUS_OUTPUT"
+          node <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync(process.env.EUROSTAT_SHADOW_CENSUS_OUTPUT, 'utf8'));
+          if ((report.summary?.eurostat_fiscal_candidate_country_count ?? 0) < 20) throw new Error('Fewer than 20 Eurostat fiscal candidates');
+          if ((report.summary?.shadow_accepted_country_count ?? 0) < 1) throw new Error('Zero shadow accepted countries');
+          if (report.source_activation?.commercial_signals_enabled !== false) throw new Error('Shadow baseline ran after signal activation');
+          console.log(JSON.stringify(report.summary));
+          NODE
+
+      - name: Apply only migration 925
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/925_enable_eurostat_sovereign_fiscal_signals.sql
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          test "$state" = 'COMMERCIAL_OK|true|true' || { echo "::error::Eurostat promotion state mismatch: $state"; exit 1; }
+          echo 'PASS: Eurostat commercial signal state activated for the guarded sovereign-fiscal fallback.'
+
+      - name: Run actual global country census and compare with shadow proof
+        id: census
+        shell: bash
+        run: |
+          set -uo pipefail
+          bun scripts/global-risk-gate-country-census.ts --require-any-accepted > eurostat-postpromotion-global-census.log 2>&1
+          census_status=$?
+          if [ "$census_status" -ne 0 ]; then
+            echo "::error::Production country census failed with status $census_status"
+            exit "$census_status"
+          fi
+          set -e
+          test -s "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
+          node <<'NODE'
+          const fs = require('fs');
+          const shadow = JSON.parse(fs.readFileSync(process.env.EUROSTAT_SHADOW_CENSUS_OUTPUT, 'utf8'));
+          const actual = JSON.parse(fs.readFileSync(process.env.GLOBAL_RISK_GATE_CENSUS_OUTPUT, 'utf8'));
+          const shadowAccepted = shadow.countries.filter((row) => row.status === 'SHADOW_ACCEPTED').map((row) => row.iso3).sort();
+          const actualAccepted = actual.countries.filter((row) => row.status === 'ACCEPTED').map((row) => row.iso3).sort();
+          const actualSet = new Set(actualAccepted);
+          const regressions = shadowAccepted.filter((iso3) => !actualSet.has(iso3));
+          if (actual.denominator?.count !== shadow.denominator?.count) throw new Error(`Denominator changed: shadow=${shadow.denominator?.count}, actual=${actual.denominator?.count}`);
+          if (actualAccepted.length < shadowAccepted.length) throw new Error(`Accepted count regressed: shadow=${shadowAccepted.length}, actual=${actualAccepted.length}`);
+          if (regressions.length) throw new Error(`Shadow-accepted countries missing after promotion: ${regressions.join(',')}`);
+          const eurostatAccepted = actual.countries.filter((row) =>
+            row.status === 'ACCEPTED' &&
+            row.module_states?.some((state) => state.module === 'sovereign_fiscal' && String(state.methodology_version).includes('eurostat-general-government'))
+          ).map((row) => row.iso3).sort();
+          if (eurostatAccepted.length < shadowAccepted.length) throw new Error(`Eurostat production acceptance below shadow proof: ${eurostatAccepted.length} < ${shadowAccepted.length}`);
+          const evidence = {
+            denominator: actual.denominator.count,
+            shadow_accepted_count: shadowAccepted.length,
+            production_accepted_count: actualAccepted.length,
+            eurostat_production_accepted_count: eurostatAccepted.length,
+            production_accepted_countries: actualAccepted,
+            eurostat_production_accepted_countries: eurostatAccepted,
+            regressions,
+            execution_authorized_is_false: actual.countries.filter((row) => row.status === 'ACCEPTED').every((row) => row.risk_gate?.execution_authorized === false),
+          };
+          if (!evidence.execution_authorized_is_false) throw new Error('An accepted country unexpectedly authorizes execution');
+          fs.writeFileSync('eurostat-production-promotion-evidence.json', JSON.stringify(evidence, null, 2) + '\n');
+          console.log(JSON.stringify(evidence));
+          NODE
+          echo 'PASS: production census equals or exceeds the immediate shadow baseline with no accepted-country regression.'
+
+      - name: Emergency rollback on any promotion failure
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          if [ "$current" = 'true' ]; then
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "update public.live_external_sources set enabled_for_commercial_signals=false, updated_at=now() where source_id='eurostat_government_finance';"
+            echo 'ROLLBACK: Eurostat commercial signals returned to false after failed production evidence.'
+          else
+            echo 'ROLLBACK NOT NEEDED: Eurostat commercial signals were not active.'
+          fi
+
+      - name: Verify final promoted state
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          test "$state" = 'COMMERCIAL_OK|true|true' || { echo "::error::Final Eurostat source state is not promoted: $state"; exit 1; }
+          test -s eurostat-production-promotion-evidence.json
+          echo 'PASS: Eurostat sovereign-fiscal fallback remains promoted after production census proof.'
+
+      - name: Upload promotion evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eurostat-sovereign-fiscal-production-promotion
+          path: |
+            eurostat-prepromotion-source-evidence.json
+            eurostat-prepromotion-shadow-census.log
+            eurostat-prepromotion-shadow-census.json
+            eurostat-postpromotion-global-census.log
+            eurostat-postpromotion-global-census.json
+            eurostat-production-promotion-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
