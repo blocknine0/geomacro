@@ -30,6 +30,39 @@ const METRICS:
 };
 
 
+function isExpectedSparseDebtPeerFailure(
+  key: MacroDimensionKey,
+  metric: string,
+  error: unknown,
+) {
+  return (
+    key === "government_debt" &&
+    error instanceof Error &&
+    error.message ===
+      `Insufficient peer coverage for ${metric}: ${Number(error.message.split(": ").at(-1))}`
+  );
+}
+
+
+function isSparseDebtPeerFailure(
+  key: MacroDimensionKey,
+  metric: string,
+  error: unknown,
+) {
+  if (key !== "government_debt" || !(error instanceof Error)) {
+    return false;
+  }
+
+  const prefix = `Insufficient peer coverage for ${metric}: `;
+  if (!error.message.startsWith(prefix)) {
+    return false;
+  }
+
+  const peerCount = Number(error.message.slice(prefix.length));
+  return Number.isInteger(peerCount) && peerCount >= 0 && peerCount < 20;
+}
+
+
 export async function
 generateCountryMacroRiskComponent(
   input: {
@@ -63,12 +96,32 @@ generateCountryMacroRiskComponent(
       string,
     ][]
   ) {
-    snapshots[key] =
-      await generateGlobalMacroNormalization({
-        metric,
-        as_of:
-          input.as_of,
-      });
+    try {
+      snapshots[key] =
+        await generateGlobalMacroNormalization({
+          metric,
+          as_of:
+            input.as_of,
+        });
+    } catch (error) {
+      // The World Bank central-government-debt series has a materially smaller
+      // current peer universe than the three macro-monetary dimensions. A
+      // sparse debt peer set must make only sovereign_fiscal unavailable. It
+      // must not erase otherwise valid inflation/growth/unemployment states.
+      // Any other provider, rights, schema or database error still propagates
+      // and fails closed.
+      if (
+        isSparseDebtPeerFailure(
+          key,
+          metric,
+          error,
+        )
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
   }
 
   return buildCountryMacroRiskComponent({
