@@ -67,14 +67,17 @@ export async function generateCountryRiskGateV2GeopoliticalSecurityState(input: 
     (row) => Number((row.provenance as Record<string, unknown> | null)?.release_rank ?? 0) === releaseRank,
   );
 
-  const targetHasBlockedEvidence = currentRelease.some((row) => {
+  const blockedCountries = new Set<string>();
+  for (const row of currentRelease) {
     const country = String(row.country_iso3 ?? "").trim().toUpperCase();
-    return (
-      country === iso3 &&
+    if (
+      /^[A-Z]{3}$/.test(country) &&
       (row.quality_status !== "VERIFIED" || row.commercial_eligibility_status !== "VERIFIED")
-    );
-  });
-  if (targetHasBlockedEvidence) return null;
+    ) {
+      blockedCountries.add(country);
+    }
+  }
+  if (blockedCountries.has(iso3)) return null;
 
   const verifiedEvents = currentRelease
     .filter(
@@ -92,6 +95,7 @@ export async function generateCountryRiskGateV2GeopoliticalSecurityState(input: 
 
   const snapshot = buildRiskGateV2GeopoliticalSecuritySnapshot({
     sovereign_iso3: sovereigns,
+    blocked_country_iso3: [...blockedCountries],
     events: verifiedEvents,
     release: {
       release_id: manifestResult.data.release_id,
