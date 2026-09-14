@@ -41,7 +41,7 @@ async function request(url, { accept = "application/json", attempts = 3 } = {}) 
       const response = await fetch(url, {
         headers: {
           accept,
-          "user-agent": "Geomacro-ADB-KIDB-Fiscal-Proof/4.0 (+https://geomacro.live)",
+          "user-agent": "Geomacro-ADB-KIDB-Fiscal-Proof/4.1 (+https://geomacro.live)",
         },
       })
       if (response.ok) return response
@@ -69,11 +69,10 @@ function primitiveText(object) {
 }
 
 function objectCode(object) {
-  for (const key of ["code", "id", "value", "key"]) {
-    const value = object?.[key]
-    if (typeof value === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(value)) return value
-  }
-  return null
+  const value = object?.code
+  return typeof value === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(value)
+    ? value
+    : null
 }
 
 function findExactCode(payload, code, labelPattern) {
@@ -143,6 +142,9 @@ function headerIndex(headers, candidates) {
 }
 
 function parseObservations(text, defaultIndicator = null) {
+  if (/^\s*<\?xml/i.test(text) || /^\s*<message:/i.test(text) || /^\s*<Error/i.test(text)) {
+    throw new Error(`KIDB returned XML/error payload instead of SDMX-CSV: ${text.slice(0, 400).replace(/\s+/g, " ")}`)
+  }
   const csv = parseCsv(text)
   if (csv.length < 2) return []
   const headers = csv[0]
@@ -193,6 +195,36 @@ function quantile(sorted, q) {
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower)
 }
 
+async function probeGdpCandidate(candidate) {
+  await sleep(RATE_DELAY_MS)
+  const url = `${API}/v5/sdmx/data/ADB,${GDP_FLOW}/A.${candidate.code}.PHI?startPeriod=${TARGET_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
+  try {
+    const response = await request(url, { accept: "text/csv,*/*;q=0.2" })
+    const text = await response.text()
+    const rows = parseObservations(text, candidate.code).filter(
+      (row) => row.indicator === candidate.code && row.time_period === TARGET_PERIOD,
+    )
+    return {
+      ...candidate,
+      probe_url: url,
+      status: "OK",
+      observation_count: rows.length,
+      units: [...new Set(rows.map((row) => row.unit).filter(Boolean))].sort(),
+      unit_multipliers: [...new Set(rows.map((row) => row.unit_multiplier).filter((value) => value != null))].sort(),
+    }
+  } catch (error) {
+    return {
+      ...candidate,
+      probe_url: url,
+      status: "FAIL_CLOSED",
+      observation_count: 0,
+      units: [],
+      unit_multipliers: [],
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
 async function main() {
   const economyCodes = KIDB_ECONOMIES.map((row) => row.kidb).join("+")
 
@@ -224,23 +256,19 @@ async function main() {
   const gdpIndicatorsUrl = `${API}/dataflow/indicators/${GDP_FLOW}`
   const gdpIndicators = await (await request(gdpIndicatorsUrl)).json()
   const gdpCandidates = findGdpCandidates(gdpIndicators)
-  if (!gdpCandidates.length) throw new Error("No GDP at current prices candidates found in DF_NA")
+  if (!gdpCandidates.length) throw new Error("No direct indicator-code GDP at current prices candidates found in DF_NA")
 
-  await sleep(RATE_DELAY_MS)
-  const probeUrl = `${API}/v5/sdmx/data/ADB,${GDP_FLOW}/A.${gdpCandidates.map((row) => row.code).join("+")}.PHI?startPeriod=${TARGET_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
-  const probe = parseObservations(await (await request(probeUrl, { accept: "text/csv,*/*;q=0.2" })).text())
-  const candidateEvidence = gdpCandidates.map((candidate) => {
-    const rows = probe.filter((row) => row.indicator === candidate.code)
-    return {
-      ...candidate,
-      observation_count: rows.length,
-      units: [...new Set(rows.map((row) => row.unit).filter(Boolean))].sort(),
-      unit_multipliers: [...new Set(rows.map((row) => row.unit_multiplier).filter((value) => value != null))].sort(),
-    }
-  })
-  const usdCandidates = candidateEvidence.filter((row) => row.observation_count > 0 && row.units.length === 1 && row.units[0] === "USD")
+  const candidateEvidence = []
+  for (const candidate of gdpCandidates) {
+    candidateEvidence.push(await probeGdpCandidate(candidate))
+  }
+  const usdCandidates = candidateEvidence.filter(
+    (row) => row.status === "OK" && row.observation_count > 0 && row.units.length === 1 && row.units[0] === "USD",
+  )
   if (usdCandidates.length !== 1) {
-    throw new Error(`Expected exactly one USD GDP-current-price candidate, got ${usdCandidates.map((row) => row.code).join(",") || "none"}`)
+    throw new Error(
+      `Expected exactly one USD GDP-current-price candidate; direct codes=${gdpCandidates.map((row) => row.code).join(",")}; USD matches=${usdCandidates.map((row) => row.code).join(",") || "none"}; evidence=${JSON.stringify(candidateEvidence)}`,
+    )
   }
   const gdpIndicator = usdCandidates[0].code
 
@@ -278,6 +306,9 @@ async function main() {
     ...row,
     shadow_risk_score: midrankPercentile(ratios, row.ppg_external_debt_pct_gdp),
   })).sort((a, b) => a.iso3.localeCompare(b.iso3))
+  if (scored.some((row) => row.shadow_risk_score < 0 || row.shadow_risk_score > 100)) {
+    throw new Error("ADB shadow percentile produced score outside 0..100")
+  }
 
   const methodology = {
     methodology_version: "adb-ppg-external-debt-gdp-percentile-1.0.0-shadow",
@@ -293,7 +324,7 @@ async function main() {
   const methodologyHash = crypto.createHash("sha256").update(JSON.stringify(methodology)).digest("hex")
 
   const report = {
-    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-4.0",
+    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-4.1",
     generated_at: new Date().toISOString(),
     source_candidate: "adb_kidb_sdmx_v5",
     publisher: "Asian Development Bank / Key Indicators Database",
@@ -306,7 +337,7 @@ async function main() {
       documented_rate_limit: "20 queries/minute",
       enforced_inter_request_delay_ms: RATE_DELAY_MS,
       debt_data_endpoint: debtHistoryUrl,
-      gdp_probe_endpoint: probeUrl,
+      gdp_probe_endpoints: candidateEvidence.map((row) => row.probe_url),
       gdp_data_endpoint: gdpUrl,
     },
     exact_series: {
@@ -365,11 +396,12 @@ async function main() {
   fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
   console.log(JSON.stringify(report, null, 2))
   console.log(`PASS: ADB EXACT PPG COVERAGE + SAME-SOURCE GDP SHADOW METHODOLOGY - ${scored.length} PEERS - NO WRITES, NO PRODUCTION SCORING`)
+  console.log("PASS: ADB EXACT PPG EXTERNAL-DEBT COVERAGE AUDIT COMPLETE - NO WRITES, NO SCORING")
 }
 
 main().catch((error) => {
   const report = {
-    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-error-4.0",
+    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-error-4.1",
     generated_at: new Date().toISOString(),
     writes_performed: false,
     production_activation_allowed: false,
