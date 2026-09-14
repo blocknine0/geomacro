@@ -82,6 +82,12 @@ function canonical(value) {
     .replace(/\s+/g, " ")
 }
 
+function sameInstant(left, right) {
+  const a = new Date(left).getTime()
+  const b = new Date(right).getTime()
+  return Number.isFinite(a) && Number.isFinite(b) && a === b
+}
+
 function isCritical(row) {
   return canonical(row?.["Is critical mineral 2025"]) === "yes"
 }
@@ -280,7 +286,7 @@ const deterministicRows = persisted.filter((row) => {
   return (
     row.quality_status === "VERIFIED" &&
     row.commercial_eligibility_status === "VERIFIED" &&
-    row.observed_at === observedAt &&
+    sameInstant(row.observed_at, observedAt) &&
     provenance.source_file_sha256 === FILE_SHA256 &&
     typeof provenance.source_row_sha256 === "string"
   )
@@ -310,8 +316,10 @@ for (const series of verifiedSourceSeries) {
     continue
   }
 
-  const rows = series.source_row_hashes.map((hash) => persistedBySourceRow.get(hash))
-  const bad = rows.some((row) => {
+  const seriesRows = series.source_row_hashes.map((hash) =>
+    persistedBySourceRow.get(hash),
+  )
+  const bad = seriesRows.some((row) => {
     const provenance = row.provenance
     return (
       canonical(row.commodity) !== series.commodity_key ||
