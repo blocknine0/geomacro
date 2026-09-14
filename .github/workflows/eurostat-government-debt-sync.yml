@@ -1,0 +1,189 @@
+name: Eurostat Government Debt Governed Sync
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ingest-eurostat-government-debt-live.mjs"
+      - "scripts/lib-live-source-utils.mjs"
+      - "scripts/commercial-source-policy.mjs"
+      - "supabase/migrations/921_enable_eurostat_government_finance_ingestion.sql"
+      - ".github/workflows/eurostat-government-debt-sync.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/ingest-eurostat-government-debt-live.mjs"
+      - "scripts/lib-live-source-utils.mjs"
+      - "scripts/commercial-source-policy.mjs"
+      - "supabase/migrations/921_enable_eurostat_government_finance_ingestion.sql"
+      - ".github/workflows/eurostat-government-debt-sync.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 25 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eurostat-government-debt-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run live Eurostat dry-run against governed country registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ingest-eurostat-government-debt-live.mjs 2>&1 | tee eurostat-government-debt-dry-run.log
+          grep -q 'PASS: EUROSTAT GOVERNMENT DEBT DRY RUN CLEAN; DATABASE UNCHANGED' eurostat-government-debt-dry-run.log
+          grep -q '"direct_merge_with_world_bank_central_government_debt_allowed": false' eurostat-government-debt-dry-run.log
+          count="$(awk '/"current_country_observations":/{gsub(/[^0-9]/,"",$0); print $0; exit}' eurostat-government-debt-dry-run.log)"
+          test -n "$count"
+          test "$count" -ge 20
+
+      - name: Guard write and scoring boundaries statically
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'enabled_for_ingestion = true' supabase/migrations/921_enable_eurostat_government_finance_ingestion.sql
+          grep -q 'enabled_for_commercial_signals = false' supabase/migrations/921_enable_eurostat_government_finance_ingestion.sql
+          grep -q 'enabled_for_ingestion is not true' scripts/ingest-eurostat-government-debt-live.mjs
+          grep -q 'commercial signals must remain disabled' scripts/ingest-eurostat-government-debt-live.mjs
+          grep -q 'general_government_gross_debt_pct_gdp' scripts/ingest-eurostat-government-debt-live.mjs
+          echo 'PASS: Eurostat is ingestion-ready but not Risk Gate scoring-active.'
+
+      - name: Upload dry-run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eurostat-government-debt-dry-run
+          path: eurostat-government-debt-dry-run.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  sync:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
+          test -n "${SUPABASE_URL:-}" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"; exit 1; }
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const api = new URL(process.env.SUPABASE_URL);
+          const direct = db.hostname === `db.${ref}.supabase.co` && db.username === 'postgres';
+          const pooler = db.hostname.endsWith('.pooler.supabase.com') && db.username === `postgres.${ref}`;
+          if (!['postgres:', 'postgresql:'].includes(db.protocol) || (!direct && !pooler)) {
+            throw new Error('SUPABASE_DB_URL is not the authoritative production database');
+          }
+          if (!db.password || db.pathname !== '/postgres') throw new Error('Invalid production database URL');
+          if (api.hostname !== `${ref}.supabase.co`) throw new Error('SUPABASE_URL is not the authoritative production API');
+          console.log('PASS: authoritative production database and API identities confirmed.');
+          NODE
+
+      - name: Apply only migration 921 on first canonical push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/921_enable_eurostat_government_finance_ingestion.sql
+          echo 'PASS: migration 921 applied without broad db push.'
+
+      - name: Verify source is ingestion-enabled but scoring-disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          test "$state" = 'COMMERCIAL_OK|true|false' || { echo "::error::Unexpected Eurostat source state: $state"; exit 1; }
+          echo 'PASS: Eurostat source state permits governed ingestion only.'
+
+      - name: Dry-run current Eurostat release before write
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ingest-eurostat-government-debt-live.mjs 2>&1 | tee eurostat-government-debt-dry-run.log
+          grep -q 'PASS: EUROSTAT GOVERNMENT DEBT DRY RUN CLEAN; DATABASE UNCHANGED' eurostat-government-debt-dry-run.log
+
+      - name: Persist normalized observations and release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ingest-eurostat-government-debt-live.mjs --write 2>&1 | tee eurostat-government-debt-write.log
+          grep -q 'PASS: EUROSTAT GOVERNMENT DEBT GOVERNED OBSERVATIONS + RELEASE MANIFEST WRITTEN' eurostat-government-debt-write.log
+
+      - name: Verify production observations and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          country_count="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(distinct country_iso3) from public.live_external_observations where source_id='eurostat_government_finance' and metric='general_government_gross_debt_pct_gdp' and quality_status='VERIFIED' and commercial_eligibility_status='VERIFIED'")"
+          test "$country_count" -ge 20 || { echo "::error::Expected at least 20 governed Eurostat country observations, found $country_count"; exit 1; }
+          manifest="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select verified_rows || '|' || unmapped_rows || '|' || write_completed::text from public.live_source_release_manifests where source_id='eurostat_government_finance' order by retrieved_at desc limit 1")"
+          verified="${manifest%%|*}"
+          rest="${manifest#*|}"
+          unmapped="${rest%%|*}"
+          written="${rest##*|}"
+          test "$verified" -ge 20 || { echo "::error::Latest Eurostat manifest has too few verified rows: $verified"; exit 1; }
+          test "$unmapped" = '0' || { echo "::error::Latest Eurostat manifest has unmapped rows: $unmapped"; exit 1; }
+          test "$written" = 'true' || { echo "::error::Latest Eurostat manifest is not write-complete"; exit 1; }
+          printf '{"country_count":%s,"manifest_verified_rows":%s,"manifest_unmapped_rows":%s,"write_completed":true}\n' "$country_count" "$verified" "$unmapped" | tee eurostat-government-debt-production-evidence.json
+          echo 'PASS: governed Eurostat observations and release manifest verified in production.'
+
+      - name: Upload governed production evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eurostat-government-debt-governed-sync
+          path: |
+            eurostat-government-debt-dry-run.log
+            eurostat-government-debt-write.log
+            eurostat-government-debt-production-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
