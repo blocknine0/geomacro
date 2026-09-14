@@ -4,7 +4,7 @@ import type {
 } from "./risk-gate-v2-taxonomy";
 
 export const RISK_GATE_V2_SUPPORT_READINESS_VERSION =
-  "risk-gate-v2-support-readiness-0.3.0" as const;
+  "risk-gate-v2-support-readiness-0.4.0" as const;
 
 export type RiskGateV2SupportStatus =
   | "SUPPORTED"
@@ -92,26 +92,26 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
   },
   currency_capital_mobility: {
     module: "currency_capital_mobility",
-    status: "BLOCKED_DATA_COVERAGE",
-    coverage_ceiling: "INSUFFICIENT",
-    governed_sources: ["imf_data", "bis_statistics", "world_bank_indicators"],
+    status: "SUPPORTED",
+    coverage_ceiling: "PARTIAL",
+    governed_sources: ["world_bank_indicators"],
     blockers: [
-      "FX, reserves, convertibility and capital-control inputs are not yet a governed versioned module dataset.",
+      "Current supported scope covers reserve adequacy and current-account pressure; explicit capital controls, convertibility restrictions and market FX volatility are not yet active.",
     ],
     promotion_requirements: [
-      "Operationalize governed reserve/FX/capital-control inputs and version the module methodology.",
+      "Add governed capital-control/convertibility policy data and high-frequency FX-volatility inputs before raising coverage.",
     ],
   },
   banking_financial_system: {
     module: "banking_financial_system",
-    status: "BLOCKED_DATA_COVERAGE",
-    coverage_ceiling: "INSUFFICIENT",
-    governed_sources: ["bis_statistics", "world_bank_indicators"],
+    status: "SUPPORTED",
+    coverage_ceiling: "PARTIAL",
+    governed_sources: ["world_bank_indicators"],
     blockers: [
-      "Current production inputs do not yet cover funding, deposits, credit stress and contagion sufficiently.",
+      "Current supported scope covers NPL burden, bank capital buffers and bank liquid-reserve buffers; deposit flight, interbank funding and contagion are not yet active.",
     ],
     promotion_requirements: [
-      "Operationalize governed banking/credit/funding datasets and validate systemic-stress scoring.",
+      "Add governed deposit/funding/contagion signals before raising coverage.",
     ],
   },
   payments_treasury: {
