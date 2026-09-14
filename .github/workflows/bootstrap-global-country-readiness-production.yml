@@ -37,6 +37,8 @@ jobs:
           grep -q 'EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx' "$file"
           grep -q 'SUPABASE_URL:.*APP_SUPABASE_URL' "$file"
           grep -q 'SUPABASE_SERVICE_ROLE_KEY:.*SUPABASE_SERVICE_ROLE_KEY' "$file"
+          grep -q 'ingest-world-bank-live.mjs' "$file"
+          grep -q 'PASS: WORLD BANK LIVE MACRO INGESTION COMPLETE' "$file"
           grep -q 'ingest-wgi-political-stability-live.ts --write' "$file"
           grep -q 'EXPLICIT GAP MANIFEST WRITTEN' "$file"
           grep -q 'record-ucdp-candidate-release-manifest.mjs --write' "$file"
@@ -119,6 +121,13 @@ jobs:
           test "$table_name" = "live_source_release_manifests" || test "$table_name" = "public.live_source_release_manifests"
           echo "PASS: production release-manifest schema is present."
 
+      - name: Refresh governed World Bank macro and fiscal observations
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ingest-world-bank-live.mjs | tee world-bank-macro-write.log
+          grep -q 'PASS: WORLD BANK LIVE MACRO INGESTION COMPLETE' world-bank-macro-write.log
+
       - name: Write governed WGI global observations and release manifest
         shell: bash
         run: |
@@ -154,6 +163,7 @@ jobs:
         with:
           name: global-country-readiness-production-bootstrap
           path: |
+            world-bank-macro-write.log
             wgi-global-write.log
             ucdp-release-manifest.log
             global-risk-gate-country-census.json
