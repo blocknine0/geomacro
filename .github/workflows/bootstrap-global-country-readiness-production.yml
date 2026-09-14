@@ -38,6 +38,7 @@ jobs:
           grep -q 'SUPABASE_URL:.*APP_SUPABASE_URL' "$file"
           grep -q 'SUPABASE_SERVICE_ROLE_KEY:.*SUPABASE_SERVICE_ROLE_KEY' "$file"
           grep -q 'ingest-wgi-political-stability-live.ts --write' "$file"
+          grep -q 'EXPLICIT GAP MANIFEST WRITTEN' "$file"
           grep -q 'record-ucdp-candidate-release-manifest.mjs --write' "$file"
           grep -q 'global-risk-gate-country-census.ts --require-any-accepted' "$file"
           forbidden="supabase db"' push'
@@ -123,7 +124,7 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ingest-wgi-political-stability-live.ts --write | tee wgi-global-write.log
-          grep -q 'PASS: WGI GLOBAL GOVERNANCE INGESTION + RELEASE MANIFEST WRITTEN' wgi-global-write.log
+          grep -q 'PASS: WGI GLOBAL GOVERNANCE INGESTION + EXPLICIT GAP MANIFEST WRITTEN' wgi-global-write.log
 
       - name: Record current governed UCDP Candidate release manifest
         shell: bash
