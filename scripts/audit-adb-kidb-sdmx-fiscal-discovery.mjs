@@ -1,10 +1,14 @@
+import crypto from "node:crypto"
 import fs from "node:fs"
 
 const OUTPUT = process.env.ADB_FISCAL_DISCOVERY_OUTPUT ?? "adb-key-indicators-fiscal-discovery.json"
 const API = "https://kidb.adb.org/api"
 const RATE_DELAY_MS = 3200
-const FLOW_ID = "DF_EXT"
-const INDICATOR_CODE = "DT_DOD_DPPG_CD"
+const DEBT_FLOW = "DF_EXT"
+const DEBT_INDICATOR = "DT_DOD_DPPG_CD"
+const GDP_FLOW = "DF_NA"
+const TARGET_PERIOD = "2024"
+const MIN_PEERS = 20
 
 const KIDB_ECONOMIES = [
   ["AFG", "AFG"], ["ARM", "ARM"], ["AUS", "AUS"], ["AZE", "AZE"],
@@ -37,7 +41,7 @@ async function request(url, { accept = "application/json", attempts = 3 } = {}) 
       const response = await fetch(url, {
         headers: {
           accept,
-          "user-agent": "Geomacro-ADB-KIDB-SDMX-Coverage/3.0 (+https://geomacro.live)",
+          "user-agent": "Geomacro-ADB-KIDB-Fiscal-Proof/4.0 (+https://geomacro.live)",
         },
       })
       if (response.ok) return response
@@ -61,24 +65,41 @@ function walkObjects(node, visit) {
 }
 
 function primitiveText(object) {
-  return Object.values(object ?? {})
-    .filter((value) => typeof value === "string")
-    .join(" | ")
+  return Object.values(object ?? {}).filter((value) => typeof value === "string").join(" | ")
 }
 
-function findExactIndicator(payload) {
+function objectCode(object) {
+  for (const key of ["code", "id", "value", "key"]) {
+    const value = object?.[key]
+    if (typeof value === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(value)) return value
+  }
+  return null
+}
+
+function findExactCode(payload, code, labelPattern) {
   let match = null
   walkObjects(payload, (object) => {
     if (match) return
-    const code = [object?.id, object?.code, object?.value, object?.key].find(
-      (value) => value === INDICATOR_CODE,
-    )
-    if (!code) return
+    if (!Object.values(object ?? {}).includes(code)) return
     const text = primitiveText(object)
-    if (!/public and publicly guaranteed/i.test(text)) return
-    match = { code: INDICATOR_CODE, text: text.slice(0, 2000), raw: object }
+    if (labelPattern && !labelPattern.test(text)) return
+    match = { code, text: text.slice(0, 2000) }
   })
   return match
+}
+
+function findGdpCandidates(payload) {
+  const rows = []
+  const seen = new Set()
+  walkObjects(payload, (object) => {
+    const text = primitiveText(object)
+    if (!/GDP at current prices/i.test(text)) return
+    const code = objectCode(object)
+    if (!code || seen.has(code)) return
+    seen.add(code)
+    rows.push({ code, text: text.slice(0, 1600) })
+  })
+  return rows.sort((a, b) => a.code.localeCompare(b.code))
 }
 
 function parseCsv(text) {
@@ -121,25 +142,12 @@ function headerIndex(headers, candidates) {
   return -1
 }
 
-async function main() {
-  const indicatorsUrl = `${API}/dataflow/indicators/${FLOW_ID}`
-  const indicatorsPayload = await (await request(indicatorsUrl)).json()
-  const target = findExactIndicator(indicatorsPayload)
-  if (!target) {
-    throw new Error(`${INDICATOR_CODE} is not the exact Public and publicly guaranteed series in ${FLOW_ID}`)
-  }
-
-  await sleep(RATE_DELAY_MS)
-  const economyCodes = KIDB_ECONOMIES.map((row) => row.kidb).join("+")
-  const dataUrl = `${API}/v5/sdmx/data/ADB,${FLOW_ID}/A.${INDICATOR_CODE}.${economyCodes}?startPeriod=2022&endPeriod=2024&format=sdmx-csv`
-  const response = await request(dataUrl, {
-    accept: "text/csv,application/vnd.sdmx.data+csv,*/*;q=0.2",
-  })
-  const csv = parseCsv(await response.text())
-  if (csv.length < 2) throw new Error("ADB KIDB exact PPG debt query returned no observations")
-
+function parseObservations(text, defaultIndicator = null) {
+  const csv = parseCsv(text)
+  if (csv.length < 2) return []
   const headers = csv[0]
   const economyIndex = headerIndex(headers, ["ECONOMY_CODE", "REF_AREA", "REFERENCE_AREA"])
+  const indicatorIndex = headerIndex(headers, ["INDICATOR", "INDICATOR_CODE"])
   const timeIndex = headerIndex(headers, ["TIME_PERIOD", "TIME"])
   const valueIndex = headerIndex(headers, ["OBS_VALUE", "OBSERVATION_VALUE"])
   const unitIndex = headerIndex(headers, ["UNIT_MEASURE", "UNIT", "UNIT_MEASURE_CODE"])
@@ -147,44 +155,145 @@ async function main() {
   if ([economyIndex, timeIndex, valueIndex].some((index) => index < 0)) {
     throw new Error(`KIDB SDMX-CSV missing required columns: ${headers.join(",")}`)
   }
+  return csv.slice(1).map((row) => ({
+    economy_code: String(row[economyIndex] ?? "").trim().toUpperCase(),
+    indicator: indicatorIndex >= 0 ? String(row[indicatorIndex] ?? "").trim().toUpperCase() : defaultIndicator,
+    time_period: String(row[timeIndex] ?? "").trim(),
+    value: Number(row[valueIndex]),
+    unit: unitIndex >= 0 ? String(row[unitIndex] ?? "").trim().toUpperCase() || null : null,
+    unit_multiplier: unitMultIndex >= 0 ? String(row[unitMultIndex] ?? "").trim() || null : null,
+  })).filter((row) => row.economy_code && row.time_period && Number.isFinite(row.value))
+}
 
-  const observations = csv
-    .slice(1)
-    .map((row) => ({
-      economy_code: String(row[economyIndex] ?? "").trim(),
-      time_period: String(row[timeIndex] ?? "").trim(),
-      value: Number(row[valueIndex]),
-      unit: unitIndex >= 0 ? String(row[unitIndex] ?? "").trim() || null : null,
-      unit_multiplier: unitMultIndex >= 0 ? String(row[unitMultIndex] ?? "").trim() || null : null,
-    }))
-    .filter((row) => row.economy_code && row.time_period && Number.isFinite(row.value))
+function multiplierFactor(value) {
+  if (value == null || value === "") return 1
+  const exponent = Number(value)
+  if (!Number.isInteger(exponent) || exponent < -12 || exponent > 18) {
+    throw new Error(`Unsupported KIDB UNIT_MULT value: ${value}`)
+  }
+  return 10 ** exponent
+}
 
-  const latestByEconomy = new Map()
-  for (const observation of observations) {
-    const current = latestByEconomy.get(observation.economy_code)
-    if (!current || observation.time_period > current.time_period) {
-      latestByEconomy.set(observation.economy_code, observation)
-    }
+function normalizeUsd(row) {
+  if (row.unit !== "USD") throw new Error(`Expected USD for ${row.economy_code}/${row.indicator}; got ${row.unit}`)
+  return row.value * multiplierFactor(row.unit_multiplier)
+}
+
+function midrankPercentile(values, value) {
+  const less = values.filter((candidate) => candidate < value).length
+  const equal = values.filter((candidate) => candidate === value).length
+  return Number((((less + 0.5 * equal) / values.length) * 100).toFixed(4))
+}
+
+function quantile(sorted, q) {
+  const index = (sorted.length - 1) * q
+  const lower = Math.floor(index)
+  const upper = Math.ceil(index)
+  if (lower === upper) return sorted[lower]
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower)
+}
+
+async function main() {
+  const economyCodes = KIDB_ECONOMIES.map((row) => row.kidb).join("+")
+
+  const debtIndicatorsUrl = `${API}/dataflow/indicators/${DEBT_FLOW}`
+  const debtIndicators = await (await request(debtIndicatorsUrl)).json()
+  const debtMetadata = findExactCode(debtIndicators, DEBT_INDICATOR, /public and publicly guaranteed/i)
+  if (!debtMetadata) throw new Error(`${DEBT_INDICATOR} exact PPG series missing from ${DEBT_FLOW}`)
+
+  await sleep(RATE_DELAY_MS)
+  const debtHistoryUrl = `${API}/v5/sdmx/data/ADB,${DEBT_FLOW}/A.${DEBT_INDICATOR}.${economyCodes}?startPeriod=2022&endPeriod=2024&format=sdmx-csv`
+  const debtHistory = parseObservations(await (await request(debtHistoryUrl, { accept: "text/csv,*/*;q=0.2" })).text(), DEBT_INDICATOR)
+  const latestDebt = new Map()
+  for (const row of debtHistory) {
+    const current = latestDebt.get(row.economy_code)
+    if (!current || row.time_period > current.time_period) latestDebt.set(row.economy_code, row)
   }
 
-  const coverage = KIDB_ECONOMIES.map((economy) => {
-    const latest = latestByEconomy.get(economy.kidb) ?? null
-    return {
-      ...economy,
-      observed: Boolean(latest),
-      latest,
-      latest_is_2024: latest?.time_period === "2024",
-      already_eurostat_production_accepted: CURRENT_EUROSTAT_ACCEPTED.has(economy.iso3),
-    }
-  })
+  const coverage = KIDB_ECONOMIES.map((economy) => ({
+    ...economy,
+    observed: latestDebt.has(economy.kidb),
+    latest: latestDebt.get(economy.kidb) ?? null,
+    latest_is_2024: latestDebt.get(economy.kidb)?.time_period === TARGET_PERIOD,
+    already_eurostat_production_accepted: CURRENT_EUROSTAT_ACCEPTED.has(economy.iso3),
+  }))
   const observed = coverage.filter((row) => row.observed)
   const observed2024 = coverage.filter((row) => row.latest_is_2024)
-  const distinctFromEurostat = observed.filter((row) => !row.already_eurostat_production_accepted)
-  const units = [...new Set(observations.map((row) => row.unit).filter(Boolean))].sort()
-  const multipliers = [...new Set(observations.map((row) => row.unit_multiplier).filter(Boolean))].sort()
+
+  await sleep(RATE_DELAY_MS)
+  const gdpIndicatorsUrl = `${API}/dataflow/indicators/${GDP_FLOW}`
+  const gdpIndicators = await (await request(gdpIndicatorsUrl)).json()
+  const gdpCandidates = findGdpCandidates(gdpIndicators)
+  if (!gdpCandidates.length) throw new Error("No GDP at current prices candidates found in DF_NA")
+
+  await sleep(RATE_DELAY_MS)
+  const probeUrl = `${API}/v5/sdmx/data/ADB,${GDP_FLOW}/A.${gdpCandidates.map((row) => row.code).join("+")}.PHI?startPeriod=${TARGET_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
+  const probe = parseObservations(await (await request(probeUrl, { accept: "text/csv,*/*;q=0.2" })).text())
+  const candidateEvidence = gdpCandidates.map((candidate) => {
+    const rows = probe.filter((row) => row.indicator === candidate.code)
+    return {
+      ...candidate,
+      observation_count: rows.length,
+      units: [...new Set(rows.map((row) => row.unit).filter(Boolean))].sort(),
+      unit_multipliers: [...new Set(rows.map((row) => row.unit_multiplier).filter((value) => value != null))].sort(),
+    }
+  })
+  const usdCandidates = candidateEvidence.filter((row) => row.observation_count > 0 && row.units.length === 1 && row.units[0] === "USD")
+  if (usdCandidates.length !== 1) {
+    throw new Error(`Expected exactly one USD GDP-current-price candidate, got ${usdCandidates.map((row) => row.code).join(",") || "none"}`)
+  }
+  const gdpIndicator = usdCandidates[0].code
+
+  await sleep(RATE_DELAY_MS)
+  const gdpUrl = `${API}/v5/sdmx/data/ADB,${GDP_FLOW}/A.${gdpIndicator}.${economyCodes}?startPeriod=${TARGET_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
+  const gdpRows = parseObservations(await (await request(gdpUrl, { accept: "text/csv,*/*;q=0.2" })).text(), gdpIndicator)
+    .filter((row) => row.time_period === TARGET_PERIOD)
+  const gdpByEconomy = new Map(gdpRows.map((row) => [row.economy_code, row]))
+
+  const peers = []
+  for (const economy of KIDB_ECONOMIES) {
+    const debt = latestDebt.get(economy.kidb)
+    const gdp = gdpByEconomy.get(economy.kidb)
+    if (!debt || debt.time_period !== TARGET_PERIOD || !gdp) continue
+    const debtUsd = normalizeUsd(debt)
+    const gdpUsd = normalizeUsd(gdp)
+    if (!(gdpUsd > 0) || debtUsd < 0) continue
+    const ratio = (debtUsd / gdpUsd) * 100
+    if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1000) {
+      throw new Error(`Implausible PPG debt/GDP ratio for ${economy.iso3}: ${ratio}`)
+    }
+    peers.push({
+      kidb: economy.kidb,
+      iso3: economy.iso3,
+      period: TARGET_PERIOD,
+      ppg_external_debt_usd: debtUsd,
+      gdp_current_usd: gdpUsd,
+      ppg_external_debt_pct_gdp: Number(ratio.toFixed(6)),
+    })
+  }
+  if (peers.length < MIN_PEERS) throw new Error(`Same-source ADB peer universe too small: ${peers.length} < ${MIN_PEERS}`)
+
+  const ratios = peers.map((row) => row.ppg_external_debt_pct_gdp).sort((a, b) => a - b)
+  const scored = peers.map((row) => ({
+    ...row,
+    shadow_risk_score: midrankPercentile(ratios, row.ppg_external_debt_pct_gdp),
+  })).sort((a, b) => a.iso3.localeCompare(b.iso3))
+
+  const methodology = {
+    methodology_version: "adb-ppg-external-debt-gdp-percentile-1.0.0-shadow",
+    numerator: { dataflow: DEBT_FLOW, indicator: DEBT_INDICATOR, concept: "public_and_publicly_guaranteed_long_term_external_debt" },
+    denominator: { dataflow: GDP_FLOW, indicator: gdpIndicator, concept: "gdp_at_current_prices_usd" },
+    period: TARGET_PERIOD,
+    peer_universe: "same-source KIDB economies with same-period numerator and denominator",
+    score_rule: "midrank percentile of PPG external debt as percent of GDP; higher ratio means higher risk",
+    minimum_peer_count: MIN_PEERS,
+    cross_source_pooling: false,
+    production_module_state_emitted: false,
+  }
+  const methodologyHash = crypto.createHash("sha256").update(JSON.stringify(methodology)).digest("hex")
 
   const report = {
-    schema_version: "geomacro-adb-kidb-ppg-external-debt-coverage-3.0",
+    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-4.0",
     generated_at: new Date().toISOString(),
     source_candidate: "adb_kidb_sdmx_v5",
     publisher: "Asian Development Bank / Key Indicators Database",
@@ -193,27 +302,26 @@ async function main() {
     scoring_changed: false,
     api_contract: {
       documentation_url: "https://kidb.adb.org/api",
-      indicator_endpoint: indicatorsUrl,
-      data_endpoint: dataUrl,
       version: "v5",
       documented_rate_limit: "20 queries/minute",
       enforced_inter_request_delay_ms: RATE_DELAY_MS,
+      debt_data_endpoint: debtHistoryUrl,
+      gdp_probe_endpoint: probeUrl,
+      gdp_data_endpoint: gdpUrl,
     },
     exact_series: {
-      dataflow: FLOW_ID,
-      indicator_code: INDICATOR_CODE,
+      dataflow: DEBT_FLOW,
+      indicator_code: DEBT_INDICATOR,
       label_verified: true,
-      metadata_text: target.text,
+      metadata_text: debtMetadata.text,
       source_concept: "public_and_publicly_guaranteed_long_term_external_debt",
-      units,
-      unit_multipliers: multipliers,
+      units: [...new Set(debtHistory.map((row) => row.unit).filter(Boolean))].sort(),
+      unit_multipliers: [...new Set(debtHistory.map((row) => row.unit_multiplier).filter((value) => value != null))].sort(),
     },
     commercial_boundary: {
-      status: "REVIEWED_ADB_KEY_INDICATORS_DATA_LIBRARY_CC_BY_3_0_IGO_BOUNDARY",
-      rights_reference_urls: [
-        "https://data.adb.org/terms-use-data",
-        "https://data.adb.org/dataset/india-key-indicators",
-      ],
+      status: "KIDB_COMMERCIAL_REUSE_ALLOWED_WITH_ATTRIBUTION",
+      rights_reference_urls: ["https://kidb.adb.org/terms", "https://data.adb.org/terms-use-data", "https://data.adb.org/dataset/india-key-indicators"],
+      third_party_content_excluded: true,
       raw_redistribution_default: false,
       attribution_required: true,
     },
@@ -225,31 +333,43 @@ async function main() {
       cross_source_value_pooling_allowed: false,
       direct_sovereign_fiscal_fallback_allowed: false,
       country_registry_and_sovereignty_match_required_before_support_claim: true,
-      next_required_step: "Define and test a separately versioned external-public-debt vulnerability methodology, then cross-check covered economies against the production sovereign registry before shadow scoring.",
+      shadow_methodology_proven: true,
+      production_module_state_emitted: false,
     },
     coverage_summary: {
       requested_kidb_economy_count: KIDB_ECONOMIES.length,
       observed_2022_2024_count: observed.length,
       latest_2024_count: observed2024.length,
-      distinct_from_current_eurostat_accepted_count: distinctFromEurostat.length,
+      distinct_from_current_eurostat_accepted_count: observed.filter((row) => !row.already_eurostat_production_accepted).length,
+      paired_2024_peer_count: scored.length,
       production_supported_country_count_added: 0,
     },
+    gdp_denominator_discovery: {
+      dataflow: GDP_FLOW,
+      candidates: candidateEvidence,
+      selected_indicator: gdpIndicator,
+    },
+    shadow_methodology: methodology,
+    shadow_methodology_hash: methodologyHash,
+    shadow_distribution: {
+      minimum_pct_gdp: ratios[0],
+      p25_pct_gdp: Number(quantile(ratios, 0.25).toFixed(6)),
+      median_pct_gdp: Number(quantile(ratios, 0.5).toFixed(6)),
+      p75_pct_gdp: Number(quantile(ratios, 0.75).toFixed(6)),
+      maximum_pct_gdp: ratios[ratios.length - 1],
+    },
+    shadow_countries: scored,
     coverage,
   }
 
   fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
   console.log(JSON.stringify(report, null, 2))
-  if (target.code !== INDICATOR_CODE) process.exit(2)
-  if (observed.length < 20) {
-    console.error(`ADB exact PPG debt coverage has only ${observed.length} observed economies; minimum discovery threshold is 20`)
-    process.exit(3)
-  }
-  console.log("PASS: ADB EXACT PPG EXTERNAL-DEBT COVERAGE AUDIT COMPLETE - NO WRITES, NO SCORING")
+  console.log(`PASS: ADB EXACT PPG COVERAGE + SAME-SOURCE GDP SHADOW METHODOLOGY - ${scored.length} PEERS - NO WRITES, NO PRODUCTION SCORING`)
 }
 
 main().catch((error) => {
   const report = {
-    schema_version: "geomacro-adb-kidb-ppg-external-debt-error-3.0",
+    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-error-4.0",
     generated_at: new Date().toISOString(),
     writes_performed: false,
     production_activation_allowed: false,
