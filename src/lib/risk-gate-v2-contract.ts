@@ -142,6 +142,7 @@ export type RiskGateV2Alternative = {
 export type RiskGateV2Response = {
   schema_version: typeof RISK_GATE_V2_SCHEMA_VERSION;
   request_id: string;
+  evaluated_at: string;
   decision: RiskGateDecision;
   display_label: RiskGateV2DisplayLabel;
   recommended_action: RiskGateRecommendedAction;
