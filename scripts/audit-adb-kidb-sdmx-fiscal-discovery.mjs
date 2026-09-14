@@ -6,8 +6,8 @@ const API = "https://kidb.adb.org/api"
 const RATE_DELAY_MS = 3200
 const DEBT_FLOW = "DF_EXT"
 const DEBT_INDICATOR = "DT_DOD_DPPG_CD"
-const GDP_FLOW = "DF_NA"
 const TARGET_PERIOD = "2024"
+const QUERY_START_PERIOD = "2022"
 const MIN_PEERS = 20
 
 const KIDB_ECONOMIES = [
@@ -41,7 +41,7 @@ async function request(url, { accept = "application/json", attempts = 3 } = {}) 
       const response = await fetch(url, {
         headers: {
           accept,
-          "user-agent": "Geomacro-ADB-KIDB-Fiscal-Proof/4.1 (+https://geomacro.live)",
+          "user-agent": "Geomacro-ADB-KIDB-Fiscal-Proof/5.0 (+https://geomacro.live)",
         },
       })
       if (response.ok) return response
@@ -68,37 +68,72 @@ function primitiveText(object) {
   return Object.values(object ?? {}).filter((value) => typeof value === "string").join(" | ")
 }
 
-function objectCode(object) {
-  const value = object?.code
-  return typeof value === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(value)
-    ? value
-    : null
+function directCode(object) {
+  for (const key of ["code", "id"]) {
+    const value = object?.[key]
+    if (typeof value === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(value)) return value
+  }
+  return null
 }
 
-function findExactCode(payload, code, labelPattern) {
+function findExactCode(payload, code, labelPattern = null) {
   let match = null
   walkObjects(payload, (object) => {
     if (match) return
     if (!Object.values(object ?? {}).includes(code)) return
     const text = primitiveText(object)
     if (labelPattern && !labelPattern.test(text)) return
-    match = { code, text: text.slice(0, 2000) }
+    match = { code, text: text.slice(0, 2200) }
   })
   return match
 }
 
-function findGdpCandidates(payload) {
-  const rows = []
-  const seen = new Set()
+function findUsdSizeCandidates(payload) {
+  const candidates = new Map()
   walkObjects(payload, (object) => {
+    const code = directCode(object)
+    if (!code) return
     const text = primitiveText(object)
-    if (!/GDP at current prices/i.test(text)) return
-    const code = objectCode(object)
-    if (!code || seen.has(code)) return
-    seen.add(code)
-    rows.push({ code, text: text.slice(0, 1600) })
+    const normalized = text.replace(/\s+/g, " ")
+    let concept = null
+    let priority = 99
+    if (/Gross Domestic Product\s*\(current \$ million\)/i.test(normalized)) {
+      concept = "gdp_current_usd"
+      priority = 1
+    } else if (/GDP.*current (?:US )?dollar/i.test(normalized) && !/per capita/i.test(normalized)) {
+      concept = "gdp_current_usd"
+      priority = 2
+    } else if (/Gross National Income\s*\(current \$ million\)/i.test(normalized)) {
+      concept = "gni_current_usd"
+      priority = 3
+    } else if (/GNI.*current (?:US )?dollar/i.test(normalized) && !/per capita/i.test(normalized)) {
+      concept = "gni_current_usd"
+      priority = 4
+    }
+    if (!concept) return
+    const existing = candidates.get(code)
+    const row = { code, concept, priority, text: normalized.slice(0, 2200) }
+    if (!existing || priority < existing.priority) candidates.set(code, row)
   })
-  return rows.sort((a, b) => a.code.localeCompare(b.code))
+  return [...candidates.values()].sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code))
+}
+
+function flowIdsFromRegistry(text) {
+  return [...new Set(text.match(/DF_[A-Z0-9_]+/g) ?? [])].sort()
+}
+
+function indicatorCodesFromFlow(payload) {
+  const codes = new Set()
+  if (Array.isArray(payload)) {
+    for (const row of payload) {
+      if (typeof row?.code === "string") codes.add(row.code)
+    }
+  } else {
+    walkObjects(payload, (object) => {
+      if (typeof object?.code === "string") codes.add(object.code)
+    })
+  }
+  return codes
 }
 
 function parseCsv(text) {
@@ -142,8 +177,8 @@ function headerIndex(headers, candidates) {
 }
 
 function parseObservations(text, defaultIndicator = null) {
-  if (/^\s*<\?xml/i.test(text) || /^\s*<message:/i.test(text) || /^\s*<Error/i.test(text)) {
-    throw new Error(`KIDB returned XML/error payload instead of SDMX-CSV: ${text.slice(0, 400).replace(/\s+/g, " ")}`)
+  if (/^\s*</.test(text)) {
+    throw new Error(`KIDB returned XML/error payload instead of SDMX-CSV: ${text.slice(0, 500).replace(/\s+/g, " ")}`)
   }
   const csv = parseCsv(text)
   if (csv.length < 2) return []
@@ -195,34 +230,77 @@ function quantile(sorted, q) {
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower)
 }
 
-async function probeGdpCandidate(candidate) {
+async function discoverDenominator() {
   await sleep(RATE_DELAY_MS)
-  const url = `${API}/v5/sdmx/data/ADB,${GDP_FLOW}/A.${candidate.code}.PHI?startPeriod=${TARGET_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
-  try {
-    const response = await request(url, { accept: "text/csv,*/*;q=0.2" })
-    const text = await response.text()
-    const rows = parseObservations(text, candidate.code).filter(
-      (row) => row.indicator === candidate.code && row.time_period === TARGET_PERIOD,
-    )
-    return {
-      ...candidate,
-      probe_url: url,
-      status: "OK",
-      observation_count: rows.length,
-      units: [...new Set(rows.map((row) => row.unit).filter(Boolean))].sort(),
-      unit_multipliers: [...new Set(rows.map((row) => row.unit_multiplier).filter((value) => value != null))].sort(),
-    }
-  } catch (error) {
-    return {
-      ...candidate,
-      probe_url: url,
-      status: "FAIL_CLOSED",
-      observation_count: 0,
-      units: [],
-      unit_multipliers: [],
-      error: error instanceof Error ? error.message : String(error),
+  const codelistUrl = `${API}/v5/sdmx/structure/codelist/ADB/CL_KIDB_INDICATORS/+?format=sdmx-json`
+  const codelist = JSON.parse(await (await request(codelistUrl)).text())
+  const candidates = findUsdSizeCandidates(codelist)
+  if (!candidates.length) {
+    throw new Error("KIDB indicator codelist has no exact current-US-dollar GDP/GNI size candidate")
+  }
+
+  await sleep(RATE_DELAY_MS)
+  const registryUrl = `${API}/v5/sdmx/structure/dataflow/all/all/+?format=sdmx-json`
+  const registryText = await (await request(registryUrl)).text()
+  const flows = flowIdsFromRegistry(registryText)
+  if (!flows.length) throw new Error("KIDB dataflow registry returned no DF_* identifiers")
+
+  const candidateByCode = new Map(candidates.map((row) => [row.code, row]))
+  const flowAudit = []
+  const owners = []
+  const orderedFlows = ["DF_NA", ...flows.filter((flow) => flow !== "DF_NA")]
+  for (const flow of orderedFlows) {
+    await sleep(RATE_DELAY_MS)
+    try {
+      const payload = await (await request(`${API}/dataflow/indicators/${flow}`)).json()
+      const codes = indicatorCodesFromFlow(payload)
+      const matches = [...candidateByCode.keys()].filter((code) => codes.has(code))
+      flowAudit.push({ flow, status: "OK", matches })
+      for (const code of matches) owners.push({ flow, ...candidateByCode.get(code) })
+      if (owners.some((row) => row.priority === 1)) break
+    } catch (error) {
+      flowAudit.push({ flow, status: "ERROR", error: error instanceof Error ? error.message : String(error) })
     }
   }
+  if (!owners.length) {
+    throw new Error(`KIDB current-US-dollar denominator candidates have no owning dataflow: ${JSON.stringify(candidates)}`)
+  }
+
+  const orderedOwners = owners.sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code))
+  const evidence = []
+  for (const candidate of orderedOwners) {
+    await sleep(RATE_DELAY_MS)
+    const probeUrl = `${API}/v5/sdmx/data/ADB,${candidate.flow}/A.${candidate.code}.PHI?startPeriod=${QUERY_START_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
+    try {
+      const rows = parseObservations(
+        await (await request(probeUrl, { accept: "text/csv,*/*;q=0.2" })).text(),
+        candidate.code,
+      ).filter((row) => row.indicator === candidate.code)
+      const latest = rows.sort((a, b) => b.time_period.localeCompare(a.time_period))[0] ?? null
+      evidence.push({
+        ...candidate,
+        probe_url: probeUrl,
+        status: "OK",
+        latest,
+        units: [...new Set(rows.map((row) => row.unit).filter(Boolean))].sort(),
+        unit_multipliers: [...new Set(rows.map((row) => row.unit_multiplier).filter((value) => value != null))].sort(),
+      })
+    } catch (error) {
+      evidence.push({ ...candidate, probe_url: probeUrl, status: "FAIL_CLOSED", error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+
+  const usable = evidence.filter((row) => row.status === "OK" && row.latest?.time_period === TARGET_PERIOD && row.units?.length === 1 && row.units[0] === "USD")
+  if (!usable.length) {
+    throw new Error(`No exact KIDB current-US-dollar GDP/GNI denominator has 2024 USD evidence: ${JSON.stringify(evidence)}`)
+  }
+  usable.sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code))
+  const bestPriority = usable[0].priority
+  const best = usable.filter((row) => row.priority === bestPriority)
+  if (best.length !== 1) {
+    throw new Error(`Ambiguous KIDB denominator at best priority ${bestPriority}: ${JSON.stringify(best)}`)
+  }
+  return { selected: best[0], candidates, evidence, flowAudit, codelistUrl, registryUrl }
 }
 
 async function main() {
@@ -234,7 +312,7 @@ async function main() {
   if (!debtMetadata) throw new Error(`${DEBT_INDICATOR} exact PPG series missing from ${DEBT_FLOW}`)
 
   await sleep(RATE_DELAY_MS)
-  const debtHistoryUrl = `${API}/v5/sdmx/data/ADB,${DEBT_FLOW}/A.${DEBT_INDICATOR}.${economyCodes}?startPeriod=2022&endPeriod=2024&format=sdmx-csv`
+  const debtHistoryUrl = `${API}/v5/sdmx/data/ADB,${DEBT_FLOW}/A.${DEBT_INDICATOR}.${economyCodes}?startPeriod=${QUERY_START_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
   const debtHistory = parseObservations(await (await request(debtHistoryUrl, { accept: "text/csv,*/*;q=0.2" })).text(), DEBT_INDICATOR)
   const latestDebt = new Map()
   for (const row of debtHistory) {
@@ -252,71 +330,57 @@ async function main() {
   const observed = coverage.filter((row) => row.observed)
   const observed2024 = coverage.filter((row) => row.latest_is_2024)
 
-  await sleep(RATE_DELAY_MS)
-  const gdpIndicatorsUrl = `${API}/dataflow/indicators/${GDP_FLOW}`
-  const gdpIndicators = await (await request(gdpIndicatorsUrl)).json()
-  const gdpCandidates = findGdpCandidates(gdpIndicators)
-  if (!gdpCandidates.length) throw new Error("No direct indicator-code GDP at current prices candidates found in DF_NA")
-
-  const candidateEvidence = []
-  for (const candidate of gdpCandidates) {
-    candidateEvidence.push(await probeGdpCandidate(candidate))
-  }
-  const usdCandidates = candidateEvidence.filter(
-    (row) => row.status === "OK" && row.observation_count > 0 && row.units.length === 1 && row.units[0] === "USD",
-  )
-  if (usdCandidates.length !== 1) {
-    throw new Error(
-      `Expected exactly one USD GDP-current-price candidate; direct codes=${gdpCandidates.map((row) => row.code).join(",")}; USD matches=${usdCandidates.map((row) => row.code).join(",") || "none"}; evidence=${JSON.stringify(candidateEvidence)}`,
-    )
-  }
-  const gdpIndicator = usdCandidates[0].code
+  const denominatorDiscovery = await discoverDenominator()
+  const denominator = denominatorDiscovery.selected
 
   await sleep(RATE_DELAY_MS)
-  const gdpUrl = `${API}/v5/sdmx/data/ADB,${GDP_FLOW}/A.${gdpIndicator}.${economyCodes}?startPeriod=${TARGET_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
-  const gdpRows = parseObservations(await (await request(gdpUrl, { accept: "text/csv,*/*;q=0.2" })).text(), gdpIndicator)
-    .filter((row) => row.time_period === TARGET_PERIOD)
-  const gdpByEconomy = new Map(gdpRows.map((row) => [row.economy_code, row]))
+  const denominatorUrl = `${API}/v5/sdmx/data/ADB,${denominator.flow}/A.${denominator.code}.${economyCodes}?startPeriod=${QUERY_START_PERIOD}&endPeriod=${TARGET_PERIOD}&format=sdmx-csv`
+  const denominatorRows = parseObservations(
+    await (await request(denominatorUrl, { accept: "text/csv,*/*;q=0.2" })).text(),
+    denominator.code,
+  ).filter((row) => row.time_period === TARGET_PERIOD)
+  const denominatorByEconomy = new Map(denominatorRows.map((row) => [row.economy_code, row]))
 
   const peers = []
   for (const economy of KIDB_ECONOMIES) {
     const debt = latestDebt.get(economy.kidb)
-    const gdp = gdpByEconomy.get(economy.kidb)
-    if (!debt || debt.time_period !== TARGET_PERIOD || !gdp) continue
+    const size = denominatorByEconomy.get(economy.kidb)
+    if (!debt || debt.time_period !== TARGET_PERIOD || !size) continue
     const debtUsd = normalizeUsd(debt)
-    const gdpUsd = normalizeUsd(gdp)
-    if (!(gdpUsd > 0) || debtUsd < 0) continue
-    const ratio = (debtUsd / gdpUsd) * 100
+    const sizeUsd = normalizeUsd(size)
+    if (!(sizeUsd > 0) || debtUsd < 0) continue
+    const ratio = (debtUsd / sizeUsd) * 100
     if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1000) {
-      throw new Error(`Implausible PPG debt/GDP ratio for ${economy.iso3}: ${ratio}`)
+      throw new Error(`Implausible PPG debt/${denominator.concept} ratio for ${economy.iso3}: ${ratio}`)
     }
     peers.push({
       kidb: economy.kidb,
       iso3: economy.iso3,
       period: TARGET_PERIOD,
       ppg_external_debt_usd: debtUsd,
-      gdp_current_usd: gdpUsd,
-      ppg_external_debt_pct_gdp: Number(ratio.toFixed(6)),
+      denominator_usd: sizeUsd,
+      denominator_concept: denominator.concept,
+      ppg_external_debt_pct_denominator: Number(ratio.toFixed(6)),
     })
   }
   if (peers.length < MIN_PEERS) throw new Error(`Same-source ADB peer universe too small: ${peers.length} < ${MIN_PEERS}`)
 
-  const ratios = peers.map((row) => row.ppg_external_debt_pct_gdp).sort((a, b) => a - b)
+  const ratios = peers.map((row) => row.ppg_external_debt_pct_denominator).sort((a, b) => a - b)
   const scored = peers.map((row) => ({
     ...row,
-    shadow_risk_score: midrankPercentile(ratios, row.ppg_external_debt_pct_gdp),
+    shadow_risk_score: midrankPercentile(ratios, row.ppg_external_debt_pct_denominator),
   })).sort((a, b) => a.iso3.localeCompare(b.iso3))
   if (scored.some((row) => row.shadow_risk_score < 0 || row.shadow_risk_score > 100)) {
     throw new Error("ADB shadow percentile produced score outside 0..100")
   }
 
   const methodology = {
-    methodology_version: "adb-ppg-external-debt-gdp-percentile-1.0.0-shadow",
+    methodology_version: "adb-ppg-external-debt-size-percentile-1.0.0-shadow",
     numerator: { dataflow: DEBT_FLOW, indicator: DEBT_INDICATOR, concept: "public_and_publicly_guaranteed_long_term_external_debt" },
-    denominator: { dataflow: GDP_FLOW, indicator: gdpIndicator, concept: "gdp_at_current_prices_usd" },
+    denominator: { dataflow: denominator.flow, indicator: denominator.code, concept: denominator.concept },
     period: TARGET_PERIOD,
     peer_universe: "same-source KIDB economies with same-period numerator and denominator",
-    score_rule: "midrank percentile of PPG external debt as percent of GDP; higher ratio means higher risk",
+    score_rule: `midrank percentile of PPG external debt as percent of ${denominator.concept}; higher ratio means higher risk`,
     minimum_peer_count: MIN_PEERS,
     cross_source_pooling: false,
     production_module_state_emitted: false,
@@ -324,7 +388,7 @@ async function main() {
   const methodologyHash = crypto.createHash("sha256").update(JSON.stringify(methodology)).digest("hex")
 
   const report = {
-    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-4.1",
+    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-5.0",
     generated_at: new Date().toISOString(),
     source_candidate: "adb_kidb_sdmx_v5",
     publisher: "Asian Development Bank / Key Indicators Database",
@@ -337,8 +401,9 @@ async function main() {
       documented_rate_limit: "20 queries/minute",
       enforced_inter_request_delay_ms: RATE_DELAY_MS,
       debt_data_endpoint: debtHistoryUrl,
-      gdp_probe_endpoints: candidateEvidence.map((row) => row.probe_url),
-      gdp_data_endpoint: gdpUrl,
+      denominator_codelist_endpoint: denominatorDiscovery.codelistUrl,
+      dataflow_registry_endpoint: denominatorDiscovery.registryUrl,
+      denominator_data_endpoint: denominatorUrl,
     },
     exact_series: {
       dataflow: DEBT_FLOW,
@@ -375,19 +440,20 @@ async function main() {
       paired_2024_peer_count: scored.length,
       production_supported_country_count_added: 0,
     },
-    gdp_denominator_discovery: {
-      dataflow: GDP_FLOW,
-      candidates: candidateEvidence,
-      selected_indicator: gdpIndicator,
+    denominator_discovery: {
+      selected: denominator,
+      candidates: denominatorDiscovery.candidates,
+      probe_evidence: denominatorDiscovery.evidence,
+      flow_audit: denominatorDiscovery.flowAudit,
     },
     shadow_methodology: methodology,
     shadow_methodology_hash: methodologyHash,
     shadow_distribution: {
-      minimum_pct_gdp: ratios[0],
-      p25_pct_gdp: Number(quantile(ratios, 0.25).toFixed(6)),
-      median_pct_gdp: Number(quantile(ratios, 0.5).toFixed(6)),
-      p75_pct_gdp: Number(quantile(ratios, 0.75).toFixed(6)),
-      maximum_pct_gdp: ratios[ratios.length - 1],
+      minimum_pct: ratios[0],
+      p25_pct: Number(quantile(ratios, 0.25).toFixed(6)),
+      median_pct: Number(quantile(ratios, 0.5).toFixed(6)),
+      p75_pct: Number(quantile(ratios, 0.75).toFixed(6)),
+      maximum_pct: ratios[ratios.length - 1],
     },
     shadow_countries: scored,
     coverage,
@@ -395,13 +461,13 @@ async function main() {
 
   fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
   console.log(JSON.stringify(report, null, 2))
-  console.log(`PASS: ADB EXACT PPG COVERAGE + SAME-SOURCE GDP SHADOW METHODOLOGY - ${scored.length} PEERS - NO WRITES, NO PRODUCTION SCORING`)
+  console.log(`PASS: ADB EXACT PPG COVERAGE + SAME-SOURCE SIZE SHADOW METHODOLOGY - ${scored.length} PEERS - NO WRITES, NO PRODUCTION SCORING`)
   console.log("PASS: ADB EXACT PPG EXTERNAL-DEBT COVERAGE AUDIT COMPLETE - NO WRITES, NO SCORING")
 }
 
 main().catch((error) => {
   const report = {
-    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-error-4.1",
+    schema_version: "geomacro-adb-kidb-ppg-fiscal-shadow-error-5.0",
     generated_at: new Date().toISOString(),
     writes_performed: false,
     production_activation_allowed: false,
