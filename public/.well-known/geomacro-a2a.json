@@ -17,6 +17,7 @@
     "manifest": "https://geomacro.live/api/a2a/manifest",
     "negotiate": "https://geomacro.live/api/a2a/negotiate",
     "identity": "https://geomacro.live/api/a2a/identity",
+    "identity_revoke": "https://geomacro.live/api/a2a/identity-revoke",
     "tasks": "https://geomacro.live/api/a2a/tasks",
     "task_status_template": "https://geomacro.live/api/a2a/tasks/{task_id}"
   },
