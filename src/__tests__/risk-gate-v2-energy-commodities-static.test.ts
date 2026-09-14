@@ -55,8 +55,9 @@ describe("Risk Gate v2 energy/commodities source boundaries", () => {
     expect(manifest).toContain(
       'typeof provenance.source_row_sha256 === "string"',
     );
+    expect(server).toContain("Old MCS rows did not carry the");
     expect(server).toContain(
-      "Old MCS rows did not carry the pinned file hash/source-row hash",
+      "pinned file hash/source-row hash and therefore cannot enter v2 scoring.",
     );
     expect(server).toContain(
       "sourceFileHash !== RISK_GATE_V2_USGS_MCS_SOURCE_FILE_SHA256",
