@@ -1,0 +1,199 @@
+import { createClient } from "@supabase/supabase-js";
+
+import { buildCorridorRiskObject } from "../src/lib/corridor-risk-engine";
+import { dryRunCountryRiskObject } from "../src/lib/country-risk-publisher.server";
+
+const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx";
+const LOOKBACK_HOURS = Number(process.env.DAN_PAIR_LOOKBACK_HOURS ?? 72);
+
+function projectRef(url: string) {
+  try {
+    return new URL(url).hostname.split(".")[0] ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function countriesForEvent(row: Record<string, unknown>) {
+  const countries = new Set<string>();
+  const primary = String(row.primary_country ?? "").trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(primary)) countries.add(primary);
+  for (const value of Array.isArray(row.countries) ? row.countries : []) {
+    const iso3 = String(value ?? "").trim().toUpperCase();
+    if (/^[A-Z]{3}$/.test(iso3)) countries.add(iso3);
+  }
+  return countries;
+}
+
+async function main() {
+  const supabaseUrl = String(process.env.APP_SUPABASE_URL ?? "").trim();
+  const serviceRole = String(
+    process.env.APP_SUPABASE_SERVICE_ROLE_KEY ??
+      process.env.SUPABASE_SERVICE_ROLE_KEY ??
+      "",
+  ).trim();
+
+  if (!supabaseUrl || !serviceRole) {
+    throw new Error("Authoritative Supabase credentials are required");
+  }
+  if (projectRef(supabaseUrl) !== AUTHORITATIVE_PROJECT_REF) {
+    throw new Error("Refusing non-authoritative Supabase project");
+  }
+
+  const db = createClient(supabaseUrl, serviceRole, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const cutoff = new Date(Date.now() - LOOKBACK_HOURS * 3_600_000).toISOString();
+  const result = await db
+    .from("live_structured_events")
+    .select("primary_country,countries,commercial_eligibility_status,last_seen_at")
+    .gte("last_seen_at", cutoff);
+  if (result.error) throw result.error;
+
+  const coverage = new Map<
+    string,
+    { usable: number; blocking: number; verified: number; derived: number }
+  >();
+
+  for (const row of (result.data ?? []) as Record<string, unknown>[]) {
+    const status = String(row.commercial_eligibility_status ?? "UNVERIFIED");
+    for (const iso3 of countriesForEvent(row)) {
+      const current = coverage.get(iso3) ?? {
+        usable: 0,
+        blocking: 0,
+        verified: 0,
+        derived: 0,
+      };
+      if (status === "VERIFIED") {
+        current.usable += 1;
+        current.verified += 1;
+      } else if (status === "DERIVED_ONLY") {
+        current.usable += 1;
+        current.derived += 1;
+      } else {
+        current.blocking += 1;
+      }
+      coverage.set(iso3, current);
+    }
+  }
+
+  const candidates: Array<{
+    iso3: string;
+    confidence: number;
+    score: number;
+    events_used: number;
+    usable_recent_events: number;
+    object: Awaited<ReturnType<typeof dryRunCountryRiskObject>>["object"];
+  }> = [];
+
+  const eligibleIso3 = [...coverage.entries()]
+    .filter(([, item]) => item.usable > 0 && item.blocking === 0)
+    .map(([iso3]) => iso3)
+    .sort();
+
+  for (const iso3 of eligibleIso3) {
+    try {
+      const dryRun = await dryRunCountryRiskObject({ country_iso3: iso3 });
+      const object = dryRun.object;
+      if (
+        object.commercial_eligibility.status !== "VERIFIED" ||
+        object.verification.status !== "VERIFIED" ||
+        dryRun.context.country_events_used <= 0
+      ) {
+        continue;
+      }
+      candidates.push({
+        iso3,
+        confidence: object.confidence,
+        score: object.risk.score,
+        events_used: dryRun.context.country_events_used,
+        usable_recent_events: coverage.get(iso3)?.usable ?? 0,
+        object,
+      });
+    } catch {
+      // A country that cannot produce a clean current object is not a candidate.
+    }
+  }
+
+  candidates.sort(
+    (a, b) =>
+      b.confidence - a.confidence ||
+      b.events_used - a.events_used ||
+      b.usable_recent_events - a.usable_recent_events ||
+      a.iso3.localeCompare(b.iso3),
+  );
+
+  let selected: null | {
+    origin: (typeof candidates)[number];
+    destination: (typeof candidates)[number];
+    corridor: Awaited<ReturnType<typeof buildCorridorRiskObject>>;
+  } = null;
+
+  for (let i = 0; i < candidates.length && !selected; i++) {
+    for (let j = 0; j < candidates.length && !selected; j++) {
+      if (i === j) continue;
+      const origin = candidates[i];
+      const destination = candidates[j];
+      const corridor = await buildCorridorRiskObject({
+        origin_country_iso3: origin.iso3,
+        destination_country_iso3: destination.iso3,
+        origin: origin.object,
+        destination: destination.object,
+        previous: null,
+        as_of: new Date().toISOString(),
+      });
+      if (
+        corridor.commercial_eligibility.status === "VERIFIED" &&
+        corridor.verification.status === "VERIFIED"
+      ) {
+        selected = { origin, destination, corridor };
+      }
+    }
+  }
+
+  if (!selected) {
+    throw new Error(
+      `No current commercially verified country pair found from ${candidates.length} clean country candidates`,
+    );
+  }
+
+  const output = {
+    schema_version: "geomacro-commercial-country-pair-selection-1.0",
+    generated_at: new Date().toISOString(),
+    lookback_hours: LOOKBACK_HOURS,
+    candidate_count: candidates.length,
+    origin_country_iso3: selected.origin.iso3,
+    destination_country_iso3: selected.destination.iso3,
+    selection_basis: {
+      country_commercial_eligibility: "VERIFIED",
+      country_verification: "VERIFIED",
+      no_recent_blocking_event: true,
+      positive_country_evidence_count: true,
+      corridor_commercial_eligibility: selected.corridor.commercial_eligibility.status,
+      corridor_verification: selected.corridor.verification.status,
+    },
+    origin: {
+      confidence: selected.origin.confidence,
+      score: selected.origin.score,
+      events_used: selected.origin.events_used,
+    },
+    destination: {
+      confidence: selected.destination.confidence,
+      score: selected.destination.score,
+      events_used: selected.destination.events_used,
+    },
+    claim_boundary: {
+      selection_is_runtime_evidence_not_permanent_country_whitelist: true,
+      source_rights_are_not_relaxed: true,
+      execution_authorized: false,
+    },
+  };
+
+  console.log(JSON.stringify(output, null, 2));
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});
