@@ -9,7 +9,7 @@ on:
       - ".github/workflows/ucdp-candidate-sync.yml"
       - "supabase/migrations/053_ucdp_candidate_live_ingest.sql"
       - "supabase/migrations/054_ucdp_candidate_transport_alignment.sql"
-      - "supabase/migrations/918_risk_gate_v2_global_source_manifests.sql"
+      - "supabase/migrations/919_risk_gate_v2_global_source_manifests.sql"
   workflow_dispatch:
     inputs:
       candidate_version:
