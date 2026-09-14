@@ -7,7 +7,7 @@ on:
       - "src/lib/risk-gate-v2-political-governance-module-state.ts"
       - "src/lib/risk-gate-v2-political-governance-module-state.server.ts"
       - ".github/workflows/wgi-political-stability-sync.yml"
-      - "supabase/migrations/918_risk_gate_v2_global_source_manifests.sql"
+      - "supabase/migrations/919_risk_gate_v2_global_source_manifests.sql"
   workflow_dispatch:
   schedule:
     - cron: "41 4 15 1,4,7,10 *"
