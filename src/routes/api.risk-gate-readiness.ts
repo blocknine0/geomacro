@@ -3,6 +3,10 @@ import {
 } from "@tanstack/react-router";
 
 import {
+  ensureRiskObjectRuntimePublicKey,
+} from "../lib/risk-object-runtime-public-key.server";
+
+import {
   evaluateRiskGateReadiness,
 } from "../lib/risk-gate-readiness.server";
 
@@ -14,6 +18,8 @@ export const Route =
       handlers: {
         GET: async () => {
           try {
+            ensureRiskObjectRuntimePublicKey();
+
             const readiness =
               await evaluateRiskGateReadiness();
 
