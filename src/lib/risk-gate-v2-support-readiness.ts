@@ -4,7 +4,7 @@ import type {
 } from "./risk-gate-v2-taxonomy";
 
 export const RISK_GATE_V2_SUPPORT_READINESS_VERSION =
-  "risk-gate-v2-support-readiness-0.2.0" as const;
+  "risk-gate-v2-support-readiness-0.3.0" as const;
 
 export type RiskGateV2SupportStatus =
   | "SUPPORTED"
@@ -31,15 +31,14 @@ export type RiskGateV2ModuleSupportReadiness = {
 export const RISK_GATE_V2_SUPPORT_READINESS = {
   geopolitical_security: {
     module: "geopolitical_security",
-    status: "SOURCE_READY",
-    coverage_ceiling: "PARTIAL",
-    governed_sources: ["ucdp_candidate", "ucdp_ged"],
+    status: "SUPPORTED",
+    coverage_ceiling: "LIMITED",
+    governed_sources: ["ucdp_candidate", "world_bank_indicators"],
     blockers: [
-      "Conflict exposure methodology and validation are not yet promoted into a v2 decision module.",
+      "Current supported scope is population-normalized organized-violence exposure; coups, elections, protests, territorial disputes and diplomatic risk are not yet active.",
     ],
     promotion_requirements: [
-      "Version recency, severity and conflict-type scoring from governed UCDP evidence.",
-      "Run coverage/distribution validation before decision activation.",
+      "Add governed non-conflict political-security dimensions and validated UCDP conflict-type attribution before raising coverage.",
     ],
   },
   geoeconomic_trade: {
