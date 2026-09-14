@@ -48,8 +48,18 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function optionalTestnetUsdcReceiver(): string | null {
+  try {
+    return requireTestnetUsdcReceiver();
+  } catch {
+    return null;
+  }
+}
+
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, corsHeaders);
+
+  let stage = "authenticate";
 
   try {
     const authRequest = new Request(
@@ -57,6 +67,8 @@ export default defineEventHandler(async (event) => {
       { headers: getRequestHeaders(event) },
     );
     const principal = await authenticateCommercialApiRequest(authRequest);
+
+    stage = "entitlement";
     const entitlement = await resolveCommercialEntitlementForCapability({
       principal,
       capability: "gri_read",
@@ -70,6 +82,7 @@ export default defineEventHandler(async (event) => {
       );
     }
 
+    stage = "credit_account";
     const account = asRecord(
       await ensureCommercialCreditAccount({
         principal,
@@ -77,6 +90,10 @@ export default defineEventHandler(async (event) => {
       }),
     );
 
+    stage = "payment_config";
+    const receiverAddress = optionalTestnetUsdcReceiver();
+
+    stage = "response";
     return {
       ok: true,
       data: {
@@ -112,7 +129,8 @@ export default defineEventHandler(async (event) => {
           capability_prices: TESTNET_INTELLIGENCE_PRICE_TABLE,
         },
         payment: {
-          receiver_address: requireTestnetUsdcReceiver(),
+          configured: receiverAddress !== null,
+          receiver_address: receiverAddress,
           supported_chains: Object.values(TESTNET_USDC_ACCESS_CHAINS),
           environment: "testnet",
           commercial_revenue: false,
@@ -135,7 +153,10 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    console.error("[testnet-account-api] request failed", error);
+    console.error("[testnet-account-api] request failed", {
+      stage,
+      error,
+    });
     setResponseStatus(event, 503);
     return {
       ok: false,
