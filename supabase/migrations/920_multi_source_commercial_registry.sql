@@ -111,8 +111,116 @@ values
   false,
   false,
   'GLOBAL',
+  'REAL_TIME_MINUTE',
+  'USGS GeoJSON summary feeds are updated every minute. USGS-produced data may be reused with source credit; third-party copyrighted material is excluded. Risk Gate climate_environment_hazard remains blocked until schema and methodology are versioned.'
+),
+(
+  'nasa_firms_modis_nrt',
+  'FIRMS MODIS Near Real-Time Fire Detections',
+  'NASA LANCE / FIRMS',
+  'MULTI_DOMAIN',
+  'API',
+  'API_KEY',
+  'https://firms.modaps.eosdis.nasa.gov/api/',
+  'NASA Earthdata open-data policy; NASA-led mission data generally CC0 unless specifically restricted',
+  'COMMERCIAL_OK',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
   'NEAR_REAL_TIME',
-  'USGS-produced data may be reused with source credit; third-party copyrighted material is excluded. Risk Gate climate_environment_hazard remains blocked until schema and methodology are versioned.'
+  'Use only NASA-led MODIS NRT detections under the reviewed NASA Earthdata open-data boundary. A free FIRMS MAP_KEY is required. Non-NASA or separately restricted satellite products must not inherit this status. Hazard methodology is not yet active.'
+),
+(
+  'gdelt_v2_events',
+  'GDELT 2.0 Event Database',
+  'GDELT Project',
+  'GEOPOLITICS',
+  'BULK_DOWNLOAD',
+  'NONE',
+  'https://data.gdeltproject.org/gdeltv2/',
+  'GDELT Terms of Use - unlimited and unrestricted academic, commercial and governmental use with citation',
+  'COMMERCIAL_OK',
+  true,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'REAL_TIME_15_MIN',
+  'GDELT 2.0 event metadata is released every 15 minutes and permits commercial use and redistribution with citation. This source is event/news-derived evidence, not a substitute for authoritative conflict or government statistics. Do not redistribute underlying publisher article text.'
+),
+(
+  'faostat_global',
+  'FAOSTAT Corporate Statistical Databases',
+  'Food and Agriculture Organization of the United Nations',
+  'MULTI_DOMAIN',
+  'API',
+  'NONE',
+  'https://www.fao.org/faostat/',
+  'Dataset-specific CC BY 4.0 plus FAO Statistical Database Terms of Use',
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL_245_PLUS_COUNTRIES_AND_TERRITORIES',
+  'PERIODIC',
+  'FAOSTAT offers broad global agriculture and trade coverage, but its additional database terms restrict use in conjunction with promotion of a commercial enterprise/product and may contain third-party exceptions. Keep outside paid Risk Gate delivery until legal/product-use review is closed for exact datasets.'
+),
+(
+  'ilostat_global',
+  'ILOSTAT labour statistics',
+  'International Labour Organization',
+  'MULTI_DOMAIN',
+  'BULK_DOWNLOAD',
+  'NONE',
+  'https://rplumber.ilo.org/data/indicator/',
+  null,
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'SOURCE_DEPENDENT',
+  'ILOSTAT provides programmatic and bulk access. Exact statistical-database reuse terms for paid derivative products must be recorded before commercial activation; publication-level CC BY terms are not sufficient evidence by themselves.'
+),
+(
+  'gdacs_global_disasters',
+  'Global Disaster Alert and Coordination System',
+  'European Commission JRC / UN OCHA / UNOSAT',
+  'MULTI_DOMAIN',
+  'API',
+  'NONE',
+  'https://www.gdacs.org/gdacsapi/',
+  null,
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'NEAR_REAL_TIME',
+  'GDACS provides near-real-time multi-hazard alerts but its terms emphasise model limitations and do not by themselves establish a paid commercial reuse contract. Keep disabled until exact reuse rights and attribution are deliberately recorded.'
+),
+(
+  'who_gho',
+  'WHO Global Health Observatory',
+  'World Health Organization',
+  'MULTI_DOMAIN',
+  'API',
+  'NONE',
+  'https://ghoapi.azureedge.net/',
+  null,
+  'PERMISSION_REQUIRED',
+  false,
+  true,
+  false,
+  false,
+  'WHO_194_MEMBER_STATES',
+  'SOURCE_DEPENDENT',
+  'WHO dataset terms restrict commercial-enterprise promotion and broader modification; keep outside paid Risk Gate delivery unless the exact intended use is cleared.'
 ),
 (
   'bis_statistics',
@@ -206,5 +314,20 @@ set
   notes = 'Registry entry predates the current commercial-rights evidence register. Exact JRC RMIS item-level reuse terms, provenance and operational adapter must be reviewed before re-enablement.',
   updated_at = now()
 where source_id = 'jrc_rmis_supply_chain';
+
+-- The legacy generic GDELT registry was review-gated before official terms were
+-- captured. Keep it disabled operationally, but correct the rights state for the
+-- exact GDELT datasets while the new v2 adapter/proof path is built.
+update public.live_external_sources
+set
+  licence_name = 'GDELT Terms of Use - unrestricted academic, commercial and governmental use with citation',
+  commercial_usage_status = 'COMMERCIAL_OK',
+  raw_redistribution_allowed = true,
+  attribution_required = true,
+  enabled_for_ingestion = false,
+  enabled_for_commercial_signals = false,
+  notes = 'Official GDELT terms permit unrestricted commercial use and redistribution with citation. Legacy adapter remains disabled until the exact GDELT 2.0 15-minute ingestion and release-manifest path is operationally proven.',
+  updated_at = now()
+where source_id = 'gdelt_v2';
 
 commit;
