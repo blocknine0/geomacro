@@ -1,0 +1,127 @@
+name: USGS MCS Database Integrity Diagnostic
+
+on:
+  push:
+    branches:
+      - diag/usgs-mcs-db-integrity
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout canonical code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Inspect persisted USGS MCS integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+
+          const url = String(process.env.APP_SUPABASE_URL ?? '').trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+          if (!url || !key) throw new Error('Supabase production credentials are required');
+          const projectRef = new URL(url).hostname.split('.')[0] ?? '';
+          if (projectRef !== 'ldpwajisioljyjtojvfx') {
+            throw new Error(`Refusing non-authoritative Supabase project: ${projectRef}`);
+          }
+
+          const db = createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+
+          const rows = [];
+          const pageSize = 1000;
+          for (let from = 0; ; from += pageSize) {
+            const result = await db
+              .from('live_external_observations')
+              .select('observation_id,source_record_id,observed_at,metric,commodity,value_numeric,unit,raw_hash,normalized_hash,quality_status,commercial_eligibility_status,provenance')
+              .eq('source_id', 'usgs_mcs')
+              .order('observation_id', { ascending: true })
+              .range(from, from + pageSize - 1);
+            if (result.error) throw result.error;
+            rows.push(...(result.data ?? []));
+            if ((result.data ?? []).length < pageSize) break;
+          }
+
+          const logical = new Map();
+          let currentReleaseRows = 0;
+          let verifiedCommercialRows = 0;
+          let volatileRetrievedAtRows = 0;
+          let sourceFileShaRows = 0;
+          let sectionRows = 0;
+          let productionRows = 0;
+
+          for (const row of rows) {
+            const sourceRecordId = String(row.source_record_id ?? '');
+            const item = logical.get(sourceRecordId) ?? {
+              count: 0,
+              rawHashes: new Set(),
+              normalizedHashes: new Set(),
+            };
+            item.count += 1;
+            if (row.raw_hash) item.rawHashes.add(String(row.raw_hash));
+            if (row.normalized_hash) item.normalizedHashes.add(String(row.normalized_hash));
+            logical.set(sourceRecordId, item);
+
+            const provenance = row.provenance && typeof row.provenance === 'object' ? row.provenance : {};
+            if (String(provenance.release ?? '') === 'MCS 2026') currentReleaseRows += 1;
+            if (row.quality_status === 'VERIFIED' && row.commercial_eligibility_status === 'VERIFIED') {
+              verifiedCommercialRows += 1;
+            }
+            if (typeof provenance.retrieved_at === 'string' && provenance.retrieved_at) volatileRetrievedAtRows += 1;
+            if (typeof provenance.source_file_sha256 === 'string' && provenance.source_file_sha256) sourceFileShaRows += 1;
+            if (typeof provenance.section === 'string' && provenance.section) sectionRows += 1;
+            const statistic = String(provenance.statistic ?? '').trim().toLowerCase();
+            if (statistic.includes('production') && !statistic.includes('capacity')) productionRows += 1;
+          }
+
+          const duplicateGroups = [...logical.values()].filter((item) => item.count > 1);
+          const duplicateRows = duplicateGroups.reduce((sum, item) => sum + item.count - 1, 0);
+          const sameRawDifferentNormalizedGroups = duplicateGroups.filter(
+            (item) => item.rawHashes.size === 1 && item.normalizedHashes.size > 1,
+          );
+          const maxRowsPerSourceRecord = duplicateGroups.reduce(
+            (max, item) => Math.max(max, item.count),
+            1,
+          );
+
+          const report = {
+            source_id: 'usgs_mcs',
+            authoritative_project_ref: projectRef,
+            total_rows: rows.length,
+            distinct_source_record_ids: logical.size,
+            duplicate_source_record_id_groups: duplicateGroups.length,
+            duplicate_logical_rows: duplicateRows,
+            same_raw_but_different_normalized_groups: sameRawDifferentNormalizedGroups.length,
+            max_rows_per_source_record_id: maxRowsPerSourceRecord,
+            current_release_rows: currentReleaseRows,
+            verified_commercial_rows: verifiedCommercialRows,
+            rows_with_volatile_retrieved_at_in_provenance: volatileRetrievedAtRows,
+            rows_with_source_file_sha256: sourceFileShaRows,
+            rows_with_section_provenance: sectionRows,
+            broad_production_rows: productionRows,
+            diagnostic_only: true,
+            writes_performed: false,
+          };
+
+          console.log('USGS_MCS_DB_INTEGRITY_DIAGNOSTIC');
+          console.log(JSON.stringify(report, null, 2));
+          console.log('PASS: read-only USGS MCS database diagnostic completed');
+          NODE
