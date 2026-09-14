@@ -49,6 +49,11 @@ const INDICATORS = [
   { id: "SL.UEM.TOTL.ZS", metric: "unemployment_total_pct", unit: "percent" },
   { id: "NE.TRD.GNFS.ZS", metric: "trade_pct_gdp", unit: "percent_of_gdp" },
   { id: "GC.DOD.TOTL.GD.ZS", metric: "central_government_debt_pct_gdp", unit: "percent_of_gdp" },
+  { id: "FI.RES.TOTL.MO", metric: "total_reserves_months_imports", unit: "months_of_imports" },
+  { id: "BN.CAB.XOKA.GD.ZS", metric: "current_account_balance_pct_gdp", unit: "percent_of_gdp" },
+  { id: "FB.AST.NPER.ZS", metric: "bank_nonperforming_loans_pct", unit: "percent" },
+  { id: "FB.BNK.CAPA.ZS", metric: "bank_capital_to_assets_pct", unit: "percent" },
+  { id: "FD.RES.LIQU.AS.ZS", metric: "bank_liquid_reserves_to_assets_pct", unit: "percent" },
 ]
 
 function canonicalize(value) {
