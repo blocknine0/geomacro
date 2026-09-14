@@ -6,6 +6,8 @@ const access = readFileSync("src/lib/commercial-access.server.ts", "utf8");
 const migration = readFileSync("supabase/migrations/904_testnet_usdc_tester_access.sql", "utf8");
 const page = readFileSync("server/routes/testnet-access.get.ts", "utf8");
 const browser = readFileSync("public/testnet-access.js", "utf8");
+const issueRoute = readFileSync("server/api/testnet-tester/developer-key.post.ts", "utf8");
+const listRoute = readFileSync("server/api/testnet-tester/developer-keys.get.ts", "utf8");
 
 describe("metered testnet developer integration", () => {
   it("issues credentials after wallet verification and provisions metered access without upfront payment", () => {
@@ -49,9 +51,14 @@ describe("metered testnet developer integration", () => {
     expect(server).toContain('"testnet:agent"');
   });
 
-  it("limits credential sprawl and supports explicit revocation", () => {
-    expect(server).toContain("length >= 3");
-    expect(server).toContain("TESTNET_DEVELOPER_KEY_LIMIT_REACHED");
+  it("restores one wallet-bound developer key instead of minting duplicates", () => {
+    expect(server).toContain("hasUsableDeveloperCredential");
+    expect(server).toContain("TESTNET_DEVELOPER_KEY_ALREADY_EXISTS");
+    expect(server).toContain('.eq("principal_id", principalId)');
+    expect(server).toContain('.eq("enabled", true)');
+    expect(server).toContain('.is("revoked_at", null)');
+    expect(issueRoute).toContain("Reconnecting restores the same API Key");
+    expect(listRoute).toContain("listTestnetDeveloperApiKeys");
     expect(server).toContain("revokeTestnetDeveloperApiKey");
     expect(server).toContain("enabled: false, revoked_at: now");
   });
