@@ -20,6 +20,36 @@ async function ensureMeteredEntitlement(principalId: string) {
   return String(result.entitlement_grant_id ?? "");
 }
 
+async function hasUsableDeveloperCredential(principalId: string, now: string) {
+  const db = requireRiskSupabase();
+  const mappings = await db
+    .from("testnet_developer_credentials")
+    .select("commercial_api_credential_id")
+    .eq("principal_id", principalId)
+    .eq("enabled", true)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: true });
+  if (mappings.error) throw mappings.error;
+
+  const credentialIds = (mappings.data ?? [])
+    .map((row) => String(row.commercial_api_credential_id ?? ""))
+    .filter(Boolean);
+  if (!credentialIds.length) return false;
+
+  const credentials = await db
+    .from("commercial_api_credentials")
+    .select("id,enabled,expires_at,revoked_at")
+    .in("id", credentialIds)
+    .eq("principal_id", principalId);
+  if (credentials.error) throw credentials.error;
+
+  return (credentials.data ?? []).some((credential) =>
+    credential.enabled === true &&
+    !credential.revoked_at &&
+    (!credential.expires_at || String(credential.expires_at) > now)
+  );
+}
+
 export async function issueTestnetDeveloperApiKey(input: {
   principalId: string;
   label?: string;
@@ -64,15 +94,12 @@ export async function issueTestnetDeveloperApiKey(input: {
     throw new Error("TESTNET_TESTER_ENTITLEMENT_NOT_ACTIVE");
   }
 
-  const activeCredentials = await db
-    .from("testnet_developer_credentials")
-    .select("id")
-    .eq("principal_id", input.principalId)
-    .eq("enabled", true)
-    .is("revoked_at", null);
-  if (activeCredentials.error) throw activeCredentials.error;
-  if ((activeCredentials.data ?? []).length >= 3) {
-    throw new Error("TESTNET_DEVELOPER_KEY_LIMIT_REACHED");
+  // A verified wallet keeps one active developer credential. Reconnecting the
+  // wallet must restore that stored API Key through the management endpoint,
+  // never silently mint another credential. A replacement is created only
+  // after the existing credential is explicitly revoked or has expired.
+  if (await hasUsableDeveloperCredential(input.principalId, now)) {
+    throw new Error("TESTNET_DEVELOPER_KEY_ALREADY_EXISTS");
   }
 
   const apiKey = `gmk_test_${randomBytes(20).toString("base64url")}`;
