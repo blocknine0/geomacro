@@ -30,21 +30,7 @@ const METRICS:
 };
 
 
-function isExpectedSparseDebtPeerFailure(
-  key: MacroDimensionKey,
-  metric: string,
-  error: unknown,
-) {
-  return (
-    key === "government_debt" &&
-    error instanceof Error &&
-    error.message ===
-      `Insufficient peer coverage for ${metric}: ${Number(error.message.split(": ").at(-1))}`
-  );
-}
-
-
-function isSparseDebtPeerFailure(
+export function isExpectedSparseWdiDebtCoverageError(
   key: MacroDimensionKey,
   metric: string,
   error: unknown,
@@ -108,10 +94,10 @@ generateCountryMacroRiskComponent(
       // current peer universe than the three macro-monetary dimensions. A
       // sparse debt peer set must make only sovereign_fiscal unavailable. It
       // must not erase otherwise valid inflation/growth/unemployment states.
-      // Any other provider, rights, schema or database error still propagates
-      // and fails closed.
+      // Any provider, rights, schema or database error still propagates and
+      // fails closed.
       if (
-        isSparseDebtPeerFailure(
+        isExpectedSparseWdiDebtCoverageError(
           key,
           metric,
           error,
