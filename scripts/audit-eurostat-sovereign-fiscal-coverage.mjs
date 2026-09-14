@@ -8,8 +8,9 @@ const OUTPUT = process.env.EUROSTAT_FISCAL_COVERAGE_OUTPUT ?? "eurostat-sovereig
 const AS_OF = new Date(process.env.EUROSTAT_FISCAL_AS_OF ?? Date.now())
 const MAX_AGE_DAYS = Number(process.env.EUROSTAT_FISCAL_MAX_AGE_DAYS ?? 550)
 
+// gov_10q_ggdebt is quarterly by dataset definition; frequency is not a
+// separate metabase dimension. Prove only codes actually declared by Eurostat.
 const REQUIRED_CODES = {
-  freq: "Q",
   unit: "PC_GDP",
   sector: "S13",
   na_item: "GD",
@@ -24,7 +25,7 @@ async function fetchWithRetry(url, options = {}) {
       const response = await fetch(url, {
         ...options,
         headers: {
-          "user-agent": "Geomacro-Eurostat-Fiscal-Coverage-Audit/1.0",
+          "user-agent": "Geomacro-Eurostat-Fiscal-Coverage-Audit/1.1",
           ...(options.headers ?? {}),
         },
       })
@@ -58,7 +59,10 @@ function assertStructure(dimensions) {
       throw new Error(`Eurostat ${DATASET} structure is missing dimension ${dimension}`)
     }
     if (!dimensions.get(dimension).has(code)) {
-      throw new Error(`Eurostat ${DATASET} ${dimension} does not contain required code ${code}`)
+      const sample = [...dimensions.get(dimension)].slice(0, 30).join(",")
+      throw new Error(
+        `Eurostat ${DATASET} ${dimension} does not contain required code ${code}; available sample=${sample}`,
+      )
     }
   }
   if (!dimensions.has("geo") || !dimensions.has("time")) {
@@ -138,7 +142,6 @@ async function main() {
   const params = new URLSearchParams({
     format: "JSON",
     lang: "en",
-    freq: REQUIRED_CODES.freq,
     unit: REQUIRED_CODES.unit,
     sector: REQUIRED_CODES.sector,
     na_item: REQUIRED_CODES.na_item,
@@ -163,7 +166,7 @@ async function main() {
   }
 
   const report = {
-    schema_version: "geomacro-eurostat-sovereign-fiscal-coverage-1.0",
+    schema_version: "geomacro-eurostat-sovereign-fiscal-coverage-1.1",
     generated_at: new Date().toISOString(),
     as_of: AS_OF.toISOString(),
     source_id: "eurostat_government_finance",
@@ -172,6 +175,7 @@ async function main() {
     writes_performed: false,
     structure_proof: {
       metabase_url: METABASE_URL,
+      dataset_frequency: "quarterly_by_definition",
       required_codes: REQUIRED_CODES,
       required_codes_verified: true,
       dimensions_found: [...dimensions.keys()],
@@ -197,7 +201,7 @@ async function main() {
     activation: {
       coverage_proven: fresh.length > 0,
       operational_activation_allowed: false,
-      reason: "This audit proves live source structure and coverage only. Risk Gate activation still requires country mapping, rights manifest, deterministic harmonisation, tests, production ingest and census proof.",
+      reason: "This audit proves live source structure and coverage only. Risk Gate activation still requires ISO3 mapping, rights manifest, deterministic harmonisation, tests, production ingest and census proof.",
     },
   }
 
