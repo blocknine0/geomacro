@@ -8,7 +8,9 @@ const migration = read("supabase/migrations/926_agent_to_agent_network_v1.sql");
 const taskRoute = read("server/api/a2a/tasks.post.ts");
 const taskStatus = read("server/api/a2a/tasks/[taskId].get.ts");
 const identityRoute = read("server/api/a2a/identity.post.ts");
+const identityRevokeRoute = read("server/api/a2a/identity-revoke.post.ts");
 const service = read("src/lib/a2a-service.server.ts");
+const execution = read("src/lib/a2a-execution.server.ts");
 const signature = read("src/lib/a2a-signature.server.ts");
 const callback = read("src/lib/a2a-callback.server.ts");
 const outbound = read("src/lib/a2a-outbound.server.ts");
@@ -38,6 +40,7 @@ describe("A2A production safety contract", () => {
 
   it("keeps commercial entitlement and credit accounting authoritative", () => {
     expect(identityRoute).toContain("authenticateCommercialApiRequest");
+    expect(identityRevokeRoute).toContain("authenticateCommercialApiRequest");
     expect(service).toContain("resolveCommercialEntitlementForCapability");
     expect(service).toContain("ensureCommercialCreditAccount");
     expect(service).toContain("consumeCommercialCapability");
@@ -49,7 +52,10 @@ describe("A2A production safety contract", () => {
     expect(migration).toContain("payment_json jsonb");
     expect(taskRoute).toContain("persistedA2AX402Settlement");
     expect(taskRoute).toContain("persistA2AX402Settlement");
-    expect(taskRoute.indexOf("persistA2AX402Settlement")).toBeLessThan(taskRoute.indexOf("executeA2ATask"));
+    expect(taskRoute).toContain("executeRetryableA2ATask");
+    expect(taskRoute.indexOf("persistA2AX402Settlement")).toBeLessThan(taskRoute.lastIndexOf("executeRetryableA2ATask"));
+    expect(execution).toContain("task.retrying");
+    expect(execution).toContain("retryable");
     expect(taskRoute).toContain("circleX402PaymentRequiredResponse");
     expect(taskRoute).toContain("circleX402PaymentResponseHeader");
   });
@@ -69,6 +75,7 @@ describe("A2A production safety contract", () => {
     const manifest = JSON.parse(discovery) as Record<string, any>;
     expect(manifest.protocol.version).toBe("geomacro-a2a/1");
     expect(manifest.endpoints.tasks).toBe("https://geomacro.live/api/a2a/tasks");
+    expect(manifest.endpoints.identity_revoke).toBe("https://geomacro.live/api/a2a/identity-revoke");
     expect(manifest.agent.execution_authorized).toBe(false);
     expect(manifest.boundaries.execution_authorized).toBe(false);
     expect(service).toContain("A2A_RISK_GATE_EXECUTION_BOUNDARY_VIOLATION");
