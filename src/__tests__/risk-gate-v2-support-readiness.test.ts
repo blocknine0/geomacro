@@ -78,7 +78,7 @@ describe("Risk Gate v2 support readiness", () => {
     );
 
     const backlog = getRiskGateV2PromotionBacklog();
-    expect(backlog.length).toBe(RISK_GATE_V2_MODULES.length - 4);
+    expect(backlog.length).toBe(RISK_GATE_V2_MODULES.length - 5);
 
     for (const item of backlog) {
       expect(item.status).not.toBe("SUPPORTED");
@@ -89,12 +89,16 @@ describe("Risk Gate v2 support readiness", () => {
 
   it("marks only modules with real deterministic builders as supported", () => {
     expect(getRiskGateV2SupportedModules().sort()).toEqual([
+      "geopolitical_security",
       "macro_monetary",
       "political_governance",
       "societal_labor_health",
       "sovereign_fiscal",
     ]);
 
+    expect(
+      RISK_GATE_V2_SUPPORT_READINESS.geopolitical_security.coverage_ceiling,
+    ).toBe("LIMITED");
     expect(RISK_GATE_V2_SUPPORT_READINESS.macro_monetary.coverage_ceiling).toBe(
       "PARTIAL",
     );
