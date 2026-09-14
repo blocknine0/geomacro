@@ -1,0 +1,315 @@
+name: USGS MCS Production Repair
+
+on:
+  push:
+    branches:
+      - ops/usgs-mcs-production-repair
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      EXPECTED_SOURCE_FILE_SHA256: 582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5
+      EXPECTED_DETERMINISTIC_ROWS: '1162'
+      EXPECTED_LEGACY_ROWS: '909'
+
+    steps:
+      - name: Checkout canonical repair code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify authoritative database target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Prove pinned deterministic normalization before writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-usgs-mcs-live.mjs --dry-run | tee usgs-repair-dry-run.log
+          grep -q "source_file_sha256: '${EXPECTED_SOURCE_FILE_SHA256}'" usgs-repair-dry-run.log
+          grep -q "normalized_observations: ${EXPECTED_DETERMINISTIC_ROWS}" usgs-repair-dry-run.log
+          grep -q "unique_source_record_ids: ${EXPECTED_DETERMINISTIC_ROWS}" usgs-repair-dry-run.log
+          grep -q "unique_normalized_hashes: ${EXPECTED_DETERMINISTIC_ROWS}" usgs-repair-dry-run.log
+          grep -q 'writes_performed: false' usgs-repair-dry-run.log
+          grep -q 'PASS: USGS CURRENT CRITICAL-MINERAL INGESTION DRY RUN CLEAN' usgs-repair-dry-run.log
+
+      - name: Snapshot and verify exact legacy pre-state
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { createClient } from '@supabase/supabase-js';
+
+          const url = process.env.APP_SUPABASE_URL;
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const expectedHash = process.env.EXPECTED_SOURCE_FILE_SHA256;
+          const expectedLegacy = Number(process.env.EXPECTED_LEGACY_ROWS);
+          const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+
+          async function readAll() {
+            const rows = [];
+            for (let from = 0; ; from += 1000) {
+              const result = await db
+                .from('live_external_observations')
+                .select('*')
+                .eq('source_id', 'usgs_mcs')
+                .order('observation_id', { ascending: true })
+                .range(from, from + 999);
+              if (result.error) throw result.error;
+              rows.push(...(result.data ?? []));
+              if ((result.data ?? []).length < 1000) break;
+            }
+            return rows;
+          }
+
+          const rows = await readAll();
+          const deterministic = rows.filter((row) => row.provenance?.source_file_sha256 === expectedHash);
+          if (rows.length !== expectedLegacy) {
+            throw new Error(`Refusing repair: expected ${expectedLegacy} legacy USGS rows, found ${rows.length}`);
+          }
+          if (deterministic.length !== 0) {
+            throw new Error(`Refusing repair: deterministic rows already present before staged write (${deterministic.length})`);
+          }
+
+          fs.writeFileSync('usgs-before.json', JSON.stringify(rows, null, 2) + '\n');
+          fs.writeFileSync('usgs-before-summary.json', JSON.stringify({
+            total_rows: rows.length,
+            deterministic_rows: deterministic.length,
+            legacy_rows: rows.length - deterministic.length,
+            snapshot_complete: true,
+            writes_performed: false,
+          }, null, 2) + '\n');
+          console.log('PASS: exact legacy pre-state snapshotted');
+          NODE
+
+      - name: Stage complete deterministic replacement set
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-usgs-mcs-live.mjs | tee usgs-repair-stage.log
+          grep -q "normalized_observations: ${EXPECTED_DETERMINISTIC_ROWS}" usgs-repair-stage.log
+          grep -q 'PASS: USGS CURRENT CRITICAL-MINERAL INGESTION CLEAN' usgs-repair-stage.log
+
+      - name: Verify staged replacement before deleting legacy rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { createClient } from '@supabase/supabase-js';
+
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const expectedHash = process.env.EXPECTED_SOURCE_FILE_SHA256;
+          const expectedDeterministic = Number(process.env.EXPECTED_DETERMINISTIC_ROWS);
+          const expectedLegacy = Number(process.env.EXPECTED_LEGACY_ROWS);
+
+          async function readAll() {
+            const rows = [];
+            for (let from = 0; ; from += 1000) {
+              const result = await db
+                .from('live_external_observations')
+                .select('observation_id,source_record_id,normalized_hash,quality_status,commercial_eligibility_status,provenance')
+                .eq('source_id', 'usgs_mcs')
+                .order('observation_id', { ascending: true })
+                .range(from, from + 999);
+              if (result.error) throw result.error;
+              rows.push(...(result.data ?? []));
+              if ((result.data ?? []).length < 1000) break;
+            }
+            return rows;
+          }
+
+          const rows = await readAll();
+          const deterministic = rows.filter((row) =>
+            row.provenance?.source_file_sha256 === expectedHash &&
+            typeof row.provenance?.source_row_sha256 === 'string' &&
+            row.provenance.source_row_sha256.length === 64 &&
+            row.provenance?.release_item_id === '69837e43b66b01367d7ec7c7'
+          );
+          const legacy = rows.filter((row) => !deterministic.includes(row));
+          const sourceIds = new Set(deterministic.map((row) => row.source_record_id));
+          const normalized = new Set(deterministic.map((row) => row.normalized_hash));
+          const volatile = deterministic.filter((row) => typeof row.provenance?.retrieved_at === 'string' && row.provenance.retrieved_at).length;
+          const badStatus = deterministic.filter((row) =>
+            row.quality_status !== 'VERIFIED' || row.commercial_eligibility_status !== 'VERIFIED'
+          ).length;
+
+          if (deterministic.length !== expectedDeterministic) throw new Error(`Expected ${expectedDeterministic} deterministic rows, got ${deterministic.length}`);
+          if (legacy.length !== expectedLegacy) throw new Error(`Expected ${expectedLegacy} legacy rows after staging, got ${legacy.length}`);
+          if (sourceIds.size !== expectedDeterministic) throw new Error('Deterministic source_record_id set is not unique');
+          if (normalized.size !== expectedDeterministic) throw new Error('Deterministic normalized_hash set is not unique');
+          if (volatile !== 0) throw new Error(`Deterministic rows contain ${volatile} volatile retrieved_at values`);
+          if (badStatus !== 0) throw new Error(`Deterministic rows contain ${badStatus} non-VERIFIED statuses`);
+
+          fs.writeFileSync('usgs-staged-summary.json', JSON.stringify({
+            total_rows: rows.length,
+            deterministic_rows: deterministic.length,
+            legacy_rows: legacy.length,
+            unique_source_record_ids: sourceIds.size,
+            unique_normalized_hashes: normalized.size,
+            volatile_retrieved_at_rows: volatile,
+            non_verified_rows: badStatus,
+            replacement_verified_before_delete: true,
+          }, null, 2) + '\n');
+          console.log('PASS: complete deterministic replacement exists before legacy deletion');
+          NODE
+
+      - name: Delete only superseded legacy USGS rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const expectedHash = process.env.EXPECTED_SOURCE_FILE_SHA256;
+          const expectedLegacy = Number(process.env.EXPECTED_LEGACY_ROWS);
+
+          async function readAll() {
+            const rows = [];
+            for (let from = 0; ; from += 1000) {
+              const result = await db
+                .from('live_external_observations')
+                .select('observation_id,provenance')
+                .eq('source_id', 'usgs_mcs')
+                .order('observation_id', { ascending: true })
+                .range(from, from + 999);
+              if (result.error) throw result.error;
+              rows.push(...(result.data ?? []));
+              if ((result.data ?? []).length < 1000) break;
+            }
+            return rows;
+          }
+
+          const rows = await readAll();
+          const legacyIds = rows
+            .filter((row) => !(
+              row.provenance?.source_file_sha256 === expectedHash &&
+              typeof row.provenance?.source_row_sha256 === 'string' &&
+              row.provenance.source_row_sha256.length === 64 &&
+              row.provenance?.release_item_id === '69837e43b66b01367d7ec7c7'
+            ))
+            .map((row) => row.observation_id);
+
+          if (legacyIds.length !== expectedLegacy) {
+            throw new Error(`Refusing delete: expected exactly ${expectedLegacy} superseded legacy rows, found ${legacyIds.length}`);
+          }
+
+          let deleted = 0;
+          for (let i = 0; i < legacyIds.length; i += 50) {
+            const batch = legacyIds.slice(i, i + 50);
+            const result = await db
+              .from('live_external_observations')
+              .delete()
+              .in('observation_id', batch)
+              .select('observation_id');
+            if (result.error) throw result.error;
+            deleted += (result.data ?? []).length;
+          }
+
+          if (deleted !== expectedLegacy) {
+            throw new Error(`Legacy delete count mismatch: expected ${expectedLegacy}, deleted ${deleted}`);
+          }
+          console.log(JSON.stringify({ legacy_rows_deleted: deleted }));
+          console.log('PASS: only superseded legacy USGS rows deleted');
+          NODE
+
+      - name: Verify final production USGS integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { createClient } from '@supabase/supabase-js';
+
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const expectedHash = process.env.EXPECTED_SOURCE_FILE_SHA256;
+          const expected = Number(process.env.EXPECTED_DETERMINISTIC_ROWS);
+          const rows = [];
+          for (let from = 0; ; from += 1000) {
+            const result = await db
+              .from('live_external_observations')
+              .select('observation_id,source_record_id,normalized_hash,quality_status,commercial_eligibility_status,provenance')
+              .eq('source_id', 'usgs_mcs')
+              .order('observation_id', { ascending: true })
+              .range(from, from + 999);
+            if (result.error) throw result.error;
+            rows.push(...(result.data ?? []));
+            if ((result.data ?? []).length < 1000) break;
+          }
+
+          const sourceIds = new Set(rows.map((row) => row.source_record_id));
+          const normalized = new Set(rows.map((row) => row.normalized_hash));
+          const deterministic = rows.filter((row) =>
+            row.provenance?.source_file_sha256 === expectedHash &&
+            typeof row.provenance?.source_row_sha256 === 'string' &&
+            row.provenance.source_row_sha256.length === 64 &&
+            row.provenance?.release_item_id === '69837e43b66b01367d7ec7c7'
+          );
+          const volatile = rows.filter((row) => typeof row.provenance?.retrieved_at === 'string' && row.provenance.retrieved_at).length;
+          const withSection = rows.filter((row) => typeof row.provenance?.section === 'string' && row.provenance.section).length;
+          const badStatus = rows.filter((row) =>
+            row.quality_status !== 'VERIFIED' || row.commercial_eligibility_status !== 'VERIFIED'
+          ).length;
+
+          const summary = {
+            total_rows: rows.length,
+            deterministic_rows: deterministic.length,
+            distinct_source_record_ids: sourceIds.size,
+            distinct_normalized_hashes: normalized.size,
+            volatile_retrieved_at_rows: volatile,
+            rows_with_section_provenance: withSection,
+            non_verified_rows: badStatus,
+            source_file_sha256: expectedHash,
+            repair_complete: true,
+          };
+
+          if (rows.length !== expected) throw new Error(`Final row count ${rows.length} != ${expected}`);
+          if (deterministic.length !== expected) throw new Error(`Final deterministic row count ${deterministic.length} != ${expected}`);
+          if (sourceIds.size !== expected) throw new Error('Final source_record_id set contains duplicates');
+          if (normalized.size !== expected) throw new Error('Final normalized_hash set contains duplicates');
+          if (volatile !== 0) throw new Error(`Final dataset contains ${volatile} volatile retrieved_at rows`);
+          if (badStatus !== 0) throw new Error(`Final dataset contains ${badStatus} non-VERIFIED rows`);
+
+          fs.writeFileSync('usgs-after-summary.json', JSON.stringify(summary, null, 2) + '\n');
+          console.log(JSON.stringify(summary, null, 2));
+          console.log('PASS: USGS MCS PRODUCTION REPAIR VERIFIED END TO END');
+          NODE
+
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: usgs-mcs-production-repair-evidence
+          path: |
+            usgs-repair-dry-run.log
+            usgs-before.json
+            usgs-before-summary.json
+            usgs-repair-stage.log
+            usgs-staged-summary.json
+            usgs-after-summary.json
+          if-no-files-found: warn
+          retention-days: 30
