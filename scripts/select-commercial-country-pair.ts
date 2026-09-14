@@ -5,6 +5,7 @@ import { dryRunCountryRiskObject } from "../src/lib/country-risk-publisher.serve
 
 const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const LOOKBACK_HOURS = Number(process.env.DAN_PAIR_LOOKBACK_HOURS ?? 72);
+const READ_ATTEMPTS = 4;
 
 function projectRef(url: string) {
   try {
@@ -12,6 +13,45 @@ function projectRef(url: string) {
   } catch {
     return "";
   }
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "unknown_object_error";
+    }
+  }
+  return String(error);
+}
+
+async function withReadRetry<T>(
+  label: string,
+  operation: () => Promise<T>,
+  attempts = READ_ATTEMPTS,
+): Promise<T> {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+
+      const delayMs = attempt * 2_000;
+      console.error(
+        `${label} attempt ${attempt}/${attempts} failed: ${errorMessage(error)}; retrying in ${delayMs}ms`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error(
+    `${label} failed after ${attempts} attempts: ${errorMessage(lastError)}`,
+  );
 }
 
 function countriesForEvent(row: Record<string, unknown>) {
@@ -45,18 +85,22 @@ async function main() {
   });
 
   const cutoff = new Date(Date.now() - LOOKBACK_HOURS * 3_600_000).toISOString();
-  const result = await db
-    .from("live_structured_events")
-    .select("primary_country,countries,commercial_eligibility_status,last_seen_at")
-    .gte("last_seen_at", cutoff);
-  if (result.error) throw result.error;
+  const rows = await withReadRetry("load recent structured events", async () => {
+    const result = await db
+      .from("live_structured_events")
+      .select("primary_country,countries,commercial_eligibility_status,last_seen_at")
+      .gte("last_seen_at", cutoff);
+
+    if (result.error) throw result.error;
+    return (result.data ?? []) as Record<string, unknown>[];
+  });
 
   const coverage = new Map<
     string,
     { usable: number; blocking: number; verified: number; derived: number }
   >();
 
-  for (const row of (result.data ?? []) as Record<string, unknown>[]) {
+  for (const row of rows) {
     const status = String(row.commercial_eligibility_status ?? "UNVERIFIED");
     for (const iso3 of countriesForEvent(row)) {
       const current = coverage.get(iso3) ?? {
@@ -94,7 +138,11 @@ async function main() {
 
   for (const iso3 of eligibleIso3) {
     try {
-      const dryRun = await dryRunCountryRiskObject({ country_iso3: iso3 });
+      const dryRun = await withReadRetry(
+        `dry-run country ${iso3}`,
+        () => dryRunCountryRiskObject({ country_iso3: iso3 }),
+        3,
+      );
       const object = dryRun.object;
       if (
         object.commercial_eligibility.status !== "VERIFIED" ||
@@ -111,8 +159,10 @@ async function main() {
         usable_recent_events: coverage.get(iso3)?.usable ?? 0,
         object,
       });
-    } catch {
-      // A country that cannot produce a clean current object is not a candidate.
+    } catch (error) {
+      console.error(
+        `country ${iso3} excluded after retry-safe dry run: ${errorMessage(error)}`,
+      );
     }
   }
 
@@ -161,7 +211,7 @@ async function main() {
   const proofMode = selectedPair ? "corridor_pair" : "single_country";
 
   const output = {
-    schema_version: "geomacro-commercial-country-selection-1.1",
+    schema_version: "geomacro-commercial-country-selection-1.2",
     generated_at: new Date().toISOString(),
     lookback_hours: LOOKBACK_HOURS,
     proof_mode: proofMode,
@@ -173,6 +223,7 @@ async function main() {
       country_verification: "VERIFIED",
       no_recent_blocking_event: true,
       positive_country_evidence_count: true,
+      retry_safe_read_selection: true,
       corridor_commercial_eligibility:
         selectedPair?.corridor.commercial_eligibility.status ?? null,
       corridor_verification: selectedPair?.corridor.verification.status ?? null,
@@ -206,6 +257,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(errorMessage(error));
   process.exit(1);
 });
