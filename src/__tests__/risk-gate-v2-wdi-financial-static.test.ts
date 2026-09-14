@@ -7,7 +7,7 @@ const ingest = readFileSync(
 );
 const migration = readFileSync(
   new URL(
-    "../../supabase/migrations/917_world_bank_latest_financial_view.sql",
+    "../../supabase/migrations/918_world_bank_latest_financial_view.sql",
     import.meta.url,
   ),
   "utf8",
