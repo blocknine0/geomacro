@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import type {
   CountryMacroRiskComponent,
   MacroDimensionKey,
@@ -57,12 +55,6 @@ const DEFINITIONS: Record<
 
 function round6(value: number) {
   return Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
-}
-
-function sha256(value: unknown) {
-  return createHash("sha256")
-    .update(JSON.stringify(value))
-    .digest("hex");
 }
 
 function parseTimestamp(value: string, label: string) {
@@ -218,11 +210,17 @@ export function buildRiskGateV2MacroModuleState(
     delta_contribution: null,
   }));
 
-  const moduleStateId = `rgv2:${countryIso3}:${input.module}:${sha256({
-    method: RISK_GATE_V2_MACRO_MODULE_METHOD_VERSION,
-    component_hash: input.component.calculation_hash,
-    generated_at: generatedAt.toISOString(),
-  }).slice(0, 24)}`;
+  const componentIdentity = input.component.calculation_hash
+    .trim()
+    .toLowerCase()
+    .slice(0, 24);
+  const moduleStateId = [
+    "rgv2",
+    countryIso3,
+    input.module,
+    componentIdentity || "unhashed-component",
+    generatedAt.getTime().toString(36),
+  ].join(":");
 
   return {
     module_state_id: moduleStateId,
