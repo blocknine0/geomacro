@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -49,11 +49,25 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Record Dependabot live-source boundary
+        if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+        run: echo "Dependabot pull requests do not receive repository secrets; authenticated UCDP live validation is intentionally skipped for this dependency-only run." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate required UCDP configuration
+        if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::APP_SUPABASE_URL is required for UCDP validation"; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is required for UCDP validation"; exit 1; }
+          test -n "$UCDP_API_TOKEN" || { echo "::error::UCDP_API_TOKEN is required for UCDP validation"; exit 1; }
+
       - name: Validate authenticated UCDP Candidate API access
+        if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
         run: bun scripts/fetch-ucdp-ged-dry-run.mjs
 
       - name: Validate full Candidate release without database writes
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         run: bun scripts/ingest-ucdp-candidate-live.mjs
 
       - name: Sync governed current Candidate evidence
