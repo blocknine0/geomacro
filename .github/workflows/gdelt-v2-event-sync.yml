@@ -1,0 +1,201 @@
+name: GDELT V2 Event Governed Sync
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ingest-gdelt-v2-events-live.mjs"
+      - "scripts/lib-live-source-utils.mjs"
+      - "scripts/commercial-source-policy.mjs"
+      - "supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql"
+      - ".github/workflows/gdelt-v2-event-sync.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/ingest-gdelt-v2-events-live.mjs"
+      - "scripts/lib-live-source-utils.mjs"
+      - "scripts/commercial-source-policy.mjs"
+      - "supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql"
+      - ".github/workflows/gdelt-v2-event-sync.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "12,27,42,57 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gdelt-v2-event-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify unzip is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v unzip >/dev/null
+          unzip -v | head -n 1
+
+      - name: Run live GDELT Event dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ingest-gdelt-v2-events-live.mjs 2>&1 | tee gdelt-v2-event-dry-run.log
+          grep -q 'PASS: GDELT V2 EVENT DRY RUN CLEAN; DATABASE UNCHANGED' gdelt-v2-event-dry-run.log
+          grep -q '"risk_gate_signal_activation": false' gdelt-v2-event-dry-run.log
+          grep -q 'NEWS_DERIVED_FRESHNESS_EVIDENCE_OVERLAY_NOT_AUTHORITATIVE_CONFLICT_REPLACEMENT' gdelt-v2-event-dry-run.log
+          rows="$(awk '/"source_rows":/{gsub(/[^0-9]/,"",$0); print $0; exit}' gdelt-v2-event-dry-run.log)"
+          fips="$(awk '/"fips_lookup_entries":/{gsub(/[^0-9]/,"",$0); print $0; exit}' gdelt-v2-event-dry-run.log)"
+          test -n "$rows" && test "$rows" -gt 0
+          test -n "$fips" && test "$fips" -ge 200
+
+      - name: Guard source, mapping and scoring boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'enabled_for_ingestion = true' supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql
+          grep -q 'enabled_for_commercial_signals = false' supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql
+          grep -q 'EXPECTED_COLUMN_COUNT = 61' scripts/ingest-gdelt-v2-events-live.mjs
+          grep -q 'OFFICIAL_GDELT_FIPS_LOOKUP_TO_CANONICAL_COUNTRY_REGISTRY' scripts/ingest-gdelt-v2-events-live.mjs
+          grep -q 'CONFLICT_ROOT_CODES' scripts/ingest-gdelt-v2-events-live.mjs
+          grep -q 'commercial signals must remain disabled' scripts/ingest-gdelt-v2-events-live.mjs
+          echo 'PASS: GDELT is governed ingestion-only and cannot bypass official FIPS country reconciliation.'
+
+      - name: Upload dry-run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gdelt-v2-event-dry-run
+          path: gdelt-v2-event-dry-run.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  sync:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
+          test -n "${SUPABASE_URL:-}" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"; exit 1; }
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const api = new URL(process.env.SUPABASE_URL);
+          const direct = db.hostname === `db.${ref}.supabase.co` && db.username === 'postgres';
+          const pooler = db.hostname.endsWith('.pooler.supabase.com') && db.username === `postgres.${ref}`;
+          if (!['postgres:', 'postgresql:'].includes(db.protocol) || (!direct && !pooler)) {
+            throw new Error('SUPABASE_DB_URL is not the authoritative production database');
+          }
+          if (!db.password || db.pathname !== '/postgres') throw new Error('Invalid production database URL');
+          if (api.hostname !== `${ref}.supabase.co`) throw new Error('SUPABASE_URL is not the authoritative production API');
+          console.log('PASS: authoritative production database and API identities confirmed.');
+          NODE
+
+      - name: Apply only migration 923 on first canonical push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql
+          echo 'PASS: migration 923 applied without broad db push.'
+
+      - name: Verify source is ingestion-enabled but scoring-disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='gdelt_v2_events'")"
+          test "$state" = 'COMMERCIAL_OK|true|false' || { echo "::error::Unexpected GDELT source state: $state"; exit 1; }
+          echo 'PASS: GDELT source state permits governed ingestion only.'
+
+      - name: Dry-run latest GDELT Event batch before write
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v unzip >/dev/null
+          bun scripts/ingest-gdelt-v2-events-live.mjs 2>&1 | tee gdelt-v2-event-dry-run.log
+          grep -q 'PASS: GDELT V2 EVENT DRY RUN CLEAN; DATABASE UNCHANGED' gdelt-v2-event-dry-run.log
+
+      - name: Persist normalized observations and release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/ingest-gdelt-v2-events-live.mjs --write 2>&1 | tee gdelt-v2-event-write.log
+          grep -q 'PASS: GDELT V2 EVENT GOVERNED OBSERVATIONS + RELEASE MANIFEST WRITTEN' gdelt-v2-event-write.log
+
+      - name: Verify latest production release remains scoring-disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select verified_rows || '|' || unmapped_rows || '|' || rejected_rows || '|' || write_completed::text from public.live_source_release_manifests where source_id='gdelt_v2_events' order by retrieved_at desc limit 1")"
+          test -n "$manifest" || { echo "::error::No GDELT release manifest found"; exit 1; }
+          verified="${manifest%%|*}"
+          rest="${manifest#*|}"
+          unmapped="${rest%%|*}"
+          rest="${rest#*|}"
+          rejected="${rest%%|*}"
+          written="${rest##*|}"
+          test "$written" = 'true' || { echo "::error::Latest GDELT manifest is not write-complete"; exit 1; }
+          signal_state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select enabled_for_commercial_signals::text from public.live_external_sources where source_id='gdelt_v2_events'")"
+          test "$signal_state" = 'false' || { echo "::error::GDELT commercial signals unexpectedly enabled"; exit 1; }
+          printf '{"manifest_verified_rows":%s,"manifest_unmapped_rows":%s,"manifest_rejected_rows":%s,"write_completed":true,"risk_gate_signal_activation":false}\n' "$verified" "$unmapped" "$rejected" | tee gdelt-v2-event-production-evidence.json
+          echo 'PASS: governed GDELT release verified with commercial scoring disabled.'
+
+      - name: Upload governed production evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gdelt-v2-event-governed-sync
+          path: |
+            gdelt-v2-event-dry-run.log
+            gdelt-v2-event-write.log
+            gdelt-v2-event-production-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
