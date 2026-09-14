@@ -2,7 +2,6 @@ import fs from "node:fs"
 
 const BASE =
   "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_PSD_D1D4@DF_PSD_D1D4,1.0"
-const START_PERIOD = process.env.OECD_FISCAL_START_PERIOD ?? "2024-Q1"
 const AS_OF = new Date(process.env.OECD_FISCAL_AS_OF ?? Date.now())
 const MAX_AGE_DAYS = Number(process.env.OECD_FISCAL_MAX_AGE_DAYS ?? 800)
 const OUTPUT = process.env.OECD_FISCAL_COVERAGE_OUTPUT ?? "oecd-sovereign-fiscal-coverage.json"
@@ -24,25 +23,74 @@ const CONCEPTS = [
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function fetchWithRetry(url) {
+async function request(url, headers = {}) {
   let lastError
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await fetch(url, {
         headers: {
-          "user-agent": "Geomacro-OECD-Fiscal-Coverage-Audit/1.0",
+          "user-agent": "Geomacro-OECD-Fiscal-Coverage-Audit/1.1",
+          ...headers,
         },
       })
       if (response.ok) return response
-      lastError = new Error(`OECD returned HTTP ${response.status}`)
+      lastError = new Error(`HTTP ${response.status}`)
       if (response.status < 500 && response.status !== 429) throw lastError
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      if (attempt === 4) throw lastError
+      if (attempt === 3) throw lastError
     }
-    await sleep(750 * 2 ** (attempt - 1))
+    await sleep(500 * 2 ** (attempt - 1))
   }
   throw lastError ?? new Error("OECD request failed")
+}
+
+async function fetchCsv(concept) {
+  const baseParams = new URLSearchParams({
+    lastNObservations: "1",
+    dimensionAtObservation: "AllDimensions",
+  })
+  const path = `${BASE}/Q..${concept.measure}.PT_B1GQ.S13`
+
+  const variants = [
+    {
+      label: "accept-sdmx-csv",
+      url: `${path}?${baseParams.toString()}`,
+      headers: {
+        accept: "application/vnd.sdmx.data+csv;version=2.0.0,text/csv;q=0.9,*/*;q=0.1",
+      },
+    },
+    {
+      label: "csvfilewithlabels",
+      url: `${path}?${baseParams.toString()}&format=csvfilewithlabels`,
+      headers: {},
+    },
+    {
+      label: "csvfile",
+      url: `${path}?${baseParams.toString()}&format=csvfile`,
+      headers: {},
+    },
+  ]
+
+  const failures = []
+  for (const variant of variants) {
+    try {
+      const response = await request(variant.url, variant.headers)
+      const text = await response.text()
+      const trimmed = text.trim()
+      if (!trimmed) throw new Error("empty body")
+      if (trimmed.startsWith("{") || trimmed.startsWith("<")) {
+        throw new Error("response was not CSV")
+      }
+      return { text, url: variant.url, transport: variant.label }
+    } catch (error) {
+      failures.push(
+        `${variant.label}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  throw new Error(`OECD ${concept.id} latest-only query failed: ${failures.join(" | ")}`)
 }
 
 function parseCsv(text) {
@@ -67,9 +115,8 @@ function parseCsv(text) {
       continue
     }
 
-    if (ch === '"') {
-      quoted = true
-    } else if (ch === ",") {
+    if (ch === '"') quoted = true
+    else if (ch === ",") {
       row.push(field)
       field = ""
     } else if (ch === "\n") {
@@ -77,9 +124,7 @@ function parseCsv(text) {
       rows.push(row)
       row = []
       field = ""
-    } else {
-      field += ch
-    }
+    } else field += ch
   }
 
   if (field.length || row.length) {
@@ -122,19 +167,7 @@ function daysBetween(a, b) {
 }
 
 async function auditConcept(concept) {
-  const params = new URLSearchParams({
-    startPeriod: START_PERIOD,
-    dimensionAtObservation: "AllDimensions",
-    format: "csvfile",
-  })
-  const url = `${BASE}/Q..${concept.measure}.PT_B1GQ.S13?${params.toString()}`
-  const response = await fetchWithRetry(url)
-  const text = await response.text()
-  if (!text.trim()) throw new Error(`OECD ${concept.id} returned an empty body`)
-  if (text.trim().startsWith("{") || text.trim().startsWith("<")) {
-    throw new Error(`OECD ${concept.id} did not return SDMX CSV`)
-  }
-
+  const { text, url, transport } = await fetchCsv(concept)
   const csv = parseCsv(text)
   if (csv.length < 2) throw new Error(`OECD ${concept.id} CSV contained no observations`)
 
@@ -179,6 +212,8 @@ async function auditConcept(concept) {
     institutional_sector: "S13 general government",
     unit: "PT_B1GQ percentage of GDP",
     frequency: "quarterly",
+    query_mode: "lastNObservations=1 per series",
+    transport,
     source_url: url,
     raw_observation_rows: csv.length - 1,
     latest_iso3_area_count: latest.length,
@@ -203,13 +238,13 @@ async function main() {
   for (const concept of CONCEPTS) concepts.push(await auditConcept(concept))
 
   const report = {
-    schema_version: "geomacro-oecd-sovereign-fiscal-coverage-1.0",
+    schema_version: "geomacro-oecd-sovereign-fiscal-coverage-1.1",
     generated_at: new Date().toISOString(),
     as_of: AS_OF.toISOString(),
-    start_period: START_PERIOD,
     source_id: "oecd_public_finance",
     dataset: "OECD Government debt by instrument coverage",
     dataflow: "OECD.SDD.NAD,DSD_PSD_D1D4@DF_PSD_D1D4,1.0",
+    dataset_last_updated_evidence: "2026-06-15T06:33:28Z",
     writes_performed: false,
     commercial_boundary: {
       status: "RIGHTS_APPROVED_CANDIDATE_NOT_YET_RISK_GATE_ACTIVE",
