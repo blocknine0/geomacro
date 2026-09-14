@@ -1,4 +1,3 @@
-import * as net from "node:net";
 import { resolve4, resolve6 } from "node:dns/promises";
 
 const MAX_URL_LENGTH = 2048;
@@ -40,6 +39,18 @@ function jsonMap(value: string | undefined): Record<string, string> {
   }
 }
 
+function ipVersion(value: string) {
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) {
+    const parts = value.split(".").map(Number);
+    return parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255) ? 4 : 0;
+  }
+  // Hostnames cannot contain a colon. URL.hostname returns IPv6 literals in a
+  // colon-containing form, so this safely distinguishes direct IPv6 targets
+  // without relying on runtime-specific node:net module interop.
+  if (value.includes(":")) return 6;
+  return 0;
+}
+
 function isBlockedIpv4(value: string) {
   const parts = value.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
@@ -58,7 +69,7 @@ function isBlockedIpv4(value: string) {
 }
 
 function isBlockedIpv6(value: string) {
-  const normalized = value.toLowerCase();
+  const normalized = value.toLowerCase().replace(/^\[|\]$/g, "");
   return (
     normalized === "::" ||
     normalized === "::1" ||
@@ -69,17 +80,15 @@ function isBlockedIpv6(value: string) {
     normalized.startsWith("fea") ||
     normalized.startsWith("feb") ||
     normalized.startsWith("ff") ||
-    normalized.startsWith("::ffff:127.") ||
-    normalized.startsWith("::ffff:10.") ||
-    normalized.startsWith("::ffff:192.168.") ||
-    normalized.startsWith("::ffff:169.254.")
+    normalized.startsWith("::ffff:")
   );
 }
 
 export function isBlockedA2AAddress(value: string) {
-  const version = net.isIP(value);
-  if (version === 4) return isBlockedIpv4(value);
-  if (version === 6) return isBlockedIpv6(value);
+  const normalized = value.replace(/^\[|\]$/g, "");
+  const version = ipVersion(normalized);
+  if (version === 4) return isBlockedIpv4(normalized);
+  if (version === 6) return isBlockedIpv6(normalized);
   return true;
 }
 
@@ -96,21 +105,24 @@ export function validateA2AEndpointUrl(
   if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
     throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
   }
-  if (net.isIP(hostname) && isBlockedA2AAddress(hostname)) throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
+  if (ipVersion(hostname.replace(/^\[|\]$/g, "")) && isBlockedA2AAddress(hostname)) {
+    throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
+  }
   if (!allowlist.has(url.origin)) throw new Error("A2A_ORIGIN_NOT_ALLOWLISTED");
   return url;
 }
 
 export async function assertA2ADnsPublic(url: URL) {
-  if (net.isIP(url.hostname)) {
-    if (isBlockedA2AAddress(url.hostname)) throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (ipVersion(hostname)) {
+    if (isBlockedA2AAddress(hostname)) throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
     return;
   }
 
   const addresses = new Set<string>();
   const [v4, v6] = await Promise.all([
-    resolve4(url.hostname).catch(() => [] as string[]),
-    resolve6(url.hostname).catch(() => [] as string[]),
+    resolve4(hostname).catch(() => [] as string[]),
+    resolve6(hostname).catch(() => [] as string[]),
   ]);
   for (const address of [...v4, ...v6]) addresses.add(address);
   if (!addresses.size) throw new Error("A2A_DNS_UNRESOLVED");
