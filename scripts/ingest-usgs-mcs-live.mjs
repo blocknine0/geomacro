@@ -16,11 +16,13 @@ const SCIENCEBASE_ITEM_ID = "69837e43b66b01367d7ec7c7"
 const SCIENCEBASE_ITEM_URL =
   `https://www.sciencebase.gov/catalog/item/${SCIENCEBASE_ITEM_ID}`
 const SCIENCEBASE_METADATA_URL = `${SCIENCEBASE_ITEM_URL}?format=json`
+const WRITE = !process.argv.includes("--dry-run")
 
 const db = createDb()
 const registry = await loadCountryRegistry(db)
 
 console.log("===== USGS MCS CURRENT CRITICAL-MINERAL INGESTION =====")
+console.log({ mode: WRITE ? "WRITE" : "DRY_RUN" })
 
 const metadataResponse = await fetch(SCIENCEBASE_METADATA_URL)
 if (!metadataResponse.ok) {
@@ -214,6 +216,11 @@ if (observations.length === 0) {
   )
 }
 
-const attempted = await upsertObservations(db, observations)
-console.log({ observations_attempted: attempted })
-console.log("PASS: USGS CURRENT CRITICAL-MINERAL INGESTION CLEAN")
+if (WRITE) {
+  const attempted = await upsertObservations(db, observations)
+  console.log({ observations_attempted: attempted })
+  console.log("PASS: USGS CURRENT CRITICAL-MINERAL INGESTION CLEAN")
+} else {
+  console.log({ observations_attempted: 0, writes_performed: false })
+  console.log("PASS: USGS CURRENT CRITICAL-MINERAL INGESTION DRY RUN CLEAN")
+}
