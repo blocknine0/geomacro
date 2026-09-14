@@ -1,0 +1,143 @@
+name: Apply Multi-Source Registry Production
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/apply-multi-source-registry-production.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-multi-source-registry-production.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: multi-source-registry-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate exact migration boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/apply-multi-source-registry-production.yml"
+          grep -q '920_multi_source_commercial_registry.sql' "$file"
+          grep -q 'EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx' "$file"
+          grep -q "oecd_public_finance" "$file"
+          grep -q "eurostat_government_finance" "$file"
+          grep -q "gdelt_v2_events" "$file"
+          grep -q "usgs_earthquake_hazards" "$file"
+          grep -q "nasa_firms_modis_nrt" "$file"
+          forbidden="supabase db"' push'
+          if grep -Fq "$forbidden" "$file"; then
+            echo "::error::Registry production apply must never apply unrelated pending migrations."
+            exit 1
+          fi
+          echo "PASS: production apply is scoped to migration 920 only."
+
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const directHost = `db.${ref}.supabase.co`;
+          const poolerMatch = db.hostname.endsWith('.pooler.supabase.com') && db.username === `postgres.${ref}`;
+          const directMatch = db.hostname === directHost && db.username === 'postgres';
+          if (!['postgres:', 'postgresql:'].includes(db.protocol) || (!directMatch && !poolerMatch)) {
+            throw new Error('SUPABASE_DB_URL is not the authoritative production database');
+          }
+          if (!db.password || db.pathname !== '/postgres') throw new Error('Invalid production database URL');
+          console.log('PASS: authoritative production database identity confirmed.');
+          NODE
+
+      - name: Apply only migration 920
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration="supabase/migrations/920_multi_source_commercial_registry.sql"
+          test -f "$migration"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          echo "PASS: migration 920 applied to authoritative production database."
+
+      - name: Verify fail-closed multi-source registry state
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -AtF '|' <<'SQL' | tee multi-source-registry-production.txt
+          select source_id,
+                 commercial_usage_status,
+                 enabled_for_ingestion,
+                 enabled_for_commercial_signals
+          from public.live_external_sources
+          where source_id in (
+            'oecd_public_finance',
+            'eurostat_government_finance',
+            'adb_ado_macro_2026',
+            'eia_international_energy',
+            'usgs_earthquake_hazards',
+            'nasa_firms_modis_nrt',
+            'gdelt_v2_events',
+            'faostat_global',
+            'ilostat_global',
+            'gdacs_global_disasters',
+            'who_gho',
+            'bis_statistics',
+            'vdem_v16'
+          )
+          order by source_id;
+          SQL
+
+          count="$(wc -l < multi-source-registry-production.txt | tr -d ' ')"
+          test "$count" = "13" || { echo "::error::Expected 13 governed candidate rows, found $count"; exit 1; }
+
+          bad_active="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where source_id in ('oecd_public_finance','eurostat_government_finance','adb_ado_macro_2026','eia_international_energy','usgs_earthquake_hazards','nasa_firms_modis_nrt','gdelt_v2_events','faostat_global','ilostat_global','gdacs_global_disasters','who_gho','bis_statistics','vdem_v16') and (enabled_for_ingestion or enabled_for_commercial_signals)")"
+          test "$bad_active" = "0" || { echo "::error::Candidate source activated before adapter/methodology proof"; exit 1; }
+
+          permission_count="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where source_id in ('un_comtrade','imf_data') and commercial_usage_status = 'PERMISSION_REQUIRED' and not enabled_for_ingestion and not enabled_for_commercial_signals")"
+          test "$permission_count" = "2" || { echo "::error::UN Comtrade/IMF fail-closed corrections are not present"; exit 1; }
+
+          review_count="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where source_id in ('iea_critical_minerals','jrc_rmis_supply_chain') and commercial_usage_status = 'REVIEW_REQUIRED' and not enabled_for_ingestion and not enabled_for_commercial_signals")"
+          test "$review_count" = "2" || { echo "::error::Legacy IEA/JRC entries are not fail-closed"; exit 1; }
+
+          echo "PASS: production registry contains all candidates and none are prematurely active."
+
+      - name: Upload production registry evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: multi-source-registry-production
+          path: multi-source-registry-production.txt
+          if-no-files-found: error
+          retention-days: 30
