@@ -124,14 +124,18 @@ async function main() {
       a.iso3.localeCompare(b.iso3),
   );
 
-  let selected: null | {
+  if (candidates.length === 0) {
+    throw new Error("No current commercially verified country candidate is available");
+  }
+
+  let selectedPair: null | {
     origin: (typeof candidates)[number];
     destination: (typeof candidates)[number];
     corridor: Awaited<ReturnType<typeof buildCorridorRiskObject>>;
   } = null;
 
-  for (let i = 0; i < candidates.length && !selected; i++) {
-    for (let j = 0; j < candidates.length && !selected; j++) {
+  for (let i = 0; i < candidates.length && !selectedPair; i++) {
+    for (let j = 0; j < candidates.length && !selectedPair; j++) {
       if (i === j) continue;
       const origin = candidates[i];
       const destination = candidates[j];
@@ -147,45 +151,53 @@ async function main() {
         corridor.commercial_eligibility.status === "VERIFIED" &&
         corridor.verification.status === "VERIFIED"
       ) {
-        selected = { origin, destination, corridor };
+        selectedPair = { origin, destination, corridor };
       }
     }
   }
 
-  if (!selected) {
-    throw new Error(
-      `No current commercially verified country pair found from ${candidates.length} clean country candidates`,
-    );
-  }
+  const primary = selectedPair?.origin ?? candidates[0];
+  const secondary = selectedPair?.destination ?? null;
+  const proofMode = selectedPair ? "corridor_pair" : "single_country";
 
   const output = {
-    schema_version: "geomacro-commercial-country-pair-selection-1.0",
+    schema_version: "geomacro-commercial-country-selection-1.1",
     generated_at: new Date().toISOString(),
     lookback_hours: LOOKBACK_HOURS,
+    proof_mode: proofMode,
     candidate_count: candidates.length,
-    origin_country_iso3: selected.origin.iso3,
-    destination_country_iso3: selected.destination.iso3,
+    origin_country_iso3: primary.iso3,
+    destination_country_iso3: secondary?.iso3 ?? null,
     selection_basis: {
       country_commercial_eligibility: "VERIFIED",
       country_verification: "VERIFIED",
       no_recent_blocking_event: true,
       positive_country_evidence_count: true,
-      corridor_commercial_eligibility: selected.corridor.commercial_eligibility.status,
-      corridor_verification: selected.corridor.verification.status,
+      corridor_commercial_eligibility:
+        selectedPair?.corridor.commercial_eligibility.status ?? null,
+      corridor_verification: selectedPair?.corridor.verification.status ?? null,
     },
     origin: {
-      confidence: selected.origin.confidence,
-      score: selected.origin.score,
-      events_used: selected.origin.events_used,
+      confidence: primary.confidence,
+      score: primary.score,
+      events_used: primary.events_used,
     },
-    destination: {
-      confidence: selected.destination.confidence,
-      score: selected.destination.score,
-      events_used: selected.destination.events_used,
-    },
+    destination: secondary
+      ? {
+          confidence: secondary.confidence,
+          score: secondary.score,
+          events_used: secondary.events_used,
+        }
+      : null,
+    fallback_reason:
+      selectedPair === null
+        ? `Only ${candidates.length} current clean country candidate(s) were available, so the proof must remain single-country rather than inventing or weakening a corridor.`
+        : null,
     claim_boundary: {
       selection_is_runtime_evidence_not_permanent_country_whitelist: true,
       source_rights_are_not_relaxed: true,
+      single_country_fallback_is_allowed_when_no_verified_pair_exists: true,
+      corridor_claim_requires_two_clean_endpoints: true,
       execution_authorized: false,
     },
   };
