@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "scripts/audit-adb-key-indicators-fiscal-discovery.mjs"
+      - "scripts/audit-adb-kidb-sdmx-fiscal-discovery.mjs"
       - ".github/workflows/adb-key-indicators-fiscal-discovery.yml"
       - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
   workflow_dispatch:
@@ -27,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node scripts/audit-adb-key-indicators-fiscal-discovery.mjs 2>&1 | tee adb-key-indicators-fiscal-discovery.log
+          node scripts/audit-adb-kidb-sdmx-fiscal-discovery.mjs 2>&1 | tee adb-key-indicators-fiscal-discovery.log
 
       - name: Enforce discovery and activation boundaries
         shell: bash
@@ -46,6 +47,7 @@ jobs:
           jq -e '.owning_flow != null and .target_indicator.code != null' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.sample_query.observed_economy_count > 0' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.api_contract.documented_rate_limit == "20 queries/minute"' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.api_contract.enforced_inter_request_delay_ms >= 3000' adb-key-indicators-fiscal-discovery.json >/dev/null
           grep -q 'PASS: ADB KIDB SDMX FISCAL DISCOVERY COMPLETE - NO WRITES, NO SCORING' adb-key-indicators-fiscal-discovery.log
           echo "PASS: ADB KIDB SDMX source is discoverable while production scoring remains fail-closed"
 
