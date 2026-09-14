@@ -10,7 +10,7 @@ on:
       - "src/lib/risk-gate-v2-geopolitical-security-module-state.server.ts"
       - "src/__tests__/risk-gate-v2-request-readiness.test.ts"
       - "src/__tests__/risk-gate-v2-global-country-readiness-static.test.ts"
-      - "supabase/migrations/918_risk_gate_v2_global_source_manifests.sql"
+      - "supabase/migrations/919_risk_gate_v2_global_source_manifests.sql"
       - ".github/workflows/global-risk-gate-country-readiness.yml"
   workflow_dispatch:
   schedule:
