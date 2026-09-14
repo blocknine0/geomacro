@@ -147,7 +147,20 @@
     return current && current !== "Tester" ? current : "";
   }
 
+  function ensureNativeSelectContrast() {
+    if ($("geomacroNativeSelectContrast")) return;
+    const style = document.createElement("style");
+    style.id = "geomacroNativeSelectContrast";
+    style.textContent = [
+      "select{color-scheme:dark}",
+      "select option{background:#0d1420;color:#f4f2ea}",
+      "select option:checked{background:#1d4f8f;color:#fff}",
+    ].join("");
+    document.head?.appendChild(style);
+  }
+
   function updateCopy() {
+    ensureNativeSelectContrast();
     document.body?.setAttribute("data-testnet-auth-flow", AUTH_FLOW);
 
     const hero = document.querySelector(".hero p");
