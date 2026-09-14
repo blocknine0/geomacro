@@ -92,7 +92,7 @@ export async function loadCountryRegistry(
   const result = await db
     .from("live_country_registry")
     .select(
-      "iso3,country_name,aliases,demonyms"
+      "iso2,iso3,country_name,aliases,demonyms"
     )
     .eq(
       "enabled",
@@ -106,6 +106,9 @@ export async function loadCountryRegistry(
   const byIso3 =
     new Map()
 
+  const byIso2 =
+    new Map()
+
   const byName =
     new Map()
 
@@ -113,10 +116,29 @@ export async function loadCountryRegistry(
     const row of
       result.data ?? []
   ) {
-    byIso3.set(
-      row.iso3,
-      row
-    )
+    const iso3 =
+      String(row.iso3 ?? "")
+        .trim()
+        .toUpperCase()
+
+    const iso2 =
+      String(row.iso2 ?? "")
+        .trim()
+        .toUpperCase()
+
+    if (iso3) {
+      byIso3.set(
+        iso3,
+        row
+      )
+    }
+
+    if (/^[A-Z]{2}$/.test(iso2)) {
+      byIso2.set(
+        iso2,
+        iso3
+      )
+    }
 
     const values = [
       row.country_name,
@@ -147,7 +169,7 @@ export async function loadCountryRegistry(
       if (key) {
         byName.set(
           key,
-          row.iso3
+          iso3
         )
       }
     }
@@ -158,6 +180,7 @@ export async function loadCountryRegistry(
       result.data ?? [],
 
     byIso3,
+    byIso2,
     byName,
   }
 }
