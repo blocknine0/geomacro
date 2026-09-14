@@ -65,6 +65,7 @@ create table if not exists public.a2a_tasks (
   result_hash text,
   error_json jsonb,
   payment_reference text,
+  payment_json jsonb,
   callback_url text,
   callback_status text not null default 'not_requested',
   callback_attempt_count integer not null default 0,
