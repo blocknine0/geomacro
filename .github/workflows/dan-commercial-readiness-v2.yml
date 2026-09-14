@@ -46,6 +46,28 @@ jobs:
             test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
           done
 
+      - name: Derive current public verification key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('Risk Object signing key must be Ed25519');
+          }
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, `RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=${publicB64}\n`);
+          console.log('PASS: current Risk Object public verification key derived from configured private key.');
+          NODE
+
       - name: Run trust-boundary regression tests
         run: |
           bun test \
