@@ -1,0 +1,187 @@
+name: USGS MCS Series Eligibility Diagnostic
+
+on:
+  push:
+    branches:
+      - diag/usgs-mcs-series-eligibility
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+
+    steps:
+      - name: Checkout canonical code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify authoritative target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Inspect exact world production series
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import {
+            createDb,
+            countryIso3FromName,
+            loadCountryRegistry,
+            parseCsv,
+          } from './scripts/lib-live-source-utils.mjs';
+
+          const EXPECTED_HASH = '582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5';
+          const IDS = ['69837e43b66b01367d7ec7c7', '696a75d5d4be0228872d3bf8'];
+          const FILE = 'MCS2026_Commodities_Data.csv';
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function fetchRetry(url) {
+            let last;
+            for (let i = 0; i < 4; i++) {
+              try {
+                const res = await fetch(url, { headers: { accept: '*/*' } });
+                if (res.ok) return res;
+                last = new Error(`HTTP ${res.status}: ${url}`);
+                if (res.status < 500 && res.status !== 429) throw last;
+              } catch (error) {
+                last = error;
+              }
+              if (i < 3) await sleep(1000 * 2 ** i);
+            }
+            throw last;
+          }
+
+          let bytes = null;
+          let itemId = null;
+          for (const id of IDS) {
+            try {
+              const meta = await (await fetchRetry(`https://www.sciencebase.gov/catalog/item/${id}?format=json`)).json();
+              const file = (meta.files ?? []).find((entry) => String(entry.name ?? '') === FILE);
+              if (!file?.downloadUri && !file?.url) continue;
+              const candidate = Buffer.from(await (await fetchRetry(file.downloadUri ?? file.url)).arrayBuffer());
+              const hash = createHash('sha256').update(candidate).digest('hex');
+              if (hash !== EXPECTED_HASH) continue;
+              bytes = candidate;
+              itemId = id;
+              break;
+            } catch (error) {
+              console.log(`WARN ${id}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+          if (!bytes) throw new Error('Pinned USGS source bytes unavailable');
+
+          const rows = parseCsv(new TextDecoder('windows-1252').decode(bytes));
+          const db = createDb();
+          const registry = await loadCountryRegistry(db);
+          const latestYear = Math.max(...rows.map((row) => Number(row.Year)).filter(Number.isFinite));
+          const canonical = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+          const candidates = rows.filter((row) =>
+            Number(row.Year) === latestYear &&
+            canonical(row['Is critical mineral 2025']) === 'yes' &&
+            canonical(row.Section).startsWith('world') &&
+            canonical(row.Statistics) === 'production' &&
+            !canonical(row.Statistics_detail).includes('rounded')
+          );
+
+          const groups = new Map();
+          for (const row of candidates) {
+            const keyObj = {
+              commodity: String(row.Commodity ?? '').trim(),
+              section: String(row.Section ?? '').trim(),
+              detail: String(row.Statistics_detail ?? '').trim(),
+              unit: String(row.Unit ?? '').trim(),
+            };
+            const key = JSON.stringify(keyObj);
+            const group = groups.get(key) ?? {
+              ...keyObj,
+              source_rows: 0,
+              mapped_numeric_rows: 0,
+              mapped_zero_rows: 0,
+              unmapped_rows: [],
+              nonnumeric_rows: [],
+              mapped_countries: new Set(),
+            };
+            group.source_rows += 1;
+            const country = String(row.Country ?? '').trim();
+            const iso3 = countryIso3FromName(country, registry);
+            const raw = String(row.Value ?? '').trim().replaceAll(',', '');
+            const numeric = raw !== '' && Number.isFinite(Number(raw));
+            if (!iso3) {
+              group.unmapped_rows.push({ country, value: String(row.Value ?? '').trim() });
+            } else if (!numeric) {
+              group.nonnumeric_rows.push({ country, iso3, value: String(row.Value ?? '').trim() });
+            } else {
+              group.mapped_numeric_rows += 1;
+              if (Number(raw) === 0) group.mapped_zero_rows += 1;
+              group.mapped_countries.add(iso3);
+            }
+            groups.set(key, group);
+          }
+
+          const byCommodity = new Map();
+          for (const group of groups.values()) {
+            const compact = {
+              commodity: group.commodity,
+              section: group.section,
+              detail: group.detail,
+              unit: group.unit,
+              source_rows: group.source_rows,
+              mapped_numeric_rows: group.mapped_numeric_rows,
+              mapped_country_count: group.mapped_countries.size,
+              mapped_zero_rows: group.mapped_zero_rows,
+              unmapped_count: group.unmapped_rows.length,
+              nonnumeric_count: group.nonnumeric_rows.length,
+              unmapped_rows: group.unmapped_rows,
+              nonnumeric_rows: group.nonnumeric_rows,
+              clean_complete: group.unmapped_rows.length === 0 && group.nonnumeric_rows.length === 0,
+            };
+            const list = byCommodity.get(group.commodity) ?? [];
+            list.push(compact);
+            byCommodity.set(group.commodity, list);
+          }
+
+          const commodities = [...byCommodity.entries()]
+            .map(([commodity, series]) => ({
+              commodity,
+              series_count: series.length,
+              safe_auto_select: series.length === 1 && series[0].clean_complete,
+              series,
+            }))
+            .sort((a, b) => a.commodity.localeCompare(b.commodity));
+
+          const safe = commodities.filter((item) => item.safe_auto_select).map((item) => item.commodity);
+          const blocked = commodities.filter((item) => !item.safe_auto_select);
+
+          console.log('USGS_MCS_EXACT_WORLD_PRODUCTION_SERIES_ELIGIBILITY');
+          console.log(JSON.stringify({
+            source_item_id: itemId,
+            source_sha256: EXPECTED_HASH,
+            latest_year: latestYear,
+            candidate_source_rows: candidates.length,
+            series_count: groups.size,
+            commodity_count: commodities.length,
+            safe_auto_select_count: safe.length,
+            safe_auto_select_commodities: safe,
+            blocked_commodities: blocked,
+            all_commodities: commodities,
+            writes_performed: false,
+          }, null, 2));
+          console.log('PASS: read-only exact USGS world-production series diagnostic completed');
+          NODE
