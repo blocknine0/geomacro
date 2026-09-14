@@ -55,13 +55,28 @@ export async function generateCountryRiskGateV2MacroModuleStates(
     return baseStates;
   }
 
-  const eurostatFiscal =
-    await generateRiskGateV2EurostatSovereignFiscalModuleState({
-      country_iso3: input.country_iso3,
-      as_of: input.as_of,
-      generated_at: generatedAt,
-      risk_object_ids: input.risk_object_ids,
-    });
+  let eurostatFiscal = null;
+  try {
+    eurostatFiscal =
+      await generateRiskGateV2EurostatSovereignFiscalModuleState({
+        country_iso3: input.country_iso3,
+        as_of: input.as_of,
+        generated_at: generatedAt,
+        risk_object_ids: input.risk_object_ids,
+      });
+  } catch (error) {
+    // Before migration 925, the Eurostat source is deliberately scoring-disabled.
+    // Treat only that exact activation boundary as "fallback unavailable" so
+    // shadow validation can continue from the WDI base. Any provider/database/
+    // schema error still propagates and fails closed rather than being hidden.
+    if (
+      error instanceof Error &&
+      error.message === "Eurostat source-state mismatch for production scoring"
+    ) {
+      return baseStates;
+    }
+    throw error;
+  }
 
   return composeRiskGateV2MacroStatesWithFiscalFallback({
     base_states: baseStates,
