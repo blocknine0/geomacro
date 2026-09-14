@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const page = readFileSync("server/routes/testnet-access.get.ts", "utf8");
 const browser = readFileSync("public/testnet-access.js", "utf8");
+const walletFirst = readFileSync("public/testnet-wallet-first-v2.js", "utf8");
 
 describe("public Testnet developer access page", () => {
   it("shows the Testnet API surface before credentials are created", () => {
@@ -26,6 +27,19 @@ describe("public Testnet developer access page", () => {
     ]) {
       expect(page).toContain(capability);
     }
+  });
+
+  it("loads wallet-first authentication before the legacy page behavior", () => {
+    const walletFirstScript = '<script src="/testnet-wallet-first-v2.js" defer></script>';
+    const legacyScript = '<script src="/testnet-access.js" defer></script>';
+
+    expect(page).toContain(walletFirstScript);
+    expect(page).toContain(legacyScript);
+    expect(page.indexOf(walletFirstScript)).toBeLessThan(page.indexOf(legacyScript));
+    expect(walletFirst).toContain('AUTH_FLOW = "wallet-first-v2"');
+    expect(walletFirst).toContain('"/api/testnet-tester/auth-challenge"');
+    expect(walletFirst).toContain('"/api/testnet-tester/auth-verify"');
+    expect(walletFirst).toContain("Existing developer account resumed");
   });
 
   it("keeps profile plus wallet registration and developer credential creation", () => {
