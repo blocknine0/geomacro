@@ -5,6 +5,8 @@ Last reviewed: 2026-09-14.
 
 Geomacro provides explainable geopolitical and macro risk intelligence for human and machine decisions. The commercial product is Risk Intelligence, governed Data/API, signed Risk Objects and Risk Gate. Prediction-market and onchain work remain supporting technical proof rather than the primary buyer proposition.
 
+This document localizes scope and quoting for India. `docs/FOUNDING_PILOT_PRICING_GUARDRAILS.md` remains the canonical global pricing guardrail for full founding pilots. If an INR quote conflicts with the canonical USD discount floor at quote time, the canonical floor wins unless a written strategic exception is approved.
+
 ## Go-to-market order
 
 India is not bank-first.
@@ -19,9 +21,11 @@ Primary early buyers:
 
 ## Current commercial offers
 
-### 1. Media & Research Starter Pilot
+### 1. Media & Research Starter Evaluation
 
-Price: INR 35,000 for 30 days.
+Price anchor: INR 35,000 for 30 days.
+
+This is intentionally a low-touch productized evaluation, not the full founding analyst pilot. It must not include bespoke engineering, custom data acquisition, unrestricted exports, a production SLA, or Risk Gate/API integration. If the requested scope crosses into a full founding pilot, use the canonical founding-pilot pricing guardrails instead.
 
 Designed for:
 - business-news desks;
@@ -32,21 +36,22 @@ Designed for:
 
 Included:
 - up to 5 agreed countries or geopolitical/macro exposure themes;
-- access to current Geomacro intelligence surfaces included in the pilot;
+- access to current Geomacro intelligence surfaces included in the evaluation;
 - evidence/provenance, confidence, freshness and change context where available;
-- selected-country watchlist and structured risk notes;
+- selected-country watchlist and structured risk notes produced by existing product surfaces;
 - one founder-led review session per week;
-- pilot-end evidence pack summarizing usage, useful signals, false positives/limitations and next-step fit.
+- evaluation-end evidence pack summarizing usage, useful signals, false positives/limitations and next-step fit.
 
 Boundary:
+- no bespoke engineering or custom source acquisition;
 - no raw third-party dataset resale;
 - no blanket right to republish third-party source material;
-- customer-facing use of Geomacro-derived outputs must follow the pilot SOW and attribution/source-rights rules;
+- customer-facing use of Geomacro-derived outputs must follow the SOW and attribution/source-rights rules;
 - no production SLA is included.
 
 ### 2. SME Country Risk Monitor Pilot
 
-Price: INR 75,000 for 30 days.
+Price anchor: INR 75,000 for 30 days, subject to the canonical founding-pilot discount floor at quote time.
 
 Designed for:
 - import/export businesses;
@@ -72,7 +77,9 @@ Boundary:
 
 ### 3. Professional Risk Intelligence Pilot
 
-Price: INR 125,000 for 30 days.
+India quote anchor: INR 125,000 for 30 days.
+
+Canonical global reference: analyst/operational founding pilot USD 1,500 for 30 days. Confirm the final quote against the current global guardrail before sending a proposal.
 
 Designed for:
 - professional research desks;
@@ -89,7 +96,9 @@ Included:
 
 ### 4. Risk API + Risk Gate Technical Pilot
 
-Price: INR 210,000 for 30 days.
+India quote anchor: INR 210,000 for 30 days.
+
+Canonical global reference: technical founding pilot USD 2,500 for 30 days. Confirm the final quote against the current global guardrail before sending a proposal.
 
 Designed for:
 - fintech and treasury-tech teams;
@@ -118,13 +127,17 @@ This tier is not the first GTM target. It is used when the buyer requires formal
 
 Do not claim general production readiness for this tier until the buyer-specific readiness matrix is satisfied.
 
-## Discount policy
+## Pricing and discount control
 
 Normal rule:
 - do not discount simply because Geomacro is early-stage;
-- discounts require a written strategic reason such as a high-value design partner, reference customer, distribution partner or unusually valuable dataset/workflow feedback;
-- default absolute pilot floor is INR 25,000;
-- technical/API pilots should not normally be discounted below INR 65,000 without a documented strategic reason.
+- full founding pilots follow `docs/FOUNDING_PILOT_PRICING_GUARDRAILS.md`;
+- the canonical full-pilot discount floor is USD 750 unless a written strategic reason is recorded;
+- the INR figures above are India quoting anchors, not a mechanism to bypass the USD floor;
+- the INR 35,000 Media & Research Starter Evaluation is allowed only because its scope is materially narrower than a founding pilot and excludes custom engineering/API/Risk Gate integration;
+- if a starter evaluation expands into custom research, integration, API/Risk Gate work or materially broader support, re-scope and re-price it before the work starts.
+
+Strategic discounts should buy something concrete, such as reference-customer value, structured feedback, distribution, integration access, a continuation decision date or another documented strategic benefit.
 
 ## What Geomacro may commercially provide
 
@@ -202,6 +215,7 @@ Permanent companion documents:
 
 - `docs/INDIA_BUYER_READINESS_MATRIX.md`
 - `docs/INDIA_PILOT_SOW_TEMPLATE.md`
+- `docs/FOUNDING_PILOT_PRICING_GUARDRAILS.md`
 - `docs/COMMERCIAL_SOURCE_RIGHTS.md`
 - `docs/EARLY_ACCESS_COMMERCIAL_PACKAGE.md`
 - `docs/PILOT_SUCCESS_CRITERIA.md`
