@@ -1,0 +1,64 @@
+name: USGS MCS Deterministic Ingest Proof
+
+on:
+  push:
+    branches:
+      - fix/usgs-mcs-deterministic-ingest
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+
+    steps:
+      - name: Checkout canonical code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify authoritative database target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Run deterministic ingestion dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-usgs-mcs-live.mjs --dry-run | tee usgs-ingest-dry-run.log
+          grep -q 'PASS: USGS CURRENT CRITICAL-MINERAL INGESTION DRY RUN CLEAN' usgs-ingest-dry-run.log
+          grep -q '582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5' usgs-ingest-dry-run.log
+          grep -q 'writes_performed: false' usgs-ingest-dry-run.log
+
+      - name: Guard deterministic provenance contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const text = fs.readFileSync('scripts/ingest-usgs-mcs-live.mjs', 'utf8');
+          if (text.includes('retrieved_at:')) {
+            throw new Error('volatile retrieved_at must not participate in normalized USGS observation provenance');
+          }
+          for (const required of [
+            'source_file_sha256',
+            'source_row_sha256',
+            'section:',
+            'SCIENCEBASE_ITEM_ID',
+            'sourceRecordId',
+          ]) {
+            if (!text.includes(required)) throw new Error(`missing deterministic-ingest guard: ${required}`);
+          }
+          console.log('PASS: deterministic USGS provenance contract is present');
+          NODE
