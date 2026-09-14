@@ -1,0 +1,54 @@
+{
+  "protocol": {
+    "id": "geomacro-a2a",
+    "version": "geomacro-a2a/1",
+    "transport": "https_json",
+    "request_signing": "ed25519_detached",
+    "replay_protection": "timestamp_plus_one_time_nonce"
+  },
+  "agent": {
+    "id": "geomacro",
+    "name": "Geomacro Risk Agent",
+    "mode": "read_and_recommend",
+    "execution_authorized": false
+  },
+  "endpoints": {
+    "discovery": "https://geomacro.live/.well-known/geomacro-a2a.json",
+    "manifest": "https://geomacro.live/api/a2a/manifest",
+    "negotiate": "https://geomacro.live/api/a2a/negotiate",
+    "identity": "https://geomacro.live/api/a2a/identity",
+    "tasks": "https://geomacro.live/api/a2a/tasks",
+    "task_status_template": "https://geomacro.live/api/a2a/tasks/{task_id}"
+  },
+  "capabilities": [
+    {
+      "id": "risk_preflight",
+      "credit_capability": "risk_gate_bundle",
+      "credit_cost": 15,
+      "subject_types": ["country", "corridor"],
+      "result": "Signed Risk Object + Risk Gate decision + structural context + canonical GRI context"
+    }
+  ],
+  "payment_modes": {
+    "commercial_credit": {
+      "production_capable": true,
+      "requires_entitlement": true
+    },
+    "x402_testnet": {
+      "production_capable": false,
+      "technical_proof_only": true,
+      "asset": "USDC",
+      "network": "Arc Testnet"
+    }
+  },
+  "task_lifecycle": ["accepted", "payment_required", "processing", "completed", "failed"],
+  "callback_modes": ["poll", "https_push"],
+  "boundaries": {
+    "financial_advice": false,
+    "autonomous_execution": false,
+    "transaction_signing": false,
+    "wallet_custody": false,
+    "raw_data_delivery": false,
+    "execution_authorized": false
+  }
+}
