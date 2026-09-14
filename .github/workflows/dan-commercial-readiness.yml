@@ -41,7 +41,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
             if [ -z "${!name:-}" ]; then
               echo "::error::$name is missing"
@@ -76,16 +75,16 @@ jobs:
             src/__tests__/risk-object-key-lifecycle.test.ts \
             src/__tests__/testnet-public-developer-page-static.test.ts
 
-      - name: Publish fresh commercially eligible country proofs
+      - name: Publish fresh USA and CHN country proofs
         shell: bash
         run: |
           set -euo pipefail
+          bun scripts/publish-country-risk-object.ts USA | tee dan-country-usa.json
           bun scripts/publish-country-risk-object.ts CHN | tee dan-country-chn.json
-          bun scripts/publish-country-risk-object.ts BRA | tee dan-country-bra.json
 
           node <<'NODE'
           const fs = require('node:fs');
-          for (const [country, path] of [['CHN', 'dan-country-chn.json'], ['BRA', 'dan-country-bra.json']]) {
+          for (const [country, path] of [['USA', 'dan-country-usa.json'], ['CHN', 'dan-country-chn.json']]) {
             const result = JSON.parse(fs.readFileSync(path, 'utf8'));
             if (result?.published !== true || result?.context?.published !== true) {
               throw new Error(`${country}: immutable publication was not confirmed`);
@@ -103,7 +102,7 @@ jobs:
               throw new Error(`${country}: verification is ${result?.verification?.status ?? 'missing'}`);
             }
           }
-          console.log('PASS: CHN and BRA fresh signed country Risk Objects are commercially eligible and verified.');
+          console.log('PASS: USA and CHN fresh signed country Risk Objects are commercially eligible and verified.');
           NODE
 
       - name: Run live-data USA to CHN corridor preflight
@@ -111,7 +110,6 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/test-corridor-risk-gate-preflight.ts USA CHN | tee dan-corridor-preflight.log
-
           grep -q '"signature_valid": true' dan-corridor-preflight.log
           grep -q 'PASS: SIGNED CORRIDOR RISK GATE BLOCKED EXECUTOR FAIL-CLOSED' dan-corridor-preflight.log
 
@@ -186,7 +184,6 @@ jobs:
           set -euo pipefail
           curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
             "${LIVE_BASE_URL%/}/api/risk-object-keys" > dan-risk-object-keys.json
-
           jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
             .ok == true and
             .signature_scheme == "Ed25519" and
@@ -199,7 +196,6 @@ jobs:
           set -euo pipefail
           curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
             "${LIVE_BASE_URL%/}/api/risk-gate-readiness" > dan-risk-gate-readiness.json
-
           jq -e '
             .status == "ready" and
             .checks.database == true and
@@ -213,7 +209,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           cat > /tmp/check-testnet-wallet-first.js <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('dan-testnet-access.html', 'utf8');
@@ -225,11 +220,10 @@ jobs:
           ok=0
           for attempt in $(seq 1 12); do
             if curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
-              "${LIVE_BASE_URL%/}/testnet-access" > dan-testnet-access.html; then
-              if node /tmp/check-testnet-wallet-first.js; then
-                ok=1
-                break
-              fi
+              "${LIVE_BASE_URL%/}/testnet-access" > dan-testnet-access.html && \
+              node /tmp/check-testnet-wallet-first.js; then
+              ok=1
+              break
             fi
             sleep 10
           done
@@ -246,8 +240,8 @@ jobs:
           jq -n \
             --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg commit "$GITHUB_SHA" \
+            --slurpfile usa dan-country-usa.json \
             --slurpfile chn dan-country-chn.json \
-            --slurpfile bra dan-country-bra.json \
             --slurpfile corridor dan-corridor-proof.json \
             --slurpfile readiness dan-risk-gate-readiness.json \
             --slurpfile keys dan-risk-object-keys.json \
@@ -258,6 +252,16 @@ jobs:
               commit:$commit,
               country_private_pilot:[
                 {
+                  country:"USA",
+                  object_id:$usa[0].object_id,
+                  score:$usa[0].risk.score,
+                  confidence:$usa[0].confidence,
+                  commercial_eligibility:$usa[0].commercial_eligibility.status,
+                  verification:$usa[0].verification.status,
+                  signing_key_id:$usa[0].integrity.signing_key_id,
+                  signature_valid:$usa[0].integrity.signature_valid
+                },
+                {
                   country:"CHN",
                   object_id:$chn[0].object_id,
                   score:$chn[0].risk.score,
@@ -266,16 +270,6 @@ jobs:
                   verification:$chn[0].verification.status,
                   signing_key_id:$chn[0].integrity.signing_key_id,
                   signature_valid:$chn[0].integrity.signature_valid
-                },
-                {
-                  country:"BRA",
-                  object_id:$bra[0].object_id,
-                  score:$bra[0].risk.score,
-                  confidence:$bra[0].confidence,
-                  commercial_eligibility:$bra[0].commercial_eligibility.status,
-                  verification:$bra[0].verification.status,
-                  signing_key_id:$bra[0].integrity.signing_key_id,
-                  signature_valid:$bra[0].integrity.signature_valid
                 }
               ],
               corridor_pilot:$corridor[0],
@@ -293,7 +287,6 @@ jobs:
                 "Geomacro does not authorize or broadcast customer financial execution; execution_authorized remains false."
               ]
             }' > dan-commercial-readiness-summary.json
-
           cat dan-commercial-readiness-summary.json
 
       - name: Upload redacted Dan readiness evidence
@@ -302,6 +295,8 @@ jobs:
         with:
           name: dan-commercial-readiness-evidence
           path: |
+            dan-country-usa.json
+            dan-country-chn.json
             dan-commercial-readiness-summary.json
             dan-corridor-proof.json
             dan-risk-gate-readiness.json
