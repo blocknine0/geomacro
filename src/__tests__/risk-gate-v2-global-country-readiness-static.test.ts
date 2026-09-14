@@ -34,9 +34,13 @@ describe("global country Risk Gate readiness evidence", () => {
     expect(geopoliticalServer).toContain("release_rank");
   });
 
-  it("blocks incomplete WGI sovereign reconciliation", () => {
-    expect(wgiIngest).toContain("missingCountries.length > 0");
+  it("keeps WGI source gaps explicit and blocks any new silent gap", () => {
+    expect(wgiIngest).toContain("EXPECTED_WGI_SOURCE_GAPS");
+    expect(wgiIngest).toContain('new Set(["VAT"])');
+    expect(wgiIngest).toContain("unexpectedMissingCountries.length > 0");
     expect(wgiIngest).toContain("WGI global write blocked");
+    expect(wgiIngest).toContain("explicit_source_gaps");
+    expect(wgiIngest).toContain("gap_policy");
     expect(wgiIngest).toContain("sovereign_denominator");
     expect(wgiIngest).toContain("live_source_release_manifests");
   });
