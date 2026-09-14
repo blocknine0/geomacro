@@ -1,4 +1,4 @@
-import { createError, defineEventHandler, setResponseHeaders } from "h3";
+import { defineEventHandler, setResponseHeaders } from "h3";
 
 import {
   requireTestnetUsdcReceiver,
@@ -24,6 +24,14 @@ import {
 } from "../../../src/lib/testnet-public-protection.server";
 import { requireTesterPrincipal } from "../../../src/lib/testnet-tester-http.server";
 
+function optionalTestnetUsdcReceiver() {
+  try {
+    return requireTestnetUsdcReceiver();
+  } catch {
+    return null;
+  }
+}
+
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
     "Cache-Control": "no-store",
@@ -31,35 +39,33 @@ export default defineEventHandler(async (event) => {
   });
 
   await requireTesterPrincipal(event);
-  try {
-    const chains = Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => ({
-      ...chain,
-      public_api_key: TESTNET_PUBLIC_API_KEYS[chain.key].public_api_key,
-    }));
 
-    return {
-      ok: true,
-      data: {
-        receiver_address: requireTestnetUsdcReceiver(),
-        credit_price_usdc: TESTNET_API_CREDIT_PRICE_USDC,
-        max_credits_per_30_days: TESTNET_API_FIXED_CREDITS,
-        duration_days: TESTNET_USDC_ACCESS_DURATION_DAYS,
-        pricing_version: TESTNET_API_PRICING_VERSION,
-        payment_model: "pay_per_call",
-        upfront_payment_required: false,
-        capabilities: TESTNET_INTELLIGENCE_CAPABILITIES,
-        capability_prices: TESTNET_INTELLIGENCE_PRICE_TABLE,
-        chains,
-        public_access_version: TESTNET_PUBLIC_ACCESS_VERSION,
-        public_access_boundaries: TESTNET_PUBLIC_ACCESS_BOUNDARIES,
-        public_protection_policy: TESTNET_PUBLIC_PROTECTION_POLICY,
-        payment_environment: "testnet",
-        commercial_revenue: false,
-      },
-      execution_authorized: false,
-    };
-  } catch (error) {
-    const code = error instanceof Error ? error.message : "TESTNET_PAYMENT_CONFIG_UNAVAILABLE";
-    throw createError({ statusCode: 503, statusMessage: code.slice(0, 120) });
-  }
+  const receiverAddress = optionalTestnetUsdcReceiver();
+  const chains = Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => ({
+    ...chain,
+    public_api_key: TESTNET_PUBLIC_API_KEYS[chain.key].public_api_key,
+  }));
+
+  return {
+    ok: true,
+    data: {
+      receiver_address: receiverAddress,
+      payment_configured: receiverAddress !== null,
+      credit_price_usdc: TESTNET_API_CREDIT_PRICE_USDC,
+      max_credits_per_30_days: TESTNET_API_FIXED_CREDITS,
+      duration_days: TESTNET_USDC_ACCESS_DURATION_DAYS,
+      pricing_version: TESTNET_API_PRICING_VERSION,
+      payment_model: "pay_per_call",
+      upfront_payment_required: false,
+      capabilities: TESTNET_INTELLIGENCE_CAPABILITIES,
+      capability_prices: TESTNET_INTELLIGENCE_PRICE_TABLE,
+      chains,
+      public_access_version: TESTNET_PUBLIC_ACCESS_VERSION,
+      public_access_boundaries: TESTNET_PUBLIC_ACCESS_BOUNDARIES,
+      public_protection_policy: TESTNET_PUBLIC_PROTECTION_POLICY,
+      payment_environment: "testnet",
+      commercial_revenue: false,
+    },
+    execution_authorized: false,
+  };
 });
