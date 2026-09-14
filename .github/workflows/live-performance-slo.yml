@@ -1,0 +1,50 @@
+name: Live Performance SLO
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '17 */3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-performance-slo
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEOMACRO_LIVE_PERF_BASE_URL: https://geomacro.live
+      GEOMACRO_LIVE_PERF_EXPECTED_HOST: geomacro.live
+      GEOMACRO_LIVE_PERF_SAMPLES: '5'
+      GEOMACRO_LIVE_PERF_ARTIFACT_DIR: artifacts/live-performance-slo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Measure live route speed and enforce p95 budgets
+        run: timeout 8m bun scripts/ops/live-performance-slo.mjs
+
+      - name: Upload live performance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-performance-slo-${{ github.run_id }}
+          path: artifacts/live-performance-slo/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record measurement boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Real network requests: true" >> "$GITHUB_STEP_SUMMARY"
+          echo "Paid transactions: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "This is route-latency regression evidence, not a production capacity claim." >> "$GITHUB_STEP_SUMMARY"

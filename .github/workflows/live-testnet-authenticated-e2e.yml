@@ -1,0 +1,98 @@
+name: Live Testnet Authenticated E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'quote_only signs in and verifies HTTP 402 without moving funds; paid executes one bounded Testnet USDC payment'
+        required: true
+        default: quote_only
+        type: choice
+        options:
+          - quote_only
+          - paid
+      chain_key:
+        description: 'Public Testnet/payment chain'
+        required: true
+        default: arcTestnet
+        type: choice
+        options:
+          - arcTestnet
+          - baseSepolia
+          - polygonAmoy
+      confirmation:
+        description: 'For paid mode only, type exactly GEOMACRO_TESTNET_USDC'
+        required: false
+        type: string
+  schedule:
+    - cron: '23 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-testnet-authenticated-e2e
+  cancel-in-progress: false
+
+jobs:
+  authenticated-e2e:
+    if: github.event_name == 'workflow_dispatch' || vars.GEOMACRO_TESTNET_E2E_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: geomacro-testnet-e2e
+    env:
+      GEOMACRO_TESTNET_E2E_BASE_URL: https://geomacro.live
+      GEOMACRO_TESTNET_E2E_EXPECTED_HOST: geomacro.live
+      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
+      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
+      GEOMACRO_TESTNET_E2E_MODE: ${{ inputs.mode || 'quote_only' }}
+      GEOMACRO_TESTNET_E2E_CHAIN_KEY: ${{ inputs.chain_key || 'arcTestnet' }}
+      GEOMACRO_TESTNET_E2E_ACK: ${{ inputs.confirmation || '' }}
+      GEOMACRO_TESTNET_E2E_MAX_USDC: '0.5'
+      GEOMACRO_TESTNET_E2E_ARTIFACT_DIR: artifacts/testnet-live-e2e
+
+    steps:
+      - name: Validate dedicated E2E wallet configuration without printing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$GEOMACRO_TESTNET_E2E_PRIVATE_KEY" ]; then
+            echo "::error::GEOMACRO_TESTNET_E2E_PRIVATE_KEY is not configured in the geomacro-testnet-e2e environment."
+            exit 1
+          fi
+          if [ "$GEOMACRO_TESTNET_E2E_MODE" = "paid" ] && [ "$GEOMACRO_TESTNET_E2E_ACK" != "GEOMACRO_TESTNET_USDC" ]; then
+            echo "::error::Paid E2E requires the exact confirmation GEOMACRO_TESTNET_USDC."
+            exit 1
+          fi
+          echo "Mode: $GEOMACRO_TESTNET_E2E_MODE" >> "$GITHUB_STEP_SUMMARY"
+          echo "Chain: $GEOMACRO_TESTNET_E2E_CHAIN_KEY" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Risk Gate execution authorization: false" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies
+        run: timeout 5m bun install --frozen-lockfile
+
+      - name: Run real wallet authenticated Testnet E2E
+        run: timeout 8m bun scripts/testnet/live-authenticated-e2e.mjs
+
+      - name: Upload sanitized E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-testnet-authenticated-e2e-${{ github.run_id }}
+          path: artifacts/testnet-live-e2e/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record permanent boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "The dedicated E2E wallet may sign SIWE and, only in explicitly acknowledged paid mode, send bounded Testnet USDC." >> "$GITHUB_STEP_SUMMARY"
+          echo "Production/owner signing keys are not used by this workflow." >> "$GITHUB_STEP_SUMMARY"
