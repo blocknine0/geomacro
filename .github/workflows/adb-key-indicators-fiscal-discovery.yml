@@ -21,7 +21,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run live ADB Key Indicators 2026 fiscal discovery
+      - name: Run live ADB KIDB SDMX fiscal discovery
         id: discovery
         continue-on-error: true
         shell: bash
@@ -40,10 +40,14 @@ jobs:
           jq -e '.methodology_boundary.discovery_only == true' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.debt_definition_harmonised == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.methodology_boundary.cross_source_value_pooling_allowed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
-          jq -e '.sample.failure_count == 0' adb-key-indicators-fiscal-discovery.json >/dev/null
-          jq -e '.sample.resource_verified_country_count == .sample.requested_country_count' adb-key-indicators-fiscal-discovery.json >/dev/null
-          jq -e '.sample.fiscal_vocabulary_country_count > 0' adb-key-indicators-fiscal-discovery.json >/dev/null
-          echo "PASS: ADB Key Indicators discovery verified exact resources without enabling production scoring"
+          jq -e '.methodology_boundary.direct_sovereign_fiscal_fallback_allowed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.methodology_boundary.not_equivalent_to_wdi_central_government_debt == true' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.methodology_boundary.not_equivalent_to_eurostat_general_government_debt == true' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.owning_flow != null and .target_indicator.code != null' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.sample_query.observed_economy_count > 0' adb-key-indicators-fiscal-discovery.json >/dev/null
+          jq -e '.api_contract.documented_rate_limit == "20 queries/minute"' adb-key-indicators-fiscal-discovery.json >/dev/null
+          grep -q 'PASS: ADB KIDB SDMX FISCAL DISCOVERY COMPLETE - NO WRITES, NO SCORING' adb-key-indicators-fiscal-discovery.log
+          echo "PASS: ADB KIDB SDMX source is discoverable while production scoring remains fail-closed"
 
       - name: Upload ADB discovery evidence
         if: always()
