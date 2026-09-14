@@ -214,18 +214,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          cat > /tmp/check-testnet-wallet-first.js <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('dan-testnet-access.html', 'utf8');
+          const walletFirst = html.indexOf('/testnet-wallet-first-v2.js');
+          const legacy = html.indexOf('/testnet-access.js');
+          if (walletFirst < 0 || legacy < 0 || walletFirst >= legacy) process.exit(1);
+          NODE
+
           ok=0
           for attempt in $(seq 1 12); do
             if curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
               "${LIVE_BASE_URL%/}/testnet-access" > dan-testnet-access.html; then
-              if node <<'NODE'
-              const fs = require('node:fs');
-              const html = fs.readFileSync('dan-testnet-access.html', 'utf8');
-              const walletFirst = html.indexOf('/testnet-wallet-first-v2.js');
-              const legacy = html.indexOf('/testnet-access.js');
-              if (walletFirst < 0 || legacy < 0 || walletFirst >= legacy) process.exit(1);
-              NODE
-              then
+              if node /tmp/check-testnet-wallet-first.js; then
                 ok=1
                 break
               fi
