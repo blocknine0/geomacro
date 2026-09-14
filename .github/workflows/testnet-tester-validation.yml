@@ -22,6 +22,7 @@ on:
       - "src/routes/testnet-access.tsx"
       - "src/routes/api/testnet-tester/**"
       - "src/__tests__/testnet-*.test.ts"
+      - "src/__tests__/live-performance-slo-static.test.ts"
       - "supabase/migrations/909_testnet_fixed_500_credit_quota.sql"
       - "supabase/migrations/910_testnet_wallet_only_access.sql"
       - "supabase/migrations/911_testnet_api_pricing_alignment.sql"
@@ -29,6 +30,9 @@ on:
       - "supabase/migrations/913_testnet_pay_per_call_runtime_hardening.sql"
       - "supabase/migrations/914_testnet_exact_request_binding.sql"
       - "scripts/testnet/**"
+      - "scripts/ops/live-performance-slo.mjs"
+      - ".github/workflows/live-testnet-authenticated-e2e.yml"
+      - ".github/workflows/live-performance-slo.yml"
       - ".github/workflows/testnet-tester-validation.yml"
   workflow_dispatch:
 
@@ -76,6 +80,9 @@ jobs:
           src/__tests__/testnet-access-ux-social-static.test.ts
           src/__tests__/testnet-public-protection.test.ts
           src/__tests__/testnet-data-delivery-alignment.test.ts
+          src/__tests__/testnet-session-performance-static.test.ts
+          src/__tests__/testnet-live-authenticated-e2e-static.test.ts
+          src/__tests__/live-performance-slo-static.test.ts
 
       - name: Migration safety
         run: timeout 3m bun run db:safety

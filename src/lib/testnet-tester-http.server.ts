@@ -1,6 +1,6 @@
 import { createError, type H3Event } from "h3";
 
-import { requireTestnetTesterSession } from "./testnet-tester-account.server";
+import { requireFastTestnetTesterSession } from "./testnet-tester-session-fast.server";
 import { testerSessionTokenFromRequest } from "./testnet-tester-cookie.server";
 
 export async function requireTesterPrincipal(event: H3Event) {
@@ -10,7 +10,7 @@ export async function requireTesterPrincipal(event: H3Event) {
   }
 
   try {
-    return await requireTestnetTesterSession(token);
+    return await requireFastTestnetTesterSession(token);
   } catch {
     throw createError({ statusCode: 401, statusMessage: "Tester session not authorized" });
   }
