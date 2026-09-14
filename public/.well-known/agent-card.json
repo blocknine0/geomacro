@@ -1,0 +1,72 @@
+{
+  "name": "Geomacro Risk Intelligence Agent",
+  "description": "Machine-readable geopolitical and macro risk pre-flight for AI agents and financial software. Geomacro returns evidence-backed risk context and recommendations; it never authorizes execution.",
+  "supportedInterfaces": [
+    {
+      "url": "https://geomacro.live/a2a",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Geomacro",
+    "url": "https://geomacro.live"
+  },
+  "version": "1.0.0",
+  "documentationUrl": "https://geomacro.live/docs",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": true,
+    "extendedAgentCard": false,
+    "extensions": [
+      {
+        "uri": "https://geomacro.live/extensions/risk-preflight/v1",
+        "description": "Geomacro risk_preflight structured-data contract. Arc Testnet x402 may be used only as a separate technical-proof payment path.",
+        "required": false
+      }
+    ]
+  },
+  "securitySchemes": {
+    "commercialBearer": {
+      "httpAuthSecurityScheme": {
+        "scheme": "Bearer",
+        "bearerFormat": "Geomacro API key",
+        "description": "Commercial/private-pilot Geomacro API credential obtained out of band."
+      }
+    }
+  },
+  "securityRequirements": [
+    {
+      "schemes": {
+        "commercialBearer": {
+          "list": []
+        }
+      }
+    }
+  ],
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "risk_preflight",
+      "name": "Risk pre-flight",
+      "description": "Evaluate a country or directional corridor against a bounded policy and return a signed Risk Object, Risk Gate recommendation, governed structural context where available, and canonical GRI context where eligible.",
+      "tags": ["geopolitical-risk", "macro-risk", "risk-gate", "treasury", "payments"],
+      "examples": [
+        "Check geopolitical and macro risk before a treasury payment to a country.",
+        "Check a directional country corridor before an autonomous financial agent proceeds."
+      ],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"],
+      "securityRequirements": [
+        {
+          "schemes": {
+            "commercialBearer": {
+              "list": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

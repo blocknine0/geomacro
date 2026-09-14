@@ -9,9 +9,7 @@ import {
 
 export const GEOMACRO_AGENT_VERSION = "geomacro-agent-v1" as const;
 
-export const GEOMACRO_AGENT_CAPABILITIES = [
-  "risk_preflight",
-] as const;
+export const GEOMACRO_AGENT_CAPABILITIES = ["risk_preflight"] as const;
 
 export type GeomacroAgentCapability =
   (typeof GEOMACRO_AGENT_CAPABILITIES)[number];
@@ -36,10 +34,7 @@ const Iso3 = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
 
 const StructuralSubjectSchema = z
   .discriminatedUnion("type", [
-    z.object({
-      type: z.literal("country"),
-      country_iso3: Iso3,
-    }),
+    z.object({ type: z.literal("country"), country_iso3: Iso3 }),
     z.object({
       type: z.literal("corridor"),
       origin_country_iso3: Iso3,
@@ -65,12 +60,11 @@ export const agentStructuralQuerySchema = z.object({
   client_request_id: z.string().trim().min(4).max(128).optional(),
 });
 
-export type AgentIntelligenceQuery = z.infer<
-  typeof agentIntelligenceQuerySchema
->;
+export type AgentIntelligenceQuery = z.infer<typeof agentIntelligenceQuerySchema>;
 export type AgentStructuralQuery = z.infer<typeof agentStructuralQuerySchema>;
 
 export function geomacroAgentManifest(origin = "https://geomacro.live") {
+  const normalized = origin.replace(/\/$/, "");
   return {
     agent: {
       id: "geomacro",
@@ -81,16 +75,28 @@ export function geomacroAgentManifest(origin = "https://geomacro.live") {
       mode: "read_and_recommend",
       execution_authorized: false,
     },
-    endpoint: `${origin}/api/agent/risk`,
-    discovery: `${origin}/.well-known/geomacro-agent.json`,
+    endpoint: `${normalized}/api/agent/risk`,
+    discovery: `${normalized}/.well-known/agent-card.json`,
+    legacy_discovery: `${normalized}/.well-known/geomacro-agent.json`,
+    a2a: {
+      protocol: "A2A",
+      protocol_version: "1.0",
+      protocol_binding: "JSONRPC",
+      endpoint: `${normalized}/a2a`,
+      discovery: `${normalized}/.well-known/agent-card.json`,
+      task_lifecycle: true,
+      push_notifications: true,
+      streaming: false,
+      outbound_client: "allowlisted_server_side",
+      x402_technical_proof: true,
+    },
     capabilities: [
       {
         id: "risk_preflight",
-        access: "x402_technical_proof_or_paid_private_pilot",
+        access: "a2a_commercial_or_x402_technical_proof",
         method: "POST",
         credit_cost: GEOMACRO_CREDIT_COSTS.risk_gate_bundle,
-        request:
-          "Country or directional corridor subject plus policy/action context.",
+        request: "Country or directional corridor subject plus policy/action context.",
         response:
           "Signed Risk Object, Risk Gate recommendation, governed structural context where available and canonical GRI context where eligible.",
         execution_authorized: false,

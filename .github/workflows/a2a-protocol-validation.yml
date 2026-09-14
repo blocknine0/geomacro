@@ -1,0 +1,42 @@
+name: A2A Protocol Validation
+
+on:
+  pull_request:
+    paths:
+      - "server/routes/a2a.*.ts"
+      - "src/lib/a2a-*.ts"
+      - "src/__tests__/a2a-*.test.ts"
+      - "public/.well-known/agent-card.json"
+      - "public/.well-known/geomacro-agent.json"
+      - "docs/A2A_PROTOCOL_V1.md"
+      - "supabase/migrations/926_a2a_protocol_v1.sql"
+      - ".github/workflows/a2a-protocol-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install exact dependencies
+        run: timeout 5m bun install --frozen-lockfile
+      - name: A2A contract, security, server, client and migration tests
+        run: >-
+          timeout 4m bun x vitest run
+          src/__tests__/a2a-contract.test.ts
+          src/__tests__/a2a-security.test.ts
+          src/__tests__/a2a-server-static.test.ts
+          src/__tests__/a2a-client-static.test.ts
+          src/__tests__/a2a-migration-static.test.ts
+          src/__tests__/a2a-push-static.test.ts
+      - name: Migration safety
+        run: timeout 3m bun run db:safety
+      - name: Production build
+        run: timeout 5m bun run build

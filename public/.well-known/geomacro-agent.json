@@ -8,10 +8,24 @@
     "execution_authorized": false
   },
   "endpoint": "https://geomacro.live/api/agent/risk",
+  "discovery": "https://geomacro.live/.well-known/agent-card.json",
+  "legacy_discovery": "https://geomacro.live/.well-known/geomacro-agent.json",
+  "a2a": {
+    "protocol": "A2A",
+    "protocol_version": "1.0",
+    "protocol_binding": "JSONRPC",
+    "endpoint": "https://geomacro.live/a2a",
+    "discovery": "https://geomacro.live/.well-known/agent-card.json",
+    "task_lifecycle": true,
+    "push_notifications": true,
+    "streaming": false,
+    "outbound_client": "allowlisted_server_side",
+    "x402_technical_proof": true
+  },
   "capabilities": [
     {
       "id": "risk_preflight",
-      "access": "x402_technical_proof_or_paid_private_pilot",
+      "access": "a2a_commercial_or_x402_technical_proof",
       "method": "POST",
       "content_type": "application/json",
       "execution_authorized": false
