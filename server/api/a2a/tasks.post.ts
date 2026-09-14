@@ -5,6 +5,7 @@ import {
   readRawBody,
   setResponseHeaders,
   setResponseStatus,
+  type H3Event,
 } from "h3";
 import { ZodError } from "zod";
 
@@ -48,7 +49,7 @@ const corsHeaders = {
   "X-Content-Type-Options": "nosniff",
 };
 
-function requestHeaders(event: Parameters<Parameters<typeof defineEventHandler>[0]>[0]) {
+function requestHeaders(event: H3Event) {
   return new Headers({
     "content-type": getRequestHeader(event, "content-type") ?? "",
     "payment-signature": getRequestHeader(event, "payment-signature") ?? "",
@@ -105,19 +106,22 @@ export default defineEventHandler(async (event) => {
       return taskState.row.result_json;
     }
     if (taskState.row.status === "failed") {
-      setResponseStatus(event, 409);
-      return {
-        ok: false,
-        protocol_version: GEOMACRO_A2A_PROTOCOL_VERSION,
-        task_id: taskId,
-        client_task_id: taskState.task.client_task_id,
-        status: "failed",
-        error: taskState.row.error_json ?? {
-          code: "A2A_TASK_ALREADY_FAILED",
-          message: "This idempotent A2A task is already failed.",
-        },
-        execution_authorized: false,
-      };
+      const retryable = Boolean((taskState.row.error_json as Record<string, unknown> | null)?.retryable);
+      if (!retryable) {
+        setResponseStatus(event, 409);
+        return {
+          ok: false,
+          protocol_version: GEOMACRO_A2A_PROTOCOL_VERSION,
+          task_id: taskId,
+          client_task_id: taskState.task.client_task_id,
+          status: "failed",
+          error: taskState.row.error_json ?? {
+            code: "A2A_TASK_ALREADY_FAILED",
+            message: "This idempotent A2A task is already failed.",
+          },
+          execution_authorized: false,
+        };
+      }
     }
 
     let settlement: CircleX402Settlement | null = null;
