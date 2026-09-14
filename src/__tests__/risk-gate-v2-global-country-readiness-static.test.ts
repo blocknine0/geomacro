@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  new URL("../../supabase/migrations/918_risk_gate_v2_global_source_manifests.sql", import.meta.url),
+  new URL("../../supabase/migrations/919_risk_gate_v2_global_source_manifests.sql", import.meta.url),
   "utf8",
 );
 const geopoliticalServer = readFileSync(
