@@ -8,7 +8,6 @@ import {
 
 const SOURCE_ID = "eurostat_government_finance"
 const DATASET = "gov_10q_ggdebt"
-const METABASE_URL = "https://ec.europa.eu/eurostat/api/dissemination/catalogue/metabase.txt.gz"
 const API_BASE = `https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/${DATASET}`
 const WRITE = process.argv.includes("--write")
 const MAX_AGE_DAYS = Number(process.env.EUROSTAT_FISCAL_MAX_AGE_DAYS ?? 550)
@@ -53,6 +52,34 @@ async function fetchJson(url) {
   const payload = await response.json()
   if (payload?.error) throw new Error(`Eurostat API error: ${JSON.stringify(payload.error)}`)
   return payload
+}
+
+async function loadSourceRegistration(db) {
+  const result = await db
+    .from("live_external_sources")
+    .select("source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,licence_name")
+    .eq("source_id", SOURCE_ID)
+    .maybeSingle()
+
+  if (result.error) throw result.error
+  if (!result.data) throw new Error(`Source registration not found: ${SOURCE_ID}`)
+  return result.data
+}
+
+function assertWriteGovernance(source) {
+  if (source.commercial_usage_status !== "COMMERCIAL_OK") {
+    throw new Error(
+      `Eurostat write blocked: commercial_usage_status=${source.commercial_usage_status}`,
+    )
+  }
+  if (source.enabled_for_ingestion !== true) {
+    throw new Error("Eurostat write blocked: enabled_for_ingestion is not true")
+  }
+  if (source.enabled_for_commercial_signals !== false) {
+    throw new Error(
+      "Eurostat write blocked: commercial signals must remain disabled until harmonisation and census proof pass",
+    )
+  }
 }
 
 function decodeLatestByGeo(dataset) {
@@ -101,6 +128,8 @@ if (!Number.isFinite(MAX_AGE_DAYS) || MAX_AGE_DAYS <= 0) {
 
 const db = createDb()
 const registry = await loadCountryRegistry(db)
+const sourceRegistration = await loadSourceRegistration(db)
+if (WRITE) assertWriteGovernance(sourceRegistration)
 
 const params = new URLSearchParams({
   format: "JSON",
@@ -162,7 +191,7 @@ for (const row of latest) {
         sector_code: REQUIRED.sector,
         national_accounts_item: REQUIRED.na_item,
         frequency: "quarterly_by_dataset_definition",
-        source_contract: "eurostat_government_finance",
+        source_contract: SOURCE_ID,
         rights_boundary: "European Commission reuse policy / Eurostat copyright notice; item-specific exceptions remain binding",
         raw_redistribution: false,
         methodology_boundary: "SOURCE_OBSERVATION_ONLY_NOT_YET_HARMONISED_WITH_WDI_CENTRAL_GOVERNMENT_DEBT",
@@ -225,6 +254,11 @@ const manifestCore = {
     direct_merge_with_world_bank_central_government_debt_allowed: false,
     risk_gate_signal_activation: false,
     raw_redistribution: false,
+    source_registry: {
+      commercial_usage_status: sourceRegistration.commercial_usage_status,
+      enabled_for_ingestion: sourceRegistration.enabled_for_ingestion,
+      enabled_for_commercial_signals: sourceRegistration.enabled_for_commercial_signals,
+    },
   },
 }
 const manifest = { ...manifestCore, manifest_hash: sha256(manifestCore) }
@@ -247,6 +281,11 @@ console.log(JSON.stringify({
   unmapped_geo_codes: [...new Set(unmapped)].sort(),
   periods,
   observations_attempted: attempted,
+  source_registry: {
+    commercial_usage_status: sourceRegistration.commercial_usage_status,
+    enabled_for_ingestion: sourceRegistration.enabled_for_ingestion,
+    enabled_for_commercial_signals: sourceRegistration.enabled_for_commercial_signals,
+  },
   direct_merge_with_world_bank_central_government_debt_allowed: false,
   manifest: {
     release_id: manifest.release_id,
