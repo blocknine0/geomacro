@@ -14,9 +14,9 @@ import {
   GEOMACRO_A2A_PROTOCOL_VERSION,
   sha256A2A,
 } from "../../../src/lib/a2a-contract";
+import { executeRetryableA2ATask } from "../../../src/lib/a2a-execution.server";
 import { A2AProtocolError, verifyA2ASignedRequest } from "../../../src/lib/a2a-signature.server";
 import {
-  executeA2ATask,
   getOrCreateA2ATask,
   markA2ATaskPaymentRequired,
 } from "../../../src/lib/a2a-service.server";
@@ -178,7 +178,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const result = await executeA2ATask({
+    const result = await executeRetryableA2ATask({
       identity,
       task: taskState.task,
       taskId,
