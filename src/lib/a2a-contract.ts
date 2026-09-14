@@ -126,6 +126,7 @@ export function geomacroA2AManifest(origin = "https://geomacro.live") {
       manifest: `${base}/api/a2a/manifest`,
       negotiate: `${base}/api/a2a/negotiate`,
       identity: `${base}/api/a2a/identity`,
+      identity_revoke: `${base}/api/a2a/identity-revoke`,
       tasks: `${base}/api/a2a/tasks`,
       task_status_template: `${base}/api/a2a/tasks/{task_id}`,
     },
