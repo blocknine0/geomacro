@@ -53,13 +53,15 @@ function driverForType(type: string | null): RiskGateV2Driver {
 /**
  * Release-consistent UCDP Candidate country module.
  * Score = max(event-count percentile, best-fatality percentile) across the same
- * enabled sovereign denominator and 180-day window. This avoids opaque fixed
- * country weights. A zero event score is allowed only with a clean global
- * release manifest. Coverage stays PARTIAL because organized violence is only
- * one part of the geopolitical-security ontology.
+ * clean sovereign comparison set and 180-day window. A country with provisional
+ * or non-commercial evidence is removed from both output and percentile
+ * denominator, so it cannot silently behave like a zero-event country.
+ * Coverage stays PARTIAL because organized violence is only one part of the
+ * geopolitical-security ontology.
  */
 export function buildRiskGateV2GeopoliticalSecuritySnapshot(input: {
   sovereign_iso3: string[];
+  blocked_country_iso3?: string[];
   events: UcdpCandidateModuleEvent[];
   release: UcdpCandidateReleaseEvidence;
   generated_at: string;
@@ -88,6 +90,14 @@ export function buildRiskGateV2GeopoliticalSecuritySnapshot(input: {
     .sort();
   if (!sovereigns.length) throw new Error("At least one sovereign country is required");
   const sovereignSet = new Set(sovereigns);
+  const blocked = new Set(
+    (input.blocked_country_iso3 ?? [])
+      .map((iso3) => iso3.trim().toUpperCase())
+      .filter((iso3) => sovereignSet.has(iso3)),
+  );
+  const comparisonCountries = sovereigns.filter((iso3) => !blocked.has(iso3));
+  if (!comparisonCountries.length) return new Map();
+
   const windowStart = new Date(
     coverageEnd.getTime() - RISK_GATE_V2_GEOPOLITICAL_LOOKBACK_DAYS * 86_400_000,
   );
@@ -96,13 +106,13 @@ export function buildRiskGateV2GeopoliticalSecuritySnapshot(input: {
     string,
     { event_count: number; deaths: number; driver_counts: Map<RiskGateV2Driver, number> }
   >();
-  for (const iso3 of sovereigns) {
+  for (const iso3 of comparisonCountries) {
     aggregates.set(iso3, { event_count: 0, deaths: 0, driver_counts: new Map() });
   }
 
   for (const event of input.events) {
     const iso3 = event.country_iso3.trim().toUpperCase();
-    if (!sovereignSet.has(iso3)) continue;
+    if (!aggregates.has(iso3)) continue;
     const observedAt = parseDate(event.observed_at, "event observed_at");
     if (observedAt.getTime() < windowStart.getTime() || observedAt.getTime() > coverageEnd.getTime()) continue;
     if (!Number.isFinite(event.best_deaths) || event.best_deaths < 0) {
@@ -115,12 +125,12 @@ export function buildRiskGateV2GeopoliticalSecuritySnapshot(input: {
     aggregate.driver_counts.set(driver, (aggregate.driver_counts.get(driver) ?? 0) + 1);
   }
 
-  const eventPopulation = sovereigns.map((iso3) => aggregates.get(iso3)!.event_count);
-  const deathPopulation = sovereigns.map((iso3) => aggregates.get(iso3)!.deaths);
+  const eventPopulation = comparisonCountries.map((iso3) => aggregates.get(iso3)!.event_count);
+  const deathPopulation = comparisonCountries.map((iso3) => aggregates.get(iso3)!.deaths);
   const expiresAt = new Date(generatedAt.getTime() + RISK_GATE_V2_GEOPOLITICAL_TTL_MS);
   const states = new Map<string, RiskGateV2ModuleStateInput>();
 
-  for (const iso3 of sovereigns) {
+  for (const iso3 of comparisonCountries) {
     const aggregate = aggregates.get(iso3)!;
     const eventPercentile = percentileRank(aggregate.event_count, eventPopulation);
     const deathPercentile = percentileRank(aggregate.deaths, deathPopulation);
