@@ -43,7 +43,7 @@ describe("Risk Gate v2 request readiness", () => {
     expect(result.unsupported_modules).toHaveLength(0);
   });
 
-  it("does not overclaim a full cross-border payment profile", () => {
+  it("does not overclaim the remaining unsupported cross-border payment modules", () => {
     const request: RiskGateV2Request = {
       ...baseRequest(),
       request_id: "cross-border-readiness-test",
@@ -66,16 +66,18 @@ describe("Risk Gate v2 request readiness", () => {
     };
 
     const result = evaluateRiskGateV2RequestReadiness(request);
+    const unsupported = result.unsupported_modules.map((item) => item.module);
 
     expect(result.ready_for_supported_module_evaluation).toBe(false);
     expect(result.fail_closed_required).toBe(true);
-    expect(result.unsupported_modules.map((item) => item.module)).toEqual(
+    expect(unsupported).toEqual(
       expect.arrayContaining([
         "geoeconomic_trade",
-        "currency_capital_mobility",
-        "banking_financial_system",
         "payments_treasury",
+        "supply_chain_logistics",
       ]),
     );
+    expect(unsupported).not.toContain("currency_capital_mobility");
+    expect(unsupported).not.toContain("banking_financial_system");
   });
 });
