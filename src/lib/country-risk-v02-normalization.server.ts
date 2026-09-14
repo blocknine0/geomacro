@@ -12,6 +12,10 @@ import {
 } from "./country-risk-v02-feature-methodology";
 
 
+const WORLD_BANK_SOURCE_ID =
+  "world_bank_indicators";
+
+
 function freshnessStatus(
   observedAt:
     string | null,
@@ -97,6 +101,11 @@ generateGlobalMacroNormalization(
   const db =
     requireRiskSupabase();
 
+  //
+  // The currently score-ready country macro methodology is explicitly backed
+  // by the commercially reviewed World Bank WDI source. Keep that source gate
+  // fail-closed before reading the deduplicated latest-observation view.
+  //
   const operational =
     await db
       .from(
@@ -104,6 +113,10 @@ generateGlobalMacroNormalization(
       )
       .select(
         "source_id",
+      )
+      .eq(
+        "source_id",
+        WORLD_BANK_SOURCE_ID,
       )
       .eq(
         "enabled_for_ingestion",
@@ -116,7 +129,8 @@ generateGlobalMacroNormalization(
       .eq(
         "commercial_usage_status",
         "COMMERCIAL_OK",
-      );
+      )
+      .maybeSingle();
 
   if (
     operational.error
@@ -124,20 +138,25 @@ generateGlobalMacroNormalization(
     throw operational.error;
   }
 
-  const sourceIds =
-    (
-      operational.data ??
-      []
-    )
-      .map(
-        row =>
-          row.source_id,
-      );
+  if (
+    !operational.data
+  ) {
+    throw new Error(
+      "World Bank WDI source is not operational for commercial macro signals",
+    );
+  }
 
+  //
+  // Do not normalize directly from the append-only raw observation table.
+  // Repeated governed ingests can legitimately leave historical rows there,
+  // and the Supabase/PostgREST response cap can truncate a raw-table scan.
+  // Migration 918 exposes exactly one latest verified WDI observation per
+  // country + metric, so the peer universe remains deterministic and bounded.
+  //
   const rows =
     await db
       .from(
-        "live_external_observations",
+        "live_world_bank_indicator_latest",
       )
       .select(`
         country_iso3,
@@ -147,31 +166,15 @@ generateGlobalMacroNormalization(
         observed_at
       `)
       .eq(
-        "category",
-        "MACRO",
-      )
-      .eq(
         "metric",
         input.metric,
-      )
-      .eq(
-        "quality_status",
-        "VERIFIED",
-      )
-      .eq(
-        "commercial_eligibility_status",
-        "VERIFIED",
-      )
-      .in(
-        "source_id",
-        sourceIds,
       )
       .lte(
         "observed_at",
         input.as_of,
       )
       .limit(
-        10000,
+        1000,
       );
 
   if (
