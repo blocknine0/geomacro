@@ -1,0 +1,31 @@
+name: Temporary Live Speed Baseline
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  live-speed-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEOMACRO_LIVE_PERF_BASE_URL: https://geomacro.live
+      GEOMACRO_LIVE_PERF_EXPECTED_HOST: geomacro.live
+      GEOMACRO_LIVE_PERF_SAMPLES: '5'
+      GEOMACRO_LIVE_PERF_ARTIFACT_DIR: artifacts/live-performance-slo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Run real-network live speed baseline
+        run: bun scripts/ops/live-performance-slo.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporary-live-speed-baseline-${{ github.run_id }}
+          path: artifacts/live-performance-slo/*.json
+          if-no-files-found: warn
