@@ -1,4 +1,4 @@
-import { isIP } from "node:net";
+import * as net from "node:net";
 import { resolve4, resolve6 } from "node:dns/promises";
 
 const MAX_URL_LENGTH = 2048;
@@ -77,7 +77,7 @@ function isBlockedIpv6(value: string) {
 }
 
 export function isBlockedA2AAddress(value: string) {
-  const version = isIP(value);
+  const version = net.isIP(value);
   if (version === 4) return isBlockedIpv4(value);
   if (version === 6) return isBlockedIpv6(value);
   return true;
@@ -96,13 +96,13 @@ export function validateA2AEndpointUrl(
   if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
     throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
   }
-  if (isIP(hostname) && isBlockedA2AAddress(hostname)) throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
+  if (net.isIP(hostname) && isBlockedA2AAddress(hostname)) throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
   if (!allowlist.has(url.origin)) throw new Error("A2A_ORIGIN_NOT_ALLOWLISTED");
   return url;
 }
 
 export async function assertA2ADnsPublic(url: URL) {
-  if (isIP(url.hostname)) {
+  if (net.isIP(url.hostname)) {
     if (isBlockedA2AAddress(url.hostname)) throw new Error("A2A_PRIVATE_HOST_FORBIDDEN");
     return;
   }
