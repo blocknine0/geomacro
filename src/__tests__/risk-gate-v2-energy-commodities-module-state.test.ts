@@ -86,7 +86,7 @@ function build(overrides: {
   rows?: RiskGateV2UsqsExtractionObservation[];
   release?: RiskGateV2UsqsExtractionManifest;
   generated_at?: string;
-  commercial?: "VERIFIED" | "UNVERIFIED" | "DERIVED_ONLY" | "BLOCKED";
+  commercial?: "VERIFIED" | "UNVERIFIED" | "INELIGIBLE";
 } = {}) {
   return buildRiskGateV2EnergyCommoditiesModuleState({
     commodity: "Cobalt",
@@ -119,8 +119,6 @@ describe("Risk Gate v2 critical-mineral extraction concentration", () => {
   });
 
   it("keeps Other countries as a residual denominator bucket, never a sovereign producer", () => {
-    // Shares are 45%, 25%, 15%, 5% plus a 10% residual. The HHI upper bound
-    // is .30 and the top actual-country share is .45, yielding exactly 39.
     expect(build()!.score).toBe(39);
   });
 
