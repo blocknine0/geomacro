@@ -78,7 +78,7 @@ describe("Risk Gate v2 support readiness", () => {
     );
 
     const backlog = getRiskGateV2PromotionBacklog();
-    expect(backlog.length).toBe(RISK_GATE_V2_MODULES.length - 2);
+    expect(backlog.length).toBe(RISK_GATE_V2_MODULES.length - 4);
 
     for (const item of backlog) {
       expect(item.status).not.toBe("SUPPORTED");
@@ -90,6 +90,8 @@ describe("Risk Gate v2 support readiness", () => {
   it("marks only modules with real deterministic builders as supported", () => {
     expect(getRiskGateV2SupportedModules().sort()).toEqual([
       "macro_monetary",
+      "political_governance",
+      "societal_labor_health",
       "sovereign_fiscal",
     ]);
 
@@ -99,6 +101,12 @@ describe("Risk Gate v2 support readiness", () => {
     expect(RISK_GATE_V2_SUPPORT_READINESS.sovereign_fiscal.coverage_ceiling).toBe(
       "LIMITED",
     );
+    expect(
+      RISK_GATE_V2_SUPPORT_READINESS.political_governance.coverage_ceiling,
+    ).toBe("LIMITED");
+    expect(
+      RISK_GATE_V2_SUPPORT_READINESS.societal_labor_health.coverage_ceiling,
+    ).toBe("LIMITED");
   });
 });
 
@@ -251,7 +259,7 @@ describe("Risk Gate v2 governed macro module states", () => {
     expect(state!.delta).toBe(10);
   });
 
-  it("returns both currently supported module states from one component", () => {
+  it("returns both currently supported macro module states from one component", () => {
     const states = buildRiskGateV2SupportedMacroStates({
       component: component(),
       generated_at: "2026-09-14T06:30:00.000Z",

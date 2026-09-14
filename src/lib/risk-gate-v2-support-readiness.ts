@@ -4,7 +4,7 @@ import type {
 } from "./risk-gate-v2-taxonomy";
 
 export const RISK_GATE_V2_SUPPORT_READINESS_VERSION =
-  "risk-gate-v2-support-readiness-0.1.0" as const;
+  "risk-gate-v2-support-readiness-0.2.0" as const;
 
 export type RiskGateV2SupportStatus =
   | "SUPPORTED"
@@ -17,11 +17,6 @@ export type RiskGateV2SupportStatus =
 export type RiskGateV2ModuleSupportReadiness = {
   module: RiskGateV2Module;
   status: RiskGateV2SupportStatus;
-  /**
-   * Highest coverage state the current production methodology is allowed to
-   * claim. This is intentionally independent from whether a module runtime
-   * exists. A supported module can still have LIMITED/PARTIAL subject coverage.
-   */
   coverage_ceiling: RiskGateV2CoverageState;
   governed_sources: readonly string[];
   blockers: readonly string[];
@@ -29,14 +24,9 @@ export type RiskGateV2ModuleSupportReadiness = {
 };
 
 /**
- * Commercial support registry for Risk Gate v2.
- *
- * This file is deliberately conservative. `SUPPORTED` means Geomacro has a
- * deterministic, versioned module-state builder backed by governed inputs. It
- * never means every country/corridor has FULL coverage.
- *
- * Unsupported modules are kept here with explicit blockers and a promotion
- * path so they are engineering work items, not permanently ignored taxonomy.
+ * `SUPPORTED` means there is a deterministic, versioned module-state builder
+ * backed by governed inputs. It does not mean every subject has coverage or
+ * that the module spans its complete long-term ontology.
  */
 export const RISK_GATE_V2_SUPPORT_READINESS = {
   geopolitical_security: {
@@ -45,13 +35,11 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "PARTIAL",
     governed_sources: ["ucdp_candidate", "ucdp_ged"],
     blockers: [
-      "Risk Gate v2 conflict module-state methodology is not yet versioned.",
-      "Current UCDP Candidate evidence is evidence-only until explicitly promoted by a v2 methodology.",
+      "Conflict exposure methodology and validation are not yet promoted into a v2 decision module.",
     ],
     promotion_requirements: [
-      "Build a deterministic country conflict-exposure module from governed UCDP evidence.",
-      "Define recency, severity, conflict-type and country-attribution rules.",
-      "Validate country coverage and backtest before enabling the module for decisions.",
+      "Version recency, severity and conflict-type scoring from governed UCDP evidence.",
+      "Run coverage/distribution validation before decision activation.",
     ],
   },
   geoeconomic_trade: {
@@ -60,28 +48,23 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: ["ofac_sanctions", "unsc_sanctions"],
     blockers: [
-      "Current sanctions adapter path remains REVIEW_REQUIRED/UNVERIFIED for paid delivery.",
-      "Trade/export-control/tariff coverage is not yet governed as a complete module input set.",
+      "Sanctions delivery rights and complete trade/export-control coverage are not yet closed.",
     ],
     promotion_requirements: [
-      "Close exact OFAC/UNSC adapter commercial-use and delivery review.",
-      "Add governed export-control, tariff and trade-restriction inputs where required.",
-      "Version sanctions/trade scoring and validate country/corridor attribution.",
+      "Close exact sanctions source rights and add governed trade restriction inputs.",
+      "Version sanctions/trade scoring and corridor attribution.",
     ],
   },
   political_governance: {
     module: "political_governance",
-    status: "SOURCE_READY",
+    status: "SUPPORTED",
     coverage_ceiling: "LIMITED",
     governed_sources: ["world_bank_wgi_political_stability"],
     blockers: [
-      "WGI political-stability evidence is governed but still marked evidence-only for the older GRO methodology.",
-      "Risk Gate v2 political-governance module builder is not yet implemented.",
+      "Current supported scope is WGI political stability only; rule of law and policy continuity are not yet active.",
     ],
     promotion_requirements: [
-      "Create a separately versioned v2 WGI political-governance module methodology.",
-      "Preserve WGI uncertainty/source-count context in module confidence.",
-      "Add complementary governance/rule-of-law inputs before raising the coverage ceiling.",
+      "Add governed rule-of-law, regulatory-quality and policy-continuity dimensions before raising coverage.",
     ],
   },
   sovereign_fiscal: {
@@ -90,11 +73,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "LIMITED",
     governed_sources: ["world_bank_indicators"],
     blockers: [
-      "Current supported scope covers normalized central-government debt, not the full sovereign-fiscal ontology.",
+      "Current supported scope covers normalized central-government debt only.",
     ],
     promotion_requirements: [
       "Add governed deficit, reserves, debt-service and external-funding inputs.",
-      "Raise coverage only after the expanded methodology is versioned and validated.",
     ],
   },
   macro_monetary: {
@@ -103,25 +85,22 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "PARTIAL",
     governed_sources: ["world_bank_indicators"],
     blockers: [
-      "Current supported scope covers inflation, real GDP growth and unemployment; policy-rate, external-balance and liquidity signals are not yet active.",
+      "Policy-rate, external-balance and liquidity signals are not yet active.",
     ],
     promotion_requirements: [
       "Add governed policy-rate, current-account/balance-of-payments and liquidity inputs.",
-      "Raise coverage only after the expanded methodology is versioned and validated.",
     ],
   },
   currency_capital_mobility: {
     module: "currency_capital_mobility",
     status: "BLOCKED_DATA_COVERAGE",
     coverage_ceiling: "INSUFFICIENT",
-    governed_sources: ["imf_data", "bis_statistics"],
+    governed_sources: ["imf_data", "bis_statistics", "world_bank_indicators"],
     blockers: [
-      "IMF and BIS production source rights/adapter readiness are not yet closed in the current registry.",
-      "FX volatility, reserves, convertibility and capital-control inputs are not yet a governed module dataset.",
+      "FX, reserves, convertibility and capital-control inputs are not yet a governed versioned module dataset.",
     ],
     promotion_requirements: [
-      "Close exact IMF/BIS dataset terms and production adapters or select equivalent governed sources.",
-      "Implement reserve/FX/capital-control normalizations and version the module methodology.",
+      "Operationalize governed reserve/FX/capital-control inputs and version the module methodology.",
     ],
   },
   banking_financial_system: {
@@ -130,12 +109,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: ["bis_statistics", "world_bank_indicators"],
     blockers: [
-      "Current governed production inputs do not cover banking funding, deposits, credit stress and contagion sufficiently.",
-      "BIS adapter/source review is not production-ready.",
+      "Current production inputs do not yet cover funding, deposits, credit stress and contagion sufficiently.",
     ],
     promotion_requirements: [
-      "Operationalize governed banking/credit/funding datasets.",
-      "Define systemic-stress and contagion methodology with country coverage tests.",
+      "Operationalize governed banking/credit/funding datasets and validate systemic-stress scoring.",
     ],
   },
   payments_treasury: {
@@ -144,11 +121,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: [],
     blockers: [
-      "No complete governed global payment-rail/correspondent-banking disruption dataset is active yet.",
+      "No complete governed payment-rail/correspondent-banking disruption input set is active.",
     ],
     promotion_requirements: [
-      "Add governed payment-rail, settlement, banking-holiday and correspondent-banking signals.",
-      "Define action-specific treasury/payment disruption scoring and freshness SLAs.",
+      "Add payment-rail, settlement, banking-holiday and correspondent-banking signals with freshness rules.",
     ],
   },
   supply_chain_logistics: {
@@ -157,14 +133,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: ["un_comtrade", "jrc_rmis_supply_chain"],
     blockers: [
-      "UN Comtrade exact API tier/derived-output terms are not closed for production.",
-      "JRC RMIS stable machine-readable adapter is not yet operational.",
-      "Port/route/chokepoint disruption coverage is incomplete.",
+      "Stable governed trade-flow and route/chokepoint adapters are not yet operational.",
     ],
     promotion_requirements: [
-      "Close a governed trade-flow adapter and source-rights contract.",
-      "Add port, route and chokepoint operational signals with geographic entity mapping.",
-      "Implement dependency/concentration and route-disruption methodology.",
+      "Operationalize governed trade-flow, port, route and chokepoint signals and dependency scoring.",
     ],
   },
   energy_commodities: {
@@ -173,12 +145,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: ["usgs_mcs"],
     blockers: [
-      "USGS MCS is governed and operational, but mineral quantities are intentionally non-directional without dependency/concentration context.",
-      "Energy, food and broader commodity coverage is incomplete.",
+      "USGS mineral quantities need dependency/concentration context; energy and food coverage are incomplete.",
     ],
     promotion_requirements: [
-      "Implement supply dependency and concentration methodology for critical minerals.",
-      "Add governed energy/food/commodity disruption inputs before broad module coverage claims.",
+      "Implement critical-mineral concentration/dependency scoring and add governed energy/food signals.",
     ],
   },
   regulatory_legal: {
@@ -187,11 +157,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: [],
     blockers: [
-      "No governed global regulatory/legal change corpus with production scoring rules is active yet.",
+      "No governed global regulatory/legal change corpus with jurisdiction scoring is active.",
     ],
     promotion_requirements: [
-      "Add official regulatory/legal source families with jurisdiction mapping.",
-      "Define licensing, investment, tax, data-localization and product-ban scoring rules.",
+      "Add official jurisdiction-mapped regulatory/legal sources and version change-impact rules.",
     ],
   },
   infrastructure_cyber_technology: {
@@ -200,11 +169,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: [],
     blockers: [
-      "No complete governed global infrastructure/cyber/telecom outage source set is active yet.",
+      "No complete governed global infrastructure/cyber/telecom disruption set is active.",
     ],
     promotion_requirements: [
-      "Add governed outage/cyber/infrastructure sources with location and impact normalization.",
-      "Separate observed disruption from unverified incident reporting before scoring.",
+      "Add verified outage/cyber/infrastructure sources with geographic impact normalization.",
     ],
   },
   climate_environment_hazard: {
@@ -213,26 +181,22 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: ["reliefweb", "gdacs"],
     blockers: [
-      "ReliefWeb is derived-only and GDACS production rights are not yet closed.",
-      "Hazard severity, exposure and financial-action transmission methodology is not versioned.",
+      "Hazard delivery-rights boundary and financial-transmission methodology are not yet fully closed.",
     ],
     promotion_requirements: [
-      "Close exact hazard-source delivery rights or use an alternative governed source.",
-      "Implement event severity, geographic exposure and decay methodology.",
+      "Close exact hazard-source delivery rights and version severity/exposure/decay scoring.",
     ],
   },
   societal_labor_health: {
     module: "societal_labor_health",
-    status: "BLOCKED_METHODOLOGY",
-    coverage_ceiling: "INSUFFICIENT",
+    status: "SUPPORTED",
+    coverage_ceiling: "LIMITED",
     governed_sources: ["unhcr_refugee_statistics", "world_bank_indicators"],
     blockers: [
-      "UNHCR absolute displacement metrics require population-share normalization before comparable risk scoring.",
-      "Public-health and strike/labor-disruption coverage is incomplete.",
+      "Current supported scope is population-normalized displacement/migration stress; labour and public-health signals are not yet active.",
     ],
     promotion_requirements: [
-      "Implement population-normalized displacement stress using governed population denominators.",
-      "Add governed public-health and labor-disruption inputs before broader coverage claims.",
+      "Add governed public-health and labour-disruption inputs before raising coverage.",
     ],
   },
   information_influence: {
@@ -241,12 +205,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: [],
     blockers: [
-      "No production-grade governed misinformation/information-integrity dataset is active.",
-      "News discovery alone must not be treated as verified information-influence scoring.",
+      "No production-grade governed information-integrity/interference dataset is active.",
     ],
     promotion_requirements: [
-      "Add governed information-integrity/interference sources and corroboration rules.",
-      "Validate false-information detection separately from ordinary negative-news intensity.",
+      "Add corroborated information-integrity/interference sources and separate false-information scoring from news intensity.",
     ],
   },
   emerging_long_tail: {
@@ -255,12 +217,10 @@ export const RISK_GATE_V2_SUPPORT_READINESS = {
     coverage_ceiling: "INSUFFICIENT",
     governed_sources: ["reliefweb", "gdelt_gal"],
     blockers: [
-      "Long-tail detection currently functions as watch/discovery context, not a validated broad scoring module.",
-      "Novel risks require corroboration and explicit promotion before they can affect an action score.",
+      "Long-tail discovery is watch context, not a validated scoring module.",
     ],
     promotion_requirements: [
-      "Implement typed anomaly discovery with corroboration, provenance and promotion thresholds.",
-      "Require a versioned driver mapping before any newly discovered risk contributes to scoring.",
+      "Implement typed anomaly discovery, corroboration and versioned promotion thresholds before score contribution.",
     ],
   },
 } as const satisfies Record<RiskGateV2Module, RiskGateV2ModuleSupportReadiness>;
