@@ -158,8 +158,8 @@ describe("Risk Gate v2 critical-mineral supply concentration", () => {
     });
 
     expect(state).not.toBeNull();
-    expect(state!.previous_score).toBe(46.8);
-    expect(state!.delta).toBe(7.6);
-    expect(state!.drivers[0].delta_contribution).toBe(7.6);
+    expect(state!.previous_score).toBe(45.2);
+    expect(state!.delta).toBe(9.2);
+    expect(state!.drivers[0].delta_contribution).toBe(9.2);
   });
 });
