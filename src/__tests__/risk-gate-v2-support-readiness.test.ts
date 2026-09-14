@@ -78,7 +78,7 @@ describe("Risk Gate v2 support readiness", () => {
     );
 
     const backlog = getRiskGateV2PromotionBacklog();
-    expect(backlog.length).toBe(RISK_GATE_V2_MODULES.length - 7);
+    expect(backlog.length).toBe(RISK_GATE_V2_MODULES.length - 8);
 
     for (const item of backlog) {
       expect(item.status).not.toBe("SUPPORTED");
@@ -91,6 +91,7 @@ describe("Risk Gate v2 support readiness", () => {
     expect(getRiskGateV2SupportedModules().sort()).toEqual([
       "banking_financial_system",
       "currency_capital_mobility",
+      "energy_commodities",
       "geopolitical_security",
       "macro_monetary",
       "political_governance",
@@ -118,6 +119,9 @@ describe("Risk Gate v2 support readiness", () => {
     ).toBe("LIMITED");
     expect(
       RISK_GATE_V2_SUPPORT_READINESS.societal_labor_health.coverage_ceiling,
+    ).toBe("LIMITED");
+    expect(
+      RISK_GATE_V2_SUPPORT_READINESS.energy_commodities.coverage_ceiling,
     ).toBe("LIMITED");
   });
 });
