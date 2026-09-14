@@ -23,19 +23,61 @@ jobs:
           persist-credentials: false
 
       - name: Run live OECD D3/D4 coverage audit
+        id: live_audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/audit-oecd-sovereign-fiscal-coverage.mjs | tee oecd-sovereign-fiscal-coverage.log
+
+      - name: Normalize exact provider outage as fail-closed evidence
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/audit-oecd-sovereign-fiscal-coverage.mjs | tee oecd-sovereign-fiscal-coverage.log
-          grep -q 'PASS: OECD SOVEREIGN FISCAL COVERAGE AUDIT COMPLETE - NO WRITES' oecd-sovereign-fiscal-coverage.log
+          if [ -f oecd-sovereign-fiscal-coverage.json ]; then
+            grep -q 'PASS: OECD SOVEREIGN FISCAL COVERAGE AUDIT COMPLETE - NO WRITES' oecd-sovereign-fiscal-coverage.log
+          else
+            if ! grep -q 'latest-only query failed:.*HTTP 5' oecd-sovereign-fiscal-coverage.log; then
+              echo "::error::OECD audit failed for a non-provider-availability reason"
+              cat oecd-sovereign-fiscal-coverage.log
+              exit 1
+            fi
+            PROVIDER_ERROR="$(tail -n 1 oecd-sovereign-fiscal-coverage.log)"
+            jq -n \
+              --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --arg provider_error "$PROVIDER_ERROR" \
+              '{
+                schema_version: "geomacro-oecd-sovereign-fiscal-coverage-1.2",
+                generated_at: $generated_at,
+                source_id: "oecd_public_finance",
+                dataset: "OECD Government debt by instrument coverage",
+                dataflow: "OECD.SDD.NAD,DSD_PSD_D1D4@DF_PSD_D1D4,1.0",
+                writes_performed: false,
+                operational_status: "BLOCKED_PROVIDER_AVAILABILITY",
+                coverage_proven: false,
+                operational_activation_allowed: false,
+                provider_error: $provider_error,
+                commercial_boundary: {
+                  status: "RIGHTS_APPROVED_CANDIDATE_NOT_YET_RISK_GATE_ACTIVE"
+                },
+                methodology_boundary: {
+                  current_geomacro_metric: "central_government_debt_pct_gdp",
+                  oecd_sector: "general government",
+                  direct_merge_allowed: false
+                },
+                concepts: [],
+                fail_closed_reason: "Official OECD SDMX data was unavailable during the live audit. No cached or synthetic coverage is promoted."
+              }' > oecd-sovereign-fiscal-coverage.json
+            echo "PASS: OECD provider outage captured as fail-closed evidence"
+          fi
+
+      - name: Guard audit and activation boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
           jq -e '.writes_performed == false' oecd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.direct_merge_allowed == false' oecd-sovereign-fiscal-coverage.json >/dev/null
-          jq -e '.concepts | length == 2' oecd-sovereign-fiscal-coverage.json >/dev/null
-
-      - name: Guard commercial and methodology boundaries
-        shell: bash
-        run: |
-          set -euo pipefail
+          jq -e 'if .coverage_proven == false then .operational_status == "BLOCKED_PROVIDER_AVAILABILITY" else (.concepts | length) == 2 end' oecd-sovereign-fiscal-coverage.json >/dev/null
           grep -q "'oecd_public_finance'" supabase/migrations/920_multi_source_commercial_registry.sql
           grep -q "'eia_international_energy'" supabase/migrations/920_multi_source_commercial_registry.sql
           grep -q "'usgs_earthquake_hazards'" supabase/migrations/920_multi_source_commercial_registry.sql
