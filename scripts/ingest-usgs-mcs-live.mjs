@@ -12,11 +12,97 @@ import {
 
 const SOURCE_ID = "usgs_mcs"
 const RELEASE = "MCS 2026"
-const SCIENCEBASE_ITEM_ID = "69837e43b66b01367d7ec7c7"
+const CANONICAL_SCIENCEBASE_ITEM_ID = "69837e43b66b01367d7ec7c7"
+const SCIENCEBASE_ITEM_IDS = [
+  CANONICAL_SCIENCEBASE_ITEM_ID,
+  "696a75d5d4be0228872d3bf8",
+]
 const SCIENCEBASE_ITEM_URL =
-  `https://www.sciencebase.gov/catalog/item/${SCIENCEBASE_ITEM_ID}`
-const SCIENCEBASE_METADATA_URL = `${SCIENCEBASE_ITEM_URL}?format=json`
+  `https://www.sciencebase.gov/catalog/item/${CANONICAL_SCIENCEBASE_ITEM_ID}`
+const EXPECTED_SOURCE_FILE = "MCS2026_Commodities_Data.csv"
+const EXPECTED_SOURCE_FILE_SHA256 =
+  "582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5"
 const WRITE = !process.argv.includes("--dry-run")
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function fetchWithRetry(url, options = {}) {
+  const attempts = 4
+  let lastError = null
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const response = await fetch(url, options)
+      if (response.ok) return response
+
+      const retryable = response.status === 429 || response.status >= 500
+      lastError = new Error(`${url} returned HTTP ${response.status}`)
+      if (!retryable || attempt === attempts) throw lastError
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      if (attempt === attempts) throw lastError
+    }
+
+    await sleep(1000 * 2 ** (attempt - 1))
+  }
+
+  throw lastError ?? new Error(`Request failed: ${url}`)
+}
+
+async function loadPinnedReleaseBytes() {
+  const failures = []
+
+  for (const itemId of SCIENCEBASE_ITEM_IDS) {
+    const metadataUrl =
+      `https://www.sciencebase.gov/catalog/item/${itemId}?format=json`
+
+    try {
+      const metadataResponse = await fetchWithRetry(metadataUrl, {
+        headers: { accept: "application/json" },
+      })
+      const metadata = await metadataResponse.json()
+      const csvFile = (metadata?.files ?? []).find(
+        (file) => String(file?.name ?? "") === EXPECTED_SOURCE_FILE,
+      )
+      if (!csvFile) {
+        failures.push(`${itemId}: ${EXPECTED_SOURCE_FILE} not present`)
+        continue
+      }
+
+      const csvUrl = csvFile.url ?? csvFile.downloadUri
+      if (!csvUrl) {
+        failures.push(`${itemId}: CSV has no download URL`)
+        continue
+      }
+
+      const response = await fetchWithRetry(csvUrl)
+      const bytes = Buffer.from(await response.arrayBuffer())
+      const sourceFileSha256 = createHash("sha256").update(bytes).digest("hex")
+
+      if (sourceFileSha256 !== EXPECTED_SOURCE_FILE_SHA256) {
+        failures.push(
+          `${itemId}: unexpected source hash ${sourceFileSha256}`,
+        )
+        continue
+      }
+
+      return {
+        bytes,
+        sourceFileSha256,
+        sourceFileName: EXPECTED_SOURCE_FILE,
+        retrievalItemId: itemId,
+      }
+    } catch (error) {
+      failures.push(
+        `${itemId}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  throw new Error(
+    `Unable to retrieve pinned USGS MCS release: ${failures.join(" | ")}`,
+  )
+}
 
 const db = createDb()
 const registry = await loadCountryRegistry(db)
@@ -24,34 +110,8 @@ const registry = await loadCountryRegistry(db)
 console.log("===== USGS MCS CURRENT CRITICAL-MINERAL INGESTION =====")
 console.log({ mode: WRITE ? "WRITE" : "DRY_RUN" })
 
-const metadataResponse = await fetch(SCIENCEBASE_METADATA_URL)
-if (!metadataResponse.ok) {
-  throw new Error(`USGS metadata request failed: ${metadataResponse.status}`)
-}
-
-const metadata = await metadataResponse.json()
-const csvFile = (metadata?.files ?? []).find(
-  (file) =>
-    String(file?.name ?? "").toLowerCase() ===
-    "mcs2026_commodities_data.csv",
-)
-if (!csvFile) {
-  throw new Error("Authoritative MCS2026_Commodities_Data.csv was not found")
-}
-
-const csvUrl = csvFile.url ?? csvFile.downloadUri
-if (!csvUrl) {
-  throw new Error("USGS MCS CSV has no download URL")
-}
-
-const response = await fetch(csvUrl)
-if (!response.ok) {
-  throw new Error(`USGS CSV download failed: ${response.status}`)
-}
-
-const bytes = Buffer.from(await response.arrayBuffer())
-const sourceFileSha256 = createHash("sha256").update(bytes).digest("hex")
-const text = new TextDecoder("windows-1252").decode(bytes)
+const release = await loadPinnedReleaseBytes()
+const text = new TextDecoder("windows-1252").decode(release.bytes)
 const rows = parseCsv(text)
 if (!rows.length) {
   throw new Error("USGS CSV parsed zero rows")
@@ -97,10 +157,11 @@ console.log({
   raw_rows: rows.length,
   latest_observation_year: latestYear,
   current_critical_rows: currentRows.length,
-  source_file: csvFile.name,
-  source_file_bytes: bytes.length,
-  source_file_sha256: sourceFileSha256,
-  source_last_updated: metadata?.provenance?.lastUpdated ?? null,
+  source_file: release.sourceFileName,
+  source_file_bytes: release.bytes.length,
+  source_file_sha256: release.sourceFileSha256,
+  retrieval_item_id: release.retrievalItemId,
+  canonical_item_id: CANONICAL_SCIENCEBASE_ITEM_ID,
 })
 
 const observations = []
@@ -144,7 +205,7 @@ for (const row of currentRows) {
     latestYear,
     iso3,
     slug(commodity),
-    sourceFileSha256.slice(0, 12),
+    release.sourceFileSha256.slice(0, 12),
     sourceRowSha256.slice(0, 24),
   ].join(":")
 
@@ -162,13 +223,13 @@ for (const row of currentRows) {
       unit,
       commodity,
       signalType: "critical_mineral_supply_state",
-      // Persist the stable ScienceBase item URL, not a storage download URI
-      // that may change independently of the authoritative bytes.
+      // Persist the stable canonical ScienceBase item URL, not whichever
+      // mirrored storage URL happened to serve the pinned bytes.
       sourceUrl: SCIENCEBASE_ITEM_URL,
       provenance: {
         release: RELEASE,
-        release_item_id: SCIENCEBASE_ITEM_ID,
-        dataset_version: String(metadata?.title ?? RELEASE),
+        release_item_id: CANONICAL_SCIENCEBASE_ITEM_ID,
+        dataset_version: RELEASE,
         observation_year: latestYear,
         section: section || null,
         statistic: statistic || null,
@@ -177,10 +238,9 @@ for (const row of currentRows) {
         critical_mineral_flag: String(
           row["Is critical mineral 2025"] ?? "",
         ).trim(),
-        source_file: csvFile.name,
-        source_file_sha256: sourceFileSha256,
+        source_file: release.sourceFileName,
+        source_file_sha256: release.sourceFileSha256,
         source_row_sha256: sourceRowSha256,
-        source_last_updated: metadata?.provenance?.lastUpdated ?? null,
       },
       rawPayload: row,
       qualityStatus: "VERIFIED",
