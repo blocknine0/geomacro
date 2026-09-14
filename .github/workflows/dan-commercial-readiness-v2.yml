@@ -2,6 +2,12 @@ name: Dan Commercial Readiness Evidence v2
 
 on:
   workflow_dispatch:
+    inputs:
+      live_e2e:
+        description: Verify the currently deployed geomacro.live trust and wallet-first endpoints
+        required: true
+        type: boolean
+        default: true
   push:
     branches:
       - main
@@ -187,11 +193,14 @@ jobs:
             '{available:false,reason:$reason,claim:"No corridor proof is claimed because two current clean commercial endpoint countries were not available."}' \
             > dan-corridor-unavailable.json
 
-      - name: Verify public trust endpoints
+      - name: Verify deployed public trust endpoints
+        if: github.event_name == 'workflow_dispatch' && inputs.live_e2e == true
         shell: bash
         run: |
           set -euo pipefail
-          curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
+          curl --silent --show-error --fail \
+            --connect-timeout 10 --max-time 30 \
+            --retry 4 --retry-delay 2 --retry-max-time 90 --retry-all-errors \
             "${LIVE_BASE_URL%/}/api/risk-object-keys" > dan-risk-object-keys.json
           jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
             .ok == true and
@@ -199,7 +208,9 @@ jobs:
             (.keys | any(.key_id == $key_id and .status != "revoked"))
           ' dan-risk-object-keys.json >/dev/null
 
-          curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
+          curl --silent --show-error --fail \
+            --connect-timeout 10 --max-time 30 \
+            --retry 4 --retry-delay 2 --retry-max-time 90 --retry-all-errors \
             "${LIVE_BASE_URL%/}/api/risk-gate-readiness" > dan-risk-gate-readiness.json
           jq -e '
             .status == "ready" and
@@ -210,11 +221,14 @@ jobs:
             .checks.publisher_signing == true
           ' dan-risk-gate-readiness.json >/dev/null
 
-      - name: Verify live wallet-first Testnet route
+      - name: Verify deployed wallet-first Testnet route
+        if: github.event_name == 'workflow_dispatch' && inputs.live_e2e == true
         shell: bash
         run: |
           set -euo pipefail
-          curl --silent --show-error --fail --connect-timeout 10 --max-time 30 \
+          curl --silent --show-error --fail \
+            --connect-timeout 10 --max-time 30 \
+            --retry 4 --retry-delay 2 --retry-max-time 90 --retry-all-errors \
             "${LIVE_BASE_URL%/}/testnet-access" > dan-testnet-access.html
           node <<'NODE'
           const fs = require('node:fs');
@@ -223,6 +237,18 @@ jobs:
           const legacy = html.indexOf('/testnet-access.js');
           if (walletFirst < 0 || legacy < 0 || walletFirst >= legacy) process.exit(1);
           NODE
+
+      - name: Record deployment proof scope
+        shell: bash
+        env:
+          REQUESTED_LIVE_E2E: ${{ github.event_name == 'workflow_dispatch' && inputs.live_e2e == true }}
+        run: |
+          set -euo pipefail
+          if [ "$REQUESTED_LIVE_E2E" = "true" ]; then
+            jq -n '{checked:true,status:"PASS",scope:"deployed geomacro.live trust + wallet-first endpoints"}' > dan-live-proof-scope.json
+          else
+            jq -n '{checked:false,status:"NOT_RUN",scope:"canonical runtime proof only",reason:"Live deployment proof is intentionally manual so source merge and Lovable publish are not conflated."}' > dan-live-proof-scope.json
+          fi
 
       - name: Build redacted readiness summary
         shell: bash
@@ -237,11 +263,12 @@ jobs:
           const origin = readJson('dan-country-origin.json');
           const destination = maybeJson('dan-country-destination.json');
           const countryPreflight = readJson('dan-country-preflight-proof.json');
-          const readiness = readJson('dan-risk-gate-readiness.json');
+          const liveScope = readJson('dan-live-proof-scope.json');
+          const readiness = maybeJson('dan-risk-gate-readiness.json');
           const corridorUnavailable = maybeJson('dan-corridor-unavailable.json');
 
           const summary = {
-            proof: 'PASS',
+            proof: liveScope.checked ? 'PASS_CANONICAL_AND_LIVE' : 'PASS_CANONICAL',
             purpose: 'Dan Griffith pre-conversation commercial readiness evidence',
             generated_at: new Date().toISOString(),
             commit: process.env.GITHUB_SHA,
@@ -271,14 +298,19 @@ jobs:
             corridor: process.env.DAN_MODE === 'corridor_pair'
               ? { available: true, evidence_file: 'dan-corridor-preflight.log', methodology: 'pilot-labelled' }
               : corridorUnavailable,
+            deployment_proof: liveScope,
             live_readiness: readiness,
-            testnet_access: { wallet_first_auth_live: true },
+            testnet_access: {
+              wallet_first_auth_live: liveScope.checked ? true : null,
+              live_check_status: liveScope.status,
+            },
             claims_boundary: [
               'Current proof scope is selected from runtime commercial evidence and is not a permanent country whitelist.',
               'No second country or corridor is invented when only one clean endpoint exists.',
               'Country proof is controlled-pilot evidence, not a general SLA claim.',
               'Corridor methodology remains pilot-labelled and is claimed only when two clean endpoints are available.',
               'Geomacro provides decision context and does not grant customer execution authority.',
+              'A canonical PASS is not represented as a deployed-live PASS unless the manual live_e2e gate was actually run.',
             ],
           };
 
@@ -300,6 +332,8 @@ jobs:
             dan-corridor-preflight.log
             dan-corridor-unavailable.json
             dan-commercial-readiness-summary.json
+            dan-live-proof-scope.json
+            dan-risk-object-keys.json
             dan-risk-gate-readiness.json
           if-no-files-found: warn
           retention-days: 30
