@@ -38,7 +38,8 @@ jobs:
           grep -q 'ingest-wgi-political-stability-live.ts --write' "$file"
           grep -q 'record-ucdp-candidate-release-manifest.mjs --write' "$file"
           grep -q 'global-risk-gate-country-census.ts --require-any-accepted' "$file"
-          if grep -q 'supabase db push' "$file"; then
+          forbidden="supabase db"' push'
+          if grep -Fq "$forbidden" "$file"; then
             echo "::error::This bootstrap must never apply unrelated pending migrations."
             exit 1
           fi
