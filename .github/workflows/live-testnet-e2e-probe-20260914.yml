@@ -1,0 +1,127 @@
+name: Temporary Live Testnet E2E Probe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/live-testnet-e2e-probe-20260914.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://geomacro.live
+    steps:
+      - name: Verify live health and deployment alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health")"
+          echo "health=$code"
+          test "$code" = "200"
+          grep -Fq '"alignment_contract":"github-main-external-supabase-lovable-v1"' "$body"
+          grep -Fq '"source_authority":"github-main"' "$body"
+          grep -Fq '"database_authority":"external-supabase"' "$body"
+
+      - name: Verify Testnet Access page and dropdown contrast fix are live
+        shell: bash
+        run: |
+          set -euo pipefail
+          page="$(mktemp)"
+          wallet_js="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$page" -w '%{http_code}' "$BASE_URL/testnet-access")"
+          echo "testnet-access=$code"
+          test "$code" = "200"
+          grep -Fq 'Create Testnet API credentials' "$page"
+          grep -Fq 'Product API' "$page"
+          grep -Fq 'AI agent' "$page"
+          grep -Fq 'Automation' "$page"
+          grep -Fq 'Demo' "$page"
+          grep -Fq '/testnet-wallet-first-v2.js' "$page"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$wallet_js" -w '%{http_code}' "$BASE_URL/testnet-wallet-first-v2.js")"
+          echo "wallet-first-v2.js=$code"
+          test "$code" = "200"
+          grep -Fq 'geomacroNativeSelectContrast' "$wallet_js"
+          grep -Fq 'select option{background:#0d1420;color:#f4f2ea}' "$wallet_js"
+          grep -Fq 'select option:checked{background:#1d4f8f;color:#fff}' "$wallet_js"
+          echo "PASS: Testnet Access dropdown options have explicit readable dark-mode contrast."
+
+      - name: Verify Public Testnet Console quote UI is actually present
+        shell: bash
+        run: |
+          set -euo pipefail
+          page="$(mktemp)"
+          console_js="$(mktemp)"
+          pricing_js="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$page" -w '%{http_code}' "$BASE_URL/testnet-console")"
+          echo "testnet-console=$code"
+          test "$code" = "200"
+          grep -Fq '/testnet-console.js' "$page"
+          grep -Fq '/testnet-console-pricing.js' "$page"
+
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$console_js" -w '%{http_code}' "$BASE_URL/testnet-console.js")"
+          echo "testnet-console.js=$code"
+          test "$code" = "200"
+          grep -Fq '/api/testnet-tester/intelligence' "$console_js"
+          grep -Fq 'Get price quote' "$console_js"
+          grep -Fq 'TESTNET_PAYMENT_REQUIRED' "$console_js"
+          grep -Fq 'Price quote ready.' "$console_js"
+          grep -Fq 'Pay Testnet USDC & retry' "$console_js"
+
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$pricing_js" -w '%{http_code}' "$BASE_URL/testnet-console-pricing.js")"
+          echo "testnet-console-pricing.js=$code"
+          test "$code" = "200"
+          grep -Fq 'geomacroNativeSelectContrast' "$pricing_js"
+          grep -Fq 'select option{background:#0d1420;color:#f4f2ea}' "$pricing_js"
+          if grep -Fq 'testerDeveloperCredentialBridge' "$pricing_js"; then
+            echo "::error::Stale developer credential bridge is still live on Public Testnet Console."
+            exit 1
+          fi
+          if grep -Fq 'nativeFetch("/api/testnet/intelligence"' "$pricing_js"; then
+            echo "::error::Public Testnet Console is still being hijacked into the private Developer API."
+            exit 1
+          fi
+          echo "PASS: Public Console exposes the 402 quote UI and stays on the public tester endpoint."
+
+      - name: Verify unauthenticated boundaries fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_401() {
+            local label="$1"
+            shift
+            local body
+            body="$(mktemp)"
+            local code
+            code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$@")"
+            echo "$label=$code"
+            if [[ "$code" != "401" ]]; then
+              echo "::error::$label expected HTTP 401, got $code"
+              head -c 1200 "$body" || true
+              exit 1
+            fi
+          }
+
+          check_401 tester_me "$BASE_URL/api/testnet-tester/me"
+          check_401 tester_config "$BASE_URL/api/testnet-tester/config"
+          check_401 developer_account "$BASE_URL/api/testnet/account"
+          check_401 developer_intelligence \
+            -H 'content-type: application/json' \
+            --data '{"request_id":"probe-unauth-dev-001","capability":"gri_read","subject":{"type":"global"}}' \
+            "$BASE_URL/api/testnet/intelligence"
+          check_401 public_console_intelligence \
+            -H 'content-type: application/json' \
+            -H 'x-geomacro-public-key: gmk_public_arc_testnet_v1' \
+            --data '{"request_id":"probe-unauth-public-001","capability":"gri_read","subject":{"type":"global"}}' \
+            "$BASE_URL/api/testnet-tester/intelligence"
+          echo "PASS: unauthenticated Testnet surfaces fail closed."
+
+      - name: Summary
+        run: |
+          echo "PASS: live Testnet page, dropdown contrast, public quote UI wiring and unauthenticated API boundaries verified against geomacro.live."
+          echo "Authenticated wallet signature and actual Testnet USDC settlement require an interactive/funded wallet and are intentionally not fabricated by this probe."
