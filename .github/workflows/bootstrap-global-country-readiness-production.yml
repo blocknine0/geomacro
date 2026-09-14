@@ -35,6 +35,8 @@ jobs:
           file=".github/workflows/bootstrap-global-country-readiness-production.yml"
           grep -q '919_risk_gate_v2_global_source_manifests.sql' "$file"
           grep -q 'EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx' "$file"
+          grep -q 'SUPABASE_URL:.*APP_SUPABASE_URL' "$file"
+          grep -q 'SUPABASE_SERVICE_ROLE_KEY:.*SUPABASE_SERVICE_ROLE_KEY' "$file"
           grep -q 'ingest-wgi-political-stability-live.ts --write' "$file"
           grep -q 'record-ucdp-candidate-release-manifest.mjs --write' "$file"
           grep -q 'global-risk-gate-country-census.ts --require-any-accepted' "$file"
@@ -56,6 +58,8 @@ jobs:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GLOBAL_RISK_GATE_CENSUS_OUTPUT: global-risk-gate-country-census.json
       GLOBAL_RISK_GATE_CENSUS_CONCURRENCY: "3"
 
@@ -81,7 +85,11 @@ jobs:
           test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
           test -n "${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL is missing"; exit 1; }
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::APP_SUPABASE_SERVICE_ROLE_KEY is missing"; exit 1; }
+          test -n "${SUPABASE_URL:-}" || { echo "::error::SUPABASE_URL alias is missing"; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY alias is missing"; exit 1; }
           test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
+          test "$SUPABASE_URL" = "$APP_SUPABASE_URL" || { echo "::error::Supabase API aliases diverged"; exit 1; }
+          test "$SUPABASE_SERVICE_ROLE_KEY" = "$APP_SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::Supabase service-role aliases diverged"; exit 1; }
 
           node <<'NODE'
           const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
