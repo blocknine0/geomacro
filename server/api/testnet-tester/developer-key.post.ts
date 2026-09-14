@@ -25,6 +25,13 @@ export default defineEventHandler(async (event) => {
     };
   } catch (error) {
     const code = error instanceof Error ? error.message : "TESTNET_DEVELOPER_KEY_FAILED";
+    if (code === "TESTNET_DEVELOPER_KEY_ALREADY_EXISTS") {
+      throw createError({
+        statusCode: 409,
+        statusMessage:
+          "A developer API key already exists for this wallet. Reconnecting restores the same API Key. Revoke it only if you intentionally need a replacement.",
+      });
+    }
     throw createError({ statusCode: 400, statusMessage: code.slice(0, 120) });
   }
 });

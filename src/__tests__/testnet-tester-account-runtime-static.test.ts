@@ -94,13 +94,17 @@ describe("testnet tester account runtime boundaries", () => {
     expect(route).toContain("statusMessage: code");
   });
 
-  it("keeps developer credentials tied to active testnet entitlements and returns the secret once", () => {
+  it("keeps developer credentials tied to active testnet entitlements, restores the same key, and returns a new secret only once", () => {
     const route = read("../../server/api/testnet-tester/developer-key.post.ts");
+    const listRoute = read("../../server/api/testnet-tester/developer-keys.get.ts");
     const service = read("../lib/testnet-developer-access.server.ts");
     expect(route).toContain("API Key and API Secret");
     expect(route).toContain("will not be shown again");
+    expect(route).toContain("Reconnecting restores the same API Key");
+    expect(listRoute).toContain("listTestnetDeveloperApiKeys");
     expect(service).toContain('grant.tier !== "testnet_tester"');
-    expect(service).toContain("TESTNET_DEVELOPER_KEY_LIMIT_REACHED");
+    expect(service).toContain("TESTNET_DEVELOPER_KEY_ALREADY_EXISTS");
+    expect(service).toContain("hasUsableDeveloperCredential");
     expect(service).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
     expect(service).toContain("api_secret: apiSecret");
   });
