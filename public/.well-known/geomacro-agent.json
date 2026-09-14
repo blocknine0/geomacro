@@ -8,6 +8,18 @@
     "execution_authorized": false
   },
   "endpoint": "https://geomacro.live/api/agent/risk",
+  "a2a": {
+    "protocol_version": "geomacro-a2a/1",
+    "discovery": "https://geomacro.live/.well-known/geomacro-a2a.json",
+    "manifest": "https://geomacro.live/api/a2a/manifest",
+    "negotiate": "https://geomacro.live/api/a2a/negotiate",
+    "identity": "https://geomacro.live/api/a2a/identity",
+    "tasks": "https://geomacro.live/api/a2a/tasks",
+    "task_status_template": "https://geomacro.live/api/a2a/tasks/{task_id}",
+    "request_signing": "ed25519_detached",
+    "replay_protection": "timestamp_plus_one_time_nonce",
+    "callback_modes": ["poll", "https_push"]
+  },
   "capabilities": [
     {
       "id": "risk_preflight",
@@ -32,10 +44,10 @@
     "transaction_signing": false,
     "sanctions_screening_replacement": false,
     "raw_data_delivery": false,
-    "corridor_model": "directional endpoint-composed pilot"
+    "corridor_model": "directional_endpoint_composed_pilot"
   },
   "commercial": {
-    "structured_data_registry_version": "structured-entitlements-v1.0.0",
+    "structured_data_registry_version": "structured-entitlements-v1.1.0",
     "credit_contract_version": "credits-v1.1.0",
     "free_web": "public_website_dashboard_only",
     "public_api": "not_available",
