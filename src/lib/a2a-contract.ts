@@ -19,26 +19,30 @@ export const GEOMACRO_A2A_SIGNATURE_TTL_SECONDS = 300;
 
 const iso3 = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
 
-export const a2aRiskSubjectSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("country"),
-    country_iso3: iso3,
-  }),
-  z
-    .object({
-      type: z.literal("corridor"),
-      origin_country_iso3: iso3,
-      destination_country_iso3: iso3,
-    })
-    .superRefine((value, ctx) => {
-      if (value.origin_country_iso3 === value.destination_country_iso3) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["destination_country_iso3"],
-          message: "Corridor endpoints must be different countries",
-        });
-      }
-    }),
+const countrySubjectSchema = z.object({
+  type: z.literal("country"),
+  country_iso3: iso3,
+});
+
+const corridorSubjectSchema = z
+  .object({
+    type: z.literal("corridor"),
+    origin_country_iso3: iso3,
+    destination_country_iso3: iso3,
+  })
+  .superRefine((value, ctx) => {
+    if (value.origin_country_iso3 === value.destination_country_iso3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destination_country_iso3"],
+        message: "Corridor endpoints must be different countries",
+      });
+    }
+  });
+
+export const a2aRiskSubjectSchema = z.union([
+  countrySubjectSchema,
+  corridorSubjectSchema,
 ]);
 
 export const ed25519PublicJwkSchema = z.object({
