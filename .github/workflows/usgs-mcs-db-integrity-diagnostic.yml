@@ -51,7 +51,7 @@ jobs:
           for (let from = 0; ; from += pageSize) {
             const result = await db
               .from('live_external_observations')
-              .select('observation_id,source_record_id,observed_at,metric,commodity,value_numeric,unit,raw_hash,normalized_hash,quality_status,commercial_eligibility_status,provenance')
+              .select('observation_id,source_record_id,observed_at,metric,commodity,value_numeric,unit,raw_hash,normalized_hash,quality_status,commercial_eligibility_status,provenance,raw_payload')
               .eq('source_id', 'usgs_mcs')
               .order('observation_id', { ascending: true })
               .range(from, from + pageSize - 1);
@@ -60,6 +60,7 @@ jobs:
             if ((result.data ?? []).length < pageSize) break;
           }
 
+          const canonical = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
           const logical = new Map();
           let currentReleaseRows = 0;
           let verifiedCommercialRows = 0;
@@ -67,20 +68,22 @@ jobs:
           let sourceFileShaRows = 0;
           let sectionRows = 0;
           let productionRows = 0;
+          const worldSeries = new Map();
 
           for (const row of rows) {
             const sourceRecordId = String(row.source_record_id ?? '');
             const item = logical.get(sourceRecordId) ?? {
-              count: 0,
+              rows: [],
               rawHashes: new Set(),
               normalizedHashes: new Set(),
             };
-            item.count += 1;
+            item.rows.push(row);
             if (row.raw_hash) item.rawHashes.add(String(row.raw_hash));
             if (row.normalized_hash) item.normalizedHashes.add(String(row.normalized_hash));
             logical.set(sourceRecordId, item);
 
             const provenance = row.provenance && typeof row.provenance === 'object' ? row.provenance : {};
+            const raw = row.raw_payload && typeof row.raw_payload === 'object' ? row.raw_payload : {};
             if (String(provenance.release ?? '') === 'MCS 2026') currentReleaseRows += 1;
             if (row.quality_status === 'VERIFIED' && row.commercial_eligibility_status === 'VERIFIED') {
               verifiedCommercialRows += 1;
@@ -88,19 +91,94 @@ jobs:
             if (typeof provenance.retrieved_at === 'string' && provenance.retrieved_at) volatileRetrievedAtRows += 1;
             if (typeof provenance.source_file_sha256 === 'string' && provenance.source_file_sha256) sourceFileShaRows += 1;
             if (typeof provenance.section === 'string' && provenance.section) sectionRows += 1;
-            const statistic = String(provenance.statistic ?? '').trim().toLowerCase();
+            const statistic = canonical(provenance.statistic ?? raw.Statistics);
             if (statistic.includes('production') && !statistic.includes('capacity')) productionRows += 1;
+
+            const section = String(raw.Section ?? '').trim();
+            const detail = String(raw.Statistics_detail ?? provenance.statistic_detail ?? '').trim();
+            if (
+              section.toLowerCase().startsWith('world') &&
+              statistic === 'production' &&
+              !canonical(detail).includes('rounded')
+            ) {
+              const seriesKey = JSON.stringify({
+                commodity: String(row.commodity ?? raw.Commodity ?? '').trim(),
+                section,
+                detail,
+                unit: String(row.unit ?? raw.Unit ?? '').trim(),
+              });
+              const series = worldSeries.get(seriesKey) ?? {
+                commodity: String(row.commodity ?? raw.Commodity ?? '').trim(),
+                section,
+                detail,
+                unit: String(row.unit ?? raw.Unit ?? '').trim(),
+                rows: 0,
+                countries: new Set(),
+                positive_rows: 0,
+              };
+              series.rows += 1;
+              if (String(raw.Country ?? '').trim()) series.countries.add(String(raw.Country).trim());
+              if (Number(row.value_numeric) > 0) series.positive_rows += 1;
+              worldSeries.set(seriesKey, series);
+            }
           }
 
-          const duplicateGroups = [...logical.values()].filter((item) => item.count > 1);
-          const duplicateRows = duplicateGroups.reduce((sum, item) => sum + item.count - 1, 0);
+          const duplicateGroups = [...logical.entries()].filter(([, item]) => item.rows.length > 1);
+          const duplicateRows = duplicateGroups.reduce((sum, [, item]) => sum + item.rows.length - 1, 0);
           const sameRawDifferentNormalizedGroups = duplicateGroups.filter(
-            (item) => item.rawHashes.size === 1 && item.normalizedHashes.size > 1,
+            ([, item]) => item.rawHashes.size === 1 && item.normalizedHashes.size > 1,
           );
           const maxRowsPerSourceRecord = duplicateGroups.reduce(
-            (max, item) => Math.max(max, item.count),
+            (max, [, item]) => Math.max(max, item.rows.length),
             1,
           );
+
+          const duplicateDetails = duplicateGroups.map(([source_record_id, item]) => ({
+            source_record_id,
+            raw_hash_count: item.rawHashes.size,
+            normalized_hash_count: item.normalizedHashes.size,
+            rows: item.rows.map((row) => {
+              const raw = row.raw_payload && typeof row.raw_payload === 'object' ? row.raw_payload : {};
+              return {
+                observation_id: row.observation_id,
+                country: raw.Country ?? null,
+                commodity: raw.Commodity ?? row.commodity ?? null,
+                section: raw.Section ?? null,
+                statistics: raw.Statistics ?? null,
+                statistics_detail: raw.Statistics_detail ?? null,
+                unit: raw.Unit ?? row.unit ?? null,
+                value: raw.Value ?? row.value_numeric ?? null,
+                raw_hash: row.raw_hash,
+                normalized_hash: row.normalized_hash,
+              };
+            }),
+          }));
+
+          const series = [...worldSeries.values()]
+            .map((item) => ({
+              commodity: item.commodity,
+              section: item.section,
+              detail: item.detail,
+              unit: item.unit,
+              rows: item.rows,
+              countries: item.countries.size,
+              positive_rows: item.positive_rows,
+            }))
+            .sort((a, b) => a.commodity.localeCompare(b.commodity) || a.section.localeCompare(b.section) || a.detail.localeCompare(b.detail));
+
+          const seriesPerCommodity = new Map();
+          for (const item of series) {
+            const key = item.commodity;
+            const list = seriesPerCommodity.get(key) ?? [];
+            list.push(item);
+            seriesPerCommodity.set(key, list);
+          }
+          const ambiguousWorldProductionCommodities = [...seriesPerCommodity.entries()]
+            .filter(([, items]) => items.length > 1)
+            .map(([commodity, items]) => ({ commodity, series_count: items.length, series: items }));
+          const singleWorldProductionCommodities = [...seriesPerCommodity.entries()]
+            .filter(([, items]) => items.length === 1)
+            .map(([commodity, items]) => ({ commodity, series: items[0] }));
 
           const report = {
             source_id: 'usgs_mcs',
@@ -111,12 +189,16 @@ jobs:
             duplicate_logical_rows: duplicateRows,
             same_raw_but_different_normalized_groups: sameRawDifferentNormalizedGroups.length,
             max_rows_per_source_record_id: maxRowsPerSourceRecord,
+            duplicate_details: duplicateDetails,
             current_release_rows: currentReleaseRows,
             verified_commercial_rows: verifiedCommercialRows,
             rows_with_volatile_retrieved_at_in_provenance: volatileRetrievedAtRows,
             rows_with_source_file_sha256: sourceFileShaRows,
             rows_with_section_provenance: sectionRows,
             broad_production_rows: productionRows,
+            exact_world_nonrounded_production_series_count: series.length,
+            single_world_production_commodities: singleWorldProductionCommodities,
+            ambiguous_world_production_commodities: ambiguousWorldProductionCommodities,
             diagnostic_only: true,
             writes_performed: false,
           };
