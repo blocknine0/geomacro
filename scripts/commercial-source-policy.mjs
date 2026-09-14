@@ -23,6 +23,18 @@ export const COMMERCIAL_SOURCE_POLICY = Object.freeze({
     allowed_statuses: Object.freeze(["VERIFIED"]),
     reviewed_on: "2026-09-10",
   }),
+  gdelt_v2_events: Object.freeze({
+    allowed_statuses: Object.freeze(["VERIFIED"]),
+    reviewed_on: "2026-09-14",
+  }),
+  eurostat_government_finance: Object.freeze({
+    allowed_statuses: Object.freeze(["VERIFIED"]),
+    reviewed_on: "2026-09-14",
+  }),
+  usgs_earthquake_hazards: Object.freeze({
+    allowed_statuses: Object.freeze(["VERIFIED"]),
+    reviewed_on: "2026-09-14",
+  }),
   reliefweb: Object.freeze({
     allowed_statuses: Object.freeze(["DERIVED_ONLY"]),
     reviewed_on: "2026-09-10",
