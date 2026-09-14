@@ -1,49 +1,27 @@
-import crypto from "node:crypto"
 import fs from "node:fs"
-import os from "node:os"
-import path from "node:path"
-import { execFileSync } from "node:child_process"
 
-const YEAR = 2026
-const OUTPUT =
-  process.env.ADB_FISCAL_DISCOVERY_OUTPUT ??
-  "adb-key-indicators-fiscal-discovery.json"
-const PUBLICATION_URL =
-  "https://www.adb.org/publications/key-indicators-asia-and-pacific-2026"
-
-const SAMPLE_COUNTRIES = [
-  { iso3: "IND", name: "India", kidb: "india" },
-  { iso3: "IDN", name: "Indonesia", kidb: "indonesia" },
-  { iso3: "PHL", name: "Philippines", kidb: "philippines" },
-  { iso3: "PAK", name: "Pakistan", kidb: "pakistan" },
-  { iso3: "BGD", name: "Bangladesh", kidb: "bangladesh" },
-  { iso3: "LKA", name: "Sri Lanka", kidb: "sri-lanka" },
-]
-
-const FISCAL_TERMS = [
-  "government finance",
-  "government debt",
-  "public debt",
-  "central government",
-  "general government",
-  "gross debt",
-  "debt outstanding",
-  "external debt",
+const OUTPUT = process.env.ADB_FISCAL_DISCOVERY_OUTPUT ?? "adb-key-indicators-fiscal-discovery.json"
+const API = "https://kidb.adb.org/api"
+const RATE_DELAY_MS = 3200
+const SAMPLE_ECONOMIES = [
+  { iso3: "IND", kidb: "IND" },
+  { iso3: "IDN", kidb: "INO" },
+  { iso3: "PHL", kidb: "PHI" },
+  { iso3: "PAK", kidb: "PAK" },
+  { iso3: "BGD", kidb: "BAN" },
+  { iso3: "LKA", kidb: "SRI" },
 ]
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function fetchWithRetry(url, options = {}) {
+async function request(url, { accept = "application/json", attempts = 3 } = {}) {
   let lastError
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const response = await fetch(url, {
-        ...options,
         headers: {
-          "user-agent":
-            "Mozilla/5.0 (compatible; Geomacro-ADB-Key-Indicators-Fiscal-Discovery/1.1; +https://geomacro.live)",
-          accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.5",
-          ...(options.headers ?? {}),
+          accept,
+          "user-agent": "Geomacro-ADB-KIDB-SDMX-Discovery/1.0 (+https://geomacro.live)",
         },
       })
       if (response.ok) return response
@@ -51,278 +29,254 @@ async function fetchWithRetry(url, options = {}) {
       if (response.status < 500 && response.status !== 429) throw lastError
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      if (attempt === 3) throw lastError
+      if (attempt === attempts) throw lastError
     }
-    await sleep(500 * 2 ** (attempt - 1))
+    await sleep(600 * 2 ** (attempt - 1))
   }
-  throw lastError ?? new Error(`ADB request failed for ${url}`)
+  throw lastError ?? new Error(`ADB KIDB request failed for ${url}`)
 }
 
-function decodeEntities(value) {
-  return String(value)
-    .replaceAll("&amp;", "&")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&#039;", "'")
-    .replaceAll("&#39;", "'")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+function primitiveStrings(object) {
+  if (!object || typeof object !== "object" || Array.isArray(object)) return []
+  return Object.entries(object)
+    .filter(([, value]) => typeof value === "string")
+    .map(([key, value]) => ({ key, value }))
 }
 
-function visibleText(html) {
-  return decodeEntities(
-    String(html)
-      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
-  )
-}
-
-function anchorsFromHtml(baseUrl, html) {
-  const anchors = []
-  const pattern = /<a\b[^>]*href=(['"])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi
-  for (const match of html.matchAll(pattern)) {
-    try {
-      anchors.push({
-        label: visibleText(match[3]),
-        url: new URL(decodeEntities(match[2]), baseUrl).toString(),
-      })
-    } catch {
-      // Ignore malformed navigation links; exact resource selection remains fail-closed.
-    }
-  }
-  return anchors
-}
-
-function likelySpreadsheet(anchor) {
-  const label = anchor.label.trim().toLowerCase()
-  const url = anchor.url.toLowerCase()
-  return (
-    label === "xlsx" ||
-    label === "xls" ||
-    label.includes("xlsx") ||
-    /\.(xlsx|xls)(?:$|[?#])/.test(url)
-  )
-}
-
-function extractKidbResource(pageUrl, html) {
-  const anchors = anchorsFromHtml(pageUrl, html).filter(likelySpreadsheet)
-  if (!anchors.length) return null
-  return {
-    ...anchors[0],
-    transport: "kidb_economy_page",
-    candidate_count: anchors.length,
+function walkObjects(node, visit) {
+  if (!node || typeof node !== "object") return
+  if (!Array.isArray(node)) visit(node)
+  for (const value of Object.values(node)) {
+    if (value && typeof value === "object") walkObjects(value, visit)
   }
 }
 
-function extractPublicationResource(country, html) {
-  const rows = [...html.matchAll(/<tr\b[\s\S]*?<\/tr>/gi)].map((match) => match[0])
-  for (const row of rows) {
-    const text = visibleText(row).toLowerCase()
-    if (!text.includes(country.name.toLowerCase())) continue
-    const anchors = anchorsFromHtml(PUBLICATION_URL, row).filter(likelySpreadsheet)
-    if (anchors.length) {
-      return {
-        ...anchors[0],
-        transport: "adb_2026_publication_page",
-        candidate_count: anchors.length,
-      }
-    }
+function labelText(object) {
+  return primitiveStrings(object)
+    .map(({ value }) => value)
+    .join(" | ")
+}
+
+function objectCode(object) {
+  const preferred = ["id", "code", "value", "key"]
+  for (const key of preferred) {
+    const value = object?.[key]
+    if (typeof value === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(value)) return value
+  }
+  for (const { value } of primitiveStrings(object)) {
+    if (/^[A-Z][A-Z0-9_]{2,63}$/.test(value) && !value.startsWith("DF_")) return value
   }
   return null
 }
 
-function unzipText(file, member) {
-  try {
-    return execFileSync("unzip", ["-p", file, member], {
-      encoding: "utf8",
-      maxBuffer: 32 * 1024 * 1024,
-      stdio: ["ignore", "pipe", "ignore"],
-    })
-  } catch {
-    return ""
-  }
-}
-
-function workbookSheets(workbookXml) {
-  return [...workbookXml.matchAll(/<sheet\b[^>]*name="([^"]+)"/gi)].map(
-    (match) => decodeEntities(match[1]),
-  )
-}
-
-function sharedStringValues(sharedStringsXml) {
-  if (!sharedStringsXml) return []
-  return sharedStringsXml
-    .split(/<\/si>/i)
-    .map((chunk) => visibleText(chunk))
-    .filter(Boolean)
-}
-
-function fiscalMatches(values) {
-  const matches = []
-  for (const value of values) {
-    const lower = value.toLowerCase()
-    const terms = FISCAL_TERMS.filter((term) => lower.includes(term))
-    if (terms.length) matches.push({ value: value.slice(0, 280), terms })
-    if (matches.length >= 40) break
-  }
-  return matches
-}
-
-async function resolveResource(country, publicationHtml) {
-  const kidbPage = `https://kidb.adb.org/economies/${country.kidb}`
-  let kidbError = null
-  try {
-    const response = await fetchWithRetry(kidbPage)
-    const html = await response.text()
-    const resource = extractKidbResource(kidbPage, html)
-    if (resource) return { page_url: kidbPage, resource, kidb_error: null }
-    kidbError = "No spreadsheet anchor found on KIDB economy page"
-  } catch (error) {
-    kidbError = error instanceof Error ? error.message : String(error)
-  }
-
-  const publicationResource = extractPublicationResource(country, publicationHtml)
-  if (publicationResource) {
-    return {
-      page_url: PUBLICATION_URL,
-      resource: publicationResource,
-      kidb_error: kidbError,
-    }
-  }
-  throw new Error(
-    `No ${YEAR} spreadsheet transport for ${country.iso3}; KIDB=${kidbError ?? "none"}; publication fallback had no matching spreadsheet`,
-  )
-}
-
-async function auditCountry(country, tempDir, publicationHtml) {
-  const resolved = await resolveResource(country, publicationHtml)
-  const response = await fetchWithRetry(resolved.resource.url, {
-    headers: {
-      accept:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream;q=0.9,*/*;q=0.1",
-    },
+function findDebtIndicatorObjects(payload) {
+  const rows = []
+  const seen = new Set()
+  walkObjects(payload, (object) => {
+    const text = labelText(object)
+    if (!/public[^|]{0,80}publicly guaranteed/i.test(text)) return
+    const code = objectCode(object)
+    if (!code || seen.has(code)) return
+    seen.add(code)
+    rows.push({ code, text: text.slice(0, 1200), raw: object })
   })
-  const bytes = Buffer.from(await response.arrayBuffer())
-  if (bytes.length < 1024 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
-    throw new Error(`${country.iso3} ${YEAR} resource is not a valid XLSX ZIP payload`)
-  }
+  return rows
+}
 
-  const file = path.join(tempDir, `${country.iso3}.xlsx`)
-  fs.writeFileSync(file, bytes)
-  const workbookXml = unzipText(file, "xl/workbook.xml")
-  if (!workbookXml) throw new Error(`${country.iso3} workbook.xml could not be read`)
-  const sharedStringsXml = unzipText(file, "xl/sharedStrings.xml")
-  const sheets = workbookSheets(workbookXml)
-  const sharedStrings = sharedStringValues(sharedStringsXml)
-  const vocabulary = fiscalMatches([...sheets, ...sharedStrings])
+function findFlowIds(payloadText) {
+  return [...new Set(payloadText.match(/DF_[A-Z0-9_]+/g) ?? [])].sort()
+}
 
-  return {
-    iso3: country.iso3,
-    source_transport_page: resolved.page_url,
-    transport: resolved.resource.transport,
-    kidb_fallback_note: resolved.kidb_error,
-    resource_label: resolved.resource.label,
-    resource_url: resolved.resource.url,
-    resource_candidate_count: resolved.resource.candidate_count,
-    resource_sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
-    resource_bytes: bytes.length,
-    workbook_sheet_count: sheets.length,
-    workbook_sheets: sheets,
-    fiscal_vocabulary_matches: vocabulary,
-    fiscal_vocabulary_detected: vocabulary.length > 0,
+function parseCsv(text) {
+  const rows = []
+  let row = []
+  let field = ""
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') {
+        field += '"'
+        i++
+      } else if (ch === '"') quoted = false
+      else field += ch
+    } else if (ch === '"') quoted = true
+    else if (ch === ",") {
+      row.push(field)
+      field = ""
+    } else if (ch === "\n") {
+      row.push(field.replace(/\r$/, ""))
+      rows.push(row)
+      row = []
+      field = ""
+    } else field += ch
   }
+  if (field.length || row.length) {
+    row.push(field.replace(/\r$/, ""))
+    rows.push(row)
+  }
+  return rows.filter((item) => item.some((value) => String(value).trim() !== ""))
+}
+
+function headerIndex(headers, candidates) {
+  const normalized = headers.map((value) => String(value).trim().toUpperCase().replaceAll(" ", "_"))
+  for (const candidate of candidates) {
+    const index = normalized.indexOf(candidate)
+    if (index >= 0) return index
+  }
+  return -1
 }
 
 async function main() {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "geomacro-adb-fiscal-"))
-  try {
-    let publicationHtml = ""
-    let publicationFetchError = null
+  const apiDoc = await request("https://kidb.adb.org/api", { accept: "text/html,*/*;q=0.5" })
+  const apiDocText = await apiDoc.text()
+  if (!apiDocText.includes("20 queries per minute") || !apiDocText.includes("/api/v5/sdmx/data/")) {
+    throw new Error("KIDB API contract/rate-limit markers changed")
+  }
+
+  await sleep(RATE_DELAY_MS)
+  const dataflowResponse = await request(`${API}/v5/sdmx/structure/dataflow/all/all/+?format=sdmx-json`)
+  const dataflowText = await dataflowResponse.text()
+  const flowIds = findFlowIds(dataflowText)
+  if (!flowIds.length) throw new Error("KIDB dataflow registry returned no DF_* identifiers")
+
+  await sleep(RATE_DELAY_MS)
+  const codelistResponse = await request(`${API}/v5/sdmx/structure/codelist/ADB/CL_KIDB_INDICATORS/+?format=sdmx-json`)
+  const codelist = JSON.parse(await codelistResponse.text())
+  const codelistDebtCandidates = findDebtIndicatorObjects(codelist)
+
+  let owningFlow = null
+  let targetIndicator = null
+  const flowAudit = []
+  for (const flowId of flowIds) {
+    await sleep(RATE_DELAY_MS)
+    const url = `${API}/dataflow/indicators/${encodeURIComponent(flowId)}`
+    let payload
     try {
-      const publication = await fetchWithRetry(PUBLICATION_URL)
-      publicationHtml = await publication.text()
+      payload = await (await request(url)).json()
     } catch (error) {
-      publicationFetchError = error instanceof Error ? error.message : String(error)
+      flowAudit.push({ flow_id: flowId, status: "ERROR", error: error instanceof Error ? error.message : String(error) })
+      continue
     }
-
-    const countries = []
-    const failures = []
-    for (const country of SAMPLE_COUNTRIES) {
-      try {
-        countries.push(await auditCountry(country, tempDir, publicationHtml))
-      } catch (error) {
-        failures.push({
-          iso3: country.iso3,
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
+    const matches = findDebtIndicatorObjects(payload)
+    flowAudit.push({ flow_id: flowId, status: "OK", public_guaranteed_matches: matches.map((row) => ({ code: row.code, text: row.text })) })
+    if (!targetIndicator && matches.length) {
+      owningFlow = flowId
+      targetIndicator = matches[0]
+      break
     }
+  }
 
-    const fiscalVocabularyCountries = countries.filter(
-      (row) => row.fiscal_vocabulary_detected,
-    )
+  if (!owningFlow || !targetIndicator) {
     const report = {
-      schema_version: "geomacro-adb-key-indicators-fiscal-discovery-1.1",
+      schema_version: "geomacro-adb-kidb-fiscal-discovery-2.0",
       generated_at: new Date().toISOString(),
-      source_candidate: "adb_key_indicators_2026",
-      publisher: "Asian Development Bank / ERDI",
-      exact_dataset_family: `Key Indicators ${YEAR}`,
+      source_candidate: "adb_kidb_sdmx_v5",
       writes_performed: false,
       production_activation_allowed: false,
       scoring_changed: false,
-      publication_transport: {
-        url: PUBLICATION_URL,
-        fetch_error: publicationFetchError,
-      },
-      commercial_boundary: {
-        status: "RIGHTS_EVIDENCE_EXTERNAL_TO_RESOURCE_TRANSPORT",
-        reviewed_licence: "Creative Commons Attribution 3.0 IGO",
-        rights_reference_urls: [
-          "https://data.adb.org/terms-use-data",
-          "https://data.adb.org/dataset/india-key-indicators",
-        ],
-        licence_not_inferred_from_kidb_transport: true,
-        raw_redistribution_default: false,
-        attribution_required: true,
-      },
-      methodology_boundary: {
-        discovery_only: true,
-        debt_definition_harmonised: false,
-        cross_source_value_pooling_allowed: false,
-        note:
-          "Workbook vocabulary discovery does not prove a comparable sovereign-debt metric. Exact table definition, government sector, unit, valuation and coverage must be parsed before shadow scoring.",
-      },
-      sample: {
-        requested_country_count: SAMPLE_COUNTRIES.length,
-        resource_verified_country_count: countries.length,
-        fiscal_vocabulary_country_count: fiscalVocabularyCountries.length,
-        failure_count: failures.length,
-      },
-      countries,
-      failures,
+      api_contract: { base_url: API, documented_rate_limit: "20 queries/minute", discovered_dataflow_count: flowIds.length },
+      codelist_public_guaranteed_candidates: codelistDebtCandidates.map((row) => ({ code: row.code, text: row.text })),
+      owning_flow: null,
+      target_indicator: null,
+      flow_audit: flowAudit,
+      fail_closed_reason: "No exact public/publicly-guaranteed external-debt series could be mapped to an owning KIDB dataflow.",
     }
-
     fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
     console.log(JSON.stringify(report, null, 2))
-
-    if (failures.length) {
-      console.error(`ADB discovery had ${failures.length} fail-closed country failures`)
-      process.exit(2)
-    }
-    if (fiscalVocabularyCountries.length === 0) {
-      console.error("ADB discovery found no fiscal/debt vocabulary in verified workbooks")
-      process.exit(3)
-    }
-    console.log("PASS: ADB KEY INDICATORS FISCAL DISCOVERY COMPLETE - NO WRITES")
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true })
+    process.exit(2)
   }
+
+  const economyCodes = SAMPLE_ECONOMIES.map((row) => row.kidb).join("+")
+  await sleep(RATE_DELAY_MS)
+  const dataUrl = `${API}/v5/sdmx/data/ADB,${owningFlow}/A.${targetIndicator.code}.${economyCodes}?startPeriod=2022&endPeriod=2024&format=sdmx-csv`
+  const dataResponse = await request(dataUrl, { accept: "text/csv,application/vnd.sdmx.data+csv,*/*;q=0.2" })
+  const csvText = await dataResponse.text()
+  const csv = parseCsv(csvText)
+  if (csv.length < 2) throw new Error("KIDB sample debt query returned no observations")
+
+  const headers = csv[0]
+  const economyIndex = headerIndex(headers, ["ECONOMY_CODE", "REF_AREA", "REFERENCE_AREA"])
+  const timeIndex = headerIndex(headers, ["TIME_PERIOD", "TIME"])
+  const valueIndex = headerIndex(headers, ["OBS_VALUE", "OBSERVATION_VALUE"])
+  if ([economyIndex, timeIndex, valueIndex].some((index) => index < 0)) {
+    throw new Error(`KIDB SDMX-CSV missing required columns: ${headers.join(",")}`)
+  }
+
+  const observations = csv.slice(1).map((row) => ({
+    economy_code: String(row[economyIndex] ?? "").trim(),
+    time_period: String(row[timeIndex] ?? "").trim(),
+    value: Number(row[valueIndex]),
+  })).filter((row) => row.economy_code && row.time_period && Number.isFinite(row.value))
+
+  const observedEconomies = [...new Set(observations.map((row) => row.economy_code))].sort()
+  const sampleCoverage = SAMPLE_ECONOMIES.map((country) => ({
+    ...country,
+    observed: observedEconomies.includes(country.kidb),
+    latest: observations
+      .filter((row) => row.economy_code === country.kidb)
+      .sort((a, b) => b.time_period.localeCompare(a.time_period))[0] ?? null,
+  }))
+
+  const report = {
+    schema_version: "geomacro-adb-kidb-fiscal-discovery-2.0",
+    generated_at: new Date().toISOString(),
+    source_candidate: "adb_kidb_sdmx_v5",
+    publisher: "Asian Development Bank / Key Indicators Database",
+    writes_performed: false,
+    production_activation_allowed: false,
+    scoring_changed: false,
+    api_contract: {
+      documentation_url: "https://kidb.adb.org/api",
+      base_url: API,
+      version: "v5",
+      documented_rate_limit: "20 queries/minute",
+      discovered_dataflow_count: flowIds.length,
+    },
+    commercial_boundary: {
+      status: "REVIEWED_ADB_KEY_INDICATORS_DATA_LIBRARY_CC_BY_3_0_IGO_BOUNDARY",
+      rights_reference_urls: ["https://data.adb.org/terms-use-data", "https://data.adb.org/dataset/india-key-indicators"],
+      raw_redistribution_default: false,
+      attribution_required: true,
+    },
+    methodology_boundary: {
+      discovery_only: true,
+      source_concept: "public_and_publicly_guaranteed_long_term_external_debt",
+      not_equivalent_to_wdi_central_government_debt: true,
+      not_equivalent_to_eurostat_general_government_debt: true,
+      debt_definition_harmonised: false,
+      cross_source_value_pooling_allowed: false,
+      direct_sovereign_fiscal_fallback_allowed: false,
+    },
+    codelist_public_guaranteed_candidates: codelistDebtCandidates.map((row) => ({ code: row.code, text: row.text })),
+    owning_flow: owningFlow,
+    target_indicator: { code: targetIndicator.code, text: targetIndicator.text },
+    sample_query: {
+      url: dataUrl,
+      requested_economy_count: SAMPLE_ECONOMIES.length,
+      observed_economy_count: observedEconomies.length,
+      observation_count: observations.length,
+      coverage: sampleCoverage,
+    },
+    flow_audit: flowAudit,
+  }
+
+  fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
+  console.log(JSON.stringify(report, null, 2))
+  if (observedEconomies.length === 0) process.exit(3)
+  console.log("PASS: ADB KIDB SDMX FISCAL DISCOVERY COMPLETE - NO WRITES, NO SCORING")
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error))
+  const report = {
+    schema_version: "geomacro-adb-kidb-fiscal-discovery-error-2.0",
+    generated_at: new Date().toISOString(),
+    writes_performed: false,
+    production_activation_allowed: false,
+    scoring_changed: false,
+    error: error instanceof Error ? error.message : String(error),
+  }
+  fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
+  console.error(JSON.stringify(report, null, 2))
   process.exit(1)
 })
