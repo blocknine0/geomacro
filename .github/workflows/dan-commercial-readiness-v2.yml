@@ -54,42 +54,113 @@ jobs:
             src/__tests__/risk-object-key-lifecycle.test.ts \
             src/__tests__/testnet-public-developer-page-static.test.ts
 
-      - name: Select current verified country pair
+      - name: Select current commercial proof scope
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/select-commercial-country-pair.ts | tee dan-pair-selection.json
-          origin="$(jq -r '.origin_country_iso3' dan-pair-selection.json)"
-          destination="$(jq -r '.destination_country_iso3' dan-pair-selection.json)"
+          bun scripts/select-commercial-country-pair.ts | tee dan-country-selection.json
+          mode="$(jq -r '.proof_mode' dan-country-selection.json)"
+          origin="$(jq -r '.origin_country_iso3' dan-country-selection.json)"
+          destination="$(jq -r '.destination_country_iso3 // empty' dan-country-selection.json)"
+
+          test "$mode" = "single_country" -o "$mode" = "corridor_pair"
           test "$origin" != "null"
-          test "$destination" != "null"
-          test "$origin" != "$destination"
+          test -n "$origin"
+
+          if [ "$mode" = "corridor_pair" ]; then
+            test -n "$destination"
+            test "$origin" != "$destination"
+          fi
+
+          echo "DAN_MODE=$mode" >> "$GITHUB_ENV"
           echo "DAN_ORIGIN=$origin" >> "$GITHUB_ENV"
           echo "DAN_DESTINATION=$destination" >> "$GITHUB_ENV"
 
-      - name: Publish and verify selected country proofs
+      - name: Publish and verify primary country proof
         shell: bash
         run: |
           set -euo pipefail
           bun scripts/publish-country-risk-object.ts "$DAN_ORIGIN" | tee dan-country-origin.json
+          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+            .published == true and
+            .context.published == true and
+            .integrity.signature_present == true and
+            .integrity.signature_valid == true and
+            .integrity.signing_key_id == $key_id and
+            .commercial_eligibility.status == "VERIFIED" and
+            .verification.status == "VERIFIED"
+          ' dan-country-origin.json >/dev/null
+
+      - name: Publish and verify secondary country proof
+        if: env.DAN_MODE == 'corridor_pair'
+        shell: bash
+        run: |
+          set -euo pipefail
           bun scripts/publish-country-risk-object.ts "$DAN_DESTINATION" | tee dan-country-destination.json
-          for file in dan-country-origin.json dan-country-destination.json; do
-            jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
-              .published == true and
-              .context.published == true and
-              .integrity.signature_present == true and
-              .integrity.signature_valid == true and
-              .integrity.signing_key_id == $key_id and
-              .commercial_eligibility.status == "VERIFIED" and
-              .verification.status == "VERIFIED"
-            ' "$file" >/dev/null
-          done
+          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+            .published == true and
+            .context.published == true and
+            .integrity.signature_present == true and
+            .integrity.signature_valid == true and
+            .integrity.signing_key_id == $key_id and
+            .commercial_eligibility.status == "VERIFIED" and
+            .verification.status == "VERIFIED"
+          ' dan-country-destination.json >/dev/null
+
+      - name: Run real country Risk Gate preflight proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/test-agent-wallet-risk-gate-preflight.ts "$DAN_ORIGIN" | tee dan-country-preflight.log
+
+          python <<'PY'
+          import json
+          from pathlib import Path
+
+          text = Path('dan-country-preflight.log').read_text()
+          decoder = json.JSONDecoder()
+          start = text.find('{')
+          if start < 0:
+              raise SystemExit('Country preflight did not emit JSON evidence')
+          result, _ = decoder.raw_decode(text, start)
+
+          status = result.get('status')
+          if result.get('execution_authorized') is not False:
+              raise SystemExit('Country preflight violated execution_authorized=false boundary')
+
+          if status == 'automatic_execution_blocked':
+              if result.get('executor_called') is not False:
+                  raise SystemExit('Blocked country decision reached executor')
+          elif status == 'automatic_execution_path_reached':
+              if result.get('executor_called') is not True:
+                  raise SystemExit('CONTINUE path did not exercise non-broadcast executor boundary')
+              execution = result.get('execution_result') or {}
+              if execution.get('broadcast') is not False:
+                  raise SystemExit('Country proof attempted broadcast execution')
+          else:
+              raise SystemExit(f'Unexpected country preflight status: {status}')
+
+          Path('dan-country-preflight-proof.json').write_text(json.dumps(result, indent=2) + '\n')
+          PY
 
       - name: Run selected corridor preflight
+        if: env.DAN_MODE == 'corridor_pair'
         shell: bash
         run: |
           set -euo pipefail
           bun scripts/test-corridor-risk-gate-preflight.ts "$DAN_ORIGIN" "$DAN_DESTINATION" | tee dan-corridor-preflight.log
+          grep -q '"signature_valid": true' dan-corridor-preflight.log
+          grep -q 'PASS: SIGNED CORRIDOR RISK GATE BLOCKED EXECUTOR FAIL-CLOSED' dan-corridor-preflight.log
+
+      - name: Record honest no-corridor boundary
+        if: env.DAN_MODE == 'single_country'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg reason "$(jq -r '.fallback_reason' dan-country-selection.json)" \
+            '{available:false,reason:$reason,claim:"No corridor proof is claimed because two current clean commercial endpoint countries were not available."}' \
+            > dan-corridor-unavailable.json
 
       - name: Verify public trust endpoints
         shell: bash
@@ -132,35 +203,63 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jq -n \
-            --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg commit "$GITHUB_SHA" \
-            --arg origin "$DAN_ORIGIN" \
-            --arg destination "$DAN_DESTINATION" \
-            --slurpfile pair dan-pair-selection.json \
-            --slurpfile origin_obj dan-country-origin.json \
-            --slurpfile destination_obj dan-country-destination.json \
-            --slurpfile readiness dan-risk-gate-readiness.json \
-            '{
-              proof:"PASS",
-              purpose:"Dan Griffith pre-conversation commercial readiness evidence",
-              generated_at:$generated_at,
-              commit:$commit,
-              pair_selection:$pair[0],
-              countries:[
-                {country:$origin,object_id:$origin_obj[0].object_id,score:$origin_obj[0].risk.score,confidence:$origin_obj[0].confidence,commercial_eligibility:$origin_obj[0].commercial_eligibility.status,verification:$origin_obj[0].verification.status,signature_valid:$origin_obj[0].integrity.signature_valid},
-                {country:$destination,object_id:$destination_obj[0].object_id,score:$destination_obj[0].risk.score,confidence:$destination_obj[0].confidence,commercial_eligibility:$destination_obj[0].commercial_eligibility.status,verification:$destination_obj[0].verification.status,signature_valid:$destination_obj[0].integrity.signature_valid}
-              ],
-              live_readiness:$readiness[0],
-              testnet_access:{wallet_first_auth_live:true},
-              claims_boundary:[
-                "The country pair is selected from current runtime evidence and is not a permanent whitelist.",
-                "Country proof is controlled-pilot evidence, not a general SLA claim.",
-                "Corridor methodology remains pilot-labelled.",
-                "Geomacro provides decision context and does not grant customer execution authority."
-              ]
-            }' > dan-commercial-readiness-summary.json
-          cat dan-commercial-readiness-summary.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const readJson = (path) => JSON.parse(fs.readFileSync(path, 'utf8'));
+          const maybeJson = (path) => fs.existsSync(path) ? readJson(path) : null;
+
+          const selection = readJson('dan-country-selection.json');
+          const origin = readJson('dan-country-origin.json');
+          const destination = maybeJson('dan-country-destination.json');
+          const countryPreflight = readJson('dan-country-preflight-proof.json');
+          const readiness = readJson('dan-risk-gate-readiness.json');
+          const corridorUnavailable = maybeJson('dan-corridor-unavailable.json');
+
+          const summary = {
+            proof: 'PASS',
+            purpose: 'Dan Griffith pre-conversation commercial readiness evidence',
+            generated_at: new Date().toISOString(),
+            commit: process.env.GITHUB_SHA,
+            proof_mode: process.env.DAN_MODE,
+            selection,
+            countries: [
+              {
+                country: process.env.DAN_ORIGIN,
+                object_id: origin.object_id,
+                score: origin.risk?.score,
+                confidence: origin.confidence,
+                commercial_eligibility: origin.commercial_eligibility?.status,
+                verification: origin.verification?.status,
+                signature_valid: origin.integrity?.signature_valid,
+              },
+              ...(destination ? [{
+                country: process.env.DAN_DESTINATION,
+                object_id: destination.object_id,
+                score: destination.risk?.score,
+                confidence: destination.confidence,
+                commercial_eligibility: destination.commercial_eligibility?.status,
+                verification: destination.verification?.status,
+                signature_valid: destination.integrity?.signature_valid,
+              }] : []),
+            ],
+            country_preflight: countryPreflight,
+            corridor: process.env.DAN_MODE === 'corridor_pair'
+              ? { available: true, evidence_file: 'dan-corridor-preflight.log', methodology: 'pilot-labelled' }
+              : corridorUnavailable,
+            live_readiness: readiness,
+            testnet_access: { wallet_first_auth_live: true },
+            claims_boundary: [
+              'Current proof scope is selected from runtime commercial evidence and is not a permanent country whitelist.',
+              'No second country or corridor is invented when only one clean endpoint exists.',
+              'Country proof is controlled-pilot evidence, not a general SLA claim.',
+              'Corridor methodology remains pilot-labelled and is claimed only when two clean endpoints are available.',
+              'Geomacro provides decision context and does not grant customer execution authority.',
+            ],
+          };
+
+          fs.writeFileSync('dan-commercial-readiness-summary.json', JSON.stringify(summary, null, 2) + '\n');
+          console.log(JSON.stringify(summary, null, 2));
+          NODE
 
       - name: Upload redacted evidence
         if: always()
@@ -168,11 +267,14 @@ jobs:
         with:
           name: dan-commercial-readiness-evidence-v2
           path: |
-            dan-pair-selection.json
+            dan-country-selection.json
             dan-country-origin.json
             dan-country-destination.json
-            dan-commercial-readiness-summary.json
+            dan-country-preflight.log
+            dan-country-preflight-proof.json
             dan-corridor-preflight.log
+            dan-corridor-unavailable.json
+            dan-commercial-readiness-summary.json
             dan-risk-gate-readiness.json
           if-no-files-found: warn
           retention-days: 30
