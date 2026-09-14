@@ -127,20 +127,28 @@ function parseLastUpdate(text) {
     throw new Error("GDELT export MD5 is invalid")
   }
 
-  const url = new URL(exportRow.url)
+  const listedUrl = new URL(exportRow.url)
   if (
-    url.protocol !== "https:" ||
-    url.hostname !== "data.gdeltproject.org" ||
-    !/^\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(url.pathname)
+    !["http:", "https:"].includes(listedUrl.protocol) ||
+    listedUrl.hostname !== "data.gdeltproject.org" ||
+    !/^\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(listedUrl.pathname)
   ) {
     throw new Error(`Unexpected GDELT export URL: ${exportRow.url}`)
   }
 
-  const timestamp = /\/(\d{14})\.export\.CSV\.zip$/.exec(url.pathname)?.[1] ?? null
+  // The official list still emits legacy HTTP URLs. Validate the exact official
+  // host/path first, then upgrade the transport rather than following HTTP.
+  const secureUrl = `https://data.gdeltproject.org${listedUrl.pathname}`
+  const timestamp = /\/(\d{14})\.export\.CSV\.zip$/.exec(listedUrl.pathname)?.[1] ?? null
   const batchIso = timestamp ? parseDateAdded(timestamp) : null
   if (!batchIso) throw new Error("GDELT export filename has invalid batch timestamp")
 
-  return { ...exportRow, batchIso }
+  return {
+    ...exportRow,
+    listed_url: exportRow.url,
+    url: secureUrl,
+    batchIso,
+  }
 }
 
 function parseFipsLookup(text) {
@@ -314,6 +322,9 @@ for (let rowIndex = 0; rowIndex < lines.length; rowIndex++) {
         provider: "GDELT Project",
         dataset: "GDELT 2.0 Event Database",
         batch_timestamp: exportMeta.batchIso,
+        listed_export_url: exportMeta.listed_url,
+        secure_export_url: exportMeta.url,
+        transport_upgrade: exportMeta.listed_url !== exportMeta.url,
         filter_contract_version: FILTER_CONTRACT_VERSION,
         included_event_root_codes: [...CONFLICT_ROOT_CODES],
         event_code: String(fields[FIELD.EVENT_CODE] ?? "").trim(),
@@ -414,7 +425,9 @@ const manifestCore = {
   write_completed: WRITE,
   metadata: {
     last_update_url: LAST_UPDATE_URL,
-    export_url: exportMeta.url,
+    listed_export_url: exportMeta.listed_url,
+    secure_export_url: exportMeta.url,
+    transport_upgrade: exportMeta.listed_url !== exportMeta.url,
     export_size_bytes: exportMeta.size,
     export_md5: exportMeta.md5,
     batch_timestamp: exportMeta.batchIso,
@@ -459,6 +472,9 @@ console.log(JSON.stringify({
   mode: WRITE ? "WRITE" : "DRY_RUN",
   batch_timestamp: exportMeta.batchIso,
   batch_age_minutes: Number(batchAgeMinutes.toFixed(2)),
+  listed_export_url: exportMeta.listed_url,
+  secure_export_url: exportMeta.url,
+  transport_upgrade: exportMeta.listed_url !== exportMeta.url,
   source_rows: lines.length,
   filtered_out_non_conflict_rows: filteredOut,
   conflict_filter_rows: relevantRows,
