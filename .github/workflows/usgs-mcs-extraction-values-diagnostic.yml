@@ -1,0 +1,72 @@
+name: USGS MCS Extraction Values Diagnostic
+
+on:
+  push:
+    branches:
+      - feat/risk-gate-v2-energy-extraction
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Inspect blocked extraction row values
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { parseCsv } from './scripts/lib-live-source-utils.mjs';
+          const ITEMS = ['69837e43b66b01367d7ec7c7', '696a75d5d4be0228872d3bf8'];
+          const FILE = 'MCS2026_Commodities_Data.csv';
+          const HASH = '582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5';
+          let bytes;
+          for (const id of ITEMS) {
+            const response = await fetch(`https://www.sciencebase.gov/catalog/item/${id}?format=json`);
+            if (!response.ok) continue;
+            const meta = await response.json();
+            const file = (meta.files ?? []).find((x) => x.name === FILE);
+            if (!file) continue;
+            const dl = await fetch(file.url ?? file.downloadUri);
+            if (!dl.ok) continue;
+            const candidate = Buffer.from(await dl.arrayBuffer());
+            if (createHash('sha256').update(candidate).digest('hex') !== HASH) continue;
+            bytes = candidate;
+            break;
+          }
+          if (!bytes) throw new Error('pinned MCS CSV unavailable');
+          const rows = parseCsv(new TextDecoder('windows-1252').decode(bytes));
+          const year = Math.max(...rows.map((r) => Number(r.Year)).filter(Number.isInteger));
+          const canon = (v) => String(v ?? '').normalize('NFKD').replace(/\p{Diacritic}/gu,'').trim().toLowerCase().replace(/\s+/g,' ');
+          const wanted = new Set(['Lithium','Cobalt','Rare Earths','Copper','Graphite (Natural)','Nickel','Tin','Tungsten','Antimony','Bauxite','Fluorspar','Rhenium']);
+          const out = [];
+          for (const row of rows) {
+            if (Number(row.Year) !== year || canon(row['Is critical mineral 2025']) !== 'yes') continue;
+            if (!wanted.has(String(row.Commodity ?? '').trim())) continue;
+            const section = canon(row.Section);
+            const statistic = canon(row.Statistics);
+            const detail = canon(row.Statistics_detail);
+            if (!section.startsWith('world ') || statistic !== 'production' || !detail.includes('mine production') || detail.includes('rounded') || detail.includes('refinery') || detail.includes('smelter') || detail.includes('secondary')) continue;
+            const raw = String(row.Value ?? '').trim();
+            const numeric = Number(raw.replaceAll(',',''));
+            out.push({
+              commodity: row.Commodity,
+              country: row.Country,
+              value: raw,
+              numeric: raw !== '' && Number.isFinite(numeric),
+              unit: row.Unit,
+              section: row.Section,
+              detail: row.Statistics_detail,
+            });
+          }
+          const grouped = Object.groupBy(out, (row) => row.commodity);
+          console.log('USGS_MCS_EXTRACTION_VALUE_DIAGNOSTIC');
+          console.log(JSON.stringify(grouped, null, 2));
+          console.log('PASS: read-only value diagnostic completed');
+          NODE
