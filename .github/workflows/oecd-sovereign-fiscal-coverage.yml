@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node scripts/audit-oecd-sovereign-fiscal-coverage.mjs | tee oecd-sovereign-fiscal-coverage.log
+          node scripts/audit-oecd-sovereign-fiscal-coverage.mjs 2>&1 | tee oecd-sovereign-fiscal-coverage.log
 
       - name: Normalize exact provider outage as fail-closed evidence
         shell: bash
