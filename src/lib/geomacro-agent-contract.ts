@@ -1,5 +1,8 @@
 import { z } from "zod";
 import {
+  GEOMACRO_A2A_PROTOCOL_VERSION,
+} from "./a2a-contract";
+import {
   GEOMACRO_CREDIT_CONTRACT_VERSION,
   GEOMACRO_CREDIT_COSTS,
 } from "./commercial-access-contract";
@@ -83,6 +86,18 @@ export function geomacroAgentManifest(origin = "https://geomacro.live") {
     },
     endpoint: `${origin}/api/agent/risk`,
     discovery: `${origin}/.well-known/geomacro-agent.json`,
+    a2a: {
+      protocol_version: GEOMACRO_A2A_PROTOCOL_VERSION,
+      discovery: `${origin}/.well-known/geomacro-a2a.json`,
+      manifest: `${origin}/api/a2a/manifest`,
+      negotiate: `${origin}/api/a2a/negotiate`,
+      identity: `${origin}/api/a2a/identity`,
+      tasks: `${origin}/api/a2a/tasks`,
+      task_status_template: `${origin}/api/a2a/tasks/{task_id}`,
+      request_signing: "ed25519_detached",
+      replay_protection: "timestamp_plus_one_time_nonce",
+      callback_modes: ["poll", "https_push"],
+    },
     capabilities: [
       {
         id: "risk_preflight",
