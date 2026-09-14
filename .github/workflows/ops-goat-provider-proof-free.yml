@@ -49,7 +49,7 @@ jobs:
 
       - name: Upload sanitized evidence
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: goat-provider-proof-free-${{ github.run_id }}
           path: artifacts/goat-testnet3/*.json
