@@ -3,6 +3,10 @@ import {
 } from "@tanstack/react-router";
 
 import {
+  ensureRiskObjectRuntimePublicKey,
+} from "../lib/risk-object-runtime-public-key.server";
+
+import {
   publicRiskObjectVerificationKeySet,
 } from "../lib/risk-object-signing.server";
 
@@ -134,6 +138,22 @@ async function verifyRequest(
     );
   }
 
+  try {
+    ensureRiskObjectRuntimePublicKey();
+  } catch {
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          "verification_key_registry_invalid",
+      },
+      503,
+      {
+        "cache-control": "no-store",
+      },
+    );
+  }
+
   const report =
     verifyPublicRiskObjectArtifact(
       (
@@ -183,6 +203,8 @@ export const Route =
       handlers: {
         GET: async () => {
           try {
+            ensureRiskObjectRuntimePublicKey();
+
             const keySet =
               publicRiskObjectVerificationKeySet();
 

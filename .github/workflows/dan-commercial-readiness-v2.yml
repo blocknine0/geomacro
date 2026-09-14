@@ -8,6 +8,9 @@ on:
     paths:
       - ".github/workflows/dan-commercial-readiness-v2.yml"
       - "scripts/select-commercial-country-pair.ts"
+      - "src/lib/risk-object-runtime-public-key.server.ts"
+      - "src/routes/api.risk-object-keys.ts"
+      - "src/routes/api.risk-gate-readiness.ts"
 
 permissions:
   contents: read
