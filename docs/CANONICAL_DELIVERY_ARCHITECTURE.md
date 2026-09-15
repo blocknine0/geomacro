@@ -35,6 +35,39 @@ The customer owns the identity, permissions and policy layer. Geomacro may evalu
 
 Event-specific Risk Objects are a broader product direction only. The current Private Pilot contract is country and directional corridor Risk Objects plus Risk Gate unless a separately implemented and verified contract expands that scope.
 
+## Canonical surface classification
+
+Every current user-facing or machine-facing surface must fit one of the roles below. A route may present or deliver a canonical product, but it must not silently become a new source of risk truth.
+
+| Surface / route family | Architecture role | Current status / boundary |
+| --- | --- | --- |
+| `/intelligence` and event pages | Public presentation of the structured intelligence state | Live, wallet-free |
+| `/global-risk` | Global Risk Index derived from the governed intelligence state | Live, wallet-free |
+| `/ask-geomacro` | Grounded query surface over the governed intelligence state | Live, wallet-free |
+| Country Risk Object delivery | Signed country-specific machine context | Private Pilot |
+| Directional corridor Risk Object delivery | Signed endpoint-composed corridor machine context | Private Pilot; not full physical-route modelling |
+| `/risk-gate` and canonical Risk Gate services | Non-authorizing pre-decision context over verified Risk Objects | Private Pilot; `execution_authorized=false` |
+| `/data-api` and commercial API endpoints | Access, entitlement and delivery over canonical intelligence/services | Controlled commercial / pilot delivery; never a parallel risk engine |
+| `/institutional` | Buyer/workflow presentation of the same intelligence and Private Pilot capabilities | No institutional-only risk truth |
+| `/research`, `/docs`, `/about` | Methodology, evidence, trust and explanation | Reference surfaces; no independent risk engine |
+| `/testnet-access` and Testnet pay-per-call | Testnet access/payment adapter around canonical capabilities | Testnet-only; non-revenue proof unless separately contracted otherwise |
+| Agent, x402, GOAT, Coinbase and A2A adapters | Transport/payment/task envelopes around canonical capabilities | Must reuse canonical intelligence and preserve non-authorization |
+| `/arena` | Prediction-market application/feedback layer | Permanent Arc Testnet technical proof; not production/mainnet product |
+| `/onchain`, `/bridge-swap` | Arc/Circle programmable-finance implementation | Secondary technical proof |
+| `/pipeline` | Technical visibility into data-processing architecture | Technical/reference surface, not a second intelligence state |
+
+The primary commercial hierarchy therefore remains:
+
+1. governed real-world evidence and provenance;
+2. structured intelligence state;
+3. live public intelligence, GRI and Ask Geomacro;
+4. Private Pilot country/corridor Risk Objects and Risk Gate;
+5. customer-owned identity, permissions and policy;
+6. customer-controlled action;
+7. separate technical-proof/application rails where useful.
+
+Data/API, institutional packaging, agent protocols and payment rails are **delivery or presentation layers around this hierarchy**. They do not insert a new risk engine between the structured intelligence state and the canonical products.
+
 ## Delivery architecture
 
 The same governed foundation can be delivered through different access and transport surfaces:
@@ -158,6 +191,8 @@ Repository tests must fail if:
 - public positioning promotes prediction markets, Arc/Circle or settlement rails above the intelligence product;
 - current Private Pilot copy expands Risk Objects/Risk Gate beyond country and directional corridor without a separately verified contract;
 - a public surface implies that Geomacro owns customer identity, permissions, policy, funds or final execution;
-- a public surface implies that Risk Gate can authorize execution.
+- a public surface implies that Risk Gate can authorize execution;
+- an institutional, API, agent or payment surface creates or implies a separate risk truth;
+- a technical-proof route loses its Testnet/technical-proof boundary and begins presenting itself as the primary commercial product.
 
 This contract is the central reference when adding a new API, payment rail, agent protocol or product surface: **reuse canonical intelligence first; add only the access, transport, entitlement, policy-input or settlement adapter required by that surface while preserving the customer-control boundary.**

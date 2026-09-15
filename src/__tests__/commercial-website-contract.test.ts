@@ -19,6 +19,22 @@ const CANONICAL_ARCHITECTURE_TOKENS = [
   "Arc / Circle / prediction-market technical proof",
 ] as const;
 
+const COMMERCIAL_PUBLIC_SURFACES = [
+  "src/routes/index.tsx",
+  "src/components/home/commercial-home.tsx",
+  "src/routes/about.tsx",
+  "src/routes/institutional.tsx",
+  "src/routes/risk-gate.tsx",
+  "src/routes/data-api.tsx",
+] as const;
+
+const STALE_PRIMARY_POSITIONING = [
+  "autonomous prediction market",
+  "natively settled in USDC on Arc",
+  "prediction-market-first",
+  "prediction market is the product",
+] as const;
+
 describe("commercial website source-of-truth contract", () => {
   it("keeps the canonical end-to-end product architecture aligned across source-of-truth docs", () => {
     for (const path of ["README.md", "src/content/docs/02-product-architecture.md"]) {
@@ -40,6 +56,46 @@ describe("commercial website source-of-truth contract", () => {
     expect(commercial).toContain("Event-specific Risk Objects remain a broader product direction only");
     expect(commercial).toContain("execution_authorized=false");
     expect(commercial).not.toContain("+-- Event scope    -> Event Risk Object");
+  });
+
+  it("keeps a centralized architecture classification for every major surface family", () => {
+    const canonical = read("docs/CANONICAL_DELIVERY_ARCHITECTURE.md");
+
+    for (const token of CANONICAL_ARCHITECTURE_TOKENS) {
+      expect(canonical, `canonical contract is missing architecture node: ${token}`).toContain(token);
+    }
+
+    for (const route of [
+      "/intelligence",
+      "/global-risk",
+      "/ask-geomacro",
+      "/risk-gate",
+      "/data-api",
+      "/institutional",
+      "/research",
+      "/docs",
+      "/about",
+      "/testnet-access",
+      "/arena",
+      "/onchain",
+      "/bridge-swap",
+      "/pipeline",
+    ]) {
+      expect(canonical, `canonical surface matrix is missing ${route}`).toContain(`\`${route}\``);
+    }
+
+    expect(canonical).toContain("Data/API, institutional packaging, agent protocols and payment rails are **delivery or presentation layers around this hierarchy**");
+    expect(canonical).toContain("never a parallel risk engine");
+    expect(canonical).toContain("Permanent Arc Testnet technical proof");
+  });
+
+  it("blocks stale market-first positioning from primary commercial surfaces", () => {
+    for (const path of COMMERCIAL_PUBLIC_SURFACES) {
+      const normalized = read(path).toLowerCase();
+      for (const phrase of STALE_PRIMARY_POSITIONING) {
+        expect(normalized, `${path} reintroduced stale primary positioning: ${phrase}`).not.toContain(phrase.toLowerCase());
+      }
+    }
   });
 
   it("keeps intelligence products primary and technical proof secondary", () => {
@@ -92,6 +148,21 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).not.toContain("country, corridor and event risk");
   });
 
+  it("keeps institutional workflow in Risk Gate -> customer policy -> customer action order", () => {
+    const route = read("src/routes/institutional.tsx");
+
+    expect(route).not.toContain("Risk Gate combines a verified country or corridor Risk Object with the customer's own policy");
+    expect(route).toContain("Risk Gate verifies the country or corridor Risk Object and returns bounded external risk context and a recommendation");
+
+    const gate = route.indexOf("Risk Gate returns bounded decision context");
+    const policy = route.indexOf("The customer's own identity, permissions and policy layer applies its rules after the Risk Gate response");
+    const execution = route.indexOf("Any execution after that remains under the customer's control");
+
+    expect(gate).toBeGreaterThanOrEqual(0);
+    expect(policy).toBeGreaterThan(gate);
+    expect(execution).toBeGreaterThan(policy);
+  });
+
   it("keeps Data, API and Agent availability explicit without advertising a free API", () => {
     const route = read("src/routes/data-api.tsx");
 
@@ -116,6 +187,10 @@ describe("commercial website source-of-truth contract", () => {
     ]) {
       expect(read(path)).toContain("TechnicalProofBanner");
     }
+
+    const arena = read("src/routes/arena.tsx");
+    expect(arena).toContain("permanently locked to Arc Testnet as secondary technical proof");
+    expect(arena).toContain("not planning a prediction-market mainnet or real-money launch");
   });
 
   it("keeps the active roadmap intelligence-first and removes the stale market-first source of truth", () => {

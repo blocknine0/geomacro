@@ -241,17 +241,16 @@ function InstitutionalPage() {
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Private Pilot workflow</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">Check risk before the action moves forward.</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Risk Gate combines a verified country or corridor Risk Object with the customer's own policy. Geomacro returns a recommendation; the customer controls execution.
+              Risk Gate verifies the country or corridor Risk Object and returns bounded external risk context and a recommendation. The customer's own identity, permissions and policy layer then applies its rules; the customer controls execution.
             </p>
             <Button asChild className="mt-6 gap-2"><Link to="/risk-gate">Review Risk Gate <ArrowRight className="h-4 w-4" /></Link></Button>
           </div>
           <ol className="space-y-3">
             {[
               "The customer or agent submits an action for review.",
-              "Geomacro verifies the current country or corridor risk context.",
-              "Evidence, confidence, freshness and issuer integrity are checked.",
-              "The customer's policy is applied.",
-              "Risk Gate returns CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE or REROUTE.",
+              "Geomacro verifies the current country or corridor Risk Object, evidence, confidence, freshness and issuer integrity.",
+              "Risk Gate returns bounded decision context such as CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE or REROUTE.",
+              "The customer's own identity, permissions and policy layer applies its rules after the Risk Gate response.",
               "Any execution after that remains under the customer's control.",
             ].map((step, index) => (
               <li key={step} className="flex gap-3 rounded-xl border border-border/70 bg-background/30 p-4 text-sm">
