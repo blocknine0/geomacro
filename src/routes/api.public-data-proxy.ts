@@ -4,6 +4,10 @@ import { createFileRoute } from "@tanstack/react-router";
 const ALLOWED_TABLES = new Set([
   "events",
   "gri_snapshots",
+  "gri_contributions",
+  "gri_source_dispositions",
+  "gri_validation_runs",
+  "gri_validation_metrics",
   "market_disputes",
   "jury_votes",
 ]);

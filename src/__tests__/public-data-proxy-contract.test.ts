@@ -27,6 +27,25 @@ describe("public data proxy contract", () => {
     expect(client).not.toMatch(/eyJhbGciOi/);
   });
 
+  it("keeps every current public GRI proof read reachable through the same proxy", () => {
+    const proxy = read("src/routes/api.public-data-proxy.ts");
+    const proofData = read("src/lib/gri-proof-data.ts");
+
+    for (const table of [
+      "gri_snapshots",
+      "gri_contributions",
+      "gri_source_dispositions",
+      "gri_validation_runs",
+      "gri_validation_metrics",
+    ]) {
+      expect(proofData).toContain(`.from("${table}")`);
+      expect(proxy).toContain(`"${table}"`);
+    }
+
+    expect(proxy).toContain("redactPrivateSourceIdentity");
+    expect(proxy).toContain('if (!ALLOWED_TABLES.has(table)) return bad(403');
+  });
+
   it("does not depend on direct browser realtime credentials", () => {
     const client = read("src/lib/supabase-feed.ts");
     const dispute = read("src/lib/useDisputeStatus.ts");
