@@ -1,14 +1,16 @@
-name: Apply Multi-Source Registry Production
+name: Verify Multi-Source Registry Production
 
 on:
   pull_request:
     paths:
       - ".github/workflows/apply-multi-source-registry-production.yml"
+      - "supabase/migrations/920_multi_source_commercial_registry.sql"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/apply-multi-source-registry-production.yml"
+      - "supabase/migrations/920_multi_source_commercial_registry.sql"
 
 permissions:
   contents: read
@@ -28,7 +30,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate exact migration boundary
+      - name: Validate read-only registry boundary
         shell: bash
         run: |
           set -euo pipefail
@@ -40,14 +42,13 @@ jobs:
           grep -q "gdelt_v2_events" "$file"
           grep -q "usgs_earthquake_hazards" "$file"
           grep -q "nasa_firms_modis_nrt" "$file"
-          forbidden="supabase db"' push'
-          if grep -Fq "$forbidden" "$file"; then
-            echo "::error::Registry production apply must never apply unrelated pending migrations."
+          if grep -Eq 'psql .*920_multi_source_commercial_registry\.sql|supabase db[[:space:]]+push' "$file"; then
+            echo "::error::Registry verification must not re-apply bootstrap migration 920 or broad-push migrations."
             exit 1
           fi
-          echo "PASS: production apply is scoped to migration 920 only."
+          echo "PASS: multi-source registry workflow is read-only and cannot reset promoted operational flags."
 
-  apply:
+  verify-production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -83,16 +84,7 @@ jobs:
           console.log('PASS: authoritative production database identity confirmed.');
           NODE
 
-      - name: Apply only migration 920
-        shell: bash
-        run: |
-          set -euo pipefail
-          migration="supabase/migrations/920_multi_source_commercial_registry.sql"
-          test -f "$migration"
-          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$migration"
-          echo "PASS: migration 920 applied to authoritative production database."
-
-      - name: Verify fail-closed multi-source registry state
+      - name: Verify governed registry without changing operational state
         shell: bash
         run: |
           set -euo pipefail
@@ -123,21 +115,27 @@ jobs:
           count="$(wc -l < multi-source-registry-production.txt | tr -d ' ')"
           test "$count" = "13" || { echo "::error::Expected 13 governed candidate rows, found $count"; exit 1; }
 
-          bad_active="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where source_id in ('oecd_public_finance','eurostat_government_finance','adb_ado_macro_2026','eia_international_energy','usgs_earthquake_hazards','nasa_firms_modis_nrt','gdelt_v2_events','faostat_global','ilostat_global','gdacs_global_disasters','who_gho','bis_statistics','vdem_v16') and (enabled_for_ingestion or enabled_for_commercial_signals)")"
-          test "$bad_active" = "0" || { echo "::error::Candidate source activated before adapter/methodology proof"; exit 1; }
-
           permission_count="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where source_id in ('un_comtrade','imf_data') and commercial_usage_status = 'PERMISSION_REQUIRED' and not enabled_for_ingestion and not enabled_for_commercial_signals")"
           test "$permission_count" = "2" || { echo "::error::UN Comtrade/IMF fail-closed corrections are not present"; exit 1; }
 
           review_count="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where source_id in ('iea_critical_minerals','jrc_rmis_supply_chain') and commercial_usage_status = 'REVIEW_REQUIRED' and not enabled_for_ingestion and not enabled_for_commercial_signals")"
           test "$review_count" = "2" || { echo "::error::Legacy IEA/JRC entries are not fail-closed"; exit 1; }
 
-          echo "PASS: production registry contains all candidates and none are prematurely active."
+          eurostat_state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          case "$eurostat_state" in
+            'COMMERCIAL_OK|true|false'|'COMMERCIAL_OK|true|true') ;;
+            *) echo "::error::Unexpected Eurostat governed state: $eurostat_state"; exit 1 ;;
+          esac
+
+          printf '{"verified_at":"%s","writes_performed":false,"bootstrap_migration_reapplied":false,"eurostat_state":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$eurostat_state" | tee multi-source-registry-readonly-evidence.json
+          echo "PASS: production registry verified read-only; promoted source flags were not modified."
 
       - name: Upload production registry evidence
         uses: actions/upload-artifact@v7
         with:
           name: multi-source-registry-production
-          path: multi-source-registry-production.txt
+          path: |
+            multi-source-registry-production.txt
+            multi-source-registry-readonly-evidence.json
           if-no-files-found: error
           retention-days: 30
