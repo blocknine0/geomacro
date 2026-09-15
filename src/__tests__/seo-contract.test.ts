@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
+type DocsManifestEntry = {
+  route: string;
+};
+
 const PRIMARY_INDEXABLE_ROUTES = [
   "https://geomacro.live/",
   "https://geomacro.live/intelligence",
@@ -28,6 +32,9 @@ const SECONDARY_NOINDEX_ROUTES = [
   "https://geomacro.live/pipeline",
   "https://geomacro.live/testnet-access",
 ] as const;
+
+const GOOGLE_VERIFICATION_FILE = "public/google9b43beb9d90523c5.html";
+const GOOGLE_VERIFICATION_BODY = "google-site-verification: google9b43beb9d90523c5.html";
 
 describe("public SEO contract", () => {
   it("publishes one canonical organization and website identity", () => {
@@ -88,7 +95,31 @@ describe("public SEO contract", () => {
     for (const url of SECONDARY_NOINDEX_ROUTES) {
       expect(sitemap, `secondary surface should not be in sitemap: ${url}`).not.toContain(`<loc>${url}</loc>`);
     }
-    expect(sitemap).toContain("https://geomacro.live/docs/51-summary");
+  });
+
+  it("keeps every public documentation route synchronized with the sitemap", () => {
+    const sitemap = read("public/sitemap.xml");
+    const manifest = JSON.parse(read("src/content/docs-manifest.json")) as DocsManifestEntry[];
+
+    expect(manifest.length).toBeGreaterThan(0);
+    for (const entry of manifest) {
+      const url = `https://geomacro.live${entry.route}`;
+      expect(sitemap, `missing docs sitemap URL: ${url}`).toContain(`<loc>${url}</loc>`);
+    }
+
+    const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+    expect(new Set(locs).size, "sitemap must not contain duplicate URLs").toBe(locs.length);
+    expect(locs.every((url) => url.startsWith("https://geomacro.live/"))).toBe(true);
+  });
+
+  it("preserves Google Search Console ownership verification and canonical sitemap discovery", () => {
+    const robots = read("public/robots.txt");
+
+    expect(existsSync(join(ROOT, GOOGLE_VERIFICATION_FILE))).toBe(true);
+    expect(read(GOOGLE_VERIFICATION_FILE).trim()).toBe(GOOGLE_VERIFICATION_BODY);
+    expect(robots).toContain("Sitemap: https://geomacro.live/sitemap.xml");
+    expect(robots).not.toContain("https://www.geomacro.live/");
+    expect(read("public/sitemap.xml")).not.toContain("https://www.geomacro.live/");
   });
 
   it("allows crawlers to see noindex HTML while blocking machine/internal paths", () => {
