@@ -1,5 +1,8 @@
 import { requireRiskSupabase } from "./risk-supabase.server";
-import { revokeTestnetDeveloperApiKey } from "./testnet-developer-access.server";
+import {
+  revokeTestnetDeveloperApiKey,
+  rotateTestnetDeveloperApiKey,
+} from "./testnet-developer-access.server";
 
 export async function listTestnetDeveloperApiKeys(principalId: string) {
   const db = requireRiskSupabase();
@@ -46,4 +49,14 @@ export async function revokeOwnedTestnetDeveloperApiKey(input: {
     throw new Error("INVALID_TESTNET_DEVELOPER_CREDENTIAL_ID");
   }
   return revokeTestnetDeveloperApiKey(input);
+}
+
+export async function rotateOwnedTestnetDeveloperApiKey(input: {
+  principalId: string;
+  credentialId: string;
+}) {
+  if (!/^[0-9a-fA-F-]{36}$/.test(input.credentialId)) {
+    throw new Error("INVALID_TESTNET_DEVELOPER_CREDENTIAL_ID");
+  }
+  return rotateTestnetDeveloperApiKey(input);
 }
