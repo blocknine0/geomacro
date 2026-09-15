@@ -40,13 +40,21 @@ export const agentAdaptiveQuerySchema = z.object({
   schema_version: z.literal(AGENT_QUERY_SCHEMA_VERSION).default(AGENT_QUERY_SCHEMA_VERSION),
   question: z.string().trim().min(3).max(2_000).optional(),
   subjects: z.array(z.union([country, corridor])).min(1).max(25),
-  topics: z.array(z.enum(AGENT_QUERY_TOPICS)).min(1).max(16),
+  topics: z.array(z.enum(AGENT_QUERY_TOPICS)).max(16).default([]),
   as_of: z.string().datetime({ offset: true }).optional(),
   max_age_seconds: z.number().int().positive().max(31_536_000).default(86_400),
   evidence: z.enum(["required", "summary"]).default("required"),
   detail: z.enum(["compact", "standard", "full"]).default("standard"),
   client_request_id: z.string().trim().min(4).max(128).optional(),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (!value.question && value.topics.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["topics"],
+      message: "Provide at least one explicit topic or a question that can be deterministically classified",
+    });
+  }
+});
 
 export type AgentAdaptiveQuery = z.infer<typeof agentAdaptiveQuerySchema>;
 
@@ -69,6 +77,40 @@ const TOPIC_MODULES: Record<AgentQueryTopic, readonly string[]> = {
   gri_context: ["gri_context"],
 };
 
+const QUESTION_TOPIC_RULES: ReadonlyArray<{
+  topic: AgentQueryTopic;
+  patterns: RegExp[];
+}> = [
+  { topic: "sovereign_risk", patterns: [/\bsovereign\b/i, /\bdebt\b/i, /\bfiscal\b/i, /\bdefault\b/i, /\bbond\b/i] },
+  { topic: "macro_risk", patterns: [/\bmacro/i, /\binflation\b/i, /\bgdp\b/i, /\bgrowth\b/i, /\brate\b/i, /\bcentral bank\b/i] },
+  { topic: "fx_external_risk", patterns: [/\bfx\b/i, /\bcurrenc/i, /\bforeign exchange\b/i, /\breserves?\b/i, /\bbalance of payments\b/i, /\bexternal\b/i] },
+  { topic: "sanctions_restrictions", patterns: [/\bsanction/i, /\brestriction/i, /\bembargo\b/i, /\bexport control/i, /\bofac\b/i] },
+  { topic: "conflict_geopolitics", patterns: [/\bwar\b/i, /\bconflict\b/i, /\bgeopolit/i, /\bmilitary\b/i, /\bescalat/i, /\bsecurity\b/i] },
+  { topic: "trade_corridor", patterns: [/\btrade\b/i, /\bcorridor\b/i, /\bsupply chain\b/i, /\bshipping\b/i, /\broute\b/i, /\btariff/i] },
+  { topic: "energy_commodities", patterns: [/\benergy\b/i, /\boil\b/i, /\bgas\b/i, /\bcommodity/i, /\bpower\b/i] },
+  { topic: "critical_minerals", patterns: [/\bcritical mineral/i, /\blithium\b/i, /\bcobalt\b/i, /\bnickel\b/i, /\brare earth/i] },
+  { topic: "political_governance", patterns: [/\bgovernance\b/i, /\belection/i, /\bcoup\b/i, /\bpolitical\b/i, /\binstitution/i] },
+  { topic: "banking_financial_system", patterns: [/\bbank/i, /\bfinancial system\b/i, /\bliquidity\b/i, /\bcredit\b/i] },
+  { topic: "food_agriculture", patterns: [/\bfood\b/i, /\bagricultur/i, /\bwheat\b/i, /\bcrop/i, /\bfertilizer/i] },
+  { topic: "natural_hazards", patterns: [/\bearthquake\b/i, /\bflood\b/i, /\bcyclone\b/i, /\bhurricane\b/i, /\bwildfire\b/i, /\bnatural hazard/i] },
+  { topic: "hot_topics", patterns: [/\bhot topic/i, /\blatest\b/i, /\bcurrent event/i, /\btoday\b/i, /\bright now\b/i, /\bwhat changed\b/i] },
+  { topic: "risk_gate", patterns: [/\brisk gate\b/i, /\bpre[- ]?flight\b/i, /\bshould .* proceed\b/i, /\ballow|block|caution/i] },
+  { topic: "risk_object", patterns: [/\brisk object\b/i, /\bsigned object\b/i, /\bmachine[- ]readable\b/i] },
+  { topic: "gri_context", patterns: [/\bgri\b/i, /\bglobal risk index\b/i, /\bglobal risk\b/i] },
+];
+
+function normalizeQuestion(question: string | undefined) {
+  return question ? question.trim().replace(/\s+/g, " ").toLowerCase() : null;
+}
+
+export function inferAgentQueryTopics(question: string | undefined): AgentQueryTopic[] {
+  if (!question) return [];
+  const matches = QUESTION_TOPIC_RULES
+    .filter((rule) => rule.patterns.some((pattern) => pattern.test(question)))
+    .map((rule) => rule.topic);
+  return [...new Set(matches)].sort() as AgentQueryTopic[];
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === "object") {
@@ -87,6 +129,7 @@ function stableHash(value: unknown) {
 
 export type AgentQueryPlan = {
   schema_version: typeof AGENT_QUERY_SCHEMA_VERSION;
+  question_key: string | null;
   subjects: AgentAdaptiveQuery["subjects"];
   topics: AgentQueryTopic[];
   required_modules: string[];
@@ -99,10 +142,15 @@ export type AgentQueryPlan = {
 
 export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   const parsed = agentAdaptiveQuerySchema.parse(raw);
-  const topics = [...new Set(parsed.topics)].sort() as AgentQueryTopic[];
+  const inferred = inferAgentQueryTopics(parsed.question);
+  const topics = [...new Set([...parsed.topics, ...inferred])].sort() as AgentQueryTopic[];
+  if (topics.length === 0) {
+    throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
+  }
   const requiredModules = [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
   const normalized = {
     schema_version: AGENT_QUERY_SCHEMA_VERSION,
+    question_key: normalizeQuestion(parsed.question),
     subjects: parsed.subjects,
     topics,
     required_modules: requiredModules,
