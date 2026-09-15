@@ -15,12 +15,14 @@ Risk Gate - Private Pilot
         ↓
 customer identity + permissions + policy
         ↓
-CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
+CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         ↓
 customer-controlled action
 ```
 
 Risk Gate verifies the relevant risk context and returns a bounded recommendation. An integration may supply a customer-owned policy profile as an evaluation input, but the customer or caller owns the identity, permissions, policy, compliance rules and any downstream action.
+
+`REROUTE` is not a current Risk Gate v1 machine decision. It may be introduced only as a separately validated advisory alternative without changing the four-state v1 decision contract.
 
 The repository includes fail-closed pre-flight adapters for agent and wallet integration proof. A caller-owned executor may act only under the caller's own policy; Geomacro does not authorize that execution.
 
