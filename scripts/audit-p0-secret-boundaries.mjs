@@ -1,9 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { basename, extname } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, extname, join } from "node:path";
 
 const OUTPUT = "artifacts/p0-secret-boundary-audit.json";
+const BROWSER_BUILD_ROOT = ".output/public";
+const REQUIRE_BROWSER_BUILD = process.env.P0_REQUIRE_BROWSER_BUILD === "1";
 
 const PRIVILEGED_IDENTIFIERS = [
   "APP_SUPABASE_SERVICE_ROLE_KEY",
@@ -28,6 +37,7 @@ const TEXT_EXTENSIONS = new Set([
   "", ".cjs", ".css", ".html", ".js", ".jsx", ".json", ".md", ".mjs",
   ".sql", ".ts", ".tsx", ".txt", ".yaml", ".yml",
 ]);
+const BROWSER_BUNDLE_EXTENSIONS = new Set([".css", ".html", ".js", ".json", ".mjs"]);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -58,12 +68,24 @@ function readText(path) {
   }
 }
 
-function isBrowserExposedPath(path) {
+function isServerBoundSource(path, text) {
+  if (path.includes(".server.")) return true;
+  if (path.endsWith(".functions.ts") || path.endsWith(".functions.tsx")) {
+    return text.includes("createServerFn");
+  }
+  if (text.includes('from "@tanstack/react-start/server"') || text.includes("from '@tanstack/react-start/server'")) {
+    return true;
+  }
+  return false;
+}
+
+function isPotentialBrowserSource(path, text) {
+  if (isServerBoundSource(path, text)) return false;
   if (path.startsWith("public/")) return true;
   if (path.startsWith("src/components/")) return true;
 
   if (path.startsWith("src/lib/")) {
-    return !path.includes(".server.") && !path.includes("/__tests__/");
+    return !path.includes("/__tests__/");
   }
 
   if (path.startsWith("src/routes/")) {
@@ -79,9 +101,25 @@ function isAllowedEnvTemplate(path) {
   return name.endsWith(".example") || name.endsWith(".sample") || name.endsWith(".template");
 }
 
+function walk(root) {
+  if (!existsSync(root)) return [];
+  const output = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) continue;
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.isFile()) output.push(full);
+    }
+  }
+  return output.sort();
+}
+
 const files = trackedFiles();
 const violations = [];
-const browserFiles = [];
+const browserSourceFiles = [];
 let textFilesScanned = 0;
 
 for (const path of files) {
@@ -116,13 +154,43 @@ for (const path of files) {
     violations.push({ type: "privileged_vite_identifier", path, identifier });
   }
 
-  if (isBrowserExposedPath(path)) {
-    browserFiles.push(path);
+  if (isPotentialBrowserSource(path, text)) {
+    browserSourceFiles.push(path);
     for (const identifier of PRIVILEGED_IDENTIFIERS) {
-      if (text.includes(identifier)) {
-        violations.push({ type: "privileged_identifier_in_browser_path", path, identifier });
+      const processEnvReference = new RegExp(`\\bprocess\\.env\\.${identifier}\\b`);
+      const importMetaReference = new RegExp(`\\bimport\\.meta\\.env\\.${identifier}\\b`);
+      if (processEnvReference.test(text) || importMetaReference.test(text)) {
+        violations.push({ type: "privileged_env_access_in_browser_source", path, identifier });
       }
     }
+  }
+}
+
+const browserBundleFiles = walk(BROWSER_BUILD_ROOT).filter((path) =>
+  BROWSER_BUNDLE_EXTENSIONS.has(extname(path).toLowerCase()),
+);
+
+if (REQUIRE_BROWSER_BUILD && browserBundleFiles.length === 0) {
+  violations.push({
+    type: "browser_build_missing",
+    path: BROWSER_BUILD_ROOT,
+  });
+}
+
+for (const path of browserBundleFiles) {
+  const text = readText(path);
+  if (text === null) continue;
+  for (const identifier of PRIVILEGED_IDENTIFIERS) {
+    if (text.includes(identifier)) {
+      violations.push({
+        type: "privileged_identifier_in_production_browser_bundle",
+        path,
+        identifier,
+      });
+    }
+  }
+  if (/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(text)) {
+    violations.push({ type: "private_key_material_in_production_browser_bundle", path });
   }
 }
 
@@ -132,12 +200,15 @@ const canonicalViolations = violations
   .join("\n");
 
 const report = {
-  schema_version: "geomacro-p0-secret-boundary-audit-1.0",
+  schema_version: "geomacro-p0-secret-boundary-audit-1.1",
   generated_at: new Date().toISOString(),
   scope: {
     tracked_files: files.length,
     text_files_scanned: textFilesScanned,
-    browser_exposed_files_scanned: browserFiles.length,
+    potential_browser_source_files_scanned: browserSourceFiles.length,
+    production_browser_bundle_root: BROWSER_BUILD_ROOT,
+    production_browser_bundle_files_scanned: browserBundleFiles.length,
+    production_browser_bundle_required: REQUIRE_BROWSER_BUILD,
     privileged_identifiers_checked: PRIVILEGED_IDENTIFIERS.length,
   },
   controls: {
@@ -146,14 +217,18 @@ const report = {
     embedded_private_key_material_forbidden: true,
     embedded_seed_phrases_forbidden: true,
     privileged_vite_identifiers_forbidden: true,
-    privileged_identifiers_in_browser_paths_forbidden: true,
+    privileged_env_access_in_browser_source_forbidden: true,
+    privileged_identifiers_in_production_browser_bundle_forbidden: true,
   },
   result: violations.length === 0 ? "PASS" : "FAIL",
   violation_count: violations.length,
   violations,
   evidence_hash: sha256(canonicalViolations || "PASS"),
+  notes: [
+    "TanStack createServerFn modules and modules importing @tanstack/react-start/server are treated as server-bound source; the compiled .output/public bundle is scanned independently to verify that privileged identifiers did not cross the browser boundary.",
+  ],
   limitations: [
-    "This is a repository and browser-boundary control, not a credential-provider breach scan.",
+    "This is a repository and compiled-browser-boundary control, not a credential-provider breach scan.",
     "It does not prove that a secret was never exposed in deleted Git history or external systems.",
     "Independent external security review remains a separate release gate.",
   ],
