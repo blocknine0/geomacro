@@ -36,7 +36,7 @@ Do not set the mainnet acknowledgement until every acceptance gate below is gree
 
 ## Database migration
 
-Apply `supabase/migrations/926_coinbase_x402_delivery_ledger.sql` before enabling the endpoint in a hosted runtime. The ledger stores only payment/request fingerprints, hashed payer/pay-to references, prepared response state, and settlement references. It intentionally does not store raw payment signatures, authorizations, private keys, or CDP credentials.
+Apply `supabase/migrations/927_coinbase_x402_delivery_ledger.sql` before enabling the endpoint in a hosted runtime. The ledger stores only payment/request fingerprints, hashed payer/pay-to references, prepared response state, and settlement references. It intentionally does not store raw payment signatures, authorizations, private keys, or CDP credentials.
 
 The delivery claim is the application-level replay/idempotency boundary. It binds one x402 payment payload fingerprint to one normalized Geomacro request. Ambiguous external settlement outcomes are moved to manual review instead of automatically retrying a potentially settled authorization.
 
