@@ -45,7 +45,7 @@ describe("public SEO contract", () => {
   it("keeps the homepage intelligence-first with complete crawl metadata", () => {
     const home = read("src/routes/index.tsx");
 
-    expect(home).toContain("Geopolitical & Macro Risk Intelligence | Geomacro");
+    expect(home).toContain("Geopolitical + Macro Risk Intelligence | Geomacro");
     expect(home).toContain('name: "robots", content: "index, follow');
     expect(home).toContain('rel: "canonical"');
     expect(home).toContain('name: "twitter:title"');
