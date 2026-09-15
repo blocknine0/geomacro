@@ -1,0 +1,114 @@
+name: Hot Topic Family Readiness
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/hot-topic-taxonomy.ts"
+      - "src/lib/hot-topic-taxonomy.test.ts"
+      - "src/lib/agent-query-hot-topics.server.ts"
+      - "src/__tests__/agent-query-hot-topics-static.test.ts"
+      - "scripts/audit-hot-topic-family-readiness.ts"
+      - ".github/workflows/hot-topic-family-readiness.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/hot-topic-taxonomy.ts"
+      - "src/lib/agent-query-hot-topics.server.ts"
+      - "scripts/audit-hot-topic-family-readiness.ts"
+      - ".github/workflows/hot-topic-family-readiness.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "43 */2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hot-topic-family-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Run taxonomy and delivery boundary tests
+        run: bunx vitest run src/lib/hot-topic-taxonomy.test.ts src/__tests__/agent-query-hot-topics-static.test.ts
+
+      - name: Guard family count and no raw-source delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v1"' src/lib/hot-topic-taxonomy.ts
+          grep -q 'raw_source_material_redistributed: false' src/lib/agent-query-hot-topics.server.ts
+          grep -q 'article_text_redistributed: false' src/lib/agent-query-hot-topics.server.ts
+          grep -q 'unclassified_events_excluded_from_family_specific_results: true' src/lib/agent-query-hot-topics.server.ts
+          ! grep -q 'evidence_refs' src/lib/agent-query-hot-topics.server.ts
+          ! grep -q 'source_url' src/lib/agent-query-hot-topics.server.ts
+          echo 'PASS: governed hot-topic family delivery boundary is static-safe'
+
+  production-readiness:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      HOT_TOPIC_FAMILY_READINESS_OUTPUT: hot-topic-family-readiness.json
+    steps:
+      - name: Checkout canonical ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production database target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Generate family-level hot-topic readiness proof
+        run: bun scripts/audit-hot-topic-family-readiness.ts --require-pipeline-healthy --require-taxonomy-complete
+
+      - name: Validate family contract and claim boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' hot-topic-family-readiness.json >/dev/null
+          jq -e '.source_pipeline.healthy == true' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.governed_family_count == 18' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.taxonomy_supported_family_count == 18' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.future_timestamp_event_count == 0' hot-topic-family-readiness.json >/dev/null
+          jq -e '.claim_boundary.raw_article_or_publisher_material_redistributed == false' hot-topic-family-readiness.json >/dev/null
+          jq -e '.claim_boundary.event_detection_does_not_substitute_for_required_structural_module == true' hot-topic-family-readiness.json >/dev/null
+          jq -e '.claim_boundary.blocked_rights_current_signal_is_not_chargeable_for_that_family == true' hot-topic-family-readiness.json >/dev/null
+          jq '{taxonomy_version,generated_at,source_pipeline,summary,families,claim_boundary}' hot-topic-family-readiness.json
+
+      - name: Upload sanitized family readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: hot-topic-family-readiness
+          path: hot-topic-family-readiness.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,4 +1,9 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
+import {
+  classifyHotTopicEvent,
+  inferHotTopicFamiliesFromQuestion,
+  type HotTopicFamily,
+} from "./hot-topic-taxonomy";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 const HOT_TOPIC_SOURCE_KEY = "gdelt_gal";
@@ -13,6 +18,7 @@ export type AgentHotTopicEvent = {
   story_key: string;
   domain: string;
   event_type: string | null;
+  families: HotTopicFamily[];
   title: string;
   summary: string | null;
   primary_country: string | null;
@@ -41,6 +47,8 @@ export type AgentHotTopicResult = {
     | "HOT_TOPIC_PIPELINE_STALE"
     | "HOT_TOPIC_COMMERCIAL_COVERAGE_INSUFFICIENT";
   checked_at: string;
+  requested_families: HotTopicFamily[];
+  matched_families: HotTopicFamily[];
   source_pipeline: {
     source_key: typeof HOT_TOPIC_SOURCE_KEY;
     stream_key: typeof HOT_TOPIC_STREAM_KEY;
@@ -57,6 +65,7 @@ export type AgentHotTopicResult = {
     raw_source_material_redistributed: false;
     article_text_redistributed: false;
     no_signal_is_not_zero_risk: true;
+    unclassified_events_excluded_from_family_specific_results: true;
     corridor_route_modeling: "ENDPOINT_EXPOSURE_ONLY" | null;
   };
 };
@@ -105,12 +114,42 @@ function touchesSubject(row: LiveEventRow, subject: AgentQueryPlan["subjects"][n
   return subjectCountries(subject).some((iso3) => touched.has(iso3));
 }
 
+function rowFamilies(row: LiveEventRow) {
+  return classifyHotTopicEvent({
+    event_type: row.event_type,
+    title: row.title,
+    summary: row.summary,
+    domain: row.domain,
+  });
+}
+
+function intersectsRequestedFamilies(
+  row: LiveEventRow,
+  requestedFamilies: HotTopicFamily[],
+) {
+  if (requestedFamilies.length === 0) return true;
+  const found = new Set(rowFamilies(row));
+  return requestedFamilies.some((family) => found.has(family));
+}
+
+function baseLimitations(subject: AgentQueryPlan["subjects"][number]) {
+  return {
+    raw_source_material_redistributed: false as const,
+    article_text_redistributed: false as const,
+    no_signal_is_not_zero_risk: true as const,
+    unclassified_events_excluded_from_family_specific_results: true as const,
+    corridor_route_modeling:
+      subject.type === "corridor" ? ("ENDPOINT_EXPOSURE_ONLY" as const) : null,
+  };
+}
+
 function asDeliverableEvent(row: LiveEventRow): AgentHotTopicEvent {
   return {
     event_id: row.id,
     story_key: row.story_key,
     domain: row.domain,
     event_type: row.event_type,
+    families: rowFamilies(row),
     title: row.title,
     summary: row.summary,
     primary_country: row.primary_country,
@@ -141,18 +180,26 @@ export async function loadAgentHotTopics(input: {
   const checkedAt = now.toISOString();
   const asOf = input.plan.as_of ? new Date(input.plan.as_of) : now;
   const requestedWindow = input.plan.module_max_age_seconds.hot_topics;
+  // The normalized question is already inside query_plan_hash, so inferred
+  // family scope is payment-bound even before the explicit v2 family field is
+  // introduced. An empty family list deliberately means "all governed current
+  // event families", never an ungoverned free-text search.
+  const requestedFamilies = inferHotTopicFamiliesFromQuestion(input.plan.question_key);
+
   if (!Number.isFinite(requestedWindow) || requestedWindow <= 0) {
     return {
       deliverable: false,
       code: "HOT_TOPIC_PIPELINE_STALE",
       checked_at: checkedAt,
+      requested_families: requestedFamilies,
+      matched_families: [],
       source_pipeline: { source_key: HOT_TOPIC_SOURCE_KEY, stream_key: HOT_TOPIC_STREAM_KEY, status: null, last_success_at: null, lag_seconds: null },
       subject: input.subject,
       current_event_signal: false,
       commercially_deliverable_event_count: 0,
       excluded_non_deliverable_event_count: 0,
       events: [],
-      limitations: { raw_source_material_redistributed: false, article_text_redistributed: false, no_signal_is_not_zero_risk: true, corridor_route_modeling: input.subject.type === "corridor" ? "ENDPOINT_EXPOSURE_ONLY" : null },
+      limitations: baseLimitations(input.subject),
     };
   }
 
@@ -169,13 +216,15 @@ export async function loadAgentHotTopics(input: {
       deliverable: false,
       code: "SUBJECT_NOT_REGISTERED",
       checked_at: checkedAt,
+      requested_families: requestedFamilies,
+      matched_families: [],
       source_pipeline: { source_key: HOT_TOPIC_SOURCE_KEY, stream_key: HOT_TOPIC_STREAM_KEY, status: null, last_success_at: null, lag_seconds: null },
       subject: input.subject,
       current_event_signal: false,
       commercially_deliverable_event_count: 0,
       excluded_non_deliverable_event_count: 0,
       events: [],
-      limitations: { raw_source_material_redistributed: false, article_text_redistributed: false, no_signal_is_not_zero_risk: true, corridor_route_modeling: input.subject.type === "corridor" ? "ENDPOINT_EXPOSURE_ONLY" : null },
+      limitations: baseLimitations(input.subject),
     };
   }
 
@@ -201,13 +250,15 @@ export async function loadAgentHotTopics(input: {
       deliverable: false,
       code: "HOT_TOPIC_PIPELINE_UNHEALTHY",
       checked_at: checkedAt,
+      requested_families: requestedFamilies,
+      matched_families: [],
       source_pipeline: pipeline,
       subject: input.subject,
       current_event_signal: false,
       commercially_deliverable_event_count: 0,
       excluded_non_deliverable_event_count: 0,
       events: [],
-      limitations: { raw_source_material_redistributed: false, article_text_redistributed: false, no_signal_is_not_zero_risk: true, corridor_route_modeling: input.subject.type === "corridor" ? "ENDPOINT_EXPOSURE_ONLY" : null },
+      limitations: baseLimitations(input.subject),
     };
   }
   if (lagSeconds === null || lagSeconds > HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS) {
@@ -215,13 +266,15 @@ export async function loadAgentHotTopics(input: {
       deliverable: false,
       code: "HOT_TOPIC_PIPELINE_STALE",
       checked_at: checkedAt,
+      requested_families: requestedFamilies,
+      matched_families: [],
       source_pipeline: pipeline,
       subject: input.subject,
       current_event_signal: false,
       commercially_deliverable_event_count: 0,
       excluded_non_deliverable_event_count: 0,
       events: [],
-      limitations: { raw_source_material_redistributed: false, article_text_redistributed: false, no_signal_is_not_zero_risk: true, corridor_route_modeling: input.subject.type === "corridor" ? "ENDPOINT_EXPOSURE_ONLY" : null },
+      limitations: baseLimitations(input.subject),
     };
   }
 
@@ -236,21 +289,32 @@ export async function loadAgentHotTopics(input: {
     .limit(MAX_RECENT_ROWS);
   if (rows.error) throw rows.error;
 
-  const matching = (rows.data ?? []).filter((row) => touchesSubject(row as LiveEventRow, input.subject)) as LiveEventRow[];
-  const eligible = matching.filter((row) => DELIVERABLE_STATUSES.has(row.commercial_eligibility_status));
+  const subjectMatching = (rows.data ?? []).filter((row) =>
+    touchesSubject(row as LiveEventRow, input.subject),
+  ) as LiveEventRow[];
+  const matching = subjectMatching.filter((row) =>
+    intersectsRequestedFamilies(row, requestedFamilies),
+  );
+  const eligible = matching.filter((row) =>
+    DELIVERABLE_STATUSES.has(row.commercial_eligibility_status),
+  );
   const blocked = matching.length - eligible.length;
+  const matchedFamilies = [...new Set(matching.flatMap(rowFamilies))].sort() as HotTopicFamily[];
+
   if (matching.length > 0 && eligible.length === 0) {
     return {
       deliverable: false,
       code: "HOT_TOPIC_COMMERCIAL_COVERAGE_INSUFFICIENT",
       checked_at: checkedAt,
+      requested_families: requestedFamilies,
+      matched_families: matchedFamilies,
       source_pipeline: pipeline,
       subject: input.subject,
       current_event_signal: true,
       commercially_deliverable_event_count: 0,
       excluded_non_deliverable_event_count: blocked,
       events: [],
-      limitations: { raw_source_material_redistributed: false, article_text_redistributed: false, no_signal_is_not_zero_risk: true, corridor_route_modeling: input.subject.type === "corridor" ? "ENDPOINT_EXPOSURE_ONLY" : null },
+      limitations: baseLimitations(input.subject),
     };
   }
 
@@ -259,17 +323,14 @@ export async function loadAgentHotTopics(input: {
     deliverable: true,
     code: "AVAILABLE",
     checked_at: checkedAt,
+    requested_families: requestedFamilies,
+    matched_families: matchedFamilies,
     source_pipeline: pipeline,
     subject: input.subject,
     current_event_signal: matching.length > 0,
     commercially_deliverable_event_count: eligible.length,
     excluded_non_deliverable_event_count: blocked,
     events: delivered,
-    limitations: {
-      raw_source_material_redistributed: false,
-      article_text_redistributed: false,
-      no_signal_is_not_zero_risk: true,
-      corridor_route_modeling: input.subject.type === "corridor" ? "ENDPOINT_EXPOSURE_ONLY" : null,
-    },
+    limitations: baseLimitations(input.subject),
   };
 }
