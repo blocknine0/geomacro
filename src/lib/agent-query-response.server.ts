@@ -73,8 +73,14 @@ function perModuleLimit(detail: AgentQueryPlan["detail"]) {
 
 async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number]) {
   const context = await loadStructuralContext(subject);
-  if (context.status !== "AVAILABLE") throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
   const structuralModules = plan.required_modules.filter((module) => !EXTERNAL_MODULES.has(module));
+  // External-only products (for example a signed Risk Object + Risk Gate) do
+  // not depend on structural warehouse availability. This mirrors the
+  // pre-payment deliverability contract so a successful no-charge check cannot
+  // become a false 402 solely because an unrequested structural layer is absent.
+  if (structuralModules.length > 0 && context.status !== "AVAILABLE") {
+    throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
+  }
   const intelligence: Record<string, unknown> = {};
   const sourceIds = new Set<string>();
   const limit = perModuleLimit(plan.detail);
