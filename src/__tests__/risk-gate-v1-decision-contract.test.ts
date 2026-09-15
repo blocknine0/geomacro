@@ -18,6 +18,9 @@ const CURRENT_V1_SURFACES = [
   "src/routes/institutional.tsx",
   "src/content/docs/03-product-surfaces.md",
   "src/content/docs/26-agent-intelligence.md",
+  "docs/RISK_GATE.md",
+  "docs/COMMERCIAL_INTELLIGENCE.md",
+  "docs/FOUNDER_EARLY_ACCESS_WALKTHROUGH.md",
 ] as const;
 
 describe("Risk Gate v1 decision contract", () => {
@@ -39,17 +42,27 @@ describe("Risk Gate v1 decision contract", () => {
     }
 
     const route = read("src/routes/risk-gate.tsx");
-    expect(route).not.toContain('\"REROUTE\"');
-    expect(route).toContain("execution_authorized = false");
-
     const readme = read("README.md");
     const institutional = read("src/routes/institutional.tsx");
     const surfaces = read("src/content/docs/03-product-surfaces.md");
     const agentDocs = read("src/content/docs/26-agent-intelligence.md");
+    const riskGateDocs = read("docs/RISK_GATE.md");
+    const commercial = read("docs/COMMERCIAL_INTELLIGENCE.md");
+    const walkthrough = read("docs/FOUNDER_EARLY_ACCESS_WALKTHROUGH.md");
+
+    expect(route).not.toContain('\"REROUTE\"');
+    expect(route).toContain("execution_authorized = false");
+    expect(readme).not.toContain("PAUSE / REROUTE");
     expect(readme).toContain("`REROUTE` is reserved as a future/advisory alternative");
     expect(institutional).not.toContain("PAUSE or REROUTE");
     expect(surfaces).toContain("`REROUTE` is not a current v1 machine decision");
     expect(agentDocs).toContain("`REROUTE` is not a current Risk Gate v1 machine decision");
+    expect(riskGateDocs).not.toContain("PAUSE / REROUTE");
+    expect(riskGateDocs).toContain("`REROUTE` is not a current v1 decision");
+    expect(commercial).not.toContain("- REROUTE");
+    expect(commercial).toContain("`REROUTE` is not a current v1 machine decision");
+    expect(walkthrough).not.toContain("`PAUSE` or `REROUTE`");
+    expect(walkthrough).toContain("`REROUTE` is not a current v1 machine decision");
   });
 
   it("keeps rerouting as a future/advisory v2 alternative rather than a v1 decision", () => {
