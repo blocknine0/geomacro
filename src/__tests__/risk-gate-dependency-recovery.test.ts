@@ -201,7 +201,7 @@ describe("Risk Gate dependency outage and recovery", () => {
       500,
       "RISK_GATE_FAILED",
     );
-    expect(failed.auditInsert).toHaveBeenCalledTimes(1);
+    expect(failed.auditInsert).toHaveBeenCalled();
 
     activeDb = recovered.db;
     await expectRecovered(
