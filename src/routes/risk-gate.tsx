@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const TITLE = "Risk Gate Private Pilot · Geomacro";
 const DESCRIPTION =
   "Country and corridor risk checks for treasury, payment and agent workflows. Risk Gate returns signed external risk context before the customer's own policy and execution layer decides what happens next.";
-const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE", "REROUTE"] as const;
+const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE"] as const;
 
 export const Route = createFileRoute("/risk-gate")({
   head: () => ({

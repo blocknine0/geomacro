@@ -42,13 +42,14 @@ Current Private Pilot work includes signed country and directional corridor Geom
 
 Risk Gate verifies country or directional corridor risk context and returns a bounded pre-flight recommendation. The customer's own identity, permissions and policy layer decides how that recommendation affects the financial workflow.
 
-Current recommendation states include:
+Current v1 recommendation states are:
 
 - `CONTINUE`
 - `REDUCE_LIMIT`
 - `REQUIRE_APPROVAL`
 - `PAUSE`
-- `REROUTE`
+
+`REROUTE` is not a current v1 machine decision. It is reserved as a future/advisory alternative only when a lower-risk corridor or route is separately validated.
 
 Geomacro does not autonomously execute or authorize the customer's transaction. The external boundary remains `execution_authorized = false`.
 

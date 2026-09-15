@@ -35,8 +35,10 @@ Explain the sequence:
 1. A customer or agent has a proposed action.
 2. Geomacro supplies signed country or directional-corridor risk context.
 3. Integrity, freshness, confidence and policy conditions are evaluated.
-4. Risk Gate returns a recommendation such as `CONTINUE`, `REDUCE_LIMIT`, `REQUIRE_APPROVAL`, `PAUSE` or `REROUTE`.
+4. Risk Gate v1 returns one of four recommendation states: `CONTINUE`, `REDUCE_LIMIT`, `REQUIRE_APPROVAL` or `PAUSE`.
 5. The customer controls any execution after the recommendation.
+
+`REROUTE` is not a current v1 machine decision. Treat it only as a future/advisory alternative if a lower-risk corridor or route has been separately validated.
 
 State the current boundary explicitly: `execution_authorized=false`.
 

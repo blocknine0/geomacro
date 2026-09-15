@@ -179,9 +179,11 @@ A simplified decision flow is:
 graph LR;
     GRO["Signed Geomacro Risk Object"] --> VERIFY["Integrity + freshness verification"];
     VERIFY --> POLICY["Customer identity + permissions + policy"];
-    POLICY --> DECISION["CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE"];
+    POLICY --> DECISION["CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE"];
     DECISION --> EXEC["Customer-controlled execution"];
 ```
+
+The current v1 machine decision contract has four states. `REROUTE` is reserved as a future/advisory alternative only when a lower-risk corridor or route is separately validated; it is not a fifth current v1 decision.
 
 Geomacro does not represent Risk Gate as a wallet custodian, autonomous transaction signer, sanctions-screening replacement or generally available production service.
 

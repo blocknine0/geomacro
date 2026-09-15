@@ -210,11 +210,13 @@ Risk Gate verification + freshness + bounded risk evaluation
 Customer identity + permissions + policy
         |
         v
-CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
+CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         |
         v
 Customer-controlled execution
 ```
+
+The current v1 machine decision contract has four states. `REROUTE` is not a current v1 decision; it remains a future/advisory alternative only when a lower-risk corridor or route is separately validated.
 
 The current service can accept a caller-supplied policy profile as an input to produce bounded decision context. That does not make Geomacro the owner or enforcer of the customer's policy. Customer identity, permissions, policy design, compliance obligations and execution remain customer-controlled.
 
@@ -394,11 +396,13 @@ Risk Gate recommendation
 Customer identity + permissions + policy
         |
         v
-CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
+CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         |
         v
 Customer-controlled action
 ```
+
+`REROUTE` may appear only as a separately validated advisory alternative in a later contract; it is not part of the current v1 decision enum.
 
 For early pilots, the same underlying intelligence may be delivered through founder-supported workflows, controlled product access, structured reports/alerts and private machine-readable interfaces while the production service is hardened.
 

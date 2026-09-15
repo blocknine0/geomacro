@@ -83,13 +83,14 @@ Country / directional corridor Risk Object
 
 Where an approved integration supplies a customer-owned policy profile to Risk Gate, the service may evaluate that profile to return bounded decision context. That does not transfer ownership or enforcement of the policy to Geomacro.
 
-Canonical recommendation outcomes include:
+Current Risk Gate v1 recommendation outcomes are:
 
 - CONTINUE
 - REDUCE_LIMIT
 - REQUIRE_APPROVAL
 - PAUSE
-- REROUTE
+
+`REROUTE` is not a current v1 machine decision. It remains a future/advisory alternative only when a lower-risk corridor or route is separately validated.
 
 A Risk Object should expose current risk, previous risk, delta, attribution, confidence, evidence, freshness, methodology version and integrity information.
 
