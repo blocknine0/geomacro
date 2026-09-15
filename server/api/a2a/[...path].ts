@@ -139,7 +139,7 @@ export default defineEventHandler(async (event) => {
 
     if (method === "POST" && path === "message:send") {
       const request = a2aSendMessageRequestSchema.parse(await parseJsonBody(event));
-      return await sendA2AMessage({ principal, request });
+      return { task: await sendA2AMessage({ principal, request }) };
     }
 
     if (method === "GET" && path === "tasks") {
@@ -147,7 +147,11 @@ export default defineEventHandler(async (event) => {
       const limitRaw = Number(query.pageSize ?? query.limit ?? 20);
       const limit = Number.isFinite(limitRaw) ? limitRaw : 20;
       const state = typeof query.status === "string" ? query.status : null;
-      return await listA2ATasks({ principal, limit, state });
+      const result = await listA2ATasks({ principal, limit, state });
+      return {
+        ...result,
+        nextPageToken: result.nextPageToken ?? "",
+      };
     }
 
     const cancelMatch = path.match(/^tasks\/([^/]+):cancel$/);
@@ -180,7 +184,10 @@ export default defineEventHandler(async (event) => {
         });
       }
       if (method === "GET") {
-        return await listA2APushConfigs({ principal, taskId });
+        return {
+          configs: await listA2APushConfigs({ principal, taskId }),
+          nextPageToken: "",
+        };
       }
     }
 
@@ -192,7 +199,8 @@ export default defineEventHandler(async (event) => {
         return await getA2APushConfig({ principal, taskId, configId });
       }
       if (method === "DELETE") {
-        return await deleteA2APushConfig({ principal, taskId, configId });
+        await deleteA2APushConfig({ principal, taskId, configId });
+        return {};
       }
     }
 
