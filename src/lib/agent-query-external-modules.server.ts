@@ -11,7 +11,7 @@ import {
 } from "./risk-object-store.server";
 import type { AgentQueryPlan } from "./agent-query-plan";
 
-async function loadCommercialRiskObject(
+export async function loadCommercialRiskObjectForAgentQuery(
   subject: AgentQueryPlan["subjects"][number],
   asOf: string,
 ) {
@@ -49,7 +49,7 @@ export async function checkAgentQueryExternalModule(input: {
 
   if (input.module === "signed_risk_object") {
     try {
-      return Boolean(await loadCommercialRiskObject(input.subject, asOf));
+      return Boolean(await loadCommercialRiskObjectForAgentQuery(input.subject, asOf));
     } catch {
       return false;
     }
@@ -57,15 +57,22 @@ export async function checkAgentQueryExternalModule(input: {
 
   if (input.module === "risk_gate") {
     try {
-      const object = await loadCommercialRiskObject(input.subject, asOf);
+      const context = input.plan.risk_gate_context;
+      if (!context) return false;
+      const object = await loadCommercialRiskObjectForAgentQuery(input.subject, asOf);
       if (!object) return false;
-      const policy = demoPolicyFromPreset("balanced");
+      const policy = demoPolicyFromPreset(context.policy_preset);
+      const actionContext: { action_type: string; currency: "USDC"; amount?: number } = {
+        action_type: context.action_type,
+        currency: "USDC",
+      };
+      if (context.amount_usdc !== undefined) actionContext.amount = context.amount_usdc;
       const requestId = `availability:${randomUUID()}`;
       const result = input.subject.type === "country"
         ? await evaluateCountryRiskGate({
             request_id: requestId,
             country_iso3: input.subject.country_iso3,
-            action_context: { action_type: "exposure_review", currency: "USDC" },
+            action_context: actionContext,
             policy,
             evaluated_at: asOf,
           })
@@ -73,7 +80,7 @@ export async function checkAgentQueryExternalModule(input: {
             request_id: requestId,
             origin_country_iso3: input.subject.origin_country_iso3,
             destination_country_iso3: input.subject.destination_country_iso3,
-            action_context: { action_type: "exposure_review", currency: "USDC" },
+            action_context: actionContext,
             policy,
             evaluated_at: asOf,
           });
