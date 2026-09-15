@@ -71,6 +71,7 @@ export type AgentIntelligenceQuery = z.infer<
 export type AgentStructuralQuery = z.infer<typeof agentStructuralQuerySchema>;
 
 export function geomacroAgentManifest(origin = "https://geomacro.live") {
+  const normalizedOrigin = origin.replace(/\/$/, "");
   return {
     agent: {
       id: "geomacro",
@@ -81,8 +82,18 @@ export function geomacroAgentManifest(origin = "https://geomacro.live") {
       mode: "read_and_recommend",
       execution_authorized: false,
     },
-    endpoint: `${origin}/api/agent/risk`,
-    discovery: `${origin}/.well-known/geomacro-agent.json`,
+    endpoint: `${normalizedOrigin}/api/agent/risk`,
+    discovery: `${normalizedOrigin}/.well-known/geomacro-agent.json`,
+    a2a: {
+      protocol: "A2A",
+      protocol_version: "1.0",
+      discovery: `${normalizedOrigin}/.well-known/agent-card.json`,
+      interface: `${normalizedOrigin}/api/a2a`,
+      outbound_interface: `${normalizedOrigin}/api/a2a/outbound`,
+      task_callbacks: true,
+      arbitrary_outbound_targets: false,
+      execution_authorized: false,
+    },
     capabilities: [
       {
         id: "risk_preflight",
