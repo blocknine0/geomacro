@@ -18,6 +18,7 @@ jobs:
     if: github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: geomacro-testnet-e2e
     env:
       BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
       RISK_OBJECT_SIGNING_KEY_ID: geomacro-risk-2026-02
@@ -39,21 +40,70 @@ jobs:
       - name: Validate registry contract before broadcast
         run: forge test --match-path test/RiskKeyRegistry.t.sol
 
-      - name: Validate required secrets without printing them
+      - name: Validate signing secret without printing it
         env:
-          DEPLOYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
           SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${DEPLOYER_PRIVATE_KEY:-}" ]; then
-            echo "::error::COINBASE_X402_BASE_SEPOLIA_PAID_PROOF is not configured."
-            exit 1
-          fi
           if [ -z "${SIGNING_PRIVATE_KEY_PKCS8_B64:-}" ]; then
             echo "::error::RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 is not configured."
             exit 1
           fi
+
+      - name: Select a funded Base Sepolia deployment wallet
+        id: wallet
+        env:
+          TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          COINBASE_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          KEY_FILE="$RUNNER_TEMP/base-sepolia-risk-registry-deployer.key"
+          rm -f "$KEY_FILE"
+
+          select_wallet() {
+            local label="$1"
+            local key="$2"
+
+            if [ -z "$key" ]; then
+              echo "$label wallet secret is not configured; skipping."
+              return 1
+            fi
+
+            local address balance
+            address="$(cast wallet address --private-key "$key")"
+            balance="$(cast balance "$address" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+            echo "$label candidate: $address, Base Sepolia ETH balance (wei): $balance"
+
+            if [ "$balance" = "0" ]; then
+              return 1
+            fi
+
+            umask 077
+            printf '%s' "$key" > "$KEY_FILE"
+            echo "deployer_label=$label" >> "$GITHUB_OUTPUT"
+            echo "deployer_address=$address" >> "$GITHUB_OUTPUT"
+            echo "deployer_balance_wei=$balance" >> "$GITHUB_OUTPUT"
+            return 0
+          }
+
+          # Prefer the dedicated Testnet E2E wallet. Fall back to the existing
+          # owner automation wallet, then the Coinbase x402 buyer wallet.
+          if select_wallet "testnet-e2e" "${TESTNET_E2E_PRIVATE_KEY:-}"; then
+            :
+          elif select_wallet "owner" "${OWNER_PRIVATE_KEY:-}"; then
+            :
+          elif select_wallet "coinbase-x402-buyer" "${COINBASE_PRIVATE_KEY:-}"; then
+            :
+          else
+            echo "::error::No configured deployment candidate has Base Sepolia ETH for gas."
+            exit 1
+          fi
+
+          echo "Selected funded deployment wallet: $(cat "$GITHUB_OUTPUT" | grep '^deployer_label=' | tail -1 | cut -d= -f2-)"
 
       - name: Derive current public Risk Object key locally
         env:
@@ -91,20 +141,21 @@ jobs:
 
       - name: Deploy RiskKeyRegistry on Base Sepolia
         id: deploy
-        env:
-          PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
         shell: bash
         run: |
           set -euo pipefail
 
+          KEY_FILE="$RUNNER_TEMP/base-sepolia-risk-registry-deployer.key"
+          test -s "$KEY_FILE"
+          PRIVATE_KEY="$(cat "$KEY_FILE")"
+          export PRIVATE_KEY
+
           DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
-          BALANCE_WEI="$(cast balance "$DEPLOYER" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
-          if [ "$BALANCE_WEI" = "0" ]; then
-            echo "::error::Base Sepolia deployment wallet has no ETH for gas."
+          if [ "${DEPLOYER,,}" != "${{ steps.wallet.outputs.deployer_address }}" ]; then
+            echo "::error::Selected deployment wallet address changed unexpectedly."
             exit 1
           fi
 
-          echo "Base Sepolia deployer: $DEPLOYER"
           forge script script/DeployRiskKeyRegistry.s.sol:DeployRiskKeyRegistry \
             --rpc-url "$BASE_SEPOLIA_RPC_URL" \
             --broadcast
@@ -126,11 +177,15 @@ jobs:
       - name: Publish and activate current Ed25519 key hash
         id: publish
         env:
-          PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
           RISK_KEY_REGISTRY_ADDRESS: ${{ steps.deploy.outputs.registry }}
         shell: bash
         run: |
           set -euo pipefail
+
+          KEY_FILE="$RUNNER_TEMP/base-sepolia-risk-registry-deployer.key"
+          test -s "$KEY_FILE"
+          PRIVATE_KEY="$(cat "$KEY_FILE")"
+          export PRIVATE_KEY
 
           RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64="$(cat "$RUNNER_TEMP/risk-object-public-spki.b64")"
           export RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64
@@ -188,6 +243,7 @@ jobs:
           DEPLOY_TX: ${{ steps.deploy.outputs.deploy_tx }}
           PUBLISH_TXS: ${{ steps.publish.outputs.publish_txs }}
           PUBLIC_KEY_HASH: ${{ steps.publish.outputs.public_key_hash }}
+          DEPLOYER_LABEL: ${{ steps.wallet.outputs.deployer_label }}
         shell: bash
         run: |
           set -euo pipefail
@@ -199,6 +255,7 @@ jobs:
             --arg caip2 "eip155:84532" \
             --arg registry "$REGISTRY" \
             --arg owner "$DEPLOYER" \
+            --arg owner_wallet_role "$DEPLOYER_LABEL" \
             --arg deploy_tx "$DEPLOY_TX" \
             --arg publish_txs "$PUBLISH_TXS" \
             --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" \
@@ -212,6 +269,7 @@ jobs:
               caip2: $caip2,
               registry: $registry,
               owner: $owner,
+              owner_wallet_role: $owner_wallet_role,
               deploy_tx: $deploy_tx,
               publish_txs: ($publish_txs | split(",") | map(select(length > 0))),
               key_id: $key_id,
@@ -229,6 +287,7 @@ jobs:
             echo
             echo "- Registry: \`$REGISTRY\`"
             echo "- Owner: \`$DEPLOYER\`"
+            echo "- Owner wallet role: \`$DEPLOYER_LABEL\`"
             echo "- Deploy tx: \`$DEPLOY_TX\`"
             echo "- Key ID: \`$RISK_OBJECT_SIGNING_KEY_ID\`"
             echo "- Public-key hash: \`$PUBLIC_KEY_HASH\`"
