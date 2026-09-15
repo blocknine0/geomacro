@@ -29,7 +29,9 @@ describe("Risk Object well-known trust surfaces", () => {
     expect(discovery).toContain('signed_observation_timestamp: "observed_at"');
     expect(discovery).toContain('caip2: "eip155:84532"');
     expect(discovery).toContain('caip2: "eip155:5042002"');
-    expect(discovery).toContain("RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA");
+    expect(discovery).toContain("BASE_SEPOLIA_RISK_KEY_REGISTRY");
+    expect(discovery).toContain("0xb1881d2f0026395d5016b90031a8acc651a2e316");
+    expect(discovery).not.toContain("process.env.RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA");
     expect(discovery).toContain("RISK_OBJECT_KEY_REGISTRY_ARC_TESTNET");
     expect(discovery).toContain("execution_authorized: false");
   });
