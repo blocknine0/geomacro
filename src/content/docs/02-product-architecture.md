@@ -35,7 +35,7 @@ Browser, authenticated API, Testnet pay-per-call and agent/x402 surfaces may use
 
 “Same data” means the same governed evidence/provenance foundation and relevant canonical service contract. Product-specific rules may still differ: GRI has its own scoring admission, Risk Objects have subject/verification rules, and Risk Gate applies customer policy. Those are documented derived uses of shared intelligence, not conflicting copies of reality.
 
-The central invariant for adding any new delivery or payment rail is documented in [Canonical Delivery Architecture](/docs/canonical-delivery-architecture): reuse canonical intelligence first, then add only the access, transport, entitlement, policy or settlement adapter required by that surface.
+The repository-wide invariant for adding any new delivery or payment rail is documented in `docs/CANONICAL_DELIVERY_ARCHITECTURE.md`: reuse canonical intelligence first, then add only the access, transport, entitlement, policy or settlement adapter required by that surface.
 
 ## Policy layers
 
