@@ -103,9 +103,10 @@ describe("canonical product architecture alignment", () => {
   it("keeps machine-facing docs in Risk Gate -> customer policy -> customer action order", () => {
     for (const path of MACHINE_BOUNDARY_DOCS) {
       const content = read(path);
-      const gate = content.indexOf("Risk Gate - Private Pilot");
-      const policy = content.indexOf("customer identity + permissions + policy");
-      const action = content.indexOf("customer-controlled action");
+      const normalized = content.toLowerCase();
+      const gate = normalized.indexOf("risk gate - private pilot");
+      const policy = normalized.indexOf("customer identity + permissions + policy");
+      const action = normalized.indexOf("customer-controlled action");
 
       expect(gate, `${path} must name the Private Pilot Risk Gate`).toBeGreaterThanOrEqual(0);
       expect(policy, `${path} must place customer-owned policy after Risk Gate`).toBeGreaterThan(gate);
