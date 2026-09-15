@@ -8,6 +8,12 @@ export const GEOMACRO_A2A_PAYMENT_MODES = [
   "x402_testnet",
 ] as const;
 export const GEOMACRO_A2A_TRANSPORTS = ["poll", "callback"] as const;
+export const GEOMACRO_A2A_OPERATIONS = [
+  "negotiate",
+  "submit_task",
+  "task_status",
+  "callback",
+] as const;
 
 export type GeomacroA2ACapability = (typeof GEOMACRO_A2A_CAPABILITIES)[number];
 export type GeomacroA2APaymentMode = (typeof GEOMACRO_A2A_PAYMENT_MODES)[number];
@@ -20,6 +26,11 @@ const callbackUrl = z
   .url()
   .max(512)
   .refine((value) => value.startsWith("https://"), "callback_url must use https");
+const boundedMetadata = z
+  .record(z.string(), z.string().max(256))
+  .refine((value) => Object.keys(value).length <= 16, {
+    message: "client_metadata may contain at most 16 entries",
+  });
 
 export const a2aSignedEnvelopeBaseSchema = z.object({
   protocol_version: z.literal(GEOMACRO_A2A_PROTOCOL_VERSION),
@@ -36,7 +47,7 @@ export const a2aNegotiationPayloadSchema = z.object({
   payment_modes: z.array(z.enum(GEOMACRO_A2A_PAYMENT_MODES)).min(1).max(4),
   transports: z.array(z.enum(GEOMACRO_A2A_TRANSPORTS)).min(1).max(4),
   callback_url: callbackUrl.optional(),
-  client_metadata: z.record(z.string(), z.string().max(256)).max(16).optional(),
+  client_metadata: boundedMetadata.optional(),
 });
 
 export const a2aNegotiationEnvelopeSchema = a2aSignedEnvelopeBaseSchema.extend({
@@ -94,6 +105,7 @@ export type A2ASignature = {
 };
 
 export function geomacroA2AManifest(origin = "https://geomacro.live") {
+  const endpoint = `${origin}/api/agent/a2a`;
   return {
     protocol_version: GEOMACRO_A2A_PROTOCOL_VERSION,
     agent: {
@@ -104,11 +116,13 @@ export function geomacroA2AManifest(origin = "https://geomacro.live") {
     },
     discovery: `${origin}/.well-known/geomacro-a2a.json`,
     verification_keys: `${origin}/api/risk-object-keys`,
+    endpoint,
+    operations: GEOMACRO_A2A_OPERATIONS,
     endpoints: {
-      negotiate: `${origin}/api/agent/a2a/negotiate`,
-      tasks: `${origin}/api/agent/a2a/tasks`,
-      status: `${origin}/api/agent/a2a/tasks/status`,
-      callback: `${origin}/api/agent/a2a/callback`,
+      negotiate: endpoint,
+      tasks: endpoint,
+      status: endpoint,
+      callback: endpoint,
     },
     capabilities: [
       {
