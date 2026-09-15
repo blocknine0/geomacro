@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { AgentQueryPlan } from "./agent-query-plan";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
+import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
@@ -20,10 +21,9 @@ const MODULE_ALIASES: Record<string, readonly string[]> = {
   banking_financial_system: ["banking_financial_system", "banking", "financial_system"],
   food_agriculture: ["food_agriculture", "food", "agriculture"],
   natural_hazards: ["natural_hazards", "hazards", "disaster"],
-  hot_topics: ["hot_topics", "live_event", "event", "news"],
 };
 
-const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context"]);
+const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context", "hot_topics"]);
 
 function moduleMatches(module: string, dimension: string) {
   const normalized = dimension.trim().toLowerCase();
@@ -76,10 +76,6 @@ function perModuleLimit(detail: AgentQueryPlan["detail"]) {
 async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number]) {
   const context = await loadStructuralContext(subject);
   const structuralModules = plan.required_modules.filter((module) => !EXTERNAL_MODULES.has(module));
-  // External-only products (for example a signed Risk Object + Risk Gate) do
-  // not depend on structural warehouse availability. This mirrors the
-  // pre-payment deliverability contract so a successful no-charge check cannot
-  // become a false 402 solely because an unrequested structural layer is absent.
   if (structuralModules.length > 0 && context.status !== "AVAILABLE") {
     throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
   }
@@ -196,6 +192,8 @@ export async function assembleAgentQueryResponse(input: {
   const structural = await Promise.all(plan.subjects.map((subject) => structuralSubject(plan, subject)));
   const includeRiskObject = plan.required_modules.includes("signed_risk_object");
   const includeRiskGate = plan.required_modules.includes("risk_gate");
+  const includeHotTopics = plan.required_modules.includes("hot_topics");
+
   const riskObjects = includeRiskObject
     ? await Promise.all(plan.subjects.map(async (subject) => {
         const object = await loadCommercialRiskObjectForAgentQuery(subject, plan.as_of ?? new Date().toISOString());
@@ -203,9 +201,19 @@ export async function assembleAgentQueryResponse(input: {
         return { subject, object };
       }))
     : [];
+
   const riskGates = includeRiskGate
     ? await Promise.all(plan.subjects.map(async (subject) => ({ subject, result: await riskGateForSubject(plan, subject) })))
     : [];
+
+  const hotTopics = includeHotTopics
+    ? await Promise.all(plan.subjects.map(async (subject) => {
+        const result = await loadAgentHotTopics({ plan, subject });
+        if (!result.deliverable) throw new Error(`HOT_TOPICS_NOT_DELIVERABLE:${result.code}`);
+        return result;
+      }))
+    : [];
+
   const gri = plan.required_modules.includes("gri_context") ? publicGri(await readPublicGlobalRisk()) : null;
 
   const core = {
@@ -222,17 +230,20 @@ export async function assembleAgentQueryResponse(input: {
     subjects: plan.subjects,
     as_of: plan.as_of ?? new Date().toISOString(),
     structural,
+    hot_topics: hotTopics,
     risk_gate: riskGates,
     signed_risk_objects: riskObjects,
     gri_context: gri,
     methodology: {
       query_schema_version: plan.schema_version,
       response_schema_version: "geomacro.adaptive-intelligence-response.v1",
+      current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
     },
     limitations: {
       execution_authorized: false,
       missing_is_never_zero_risk: true,
       only_prechecked_required_modules_delivered: true,
+      current_event_raw_source_material_redistributed: false,
       corridor_route_modeling_may_be_unavailable: structural.some((item) => item.serving.route_modeling_status === "NOT_MODELED"),
     },
     execution_authorized: false,
