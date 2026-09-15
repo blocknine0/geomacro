@@ -151,6 +151,8 @@ export async function deliverTestnetIntelligence(input: {
     if (
       code === "STRUCTURAL_DATA_NOT_CONFIGURED" ||
       code === "SIGNED_RISK_OBJECT_NOT_VERIFIED" ||
+      code === "SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE" ||
+      code === "COMMERCIAL_RISK_OBJECT_NOT_DELIVERABLE" ||
       code.includes("Risk object") ||
       code.includes("risk object")
     ) {
