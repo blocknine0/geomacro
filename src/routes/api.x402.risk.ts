@@ -5,10 +5,10 @@ import { runAgenticPreflightDemo } from "../lib/agentic-demo-service.server";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
   assertCoinbasePaymentBinding,
+  bazaarExtensionOutcome,
   claimCoinbaseX402Delivery,
   coinbasePaymentFingerprint,
   coinbaseRequestFingerprint,
-  coinbaseX402ExtensionResponsesHeader,
   coinbaseX402PaymentRequired,
   coinbaseX402PaymentResponseHeader,
   completeCoinbaseX402Delivery,
@@ -30,7 +30,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, PAYMENT-SIGNATURE, payment-signature",
-  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, EXTENSION-RESPONSES",
+  "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE",
   "Access-Control-Max-Age": "600",
 };
 
@@ -66,7 +66,10 @@ async function parseJsonBody(request: Request) {
   }
 }
 
-function paymentRequiredResponse(request: Request, config: NonNullable<ReturnType<typeof getCoinbaseX402Config>>) {
+function paymentRequiredResponse(
+  request: Request,
+  config: NonNullable<ReturnType<typeof getCoinbaseX402Config>>,
+) {
   const paymentRequired = coinbaseX402PaymentRequired(request, config);
   return json(paymentRequired, 402, {
     "PAYMENT-REQUIRED": encodeX402Header(paymentRequired),
@@ -192,7 +195,8 @@ export const Route = createFileRoute("/api/x402/risk")({
               ok: false,
               error: {
                 code: "COINBASE_X402_CONFIGURATION_INVALID",
-                message: error instanceof Error ? error.message : "Coinbase x402 configuration is invalid.",
+                message:
+                  error instanceof Error ? error.message : "Coinbase x402 configuration is invalid.",
               },
               execution_authorized: false,
             },
@@ -281,7 +285,8 @@ export const Route = createFileRoute("/api/x402/risk")({
               ok: false,
               error: {
                 code: "X402_PAYMENT_BINDING_INVALID",
-                message: error instanceof Error ? error.message : "Payment payload does not match this resource.",
+                message:
+                  error instanceof Error ? error.message : "Payment payload does not match this resource.",
               },
               execution_authorized: false,
             },
@@ -307,7 +312,10 @@ export const Route = createFileRoute("/api/x402/risk")({
           return json(
             {
               ok: false,
-              error: { code: "X402_DELIVERY_LEDGER_UNAVAILABLE", message: "Paid delivery ledger is unavailable." },
+              error: {
+                code: "X402_DELIVERY_LEDGER_UNAVAILABLE",
+                message: "Paid delivery ledger is unavailable.",
+              },
               execution_authorized: false,
             },
             503,
@@ -331,7 +339,10 @@ export const Route = createFileRoute("/api/x402/risk")({
           return json(
             {
               ok: false,
-              error: { code: "X402_REQUEST_IN_PROGRESS", message: "This exact paid request is already processing." },
+              error: {
+                code: "X402_REQUEST_IN_PROGRESS",
+                message: "This exact paid request is already processing.",
+              },
               execution_authorized: false,
             },
             409,
@@ -344,7 +355,8 @@ export const Route = createFileRoute("/api/x402/risk")({
               ok: false,
               error: {
                 code: "X402_SETTLEMENT_RECONCILIATION_REQUIRED",
-                message: "A previous settlement attempt had an ambiguous external outcome and is locked against automatic re-charge.",
+                message:
+                  "A previous settlement attempt had an ambiguous external outcome and is locked against automatic re-charge.",
               },
               execution_authorized: false,
             },
@@ -367,7 +379,10 @@ export const Route = createFileRoute("/api/x402/risk")({
           return json(
             {
               ok: false,
-              error: { code: "X402_DELIVERY_CLAIM_FAILED", message: "Unable to claim this paid request." },
+              error: {
+                code: "X402_DELIVERY_CLAIM_FAILED",
+                message: "Unable to claim this paid request.",
+              },
               execution_authorized: false,
             },
             503,
@@ -413,7 +428,9 @@ export const Route = createFileRoute("/api/x402/risk")({
               execution_authorized: false,
             },
             402,
-            { "PAYMENT-REQUIRED": encodeX402Header(coinbaseX402PaymentRequired(request, config)) },
+            {
+              "PAYMENT-REQUIRED": encodeX402Header(coinbaseX402PaymentRequired(request, config)),
+            },
           );
         }
 
@@ -459,14 +476,17 @@ export const Route = createFileRoute("/api/x402/risk")({
               claimToken,
               failureCode: error instanceof Error ? error.message : "RISK_RESOURCE_UNAVAILABLE",
             });
-            const message = error instanceof Error ? error.message : "Requested risk resource is unavailable.";
+            const message =
+              error instanceof Error ? error.message : "Requested risk resource is unavailable.";
             const unsupported = message.startsWith("Public demo currently supports");
             return json(
               {
                 ok: false,
                 error: {
                   code: unsupported ? "DEMO_SUBJECT_NOT_ENABLED" : "RISK_RESOURCE_UNAVAILABLE",
-                  message: unsupported ? message : "Requested risk context is temporarily unavailable.",
+                  message: unsupported
+                    ? message
+                    : "Requested risk context is temporarily unavailable.",
                 },
                 execution_authorized: false,
               },
@@ -565,7 +585,10 @@ export const Route = createFileRoute("/api/x402/risk")({
             settlementNetwork: settlement.network ?? config.networkName,
           });
         } catch (error) {
-          console.error("[coinbase-x402] settlement completed but delivery ledger finalization failed", error);
+          console.error(
+            "[coinbase-x402] settlement completed but delivery ledger finalization failed",
+            error,
+          );
           return json(
             {
               ok: false,
@@ -582,6 +605,7 @@ export const Route = createFileRoute("/api/x402/risk")({
           );
         }
 
+        const bazaarOutcome = bazaarExtensionOutcome(verified, settlement);
         await persistCoinbaseSettlementTelemetry({
           requestId: String(prepared.request_id ?? ""),
           payer: settlement.payer ?? verified.payer ?? null,
@@ -590,15 +614,14 @@ export const Route = createFileRoute("/api/x402/risk")({
           config,
           paymentFingerprint,
           bazaarExtensionEchoed: paymentPayloadEchoesBazaar(paymentPayload),
+          bazaarStatus: bazaarOutcome.status,
+          bazaarRejectedReason: bazaarOutcome.rejectedReason,
         });
 
         const response = finalPaidResponse(prepared, settlement, config);
-        const headers: Record<string, string> = {
+        return json(response, 200, {
           "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement),
-        };
-        const extensionResponses = coinbaseX402ExtensionResponsesHeader(settlement);
-        if (extensionResponses) headers["EXTENSION-RESPONSES"] = extensionResponses;
-        return json(response, 200, headers);
+        });
       },
     },
   },
