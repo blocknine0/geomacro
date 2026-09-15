@@ -9,6 +9,7 @@ import avatarPost from "../../../../server/api/testnet-tester/avatar.post";
 import cardGet from "../../../../server/api/testnet-tester/card.get";
 import configGet from "../../../../server/api/testnet-tester/config.get";
 import developerKeyRevokePost from "../../../../server/api/testnet-tester/developer-key-revoke.post";
+import developerKeyRotatePost from "../../../../server/api/testnet-tester/developer-key-rotate.post";
 import developerKeyPost from "../../../../server/api/testnet-tester/developer-key.post";
 import developerKeysGet from "../../../../server/api/testnet-tester/developer-keys.get";
 import intelligencePost from "../../../../server/api/testnet-tester/intelligence.post";
@@ -38,6 +39,7 @@ const POST_HANDLERS: Record<string, Handler> = {
   avatar: avatarPost as never,
   "developer-key": developerKeyPost as never,
   "developer-key-revoke": developerKeyRevokePost as never,
+  "developer-key-rotate": developerKeyRotatePost as never,
   intelligence: intelligencePost as never,
   logout: logoutPost as never,
   "payment-claim": paymentClaimPost as never,
