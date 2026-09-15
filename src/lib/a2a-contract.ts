@@ -62,17 +62,24 @@ export const a2aPartSchema = z
   .object({
     text: z.string().max(4_000).optional(),
     data: z.unknown().optional(),
+    raw: z.string().max(256 * 1024).optional(),
+    url: z.string().url().max(2_048).optional(),
     mediaType: z.string().trim().min(1).max(160).optional(),
     filename: z.string().trim().min(1).max(255).optional(),
     metadata: z.record(z.unknown()).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
-    const contentFields = [value.text !== undefined, value.data !== undefined].filter(Boolean).length;
+    const contentFields = [
+      value.text !== undefined,
+      value.data !== undefined,
+      value.raw !== undefined,
+      value.url !== undefined,
+    ].filter(Boolean).length;
     if (contentFields !== 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Each A2A part must contain exactly one supported content field: text or data",
+        message: "Each A2A part must contain exactly one content field: text, data, raw or url",
       });
     }
   });
@@ -84,15 +91,24 @@ export const a2aMessageSchema = z.object({
   role: z.enum(["ROLE_USER", "ROLE_AGENT"]),
   parts: z.array(a2aPartSchema).min(1).max(8),
   metadata: z.record(z.unknown()).optional(),
+  extensions: z.array(z.string().url().max(2_048)).max(16).optional(),
   referenceTaskIds: z.array(z.string().trim().min(1).max(160)).max(16).optional(),
 });
 
+export const a2aPushAuthenticationSchema = z
+  .object({
+    scheme: z.string().trim().min(1).max(80),
+    credentials: z.string().max(2_048).optional(),
+  })
+  .strict();
+
 export const a2aPushNotificationConfigSchema = z.object({
+  tenant: z.string().trim().max(120).optional(),
   id: z.string().uuid().optional(),
   taskId: z.string().uuid().optional(),
   url: z.string().url().max(2_048),
   token: z.string().trim().min(8).max(256).optional(),
-  authentication: z.record(z.unknown()).optional(),
+  authentication: a2aPushAuthenticationSchema.optional(),
 });
 
 export const a2aSendMessageRequestSchema = z.object({
@@ -122,6 +138,8 @@ export function extractA2ARiskPreflightInput(message: A2AMessage): A2ARiskPrefli
   return a2aSkillEnvelopeSchema.parse(dataParts[0].data).input;
 }
 
+const emptyScopes = { list: [] as string[] };
+
 export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
   const normalized = origin.replace(/\/$/, "");
   return {
@@ -148,26 +166,36 @@ export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
     },
     securitySchemes: {
       geomacroBearer: {
-        type: "http",
-        scheme: "bearer",
-        description: "Geomacro commercial API bearer credential.",
+        httpAuthSecurityScheme: {
+          scheme: "Bearer",
+          bearerFormat: "opaque",
+          description: "Geomacro commercial API bearer credential.",
+        },
       },
       geomacroTestnetKey: {
-        type: "apiKey",
-        in: "header",
-        name: "X-Geomacro-Api-Key",
-        description: "Geomacro Testnet developer API key.",
+        apiKeySecurityScheme: {
+          location: "header",
+          name: "X-Geomacro-Api-Key",
+          description: "Geomacro Testnet developer API key.",
+        },
       },
       geomacroTestnetSecret: {
-        type: "apiKey",
-        in: "header",
-        name: "X-Geomacro-Api-Secret",
-        description: "Geomacro Testnet developer API secret. Required together with the Testnet API key.",
+        apiKeySecurityScheme: {
+          location: "header",
+          name: "X-Geomacro-Api-Secret",
+          description:
+            "Geomacro Testnet developer API secret. Required together with the Testnet API key.",
+        },
       },
     },
     securityRequirements: [
-      { geomacroBearer: [] },
-      { geomacroTestnetKey: [], geomacroTestnetSecret: [] },
+      { schemes: { geomacroBearer: emptyScopes } },
+      {
+        schemes: {
+          geomacroTestnetKey: emptyScopes,
+          geomacroTestnetSecret: emptyScopes,
+        },
+      },
     ],
     defaultInputModes: ["application/json", "text/plain"],
     defaultOutputModes: ["application/json"],
@@ -185,8 +213,13 @@ export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
         inputModes: ["application/json"],
         outputModes: ["application/json"],
         securityRequirements: [
-          { geomacroBearer: [] },
-          { geomacroTestnetKey: [], geomacroTestnetSecret: [] },
+          { schemes: { geomacroBearer: emptyScopes } },
+          {
+            schemes: {
+              geomacroTestnetKey: emptyScopes,
+              geomacroTestnetSecret: emptyScopes,
+            },
+          },
         ],
       },
     ],
