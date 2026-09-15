@@ -14,6 +14,8 @@ export const RISK_OBJECT_JWKS_PATH = "/.well-known/jwks.json" as const;
 export const RISK_OBJECT_TRUST_PATH = "/.well-known/geomacro-risk-keys.json" as const;
 export const RISK_OBJECT_VERIFICATION_PATH = "/api/risk-object-keys" as const;
 export const RISK_OBJECT_TRUST_VERSION = "geomacro-risk-trust-v1" as const;
+export const BASE_SEPOLIA_RISK_KEY_REGISTRY =
+  "0xb1881d2f0026395d5016b90031a8acc651a2e316" as const;
 
 export type PublicRiskObjectJwk = {
   kty: "OKP";
@@ -89,9 +91,9 @@ function normalizedRegistryAddress(value: string | undefined) {
 
 export function publicRiskObjectTrustDiscovery(origin = "https://geomacro.live") {
   const normalizedOrigin = origin.replace(/\/$/u, "");
-  const baseSepoliaRegistry = normalizedRegistryAddress(
-    process.env.RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA,
-  );
+  // Base Sepolia is a verified, source-controlled public trust anchor. Do not
+  // make discovery depend on mutable hosting configuration for this address.
+  const baseSepoliaRegistry = BASE_SEPOLIA_RISK_KEY_REGISTRY;
   const arcTestnetRegistry = normalizedRegistryAddress(
     process.env.RISK_OBJECT_KEY_REGISTRY_ARC_TESTNET,
   );
@@ -110,7 +112,7 @@ export function publicRiskObjectTrustDiscovery(origin = "https://geomacro.live")
         chain_id: 84532,
         caip2: "eip155:84532",
         address: baseSepoliaRegistry,
-        status: baseSepoliaRegistry ? "configured" : "not_configured",
+        status: "configured" as const,
       },
       arc_testnet: {
         chain_id: 5042002,
