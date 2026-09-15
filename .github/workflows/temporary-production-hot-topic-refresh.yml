@@ -1,0 +1,158 @@
+name: Temporary Production Hot Topic Refresh
+
+on:
+  push:
+    branches:
+      - ops/refresh-gdelt-production-once
+    paths:
+      - ".github/workflows/temporary-production-hot-topic-refresh.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporary-production-hot-topic-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    env:
+      AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness-after-refresh.json
+    steps:
+      - name: Checkout one-shot branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ops/refresh-gdelt-production-once
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify authoritative production target
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Run production news ingestion
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_INGEST_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_INGEST_MODEL }}
+          GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+          MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
+          CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}
+          GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
+          GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
+          GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
+          GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
+          GROQ_MAX_WAIT_MS: "900000"
+          GROQ_BATCH_SIZE: "4"
+          MAX_CANDIDATES_PER_CATEGORY: "12"
+          NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
+          NEWS_MAX_RETRIES: ${{ vars.NEWS_MAX_RETRIES }}
+          MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}
+          MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
+          MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
+        run: node scripts/ingest-news.js
+
+      - name: Export admitted events for structure
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/export-admitted-events-for-structure.mjs
+
+      - name: Structure fresh intelligence
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN missing"; exit 1; }
+          curl --fail-with-body -sS \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 2 \
+            --retry-max-time 90 \
+            -X POST \
+            "${SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+            -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+            -H "Content-Type: application/json"
+          echo
+
+      - name: Reconcile structured-event commercial rights cache
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          (async () => {
+            const { data: rights, error } = await db
+              .from('live_structured_event_commercial_rights_evaluation')
+              .select('event_id,evaluated_status,reason_codes');
+            if (error) throw error;
+            let changed = 0;
+            for (const row of rights ?? []) {
+              const { error: updateError } = await db
+                .from('live_structured_events')
+                .update({
+                  commercial_eligibility_status: row.evaluated_status,
+                  commercial_eligibility_reason_codes: row.reason_codes ?? [],
+                })
+                .eq('id', row.event_id);
+              if (updateError) throw updateError;
+              changed++;
+            }
+            console.log(JSON.stringify({ rights_rows_reconciled: changed }));
+          })().catch((error) => { console.error(error); process.exit(1); });
+          NODE
+
+      - name: Audit paid hot-topic readiness
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bun scripts/audit-agent-hot-topic-readiness.ts --require-pipeline-healthy
+
+      - name: Publish sanitized acceptance summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.pipeline.healthy == true' agent-hot-topic-readiness-after-refresh.json >/dev/null
+          jq -e '.claim_boundary.raw_source_material_redistributed == false' agent-hot-topic-readiness-after-refresh.json >/dev/null
+          jq -e '.claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true' agent-hot-topic-readiness-after-refresh.json >/dev/null
+          jq '{generated_at,pipeline,summary,claim_boundary}' agent-hot-topic-readiness-after-refresh.json
+
+      - name: Upload sanitized readiness evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: temporary-production-hot-topic-readiness
+          path: agent-hot-topic-readiness-after-refresh.json
+          if-no-files-found: warn
+          retention-days: 7
