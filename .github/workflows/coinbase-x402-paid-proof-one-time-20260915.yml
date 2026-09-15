@@ -1,73 +1,14 @@
-name: Coinbase x402 One-Time Paid Proof 20260915
+name: Coinbase x402 One-Time Paid Proof 20260915 (completed)
 
 on:
-  push:
-    branches:
-      - run/coinbase-x402-paid-proof-once-20260915
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: coinbase-x402-paid-proof-one-time-20260915
-  cancel-in-progress: false
-
 jobs:
-  paid-proof-once:
-    if: ${{ github.actor == 'blocknine0' && github.ref == 'refs/heads/run/coinbase-x402-paid-proof-once-20260915' }}
+  archived-proof:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      GEOMACRO_COINBASE_X402_E2E_ACK: COINBASE_X402_BASE_SEPOLIA_USDC
-      GEOMACRO_COINBASE_X402_CLIENT_REQUEST_ID: coinbase-x402-paid-proof-20260915-once
-      GEOMACRO_COINBASE_X402_E2E_ARTIFACT_DIR: artifacts/coinbase-x402-base-sepolia-paid
-
     steps:
-      - name: Checkout exact one-time proof ref
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-
-      - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.4.2
-
-      - name: Install locked dependencies without lifecycle scripts
-        run: bun install --frozen-lockfile --ignore-scripts
-
-      - name: Validate dedicated repository buyer secret
-        shell: bash
-        env:
-          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
-        run: |
-          set -euo pipefail
-          if [ -z "$GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY" ]; then
-            echo "::error::COINBASE_X402_BASE_SEPOLIA_PAID_PROOF is not configured."
-            exit 1
-          fi
-          echo "Dedicated Base Sepolia buyer secret is configured." >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Execute exactly one guarded Base Sepolia paid proof
-        env:
-          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
-        run: node scripts/agentic/coinbase-x402-base-sepolia-e2e.mjs
-
-      - name: Upload sanitized paid-proof evidence
-        if: success()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: coinbase-x402-one-time-paid-proof-${{ github.run_id }}
-          path: artifacts/coinbase-x402-base-sepolia-paid/*.json
-          if-no-files-found: error
-          retention-days: 90
-
-      - name: Record one-time safety boundary
-        if: always()
-        shell: bash
-        run: |
-          echo "One-time branch: run/coinbase-x402-paid-proof-once-20260915" >> "$GITHUB_STEP_SUMMARY"
-          echo "Network: Base Sepolia / eip155:84532" >> "$GITHUB_STEP_SUMMARY"
-          echo "Maximum payment: 0.05 test USDC" >> "$GITHUB_STEP_SUMMARY"
-          echo "Mainnet enabled: false" >> "$GITHUB_STEP_SUMMARY"
-          echo "Private key persisted: false" >> "$GITHUB_STEP_SUMMARY"
+      - run: echo "The one-time Base Sepolia paid proof completed successfully in run 34931379513. This trigger is permanently disabled."
