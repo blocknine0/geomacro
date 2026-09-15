@@ -155,7 +155,14 @@ export async function checkAgentQueryDeliverability(
         const latest = latestModuleTime(context, module);
         if (latest !== null) {
           latestEvidence = latestEvidence === null ? latest : Math.max(latestEvidence, latest);
-          if (now.getTime() - latest > plan.max_age_seconds * 1_000) stale.add(module);
+          const maxAgeSeconds = plan.module_max_age_seconds[module];
+          // Every payable structural module must have an explicit freshness SLA.
+          // Missing SLA fails closed rather than silently accepting unbounded age.
+          if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds <= 0) {
+            stale.add(module);
+          } else if (now.getTime() - latest > maxAgeSeconds * 1_000) {
+            stale.add(module);
+          }
         } else {
           // No timestamp means freshness cannot be proven, so a paid query fails closed.
           stale.add(module);
