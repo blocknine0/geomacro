@@ -74,17 +74,39 @@ describe("canonical one-data multi-delivery architecture", () => {
     expect(delivery).toContain("execution_authorized: false");
   });
 
-  it("treats Circle x402 as a payment rail over the same Risk Gate service", () => {
-    const x402 = read("src/routes/api.agent.risk.ts");
+  it("keeps A2A Testnet payment and delivery on the same canonical pay-per-call runner", () => {
+    const a2a = read("src/lib/a2a-service.server.ts");
+
+    expect(a2a).toContain("preflightTestnetIntelligenceAvailability");
+    expect(a2a).toContain("settleTestnetApiCall");
+    expect(a2a).toContain("runCanonicalTestnetIntelligence");
+    expect(a2a).toContain('capability: "risk_gate_bundle"');
+    expect(a2a).toContain("execution_authorized: false");
+  });
+
+  it("treats Circle and Coinbase x402 as payment rails over the same agentic Risk Gate service", () => {
+    const circle = read("src/routes/api.agent.risk.ts");
+    const coinbase = read("src/routes/api.x402.risk.ts");
     const agentic = read("src/lib/agentic-demo-service.server.ts");
 
-    expect(x402).toContain("runAgenticPreflightDemo");
-    expect(x402).toContain("settleCircleX402");
+    expect(circle).toContain("runAgenticPreflightDemo");
+    expect(circle).toContain("settleCircleX402");
+    expect(coinbase).toContain("runAgenticPreflightDemo");
+    expect(coinbase).toContain("settleCoinbaseX402");
     expect(agentic).toContain("evaluateCountryRiskGate");
     expect(agentic).toContain("evaluateCorridorRiskGate");
     expect(agentic).toContain("loadStructuralContext");
     expect(agentic).toContain("readPublicGlobalRisk");
-    expect(x402).toContain("execution_authorized: false");
+    expect(circle).toContain("execution_authorized: false");
+    expect(coinbase).toContain("execution_authorized: false");
+  });
+
+  it("keeps GOAT x402 fulfillment on the same canonical agentic Risk Gate service", () => {
+    const goat = read("src/lib/goat-pilot-service.server.ts");
+
+    expect(goat).toContain("runAgenticPreflightDemo");
+    expect(goat).toContain('mode: "GOAT_X402_PAID"');
+    expect(goat).toContain("execution_authorized: false");
   });
 
   it("keeps a single documented architecture contract across product and delivery surfaces", () => {
