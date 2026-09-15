@@ -9,6 +9,10 @@ import {
 } from "./risk-object-signing.server";
 
 import {
+  withRiskObjectObservationTimestamp,
+} from "./risk-object-observation";
+
+import {
   getLatestCompatibleCountryRiskObjectAtOrBefore,
   getLatestCompatibleCorridorRiskObject,
   getRiskObjectByObjectId,
@@ -205,12 +209,18 @@ generateInternal(
         boundary,
     });
 
+  const observationBoundObject =
+    withRiskObjectObservationTimestamp(
+      unsignedObject,
+      boundary,
+    );
+
   const object =
     publish
       ? signRiskObject(
-          unsignedObject,
+          observationBoundObject,
         )
-      : unsignedObject;
+      : observationBoundObject;
 
   if (publish) {
     await persistRiskObject(
