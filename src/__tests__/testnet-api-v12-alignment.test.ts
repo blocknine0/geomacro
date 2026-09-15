@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 const pricing = read("src/lib/testnet-api-pricing.ts");
 const accessContract = read("src/lib/testnet-usdc-access-contract.ts");
 const paymentVerifier = read("src/lib/testnet-usdc-payment-verification.server.ts");
+const perCallPayment = read("src/lib/testnet-api-payment.server.ts");
 const paymentService = read("src/lib/testnet-tester-payment.server.ts");
 const configRoute = read("server/api/testnet-tester/config.get.ts");
 const paymentRoute = read("server/api/testnet-tester/payment-claim.post.ts");
@@ -56,12 +57,16 @@ describe("Testnet API pay-per-call alignment gate", () => {
     expect(commercialAccess).toContain("TESTNET_API_CREDENTIAL_DENIED");
   });
 
-  it("requires a 402 per-call proof on the external structural endpoint", () => {
+  it("requires a 402 per-call proof through the single canonical payment service", () => {
     expect(structuralRoute).toContain("TESTNET_PAYMENT_REQUIRED");
-    expect(structuralRoute).toContain("testnetApiCallPriceAtomic");
-    expect(structuralRoute).toContain("minimum_amount_atomic: requiredAtomic");
-    expect(structuralRoute).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
-    expect(structuralRoute).toContain('"X-Geomacro-Api-Key"'.toLowerCase().replaceAll('"', ''));
+    expect(structuralRoute).toContain("settleTestnetApiCall");
+    expect(structuralRoute).not.toContain("verifyTestnetUsdcPayment");
+    expect(structuralRoute).not.toContain("testnetApiCallPriceAtomic");
+    expect(perCallPayment).toContain("testnetApiCallPriceAtomic");
+    expect(perCallPayment).toContain("minimum_amount_atomic: requiredAtomic");
+    expect(perCallPayment).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
+    expect(perCallPayment).toContain("TESTNET_PAYMENT_IDEMPOTENCY_CONFLICT");
+    expect(structuralRoute.toLowerCase()).toContain("x-geomacro-api-key");
     expect(structuralRoute.toLowerCase()).toContain("x-geomacro-api-secret");
   });
 
