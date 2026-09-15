@@ -24,15 +24,17 @@ CDP_API_KEY_SECRET=...
 
 The CDP secret may be either a PKCS#8 ES256 PEM private key or a 64-byte base64 Ed25519 key. It must remain server-only.
 
+Production launch price is explicitly approved at **0.02 USDC per paid x402 intelligence call**. The successful Base Sepolia acceptance evidence remains historical evidence at 0.05 test USDC and must not be rewritten to the production price.
+
 Production additionally requires:
 
 ```text
 COINBASE_X402_ENVIRONMENT=production
-COINBASE_X402_PRICE_USDC=<explicit production price>
+COINBASE_X402_PRICE_USDC=0.02
 COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC
 ```
 
-Do not set the mainnet acknowledgement until every acceptance gate below is green.
+Do not set the mainnet acknowledgement until every acceptance gate below is green and the owner explicitly authorizes real-USDC activation. Recording the approved production price does not authorize mainnet activation.
 
 ## Database migration
 
@@ -126,6 +128,8 @@ Coinbase does not require a registration form. A public HTTPS endpoint with vali
 
 After the first settlement, verify discovery using CDP's Bazaar discovery/search surfaces and inspect extension status. A rejected Bazaar status is a launch blocker even if the USDC settlement itself succeeded.
 
+The first successful Base Sepolia paid acceptance run has now established a real settlement with zero duplicate charge, and the live Bazaar status subsequently reported `extension_echoed=true` and `catalog.indexed=true` for `https://geomacro.live/api/x402/risk`. Preserve that evidence as testnet acceptance evidence; do not treat it as production revenue.
+
 ## Mainnet release gate
 
 Do not switch to Base mainnet until all testnet acceptance evidence is preserved. Before real funds are enabled, confirm:
@@ -135,11 +139,11 @@ Do not switch to Base mainnet until all testnet acceptance evidence is preserved
 - repeated paid E2E tests show zero duplicate charges
 - replay/conflict/ambiguous-settlement tests pass
 - receiver wallet ownership and operational backup are confirmed
-- production per-call price is explicitly approved
+- production per-call price is explicitly approved at 0.02 USDC
 - commercial source/data licensing permits the paid response
 - monitoring and settlement reconciliation ownership are assigned
 
-Only then configure production environment, the explicit mainnet acknowledgement, the production CDP credentials, dedicated Base receiver, and production price.
+Only then configure production environment, the explicit mainnet acknowledgement, the production CDP credentials, dedicated Base receiver, and the approved 0.02 USDC production price.
 
 ## Mainnet accounting boundary
 
