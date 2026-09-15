@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   CIRCLE_X402_NETWORK,
   CIRCLE_X402_PRICE_ATOMIC,
@@ -13,7 +12,10 @@ import {
   resolveCommercialEntitlementForCapability,
   type CommercialPrincipal,
 } from "./commercial-access.server";
-import { runAgenticPreflightDemo } from "./agentic-demo-service.server";
+import {
+  runAgenticPreflightDemo,
+  type AgenticDemoRunOptions,
+} from "./agentic-demo-service.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import {
   GEOMACRO_A2A_CAPABILITIES,
@@ -26,6 +28,7 @@ import {
 import {
   a2aPayloadHash,
   assertA2AEnvelopeFresh,
+  createGeomacroSignedEnvelope,
   signGeomacroA2AValue,
   verifyA2AEnvelopeSignature,
 } from "./a2a-signing.server";
@@ -310,25 +313,22 @@ async function updateTask(taskId: string, patch: Record<string, unknown>) {
 async function deliverCallback(task: TaskRow, registration: Registration, result: unknown) {
   if (!task.callback_url) return;
   registeredCallbackUrl(task.callback_url, registration);
-  const body = {
-    protocol_version: "geomacro-a2a/1.0",
-    operation: "task_result",
-    task_id: task.id,
+  const envelope = createGeomacroSignedEnvelope({
     external_task_id: task.external_task_id,
+    remote_task_id: task.id,
     status: "completed",
     result,
-    execution_authorized: false,
-    sent_at: new Date().toISOString(),
-  };
-  const signedBody = { ...body, integrity: signGeomacroA2AValue(body) };
+  });
+  const body = { operation: "callback", envelope };
   let lastError = "callback delivery failed";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       const response = await fetch(task.callback_url, {
         method: "POST",
         headers: { "content-type": "application/json", "user-agent": "Geomacro-A2A/1.0" },
-        body: JSON.stringify(signedBody),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(5_000),
+        redirect: "error",
       });
       if (response.ok) {
         await updateTask(task.id, { callback_status: "delivered", callback_attempts: attempt });
@@ -368,7 +368,10 @@ export async function submitA2ATask(request: Request, envelope: A2ATaskEnvelope)
 
   try {
     let settlementReference: string | null = null;
-    let payment: Record<string, unknown> = { required: false, mode: "commercial_credit" };
+    let payment: NonNullable<AgenticDemoRunOptions["payment"]> = {
+      required: false,
+      note: "Authorized against the caller's Geomacro commercial credit entitlement.",
+    };
 
     if (task.payment_mode === "commercial_credit") {
       const principal = await authorizeCommercial(request, registration, task);
@@ -380,11 +383,13 @@ export async function submitA2ATask(request: Request, envelope: A2ATaskEnvelope)
         payment = {
           required: true,
           provider: "circle_gateway_x402",
+          asset: "USDC",
           network: CIRCLE_X402_NETWORK,
           amount_atomic: CIRCLE_X402_PRICE_ATOMIC,
           amount_usdc: CIRCLE_X402_PRICE_USDC,
           payer: settlement.payer,
           settlement_reference: settlement.settlement_reference,
+          note: "Arc Testnet x402 technical proof only.",
         };
         await persistSettlementTelemetry({ requestId: task.id, payer: settlement.payer, settlementReference: settlement.settlement_reference });
         await appendAudit({ taskId: task.id, agentId: registration.agent_id, eventType: "x402_settled", details: { settlement_reference: settlement.settlement_reference } });
@@ -398,7 +403,8 @@ export async function submitA2ATask(request: Request, envelope: A2ATaskEnvelope)
       mode: task.payment_mode === "x402_testnet" ? "X402_PAID" : "COMMERCIAL_PRIVATE_PILOT",
       recordTelemetry: false,
       requestId: task.id,
-      payment: payment as never,
+      payment,
+      enforceDemoSubjectAllowlist: task.payment_mode === "x402_testnet",
     });
     if (result.risk_gate.execution_authorized !== false || result.boundaries.execution_authorized !== false) {
       throw new Error("A2A execution boundary violated");
