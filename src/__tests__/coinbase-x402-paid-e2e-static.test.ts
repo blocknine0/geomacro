@@ -45,8 +45,11 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
     expect(workflow).toContain("Execution authorization from Risk Gate: false");
   });
 
-  it("uses protected buyer custody without persisting the key or raw payment signature", () => {
-    expect(workflow).toContain("secrets.GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY");
+  it("uses the existing repository buyer secret without persisting the key or raw payment signature", () => {
+    expect(workflow).toContain("secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF");
+    expect(workflow).not.toContain("secrets.GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY");
+    expect(workflow).not.toContain("environment: coinbase-x402-base-sepolia-paid-proof");
+    expect(workflow).toContain("github.actor == 'blocknine0'");
     expect(workflow).toContain("Private key persisted in evidence: false");
     expect(workflow).toContain("Raw PAYMENT-SIGNATURE persisted in evidence: false");
     expect(script).toContain("private_key_persisted: false");
