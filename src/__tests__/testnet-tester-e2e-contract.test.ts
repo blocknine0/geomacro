@@ -7,6 +7,7 @@ const account = read("src/lib/testnet-tester-account.server.ts");
 const pricing = read("src/lib/testnet-api-pricing.ts");
 const paymentContract = read("src/lib/testnet-usdc-access-contract.ts");
 const paymentVerifier = read("src/lib/testnet-usdc-payment-verification.server.ts");
+const perCallPayment = read("src/lib/testnet-api-payment.server.ts");
 const paymentService = read("src/lib/testnet-tester-payment.server.ts");
 const paymentRoute = read("server/api/testnet-tester/payment-claim.post.ts");
 const developer = read("src/lib/testnet-developer-access.server.ts");
@@ -58,13 +59,15 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(paymentRoute).toContain("TESTNET_UPFRONT_ACTIVATION_RETIRED");
   });
 
-  it("returns a per-call 402 quote and binds one payment proof to one request id", () => {
+  it("returns a per-call 402 quote and binds one payment proof to one request id through shared settlement", () => {
     expect(structuralRoute).toContain("TESTNET_PAYMENT_REQUIRED");
-    expect(structuralRoute).toContain("testnetApiCallPriceAtomic");
-    expect(structuralRoute).toContain("testnetApiCallPriceUsdc");
-    expect(structuralRoute).toContain("minimum_amount_atomic: requiredAtomic");
-    expect(structuralRoute).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
-    expect(structuralRoute).toContain("TESTNET_PAYMENT_IDEMPOTENCY_CONFLICT");
+    expect(structuralRoute).toContain("settleTestnetApiCall");
+    expect(structuralRoute).not.toContain("verifyTestnetUsdcPayment");
+    expect(perCallPayment).toContain("testnetApiCallPriceAtomic");
+    expect(perCallPayment).toContain("testnetApiCallPriceUsdc");
+    expect(perCallPayment).toContain("minimum_amount_atomic: requiredAtomic");
+    expect(perCallPayment).toContain("TESTNET_PAYMENT_ALREADY_CLAIMED");
+    expect(perCallPayment).toContain("TESTNET_PAYMENT_IDEMPOTENCY_CONFLICT");
     expect(meteredMigration).toContain("testnet_usdc_payment_claim_principal_request_unique");
     expect(meteredMigration).toContain("request_id text");
     expect(meteredMigration).toContain("capability text");
@@ -85,7 +88,9 @@ describe("Testnet tester end-to-end contract trial", () => {
 
   it("keeps Testnet settlement non-revenue and execution unauthorized", () => {
     expect(pricing).toContain("payment_is_real_revenue: false");
-    expect(structuralRoute).toContain("commercial_revenue: false");
+    expect(perCallPayment).toContain("commercial_revenue: false");
+    expect(perCallPayment).toContain('revenue_classification: "testnet_non_revenue"');
+    expect(perCallPayment).toContain("execution_authorized: false");
     expect(structuralRoute).toContain("execution_authorized: false");
     expect(paymentVerifier).toContain('revenue_classification: "testnet_non_revenue"');
   });

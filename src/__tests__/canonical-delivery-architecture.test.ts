@@ -49,13 +49,17 @@ describe("canonical one-data multi-delivery architecture", () => {
     }
   });
 
-  it("keeps signed Risk Objects canonical and verified on the Testnet machine path", () => {
+  it("keeps signed Risk Objects canonical, authentic and commercially deliverable on machine paths", () => {
     const machine = read("src/lib/testnet-intelligence-capability.server.ts");
+    const agentic = read("src/lib/agentic-demo-service.server.ts");
 
     expect(machine).toContain("getLatestCompatibleCountryRiskObject");
     expect(machine).toContain("getLatestCompatibleCorridorRiskObject");
-    expect(machine).toContain("verifyPublicRiskObjectArtifact");
+    expect(machine).toContain("verifyCommercialRiskObjectArtifact");
+    expect(machine).toContain("commercialVerification.deliverable");
     expect(machine).toContain("return object;");
+    expect(agentic).toContain("verifyCommercialRiskObjectArtifact");
+    expect(agentic).toContain("COMMERCIAL_RISK_OBJECT_NOT_DELIVERABLE");
   });
 
   it("treats direct Testnet pay-per-call as settlement around canonical intelligence", () => {

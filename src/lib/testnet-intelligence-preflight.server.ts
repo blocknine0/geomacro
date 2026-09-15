@@ -1,10 +1,10 @@
+import { assertCommercialRiskObjectDeliverable } from "./commercial-risk-object-policy";
 import { corridorSubjectId } from "./corridor-risk-engine";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import {
   getLatestCompatibleCorridorRiskObject,
   getLatestCompatibleCountryRiskObject,
 } from "./risk-object-store.server";
-import { verifyPublicRiskObjectArtifact } from "./risk-object-verification.server";
 import { loadStructuralContext } from "./structural-context.server";
 import type {
   TestnetIntelligenceRequest,
@@ -46,9 +46,10 @@ async function requireVerifiedRiskObject(subject: ConcreteSubject) {
 
   if (!object) throw new Error("SIGNED_RISK_OBJECT_UNAVAILABLE");
 
-  const verification = verifyPublicRiskObjectArtifact(object);
-  if (!verification.valid || !verification.cryptographic_valid) {
-    throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  try {
+    assertCommercialRiskObjectDeliverable(object);
+  } catch {
+    throw new Error("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
   }
 }
 

@@ -1,0 +1,93 @@
+name: Structured Commerce DB Concurrency
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/043_commercial_credit_ledger.sql'
+      - 'supabase/migrations/901_commercial_credit_idempotency_hardening.sql'
+      - 'supabase/migrations/929_commercial_credit_account_concurrency_hardening.sql'
+      - 'scripts/testnet/postgres-concurrency-audit.sh'
+      - '.github/workflows/structured-commerce-db-concurrency.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structured-commerce-db-concurrency-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: geomacro-audit
+          POSTGRES_DB: geomacro_audit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d geomacro_audit"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:geomacro-audit@127.0.0.1:5432/geomacro_audit
+      ARTIFACT_DIR: artifacts/postgres-concurrency
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Ensure PostgreSQL client
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+
+      - name: Create isolated Supabase roles and extensions
+        shell: bash
+        run: |
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+          create extension if not exists pgcrypto;
+          do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
+          do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
+          do $$ begin create role service_role nologin; exception when duplicate_object then null; end $$;
+          SQL
+
+      - name: Apply canonical credit ledger and hardening migrations
+        shell: bash
+        run: |
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/043_commercial_credit_ledger.sql
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/901_commercial_credit_idempotency_hardening.sql
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/929_commercial_credit_account_concurrency_hardening.sql
+
+      - name: Run real PostgreSQL race tests
+        shell: bash
+        run: timeout 5m bash scripts/testnet/postgres-concurrency-audit.sh
+
+      - name: Upload concurrency evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: structured-commerce-db-concurrency-${{ github.run_id }}
+          path: artifacts/postgres-concurrency/report.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record evidence boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Database: isolated PostgreSQL 16 CI service" >> "$GITHUB_STEP_SUMMARY"
+          echo "Production database touched: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Real payment attempted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "This validates actual row-lock/advisory-lock/unique constraint concurrency behavior, not production capacity." >> "$GITHUB_STEP_SUMMARY"

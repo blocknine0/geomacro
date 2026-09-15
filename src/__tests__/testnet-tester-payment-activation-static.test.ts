@@ -5,6 +5,7 @@ const meteredMigration = readFileSync("supabase/migrations/912_testnet_api_pay_p
 const service = readFileSync("src/lib/testnet-tester-payment.server.ts", "utf8");
 const route = readFileSync("server/api/testnet-tester/payment-claim.post.ts", "utf8");
 const verifier = readFileSync("src/lib/testnet-usdc-payment-verification.server.ts", "utf8");
+const perCallPayment = readFileSync("src/lib/testnet-api-payment.server.ts", "utf8");
 const structural = readFileSync("server/api/commercial/structural.post.ts", "utf8");
 
 describe("testnet developer API metered payment model", () => {
@@ -44,7 +45,10 @@ describe("testnet developer API metered payment model", () => {
     expect(verifier).toContain("RPC_IDENTITY_MISMATCH");
     expect(verifier).toContain("WRONG_RECIPIENT");
     expect(verifier).toContain("UNDERPAYMENT");
-    expect(structural).toContain("minimum_amount_atomic: requiredAtomic");
+    expect(perCallPayment).toContain("verifyTestnetUsdcPayment");
+    expect(perCallPayment).toContain("minimum_amount_atomic: requiredAtomic");
+    expect(structural).toContain("settleTestnetApiCall");
+    expect(structural).not.toContain("verifyTestnetUsdcPayment");
   });
 
   it("retires the old upfront activation path", () => {
@@ -56,7 +60,9 @@ describe("testnet developer API metered payment model", () => {
   });
 
   it("keeps all Testnet settlement non-revenue and execution unauthorized", () => {
-    expect(structural).toContain("commercial_revenue: false");
+    expect(perCallPayment).toContain("commercial_revenue: false");
+    expect(perCallPayment).toContain('revenue_classification: "testnet_non_revenue"');
+    expect(perCallPayment).toContain("execution_authorized: false");
     expect(structural).toContain("execution_authorized: false");
     expect(verifier).toContain('revenue_classification: "testnet_non_revenue"');
   });

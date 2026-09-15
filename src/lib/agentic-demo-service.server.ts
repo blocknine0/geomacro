@@ -4,6 +4,7 @@ import {
   demoPolicyFromPreset,
   type AgenticDemoRequest,
 } from "./agentic-demo-contract";
+import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
@@ -90,7 +91,14 @@ async function loadRiskObject(objectId: string) {
 
   if (error) throw error;
   if (!data?.payload) throw new Error("Verified Risk Object payload unavailable");
-  return publicRiskObject(data.payload as GeomacroRiskObject);
+
+  const object = data.payload as GeomacroRiskObject;
+  const commercialVerification = verifyCommercialRiskObjectArtifact(object);
+  if (!commercialVerification.deliverable) {
+    throw new Error("COMMERCIAL_RISK_OBJECT_NOT_DELIVERABLE");
+  }
+
+  return publicRiskObject(object);
 }
 
 async function loadGriContext() {

@@ -82,15 +82,16 @@ jobs:
           src/__tests__/testnet-data-delivery-alignment.test.ts
           src/__tests__/testnet-session-performance-static.test.ts
           src/__tests__/testnet-live-authenticated-e2e-static.test.ts
+          src/__tests__/testnet-structured-commerce-industry-readiness.test.ts
           src/__tests__/live-performance-slo-static.test.ts
 
       - name: Migration safety
         run: timeout 3m bun run db:safety
 
-      - name: Synthetic 10k-user stress model
+      - name: Synthetic 250k paid-call replay and reconciliation stress model
         env:
           TESTNET_STRESS_USERS: "10000"
-          TESTNET_STRESS_REQUESTS_PER_USER: "20"
+          TESTNET_STRESS_REQUESTS_PER_USER: "25"
         run: timeout 5m node scripts/testnet/stress-10000-users.mjs | tee testnet-stress-10000.json
 
       - name: Build
