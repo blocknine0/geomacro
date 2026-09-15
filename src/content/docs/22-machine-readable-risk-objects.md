@@ -31,9 +31,13 @@ Ed25519 signature
         ↓
 verification + freshness checks
         ↓
-customer policy
+Risk Gate - Private Pilot
+        ↓
+customer identity + permissions + policy
+        ↓
+customer-controlled action
 ```
 
 The exact canonical schema lives in versioned code. Examples in documentation are illustrative and must not override the implemented contract.
 
-Current Private Pilot support covers country and directional corridor Risk Objects. This does not imply full route modelling, customer transaction authorization or general availability.
+Current Private Pilot support covers country and directional corridor Risk Objects. Event-specific Risk Objects are a broader direction only. This does not imply full route modelling, customer transaction authorization or general availability. `execution_authorized=false` remains the current external Risk Gate boundary.
