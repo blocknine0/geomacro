@@ -4,6 +4,14 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: "41 4 * * 1"
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/audit-gri-v12-sensitivity.mjs'
+      - 'scripts/audit-gri-validation-evidence.mjs'
+      - 'scripts/lib/gri-sensitivity-v12.js'
+      - 'docs/GRI_CALIBRATION_SENSITIVITY_EVIDENCE.md'
+      - '.github/workflows/gri-calibration-sensitivity-evidence.yml'
   push:
     branches: [main]
     paths:
@@ -17,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: gri-calibration-sensitivity-evidence
+  group: gri-calibration-sensitivity-evidence-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -44,10 +52,26 @@ jobs:
           node-version: "22"
 
       - name: Audit published validation evidence
+        id: validation
+        continue-on-error: true
         run: node scripts/audit-gri-validation-evidence.mjs
 
       - name: Audit current v1.2 parameter sensitivity
+        id: sensitivity
+        continue-on-error: true
         run: node scripts/audit-gri-v12-sensitivity.mjs
+
+      - name: Require both evidence audits to pass
+        shell: bash
+        run: |
+          if [ "${{ steps.validation.outcome }}" != "success" ]; then
+            echo "Validation evidence audit failed" >&2
+            exit 1
+          fi
+          if [ "${{ steps.sensitivity.outcome }}" != "success" ]; then
+            echo "Sensitivity evidence audit failed" >&2
+            exit 1
+          fi
 
       - name: Upload read-only GRI evidence
         if: always()
