@@ -240,6 +240,14 @@ export const Route = createFileRoute("/api/x402/risk")({
           body = agenticDemoRequestSchema.parse(rawBody);
         } catch (error) {
           if (error instanceof ZodError) {
+            // Coinbase's public validator probes POST resources before it knows
+            // the Bazaar-declared request body. An unpaid probe must discover
+            // the x402 requirements rather than fail business-schema validation.
+            // Paid requests still fail closed on the same schema below because
+            // only requests without PAYMENT-SIGNATURE take this discovery path.
+            if (!request.headers.get("payment-signature")) {
+              return paymentRequiredResponse(request, config);
+            }
             return json(
               {
                 ok: false,
