@@ -1,0 +1,110 @@
+name: P0 Security and Resilience Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/__tests__/risk-gate-runtime-fail-closed.test.ts'
+      - 'src/__tests__/risk-gate-dependency-recovery.test.ts'
+      - 'src/__tests__/risk-object-key-lifecycle.test.ts'
+      - 'src/__tests__/commercial-runtime-security.test.ts'
+      - 'src/lib/risk-gate-api.server.ts'
+      - 'src/lib/risk-object-signing.server.ts'
+      - 'scripts/audit-p0-secret-boundaries.mjs'
+      - 'scripts/p0-risk-object-key-drill.ts'
+      - 'scripts/load-test-risk-gate-staging.ts'
+      - 'docs/SECURITY_RESILIENCE_EVIDENCE.md'
+      - 'docs/SECURITY_OPERATIONS_BASELINE.md'
+      - 'docs/MAINNET_PRODUCTION_READINESS.md'
+      - '.github/workflows/p0-security-resilience-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/__tests__/risk-gate-runtime-fail-closed.test.ts'
+      - 'src/__tests__/risk-gate-dependency-recovery.test.ts'
+      - 'src/__tests__/risk-object-key-lifecycle.test.ts'
+      - 'src/__tests__/commercial-runtime-security.test.ts'
+      - 'src/lib/risk-gate-api.server.ts'
+      - 'src/lib/risk-object-signing.server.ts'
+      - 'scripts/audit-p0-secret-boundaries.mjs'
+      - 'scripts/p0-risk-object-key-drill.ts'
+      - 'scripts/load-test-risk-gate-staging.ts'
+      - 'docs/SECURITY_RESILIENCE_EVIDENCE.md'
+      - 'docs/SECURITY_OPERATIONS_BASELINE.md'
+      - 'docs/MAINNET_PRODUCTION_READINESS.md'
+      - '.github/workflows/p0-security-resilience-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-security-resilience-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+
+      - name: Install exact dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Prove fail-closed dependency outage and recovery behavior
+        run: >-
+          bun x vitest run
+          src/__tests__/risk-gate-runtime-fail-closed.test.ts
+          src/__tests__/risk-gate-dependency-recovery.test.ts
+          src/__tests__/risk-object-key-lifecycle.test.ts
+          src/__tests__/commercial-runtime-security.test.ts
+
+      - name: Build production browser and server boundaries
+        run: bun run build
+
+      - name: Audit repository and compiled browser privileged boundaries
+        env:
+          P0_REQUIRE_BROWSER_BUILD: '1'
+        run: node scripts/audit-p0-secret-boundaries.mjs
+
+      - name: Run ephemeral Risk Object rotation and compromise drill
+        run: bun scripts/p0-risk-object-key-drill.ts
+
+      - name: Verify staging load harness cannot target production
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
+
+      - name: Record evidence boundary
+        shell: bash
+        run: |
+          {
+            echo '## P0 security and resilience evidence'
+            echo
+            echo '- Dependency outage/recovery regression: PASS'
+            echo '- Privileged source + compiled browser boundary audit: PASS'
+            echo '- Ephemeral Risk Object key rotation/revocation drill: PASS'
+            echo '- Staging-load production-host guard: PASS'
+            echo '- Production/customer load test performed here: false'
+            echo '- Production signing key rotated here: false'
+            echo '- Independent external security review performed here: false'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload redacted P0 evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: p0-security-resilience-${{ github.run_id }}
+          path: |
+            artifacts/p0-secret-boundary-audit.json
+            artifacts/p0-risk-object-key-drill.json
+          if-no-files-found: warn
+          retention-days: 90
