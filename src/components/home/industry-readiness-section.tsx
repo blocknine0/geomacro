@@ -8,12 +8,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HotTopicsLive } from "@/components/home/hot-topics-live";
 
 const CONTROLS = [
   {
     icon: Database,
     title: "Coverage is explicit",
-    body: "Country and corridor delivery is determined from current governed data. Missing, stale or commercially ineligible required evidence makes the requested product unavailable instead of being filled with an estimate.",
+    body: "Country and corridor delivery is determined from current governed data. Geomacro expands toward the maximum defensible sovereign coverage without lowering evidence, freshness or source-rights thresholds to inflate a country count.",
   },
   {
     icon: Clock3,
@@ -89,6 +90,8 @@ export function IndustryReadinessSection() {
           <p><span className="font-medium text-foreground">Risk Gate:</span> controlled Private Pilot with fail-closed verification.</p>
           <p><span className="font-medium text-foreground">Paid agent access:</span> staged behind availability, entitlement and settlement controls; real-funds activation is a separate launch gate.</p>
         </div>
+
+        <HotTopicsLive />
       </div>
     </section>
   );
