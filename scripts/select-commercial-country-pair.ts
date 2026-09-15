@@ -1,3 +1,6 @@
+// Canonical selector for Dan Commercial Readiness Evidence v2. The retired v1
+// workflow used a fixed USA/CHN pair and could fail honestly when either endpoint
+// was not commercially eligible; v2 selects only current verified proof scope.
 import { createClient } from "@supabase/supabase-js";
 
 import { buildCorridorRiskObject } from "../src/lib/corridor-risk-engine";
