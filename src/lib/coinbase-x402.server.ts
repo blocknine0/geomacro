@@ -161,7 +161,7 @@ export function coinbaseX402PaymentRequirements(config: CoinbaseX402Config): Pay
 }
 
 const riskInputExample = {
-  subject: { type: "country", country_iso3: "IND" },
+  subject: { type: "country", country_iso3: "USA" },
   policy_preset: "balanced",
   action_type: "agent_payment",
   amount_usdc: 1000,
