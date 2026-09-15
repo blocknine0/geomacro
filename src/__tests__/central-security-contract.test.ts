@@ -122,6 +122,10 @@ describe("central security deployment contract", () => {
       "server/middleware/00-central-security.ts",
       "utf8",
     );
+    const centralSecurity = readFileSync(
+      "src/lib/central-security.server.ts",
+      "utf8",
+    );
 
     expect(vite).toContain('serverDir: "./server"');
     expect(middleware).toContain("enforceCentralRequestSecurity");
@@ -129,7 +133,8 @@ describe("central security deployment contract", () => {
     expect(middleware).toContain("defineEventHandler");
     expect(middleware).toContain("X-Content-Type-Options");
     expect(middleware).toContain("Retry-After");
-    expect(middleware).toContain(CENTRAL_SECURITY_VERSION);
+    expect(middleware).toContain("CENTRAL_SECURITY_VERSION");
+    expect(centralSecurity).toContain(CENTRAL_SECURITY_VERSION);
   });
 
   it("keeps the distributed abuse ledger server-only with RLS and no raw credential fields", () => {
