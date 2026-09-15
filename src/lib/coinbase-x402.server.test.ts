@@ -6,10 +6,12 @@ import {
   COINBASE_X402_TESTNET_NETWORK,
   COINBASE_X402_TESTNET_USDC,
   assertCoinbasePaymentBinding,
+  bazaarExtensionOutcome,
   coinbasePaymentFingerprint,
   coinbaseRequestFingerprint,
   coinbaseX402PaymentRequired,
   coinbaseX402PaymentRequirements,
+  coinbaseX402PaymentResponseHeader,
   getCoinbaseX402Config,
 } from "./coinbase-x402.server";
 
@@ -130,5 +132,41 @@ describe("Coinbase x402 payment binding and Bazaar declaration", () => {
     expect(coinbasePaymentFingerprint({ z: 1, a: { d: 4, c: 3 } })).toBe(
       coinbasePaymentFingerprint({ a: { c: 3, d: 4 }, z: 1 }),
     );
+  });
+
+  it("never forwards facilitator EXTENSION-RESPONSES through PAYMENT-RESPONSE", () => {
+    const encoded = coinbaseX402PaymentResponseHeader({
+      success: true,
+      transaction: `0x${"11".repeat(32)}`,
+      network: "eip155:84532",
+      extensionResponses: {
+        bazaar: { status: "rejected", rejectedReason: "internal catalog reason" },
+      },
+      extensions: { buyerVisible: { status: "ok" } },
+    });
+    const decoded = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    expect(decoded.extensionResponses).toBeUndefined();
+    expect(decoded.extensions).toEqual({ buyerVisible: { status: "ok" } });
+  });
+
+  it("extracts only bounded Bazaar status data for internal telemetry", () => {
+    expect(
+      bazaarExtensionOutcome(null, {
+        success: true,
+        extensionResponses: { bazaar: { status: "success" } },
+      }),
+    ).toEqual({ status: "success", rejectedReason: null });
+
+    const rejected = bazaarExtensionOutcome(null, {
+      success: true,
+      extensionResponses: {
+        bazaar: { status: "rejected", rejectedReason: "x".repeat(900), secret: "ignore-me" },
+      },
+    });
+    expect(rejected.status).toBe("rejected");
+    expect(rejected.rejectedReason).toHaveLength(500);
   });
 });
