@@ -45,7 +45,7 @@ concurrency:
 jobs:
   evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout reviewed source
@@ -69,7 +69,12 @@ jobs:
           src/__tests__/risk-object-key-lifecycle.test.ts
           src/__tests__/commercial-runtime-security.test.ts
 
-      - name: Audit repository and browser privileged boundaries
+      - name: Build production browser and server boundaries
+        run: bun run build
+
+      - name: Audit repository and compiled browser privileged boundaries
+        env:
+          P0_REQUIRE_BROWSER_BUILD: '1'
         run: node scripts/audit-p0-secret-boundaries.mjs
 
       - name: Run ephemeral Risk Object rotation and compromise drill
@@ -85,7 +90,7 @@ jobs:
             echo '## P0 security and resilience evidence'
             echo
             echo '- Dependency outage/recovery regression: PASS'
-            echo '- Privileged repository/browser boundary audit: PASS'
+            echo '- Privileged source + compiled browser boundary audit: PASS'
             echo '- Ephemeral Risk Object key rotation/revocation drill: PASS'
             echo '- Staging-load production-host guard: PASS'
             echo '- Production/customer load test performed here: false'
