@@ -9,13 +9,28 @@ import {
   type PublicEventDetail,
 } from "@/lib/public-event.functions";
 
-export function EventDetailWorkspace({ eventId }: { eventId: string }) {
+export function EventDetailWorkspace({
+  eventId,
+  initialEvent,
+}: {
+  eventId: string;
+  initialEvent?: PublicEventDetail | null;
+}) {
   const loadEvent = useServerFn(getPublicEventDetail);
-  const [event, setEvent] = useState<PublicEventDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const hasInitialEventState = initialEvent !== undefined;
+  const [event, setEvent] = useState<PublicEventDetail | null>(initialEvent ?? null);
+  const [loading, setLoading] = useState(!hasInitialEventState);
+  const [error, setError] = useState<string | null>(
+    hasInitialEventState && !initialEvent
+      ? "This intelligence event is unavailable or no longer public."
+      : null,
+  );
 
   useEffect(() => {
+    // Route loaders now provide the public event for first-request SSR. Avoid a
+    // second browser request when that canonical loader result is available.
+    if (initialEvent !== undefined) return;
+
     let cancelled = false;
 
     async function load() {
@@ -30,7 +45,6 @@ export function EventDetailWorkspace({ eventId }: { eventId: string }) {
           return;
         }
         setEvent(result);
-        document.title = `${result.source_title ?? "Intelligence event"} · Geomacro`;
       } catch (err) {
         if (cancelled) return;
         console.error("[event-detail] load failed", err);
@@ -45,7 +59,7 @@ export function EventDetailWorkspace({ eventId }: { eventId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [eventId, loadEvent]);
+  }, [eventId, initialEvent, loadEvent]);
 
   if (loading) {
     return (
