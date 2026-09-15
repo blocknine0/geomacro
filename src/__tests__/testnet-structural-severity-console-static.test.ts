@@ -37,6 +37,7 @@ describe("testnet canonical intelligence console", () => {
     expect(runner).toContain("methodology_version");
     expect(runner).toContain("proof_hash");
     expect(runner).toContain("public_verification");
+    expect(runner).toContain("commercial_delivery");
     expect(runner).toContain("execution_authorized: false");
     expect(severityService).toContain('source_table: "live_structured_events"');
   });
@@ -63,9 +64,9 @@ describe("testnet canonical intelligence console", () => {
 
   it("preflights fulfillment prerequisites before either paid API surface can quote or settle", () => {
     expect(preflight).toContain("loadStructuralContext");
-    expect(preflight).toContain("verifyPublicRiskObjectArtifact");
+    expect(preflight).toContain("assertCommercialRiskObjectDeliverable");
     expect(preflight).toContain("readPublicGlobalRisk");
-    expect(preflight).toContain("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+    expect(preflight).toContain("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
     expect(preflight).toContain("STRUCTURAL_DATA_UNAVAILABLE");
 
     for (const route of [apiRoute, developerApiRoute]) {
