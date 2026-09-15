@@ -32,6 +32,13 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
     expect(script).toContain("duplicate_charge_count: 0");
   });
 
+  it("proves the same payment proof cannot authorize changed business terms", () => {
+    expect(script).toContain("Reuse the exact signed proof with changed business terms");
+    expect(script).toContain("conflict.status !== 409");
+    expect(script).toContain("reused_proof_different_request_conflict_409: true");
+    expect(script).toContain("conflict_no_debit: true");
+  });
+
   it("keeps the Risk Gate non-authorizing boundary in both paid and replay responses", () => {
     expect(script).toContain("execution_authorized must be false");
     expect(script).toContain('execution_authorized: false');
@@ -53,6 +60,7 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
     expect(workflow).toContain("retention-days: 90");
     expect(script).toContain("settlement_tx_hash: txHash");
     expect(script).toContain("payer_usdc_after_replay_atomic");
+    expect(script).toContain("payer_usdc_after_conflict_atomic");
     expect(script).toContain("observed_first_debit_atomic");
   });
 });
