@@ -59,8 +59,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jq -e '.summary.accepted >= 1' global-risk-gate-country-census.json >/dev/null
-          jq -e '.claim_boundary.execution_authorized == false' global-risk-gate-country-census.json >/dev/null || true
+          jq -e '.summary.accepted_country_count >= 1' global-risk-gate-country-census.json >/dev/null
           jq '{generated_at,denominator,summary,claim_boundary}' global-risk-gate-country-census.json
 
       - name: Upload country readiness evidence
