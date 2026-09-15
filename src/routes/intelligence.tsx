@@ -8,32 +8,47 @@ import { RiskChart } from "@/components/home/risk-chart";
 import {
   applyIntelFilters,
   availableSorts,
+  buildPublicIntelligence,
   prettyCategory,
   useIntelligence,
   type IntelEvent,
   type IntelSort,
 } from "@/lib/use-intelligence";
+import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { useGlobalRisk } from "@/lib/use-global-risk";
 
-const TITLE = "Risk Intelligence · Geomacro";
+const TITLE = "Live Geopolitical & Macro Risk Intelligence | Geomacro";
 const DESCRIPTION =
-  "Follow current geopolitical and macro risk with scored events, evidence, timestamps, the current GRI and filters for professional research.";
+  "Follow current geopolitical and macro risk through scored events, evidence context, timestamps and the verified Global Risk Index for professional research.";
+const URL = "https://geomacro.live/intelligence";
+const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
 export const Route = createFileRoute("/intelligence")({
+  loader: async () => {
+    const rows = await getPublicIntelligenceSeo({ data: {} });
+    return { rows, now: Date.now() };
+  },
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://geomacro.live/intelligence" },
-      { property: "og:image", content: "https://geomacro.live/og-signal-card-v2.png" },
+      { property: "og:url", content: URL },
+      { property: "og:image", content: IMAGE },
+      { property: "og:image:secure_url", content: IMAGE },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Geomacro live geopolitical and macro risk intelligence" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
+      { name: "twitter:image", content: IMAGE },
+      { name: "twitter:image:alt", content: "Geomacro live geopolitical and macro risk intelligence" },
     ],
-    links: [{ rel: "canonical", href: "https://geomacro.live/intelligence" }],
+    links: [{ rel: "canonical", href: URL }],
     scripts: [
       {
         type: "application/ld+json",
@@ -41,9 +56,11 @@ export const Route = createFileRoute("/intelligence")({
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Geomacro Risk Intelligence",
-          url: "https://geomacro.live/intelligence",
+          url: URL,
           description: DESCRIPTION,
-          isPartOf: { "@type": "WebSite", name: "Geomacro", url: "https://geomacro.live/" },
+          inLanguage: "en",
+          isPartOf: { "@id": "https://geomacro.live/#website" },
+          publisher: { "@id": "https://geomacro.live/#organization" },
         }),
       },
     ],
@@ -52,7 +69,12 @@ export const Route = createFileRoute("/intelligence")({
 });
 
 function IntelligencePage() {
-  const intel = useIntelligence();
+  const loaderData = Route.useLoaderData();
+  const initialData = useMemo(
+    () => loaderData.rows.length ? buildPublicIntelligence(loaderData.rows, loaderData.now) : null,
+    [loaderData.now, loaderData.rows],
+  );
+  const intel = useIntelligence(initialData);
   const globalRisk = useGlobalRisk();
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
