@@ -8,7 +8,7 @@ on:
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "src/routes/api.x402.risk.ts"
-      - "supabase/migrations/926_coinbase_x402_delivery_ledger.sql"
+      - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
 
 permissions:
   contents: read
