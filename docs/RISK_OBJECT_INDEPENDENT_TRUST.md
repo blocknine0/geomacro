@@ -1,6 +1,6 @@
 # Geomacro Risk Object independent trust
 
-Status: implemented trust-hardening contract for newly published signed Risk Objects. Onchain registry deployment is an operational step and is not implied by source code alone.
+Status: implemented and independently verified on Base Sepolia. The canonical Base Sepolia RiskKeyRegistry was deployed and the current Ed25519 Risk Object verification-key hash was published and activated on 2026-09-15. Arc Testnet remains an optional second anchor.
 
 ## Why this exists
 
@@ -50,12 +50,13 @@ Historical `gro-1.1` artifacts that predate this hardening may not contain `obse
 
 The contract never receives or stores the Ed25519 private signing key. A published `keyId` binding cannot be overwritten. Key compromise is handled by revocation; ordinary rotation publishes a new unique key ID and changes the active key.
 
-Initial Coinbase/x402 anchor target:
+Canonical Coinbase/x402 anchor:
 
 ```text
 Base Sepolia
 chain id: 84532
 CAIP-2: eip155:84532
+RiskKeyRegistry: 0xb1881d2f0026395d5016b90031a8acc651a2e316
 ```
 
 Arc Testnet can use the same contract and the same Geomacro trust document as a second anchor:
@@ -66,9 +67,39 @@ chain id: 5042002
 CAIP-2: eip155:5042002
 ```
 
-The runtime advertises a registry address only when one is explicitly configured. An unconfigured address is reported as `not_configured`; the API must never invent or imply a deployment.
+The verified Base Sepolia address is source-controlled in `src/lib/risk-object-trust-discovery.server.ts`, so the public trust-discovery endpoint cannot silently change that trust anchor through mutable hosting configuration. Arc Testnet remains configuration-driven until an independently verified deployment is pinned in the same way.
 
-## Base Sepolia deployment
+## Verified Base Sepolia deployment
+
+The deployment and key publication completed through the bounded GitHub Actions deployment workflow after all five `RiskKeyRegistry` contract tests passed.
+
+```text
+Registry: 0xb1881d2f0026395d5016b90031a8acc651a2e316
+Owner: 0x0C8fb1055C22dF132659f3C453dd7B2093f7AD58
+Deploy tx: 0xc048a319148e37b4dd12fd035d72bd6375b54151414a6c99fb32f6e8b6e0a04f
+Key ID: geomacro-risk-2026-02
+Public-key hash: 0xcd1f77d2d9f72408d45deb71f46b19195cc82902c05a8a0946c77e66e1dcc258
+Public-key fingerprint (SHA-256): 526a7956d2a9ccd10b94d05fd4bc19e4464f1e431734bc60ab5b0d9c9b1ad6ec
+```
+
+Key publication/activation transactions:
+
+```text
+0xd5539f5c37f836b1e55863859b656e2f3b02f9a541369272e81c7069f68abffb
+0x939b6e80ce05524f37c319b99b2e9876ac3e6c3d2676c271deabd171f208e4be
+```
+
+The workflow independently verified deployed bytecode, owner, active key ID and current key usability after broadcast. It persisted no deployment private key and did not authorize Risk Gate execution.
+
+Permanent sanitized evidence is committed at:
+
+```text
+docs/evidence/base-sepolia-risk-key-registry-2026-09-15.json
+```
+
+The originating GitHub Actions run was `34996472294`; the uploaded artifact digest was `sha256:ef5929294b75fe6b900404534c96b98dfad588613c1cd5534be8fe699270bbfb`.
+
+## Reproducing deployment and publication
 
 Use an authorized deployment wallet through a local environment or CI secret. Never paste a private key into source control, an issue, a log, or chat.
 
@@ -80,16 +111,10 @@ forge script script/DeployRiskKeyRegistry.s.sol:DeployRiskKeyRegistry \
   --broadcast
 ```
 
-After deployment, keep the returned address as:
-
-```text
-RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA=0x...
-```
-
-Publish and activate the current public Risk Object signing key:
+For a newly authorized registry deployment, publish and activate the current public Risk Object signing key with:
 
 ```bash
-export RISK_KEY_REGISTRY_ADDRESS="$RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA"
+export RISK_KEY_REGISTRY_ADDRESS="<verified-registry-address>"
 export RISK_OBJECT_JWKS_URI="https://geomacro.live/.well-known/jwks.json"
 
 forge script script/PublishRiskKey.s.sol:PublishRiskKey \
@@ -110,14 +135,15 @@ RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64
 RISK_OBJECT_VERIFY_KEYS_JSON
 ```
 
-Optional public onchain anchors:
+The canonical Base Sepolia registry is now pinned in source and does not require a hosting environment variable for discovery. `RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA`, where still present in deployment templates, is a public compatibility/configuration value and must equal the canonical address above if used.
+
+Arc Testnet remains optional and configuration-driven:
 
 ```text
-RISK_OBJECT_KEY_REGISTRY_BASE_SEPOLIA
 RISK_OBJECT_KEY_REGISTRY_ARC_TESTNET
 ```
 
-The two registry-address variables are public addresses, not secrets.
+Registry addresses are public addresses, not secrets.
 
 ## Rotation policy
 
