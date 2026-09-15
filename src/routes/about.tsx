@@ -42,7 +42,7 @@ function AboutPage() {
           <h2 className="mt-3 text-xl font-semibold">Current product status</h2>
           <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
             <li><span className="font-medium text-foreground">Live:</span> public risk intelligence, Global Risk Index and Ask Geomacro.</li>
-            <li><span className="font-medium text-foreground">Private Pilot:</span> Risk Gate, signed Risk Objects and scoped API delivery.</li>
+            <li><span className="font-medium text-foreground">Private Pilot:</span> Risk Gate, signed country/directional-corridor Risk Objects and scoped API delivery.</li>
             <li><span className="font-medium text-foreground">Technical Proof:</span> Arc Testnet, USDC, prediction-market and programmable-finance implementation.</li>
           </ul>
         </article>
@@ -70,7 +70,8 @@ function AboutPage() {
           <h2 className="text-xl font-semibold">What Geomacro does not claim</h2>
           <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
             <li>Geomacro intelligence is not financial, legal or investment advice.</li>
-            <li>Risk Gate does not authorize or execute a customer's transaction.</li>
+            <li>Risk Gate does not authorize or execute a customer's transaction; <code>execution_authorized=false</code> remains the current external boundary.</li>
+            <li>Customer identity, permissions, policy, funds and final execution remain customer-controlled.</li>
             <li>There is no claim of an independent external security review or production SLA until those are completed.</li>
             <li>Testnet USDC and testnet market activity are not represented as real-money settlement.</li>
           </ul>
