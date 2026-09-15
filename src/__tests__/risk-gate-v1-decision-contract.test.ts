@@ -12,6 +12,12 @@ const V1_DECISIONS = [
   "PAUSE",
 ] as const;
 
+const CURRENT_V1_SURFACES = [
+  "src/routes/risk-gate.tsx",
+  "src/content/docs/03-product-surfaces.md",
+  "src/content/docs/26-agent-intelligence.md",
+] as const;
+
 describe("Risk Gate v1 decision contract", () => {
   it("keeps the machine contract to the four implemented v1 decisions", () => {
     const contract = read("src/lib/risk-gate-contract.ts");
@@ -22,14 +28,22 @@ describe("Risk Gate v1 decision contract", () => {
     expect(contract).not.toContain('| "REROUTE"');
   });
 
-  it("keeps the current Risk Gate product page aligned with the v1 machine contract", () => {
-    const route = read("src/routes/risk-gate.tsx");
-
-    for (const decision of V1_DECISIONS) {
-      expect(route).toContain(`\"${decision}\"`);
+  it("keeps current v1 product surfaces aligned with the machine contract", () => {
+    for (const path of CURRENT_V1_SURFACES) {
+      const content = read(path);
+      for (const decision of V1_DECISIONS) {
+        expect(content, `${path} must expose ${decision}`).toContain(decision);
+      }
     }
+
+    const route = read("src/routes/risk-gate.tsx");
     expect(route).not.toContain('\"REROUTE\"');
     expect(route).toContain("execution_authorized = false");
+
+    const surfaces = read("src/content/docs/03-product-surfaces.md");
+    const agentDocs = read("src/content/docs/26-agent-intelligence.md");
+    expect(surfaces).toContain("`REROUTE` is not a current v1 machine decision");
+    expect(agentDocs).toContain("`REROUTE` is not a current Risk Gate v1 machine decision");
   });
 
   it("keeps rerouting as a future/advisory v2 alternative rather than a v1 decision", () => {
