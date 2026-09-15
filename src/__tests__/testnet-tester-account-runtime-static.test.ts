@@ -51,6 +51,7 @@ describe("testnet tester account runtime boundaries", () => {
       "../../server/api/testnet-tester/wallet-challenge.post.ts",
       "../../server/api/testnet-tester/wallet-verify.post.ts",
       "../../server/api/testnet-tester/developer-key.post.ts",
+      "../../server/api/testnet-tester/developer-key-rotate.post.ts",
       "../../server/api/testnet-tester/payment-claim.post.ts",
     ]) {
       expect(read(path)).toContain("requireTesterPrincipal");
@@ -106,6 +107,6 @@ describe("testnet tester account runtime boundaries", () => {
     expect(service).toContain("TESTNET_DEVELOPER_KEY_ALREADY_EXISTS");
     expect(service).toContain("hasUsableDeveloperCredential");
     expect(service).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
-    expect(service).toContain("api_secret: apiSecret");
+    expect(service).toContain("api_secret: input.apiSecret");
   });
 });
