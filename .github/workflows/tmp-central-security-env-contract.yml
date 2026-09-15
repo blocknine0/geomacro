@@ -1,0 +1,55 @@
+name: Temporary Central Security Env Contract Patcher
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.event.pull_request.head.ref == 'security/central-real-funds-gate' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: security/central-real-funds-gate
+          fetch-depth: 0
+      - name: Patch canonical environment contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('.env.example')
+          text = path.read_text()
+          marker = 'GEOMACRO_CENTRAL_SECURITY_MODE='
+          if marker not in text:
+              anchor = '''SUPABASE_SERVICE_ROLE_KEY=\n\n# ---- Testnet Developer API live runtime ----\n'''
+              block = '''SUPABASE_SERVICE_ROLE_KEY=\n\n# ---- Central security P0 boundary (server-only) ----\n# Central request protection is required across sensitive API/auth/payment paths.\n# Keep real-funds acknowledgement blank until every security release gate passes.\n# Production real-funds mode requires `enforce` plus both dedicated random peppers.\nGEOMACRO_CENTRAL_SECURITY_MODE=enforce\nGEOMACRO_REAL_FUNDS_SECURITY_ACK=\nGEOMACRO_SECURITY_FINGERPRINT_PEPPER=\nGEOMACRO_API_CREDENTIAL_PEPPER=\n\n# ---- Testnet Developer API live runtime ----\n'''
+              if text.count(anchor) != 1:
+                  raise SystemExit('expected exactly one Supabase/Testnet env anchor')
+              text = text.replace(anchor, block, 1)
+              path.write_text(text)
+
+          test = Path('src/__tests__/central-security-contract.test.ts')
+          source = test.read_text()
+          if 'canonical environment template keeps the real-funds acknowledgement blank' not in source:
+              anchor = '''  it("requires aggregate RLS and browser-privilege verification before real funds", () => {\n'''
+              addition = '''  it("canonical environment template keeps the real-funds acknowledgement blank", () => {\n    const env = readFileSync(".env.example", "utf8");\n    expect(env).toContain("GEOMACRO_CENTRAL_SECURITY_MODE=enforce");\n    expect(env).toContain("GEOMACRO_REAL_FUNDS_SECURITY_ACK=\\n");\n    expect(env).toContain("GEOMACRO_SECURITY_FINGERPRINT_PEPPER=\\n");\n    expect(env).toContain("GEOMACRO_API_CREDENTIAL_PEPPER=\\n");\n    expect(env).not.toContain(\n      `GEOMACRO_REAL_FUNDS_SECURITY_ACK=${REAL_FUNDS_SECURITY_ACK}`,\n    );\n  });\n\n  it("requires aggregate RLS and browser-privilege verification before real funds", () => {\n'''
+              if source.count(anchor) != 1:
+                  raise SystemExit('expected exactly one readiness test anchor')
+              test.write_text(source.replace(anchor, addition, 1))
+      - name: Commit permanent env/test patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            exit 0
+          fi
+          git diff --check
+          git config user.name "@PolarisDoctrine"
+          git config user.email "160921639+blocknine0@users.noreply.github.com"
+          git add .env.example src/__tests__/central-security-contract.test.ts
+          git commit -m "security: document central real-funds environment gate"
+          git push origin HEAD:security/central-real-funds-gate
