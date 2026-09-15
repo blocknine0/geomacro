@@ -1,0 +1,63 @@
+name: GRI Public Proof Consistency
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "23 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gri-public-proof-consistency
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GRI_METHOD_VERSION: gri-v1.2.0
+      GRI_PROOF_VERSION: gri-proof-v1.2.0
+      GRI_CONSISTENCY_ARTIFACT: artifacts/gri-public-proof-consistency.json
+
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Audit persisted public/service GRI parity
+        run: node scripts/audit-gri-public-proof-consistency.mjs
+
+      - name: Resolve audited snapshot id
+        id: snapshot
+        shell: bash
+        run: |
+          snapshot_id="$(node -e 'const e=require("./artifacts/gri-public-proof-consistency.json"); if(!e.snapshotId) process.exit(1); process.stdout.write(e.snapshotId)')"
+          echo "id=$snapshot_id" >> "$GITHUB_OUTPUT"
+
+      - name: Install verifier runtime dependencies
+        run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+
+      - name: Independently recompute persisted proof
+        run: |
+          node scripts/verify-gri-snapshot-v12.js --snapshot-id "${{ steps.snapshot.outputs.id }}" \
+            > artifacts/gri-public-proof-verifier.json
+
+      - name: Upload sanitized GRI consistency evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gri-public-proof-consistency-${{ github.run_id }}
+          path: |
+            artifacts/gri-public-proof-consistency.json
+            artifacts/gri-public-proof-verifier.json
+          if-no-files-found: warn
+          retention-days: 90
