@@ -74,15 +74,17 @@ Acceptance requires `valid: true` and `simulation.outcome: "accepted"`.
 
 Use `.github/workflows/coinbase-x402-base-sepolia-paid-e2e.yml` only with a dedicated Base Sepolia buyer wallet. The workflow is manual-only, hard-pinned to `https://geomacro.live/api/x402/risk`, hard-pinned to Base Sepolia USDC, and refuses any advertised amount above `0.05` USDC.
 
-Create a protected GitHub environment named `coinbase-x402-base-sepolia-paid-proof` and add:
+The workflow uses the existing repository Actions secret:
 
 ```text
-GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY=<dedicated Base Sepolia test-wallet private key>
-GEOMACRO_COINBASE_X402_BUYER_ADDRESS=<matching public address, recommended>
-GEOMACRO_COINBASE_X402_BASE_SEPOLIA_RPC=<optional Base Sepolia RPC; defaults to https://sepolia.base.org>
+COINBASE_X402_BASE_SEPOLIA_PAID_PROOF=<dedicated Base Sepolia test-wallet private key>
 ```
 
-Never paste the buyer private key into chat, issues, PRs, logs, workflow inputs, Lovable, source code, or artifacts. The wallet must hold at least the configured x402 amount in Base Sepolia USDC before the run.
+No separate buyer-address secret is required. The E2E script derives the payer address from the private key and defaults to the public Base Sepolia RPC at `https://sepolia.base.org`.
+
+Because this is a repository-level secret rather than an environment-scoped secret, keep it dedicated to this disposable test wallet only. The paid workflow is owner-gated to `blocknine0`, manual-dispatch only, and still requires the explicit payment acknowledgement before any signed payment is created.
+
+Never paste the buyer private key into chat, issues, PRs, logs, workflow inputs, Lovable, source code, or artifacts. The wallet must hold at least the configured x402 amount in Base Sepolia USDC before the run. Do not use this secret for a production or treasury wallet.
 
 Run the workflow with the exact confirmation:
 
