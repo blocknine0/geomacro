@@ -84,6 +84,10 @@ Implemented HTTP+JSON v1 task methods:
 - `DELETE /api/a2a/tasks/{id}/pushNotificationConfigs/{configId}`
 - `GET /api/a2a/extendedAgentCard`
 
+A `messageId` is an idempotency identity within a commercial principal. Replaying the same message returns the existing task. Reusing that `messageId` with a different payload, task or context fails closed with `A2A_MESSAGE_ID_CONFLICT`; it is never silently treated as the original request.
+
+When task history is requested, Geomacro returns the bounded most-recent messages in chronological order. This prevents an old prefix of a long conversation from being mistaken for the current task state.
+
 Streaming and task subscription are not advertised in v1. Geomacro advertises `streaming: false` and rejects unsupported asynchronous execution semantics rather than pretending they are available.
 
 ## Testnet pay-per-call continuation
@@ -118,7 +122,43 @@ Geomacro can act as an A2A client through:
 
 `POST /api/a2a/outbound`
 
-This endpoint is restricted to API Pilot or Institutional entitlements. It only accepts a `peer_id`, never a caller-supplied target URL.
+This endpoint is restricted to API Pilot or Institutional entitlements. It accepts a server-configured `peer_id` and an explicit `required_skill_id`; it never accepts a caller-supplied target URL.
+
+Before any outbound task is sent, Geomacro performs capability negotiation against the trusted peer Agent Card. The peer must advertise:
+
+- A2A `HTTP+JSON` protocol version `1.0`;
+- the requested `required_skill_id`;
+- an interface host matching the Agent Card host or an explicit server-side allowlist.
+
+If the capability is absent, Geomacro fails closed before task dispatch.
+
+Example outbound envelope:
+
+```json
+{
+  "peer_id": "treasury-agent",
+  "required_skill_id": "treasury_risk_review",
+  "message": {
+    "messageId": "geomacro-outbound-001",
+    "role": "ROLE_USER",
+    "parts": [
+      {
+        "data": {
+          "country_iso3": "IND",
+          "risk_gate_decision": "REQUIRE_APPROVAL"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}
+```
+
+When a trusted peer returns a non-terminal remote task, Geomacro persists the remote task identity and can refresh it through:
+
+`GET /api/a2a/outbound/{localTaskId}`
+
+The refresh re-discovers the configured peer, re-validates the required capability and interface boundary, fetches the exact remote task identity, rejects identity substitution, persists the new state and writes an audit event. This provides a durable Geomacro-to-agent lifecycle without creating an arbitrary outbound proxy.
 
 Trusted peers are configured server-side with `GEOMACRO_A2A_TRUSTED_PEERS_JSON`. Example shape:
 

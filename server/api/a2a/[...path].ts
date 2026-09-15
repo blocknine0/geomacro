@@ -17,6 +17,10 @@ import {
   geomacroA2AAgentCard,
 } from "../../../src/lib/a2a-contract";
 import {
+  assertA2AMessageIdempotency,
+  loadLatestA2AMessageHistory,
+} from "../../../src/lib/a2a-inbound-integrity.server";
+import {
   A2AServiceError,
   cancelA2ATask,
   createA2APushConfig,
@@ -78,6 +82,12 @@ function requireLocalTaskId(value: string | undefined) {
       "A Geomacro task continuation must use the UUID taskId previously returned by Geomacro.",
     );
   }
+}
+
+function boundedHistoryLength(raw: unknown, fallback = 20) {
+  const parsed = Number(raw ?? fallback);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(50, Math.trunc(parsed)));
 }
 
 async function parseJsonBody(event: any) {
@@ -151,7 +161,22 @@ export default defineEventHandler(async (event) => {
     if (method === "POST" && path === "message:send") {
       const request = a2aSendMessageRequestSchema.parse(await parseJsonBody(event));
       requireLocalTaskId(request.message.taskId);
-      return { task: await sendA2AMessage({ principal, request }) };
+      await assertA2AMessageIdempotency({
+        principalId: principal.principal_id,
+        message: request.message,
+      });
+      const task = await sendA2AMessage({ principal, request });
+      const historyLength = boundedHistoryLength(request.configuration?.historyLength, 20);
+      return {
+        task: {
+          ...task,
+          history: await loadLatestA2AMessageHistory({
+            principalId: principal.principal_id,
+            taskId: String(task.id),
+            limit: historyLength,
+          }),
+        },
+      };
     }
 
     if (method === "GET" && path === "tasks") {
@@ -177,12 +202,20 @@ export default defineEventHandler(async (event) => {
     const taskMatch = path.match(/^tasks\/([^/]+)$/);
     if (method === "GET" && taskMatch) {
       const query = getQuery(event);
-      const historyRaw = Number(query.historyLength ?? 20);
-      return await getA2ATask({
+      const historyLength = boundedHistoryLength(query.historyLength, 20);
+      const task = await getA2ATask({
         principal,
         taskId: requireUuid(taskMatch[1], "taskId"),
-        historyLength: Number.isFinite(historyRaw) ? historyRaw : 20,
+        historyLength: 0,
       });
+      return {
+        ...task,
+        history: await loadLatestA2AMessageHistory({
+          principalId: principal.principal_id,
+          taskId: String(task.id),
+          limit: historyLength,
+        }),
+      };
     }
 
     const pushCollectionMatch = path.match(/^tasks\/([^/]+)\/pushNotificationConfigs$/);
