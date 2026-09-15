@@ -9,15 +9,6 @@ on:
       - "src/lib/coinbase-x402.server.test.ts"
       - "src/routes/api.x402.risk.ts"
       - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/coinbase-x402-base-sepolia-acceptance.yml"
-      - "src/lib/coinbase-x402.server.ts"
-      - "src/lib/coinbase-x402.server.test.ts"
-      - "src/routes/api.x402.risk.ts"
-      - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
 
 permissions:
   contents: read
@@ -39,8 +30,6 @@ jobs:
           set -euo pipefail
           file=".github/workflows/coinbase-x402-base-sepolia-acceptance.yml"
           grep -q 'workflow_dispatch:' "$file"
-          grep -q 'push:' "$file"
-          grep -q "github.event_name != 'pull_request'" "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'https://geomacro.live/api/x402/risk' "$file"
           grep -q 'eip155:84532' "$file"
@@ -57,10 +46,10 @@ jobs:
             echo "::error title=Secret-free acceptance violated::This public acceptance workflow must never require payment signing or private credentials."
             exit 1
           fi
-          echo "PASS: public Base Sepolia acceptance workflow is main-only, auto-runs on relevant main pushes, and remains secret-free."
+          echo "PASS: public Base Sepolia acceptance workflow is main-only and secret-free."
 
   public-acceptance:
-    if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
