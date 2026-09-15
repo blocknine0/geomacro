@@ -43,10 +43,12 @@ import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
+import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
+import { Route as ApiX402RiskAvailabilityRouteImport } from './routes/api.x402.risk_.availability'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -218,6 +220,11 @@ const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
   path: '/api/testnet-tester/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiX402IntelligenceRoute = ApiX402IntelligenceRouteImport.update({
+  id: '/api/x402/intelligence',
+  path: '/api/x402/intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiX402RiskRoute = ApiX402RiskRouteImport.update({
   id: '/api/x402/risk',
   path: '/api/x402/risk',
@@ -236,6 +243,11 @@ const ApiGoatPilotOrderRoute = ApiGoatPilotOrderRouteImport.update({
 const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
   id: '/api/goat/pilot/status',
   path: '/api/goat/pilot/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiX402RiskAvailabilityRoute = ApiX402RiskAvailabilityRouteImport.update({
+  id: '/api/x402/risk_/availability',
+  path: '/api/x402/risk/availability',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -274,10 +286,12 @@ export interface FileRoutesByFullPath {
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -314,10 +328,12 @@ export interface FileRoutesByTo {
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -355,10 +371,12 @@ export interface FileRoutesById {
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/x402/risk_/availability': typeof ApiX402RiskAvailabilityRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -397,10 +415,12 @@ export interface FileRouteTypes {
     | '/api/demo/feedback'
     | '/api/demo/preflight'
     | '/api/testnet-tester/$'
+    | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/x402/risk/availability'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -437,10 +457,12 @@ export interface FileRouteTypes {
     | '/api/demo/feedback'
     | '/api/demo/preflight'
     | '/api/testnet-tester/$'
+    | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/x402/risk/availability'
   id:
     | '__root__'
     | '/'
@@ -477,10 +499,12 @@ export interface FileRouteTypes {
     | '/api/demo/feedback'
     | '/api/demo/preflight'
     | '/api/testnet-tester/$'
+    | '/api/x402/intelligence'
     | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/x402/risk_/availability'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -518,10 +542,12 @@ export interface RootRouteChildren {
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
+  ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
+  ApiX402RiskAvailabilityRoute: typeof ApiX402RiskAvailabilityRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -764,6 +790,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestnetTesterSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/x402/intelligence': {
+      id: '/api/x402/intelligence'
+      path: '/api/x402/intelligence'
+      fullPath: '/api/x402/intelligence'
+      preLoaderRoute: typeof ApiX402IntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/risk': {
       id: '/api/x402/risk'
       path: '/api/x402/risk'
@@ -790,6 +823,13 @@ declare module '@tanstack/react-router' {
       path: '/api/goat/pilot/status'
       fullPath: '/api/goat/pilot/status'
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/x402/risk_/availability': {
+      id: '/api/x402/risk_/availability'
+      path: '/api/x402/risk/availability'
+      fullPath: '/api/x402/risk/availability'
+      preLoaderRoute: typeof ApiX402RiskAvailabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -830,10 +870,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
+  ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
+  ApiX402RiskAvailabilityRoute: ApiX402RiskAvailabilityRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
