@@ -37,8 +37,11 @@ export async function upsertCoinbaseX402ProductAudit(input: {
     updated_at: now,
   };
 
+  // A payment fingerprint is the durable idempotency key. Retrying the same
+  // verified proof after a safe pre-settlement failure must update the same
+  // audit projection rather than collide with its unique fingerprint.
   const { error } = await db
     .from("coinbase_x402_product_audit")
-    .upsert(row, { onConflict: "request_id" });
+    .upsert(row, { onConflict: "payment_fingerprint_sha256" });
   if (error) throw error;
 }
