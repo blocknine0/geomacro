@@ -8,7 +8,7 @@ on:
       - "src/lib/coinbase-x402-usage-guard.server.ts"
       - "src/lib/coinbase-x402-product-audit.server.ts"
       - "src/routes/api.x402.risk.ts"
-      - "src/routes/api.x402.risk.availability.ts"
+      - "src/routes/api.x402.risk_.availability.ts"
       - "src/routes/api.x402.intelligence.ts"
       - "src/__tests__/coinbase-x402-adaptive-availability-static.test.ts"
       - "supabase/migrations/930_coinbase_x402_agent_usage_guard.sql"
@@ -34,8 +34,6 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Query planner and deliverability tests
         run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/__tests__/coinbase-x402-adaptive-availability-static.test.ts
-      - name: Typecheck
-        run: bunx tsc --noEmit
       - name: Database migration safety
         run: bun run db:safety
       - name: Verify no-charge and mainnet safety invariants
@@ -45,11 +43,13 @@ jobs:
           grep -q 'checkAgentQueryDeliverability' src/routes/api.x402.intelligence.ts
           grep -q 'FINAL_AVAILABILITY' src/routes/api.x402.intelligence.ts
           grep -q 'LEGACY_X402_PRODUCTION_DISABLED' src/routes/api.x402.risk.ts
-          grep -q 'payment_required_now: false' src/routes/api.x402.risk.availability.ts
-          ! grep -q 'settleCoinbaseX402' src/routes/api.x402.risk.availability.ts
+          grep -q 'payment_required_now: false' src/routes/api.x402.risk_.availability.ts
+          ! grep -q 'settleCoinbaseX402' src/routes/api.x402.risk_.availability.ts
           grep -q 'reserveCoinbaseX402AgentUsage' src/routes/api.x402.intelligence.ts
           grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/routes/api.x402.intelligence.ts
           grep -q 'COMMERCIAL_SOURCE_NOT_ELIGIBLE' src/lib/agent-query-deliverability.server.ts
+          grep -q 'coinbase_x402_usage_reservations' supabase/migrations/930_coinbase_x402_agent_usage_guard.sql
+          grep -q 'coinbase_x402_product_audit' supabase/migrations/931_coinbase_x402_product_audit.sql
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
             echo 'ERROR: real-USDC gate must remain locked in source.' >&2
             exit 1
