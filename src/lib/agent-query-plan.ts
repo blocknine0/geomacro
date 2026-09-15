@@ -261,7 +261,7 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 function stableHash(value: unknown) {
-  return createHash("sha256\").update(JSON.stringify(canonicalize(value))).digest("hex");
+  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
 }
 
 export type AgentQueryPlan = {
