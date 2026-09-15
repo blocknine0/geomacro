@@ -227,6 +227,32 @@ function isRecord(
 }
 
 
+function assertOnlyKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string,
+): void {
+  const allowedSet =
+    new Set(allowed);
+
+  const unsupported =
+    Object.keys(value)
+      .filter(
+        (key) =>
+          !allowedSet.has(key),
+      )
+      .sort();
+
+  if (unsupported.length > 0) {
+    throw new RiskGateApiError(
+      400,
+      "INVALID_REQUEST",
+      `${field} contains unsupported field(s): ${unsupported.join(", ")}`,
+    );
+  }
+}
+
+
 function requiredString(
   value: unknown,
   field: string,
@@ -356,6 +382,22 @@ function parseExternalPolicy(
       "policy must be an object",
     );
   }
+
+  assertOnlyKeys(
+    value,
+    [
+      "policy_id",
+      "policy_version",
+      "continue_max_score",
+      "reduce_limit_max_score",
+      "require_approval_max_score",
+      "minimum_confidence_for_auto_continue",
+      "require_commercial_verification_for_continue",
+      "max_positive_delta_for_auto_continue",
+      "hard_stop_driver_contributions",
+    ],
+    "policy",
+  );
 
   const policyId =
     requiredString(
@@ -617,6 +659,19 @@ parseExternalRiskGateBody(
     );
   }
 
+  assertOnlyKeys(
+    value,
+    [
+      "request_id",
+      "country_iso3",
+      "subject",
+      "evaluated_at",
+      "action_context",
+      "policy",
+    ],
+    "request",
+  );
+
   const requestId =
     requiredString(
       value.request_id,
@@ -723,6 +778,15 @@ parseExternalRiskGateBody(
     if (
       type === "country"
     ) {
+      assertOnlyKeys(
+        subject,
+        [
+          "type",
+          "country_iso3",
+        ],
+        "subject",
+      );
+
       const iso3 =
         parseIso3(
           subject.country_iso3,
@@ -742,6 +806,16 @@ parseExternalRiskGateBody(
     } else if (
       type === "corridor"
     ) {
+      assertOnlyKeys(
+        subject,
+        [
+          "type",
+          "origin_country_iso3",
+          "destination_country_iso3",
+        ],
+        "subject",
+      );
+
       const origin =
         parseIso3(
           subject
@@ -835,6 +909,18 @@ parseExternalRiskGateBody(
     const source =
       value.action_context;
 
+    assertOnlyKeys(
+      source,
+      [
+        "action_type",
+        "amount",
+        "currency",
+        "destination",
+        "metadata",
+      ],
+      "action_context",
+    );
+
     const metadata =
       source.metadata;
 
@@ -864,6 +950,9 @@ parseExternalRiskGateBody(
         optionalFiniteNumber(
           source.amount,
           "action_context.amount",
+          {
+            min: 0,
+          },
         ),
 
       currency:

@@ -293,6 +293,171 @@ describe(
     );
 
     it(
+      "rejects unknown top-level request fields instead of silently ignoring typos",
+      () => {
+        const body =
+          validCountryBody() as
+            Record<string, unknown>;
+
+        body.polciy_typo =
+          true;
+
+        const error =
+          captureApiError(
+            () =>
+              parseExternalRiskGateBody(
+                body,
+                NOW,
+              ),
+          );
+
+        expect(error.code).toBe(
+          "INVALID_REQUEST",
+        );
+        expect(error.message).toContain(
+          "polciy_typo",
+        );
+      },
+    );
+
+    it(
+      "rejects unknown policy fields instead of accepting a misspelled control",
+      () => {
+        const body =
+          validCountryBody() as
+            Record<string, unknown>;
+
+        body.policy = {
+          ...validPolicy(),
+          continue_max_scor: 20,
+        };
+
+        const error =
+          captureApiError(
+            () =>
+              parseExternalRiskGateBody(
+                body,
+                NOW,
+              ),
+          );
+
+        expect(error.code).toBe(
+          "INVALID_REQUEST",
+        );
+        expect(error.message).toContain(
+          "continue_max_scor",
+        );
+      },
+    );
+
+    it(
+      "rejects fields that do not belong to the selected subject shape",
+      () => {
+        const error =
+          captureApiError(
+            () =>
+              parseExternalRiskGateBody(
+                {
+                  request_id: "req_subject_extra",
+                  subject: {
+                    type: "country",
+                    country_iso3: "USA",
+                    destination_country_iso3: "CHN",
+                  },
+                  policy: validPolicy(),
+                },
+                NOW,
+              ),
+          );
+
+        expect(error.code).toBe(
+          "INVALID_REQUEST",
+        );
+        expect(error.message).toContain(
+          "destination_country_iso3",
+        );
+      },
+    );
+
+    it(
+      "rejects unknown action-context fields and negative amounts",
+      () => {
+        const extraField =
+          captureApiError(
+            () =>
+              parseExternalRiskGateBody(
+                {
+                  ...validCountryBody(),
+                  action_context: {
+                    action_type: "vendor_payment",
+                    approval_override: true,
+                  },
+                },
+                NOW,
+              ),
+          );
+
+        expect(extraField.code).toBe(
+          "INVALID_REQUEST",
+        );
+        expect(extraField.message).toContain(
+          "approval_override",
+        );
+
+        const negativeAmount =
+          captureApiError(
+            () =>
+              parseExternalRiskGateBody(
+                {
+                  ...validCountryBody(),
+                  action_context: {
+                    amount: -1,
+                  },
+                },
+                NOW,
+              ),
+          );
+
+        expect(negativeAmount.code).toBe(
+          "INVALID_REQUEST",
+        );
+        expect(negativeAmount.message).toContain(
+          "action_context.amount",
+        );
+      },
+    );
+
+    it(
+      "keeps bounded metadata as the intentional action-context extension point",
+      () => {
+        const parsed =
+          parseExternalRiskGateBody(
+            {
+              ...validCountryBody(),
+              action_context: {
+                action_type: "vendor_payment",
+                amount: 0,
+                metadata: {
+                  customer_reference: "pilot-42",
+                  nested: { safe: true },
+                },
+              },
+            },
+            NOW,
+          );
+
+        expect(
+          parsed.action_context?.amount,
+        ).toBe(0);
+        expect(
+          parsed.action_context?.metadata,
+        ).toMatchObject({
+          customer_reference: "pilot-42",
+        });
+      },
+    );
+
+    it(
       "preserves directional corridor identity",
       () => {
         const parsed =
