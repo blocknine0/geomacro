@@ -1,0 +1,175 @@
+name: Coinbase x402 Base Sepolia Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/coinbase-x402-base-sepolia-acceptance.yml"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "src/routes/api.x402.risk.ts"
+      - "supabase/migrations/926_coinbase_x402_delivery_ledger.sql"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate acceptance guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/coinbase-x402-base-sepolia-acceptance.yml"
+          grep -q 'workflow_dispatch:' "$file"
+          grep -q "github.ref == 'refs/heads/main'" "$file"
+          grep -q 'https://geomacro.live/api/x402/risk' "$file"
+          grep -q 'eip155:84532' "$file"
+          grep -q '0x036CbD53842c5426634e7929541eC2318f3dCF7e' "$file"
+
+          # Build forbidden strings from fragments so this validator does not
+          # match its own source text. The public acceptance job is intentionally
+          # unable to sign or settle payments and must remain secret-free.
+          forbidden_cdp="CDP_API_KEY_"'SECRET'
+          forbidden_private="PRIVATE_"'KEY'
+          forbidden_seed="SEED_"'PHRASE'
+          forbidden_mnemonic="MNEMO"'NIC'
+          if grep -Fq "$forbidden_cdp" "$file" || \
+             grep -Fq "$forbidden_private" "$file" || \
+             grep -Fq "$forbidden_seed" "$file" || \
+             grep -Fq "$forbidden_mnemonic" "$file"; then
+            echo "::error title=Secret-free acceptance violated::This public acceptance workflow must never require payment signing or private credentials."
+            exit 1
+          fi
+          echo "PASS: public Base Sepolia acceptance workflow is main-only and secret-free."
+
+  public-acceptance:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RESOURCE_URL: https://geomacro.live/api/x402/risk
+      EXPECTED_NETWORK: eip155:84532
+      EXPECTED_USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+    steps:
+      - name: Check public readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            -H 'Accept: application/json' \
+            "$RESOURCE_URL" > /tmp/coinbase-x402-get.json
+
+          node <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('/tmp/coinbase-x402-get.json', 'utf8'));
+          if (data.ok !== true) throw new Error(`GET readiness not ok: ${JSON.stringify(data)}`);
+          if (data.environment !== 'testnet') throw new Error(`Expected testnet, got ${data.environment}`);
+          if (data.network !== process.env.EXPECTED_NETWORK) throw new Error(`Wrong network: ${data.network}`);
+          if (data.asset !== 'USDC') throw new Error(`Wrong asset label: ${data.asset}`);
+          if (data.facilitator !== 'Coinbase CDP') throw new Error(`Wrong facilitator: ${data.facilitator}`);
+          if (data.execution_authorized !== false) throw new Error('Risk Gate execution boundary must remain false');
+          console.log('PASS: public Coinbase x402 readiness is Base Sepolia and non-executing.');
+          NODE
+
+      - name: Validate unpaid 402 challenge and Bazaar declaration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/coinbase-x402-request.json <<'JSON'
+          {
+            "subject": { "type": "country", "country_iso3": "USA" },
+            "policy_preset": "balanced",
+            "action_type": "agent_payment",
+            "amount_usdc": 1000,
+            "client_request_id": "github-base-sepolia-acceptance"
+          }
+          JSON
+
+          status="$(curl --silent --show-error --max-time 20 \
+            -X POST "$RESOURCE_URL" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/coinbase-x402-request.json \
+            --dump-header /tmp/coinbase-x402-headers.txt \
+            --output /tmp/coinbase-x402-402.json \
+            --write-out '%{http_code}')"
+          if [[ "$status" != "402" ]]; then
+            echo "::error title=Unexpected x402 status::Expected HTTP 402, received $status"
+            cat /tmp/coinbase-x402-402.json
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('fs');
+          const headers = fs.readFileSync('/tmp/coinbase-x402-headers.txt', 'utf8').split(/\r?\n/);
+          const line = headers.find(v => v.toLowerCase().startsWith('payment-required:'));
+          if (!line) throw new Error('PAYMENT-REQUIRED header missing');
+          const encoded = line.slice(line.indexOf(':') + 1).trim();
+          const required = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+          if (required.x402Version !== 2) throw new Error(`Wrong x402 version: ${required.x402Version}`);
+          if (required.resource?.url !== process.env.RESOURCE_URL) throw new Error(`Wrong resource URL: ${required.resource?.url}`);
+          if (!Array.isArray(required.accepts) || required.accepts.length !== 1) throw new Error('Expected exactly one payment requirement');
+          const accepted = required.accepts[0];
+          if (accepted.scheme !== 'exact') throw new Error(`Wrong scheme: ${accepted.scheme}`);
+          if (accepted.network !== process.env.EXPECTED_NETWORK) throw new Error(`Wrong network: ${accepted.network}`);
+          if (String(accepted.asset).toLowerCase() !== process.env.EXPECTED_USDC.toLowerCase()) throw new Error(`Wrong Base Sepolia USDC contract: ${accepted.asset}`);
+          if (!/^0x[a-fA-F0-9]{40}$/.test(String(accepted.payTo ?? ''))) throw new Error('payTo is not a valid EVM address');
+          if (!/^[1-9][0-9]*$/.test(String(accepted.amount ?? ''))) throw new Error(`Payment amount must be positive atomic units: ${accepted.amount}`);
+          if (accepted.maxTimeoutSeconds !== 60) throw new Error(`Wrong maxTimeoutSeconds: ${accepted.maxTimeoutSeconds}`);
+          if (accepted.extra?.name !== 'USDC' || accepted.extra?.version !== '2') throw new Error('USDC metadata mismatch');
+          const bazaar = required.extensions?.bazaar;
+          if (bazaar?.info?.input?.type !== 'http') throw new Error('Bazaar HTTP input declaration missing');
+          if (bazaar?.info?.input?.method !== 'POST') throw new Error('Bazaar POST declaration missing');
+          if (bazaar?.info?.input?.bodyType !== 'json') throw new Error('Bazaar JSON body declaration missing');
+          if (!bazaar?.info?.input?.body) throw new Error('Bazaar input example missing');
+          const schemaInput = bazaar?.schema?.properties?.input;
+          const requiredFields = schemaInput?.required ?? [];
+          for (const field of ['type', 'method', 'bodyType', 'body']) {
+            if (!requiredFields.includes(field)) throw new Error(`Bazaar schema missing required ${field}`);
+          }
+          console.log('PASS: unpaid 402 challenge is exactly bound to Base Sepolia USDC and carries Bazaar POST metadata.');
+          console.log(JSON.stringify({
+            network: accepted.network,
+            asset: accepted.asset,
+            amount: accepted.amount,
+            payTo: accepted.payTo,
+            resource: required.resource?.url,
+          }, null, 2));
+          NODE
+
+      - name: Run Coinbase public endpoint validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE' > /tmp/coinbase-validator-request.json
+          console.log(JSON.stringify({ resource: process.env.RESOURCE_URL, method: 'POST' }));
+          NODE
+
+          curl --fail --silent --show-error --max-time 30 \
+            -X POST 'https://api.cdp.coinbase.com/platform/v2/x402/validate' \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/coinbase-validator-request.json \
+            > /tmp/coinbase-validator-response.json
+
+          node <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('/tmp/coinbase-validator-response.json', 'utf8'));
+          if (data.valid !== true) throw new Error(`Coinbase validator rejected endpoint: ${JSON.stringify(data)}`);
+          if (data.simulation?.outcome !== 'accepted') throw new Error(`Coinbase simulation not accepted: ${JSON.stringify(data)}`);
+          console.log('PASS: Coinbase endpoint validator accepted the public Base Sepolia x402 resource.');
+          console.log(JSON.stringify({ valid: data.valid, simulation: data.simulation }, null, 2));
+          NODE
+
+      - name: Acceptance boundary
+        shell: bash
+        run: |
+          echo "Public readiness, unpaid challenge, Bazaar declaration and Coinbase validator passed."
+          echo "This workflow intentionally does NOT sign or settle a payment. Paid E2E/replay evidence remains a separate launch gate."
