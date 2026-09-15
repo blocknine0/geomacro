@@ -23,6 +23,7 @@ import { handleExternalRiskGateRequest } from "../lib/risk-gate-api.server";
 
 const API_KEY = "r".repeat(64);
 const TEST_PEPPER = "risk-gate-recovery-test-pepper".padEnd(64, "x");
+let activeDb: ReturnType<typeof makeDb>["db"];
 
 function body(requestId: string) {
   return {
@@ -142,6 +143,8 @@ async function expectRecovered(response: Response) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("GEOMACRO_API_CREDENTIAL_PEPPER", TEST_PEPPER);
+  activeDb = makeDb().db;
+  mocks.requireRiskSupabase.mockImplementation(() => activeDb);
   mocks.evaluateCountryRiskGate.mockResolvedValue(healthyEvaluation());
 });
 
@@ -154,9 +157,7 @@ describe("Risk Gate dependency outage and recovery", () => {
   it("fails closed during an auth-backend outage and recovers only after auth is healthy", async () => {
     const failed = makeDb({ authError: true });
     const recovered = makeDb();
-    mocks.requireRiskSupabase
-      .mockReturnValueOnce(failed.db)
-      .mockReturnValueOnce(recovered.db);
+    activeDb = failed.db;
 
     await expectFailClosed(
       await handleExternalRiskGateRequest(request("recovery_auth_001")),
@@ -165,6 +166,7 @@ describe("Risk Gate dependency outage and recovery", () => {
     );
     expect(mocks.evaluateCountryRiskGate).not.toHaveBeenCalled();
 
+    activeDb = recovered.db;
     await expectRecovered(
       await handleExternalRiskGateRequest(request("recovery_auth_002")),
     );
@@ -174,9 +176,7 @@ describe("Risk Gate dependency outage and recovery", () => {
   it("fails closed during a rate-limit backend outage and returns to service after recovery", async () => {
     const failed = makeDb({ rateError: true });
     const recovered = makeDb();
-    mocks.requireRiskSupabase
-      .mockReturnValueOnce(failed.db)
-      .mockReturnValueOnce(recovered.db);
+    activeDb = failed.db;
 
     await expectFailClosed(
       await handleExternalRiskGateRequest(request("recovery_rate_001")),
@@ -184,6 +184,7 @@ describe("Risk Gate dependency outage and recovery", () => {
       "RATE_LIMIT_BACKEND_UNAVAILABLE",
     );
 
+    activeDb = recovered.db;
     await expectRecovered(
       await handleExternalRiskGateRequest(request("recovery_rate_002")),
     );
@@ -192,9 +193,7 @@ describe("Risk Gate dependency outage and recovery", () => {
   it("withholds a decision while immutable audit persistence is down and recovers after persistence returns", async () => {
     const failed = makeDb({ auditError: true });
     const recovered = makeDb();
-    mocks.requireRiskSupabase
-      .mockReturnValueOnce(failed.db)
-      .mockReturnValueOnce(recovered.db);
+    activeDb = failed.db;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     await expectFailClosed(
@@ -204,6 +203,7 @@ describe("Risk Gate dependency outage and recovery", () => {
     );
     expect(failed.auditInsert).toHaveBeenCalledTimes(1);
 
+    activeDb = recovered.db;
     await expectRecovered(
       await handleExternalRiskGateRequest(request("recovery_audit_002")),
     );
@@ -212,11 +212,8 @@ describe("Risk Gate dependency outage and recovery", () => {
   });
 
   it("fails closed on a Risk Object/read-path exception and does not reuse the failed result after recovery", async () => {
-    const first = makeDb();
-    const second = makeDb();
-    mocks.requireRiskSupabase
-      .mockReturnValueOnce(first.db)
-      .mockReturnValueOnce(second.db);
+    const db = makeDb();
+    activeDb = db.db;
     mocks.evaluateCountryRiskGate
       .mockRejectedValueOnce(new Error("risk object read path unavailable"))
       .mockResolvedValueOnce(healthyEvaluation());
