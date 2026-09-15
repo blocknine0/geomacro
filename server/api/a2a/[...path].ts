@@ -69,6 +69,17 @@ function requireUuid(value: string, label: string) {
   return value;
 }
 
+function requireLocalTaskId(value: string | undefined) {
+  if (!value) return;
+  if (!UUID_RE.test(value)) {
+    throw new A2AServiceError(
+      400,
+      "A2A_LOCAL_TASK_ID_INVALID",
+      "A Geomacro task continuation must use the UUID taskId previously returned by Geomacro.",
+    );
+  }
+}
+
 async function parseJsonBody(event: any) {
   const contentType = String(getRequestHeader(event, "content-type") ?? "").toLowerCase();
   if (!contentType.includes("application/json") && !contentType.includes("application/a2a+json")) {
@@ -139,6 +150,7 @@ export default defineEventHandler(async (event) => {
 
     if (method === "POST" && path === "message:send") {
       const request = a2aSendMessageRequestSchema.parse(await parseJsonBody(event));
+      requireLocalTaskId(request.message.taskId);
       return { task: await sendA2AMessage({ principal, request }) };
     }
 
