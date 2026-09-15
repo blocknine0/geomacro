@@ -221,6 +221,25 @@ async function main() {
     fail(`Replay returned a different settlement transaction: ${replayTxHash}`);
   }
 
+  // Reuse the exact signed proof with changed business terms. Binding must fail closed with a conflict and no debit.
+  const conflictBody = JSON.stringify({ ...requestBody, amount_usdc: 1001 });
+  const conflict = await fetch(RESOURCE_URL, {
+    method: "POST",
+    headers: { ...baseHeaders, ...paymentHeaders },
+    body: conflictBody,
+    redirect: "error",
+  });
+  await readJson(conflict);
+  if (conflict.status !== 409) {
+    fail(`Expected reused-proof/different-request conflict HTTP 409, received ${conflict.status}`);
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 2_000));
+  const afterConflictBalance = BigInt(await usdc.balanceOf(payer));
+  if (afterConflictBalance !== afterReplayBalance) {
+    fail(`Conflict path changed buyer USDC balance: before=${afterReplayBalance}, after=${afterConflictBalance}`);
+  }
+
   const evidence = {
     schema_version: "coinbase-x402-base-sepolia-paid-e2e-v1",
     generated_at: new Date().toISOString(),
@@ -238,14 +257,17 @@ async function main() {
     initial_status: initial.status,
     paid_status: paid.status,
     replay_status: replay.status,
+    conflict_status: conflict.status,
     settlement_tx_hash: txHash,
     settlement_block_number: receipt.blockNumber,
     settlement_status: receipt.status === 1 ? "confirmed" : "failed",
     payer_usdc_before_atomic: beforeBalance.toString(),
     payer_usdc_after_first_atomic: afterFirstBalance.toString(),
     payer_usdc_after_replay_atomic: afterReplayBalance.toString(),
+    payer_usdc_after_conflict_atomic: afterConflictBalance.toString(),
     observed_first_debit_atomic: observedDebit.toString(),
     replay_balance_delta_atomic: (afterFirstBalance - afterReplayBalance).toString(),
+    conflict_balance_delta_atomic: (afterReplayBalance - afterConflictBalance).toString(),
     duplicate_charge_count: 0,
     execution_authorized: false,
     payment_signature_persisted: false,
@@ -257,6 +279,8 @@ async function main() {
       exact_debit_matches_advertised_amount: true,
       replay_200: true,
       replay_no_second_debit: true,
+      reused_proof_different_request_conflict_409: true,
+      conflict_no_debit: true,
     },
   };
 
