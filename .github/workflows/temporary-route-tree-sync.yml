@@ -1,0 +1,44 @@
+name: Temporary Route Tree Sync
+
+on:
+  push:
+    branches:
+      - x402-industry-ready-production-v1
+    paths:
+      - "src/routes/**"
+      - ".github/workflows/temporary-route-tree-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-route-tree:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: x402-industry-ready-production-v1
+          fetch-depth: 0
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Generate route tree
+        run: bun run build >/dev/null
+      - name: Commit generated route tree if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/routeTree.gen.ts; then
+            echo "Route tree already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routeTree.gen.ts
+          git commit -m "Regenerate TanStack route tree"
+          git push origin HEAD:x402-industry-ready-production-v1
