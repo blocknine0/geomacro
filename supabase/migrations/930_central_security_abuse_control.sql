@@ -7,6 +7,7 @@
 --   authentication, settlement or intelligence work;
 -- - no raw IP addresses, bearer tokens, signatures, cookies or customer
 --   request bodies are persisted here;
+-- - bounded bucket cardinality without destructive cleanup inside request RPCs;
 -- - service-role only. Browser roles receive no table or RPC access.
 --
 -- This is one layer of defense. Edge/WAF controls and independent security
@@ -23,7 +24,7 @@ create table if not exists public.central_security_request_buckets (
   updated_at timestamptz not null default now(),
 
   constraint central_security_request_buckets_pk
-    primary key (route_class, bucket_kind, bucket_key, window_started_at),
+    primary key (route_class, bucket_kind, bucket_key),
 
   constraint central_security_request_buckets_route_class_check
     check (route_class in (
@@ -43,7 +44,7 @@ create table if not exists public.central_security_request_buckets (
     check (
       (bucket_kind = 'global' and bucket_key = 'global')
       or
-      (bucket_kind = 'client' and bucket_key ~ '^[0-9a-f]{64}$')
+      (bucket_kind = 'client' and bucket_key ~ '^[0-9a-f]{4}$')
     ),
 
   constraint central_security_request_buckets_request_count_check
@@ -53,8 +54,8 @@ create table if not exists public.central_security_request_buckets (
     check (blocked_count >= 0)
 );
 
-create index if not exists central_security_request_buckets_retention_idx
-  on public.central_security_request_buckets (window_started_at);
+create index if not exists central_security_request_buckets_updated_idx
+  on public.central_security_request_buckets (updated_at desc);
 
 alter table public.central_security_request_buckets
   enable row level security;
@@ -80,8 +81,9 @@ as $$
 declare
   v_now timestamptz := clock_timestamp();
   v_window_started_at timestamptz;
-  v_client_count integer;
-  v_global_count integer;
+  v_client_slot text;
+  v_client_count integer := 0;
+  v_global_count integer := 0;
   v_allowed boolean;
   v_retry_after integer;
 begin
@@ -117,11 +119,17 @@ begin
     floor(extract(epoch from v_now) / p_window_seconds) * p_window_seconds
   );
 
+  -- The full client HMAC is never stored. A 16-bit slot derived from it bounds
+  -- table cardinality to at most 65,536 client rows per route class. Collisions
+  -- intentionally share a conservative budget; the independent global budget
+  -- remains the anti-rotation control.
+  v_client_slot := substr(p_client_key, 1, 4);
+
   -- Stable lock order prevents concurrent instances from overshooting either
   -- the global or client bucket during a burst.
   perform pg_advisory_xact_lock(
     hashtextextended(
-      'geomacro-central-security:global:' || p_route_class || ':' || v_window_started_at::text,
+      'geomacro-central-security:global:' || p_route_class,
       0
     )
   );
@@ -143,15 +151,59 @@ begin
     0,
     v_now
   )
-  on conflict (route_class, bucket_kind, bucket_key, window_started_at)
+  on conflict (route_class, bucket_kind, bucket_key)
   do update set
-    request_count = public.central_security_request_buckets.request_count + 1,
+    window_started_at = excluded.window_started_at,
+    request_count = case
+      when public.central_security_request_buckets.window_started_at = excluded.window_started_at
+        then public.central_security_request_buckets.request_count + 1
+      else 1
+    end,
+    blocked_count = case
+      when public.central_security_request_buckets.window_started_at = excluded.window_started_at
+        then public.central_security_request_buckets.blocked_count
+      else 0
+    end,
     updated_at = excluded.updated_at
   returning request_count into v_global_count;
 
+  v_retry_after := greatest(
+    1,
+    ceil(
+      extract(
+        epoch from (
+          v_window_started_at
+          + make_interval(secs => p_window_seconds)
+          - v_now
+        )
+      )
+    )::integer
+  );
+
+  -- Once the global budget is exhausted, stop before touching any client slot.
+  -- This prevents spoofed/rotating client hints from creating additional rows
+  -- during a volumetric burst.
+  if v_global_count > p_global_limit then
+    update public.central_security_request_buckets
+    set blocked_count = blocked_count + 1,
+        updated_at = v_now
+    where route_class = p_route_class
+      and bucket_kind = 'global'
+      and bucket_key = 'global';
+
+    return jsonb_build_object(
+      'ok', true,
+      'allowed', false,
+      'route_class', p_route_class,
+      'client_count', null,
+      'global_count', v_global_count,
+      'retry_after_seconds', v_retry_after
+    );
+  end if;
+
   perform pg_advisory_xact_lock(
     hashtextextended(
-      'geomacro-central-security:client:' || p_route_class || ':' || p_client_key || ':' || v_window_started_at::text,
+      'geomacro-central-security:client:' || p_route_class || ':' || v_client_slot,
       0
     )
   );
@@ -167,54 +219,40 @@ begin
   ) values (
     p_route_class,
     'client',
-    p_client_key,
+    v_client_slot,
     v_window_started_at,
     1,
     0,
     v_now
   )
-  on conflict (route_class, bucket_kind, bucket_key, window_started_at)
+  on conflict (route_class, bucket_kind, bucket_key)
   do update set
-    request_count = public.central_security_request_buckets.request_count + 1,
+    window_started_at = excluded.window_started_at,
+    request_count = case
+      when public.central_security_request_buckets.window_started_at = excluded.window_started_at
+        then public.central_security_request_buckets.request_count + 1
+      else 1
+    end,
+    blocked_count = case
+      when public.central_security_request_buckets.window_started_at = excluded.window_started_at
+        then public.central_security_request_buckets.blocked_count
+      else 0
+    end,
     updated_at = excluded.updated_at
   returning request_count into v_client_count;
 
-  v_allowed :=
-    v_client_count <= p_client_limit
-    and v_global_count <= p_global_limit;
+  v_allowed := v_client_count <= p_client_limit;
 
   if not v_allowed then
     update public.central_security_request_buckets
     set blocked_count = blocked_count + 1,
         updated_at = v_now
     where route_class = p_route_class
-      and window_started_at = v_window_started_at
       and (
         (bucket_kind = 'global' and bucket_key = 'global')
         or
-        (bucket_kind = 'client' and bucket_key = p_client_key)
+        (bucket_kind = 'client' and bucket_key = v_client_slot)
       );
-  end if;
-
-  v_retry_after := greatest(
-    1,
-    ceil(
-      extract(
-        epoch from (
-          v_window_started_at
-          + make_interval(secs => p_window_seconds)
-          - v_now
-        )
-      )
-    )::integer
-  );
-
-  -- Bounded retention without requiring a separate scheduler. Cleanup is
-  -- intentionally probabilistic to avoid turning every request into a large
-  -- delete scan.
-  if random() < 0.01 then
-    delete from public.central_security_request_buckets
-    where window_started_at < v_now - interval '24 hours';
   end if;
 
   return jsonb_build_object(
@@ -245,7 +283,7 @@ grant execute on function public.consume_central_security_budget(
 ) to service_role;
 
 comment on table public.central_security_request_buckets is
-  'Server-only distributed abuse-control counters. Client identifiers are HMAC digests; raw IPs, credentials, signatures, cookies and request bodies are never stored.';
+  'Server-only bounded distributed abuse-control counters. Client bucket keys are short slots derived from server-side HMACs; raw IPs, credentials, signatures, cookies and request bodies are never stored.';
 
 comment on function public.consume_central_security_budget(text, text, integer, integer, integer) is
-  'Atomically consumes central per-client and global request budgets for Geomacro security classes. Service-role only.';
+  'Atomically consumes bounded central per-client-slot and global request budgets for Geomacro security classes. Service-role only.';
