@@ -15,6 +15,13 @@ as $$
 declare
   v_required text[] := array[
     'central_security_request_buckets',
+    'siwe_login_nonces',
+    'testnet_tester_profiles',
+    'testnet_wallet_challenges',
+    'testnet_tester_sessions',
+    'testnet_email_verification_challenges',
+    'testnet_oauth_states',
+    'testnet_developer_credentials',
     'commercial_principals',
     'commercial_api_credentials',
     'commercial_entitlement_grants',
@@ -100,4 +107,4 @@ grant execute on function public.central_security_database_readiness()
   to service_role;
 
 comment on function public.central_security_database_readiness() is
-  'Service-role-only aggregate posture probe for security-critical real-funds tables: existence, RLS, and no direct anon/authenticated table privileges.';
+  'Service-role-only aggregate posture probe for security-critical identity, credential, audit, payment and real-funds tables: existence, RLS, and no direct anon/authenticated table privileges.';
