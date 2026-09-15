@@ -9,26 +9,27 @@ Current architecture:
 ```text
 agent intent / proposed action
         ↓
-Risk API / Risk Gate
+Risk API / signed country or directional corridor GRO
         ↓
-signed country or corridor GRO
+Risk Gate - Private Pilot
         ↓
-verification + freshness
-        ↓
-customer policy
+customer identity + permissions + policy
         ↓
 CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
         ↓
-caller-controlled execution
+caller-controlled action
 ```
 
-The repository includes a fail-closed agent/wallet pre-flight adapter. A caller-owned executor is invoked only after an explicit `CONTINUE` decision under the caller's policy.
+Risk Gate verifies the relevant risk context and returns a bounded recommendation. An integration may supply a customer-owned policy profile as an evaluation input, but the customer or caller owns the identity, permissions, policy, compliance rules and any downstream action.
+
+The repository includes fail-closed pre-flight adapters for agent and wallet integration proof. A caller-owned executor may act only under the caller's own policy; Geomacro does not authorize that execution.
 
 Geomacro does not at this boundary:
 
 - custody funds
 - sign customer wallet transactions
 - autonomously submit a trade or transfer
+- own or enforce customer identity, permissions or policy
 - replace sanctions/compliance screening
 - authorize the customer's final transaction
 
