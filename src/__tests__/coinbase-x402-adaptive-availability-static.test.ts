@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const route = fs.readFileSync("src/routes/api.x402.risk.availability.ts", "utf8");
+const route = fs.readFileSync("src/routes/api.x402.risk_.availability.ts", "utf8");
 
 describe("Coinbase x402 availability route", () => {
   it("uses deterministic planning and governed deliverability before payment", () => {
