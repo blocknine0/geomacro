@@ -4,6 +4,10 @@ import {
 } from "./risk-object-signing.server";
 
 import {
+  withRiskObjectObservationTimestamp,
+} from "./risk-object-observation";
+
+import {
   buildCountryRiskObject,
   type CountryRiskEventInput,
 } from "./country-risk-engine";
@@ -503,12 +507,18 @@ async function generateInternal(
         .commercial_eligibility,
     );
 
+  const observationBoundObject =
+    withRiskObjectObservationTimestamp(
+      unsignedObject,
+      asOf.toISOString(),
+    );
+
   const object =
     publish
       ? signRiskObject(
-          unsignedObject,
+          observationBoundObject,
         )
-      : unsignedObject;
+      : observationBoundObject;
 
   if (publish) {
     await persistRiskObject(
