@@ -2,6 +2,8 @@
 
 Internal founder-use only. Do not publish these numbers as general pricing until Geomacro has enough paid-pilot evidence to support a stable public plan.
 
+Use `docs/EARLY_ACCESS_OPERATING_TERMS.md` for the canonical support, incident, service-level and customer-use boundaries that accompany these quote anchors.
+
 ## Objective
 
 The first commercial goal is to obtain a real paid validation signal without pricing Geomacro like a hobby project or pretending it already has enterprise-scale support.

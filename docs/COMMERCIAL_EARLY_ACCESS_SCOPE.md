@@ -1,6 +1,7 @@
 # Commercial Early Access Scope
 
 Canonical commercial source of truth: `docs/EARLY_ACCESS_COMMERCIAL_PACKAGE.md`.
+Canonical Early Access pricing/support/incident/customer-use operating standard: `docs/EARLY_ACCESS_OPERATING_TERMS.md`.
 
 This document is the narrower scope-and-boundary companion. Geomacro's first commercial Early Access should be a founding-pilot engagement, not a claim of broad enterprise availability.
 
@@ -46,4 +47,6 @@ Circle x402, USDC, Arc Testnet and the prediction-market application may be show
 
 ## Commercial close
 
-A pilot should end with a documented go/no-go decision based on usefulness, evidence quality, workflow fit, integration effort and buyer willingness to continue. Wider packaging, pricing and deployment should follow validated pilot evidence rather than precede it.
+The controlled founding-pilot pricing, support, incident and customer-use boundaries are defined internally in `docs/EARLY_ACCESS_OPERATING_TERMS.md`; they are not public general-availability pricing or an enterprise SLA.
+
+A pilot should end with a documented go/no-go decision based on usefulness, evidence quality, workflow fit, integration effort and buyer willingness to continue. Wider packaging and deployment should follow validated pilot evidence and current operational readiness rather than broad platform promises.

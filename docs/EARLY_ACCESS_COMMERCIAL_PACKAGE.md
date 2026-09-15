@@ -2,6 +2,8 @@
 
 This is the canonical founder-use source of truth for the first paid Geomacro Early Access engagements. It is not public pricing, a general-availability announcement, or an enterprise SLA.
 
+Canonical pricing, support, incident and customer-use operating boundaries: `docs/EARLY_ACCESS_OPERATING_TERMS.md`.
+
 ## 1. Commercial position
 
 Geomacro sells geopolitical and macro risk intelligence for operational decisions.
