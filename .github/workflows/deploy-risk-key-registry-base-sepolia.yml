@@ -153,7 +153,8 @@ jobs:
         run: |
           set -euo pipefail
           DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
-          if [ "${DEPLOYER,,}" != "${{ steps.gas.outputs.owner_address }}" ]; then
+          EXPECTED_DEPLOYER="${{ steps.gas.outputs.owner_address }}"
+          if [ "${DEPLOYER,,}" != "${EXPECTED_DEPLOYER,,}" ]; then
             echo '::error::Deployment wallet does not match the funded owner wallet.'
             exit 1
           fi
