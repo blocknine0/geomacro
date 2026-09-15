@@ -12,8 +12,8 @@ on:
       - "src/routes/api.x402.intelligence.ts"
       - "src/__tests__/coinbase-x402-adaptive-availability-static.test.ts"
       - "src/__tests__/agent-query-hot-topics-static.test.ts"
-      - "supabase/migrations/930_coinbase_x402_agent_usage_guard.sql"
-      - "supabase/migrations/931_coinbase_x402_product_audit.sql"
+      - "supabase/migrations/932_coinbase_x402_agent_usage_guard.sql"
+      - "supabase/migrations/933_coinbase_x402_product_audit.sql"
       - ".github/workflows/agent-query-production-readiness.yml"
   workflow_dispatch:
 
@@ -52,8 +52,8 @@ jobs:
           grep -q 'HOT_TOPIC_PIPELINE_STALE' src/lib/agent-query-hot-topics.server.ts
           grep -q 'HOT_TOPIC_COMMERCIAL_COVERAGE_INSUFFICIENT' src/lib/agent-query-hot-topics.server.ts
           grep -q 'STRUCTURED_DERIVED_INTELLIGENCE_ONLY' src/lib/agent-query-hot-topics.server.ts
-          grep -q 'coinbase_x402_usage_reservations' supabase/migrations/930_coinbase_x402_agent_usage_guard.sql
-          grep -q 'coinbase_x402_product_audit' supabase/migrations/931_coinbase_x402_product_audit.sql
+          grep -q 'coinbase_x402_usage_reservations' supabase/migrations/932_coinbase_x402_agent_usage_guard.sql
+          grep -q 'coinbase_x402_product_audit' supabase/migrations/933_coinbase_x402_product_audit.sql
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
             echo 'ERROR: real-USDC gate must remain locked in source.' >&2
             exit 1
