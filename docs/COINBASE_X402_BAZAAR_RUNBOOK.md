@@ -70,6 +70,40 @@ Acceptance requires `valid: true` and `simulation.outcome: "accepted"`.
 9. Confirm the same payment proof + same request replays the cached delivery without a new settlement attempt.
 10. Confirm the same payment proof + a different request fails with a conflict.
 
+## Guarded paid E2E workflow
+
+Use `.github/workflows/coinbase-x402-base-sepolia-paid-e2e.yml` only with a dedicated Base Sepolia buyer wallet. The workflow is manual-only, hard-pinned to `https://geomacro.live/api/x402/risk`, hard-pinned to Base Sepolia USDC, and refuses any advertised amount above `0.05` USDC.
+
+Create a protected GitHub environment named `coinbase-x402-base-sepolia-paid-proof` and add:
+
+```text
+GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY=<dedicated Base Sepolia test-wallet private key>
+GEOMACRO_COINBASE_X402_BUYER_ADDRESS=<matching public address, recommended>
+GEOMACRO_COINBASE_X402_BASE_SEPOLIA_RPC=<optional Base Sepolia RPC; defaults to https://sepolia.base.org>
+```
+
+Never paste the buyer private key into chat, issues, PRs, logs, workflow inputs, Lovable, source code, or artifacts. The wallet must hold at least the configured x402 amount in Base Sepolia USDC before the run.
+
+Run the workflow with the exact confirmation:
+
+```text
+COINBASE_X402_BASE_SEPOLIA_USDC
+```
+
+One successful run must prove all of the following in a sanitized 90-day artifact:
+
+- initial HTTP 402 challenge
+- one signed paid request returns HTTP 200
+- settlement transaction confirms on Base Sepolia
+- buyer USDC debit equals the advertised x402 amount exactly
+- paid and replayed responses both preserve `execution_authorized=false`
+- replaying the exact same signed proof + same request returns cached delivery without a second USDC debit
+- reusing the same signed proof with changed business terms returns HTTP 409 without a debit
+- duplicate charge count is zero
+- no buyer private key or raw `PAYMENT-SIGNATURE` is persisted in evidence
+
+The workflow deliberately performs no automatic retry after a signed payment exists.
+
 ## Mandatory negative/security acceptance
 
 The endpoint is not launch-ready until all of these fail safely: no payment, malformed payment header, wrong x402 version, wrong scheme, wrong network, wrong USDC contract, wrong amount, wrong pay-to, wrong timeout requirements, invalid/expired signature, underfunded authorization, reused nonce, altered request with reused payment proof, concurrent duplicate request, oversized body, malformed JSON, rate-limit abuse, CDP verify timeout, CDP settle timeout, database claim failure, and Risk Engine/Risk Gate failure.
