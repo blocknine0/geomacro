@@ -1,0 +1,52 @@
+name: Agent Query Production Readiness
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/agent-query-*.ts"
+      - "src/lib/commercial-source-eligibility.server.ts"
+      - "src/lib/coinbase-x402-usage-guard.server.ts"
+      - "src/lib/coinbase-x402-product-audit.server.ts"
+      - "src/routes/api.x402.risk.ts"
+      - "src/routes/api.x402.risk.availability.ts"
+      - "src/routes/api.x402.intelligence.ts"
+      - "supabase/migrations/928_coinbase_x402_agent_usage_guard.sql"
+      - "supabase/migrations/929_coinbase_x402_product_audit.sql"
+      - ".github/workflows/agent-query-production-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adaptive-x402-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Query planner and deliverability tests
+        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/routes/api.x402.risk.availability.test.ts
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Verify no-charge and mainnet safety invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'checkAgentQueryDeliverability' src/routes/api.x402.intelligence.ts
+          grep -q 'FINAL_AVAILABILITY' src/routes/api.x402.intelligence.ts
+          grep -q 'LEGACY_X402_PRODUCTION_DISABLED' src/routes/api.x402.risk.ts
+          grep -q 'payment_required_now: false' src/routes/api.x402.risk.availability.ts
+          ! grep -q 'settleCoinbaseX402' src/routes/api.x402.risk.availability.ts
+          grep -q 'reserveCoinbaseX402AgentUsage' src/routes/api.x402.intelligence.ts
+          grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/routes/api.x402.intelligence.ts
+          if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
+            echo 'ERROR: real-USDC gate must remain locked in source.' >&2
+            exit 1
+          fi
