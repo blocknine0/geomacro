@@ -9,6 +9,9 @@ const SERVICE_KEY =
   process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
 const METHOD_VERSION = process.env.GRI_METHOD_VERSION || "gri-v1.2.0";
 const PROOF_VERSION = process.env.GRI_PROOF_VERSION || "gri-proof-v1.2.0";
+const MAX_PUBLIC_SNAPSHOT_AGE_HOURS = Number(
+  process.env.GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS || "3",
+);
 const OUTPUT =
   process.env.GRI_CONSISTENCY_ARTIFACT ||
   "artifacts/gri-public-proof-consistency.json";
@@ -21,6 +24,12 @@ if (!SUPABASE_URL || !ANON_KEY || !SERVICE_KEY) {
   throw new Error(
     "APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY and a service-role key are required",
   );
+}
+if (
+  !Number.isFinite(MAX_PUBLIC_SNAPSHOT_AGE_HOURS) ||
+  MAX_PUBLIC_SNAPSHOT_AGE_HOURS <= 0
+) {
+  throw new Error("GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS must be a positive number");
 }
 
 const snapshotFields = [
@@ -233,6 +242,10 @@ async function main() {
     anonSnapshotVisible: Boolean(anonSnapshot),
     snapshotFieldParity:
       Boolean(anonSnapshot) && exactObjectParity(serviceSnapshot, anonSnapshot, snapshotFields),
+    publicReadFreshness:
+      snapshotAgeHours !== null &&
+      snapshotAgeHours >= -0.25 &&
+      snapshotAgeHours <= MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
     publishedStatus: serviceSnapshot.status === "published",
     verifiedStatus: serviceSnapshot.verification_status === "verified",
     methodologyVersion: serviceSnapshot.methodology_version === METHOD_VERSION,
@@ -279,6 +292,7 @@ async function main() {
     snapshotAsOf: serviceSnapshot.as_of,
     snapshotAgeHours:
       snapshotAgeHours === null ? null : Number(snapshotAgeHours.toFixed(4)),
+    maxPublicSnapshotAgeHours: MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
     methodologyVersion: serviceSnapshot.methodology_version,
     proofVersion: serviceSnapshot.proof_version,
     displayScore: serviceSnapshot.display_score,
@@ -302,7 +316,7 @@ async function main() {
     checks,
     verified,
     scope:
-      "Single persisted live snapshot parity across service-role and anon/RLS reads plus public proof ledgers. This is not sustained freshness, calibration, SLA, certification, or an independent external audit.",
+      "Single persisted live snapshot parity across service-role and anon/RLS reads plus public proof ledgers, including the current public-read freshness bound. This is not sustained freshness, calibration, SLA, certification, or an independent external audit.",
   };
 
   await writeEvidence(evidence);
