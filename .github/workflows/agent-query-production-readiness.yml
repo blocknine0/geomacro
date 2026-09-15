@@ -10,8 +10,9 @@ on:
       - "src/routes/api.x402.risk.ts"
       - "src/routes/api.x402.risk.availability.ts"
       - "src/routes/api.x402.intelligence.ts"
-      - "supabase/migrations/928_coinbase_x402_agent_usage_guard.sql"
-      - "supabase/migrations/929_coinbase_x402_product_audit.sql"
+      - "src/__tests__/coinbase-x402-adaptive-availability-static.test.ts"
+      - "supabase/migrations/930_coinbase_x402_agent_usage_guard.sql"
+      - "supabase/migrations/931_coinbase_x402_product_audit.sql"
       - ".github/workflows/agent-query-production-readiness.yml"
   workflow_dispatch:
 
@@ -32,9 +33,11 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Query planner and deliverability tests
-        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/routes/api.x402.risk.availability.test.ts
+        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/__tests__/coinbase-x402-adaptive-availability-static.test.ts
       - name: Typecheck
-        run: bun run typecheck
+        run: bunx tsc --noEmit
+      - name: Database migration safety
+        run: bun run db:safety
       - name: Verify no-charge and mainnet safety invariants
         shell: bash
         run: |
@@ -46,6 +49,7 @@ jobs:
           ! grep -q 'settleCoinbaseX402' src/routes/api.x402.risk.availability.ts
           grep -q 'reserveCoinbaseX402AgentUsage' src/routes/api.x402.intelligence.ts
           grep -q 'X402_SETTLEMENT_AMBIGUOUS' src/routes/api.x402.intelligence.ts
+          grep -q 'COMMERCIAL_SOURCE_NOT_ELIGIBLE' src/lib/agent-query-deliverability.server.ts
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
             echo 'ERROR: real-USDC gate must remain locked in source.' >&2
             exit 1
