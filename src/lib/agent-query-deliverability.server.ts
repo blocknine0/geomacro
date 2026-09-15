@@ -1,5 +1,8 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
-import { assertCommercialSourcesEligible } from "./commercial-source-eligibility.server";
+import {
+  assertCommercialSourcesEligible,
+  type CommercialSourceEligibility,
+} from "./commercial-source-eligibility.server";
 import {
   loadStructuralContext,
   type StructuralContext,
@@ -21,6 +24,13 @@ export type AgentQueryDeliverability = {
   missing_modules: string[];
   stale_modules: string[];
   ineligible_source_ids: string[];
+  source_contracts: Array<{
+    source_id: string;
+    commercial_usage_status: string | null;
+    raw_redistribution_allowed: boolean;
+    attribution_required: boolean;
+    licence_name: string | null;
+  }>;
   subjects: Array<{
     subject: AgentQueryPlan["subjects"][number];
     status: StructuralContext["status"];
@@ -46,8 +56,6 @@ const STRUCTURAL_MODULE_ALIASES: Record<string, readonly string[]> = {
   hot_topics: ["hot_topics", "live_event", "event", "news"],
 };
 
-// These modules are served by governed systems outside the structural warehouse.
-// They require explicit runtime checkers before a query may become payable.
 const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context"]);
 
 function observationTime(row: StructuralObservation): number | null {
@@ -116,6 +124,12 @@ function requiredSourceIds(context: StructuralContext, requiredModules: string[]
   return [...ids].sort();
 }
 
+type SourceCheckResult = {
+  eligible: boolean;
+  ineligible_source_ids: string[];
+  results?: CommercialSourceEligibility[];
+};
+
 export async function checkAgentQueryDeliverability(
   plan: AgentQueryPlan,
   options?: {
@@ -125,10 +139,7 @@ export async function checkAgentQueryDeliverability(
       subject: AgentQueryPlan["subjects"][number];
       plan: AgentQueryPlan;
     }) => Promise<boolean>;
-    sourceEligibilityChecker?: (sourceIds: string[]) => Promise<{
-      eligible: boolean;
-      ineligible_source_ids: string[];
-    }>;
+    sourceEligibilityChecker?: (sourceIds: string[]) => Promise<SourceCheckResult>;
   },
 ): Promise<AgentQueryDeliverability> {
   const now = options?.now ?? new Date();
@@ -136,6 +147,7 @@ export async function checkAgentQueryDeliverability(
   const missing = new Set<string>();
   const stale = new Set<string>();
   const ineligibleSources = new Set<string>();
+  const sourceContracts = new Map<string, AgentQueryDeliverability["source_contracts"][number]>();
   const subjects: AgentQueryDeliverability["subjects"] = [];
   const sourceChecker = options?.sourceEligibilityChecker ?? assertCommercialSourcesEligible;
 
@@ -156,15 +168,12 @@ export async function checkAgentQueryDeliverability(
         if (latest !== null) {
           latestEvidence = latestEvidence === null ? latest : Math.max(latestEvidence, latest);
           const maxAgeSeconds = plan.module_max_age_seconds[module];
-          // Every payable structural module must have an explicit freshness SLA.
-          // Missing SLA fails closed rather than silently accepting unbounded age.
           if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds <= 0) {
             stale.add(module);
           } else if (now.getTime() - latest > maxAgeSeconds * 1_000) {
             stale.add(module);
           }
         } else {
-          // No timestamp means freshness cannot be proven, so a paid query fails closed.
           stale.add(module);
         }
       }
@@ -178,6 +187,15 @@ export async function checkAgentQueryDeliverability(
         const sourceEligibility = await sourceChecker(sourceIds);
         if (!sourceEligibility.eligible) {
           sourceEligibility.ineligible_source_ids.forEach((sourceId) => ineligibleSources.add(sourceId));
+        }
+        for (const result of sourceEligibility.results ?? []) {
+          sourceContracts.set(result.source_id, {
+            source_id: result.source_id,
+            commercial_usage_status: result.commercial_usage_status,
+            raw_redistribution_allowed: result.raw_redistribution_allowed,
+            attribution_required: result.attribution_required,
+            licence_name: result.licence_name,
+          });
         }
       }
     }
@@ -208,7 +226,7 @@ export async function checkAgentQueryDeliverability(
     ? "AVAILABLE"
     : ineligibleSourceIds.length > 0
       ? "COMMERCIAL_SOURCE_NOT_ELIGIBLE"
-      : anyUnavailable
+      : anyUnavailable && requiredStructural.length > 0
         ? "NOT_AVAILABLE"
         : missingModules.length > 0
           ? "INSUFFICIENT_COVERAGE"
@@ -222,6 +240,7 @@ export async function checkAgentQueryDeliverability(
     missing_modules: missingModules,
     stale_modules: staleModules,
     ineligible_source_ids: ineligibleSourceIds,
+    source_contracts: [...sourceContracts.values()].sort((a, b) => a.source_id.localeCompare(b.source_id)),
     subjects,
   };
 }
