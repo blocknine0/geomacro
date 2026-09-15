@@ -101,10 +101,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image:alt", content: "Geomacro geopolitical and macro risk intelligence" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@GeomacroLive" },
-      { name: "twitter:title", content: DEFAULT_TITLE },
-      { name: "twitter:description", content: DEFAULT_DESCRIPTION },
-      { name: "twitter:image", content: DEFAULT_OG_IMAGE },
-      { name: "twitter:image:alt", content: "Geomacro geopolitical and macro risk intelligence" },
     ],
     links: [
       {
