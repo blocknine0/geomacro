@@ -18,17 +18,12 @@ jobs:
   fund-owner:
     if: github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # The live Coinbase x402 server credentials are isolated in the production
-    # environment. This job uses them only for Coinbase's Base Sepolia faucet.
-    # It never enables Base mainnet settlement or moves real funds.
-    environment: production
+    timeout-minutes: 8
     env:
       BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
       TARGET_ADDRESS: '0x0C8fb1055C22dF132659f3C453dd7B2093f7AD58'
       TARGET_MIN_WEI: '500000000000000'
-      CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
-      CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
+      A2AWIRE_FAUCET_URL: https://a2awire.com/agents/faucet/invoke
 
     steps:
       - name: Validate bounded testnet-only configuration
@@ -39,145 +34,91 @@ jobs:
             echo "::error::Unexpected Base Sepolia faucet target."
             exit 1
           fi
-          if [ -z "${CDP_API_KEY_ID:-}" ] || [ -z "${CDP_API_KEY_SECRET:-}" ]; then
-            echo "::error::CDP_API_KEY_ID/CDP_API_KEY_SECRET are not configured in the production GitHub environment."
-            exit 1
-          fi
           echo "Network: Base Sepolia / eip155:84532" >> "$GITHUB_STEP_SUMMARY"
           echo "Target: $TARGET_ADDRESS" >> "$GITHUB_STEP_SUMMARY"
           echo "Purpose: testnet deployment gas only" >> "$GITHUB_STEP_SUMMARY"
+          echo "Maximum requested faucet amount: 0.0005 test ETH" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Mainnet enabled: false" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Setup Node.js 22
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '22'
-
-      - name: Install isolated Coinbase auth helper
+      - name: Read current Base Sepolia balance
+        id: before
         shell: bash
         run: |
           set -euo pipefail
-          CDP_DIR="$RUNNER_TEMP/cdp-faucet-auth"
-          mkdir -p "$CDP_DIR"
-          cd "$CDP_DIR"
-          npm init -y >/dev/null 2>&1
-          npm install --ignore-scripts --no-audit --no-fund --package-lock=false @coinbase/cdp-sdk@1.56.0 >/dev/null
-
-      - name: Request only the Base Sepolia ETH needed for registry deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$RUNNER_TEMP/cdp-faucet-auth"
-          node --input-type=module <<'NODE'
-          import { generateJwt } from '@coinbase/cdp-sdk/auth';
-
-          const rpcUrl = process.env.BASE_SEPOLIA_RPC_URL;
-          const address = process.env.TARGET_ADDRESS;
-          const targetMinWei = BigInt(process.env.TARGET_MIN_WEI);
-          const apiKeyId = process.env.CDP_API_KEY_ID;
-          const apiKeySecret = process.env.CDP_API_KEY_SECRET;
-          const host = 'api.cdp.coinbase.com';
-          const path = '/platform/v2/evm/faucet';
-          const endpoint = `https://${host}${path}`;
-
-          if (!rpcUrl || !address || !apiKeyId || !apiKeySecret) {
-            throw new Error('Base Sepolia faucet configuration is incomplete');
-          }
-
-          async function balanceWei() {
-            const response = await fetch(rpcUrl, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] }),
-              signal: AbortSignal.timeout(10_000),
-            });
-            if (!response.ok) throw new Error(`Base Sepolia RPC HTTP ${response.status}`);
-            const payload = await response.json();
-            if (payload.error || typeof payload.result !== 'string') {
-              throw new Error(`Base Sepolia balance query failed: ${JSON.stringify(payload.error ?? payload)}`);
-            }
-            return BigInt(payload.result);
-          }
-
-          async function claimOnce(index) {
-            const jwt = await generateJwt({
-              apiKeyId,
-              apiKeySecret,
-              requestMethod: 'POST',
-              requestHost: host,
-              requestPath: path,
-              expiresIn: 120,
-            });
-            const response = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${jwt}`,
-                'content-type': 'application/json',
-              },
-              body: JSON.stringify({ network: 'base-sepolia', address, token: 'eth' }),
-              signal: AbortSignal.timeout(20_000),
-            });
-            const text = await response.text();
-            let payload = {};
-            try { payload = JSON.parse(text); } catch {}
-            if (!response.ok) {
-              throw new Error(`CDP faucet HTTP ${response.status}: ${String(payload?.message ?? payload?.error ?? text).slice(0, 300)}`);
-            }
-            const txHash = payload?.transactionHash;
-            if (typeof txHash !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
-              throw new Error('CDP faucet response did not include a valid transaction hash');
-            }
-            console.log(`Base Sepolia faucet claim ${index}: ${txHash}`);
-            return txHash;
-          }
-
-          let balance = await balanceWei();
-          console.log(`Base Sepolia ETH before bootstrap (wei): ${balance}`);
-          if (balance >= targetMinWei) {
-            console.log('Owner wallet already has sufficient Base Sepolia deployment gas.');
-            process.exit(0);
-          }
-
-          const hashes = [];
-          for (let i = 1; i <= 5 && balance < targetMinWei; i += 1) {
-            hashes.push(await claimOnce(i));
-            for (let poll = 0; poll < 20; poll += 1) {
-              await new Promise((resolve) => setTimeout(resolve, 1500));
-              balance = await balanceWei();
-              if (balance >= BigInt(i) * 100000000000000n || balance >= targetMinWei) break;
-            }
-            console.log(`Observed Base Sepolia ETH after claim ${i} (wei): ${balance}`);
-          }
-
-          for (let poll = 0; poll < 30 && balance < targetMinWei; poll += 1) {
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            balance = await balanceWei();
-          }
-
-          if (balance < targetMinWei) {
-            throw new Error(`Base Sepolia faucet completed but balance ${balance} is below required ${targetMinWei}`);
-          }
-
-          console.log(`PASS: owner Base Sepolia deployment gas ready at ${balance} wei`);
-          console.log(`Faucet transactions submitted: ${hashes.length}`);
-          NODE
-
-      - name: Verify public balance after bootstrap
-        shell: bash
-        run: |
-          set -euo pipefail
-          RESULT="$(curl -fsS --max-time 10 -H 'content-type: application/json' \
+          RESULT="$(curl -fsS --max-time 15 \
+            -H 'content-type: application/json' \
+            -H 'user-agent: geomacro-testnet-bootstrap/1.0' \
             --data '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["'"$TARGET_ADDRESS"'","latest"]}' \
             "$BASE_SEPOLIA_RPC_URL" | jq -r '.result')"
           if ! [[ "$RESULT" =~ ^0x[0-9a-fA-F]+$ ]]; then
-            echo "::error::Unable to verify Base Sepolia owner balance."
+            echo "::error::Unable to read Base Sepolia owner balance."
             exit 1
           fi
           BALANCE_WEI="$((RESULT))"
-          if [ "$BALANCE_WEI" -lt "$TARGET_MIN_WEI" ]; then
-            echo "::error::Base Sepolia owner balance remains below deployment minimum."
+          echo "balance_wei=$BALANCE_WEI" >> "$GITHUB_OUTPUT"
+          echo "Base Sepolia ETH before bootstrap (wei): $BALANCE_WEI"
+
+      - name: Request one public Base Sepolia faucet drip when needed
+        if: ${{ fromJSON(steps.before.outputs.balance_wei) < 500000000000000 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BODY_FILE="$RUNNER_TEMP/a2awire-faucet-response.json"
+          HTTP_CODE="$(curl -sS --max-time 30 \
+            -o "$BODY_FILE" \
+            -w '%{http_code}' \
+            -X POST "$A2AWIRE_FAUCET_URL" \
+            -H 'content-type: application/json' \
+            -H 'user-agent: geomacro-testnet-bootstrap/1.0' \
+            --data '{"task":"request_testnet_eth","input":{"address":"'"$TARGET_ADDRESS"'"}}')"
+
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+            SAFE_ERROR="$(jq -r '.error.code // .error // .message // "unknown faucet error"' "$BODY_FILE" 2>/dev/null || echo 'unknown faucet error')"
+            echo "::error::Public Base Sepolia faucet failed with HTTP $HTTP_CODE: $SAFE_ERROR"
             exit 1
           fi
+
+          TX_HASH="$(jq -r '.output.tx_hash // .tx_hash // empty' "$BODY_FILE")"
+          AMOUNT_WEI="$(jq -r '.output.amount_wei // .amount_wei // empty' "$BODY_FILE")"
+          if ! [[ "$TX_HASH" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+            echo "::error::Faucet response did not contain a valid Base Sepolia transaction hash."
+            exit 1
+          fi
+          if [ -n "$AMOUNT_WEI" ] && [ "$AMOUNT_WEI" != "$TARGET_MIN_WEI" ]; then
+            echo "::error::Faucet returned an unexpected test ETH amount."
+            exit 1
+          fi
+
+          echo "Base Sepolia faucet transaction: $TX_HASH"
+          echo "Faucet transaction: \`$TX_HASH\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify owner received enough Base Sepolia gas
+        shell: bash
+        run: |
+          set -euo pipefail
+          BALANCE_WEI=0
+          for attempt in $(seq 1 45); do
+            RESULT="$(curl -fsS --max-time 15 \
+              -H 'content-type: application/json' \
+              -H 'user-agent: geomacro-testnet-bootstrap/1.0' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["'"$TARGET_ADDRESS"'","latest"]}' \
+              "$BASE_SEPOLIA_RPC_URL" | jq -r '.result')"
+            if [[ "$RESULT" =~ ^0x[0-9a-fA-F]+$ ]]; then
+              BALANCE_WEI="$((RESULT))"
+              if [ "$BALANCE_WEI" -ge "$TARGET_MIN_WEI" ]; then
+                break
+              fi
+            fi
+            sleep 2
+          done
+
+          if [ "$BALANCE_WEI" -lt "$TARGET_MIN_WEI" ]; then
+            echo "::error::Base Sepolia owner balance remains below deployment minimum after faucet settlement wait."
+            exit 1
+          fi
+
+          echo "PASS: Base Sepolia owner deployment gas ready at $BALANCE_WEI wei"
           echo "Verified Base Sepolia deployment gas (wei): $BALANCE_WEI" >> "$GITHUB_STEP_SUMMARY"
-          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
           echo "Mainnet transaction executed: false" >> "$GITHUB_STEP_SUMMARY"
