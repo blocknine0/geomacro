@@ -1,0 +1,81 @@
+name: Temporary Adaptive Base Sepolia Paid E2E
+
+on:
+  push:
+    branches:
+      - ops/adaptive-base-sepolia-once
+    paths:
+      - ".github/workflows/temporary-adaptive-base-sepolia-paid-e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporary-adaptive-base-sepolia-paid-e2e
+  cancel-in-progress: false
+
+jobs:
+  paid-e2e:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/ops/adaptive-base-sepolia-once'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ACK: COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC
+      GEOMACRO_COINBASE_X402_CLIENT_REQUEST_ID: acceptance-${{ github.run_id }}
+      GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ARTIFACT_DIR: artifacts/coinbase-x402-adaptive-base-sepolia-paid
+
+    steps:
+      - name: Confirm testnet-only payment boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ACK" = "COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC"
+          echo "Network: Base Sepolia / eip155:84532" >> "$GITHUB_STEP_SUMMARY"
+          echo "Maximum authorized settlement: exactly 0.05 test USDC" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Base mainnet acknowledgement changed: false" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate buyer testnet secret without printing it
+        env:
+          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY" || { echo "::error::COINBASE_X402_BASE_SEPOLIA_PAID_PROOF is not configured"; exit 1; }
+
+      - name: Checkout one-shot branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ops/adaptive-base-sepolia-once
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Execute adaptive paid E2E, replay, changed-query and underpayment proof
+        env:
+          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        run: node scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs
+
+      - name: Upload sanitized adaptive paid-proof evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: temporary-adaptive-base-sepolia-paid-proof-${{ github.run_id }}
+          path: artifacts/coinbase-x402-adaptive-base-sepolia-paid/*.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Record proof boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Private key persisted in evidence: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Raw PAYMENT-SIGNATURE persisted in evidence: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Base mainnet real-USDC gate: locked" >> "$GITHUB_STEP_SUMMARY"
