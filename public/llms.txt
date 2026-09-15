@@ -12,6 +12,7 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Research and methodology: LIVE
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
+- Paid agent / x402 access: CONTROLLED ACCEPTANCE; real-funds mainnet activation is a separate launch gate
 - Arc Testnet, prediction markets, Circle CCTP and Bridge & Swap: TECHNICAL PROOF
 
 Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as production mainnet, real-money institutional settlement or independent security certification.
@@ -30,13 +31,25 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - About & Trust: https://geomacro.live/about
 - Contact: https://geomacro.live/contact
 
+## Machine access and payment boundary
+
+- Machine discovery: https://geomacro.live/.well-known/geomacro-agent.json
+- No-charge x402 deliverability check: POST https://geomacro.live/api/x402/risk/availability
+- Paid adaptive intelligence resource: POST https://geomacro.live/api/x402/intelligence
+- The exact requested intelligence must pass deliverability checks before a payment challenge is issued.
+- Requests with unavailable, stale or commercially ineligible required coverage are not chargeable.
+- A successful machine payment unlocks only the bounded requested product; it does not widen the customer's entitlement or expose raw/private warehouse data.
+- Payment does not authorize a downstream financial action. Risk Gate remains non-authorizing and `execution_authorized=false`.
+
 ## Key product boundaries
 
 - Geomacro provides external risk context. It does not custody customer funds or authorize customer transactions.
 - Risk Gate currently keeps `execution_authorized=false` at the Geomacro boundary.
-- The current Private Pilot scope is country and directional corridor risk.
+- The current Private Pilot Risk Object / Risk Gate scope is country and directional corridor risk.
+- Coverage is data-driven; Geomacro does not claim a universal supported-country count without a current production census.
 - GRI is an evidence-weighted risk-intelligence measure, not a market probability and not a guarantee of future outcomes.
 - Missing or unavailable evidence is not silently converted into zero risk.
+- Corridor composition does not imply full physical-route, vessel, counterparty or logistics-path modelling.
 
 ## Technical implementation
 
