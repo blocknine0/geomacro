@@ -1,7 +1,8 @@
 # Geomacro India Pilot Statement of Work Template
 
 Status: commercial working template. Must be adapted to the customer and reviewed by appropriate counsel before being used as a final legal contract where required.
-Last reviewed: 2026-09-14.
+Last reviewed: 2026-09-15.
+Canonical operating standard: `docs/EARLY_ACCESS_OPERATING_TERMS.md`.
 
 This template is intentionally short enough for early media/SME pilots while preserving Geomacro's source-rights, product and execution boundaries.
 
@@ -164,7 +165,7 @@ Security contact: `[contact]`.
 
 Pilot support channel: `[email/chat channel]`.
 
-Normal support window: `[window]`.
+Normal support window: `[buyer-specific window; if omitted, use the current default in docs/EARLY_ACCESS_OPERATING_TERMS.md]`.
 
 Pilot escalation contact: `[contact]`.
 
