@@ -3,8 +3,6 @@ name: Cleanup Obsolete Failed Action Runs
 on:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/cleanup-obsolete-failed-runs.yml"
   workflow_dispatch:
   schedule:
     - cron: "23 3 * * 1"
@@ -12,6 +10,7 @@ on:
 permissions:
   contents: read
   actions: write
+  pull-requests: read
 
 concurrency:
   group: cleanup-obsolete-failed-action-runs
@@ -29,29 +28,24 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Ongoing GOAT acceptance/payment work is explicitly out of scope
-            // until its evidence program is complete.
+            // Ongoing GOAT acceptance/payment work is evidence-bearing and stays
+            // out of cleanup until that program is explicitly completed.
             const isProtectedOngoing = (run) =>
               String(run.path || '').startsWith('.github/workflows/goat-');
 
-            // These one-shot/v1 workflows have canonical successors and are
-            // retired from main. Their old red runs are historical noise, not
-            // unresolved current failures.
+            // These workflows are retired/superseded on canonical main.
             const retiredPaths = new Set([
               '.github/workflows/bootstrap-global-country-readiness-production.yml',
               '.github/workflows/dan-commercial-readiness.yml',
             ]);
 
-            // Both AgentArena V2 workflows are now manual verify-only entries.
-            // Old push-triggered failures were produced by superseded workflow
-            // definitions and can never occur under the current trigger contract.
             const isSupersededTriggerFailure = (run) =>
               run.event === 'push' && new Set([
                 '.github/workflows/execute-v2-upgrade.yml',
                 '.github/workflows/deploy-v2-implementation.yml',
               ]).has(run.path);
 
-            const [failedRuns, queuedRuns, activeRuns] = await Promise.all([
+            const [failedRuns, queuedRuns, activeRuns, openPulls] = await Promise.all([
               github.paginate(
                 github.rest.actions.listWorkflowRunsForRepo,
                 { owner, repo, status: 'failure', per_page: 100 },
@@ -64,12 +58,23 @@ jobs:
                 github.rest.actions.listWorkflowRunsForRepo,
                 { owner, repo, status: 'in_progress', per_page: 100 },
               ),
+              github.paginate(
+                github.rest.pulls.list,
+                { owner, repo, state: 'open', per_page: 100 },
+              ),
             ]);
 
-            // User-requested boundary: if a workflow is currently running in
-            // the background, leave every one of its failed runs untouched.
+            // Never touch a workflow that is actually running now.
             const activeWorkflowIds = new Set(
               [...queuedRuns, ...activeRuns].map((run) => run.workflow_id),
+            );
+
+            // Never touch failed history from a branch that still has an open PR.
+            // This protects current background work even between CI runs.
+            const openPrBranches = new Set(
+              openPulls
+                .filter((pr) => pr.head?.repo?.full_name === `${owner}/${repo}`)
+                .map((pr) => pr.head.ref),
             );
 
             const latestMainCache = new Map();
@@ -90,17 +95,19 @@ jobs:
             const deletable = [];
             const preservedGroups = {
               active: new Map(),
+              openPr: new Map(),
               protected: new Map(),
               unresolvedMain: new Map(),
               currentFailure: new Map(),
             };
 
             function remember(group, run, note) {
-              const key = String(run.workflow_id);
+              const key = `${run.workflow_id}:${run.head_branch || 'none'}`;
               const row = preservedGroups[group].get(key) || {
                 workflow_id: run.workflow_id,
                 name: run.name,
                 path: run.path,
+                branch: run.head_branch,
                 count: 0,
                 newest_run_id: run.id,
                 newest_created_at: run.created_at,
@@ -121,6 +128,11 @@ jobs:
                 continue;
               }
 
+              if (run.head_branch && openPrBranches.has(run.head_branch)) {
+                remember('openPr', run, 'branch belongs to an open PR/background task');
+                continue;
+              }
+
               if (isProtectedOngoing(run)) {
                 remember('protected', run, 'ongoing GOAT evidence/payment program');
                 continue;
@@ -131,6 +143,7 @@ jobs:
                 continue;
               }
 
+              // A non-main failure with no open PR is obsolete branch history.
               if (run.head_branch && run.head_branch !== 'main') {
                 deletable.push(run);
                 continue;
@@ -182,51 +195,33 @@ jobs:
 
             function rowsFor(label, map) {
               const rows = [...map.values()].sort((a, b) => b.count - a.count);
-              core.info(`PRESERVED_GROUP ${label}: ${rows.length} workflow(s)`);
+              core.info(`PRESERVED_GROUP ${label}: ${rows.length} group(s)`);
               for (const row of rows) {
                 core.info(
-                  `PRESERVED ${label} | workflow_id=${row.workflow_id} | count=${row.count} | name=${row.name} | path=${row.path} | newest_run=${row.newest_run_id} | newest_at=${row.newest_created_at} | note=${row.note}`,
+                  `PRESERVED ${label} | workflow_id=${row.workflow_id} | branch=${row.branch || 'none'} | count=${row.count} | name=${row.name} | path=${row.path} | newest_run=${row.newest_run_id} | newest_at=${row.newest_created_at} | note=${row.note}`,
                 );
               }
               return rows;
             }
 
             const activeRows = rowsFor('active', preservedGroups.active);
+            const openPrRows = rowsFor('openPr', preservedGroups.openPr);
             const protectedRows = rowsFor('protected', preservedGroups.protected);
             const unresolvedRows = rowsFor('unresolvedMain', preservedGroups.unresolvedMain);
             const currentRows = rowsFor('currentFailure', preservedGroups.currentFailure);
+
+            const countRows = (rows) => rows.reduce((n, row) => n + row.count, 0);
 
             core.summary
               .addHeading('Obsolete failed Action run cleanup')
               .addRaw(`Failed runs scanned: ${failedRuns.length}\n\n`)
               .addRaw(`Deleted obsolete/superseded failures: ${deleted}\n\n`)
-              .addRaw(`Preserved active workflow failures: ${activeRows.reduce((n, r) => n + r.count, 0)}\n\n`)
-              .addRaw(`Preserved ongoing GOAT failures: ${protectedRows.reduce((n, r) => n + r.count, 0)}\n\n`)
-              .addRaw(`Preserved unresolved main failures: ${unresolvedRows.reduce((n, r) => n + r.count, 0)}\n\n`)
-              .addRaw(`Preserved current failures: ${currentRows.reduce((n, r) => n + r.count, 0)}\n\n`)
-              .addRaw(`Delete errors: ${errors.length}\n\n`)
-              .addHeading('Preserved workflow groups', 2)
-              .addTable([
-                [
-                  { data: 'Reason', header: true },
-                  { data: 'Workflow', header: true },
-                  { data: 'Path', header: true },
-                  { data: 'Failures', header: true },
-                  { data: 'Newest run', header: true },
-                ],
-                ...[
-                  ...activeRows.map((row) => ['active', row]),
-                  ...protectedRows.map((row) => ['protected', row]),
-                  ...unresolvedRows.map((row) => ['unresolved main', row]),
-                  ...currentRows.map((row) => ['current failure', row]),
-                ].map(([reason, row]) => [
-                  reason,
-                  row.name,
-                  row.path || '—',
-                  String(row.count),
-                  String(row.newest_run_id),
-                ]),
-              ])
+              .addRaw(`Preserved active workflow failures: ${countRows(activeRows)}\n\n`)
+              .addRaw(`Preserved open-PR/background failures: ${countRows(openPrRows)}\n\n`)
+              .addRaw(`Preserved ongoing GOAT failures: ${countRows(protectedRows)}\n\n`)
+              .addRaw(`Preserved unresolved main failures: ${countRows(unresolvedRows)}\n\n`)
+              .addRaw(`Preserved current failures: ${countRows(currentRows)}\n\n`)
+              .addRaw(`Delete errors: ${errors.length}\n`)
               .write();
 
             if (errors.length) {
