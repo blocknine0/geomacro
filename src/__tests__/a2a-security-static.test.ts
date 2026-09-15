@@ -19,7 +19,7 @@ describe("A2A security and durability static contract", () => {
     expect(migration).not.toMatch(/\bTRUNCATE\b/i);
   });
 
-  it("requires authenticated commercial principals for task methods", () => {
+  it("requires authenticated commercial principals for task methods and validates local continuation IDs", () => {
     const route = read("server/api/a2a/[...path].ts");
     expect(route).toContain("authenticateCommercialApiRequest");
     expect(route).toContain('path === "message:send"');
@@ -27,6 +27,7 @@ describe("A2A security and durability static contract", () => {
     expect(route).toContain("pushNotificationConfigs");
     expect(route).toContain('path === "extendedAgentCard"');
     expect(route).toContain('"A2A-Version"');
+    expect(route).toContain("A2A_LOCAL_TASK_ID_INVALID");
   });
 
   it("never turns Geomacro into an arbitrary outbound HTTP proxy", () => {
@@ -35,9 +36,19 @@ describe("A2A security and durability static contract", () => {
     expect(client).toContain("GEOMACRO_A2A_TRUSTED_PEERS_JSON");
     expect(client).toContain("allowed_interface_hosts");
     expect(client).toContain("assertA2APublicHttpsUrl");
+    expect(client).toContain("OUTBOUND_ATTEMPTS_PER_MINUTE");
+    expect(client).toContain("A2A_OUTBOUND_RATE_LIMITED");
     expect(outbound).toContain("arbitrary_target_urls_allowed: false");
     expect(client).not.toContain("request.target_url");
     expect(client).not.toContain("request.url");
+  });
+
+  it("validates remote SendMessageResponse instead of trusting arbitrary peer JSON", () => {
+    const client = read("src/lib/a2a-client.server.ts");
+    expect(client).toContain("remoteSendMessageResponseSchema");
+    expect(client).toContain("A2A_PEER_RESPONSE_INVALID");
+    expect(client).toContain("remote_task_id");
+    expect(client).toContain("remote_state");
   });
 
   it("does not persist remote Authorization credentials and fail-closes execution", () => {
@@ -51,12 +62,14 @@ describe("A2A security and durability static contract", () => {
     expect(client).toContain("remote_authorization_secret_persisted: false");
   });
 
-  it("pins callbacks and peer discovery to public HTTPS with no redirects", () => {
+  it("pins callbacks and peer discovery to public HTTPS with no redirects and v1 push wrapping", () => {
     const safety = read("src/lib/a2a-network-safety.server.ts");
     expect(safety).toContain('url.protocol !== "https:"');
     expect(safety).toContain('redirect: "manual"');
     expect(safety).toContain("169.254.169.254");
     expect(safety).toContain('hostname.endsWith(".internal")');
     expect(safety).toContain("lookup(hostname, { all: true, verbatim: true })");
+    expect(safety).toContain("maybeWrapA2APushBody");
+    expect(safety).toContain("JSON.stringify({ task: value })");
   });
 });
