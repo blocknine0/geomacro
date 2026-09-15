@@ -1,0 +1,114 @@
+{
+  "name": "Geomacro Agent",
+  "description": "Geopolitical and macro risk intelligence for AI agents, including a bounded Risk Gate preflight skill with signed Risk Objects and machine-readable decision context.",
+  "supportedInterfaces": [
+    {
+      "url": "https://geomacro.live/api/a2a",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "organization": "Geomacro",
+    "url": "https://geomacro.live"
+  },
+  "version": "geomacro-a2a-v1",
+  "documentationUrl": "https://geomacro.live/docs",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": true,
+    "extendedAgentCard": true
+  },
+  "securitySchemes": {
+    "geomacroBearer": {
+      "httpAuthSecurityScheme": {
+        "scheme": "Bearer",
+        "bearerFormat": "opaque",
+        "description": "Geomacro commercial API bearer credential."
+      }
+    },
+    "geomacroTestnetKey": {
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-Geomacro-Api-Key",
+        "description": "Geomacro Testnet developer API key."
+      }
+    },
+    "geomacroTestnetSecret": {
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-Geomacro-Api-Secret",
+        "description": "Geomacro Testnet developer API secret. Required together with the Testnet API key."
+      }
+    }
+  },
+  "securityRequirements": [
+    {
+      "schemes": {
+        "geomacroBearer": {
+          "list": []
+        }
+      }
+    },
+    {
+      "schemes": {
+        "geomacroTestnetKey": {
+          "list": []
+        },
+        "geomacroTestnetSecret": {
+          "list": []
+        }
+      }
+    }
+  ],
+  "defaultInputModes": [
+    "application/json",
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "risk_preflight",
+      "name": "Risk preflight",
+      "description": "Evaluate a country or directional corridor before an agent payment or exposure action. Returns Risk Gate decision context, a verified signed Risk Object, structural context and canonical GRI context. Geomacro never authorizes execution.",
+      "tags": [
+        "geopolitical-risk",
+        "macro-risk",
+        "risk-gate",
+        "treasury",
+        "payments"
+      ],
+      "examples": [
+        "Assess India before a treasury payment.",
+        "Evaluate the India to Singapore corridor before an agent payment."
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ],
+      "securityRequirements": [
+        {
+          "schemes": {
+            "geomacroBearer": {
+              "list": []
+            }
+          }
+        },
+        {
+          "schemes": {
+            "geomacroTestnetKey": {
+              "list": []
+            },
+            "geomacroTestnetSecret": {
+              "list": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

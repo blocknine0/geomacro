@@ -8,6 +8,16 @@
     "execution_authorized": false
   },
   "endpoint": "https://geomacro.live/api/agent/risk",
+  "a2a": {
+    "protocol": "A2A",
+    "protocol_version": "1.0",
+    "discovery": "https://geomacro.live/.well-known/agent-card.json",
+    "interface": "https://geomacro.live/api/a2a",
+    "outbound_interface": "https://geomacro.live/api/a2a/outbound",
+    "task_callbacks": true,
+    "arbitrary_outbound_targets": false,
+    "execution_authorized": false
+  },
   "capabilities": [
     {
       "id": "risk_preflight",
