@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-risk-key-registry-base-sepolia.yml'
+  workflow_dispatch: {}
 
 permissions:
   contents: read
