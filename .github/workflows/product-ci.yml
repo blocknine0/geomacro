@@ -61,7 +61,20 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: App tests
-        run: bun run test:app
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          bun run test:app 2>&1 | tee artifacts/product-ci-tests.log
+
+      - name: Upload app test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-ci-test-evidence
+          path: artifacts/product-ci-tests.log
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Risk Gate phase-1 static contract
         run: node scripts/test-risk-gate-phase1.mjs
