@@ -45,7 +45,7 @@ jobs:
       - name: Validate registry contract before broadcast
         run: forge test --match-path test/RiskKeyRegistry.t.sol
 
-      - name: Validate required signing/deployment material
+      - name: Validate required signing and deployment material
         env:
           SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
@@ -59,8 +59,6 @@ jobs:
         id: gas
         env:
           OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
-          CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
-          CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
@@ -77,88 +75,54 @@ jobs:
             exit 0
           fi
 
-          # Preferred path: Coinbase CDP faucet if repository credentials exist.
-          if [ -n "${CDP_API_KEY_ID:-}" ] && [ -n "${CDP_API_KEY_SECRET:-}" ]; then
-            CDP_DIR="$RUNNER_TEMP/cdp-faucet-client"
-            mkdir -p "$CDP_DIR"
-            cd "$CDP_DIR"
-            npm init -y >/dev/null 2>&1
-            npm install --ignore-scripts --no-audit --no-fund --package-lock=false @coinbase/cdp-sdk@1.56.0 >/dev/null
+          STATUS_FILE="$RUNNER_TEMP/a2awire-faucet-status.json"
+          ONBOARD_FILE="$RUNNER_TEMP/a2awire-onboard.json"
+          DRIP_FILE="$RUNNER_TEMP/a2awire-drip.json"
+          umask 077
 
-            FAUCET_ADDRESS="$OWNER_ADDRESS" node --input-type=module <<'NODE'
-            import { CdpClient } from '@coinbase/cdp-sdk';
-            const client = new CdpClient({
-              apiKeyId: process.env.CDP_API_KEY_ID,
-              apiKeySecret: process.env.CDP_API_KEY_SECRET,
-            });
-            try {
-              for (let i = 1; i <= 5; i += 1) {
-                const r = await client.evm.requestFaucet({
-                  address: process.env.FAUCET_ADDRESS,
-                  network: 'base-sepolia',
-                  token: 'eth',
-                });
-                console.log(`CDP faucet claim ${i}/5 submitted: ${r.transactionHash}`);
-              }
-            } finally {
-              await client.close();
-            }
-            NODE
-            cd "$GITHUB_WORKSPACE"
-            echo "provider=coinbase_cdp" >> "$GITHUB_OUTPUT"
-          else
-            # Cold-start fallback for testnet gas only. A2AWire explicitly supports
-            # unauthenticated agent self-onboarding followed by an authenticated
-            # 0.0005 Base Sepolia ETH faucet drip. The provisional API key lives
-            # only in runner temp, is never printed/persisted, and the temporary
-            # agent is deleted best-effort immediately after the drip request.
-            STATUS_FILE="$RUNNER_TEMP/a2awire-faucet-status.json"
-            ONBOARD_FILE="$RUNNER_TEMP/a2awire-onboard.json"
-            DRIP_FILE="$RUNNER_TEMP/a2awire-drip.json"
-            umask 077
-
-            curl -fsS https://a2awire.com/api/v1/faucet/status -o "$STATUS_FILE"
-            if [ "$(jq -r '.enabled // false' "$STATUS_FILE")" != "true" ]; then
-              echo '::error::A2AWire Base Sepolia faucet is not enabled.'
-              exit 1
-            fi
-
-            ONBOARD_BODY="$(jq -nc --arg n "geomacro-risk-registry-${GITHUB_RUN_ID}" --arg a "$OWNER_ADDRESS" '{agent_name:$n,capabilities:["testnet-contract-deployment"],withdrawal_address:$a}')"
-            curl -fsS -X POST https://a2awire.com/api/v1/onboard \
-              -H 'Content-Type: application/json' \
-              --data "$ONBOARD_BODY" \
-              -o "$ONBOARD_FILE"
-
-            A2A_KEY="$(jq -r '.api_key // empty' "$ONBOARD_FILE")"
-            A2A_AGENT_ID="$(jq -r '.agent_id // empty' "$ONBOARD_FILE")"
-            if [ -z "$A2A_KEY" ] || [ -z "$A2A_AGENT_ID" ]; then
-              echo '::error::A2AWire onboarding did not return the required provisional agent credentials.'
-              rm -f "$STATUS_FILE" "$ONBOARD_FILE" "$DRIP_FILE"
-              exit 1
-            fi
-
-            cleanup_agent() {
-              curl -sS -o /dev/null -X DELETE "https://a2awire.com/api/v1/agents/$A2A_AGENT_ID" \
-                -H "X-API-Key: $A2A_KEY" || true
-              rm -f "$STATUS_FILE" "$ONBOARD_FILE" "$DRIP_FILE"
-            }
-            trap cleanup_agent EXIT
-
-            curl -fsS -X POST https://a2awire.com/api/v1/faucet/drip \
-              -H "X-API-Key: $A2A_KEY" \
-              -H 'Content-Type: application/json' \
-              --data "$(jq -nc --arg a "$OWNER_ADDRESS" '{address:$a}')" \
-              -o "$DRIP_FILE"
-
-            FAUCET_TX="$(jq -r '.tx_hash // empty' "$DRIP_FILE")"
-            if ! [[ "$FAUCET_TX" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-              echo '::error::A2AWire faucet did not return a valid Base Sepolia transaction hash.'
-              exit 1
-            fi
-            echo "A2AWire Base Sepolia gas drip submitted: $FAUCET_TX"
-            echo "provider=a2awire_ephemeral_agent" >> "$GITHUB_OUTPUT"
-            echo "faucet_tx=$FAUCET_TX" >> "$GITHUB_OUTPUT"
+          curl -fsS https://a2awire.com/api/v1/faucet/status -o "$STATUS_FILE"
+          if [ "$(jq -r '.enabled // false' "$STATUS_FILE")" != "true" ]; then
+            echo '::error::A2AWire Base Sepolia faucet is not enabled.'
+            rm -f "$STATUS_FILE" "$ONBOARD_FILE" "$DRIP_FILE"
+            exit 1
           fi
+
+          ONBOARD_BODY="$(jq -nc --arg n "geomacro-risk-registry-${GITHUB_RUN_ID}" --arg a "$OWNER_ADDRESS" '{agent_name:$n,capabilities:["testnet-contract-deployment"],withdrawal_address:$a}')"
+          curl -fsS -X POST https://a2awire.com/api/v1/onboard \
+            -H 'Content-Type: application/json' \
+            --data "$ONBOARD_BODY" \
+            -o "$ONBOARD_FILE"
+
+          A2A_KEY="$(jq -r '.api_key // empty' "$ONBOARD_FILE")"
+          A2A_AGENT_ID="$(jq -r '.agent_id // empty' "$ONBOARD_FILE")"
+          if [ -z "$A2A_KEY" ] || [ -z "$A2A_AGENT_ID" ]; then
+            echo '::error::A2AWire onboarding did not return provisional agent credentials.'
+            rm -f "$STATUS_FILE" "$ONBOARD_FILE" "$DRIP_FILE"
+            exit 1
+          fi
+
+          cleanup_agent() {
+            curl -sS -o /dev/null -X DELETE "https://a2awire.com/api/v1/agents/$A2A_AGENT_ID" \
+              -H "X-API-Key: $A2A_KEY" || true
+            rm -f "$STATUS_FILE" "$ONBOARD_FILE" "$DRIP_FILE"
+          }
+          trap cleanup_agent EXIT
+
+          curl -fsS -X POST https://a2awire.com/api/v1/faucet/drip \
+            -H "X-API-Key: $A2A_KEY" \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -nc --arg a "$OWNER_ADDRESS" '{address:$a}')" \
+            -o "$DRIP_FILE"
+
+          FAUCET_TX="$(jq -r '.tx_hash // empty' "$DRIP_FILE")"
+          if ! [[ "$FAUCET_TX" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+            echo '::error::A2AWire faucet did not return a valid Base Sepolia transaction hash.'
+            exit 1
+          fi
+
+          echo "A2AWire Base Sepolia gas drip submitted: $FAUCET_TX"
+          echo "provider=a2awire_ephemeral_agent" >> "$GITHUB_OUTPUT"
+          echo "faucet_tx=$FAUCET_TX" >> "$GITHUB_OUTPUT"
 
           for attempt in $(seq 1 45); do
             BALANCE_WEI="$(cast balance "$OWNER_ADDRESS" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
@@ -170,7 +134,7 @@ jobs:
             sleep 2
           done
 
-          echo '::error::Testnet faucet request completed but owner wallet still has zero Base Sepolia ETH.'
+          echo '::error::Testnet faucet transaction was submitted but owner wallet still has zero Base Sepolia ETH.'
           exit 1
 
       - name: Derive current public Risk Object key locally
@@ -179,17 +143,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const { createHash, createPrivateKey, createPublicKey } = require('node:crypto');
-          const fs = require('node:fs');
-          const raw = process.env.SIGNING_PRIVATE_KEY_PKCS8_B64?.trim();
-          if (!raw) throw new Error('Risk Object signing private key is missing');
-          const privateKey = createPrivateKey({ key: Buffer.from(raw, 'base64'), format: 'der', type: 'pkcs8' });
-          if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('Risk Object signing key must be Ed25519');
-          const spki = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' }));
-          fs.writeFileSync(`${process.env.RUNNER_TEMP}/risk-object-public-spki.b64`, spki.toString('base64'), { mode: 0o600 });
-          fs.writeFileSync(`${process.env.RUNNER_TEMP}/risk-object-public-fingerprint.txt`, createHash('sha256').update(spki).digest('hex'), { mode: 0o600 });
-          NODE
+          node -e 'const {createHash,createPrivateKey,createPublicKey}=require("node:crypto");const fs=require("node:fs");const raw=process.env.SIGNING_PRIVATE_KEY_PKCS8_B64?.trim();if(!raw)throw new Error("Risk Object signing private key is missing");const priv=createPrivateKey({key:Buffer.from(raw,"base64"),format:"der",type:"pkcs8"});if(priv.asymmetricKeyType!=="ed25519")throw new Error("Risk Object signing key must be Ed25519");const spki=Buffer.from(createPublicKey(priv).export({format:"der",type:"spki"}));fs.writeFileSync(process.env.RUNNER_TEMP+"/risk-object-public-spki.b64",spki.toString("base64"),{mode:0o600});fs.writeFileSync(process.env.RUNNER_TEMP+"/risk-object-public-fingerprint.txt",createHash("sha256").update(spki).digest("hex"),{mode:0o600});'
 
       - name: Deploy RiskKeyRegistry on Base Sepolia
         id: deploy
@@ -205,9 +159,11 @@ jobs:
           fi
 
           forge script script/DeployRiskKeyRegistry.s.sol:DeployRiskKeyRegistry \
-            --rpc-url "$BASE_SEPOLIA_RPC_URL" --broadcast
+            --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+            --broadcast
 
           BROADCAST_JSON='broadcast/DeployRiskKeyRegistry.s.sol/84532/run-latest.json'
+          test -f "$BROADCAST_JSON"
           REGISTRY="$(jq -r '.transactions[] | select(.contractName == "RiskKeyRegistry" and .contractAddress != null) | .contractAddress' "$BROADCAST_JSON" | head -n1)"
           DEPLOY_TX="$(jq -r '.transactions[] | select(.contractName == "RiskKeyRegistry" and .hash != null) | .hash' "$BROADCAST_JSON" | head -n1)"
           if ! [[ "$REGISTRY" =~ ^0x[0-9a-fA-F]{40}$ ]] || ! [[ "$DEPLOY_TX" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
@@ -228,9 +184,11 @@ jobs:
           set -euo pipefail
           export RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64="$(cat "$RUNNER_TEMP/risk-object-public-spki.b64")"
           forge script script/PublishRiskKey.s.sol:PublishRiskKey \
-            --rpc-url "$BASE_SEPOLIA_RPC_URL" --broadcast
+            --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+            --broadcast
 
           BROADCAST_JSON='broadcast/PublishRiskKey.s.sol/84532/run-latest.json'
+          test -f "$BROADCAST_JSON"
           PUBLISH_TXS="$(jq -r '[.transactions[] | select(.hash != null) | .hash] | join(",")' "$BROADCAST_JSON")"
           PUBLIC_KEY_HASH="$(cast keccak "$RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64")"
           test -n "$PUBLISH_TXS"
