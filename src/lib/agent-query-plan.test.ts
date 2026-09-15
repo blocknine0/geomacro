@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAgentQueryPlan, inferAgentQueryTopics, paymentBindingForAgentQuery } from "./agent-query-plan";
+import { AGENT_MODULE_MAX_AGE_SECONDS, buildAgentQueryPlan, inferAgentQueryTopics, paymentBindingForAgentQuery } from "./agent-query-plan";
 
 const base = {
   subjects: [{ type: "country" as const, country_iso3: "ind" }],
@@ -52,6 +52,42 @@ describe("adaptive agent query planner", () => {
       topics: ["risk_gate"],
       risk_gate_context: { action_type: "treasury_payment", policy_preset: "strict", amount_usdc: 1000 },
     })).not.toThrow();
+  });
+
+  it("does not silently answer historical structural or GRI questions with current data", () => {
+    expect(() => buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["macro_risk"],
+      as_of: "2024-01-01T00:00:00.000Z",
+    })).toThrow("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
+    expect(() => buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["gri_context"],
+      as_of: "2024-01-01T00:00:00.000Z",
+    })).toThrow("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
+    expect(() => buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["risk_gate"],
+      as_of: "2024-01-01T00:00:00.000Z",
+      risk_gate_context: { action_type: "exposure_review", policy_preset: "balanced" },
+    })).not.toThrow();
+  });
+
+  it("lets callers tighten freshness but never relax the module SLA", () => {
+    const relaxed = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["hot_topics"],
+      max_age_seconds: 30 * 86_400,
+    });
+    expect(relaxed.module_max_age_seconds.hot_topics).toBe(AGENT_MODULE_MAX_AGE_SECONDS.hot_topics);
+
+    const strict = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["macro_risk"],
+      max_age_seconds: 3_600,
+    });
+    expect(strict.module_max_age_seconds.macro_monetary).toBe(3_600);
+    expect(strict.module_max_age_seconds.sovereign_fiscal).toBe(3_600);
   });
 
   it("rejects unknown topics rather than silently mapping them", () => {
