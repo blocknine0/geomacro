@@ -29,6 +29,7 @@ on:
       - "supabase/migrations/912_testnet_api_pay_per_call.sql"
       - "supabase/migrations/913_testnet_pay_per_call_runtime_hardening.sql"
       - "supabase/migrations/914_testnet_exact_request_binding.sql"
+      - "supabase/migrations/928_testnet_developer_credential_lifecycle.sql"
       - "scripts/testnet/**"
       - "scripts/ops/live-performance-slo.mjs"
       - ".github/workflows/live-testnet-authenticated-e2e.yml"
@@ -73,6 +74,7 @@ jobs:
           src/__tests__/testnet-tester-e2e-contract.test.ts
           src/__tests__/testnet-structural-severity-console-static.test.ts
           src/__tests__/testnet-developer-access-static.test.ts
+          src/__tests__/testnet-developer-scopes.test.ts
           src/__tests__/testnet-tester-account-runtime-static.test.ts
           src/__tests__/testnet-credential-payment-e2e.test.ts
           src/__tests__/testnet-credential-bridge-runtime.test.ts

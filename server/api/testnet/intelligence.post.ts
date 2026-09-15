@@ -12,6 +12,10 @@ import {
   CommercialAccessError,
 } from "../../../src/lib/commercial-access.server";
 import {
+  hasTestnetCapabilityScope,
+  requiredTestnetScopeForCapability,
+} from "../../../src/lib/testnet-developer-scopes";
+import {
   testnetIntelligenceRequestSchema,
 } from "../../../src/lib/testnet-intelligence-contract";
 import { preflightTestnetIntelligenceAvailability } from "../../../src/lib/testnet-intelligence-preflight.server";
@@ -133,6 +137,20 @@ export default defineEventHandler(async (event) => {
     });
     const principal = await authenticateCommercialApiRequest(authRequest);
     const request = testnetIntelligenceRequestSchema.parse(raw);
+
+    if (!hasTestnetCapabilityScope({
+      keyId: principal.key_id,
+      scopes: principal.scopes,
+      capability: request.capability,
+    })) {
+      const requiredScope = requiredTestnetScopeForCapability(request.capability);
+      throw new CommercialAccessError(
+        403,
+        "TESTNET_API_SCOPE_REQUIRED",
+        `This Testnet developer credential does not include the required scope: ${requiredScope}.`,
+      );
+    }
+
     await preflightTestnetIntelligenceAvailability(request);
 
     const requestBinding = await bindTestnetIntelligenceRequest({ principal, request });

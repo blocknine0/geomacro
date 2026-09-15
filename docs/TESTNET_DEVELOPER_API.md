@@ -62,16 +62,44 @@ Raw private-warehouse access and upstream news-source URLs/identities are not pa
 
 ## Developer credentials
 
-After wallet verification, Testnet developer access is provisioned without an upfront payment. Create credentials from the Testnet Access page.
+After wallet verification, Testnet developer access is provisioned without an upfront payment. Create the wallet-bound credential from the Testnet Access page.
 
 Geomacro returns two values once:
 
 - `API Key`, prefixed with `gmk_test_`
 - `API Secret`, prefixed with `gms_test_`
 
-Store both securely. The API Secret is not shown again. Geomacro stores the public API Key identifier and a hash of the API Secret, not the plaintext secret.
+Store both securely. The API Secret is not shown again. Geomacro stores the public API Key identifier and a keyed digest of the API Secret, not the plaintext secret.
 
-A tester can keep up to three active Testnet developer credentials and can revoke them from the Testnet Access page.
+A verified tester has **one usable Testnet developer credential at a time**. Reconnecting restores the same API Key and never re-displays its secret. Credential issuance is serialized server-side and the database enforces the one-live-key invariant so concurrent requests cannot mint duplicate usable keys.
+
+Credential lifecycle is explicit:
+
+- **Revoke:** immediately disables both the public credential and its wallet-bound Testnet mapping. Repeated revoke requests are idempotent.
+- **Rotate:** atomically creates a replacement credential and revokes the previous credential in the same database transaction. The replacement API Secret is shown once.
+- **Expiry:** credentials are bounded by the active Testnet entitlement period. Expired or otherwise unusable mappings are normalized inactive before a new credential can be issued.
+- **Audit:** issue, revoke, rotate and stale-state cleanup events are recorded in a server-side lifecycle ledger. Plaintext API secrets are never written to that ledger.
+
+Credential management endpoints are wallet-session protected. A caller cannot rotate or revoke another principal's credential by supplying its ID.
+
+### Least-privilege scopes
+
+Scope defaults are derived from the declared integration type instead of granting every Testnet capability to every key.
+
+| Integration type | Default scopes |
+| --- | --- |
+| `product_api` | `commercial:read`, `testnet:structured`, `testnet:risk-object`, `testnet:risk-gate` |
+| `ai_agent` | `commercial:read`, `testnet:structured`, `testnet:risk-object`, `testnet:risk-gate`, `testnet:agent` |
+| `automation` | `commercial:read`, `testnet:structured`, `testnet:risk-object`, `testnet:risk-gate` |
+| `demo` | `commercial:read`, `testnet:structured`, `testnet:risk-object` |
+
+The metered intelligence endpoint enforces the minimum scope **before** availability preflight, payment quotation or delivery:
+
+- `intelligence_query`, `gri_read` and all structural digest/profile capabilities require `testnet:structured`;
+- `signed_risk_object` requires `testnet:risk-object`;
+- `risk_gate_bundle` requires `testnet:risk-gate`.
+
+A missing capability scope returns `403 TESTNET_API_SCOPE_REQUIRED` and no payment is requested.
 
 ## Authentication
 
@@ -127,7 +155,7 @@ curl -X POST "https://geomacro.live/api/testnet/intelligence" \
   }'
 ```
 
-Geomacro preflights capability/data availability before requesting payment. If the request is eligible, the endpoint returns HTTP `402` with the exact quote. For this capability the amount is 3 credits × 0.5 Testnet USDC = 1.5 Testnet USDC.
+Geomacro first validates authentication, request shape and the key's required capability scope. It then preflights capability/data availability before requesting payment. If the request is eligible, the endpoint returns HTTP `402` with the exact quote. For this capability the amount is 3 credits × 0.5 Testnet USDC = 1.5 Testnet USDC.
 
 The quote includes the dedicated receiver, supported Testnet chains, required atomic amount, credit cost and pricing version.
 
