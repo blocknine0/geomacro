@@ -11,6 +11,7 @@ describe("GRI public proof consistency evidence", () => {
   it("compares the persisted current snapshot across service-role and anon/RLS reads", () => {
     expect(script).toContain('"gri_snapshots"');
     expect(script).toContain("snapshotFieldParity");
+    expect(script).toContain("publicReadFreshness");
     expect(script).toContain("contributionMembershipParity");
     expect(script).toContain("dispositionRowParity");
     expect(script).toContain("anonIncludedMatchesContributions");
@@ -23,6 +24,7 @@ describe("GRI public proof consistency evidence", () => {
   it("emits sanitized evidence rather than source identities or credential values", () => {
     expect(script).toContain("gri-public-proof-consistency-v1.0.0");
     expect(script).toContain("snapshotAgeHours");
+    expect(script).toContain("maxPublicSnapshotAgeHours");
     expect(script).toContain("proofHash");
     expect(script).not.toContain("source_url");
     expect(script).not.toContain("source_domain");
@@ -34,6 +36,7 @@ describe("GRI public proof consistency evidence", () => {
     expect(workflow).toContain('cron: "23 */6 * * *"');
     expect(workflow).toContain("workflow_dispatch");
     expect(workflow).toContain("contents: read");
+    expect(workflow).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
     expect(workflow).toContain("audit-gri-public-proof-consistency.mjs");
     expect(workflow).toContain("verify-gri-snapshot-v12.js --snapshot-id");
     expect(workflow).toContain("actions/upload-artifact@v7");
