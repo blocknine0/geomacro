@@ -1,0 +1,63 @@
+name: Temporary Hot Topic Readiness
+
+on:
+  push:
+    branches:
+      - x402-industry-ready-production-v1
+    paths:
+      - ".github/workflows/temporary-hot-topic-readiness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness.json
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: x402-industry-ready-production-v1
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Prove external realtime source freshness without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-realtime-source-freshness.mjs | tee global-realtime-source-freshness.log
+          grep -q 'PASS: GLOBAL REALTIME SOURCE FRESHNESS PROOF COMPLETE - NO WRITES' global-realtime-source-freshness.log
+          jq -e '.writes_performed == false' global-realtime-source-freshness.json >/dev/null
+          jq -e '.summary.failed_sources == 0' global-realtime-source-freshness.json >/dev/null
+      - name: Generate production hot-topic readiness census
+        run: bun scripts/audit-agent-hot-topic-readiness.ts --require-pipeline-healthy
+      - name: Validate commercial delivery boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.pipeline.healthy == true' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.claim_boundary.raw_source_material_redistributed == false' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.claim_boundary.current_signal_with_only_blocked_rights_is_not_chargeable_for_hot_topics == true' agent-hot-topic-readiness.json >/dev/null
+          jq '{generated_at,pipeline,summary,claim_boundary}' agent-hot-topic-readiness.json
+      - name: Upload sanitized readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: temporary-hot-topic-readiness
+          path: |
+            agent-hot-topic-readiness.json
+            global-realtime-source-freshness.json
+            global-realtime-source-freshness.log
+          if-no-files-found: warn
+          retention-days: 7
