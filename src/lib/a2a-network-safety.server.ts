@@ -1,5 +1,5 @@
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import * as net from "node:net";
 
 const FORBIDDEN_HOSTS = new Set([
   "localhost",
@@ -21,7 +21,7 @@ function parseIpv4(address: string): number[] | null {
 
 export function isForbiddenA2AAddress(address: string): boolean {
   const normalized = address.trim().toLowerCase().replace(/^\[|\]$/g, "");
-  const version = isIP(normalized);
+  const version = net.isIP(normalized);
 
   if (version === 4) {
     const parts = parseIpv4(normalized);
@@ -79,7 +79,7 @@ export function parseA2APublicHttpsUrl(raw: string): URL {
     throw new Error("A2A_URL_HOST_FORBIDDEN");
   }
 
-  if (isIP(hostname) && isForbiddenA2AAddress(hostname)) {
+  if (net.isIP(hostname) && isForbiddenA2AAddress(hostname)) {
     throw new Error("A2A_URL_ADDRESS_FORBIDDEN");
   }
 
@@ -90,7 +90,7 @@ export async function assertA2APublicHttpsUrl(raw: string): Promise<URL> {
   const url = parseA2APublicHttpsUrl(raw);
   const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
 
-  if (isIP(hostname)) return url;
+  if (net.isIP(hostname)) return url;
 
   let addresses: Awaited<ReturnType<typeof lookup>>;
   try {
