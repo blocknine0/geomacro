@@ -53,12 +53,24 @@ describe("Coinbase x402 configuration", () => {
     process.env.COINBASE_X402_MAINNET_ACK = COINBASE_X402_MAINNET_ACK;
     expect(() => getCoinbaseX402Config()).toThrow("COINBASE_X402_PRICE_USDC is required");
 
-    process.env.COINBASE_X402_PRICE_USDC = "0.10";
+    process.env.COINBASE_X402_PRICE_USDC = "0.02";
     const config = getCoinbaseX402Config();
     expect(config?.network).toBe(COINBASE_X402_MAINNET_NETWORK);
+    expect(config?.chainId).toBe("8453");
+    expect(config?.networkName).toBe("Base");
     expect(config?.asset).toBe(COINBASE_X402_MAINNET_USDC);
-    expect(config?.amountAtomic).toBe("100000");
+    expect(config?.priceUsdc).toBe("0.02");
+    expect(config?.amountAtomic).toBe("20000");
     expect(config?.commercialEnvironment).toBe("mainnet");
+  });
+
+  it("keeps production locked when the acknowledgement is blank or incorrect even at the approved price", () => {
+    process.env.COINBASE_X402_ENVIRONMENT = "production";
+    process.env.COINBASE_X402_PAY_TO = PAY_TO;
+    process.env.COINBASE_X402_PRICE_USDC = "0.02";
+    expect(() => getCoinbaseX402Config()).toThrow("Production x402 is locked");
+    process.env.COINBASE_X402_MAINNET_ACK = "NOT_AUTHORIZED";
+    expect(() => getCoinbaseX402Config()).toThrow("Production x402 is locked");
   });
 
   it("enforces a 100 USDC per-call configuration safety cap", () => {
