@@ -9,6 +9,10 @@ const policy = readFileSync(
   new URL("../../scripts/commercial-source-policy.mjs", import.meta.url),
   "utf8",
 );
+const rightsEvidence = readFileSync(
+  new URL("../../scripts/commercial-source-rights-evidence.mjs", import.meta.url),
+  "utf8",
+);
 const operationalMigration = readFileSync(
   new URL(
     "../../supabase/migrations/025_external_source_operational_status.sql",
@@ -35,8 +39,9 @@ describe("World Bank live commercial source contract", () => {
   });
 
   it("routes WDI commercial eligibility through the reviewed source policy", () => {
-    expect(policy).toContain("world_bank_indicators:");
-    expect(policy).toContain('allowed_statuses: Object.freeze(["VERIFIED"])');
+    expect(policy).toContain("COMMERCIAL_SOURCE_RIGHTS_EVIDENCE");
+    expect(rightsEvidence).toContain("world_bank_indicators:");
+    expect(rightsEvidence).toContain('approved_status: "VERIFIED"');
     expect(adapter).toContain("assertCommercialEligibilityAllowed");
     expect(adapter).toContain("COMMERCIAL_ELIGIBILITY_STATUS");
     expect(adapter).toContain(

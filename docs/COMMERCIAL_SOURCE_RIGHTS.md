@@ -1,7 +1,7 @@
 # Commercial source-rights evidence register
 
 **Status:** commercialization control document  
-**Last reviewed:** 2026-09-10
+**Last reviewed:** 2026-09-15
 
 This register records the engineering evidence and delivery restrictions used when Geomacro marks an external source eligible for paid Risk API / Risk Gate delivery.
 
@@ -32,11 +32,17 @@ Unknown or omitted eligibility fails closed as `UNVERIFIED`.
 | `unhcr_refugee_statistics` | UNHCR Refugee Population Statistics Database | `VERIFIED` | Permitted for normalized/derived use under the dataset-specific CC BY 4.0 terms with required UNHCR attribution |
 | `ucdp_ged` | UCDP Georeferenced Event Dataset | `VERIFIED` | Permitted for the exact current UCDP dataset/version under CC BY 4.0 with required scholarly/dataset citations retained in policy evidence |
 | `usgs_mcs` | U.S. Geological Survey Mineral Commodity Summaries | `VERIFIED` | USGS-produced data/information may be used, with USGS credited; non-USGS copyrighted material must never inherit this status |
+| `ucdp_candidate` | UCDP Candidate Events Dataset, current monthly release family | `VERIFIED` | Current UCDP datasets are CC BY 4.0 with required dataset/publication citations; approval is limited to the official Candidate dataset/download/API family |
+| `gdelt_v2_events` | GDELT 2.0 Event Database | `VERIFIED` | GDELT explicitly permits unlimited academic, commercial and governmental dataset use and redistribution with GDELT citation; underlying publisher article text/media is excluded |
+| `eurostat_government_finance` | Eurostat quarterly government debt `gov_10q_ggdebt` | `VERIFIED` | Commercial reuse is authorised with source acknowledgement under Eurostat/European Commission reuse rules, subject to dataset-specific and third-party exceptions |
+| `usgs_earthquake_hazards` | USGS Earthquake Hazards GeoJSON feeds/catalog | `VERIFIED` | USGS-produced earthquake data may be used with source credit; non-USGS copyrighted site material/media does not inherit this status |
 | `ucdp_dyadic` | UCDP Dyadic Dataset | `UNVERIFIED` / `REVIEW_REQUIRED` in current adapter path | Excluded from paid delivery until this specific adapter/access path is deliberately promoted after review |
 | sanctions evidence | OFAC / UNSC program evidence | `UNVERIFIED` / `REVIEW_REQUIRED` | Excluded from paid delivery; no raw customer redistribution |
 | ReliefWeb structured observations | ReliefWeb / OCHA-derived event evidence | `DERIVED_ONLY` where explicitly marked | Derived intelligence only; raw source payload/redistribution remains outside commercial delivery |
 
 `VERIFIED` in this document means the specific Geomacro adapter/dataset contract has evidence supporting the current engineering eligibility decision. It does **not** mean every page, API, document, image, upstream third-party input, or future version from the same organization is commercially cleared.
+
+The machine-readable runtime evidence register is `scripts/commercial-source-rights-evidence.mjs`. `scripts/commercial-source-policy.mjs` derives its non-default commercial approvals from that register, and regression coverage requires every runtime `VERIFIED` source to be represented here.
 
 ## Evidence-backed reviewed controls
 
@@ -118,6 +124,45 @@ This is intentional fail-closed separation between **dataset rights evidence** a
 - Current engineering eligibility: `VERIFIED` for USGS-produced MCS data used by the adapter.
 - Critical boundary: non-USGS photographs, illustrations, graphics or other copyrighted third-party content appearing on USGS properties must not inherit the public-domain/`VERIFIED` status.
 - Customer-facing use should credit the U.S. Geological Survey in evidence/provenance where applicable.
+
+### UCDP Candidate Events Dataset
+
+- Adapter source ID: `ucdp_candidate`
+- Exact product: UCDP Candidate Events Dataset, current monthly release family; the current adapter default is aligned to the official current release family.
+- Official rights/download reference: `https://ucdp.uu.se/downloads/`
+- UCDP states that all current datasets on the download centre are free of charge and licensed under CC BY 4.0, with reuse and redistribution permitted provided the relevant listed publications are cited.
+- The same download centre explicitly lists the UCDP Candidate Events Dataset and its current monthly releases.
+- Current engineering eligibility: `VERIFIED` for the official Candidate dataset/download/API family, with release/version and citation provenance retained.
+- Boundary: linked publications, graphics, third-party resources or another UCDP product with different terms do not inherit this status automatically.
+
+### GDELT 2.0 Event Database
+
+- Adapter source ID: `gdelt_v2_events`
+- Exact product: GDELT 2.0 Event Database, consumed from the official 15-minute release path under `https://data.gdeltproject.org/gdeltv2/`.
+- Official terms reference: `https://gdeltproject.org/about.html`
+- GDELT states that its released datasets are available for unlimited and unrestricted academic, commercial or governmental use without fee, and permits redistribution/rehosting/republishing/mirroring with GDELT citation and a link to the project.
+- Current engineering eligibility: `VERIFIED` for GDELT-released event metadata used by the adapter.
+- Critical boundary: GDELT dataset permission does not grant Geomacro a separate right to republish underlying publisher article text, photographs, video or other publisher-owned media. Customer delivery should remain GDELT event metadata/provenance plus Geomacro-derived intelligence.
+
+### Eurostat quarterly government debt
+
+- Adapter source ID: `eurostat_government_finance`
+- Exact dataset code: `gov_10q_ggdebt` (Quarterly government debt).
+- Official dataset metadata: `https://ec.europa.eu/eurostat/cache/metadata/en/gov_10q_ggdebt_esms.htm`
+- Official reuse reference: `https://ec.europa.eu/eurostat/help/copyright-notice`
+- Eurostat identifies itself as the compiling agency for this dataset. Its current reuse notice authorises reuse of statistical data for commercial and non-commercial purposes with source acknowledgement, subject to dataset-specific notices and listed third-party exceptions.
+- Current engineering eligibility: `VERIFIED` for the exact Eurostat `gov_10q_ggdebt` statistical dataset used by the adapter.
+- Customer delivery must retain Eurostat dataset citation/access-date provenance. Third-party-owned content, logos/trademarks and any individually stated exception remain excluded.
+
+### USGS Earthquake Hazards feeds/catalog
+
+- Adapter source ID: `usgs_earthquake_hazards`
+- Exact adapter feed: official USGS Earthquake Hazards GeoJSON summary feed, including `all_day.geojson`.
+- Official feed reference: `https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php`
+- Official rights reference: `https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits`
+- USGS documents the GeoJSON summary feeds as official earthquake feeds updated every minute. USGS states that USGS-authored or produced data and information are considered to be in the U.S. public domain and may be used, with source credit requested.
+- Current engineering eligibility: `VERIFIED` for USGS-produced earthquake feed/catalog event data consumed by the adapter.
+- Critical boundary: non-USGS photographs, illustrations, graphics, multimedia or other third-party copyrighted material on USGS properties must not inherit this status. Customer delivery remains derived hazard evidence plus USGS provenance/credit.
 
 ### OFAC / UNSC sanctions-coercion evidence
 
