@@ -39,7 +39,10 @@ describe("GRI public proof consistency evidence", () => {
     expect(workflow).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
     expect(workflow).toContain("audit-gri-public-proof-consistency.mjs");
     expect(workflow).toContain("verify-gri-snapshot-v12.js --snapshot-id");
-    expect(workflow).toContain("actions/upload-artifact@v7");
+    expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+    expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
+    expect(workflow).toContain("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    expect(workflow).not.toContain("npm install --no-save");
     expect(workflow).not.toContain("compute-gri-v12.js");
     expect(workflow).not.toContain("cluster-gri-stories-v12.js");
     expect(workflow).not.toContain("insert(");
