@@ -207,18 +207,18 @@ Signed Geomacro Risk Object
 Risk Gate verification + freshness + bounded risk evaluation
         |
         v
-Customer identity + permissions + policy
+Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         |
         v
-CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
+Customer identity + permissions + policy enforcement
         |
         v
 Customer-controlled execution
 ```
 
-The current v1 machine decision contract has four states. `REROUTE` is not a current v1 decision; it remains a future/advisory alternative only when a lower-risk corridor or route is separately validated.
+The current v1 machine decision contract has four advisory states. `REROUTE` is not a current v1 decision; it remains a future/advisory alternative only when a lower-risk corridor or route is separately validated.
 
-The current service can accept a caller-supplied policy profile as an input to produce bounded decision context. That does not make Geomacro the owner or enforcer of the customer's policy. Customer identity, permissions, policy design, compliance obligations and execution remain customer-controlled.
+The current service can accept a caller-supplied policy profile as an input to produce bounded decision context. That profile is an evaluation input inside the Risk Gate request, not customer-side policy enforcement. Customer identity, permissions, policy design and enforcement, compliance obligations and execution remain customer-controlled.
 
 The current code also contains fail-closed adapters used to demonstrate pre-flight integration. Any caller-owned executor remains outside Geomacro's authorization boundary and may proceed only under the caller's own policy. This does **not** make Geomacro a wallet custodian or autonomous transaction signer.
 
@@ -390,13 +390,10 @@ Current risk + previous risk + delta
 Attribution + evidence + confidence + freshness
         |
         v
-Risk Gate recommendation
+Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         |
         v
-Customer identity + permissions + policy
-        |
-        v
-CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
+Customer identity + permissions + policy enforcement
         |
         v
 Customer-controlled action

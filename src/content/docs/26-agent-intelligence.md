@@ -13,14 +13,14 @@ Risk API / signed country or directional corridor GRO
         ↓
 Risk Gate - Private Pilot
         ↓
-customer identity + permissions + policy
+Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
         ↓
-CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
+customer identity + permissions + policy enforcement
         ↓
 customer-controlled action
 ```
 
-Risk Gate verifies the relevant risk context and returns a bounded recommendation. An integration may supply a customer-owned policy profile as an evaluation input, but the customer or caller owns the identity, permissions, policy, compliance rules and any downstream action.
+Risk Gate verifies the relevant risk context and returns a bounded advisory recommendation. An integration may supply a customer-owned policy profile as an evaluation input, but that input is not customer-side policy enforcement. The customer or caller still owns identity, permissions, policy design and enforcement, compliance rules and any downstream action.
 
 `REROUTE` is not a current Risk Gate v1 machine decision. It may be introduced only as a separately validated advisory alternative without changing the four-state v1 decision contract.
 

@@ -177,13 +177,13 @@ A simplified decision flow is:
 
 ```mermaid
 graph LR;
-    GRO["Signed Geomacro Risk Object"] --> VERIFY["Integrity + freshness verification"];
-    VERIFY --> POLICY["Customer identity + permissions + policy"];
-    POLICY --> DECISION["CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE"];
-    DECISION --> EXEC["Customer-controlled execution"];
+    GRO["Signed Geomacro Risk Object"] --> GATE["Risk Gate verification + bounded evaluation"];
+    GATE --> ADVISORY["Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE"];
+    ADVISORY --> POLICY["Customer identity + permissions + policy enforcement"];
+    POLICY --> EXEC["Customer-controlled execution"];
 ```
 
-The current v1 machine decision contract has four states. `REROUTE` is reserved as a future/advisory alternative only when a lower-risk corridor or route is separately validated; it is not a fifth current v1 decision.
+The current v1 machine decision contract has four advisory states. A caller-supplied policy profile may be evaluated inside the bounded Risk Gate request, but that input is not customer-side policy enforcement. Customer policy ownership and enforcement remain downstream of the Geomacro response. `REROUTE` is reserved as a future/advisory alternative only when a lower-risk corridor or route is separately validated; it is not a fifth current v1 decision.
 
 Geomacro does not represent Risk Gate as a wallet custodian, autonomous transaction signer, sanctions-screening replacement or generally available production service.
 
