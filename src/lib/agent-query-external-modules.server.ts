@@ -5,6 +5,7 @@ import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
+import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
 import {
   getLatestCompatibleCountryRiskObjectAtOrBefore,
   getLatestCompatibleCorridorRiskObjectAtOrBefore,
@@ -31,6 +32,15 @@ export async function checkAgentQueryExternalModule(input: {
   plan: AgentQueryPlan;
 }): Promise<boolean> {
   const asOf = input.plan.as_of ?? new Date().toISOString();
+
+  if (input.module === "hot_topics") {
+    try {
+      const result = await loadAgentHotTopics({ plan: input.plan, subject: input.subject });
+      return result.deliverable;
+    } catch {
+      return false;
+    }
+  }
 
   if (input.module === "gri_context") {
     try {
