@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/cleanup-obsolete-failed-runs.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * 1"
 
 permissions:
   contents: read
@@ -18,30 +20,120 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - name: Delete failed runs from obsolete non-main branches
+      - name: Delete only obsolete or superseded failed runs
         uses: actions/github-script@v9
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Preserve canonical-main failures because those runs can carry
-            // production/security/readiness evidence. With no open PRs, failed
-            // runs from non-main branches are obsolete PR/feature-branch history.
-            const failedRuns = await github.paginate(
-              github.rest.actions.listWorkflowRunsForRepo,
-              { owner, repo, status: 'failure', per_page: 100 },
+            // The GOAT 20-window acceptance program is still intentionally
+            // accumulating evidence. Never prune it until that program is done.
+            const protectedPaths = new Set([
+              '.github/workflows/goat-acceptance-windows.yml',
+            ]);
+
+            const [failedRuns, queuedRuns, activeRuns] = await Promise.all([
+              github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                { owner, repo, status: 'failure', per_page: 100 },
+              ),
+              github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                { owner, repo, status: 'queued', per_page: 100 },
+              ),
+              github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                { owner, repo, status: 'in_progress', per_page: 100 },
+              ),
+            ]);
+
+            // If a workflow is currently running in the background, leave all
+            // of its history alone. This avoids cleaning evidence while a new
+            // result is still being produced.
+            const activeWorkflowIds = new Set(
+              [...queuedRuns, ...activeRuns].map((run) => run.workflow_id),
             );
 
-            const obsolete = failedRuns.filter(
-              (run) => run.head_branch && run.head_branch !== 'main',
-            );
+            const latestMainCache = new Map();
+            async function latestMainRuns(workflowId) {
+              if (latestMainCache.has(workflowId)) {
+                return latestMainCache.get(workflowId);
+              }
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: workflowId,
+                branch: 'main',
+                per_page: 25,
+              });
+              const runs = response.data.workflow_runs || [];
+              latestMainCache.set(workflowId, runs);
+              return runs;
+            }
+
+            const deletable = [];
+            const preserved = {
+              active: 0,
+              protected: 0,
+              unresolvedMain: 0,
+              currentFailure: 0,
+            };
+
+            for (const run of failedRuns) {
+              if (activeWorkflowIds.has(run.workflow_id)) {
+                preserved.active += 1;
+                continue;
+              }
+
+              if (protectedPaths.has(run.path)) {
+                preserved.protected += 1;
+                continue;
+              }
+
+              // Closed/obsolete feature-branch failures are disposable once
+              // no run from that workflow is currently active.
+              if (run.head_branch && run.head_branch !== 'main') {
+                deletable.push(run);
+                continue;
+              }
+
+              if (run.head_branch !== 'main') {
+                preserved.currentFailure += 1;
+                continue;
+              }
+
+              const mainRuns = await latestMainRuns(run.workflow_id);
+              const latest = mainRuns[0];
+              if (!latest || latest.status !== 'completed') {
+                preserved.active += 1;
+                continue;
+              }
+
+              const laterSuccess = mainRuns.find(
+                (candidate) =>
+                  candidate.status === 'completed' &&
+                  candidate.conclusion === 'success' &&
+                  new Date(candidate.created_at).getTime() > new Date(run.created_at).getTime(),
+              );
+
+              if (laterSuccess) {
+                // A later canonical-main success proves this older failure is
+                // superseded. It can be removed without hiding an unresolved
+                // current regression.
+                deletable.push(run);
+              } else if (latest.id === run.id) {
+                preserved.currentFailure += 1;
+              } else {
+                preserved.unresolvedMain += 1;
+              }
+            }
 
             let deleted = 0;
             const errors = [];
-            for (const run of obsolete) {
+            for (const run of deletable) {
               try {
                 await github.rest.actions.deleteWorkflowRun({
                   owner,
@@ -58,8 +150,11 @@ jobs:
             core.summary
               .addHeading('Obsolete failed Action run cleanup')
               .addRaw(`Failed runs scanned: ${failedRuns.length}\n\n`)
-              .addRaw(`Deleted non-main failed runs: ${deleted}\n\n`)
-              .addRaw(`Preserved main-branch failed runs: ${failedRuns.length - obsolete.length}\n\n`)
+              .addRaw(`Deleted obsolete/superseded failures: ${deleted}\n\n`)
+              .addRaw(`Preserved because workflow is active: ${preserved.active}\n\n`)
+              .addRaw(`Preserved protected acceptance evidence: ${preserved.protected}\n\n`)
+              .addRaw(`Preserved unresolved main failures: ${preserved.unresolvedMain}\n\n`)
+              .addRaw(`Preserved latest current failures: ${preserved.currentFailure}\n\n`)
               .addRaw(`Delete errors: ${errors.length}\n`)
               .write();
 
