@@ -3,7 +3,7 @@ name: Temporary Global Country Census
 on:
   push:
     branches:
-      - x402-industry-ready-production-v1
+      - ops/refresh-gdelt-production-once
     paths:
       - ".github/workflows/temporary-global-country-census.yml"
 
@@ -21,26 +21,45 @@ jobs:
       GLOBAL_RISK_GATE_CENSUS_OUTPUT: global-risk-gate-country-census.json
       GLOBAL_RISK_GATE_CENSUS_CONCURRENCY: "3"
     steps:
-      - name: Checkout branch
-        uses: actions/checkout@v7
+      - name: Checkout one-shot branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: x402-industry-ready-production-v1
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+          ref: ops/refresh-gdelt-production-once
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.4.2
+          bun-version: "1.4.2"
+
       - name: Install locked dependencies
-        run: bun install --frozen-lockfile
-      - name: Generate production country readiness proof
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify authoritative production target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Run country readiness regression tests
+        run: |
+          bun test \
+            src/__tests__/risk-gate-v2-request-readiness.test.ts \
+            src/__tests__/risk-gate-v2-global-country-readiness-static.test.ts \
+            src/__tests__/risk-gate-v2-governed-module-builders.test.ts \
+            src/__tests__/risk-gate-v2-conflict-module-state.test.ts \
+            src/__tests__/risk-gate-v2-support-readiness.test.ts
+
+      - name: Generate live country readiness proof
         run: bun scripts/global-risk-gate-country-census.ts --require-any-accepted
-      - name: Publish sanitized summary
-        run: jq '{generated_at,denominator,summary,claim_boundary}' global-risk-gate-country-census.json
-      - name: Upload readiness evidence
-        uses: actions/upload-artifact@v7
+
+      - name: Publish sanitized census summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq '{generated_at,denominator,summary,claim_boundary}' global-risk-gate-country-census.json
+
+      - name: Upload country readiness evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: temporary-global-risk-gate-country-readiness
+          name: temporary-global-country-census
           path: global-risk-gate-country-census.json
           if-no-files-found: error
           retention-days: 7
-
-# trigger: production census evidence refresh 2026-09-16
