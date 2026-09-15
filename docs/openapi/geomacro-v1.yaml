@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Geomacro Verified Intelligence API
-  version: 1.1.0-pilot
+  version: 1.2.0-pilot
   description: |
     Versioned integration contract for Geomacro's current verified-intelligence surfaces.
     Risk Gate, sandbox and webhook-event contexts never authorize execution.
@@ -143,6 +143,22 @@ paths:
       responses:
         '200':
           description: Audited Risk Gate decision context
+          headers:
+            X-Geomacro-Trace-ID:
+              description: Per-response support and operations correlation identifier
+              schema: { type: string }
+            X-Geomacro-Audit-ID:
+              description: Immutable Risk Gate audit identifier for the delivered decision
+              schema: { type: string }
+            RateLimit-Limit:
+              description: Authenticated client request limit for the current one-minute window
+              schema: { type: integer }
+            RateLimit-Remaining:
+              description: Remaining requests in the current one-minute window after this request
+              schema: { type: integer }
+            RateLimit-Reset:
+              description: Seconds until the current rate-limit window resets
+              schema: { type: integer }
           content:
             application/json:
               schema:
@@ -154,7 +170,27 @@ paths:
           description: API client disabled
         '409':
           description: Idempotency conflict or identical request still in progress
-        '429': { $ref: '#/components/responses/RateLimited' }
+        '429':
+          description: Risk Gate authenticated client request limit exceeded
+          headers:
+            Retry-After:
+              description: Seconds before the client should retry
+              schema: { type: integer }
+            RateLimit-Limit:
+              schema: { type: integer }
+            RateLimit-Remaining:
+              schema: { type: integer }
+            RateLimit-Reset:
+              schema: { type: integer }
+            X-Geomacro-Trace-ID:
+              schema: { type: string }
+            X-Geomacro-Audit-ID:
+              description: Present when the authenticated rejection was durably audited
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '503': { $ref: '#/components/responses/Unavailable' }
 webhooks:
   riskGateDecisionCreated:
@@ -585,3 +621,6 @@ components:
             message: { type: string }
         execution_authorized:
           const: false
+        audit_id:
+          type: string
+          description: Present on authenticated failures when the rejection or failure was durably audited

@@ -144,11 +144,13 @@ export class RiskGateApiError
   extends Error {
   readonly status: number;
   readonly code: string;
+  readonly headers: Record<string, string>;
 
   constructor(
     status: number,
     code: string,
     message: string,
+    headers: Record<string, string> = {},
   ) {
     super(message);
 
@@ -160,6 +162,9 @@ export class RiskGateApiError
 
     this.code =
       code;
+
+    this.headers =
+      headers;
   }
 }
 
@@ -1166,6 +1171,56 @@ authenticateClient(
 }
 
 
+function
+rateLimitResponseHeaders(
+  row: RateLimitRow,
+): Record<string, string> {
+  const limit = Math.max(
+    0,
+    Math.trunc(row.limit_count),
+  );
+
+  const used = Math.max(
+    0,
+    Math.trunc(row.request_count),
+  );
+
+  const remaining = Math.max(
+    0,
+    limit - used,
+  );
+
+  const windowStartedMs =
+    Date.parse(row.window_started_at);
+
+  const resetSeconds =
+    Number.isFinite(windowStartedMs)
+      ? Math.min(
+          60,
+          Math.max(
+            1,
+            Math.ceil(
+              (
+                windowStartedMs +
+                60_000 -
+                Date.now()
+              ) / 1000,
+            ),
+          ),
+        )
+      : 60;
+
+  return {
+    "RateLimit-Limit":
+      String(limit),
+    "RateLimit-Remaining":
+      String(remaining),
+    "RateLimit-Reset":
+      String(resetSeconds),
+  };
+}
+
+
 async function
 consumeRateLimit(
   client: ApiClientRow,
@@ -1223,10 +1278,18 @@ consumeRateLimit(
   }
 
   if (!row.allowed) {
+    const headers =
+      rateLimitResponseHeaders(row);
+
     throw new RiskGateApiError(
       429,
       "RATE_LIMIT_EXCEEDED",
       "Risk Gate request limit exceeded",
+      {
+        ...headers,
+        "Retry-After":
+          headers["RateLimit-Reset"] ?? "60",
+      },
     );
   }
 
@@ -1392,6 +1455,12 @@ export async function
 handleExternalRiskGateRequest(
   request: Request,
 ): Promise<Response> {
+  const traceId =
+    `rgt_${randomUUID()}`;
+
+  let rateLimitHeaders:
+    Record<string, string> = {};
+
   let clientId =
     "unauthenticated";
 
@@ -1411,9 +1480,15 @@ handleExternalRiskGateRequest(
     clientId =
       client.client_id;
 
-    await consumeRateLimit(
-      client,
-    );
+    const rateLimit =
+      await consumeRateLimit(
+        client,
+      );
+
+    rateLimitHeaders =
+      rateLimitResponseHeaders(
+        rateLimit,
+      );
 
     const contentType =
       request.headers.get(
@@ -1576,6 +1651,14 @@ handleExternalRiskGateRequest(
 
           "X-Content-Type-Options":
             "nosniff",
+
+          "X-Geomacro-Trace-ID":
+            traceId,
+
+          "X-Geomacro-Audit-ID":
+            auditId,
+
+          ...rateLimitHeaders,
         },
       },
     );
@@ -1604,6 +1687,9 @@ handleExternalRiskGateRequest(
       execution_authorized:
         false,
     };
+
+    let failureAuditId:
+      string | null = null;
 
     /*
      * Only authenticated requests are persisted here.
@@ -1655,12 +1741,13 @@ handleExternalRiskGateRequest(
                   "UNKNOWN",
               };
 
-        await persistAudit({
-          client_id:
-            clientId,
+        failureAuditId =
+          await persistAudit({
+            client_id:
+              clientId,
 
-          request_id:
-            requestId,
+            request_id:
+              requestId,
 
           subject_type:
             auditSubject
@@ -1721,7 +1808,15 @@ handleExternalRiskGateRequest(
     }
 
     return Response.json(
-      responsePayload,
+      {
+        ...responsePayload,
+        ...(failureAuditId
+          ? {
+              audit_id:
+                failureAuditId,
+            }
+          : {}),
+      },
       {
         status:
           apiError.status,
@@ -1732,6 +1827,19 @@ handleExternalRiskGateRequest(
 
           "X-Content-Type-Options":
             "nosniff",
+
+          "X-Geomacro-Trace-ID":
+            traceId,
+
+          ...(failureAuditId
+            ? {
+                "X-Geomacro-Audit-ID":
+                  failureAuditId,
+              }
+            : {}),
+
+          ...rateLimitHeaders,
+          ...apiError.headers,
         },
       },
     );

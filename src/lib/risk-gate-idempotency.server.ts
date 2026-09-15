@@ -1,5 +1,6 @@
 import {
   createHash,
+  randomUUID,
   timingSafeEqual,
 } from "node:crypto";
 
@@ -193,6 +194,7 @@ function jsonError(
       headers: {
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Geomacro-Trace-ID": `rgt_${randomUUID()}`,
         ...extraHeaders,
       },
     },
@@ -334,6 +336,8 @@ function replayResponse(
       headers: {
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Geomacro-Trace-ID": `rgt_${randomUUID()}`,
+        "X-Geomacro-Audit-ID": row.audit_id,
         "X-Geomacro-Idempotent-Replay": "true",
       },
     },

@@ -104,7 +104,7 @@ function makeDb(options: DbOptions = {}) {
         : [
             {
               allowed: options.rateAllowed ?? true,
-              request_count: 1,
+              request_count: options.rateAllowed === false ? 61 : 1,
               limit_count: 60,
               window_started_at: "2026-09-12T00:00:00.000Z",
             },
@@ -190,6 +190,30 @@ describe("Risk Gate runtime fail-closed matrix", () => {
     expect(response.status).toBe(503);
     expect(payload.error.code).toBe("RATE_LIMIT_BACKEND_UNAVAILABLE");
     expect(payload.execution_authorized).toBe(false);
+    expect(payload.audit_id).toMatch(/^rga_/);
+    expect(response.headers.get("x-geomacro-audit-id")).toBe(payload.audit_id);
+    expect(response.headers.get("x-geomacro-trace-id")).toMatch(/^rgt_/);
+    expect(mocks.evaluateCountryRiskGate).not.toHaveBeenCalled();
+    expect(auditInsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns actionable retry and rate-limit metadata for an authenticated 429", async () => {
+    const { db, auditInsert } = makeDb({ rateAllowed: false });
+    mocks.requireRiskSupabase.mockReturnValue(db);
+
+    const response = await handleExternalRiskGateRequest(request());
+    const payload = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(payload.error.code).toBe("RATE_LIMIT_EXCEEDED");
+    expect(payload.execution_authorized).toBe(false);
+    expect(payload.audit_id).toMatch(/^rga_/);
+    expect(response.headers.get("retry-after")).toMatch(/^\d+$/);
+    expect(response.headers.get("ratelimit-limit")).toBe("60");
+    expect(response.headers.get("ratelimit-remaining")).toBe("0");
+    expect(response.headers.get("ratelimit-reset")).toMatch(/^\d+$/);
+    expect(response.headers.get("x-geomacro-audit-id")).toBe(payload.audit_id);
+    expect(response.headers.get("x-geomacro-trace-id")).toMatch(/^rgt_/);
     expect(mocks.evaluateCountryRiskGate).not.toHaveBeenCalled();
     expect(auditInsert).toHaveBeenCalledTimes(1);
   });
@@ -246,6 +270,11 @@ describe("Risk Gate runtime fail-closed matrix", () => {
     expect(payload.ok).toBe(true);
     expect(payload.risk_gate.execution_authorized).toBe(false);
     expect(payload.audit_id).toMatch(/^rga_/);
+    expect(response.headers.get("x-geomacro-audit-id")).toBe(payload.audit_id);
+    expect(response.headers.get("x-geomacro-trace-id")).toMatch(/^rgt_/);
+    expect(response.headers.get("ratelimit-limit")).toBe("60");
+    expect(response.headers.get("ratelimit-remaining")).toBe("59");
+    expect(response.headers.get("ratelimit-reset")).toMatch(/^\d+$/);
     expect(auditInsert).toHaveBeenCalledTimes(1);
   });
 });
