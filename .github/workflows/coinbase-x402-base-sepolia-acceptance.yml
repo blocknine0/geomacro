@@ -34,7 +34,18 @@ jobs:
           grep -q 'https://geomacro.live/api/x402/risk' "$file"
           grep -q 'eip155:84532' "$file"
           grep -q '0x036CbD53842c5426634e7929541eC2318f3dCF7e' "$file"
-          if grep -Eq 'CDP_API_KEY_SECRET|PRIVATE_KEY|SEED_PHRASE|MNEMONIC' "$file"; then
+
+          # Build forbidden strings from fragments so this validator does not
+          # match its own source text. The public acceptance job is intentionally
+          # unable to sign or settle payments and must remain secret-free.
+          forbidden_cdp="CDP_API_KEY_"'SECRET'
+          forbidden_private="PRIVATE_"'KEY'
+          forbidden_seed="SEED_"'PHRASE'
+          forbidden_mnemonic="MNEMO"'NIC'
+          if grep -Fq "$forbidden_cdp" "$file" || \
+             grep -Fq "$forbidden_private" "$file" || \
+             grep -Fq "$forbidden_seed" "$file" || \
+             grep -Fq "$forbidden_mnemonic" "$file"; then
             echo "::error title=Secret-free acceptance violated::This public acceptance workflow must never require payment signing or private credentials."
             exit 1
           fi
