@@ -169,10 +169,39 @@ begin
     return;
   end if;
 
+  -- PREPARED is the irreversible-side-effect boundary. The application writes
+  -- the prepared response before calling the external facilitator settle API.
+  -- If that process loses its lease or response after this point, we cannot
+  -- prove whether the external settlement happened. Never auto-reclaim and
+  -- never submit the authorization again; lock it for reconciliation instead.
+  if v_row.state = 'prepared' then
+    if v_row.lease_expires_at is not null and v_row.lease_expires_at > v_now then
+      return query select 'IN_PROGRESS'::text, null::uuid, null::jsonb, v_row.settlement_tx, v_row.settlement_network;
+      return;
+    end if;
+
+    update public.coinbase_x402_deliveries d
+    set
+      state = 'manual_review',
+      claim_token = null,
+      lease_expires_at = null,
+      failure_code = 'PREPARED_LEASE_EXPIRED_RECONCILIATION_REQUIRED',
+      updated_at = v_now
+    where d.id = v_row.id;
+
+    return query select 'MANUAL_REVIEW'::text, null::uuid, null::jsonb, v_row.settlement_tx, v_row.settlement_network;
+    return;
+  end if;
+
+  -- FAILED is only written before an external settlement call, unless the
+  -- caller explicitly requests manual_review. It is safe to reclaim. An
+  -- expired PROCESSING lease is also pre-settlement and safe to reclaim.
   if
     v_row.state = 'failed'
-    or v_row.lease_expires_at is null
-    or v_row.lease_expires_at <= v_now
+    or (
+      v_row.state = 'processing'
+      and (v_row.lease_expires_at is null or v_row.lease_expires_at <= v_now)
+    )
   then
     update public.coinbase_x402_deliveries d
     set
