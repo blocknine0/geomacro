@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAgentQueryPlan, paymentBindingForAgentQuery } from "./agent-query-plan";
+import { buildAgentQueryPlan, inferAgentQueryTopics, paymentBindingForAgentQuery } from "./agent-query-plan";
 
 const base = {
   subjects: [{ type: "country" as const, country_iso3: "ind" }],
@@ -23,6 +23,37 @@ describe("adaptive agent query planner", () => {
     expect(a.query_plan_hash).toBe(b.query_plan_hash);
   });
 
+  it("infers bounded question topics instead of inventing arbitrary modules", () => {
+    expect(inferAgentQueryTopics("How do Iran sanctions and oil disruption affect FX reserves?")).toEqual(
+      expect.arrayContaining(["energy_commodities", "fx_external_risk", "sanctions_restrictions"]),
+    );
+    const plan = buildAgentQueryPlan({
+      question: "What is the latest FX and macro risk?",
+      subjects: [{ type: "country", country_iso3: "IND" }],
+    });
+    expect(plan.topics).toEqual(expect.arrayContaining(["fx_external_risk", "macro_risk", "hot_topics"]));
+    expect(plan.question_key).toBe("what is the latest fx and macro risk?");
+  });
+
+  it("rejects an ambiguous question with no supported topic", () => {
+    expect(() => buildAgentQueryPlan({
+      question: "Tell me something useful",
+      subjects: [{ type: "country", country_iso3: "IND" }],
+    })).toThrow("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
+  });
+
+  it("requires action context when Risk Gate is requested", () => {
+    expect(() => buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["risk_gate"],
+    })).toThrow("RISK_GATE_CONTEXT_REQUIRED");
+    expect(() => buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "IND" }],
+      topics: ["risk_gate"],
+      risk_gate_context: { action_type: "treasury_payment", policy_preset: "strict", amount_usdc: 1000 },
+    })).not.toThrow();
+  });
+
   it("rejects unknown topics rather than silently mapping them", () => {
     expect(() => buildAgentQueryPlan({ ...base, topics: ["made_up_risk"] })).toThrow();
   });
@@ -34,7 +65,7 @@ describe("adaptive agent query planner", () => {
     })).toThrow();
   });
 
-  it("binds payment to the exact query plan and commercial terms", () => {
+  it("binds payment to the exact query plan, question intent and commercial terms", () => {
     const plan = buildAgentQueryPlan(base);
     const common = {
       queryPlan: plan,
@@ -52,5 +83,8 @@ describe("adaptive agent query planner", () => {
       topics: ["sanctions_restrictions"],
     });
     expect(paymentBindingForAgentQuery({ ...common, queryPlan: differentPlan })).not.toBe(first);
+
+    const questionBound = buildAgentQueryPlan({ ...base, question: "Current macro and FX risk for India" });
+    expect(questionBound.query_plan_hash).not.toBe(plan.query_plan_hash);
   });
 });
