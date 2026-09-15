@@ -39,7 +39,14 @@ export type AgenticDemoRunOptions = {
   };
 };
 
-function assertSupportedDemoSubject(input: AgenticDemoRequest) {
+function assertSupportedDemoSubject(input: AgenticDemoRequest, mode: AgenticDemoRunOptions["mode"]) {
+  // The free browser sandbox and partner proof remain intentionally narrow.
+  // Coinbase x402 is the commercial discovery surface: it accepts any valid
+  // ISO3 country/corridor and then fails closed if governed Geomacro evidence
+  // is unavailable for that subject. This avoids advertising a hard-coded
+  // USA/CHN product while never fabricating coverage.
+  if (mode === "X402_PAID") return;
+
   if (input.subject.type === "country") {
     if (
       !DEMO_ALLOWED_COUNTRIES.includes(
@@ -105,8 +112,7 @@ async function loadGriContext() {
       raw_score: risk.rawScore,
       previous_display_score: risk.previous,
       previous_raw_score: risk.previousRaw,
-      change_points:
-        risk.previous === null ? null : risk.score - risk.previous,
+      change_points: risk.previous === null ? null : risk.score - risk.previous,
       coverage: risk.coverage,
       weighted_confidence: risk.weightedConfidence,
       event_count: risk.eventCount,
@@ -126,10 +132,7 @@ async function loadGriContext() {
       change_residual: risk.changeResidual,
     };
   } catch (error) {
-    console.error(
-      "[agentic-demo] canonical GRI context unavailable",
-      error instanceof Error ? error.message : error,
-    );
+    console.error("[agentic-demo] canonical GRI context unavailable", error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -157,53 +160,28 @@ async function recordDemoTelemetry(input: {
   }
 }
 
-export async function runAgenticPreflightDemo(
-  raw: unknown,
-  options: AgenticDemoRunOptions = {},
-) {
+export async function runAgenticPreflightDemo(raw: unknown, options: AgenticDemoRunOptions = {}) {
   const parsed = agenticDemoRequestSchema.parse(raw);
-  assertSupportedDemoSubject(parsed);
+  const mode = options.mode ?? "PUBLIC_SANDBOX";
+  assertSupportedDemoSubject(parsed, mode);
 
   const requestId = options.requestId?.trim() || randomUUID();
-  if (requestId.length < 1 || requestId.length > 256) {
-    throw new Error("Server-controlled agentic request ID is invalid");
-  }
+  if (requestId.length < 1 || requestId.length > 256) throw new Error("Server-controlled agentic request ID is invalid");
 
   const policy = demoPolicyFromPreset(parsed.policy_preset);
-  const mode = options.mode ?? "PUBLIC_SANDBOX";
   const shouldRecordTelemetry = options.recordTelemetry ?? true;
-  const actionContext: {
-    action_type: string;
-    currency: "USDC";
-    amount?: number;
-  } = {
+  const actionContext: { action_type: string; currency: "USDC"; amount?: number } = {
     action_type: parsed.action_type,
     currency: "USDC",
   };
-  if (parsed.amount_usdc !== undefined) {
-    actionContext.amount = parsed.amount_usdc;
-  }
+  if (parsed.amount_usdc !== undefined) actionContext.amount = parsed.amount_usdc;
 
   try {
-    const result =
-      parsed.subject.type === "corridor"
-        ? await evaluateCorridorRiskGate({
-            request_id: requestId,
-            origin_country_iso3: parsed.subject.origin_country_iso3,
-            destination_country_iso3: parsed.subject.destination_country_iso3,
-            action_context: actionContext,
-            policy,
-          })
-        : await evaluateCountryRiskGate({
-            request_id: requestId,
-            country_iso3: parsed.subject.country_iso3,
-            action_context: actionContext,
-            policy,
-          });
+    const result = parsed.subject.type === "corridor"
+      ? await evaluateCorridorRiskGate({ request_id: requestId, origin_country_iso3: parsed.subject.origin_country_iso3, destination_country_iso3: parsed.subject.destination_country_iso3, action_context: actionContext, policy })
+      : await evaluateCountryRiskGate({ request_id: requestId, country_iso3: parsed.subject.country_iso3, action_context: actionContext, policy });
 
-    if (result.response.execution_authorized !== false) {
-      throw new Error("Risk Gate execution boundary violated");
-    }
+    if (result.response.execution_authorized !== false) throw new Error("Risk Gate execution boundary violated");
 
     const [riskObject, structuralContext, griContext] = await Promise.all([
       loadRiskObject(result.context.risk_object_id),
@@ -212,23 +190,7 @@ export async function runAgenticPreflightDemo(
     ]);
 
     if (shouldRecordTelemetry) {
-      await recordDemoTelemetry({
-        requestId,
-        status: "delivered",
-        httpStatus: 200,
-        responseCode:
-          mode === "PUBLIC_SANDBOX"
-            ? "DEMO_DELIVERED"
-            : mode === "GOAT_X402_PAID"
-              ? "GOAT_X402_DEMO_DELIVERED"
-              : "X402_DEMO_DELIVERED",
-        externalAgentId:
-          mode === "PUBLIC_SANDBOX"
-            ? "public_demo"
-            : mode === "GOAT_X402_PAID"
-              ? "goat_x402_agent"
-              : "x402_agent",
-      });
+      await recordDemoTelemetry({ requestId, status: "delivered", httpStatus: 200, responseCode: mode === "PUBLIC_SANDBOX" ? "DEMO_DELIVERED" : mode === "GOAT_X402_PAID" ? "GOAT_X402_DEMO_DELIVERED" : "X402_DEMO_DELIVERED", externalAgentId: mode === "PUBLIC_SANDBOX" ? "public_demo" : mode === "GOAT_X402_PAID" ? "goat_x402_agent" : "x402_agent" });
     }
 
     return {
@@ -237,13 +199,7 @@ export async function runAgenticPreflightDemo(
       request_id: requestId,
       client_request_id: parsed.client_request_id ?? null,
       mode,
-      payment:
-        options.payment ??
-        ({
-          required: false,
-          note:
-            "The browser sandbox is free. Partner-specific paid-agent integrations use separate governed payment rails.",
-        } as const),
+      payment: options.payment ?? ({ required: false, note: "The browser sandbox is free. Partner-specific paid-agent integrations use separate governed payment rails." } as const),
       action_context: actionContext,
       policy_preset: parsed.policy_preset,
       policy,
@@ -256,27 +212,13 @@ export async function runAgenticPreflightDemo(
         execution_authorized: false as const,
         structural_evidence_is_not_gri_v1_2_input: true as const,
         corridor_model: "directional endpoint-composed pilot",
-        route_modeling_status:
-          parsed.subject.type === "corridor"
-            ? structuralContext.metadata.route_modeling_status
-            : null,
+        route_modeling_status: parsed.subject.type === "corridor" ? structuralContext.metadata.route_modeling_status : null,
         financial_advice: false as const,
       },
     };
   } catch (error) {
     if (shouldRecordTelemetry) {
-      await recordDemoTelemetry({
-        requestId,
-        status: "delivery_failed",
-        httpStatus: 503,
-        responseCode: "DEMO_FAILED_CLOSED",
-        externalAgentId:
-          mode === "GOAT_X402_PAID"
-            ? "goat_x402_agent"
-            : mode === "X402_PAID"
-              ? "x402_agent"
-              : "public_demo",
-      });
+      await recordDemoTelemetry({ requestId, status: "delivery_failed", httpStatus: 503, responseCode: "DEMO_FAILED_CLOSED", externalAgentId: mode === "GOAT_X402_PAID" ? "goat_x402_agent" : mode === "X402_PAID" ? "x402_agent" : "public_demo" });
     }
     throw error;
   }
