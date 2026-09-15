@@ -51,7 +51,7 @@ const PRODUCT_CARDS = [
   },
   {
     icon: Braces,
-    status: "PUBLIC + PRIVATE PILOT",
+    status: "PUBLIC DATA + PRIVATE PILOT API",
     title: "Data & API",
     body: "Use public intelligence now, or request pilot access to signed Risk Objects and Risk Gate outputs for software workflows.",
     to: "/data-api" as const,
@@ -184,7 +184,7 @@ export function CommercialHome() {
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Risk Gate · Private Pilot</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">Check risk before the action, not after.</h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              A treasury system, payment workflow or agent sends the country or corridor context it needs checked. Risk Gate verifies the signed Risk Object, applies the customer's policy and returns a recommendation before anything is executed.
+              A treasury system, payment workflow or agent sends the country or corridor context it needs checked. Risk Gate verifies the signed Risk Object and returns bounded external risk context and a recommendation. The customer's own identity, permissions and policy layer decides what happens next.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild className="gap-2"><Link to="/risk-gate">Open Risk Gate <ArrowRight className="h-4 w-4" /></Link></Button>
@@ -198,7 +198,7 @@ export function CommercialHome() {
                 "Action submitted for review",
                 "Country / corridor Risk Object verified",
                 "Evidence, confidence and freshness checked",
-                "Customer policy applied",
+                "Customer-owned policy applied by the customer system",
                 "Recommendation returned to the customer's system",
               ].map((text) => (
                 <div key={text} className="flex items-start gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3">

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 const TITLE = "Risk Gate Private Pilot · Geomacro";
 const DESCRIPTION =
-  "Country and corridor risk checks for treasury, payment and agent workflows. Risk Gate returns a signed, policy-aware recommendation before execution.";
+  "Country and corridor risk checks for treasury, payment and agent workflows. Risk Gate returns signed external risk context before the customer's own policy and execution layer decides what happens next.";
 const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE", "REROUTE"] as const;
 
 export const Route = createFileRoute("/risk-gate")({
@@ -52,7 +52,7 @@ function RiskGatePage() {
           Check geopolitical risk before a financial action moves forward.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Risk Gate checks the current country or corridor risk, verifies the signed Geomacro Risk Object and applies the customer's policy. It returns a recommendation; the customer keeps control of execution.
+          Risk Gate checks the current country or corridor risk and verifies the signed Geomacro Risk Object. It returns bounded external risk context and a recommendation; the customer's own identity, permissions and policy layer decides what happens next, and the customer keeps control of execution.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
@@ -71,9 +71,9 @@ function RiskGatePage() {
 
       <section className="mt-14 grid gap-5 lg:grid-cols-3">
         {[
-          ["1", "Action to review", "A treasury system, payment workflow or agent sends the country or corridor context and the customer's policy."],
-          ["2", "Risk checked", "Geomacro verifies the Risk Object, signature, methodology, freshness and required risk inputs."],
-          ["3", "Recommendation returned", "Risk Gate applies the supplied policy and returns a decision for the customer's own control system."],
+          ["1", "Action to review", "A treasury system, payment workflow or agent sends the country or corridor context that needs a risk check."],
+          ["2", "Risk checked", "Geomacro verifies the Risk Object, signature, methodology, freshness and required risk inputs, then returns bounded decision context."],
+          ["3", "Customer decides", "The customer's own identity, permissions and policy layer applies its rules to the recommendation and keeps control of any downstream execution."],
         ].map(([step, title, body]) => (
           <article key={step} className="rounded-2xl border border-border/70 bg-card/50 p-6">
             <span className="font-mono text-xs text-primary">STEP {step}</span>
@@ -89,7 +89,7 @@ function RiskGatePage() {
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Control boundary</p>
             <h2 className="mt-3 text-2xl font-semibold">A recommendation, not permission to move money.</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Geomacro provides external geopolitical and macro risk context and evaluates the customer's policy. It does not hold funds, sign the customer's wallet or make the customer's final compliance or fiduciary decision.
+              Geomacro provides external geopolitical and macro risk context. It does not own the customer's identity, permissions or policy, hold funds, sign the customer's wallet or make the customer's final compliance or fiduciary decision.
             </p>
             <div className="mt-5 rounded-xl border border-border/60 bg-background/30 p-4 font-mono text-xs">
               execution_authorized = false
@@ -137,8 +137,8 @@ function RiskGatePage() {
             <li>• authenticated country and directional corridor API</li>
             <li>• database-backed per-client rate limiting</li>
             <li>• immutable decision audit contract</li>
-            <li>• fail-closed pre-flight policy evaluation</li>
-            <li>• customer-owned downstream execution</li>
+            <li>• fail-closed pre-flight risk evaluation</li>
+            <li>• customer-owned identity, permissions, policy and downstream execution</li>
           </ul>
         </article>
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">

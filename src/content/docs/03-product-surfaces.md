@@ -34,13 +34,13 @@ Ask Geomacro is a grounded query interface over stored Geomacro intelligence. Th
 
 Machine-readable risk objects package subject-specific risk context, evidence, confidence, freshness and verification metadata for downstream systems.
 
-Current Private Pilot work includes signed Geomacro Risk Objects and verification infrastructure. Availability and schema guarantees remain subject to pilot-stage change.
+Current Private Pilot work includes signed country and directional corridor Geomacro Risk Objects and verification infrastructure. Availability and schema guarantees remain subject to pilot-stage change. Event-specific Risk Objects are not part of the current Private Pilot contract.
 
 ## 3.5 Risk Gate
 
 **Status: PRIVATE PILOT**
 
-Risk Gate evaluates country or directional corridor context against a customer's policy before a financial workflow proceeds.
+Risk Gate verifies country or directional corridor risk context and returns a bounded pre-flight recommendation. The customer's own identity, permissions and policy layer decides how that recommendation affects the financial workflow.
 
 Current recommendation states include:
 
@@ -48,6 +48,7 @@ Current recommendation states include:
 - `REDUCE_LIMIT`
 - `REQUIRE_APPROVAL`
 - `PAUSE`
+- `REROUTE`
 
 Geomacro does not autonomously execute or authorize the customer's transaction. The external boundary remains `execution_authorized = false`.
 

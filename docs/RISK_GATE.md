@@ -14,11 +14,11 @@ The current repository implements the first commercial backend foundation for co
 - authenticated external Risk Gate requests;
 - database-backed per-client rate limiting;
 - immutable decision audit records;
-- caller-owned execution after an explicit policy decision.
+- caller-owned execution after an explicit customer-controlled decision.
 
 These capabilities are implemented and tested as Private Pilot infrastructure. They **must not** be represented as generally available production service, production wallet interception, autonomous transaction authorization, full corridor/logistics modelling, or independently validated institutional risk methodology.
 
-`execution_authorized` remains `false` at the Geomacro boundary. Geomacro supplies risk context and a policy decision response; the customer or caller retains control of any downstream execution.
+`execution_authorized` remains `false` at the Geomacro boundary. Geomacro supplies risk context and a bounded recommendation; the customer retains identity, permissions, policy, funds and control of any downstream execution.
 
 Commercial source eligibility is not yet fully verified across all candidate evidence sources. Restricted, research-only or license-review-pending sources must fail closed and remain outside paid delivery until their permitted use is confirmed.
 
@@ -55,21 +55,24 @@ GRI and Risk Gate share Geomacro's broader intelligence, provenance, attribution
 
 Risk Gate does **not** apply the global GRI score as a universal transaction rule.
 
-The shared architecture supports subject-specific views:
+The canonical current product architecture is:
 
 ```text
-Shared Geomacro Risk Architecture
-        |
-        +-- Global scope   -> Global Risk Index
-        +-- Country scope  -> Country Risk Object
-        +-- Corridor scope -> Corridor Risk Object
-        +-- Event scope    -> Event Risk Object direction
-                                  |
-                                  v
-                              Risk Gate
+Real-world evidence and data
+        -> Normalize, classify and preserve provenance
+        -> Structured intelligence state
+             +-- Global Risk Index - Live
+             +-- Ask Geomacro - Live
+             +-- Country Risk Object - Private Pilot --+
+             +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
+             +-- Arc / Circle / prediction-market technical proof
+
+Risk Gate - Private Pilot
+        -> Customer identity + permissions + policy
+        -> Customer-controlled action
 ```
 
-Country and corridor Risk Objects are the current Private Pilot commercial wedge. Event-specific Risk Objects remain part of the broader product architecture and must only be labelled live when the corresponding production contract is actually implemented and verified.
+Country and directional corridor Risk Objects are the current Private Pilot commercial wedge. Event-specific Risk Objects remain a broader product direction only and must not be labelled part of the current Private Pilot until the corresponding implementation, production contract, verification path and commercial-eligibility boundary are separately established.
 
 ## First commercial wedge
 
@@ -201,7 +204,7 @@ The preferred integration point is **before** a financial action is submitted by
 Signed Geomacro Risk Object
         |
         v
-Verification + freshness checks
+Risk Gate verification + freshness + bounded risk evaluation
         |
         v
 Customer identity + permissions + policy
@@ -213,27 +216,24 @@ CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
 Customer-controlled execution
 ```
 
-The current code includes a fail-closed agent/wallet pre-flight adapter. The caller-owned executor is invoked only after an explicit `CONTINUE` decision under the caller's policy.
+The current service can accept a caller-supplied policy profile as an input to produce bounded decision context. That does not make Geomacro the owner or enforcer of the customer's policy. Customer identity, permissions, policy design, compliance obligations and execution remain customer-controlled.
 
-This does **not** mean Geomacro is a wallet custodian or autonomous transaction signer.
+The current code also contains fail-closed adapters used to demonstrate pre-flight integration. Any caller-owned executor remains outside Geomacro's authorization boundary and may proceed only under the caller's own policy. This does **not** make Geomacro a wallet custodian or autonomous transaction signer.
 
 ## Policy boundary
 
 Risk intelligence alone does not determine the customer's final financial action.
 
-The canonical model is:
+The canonical product boundary is:
 
 ```text
 Risk Object
-+ Identity
-+ Permissions
-+ Customer Policy
-= Policy decision
+        -> Risk Gate recommendation / decision context
+        -> Customer identity + permissions + policy
+        -> Customer-controlled action
 ```
 
-The same verified Risk Object may produce different outcomes under different customer mandates.
-
-Geomacro provides external risk context and evaluates the supplied policy contract. The customer remains responsible for its policy, permissions, compliance obligations and execution.
+Where an integration sends a customer-owned policy profile into the Risk Gate request, Geomacro may evaluate that supplied profile to return a bounded recommendation. The profile remains customer-owned, and the customer remains responsible for policy design, enforcement, permissions, compliance obligations and execution.
 
 Geomacro Risk Gate does not itself:
 
@@ -241,6 +241,7 @@ Geomacro Risk Gate does not itself:
 - submit customer trades;
 - sign customer wallet transactions;
 - move customer assets;
+- own or enforce customer identity and permissions;
 - replace sanctions/compliance screening;
 - make the customer's final fiduciary or investment decision.
 
@@ -268,9 +269,9 @@ The API remains **Private Pilot**. Authentication, rate limiting and real test c
 
 ## Audit trail
 
-Authenticated Risk Gate evaluations write an immutable audit record containing enough metadata to correlate the client, request, subject, risk object, methodology, policy, decision, reason codes, status and request/response hashes.
+Authenticated Risk Gate evaluations write an immutable audit record containing enough metadata to correlate the client, request, subject, risk object, methodology, supplied policy profile where applicable, recommendation, reason codes, status and request/response hashes.
 
-Audit persistence is part of the commercial decision contract. A successful decision must not silently bypass the required audit record.
+Audit persistence is part of the commercial decision-context contract. A successful response must not silently bypass the required audit record.
 
 Unauthenticated attacker-controlled traffic is not written into the commercial audit ledger merely for observability.
 
@@ -301,7 +302,7 @@ Examples of conditions that should not silently authorize execution include:
 - unsupported subject/schema/methodology;
 - invalid or missing signature;
 - expired Risk Object;
-- audit persistence failure for an otherwise successful decision;
+- audit persistence failure for an otherwise successful response;
 - unavailable required risk inputs;
 - malformed customer request.
 
@@ -322,13 +323,10 @@ Risk API / Risk Gate
         +-- optional commercial access/payment rail
         |
         v
-Signed GRO
+Signed GRO / bounded risk context
         |
         v
-Verification
-        |
-        v
-Customer Policy
+Customer identity + permissions + policy
         |
         v
 Customer-controlled action
@@ -336,7 +334,7 @@ Customer-controlled action
 
 x402 or another machine-payment/access mechanism may become a commercial rail, but it is not part of the core risk methodology and must never be required for the risk engine/database to function.
 
-No live x402 integration should be claimed until it is actually implemented and verified.
+A payment, transport or agent protocol is an adapter over canonical Geomacro intelligence, not a separate risk engine and never an execution authorization path.
 
 ## Why Risk Gate is different
 
@@ -346,7 +344,7 @@ Risk Gate combines five layers in one decision-context architecture:
 2. **Change intelligence** — the system exposes what changed, by how much and why instead of returning only a static score.
 3. **Subject-specific risk** — global, country and corridor views share verification principles without applying one global scalar to every decision.
 4. **Verifiable machine context** — Risk Objects carry versioning, freshness, integrity and issuer-verification primitives.
-5. **Pre-flight policy separation** — Geomacro provides external risk context before action while customer identity, permissions, policy and execution remain customer-controlled.
+5. **Pre-flight separation** — Geomacro provides external risk context before action while customer identity, permissions, policy and execution remain customer-controlled.
 
 ```text
 World change
@@ -355,7 +353,8 @@ World change
     -> attribution
     -> evidence + confidence
     -> signed/verifiable Risk Object
-    -> customer policy
+    -> Risk Gate recommendation
+    -> customer identity + permissions + policy
     -> customer-controlled action
 ```
 
@@ -389,10 +388,16 @@ Current risk + previous risk + delta
 Attribution + evidence + confidence + freshness
         |
         v
-Customer policy evaluation
+Risk Gate recommendation
+        |
+        v
+Customer identity + permissions + policy
         |
         v
 CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
+        |
+        v
+Customer-controlled action
 ```
 
 For early pilots, the same underlying intelligence may be delivered through founder-supported workflows, controlled product access, structured reports/alerts and private machine-readable interfaces while the production service is hardened.
@@ -444,7 +449,7 @@ Risk Gate must remain labelled **Private Pilot** until deployed evidence satisfi
 - deterministic delta and attribution generation where claimed;
 - consistent evidence/confidence/provenance/freshness;
 - explicit degraded-state handling;
-- documented customer-policy input and decision-output contract.
+- documented customer-owned policy input and decision-output contract.
 
 ### Interface gates
 
