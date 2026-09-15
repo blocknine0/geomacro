@@ -48,6 +48,7 @@ function observation(row: StructuralObservation) {
     observation_id: row.observation_id,
     source_id: row.source_id,
     source_record_id: row.source_record_id,
+    source_url: row.source_url,
     dimension: row.dimension,
     country_iso3: row.country_iso3,
     partner_country_iso3: row.partner_country_iso3,
@@ -62,6 +63,7 @@ function observation(row: StructuralObservation) {
     parser_version: row.parser_version,
     methodology_status: row.methodology_status,
     quality_status: row.quality_status,
+    provenance: row.provenance,
     normalized_hash: row.normalized_hash,
     retrieved_at: row.retrieved_at,
   };
