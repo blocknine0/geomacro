@@ -1,0 +1,114 @@
+name: Geopolitical Production Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-geopolitical-production-diagnostics.ts"
+      - "src/__tests__/geopolitical-production-diagnostics-static.test.ts"
+      - ".github/workflows/geopolitical-production-diagnostics.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/audit-geopolitical-production-diagnostics.ts"
+      - "src/__tests__/geopolitical-production-diagnostics-static.test.ts"
+      - ".github/workflows/geopolitical-production-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT: geopolitical-production-diagnostics.json
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate authoritative production read target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
+          test -n "${SUPABASE_URL:-}" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"; exit 1; }
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const api = new URL(process.env.SUPABASE_URL);
+          if (api.protocol !== 'https:' || api.hostname !== `${ref}.supabase.co`) {
+            throw new Error('SUPABASE_URL is not the authoritative production API');
+          }
+          console.log('PASS: authoritative production API identity confirmed.');
+          NODE
+
+      - name: Run read-only geopolitical diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-geopolitical-production-diagnostics.ts | tee geopolitical-production-diagnostics.log
+          test -s "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT"
+
+      - name: Validate sanitized no-write boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.raw_event_material_included == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.event_text_or_publisher_material_redistributed == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.source_rights_changed == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.scoring_changed == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.methodology.thresholds_changed == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.methodology.freshness_changed == false' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.sovereign_denominator >= 190' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.summary.module_available_country_count + .summary.module_fail_closed_country_count == .sovereign_denominator' "$GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT" >/dev/null
+          echo 'PASS: geopolitical diagnostics are sanitized, read-only and fail-closed.'
+
+      - name: Upload sanitized geopolitical evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: geopolitical-production-diagnostics
+          path: |
+            geopolitical-production-diagnostics.json
+            geopolitical-production-diagnostics.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  static-validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Run geopolitical diagnostic boundary tests
+        run: bunx vitest run src/__tests__/geopolitical-production-diagnostics-static.test.ts
