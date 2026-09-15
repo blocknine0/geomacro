@@ -1,45 +1,20 @@
-export const COMMERCIAL_SOURCE_POLICY = Object.freeze({
-  world_bank_indicators: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-10",
-  }),
-  world_bank_wgi_political_stability: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-10",
-  }),
-  unhcr_refugee_statistics: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-10",
-  }),
-  ucdp_ged: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-10",
-  }),
-  ucdp_candidate: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-12",
-  }),
-  usgs_mcs: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-10",
-  }),
-  gdelt_v2_events: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-14",
-  }),
-  eurostat_government_finance: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-14",
-  }),
-  usgs_earthquake_hazards: Object.freeze({
-    allowed_statuses: Object.freeze(["VERIFIED"]),
-    reviewed_on: "2026-09-14",
-  }),
-  reliefweb: Object.freeze({
-    allowed_statuses: Object.freeze(["DERIVED_ONLY"]),
-    reviewed_on: "2026-09-10",
-  }),
-});
+import {
+  COMMERCIAL_SOURCE_RIGHTS_EVIDENCE,
+} from "./commercial-source-rights-evidence.mjs";
+
+export const COMMERCIAL_SOURCE_POLICY = Object.freeze(
+  Object.fromEntries(
+    Object.entries(COMMERCIAL_SOURCE_RIGHTS_EVIDENCE).map(
+      ([sourceId, evidence]) => [
+        sourceId,
+        Object.freeze({
+          allowed_statuses: Object.freeze([evidence.approved_status]),
+          reviewed_on: evidence.reviewed_on,
+        }),
+      ],
+    ),
+  ),
+);
 
 export function assertCommercialEligibilityAllowed(
   sourceId,
