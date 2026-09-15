@@ -21,30 +21,44 @@
   },
   "securitySchemes": {
     "geomacroBearer": {
-      "type": "http",
-      "scheme": "bearer",
-      "description": "Geomacro commercial API bearer credential."
+      "httpAuthSecurityScheme": {
+        "scheme": "Bearer",
+        "bearerFormat": "opaque",
+        "description": "Geomacro commercial API bearer credential."
+      }
     },
     "geomacroTestnetKey": {
-      "type": "apiKey",
-      "in": "header",
-      "name": "X-Geomacro-Api-Key",
-      "description": "Geomacro Testnet developer API key."
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-Geomacro-Api-Key",
+        "description": "Geomacro Testnet developer API key."
+      }
     },
     "geomacroTestnetSecret": {
-      "type": "apiKey",
-      "in": "header",
-      "name": "X-Geomacro-Api-Secret",
-      "description": "Geomacro Testnet developer API secret. Required together with the Testnet API key."
+      "apiKeySecurityScheme": {
+        "location": "header",
+        "name": "X-Geomacro-Api-Secret",
+        "description": "Geomacro Testnet developer API secret. Required together with the Testnet API key."
+      }
     }
   },
   "securityRequirements": [
     {
-      "geomacroBearer": []
+      "schemes": {
+        "geomacroBearer": {
+          "list": []
+        }
+      }
     },
     {
-      "geomacroTestnetKey": [],
-      "geomacroTestnetSecret": []
+      "schemes": {
+        "geomacroTestnetKey": {
+          "list": []
+        },
+        "geomacroTestnetSecret": {
+          "list": []
+        }
+      }
     }
   ],
   "defaultInputModes": [
@@ -78,11 +92,21 @@
       ],
       "securityRequirements": [
         {
-          "geomacroBearer": []
+          "schemes": {
+            "geomacroBearer": {
+              "list": []
+            }
+          }
         },
         {
-          "geomacroTestnetKey": [],
-          "geomacroTestnetSecret": []
+          "schemes": {
+            "geomacroTestnetKey": {
+              "list": []
+            },
+            "geomacroTestnetSecret": {
+              "list": []
+            }
+          }
         }
       ]
     }
