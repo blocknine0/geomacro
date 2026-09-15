@@ -59,7 +59,8 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
   });
 
   it("limits secret exposure and hardens the workflow supply chain before signing", () => {
-    expect(workflow).not.toMatch(/jobs:\s*[\s\S]*?env:\s*\n\s*GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY:/);
+    expect(workflow).not.toContain("    env:\n      GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY:");
+    expect(workflow).toContain("        env:\n          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY:");
     expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(workflow).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
