@@ -1,5 +1,7 @@
 name: OECD Sovereign Fiscal Coverage Proof
 
+# Re-run the live no-write OECD coverage proof after the 2026-09-15
+# production Eurostat drift recovery established 26/194 accepted countries.
 on:
   pull_request:
     paths:
