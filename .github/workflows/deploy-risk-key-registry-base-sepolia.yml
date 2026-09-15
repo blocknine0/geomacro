@@ -37,6 +37,11 @@ jobs:
         with:
           version: stable
 
+      - name: Setup Node.js 22 for official CDP faucet client
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
       - name: Validate registry contract before broadcast
         run: forge test --match-path test/RiskKeyRegistry.t.sol
 
@@ -50,6 +55,98 @@ jobs:
             echo "::error::RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 is not configured."
             exit 1
           fi
+
+      - name: Bootstrap Base Sepolia gas from Coinbase CDP faucet when available
+        id: faucet
+        env:
+          CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
+          CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          COINBASE_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TARGET_KEY="${OWNER_PRIVATE_KEY:-}"
+          TARGET_ROLE="owner"
+          if [ -z "$TARGET_KEY" ]; then
+            TARGET_KEY="${COINBASE_PRIVATE_KEY:-}"
+            TARGET_ROLE="coinbase-x402-buyer"
+          fi
+
+          if [ -z "$TARGET_KEY" ]; then
+            echo "No deployment wallet secret is configured; faucet bootstrap cannot run."
+            echo "attempted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TARGET_ADDRESS="$(cast wallet address --private-key "$TARGET_KEY")"
+          BEFORE_WEI="$(cast balance "$TARGET_ADDRESS" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          echo "Faucet target role: $TARGET_ROLE"
+          echo "Faucet target address: $TARGET_ADDRESS"
+          echo "Base Sepolia ETH before faucet (wei): $BEFORE_WEI"
+
+          if [ "$BEFORE_WEI" != "0" ]; then
+            echo "Wallet already has Base Sepolia gas; faucet bootstrap is unnecessary."
+            echo "attempted=false" >> "$GITHUB_OUTPUT"
+            echo "target_address=$TARGET_ADDRESS" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -z "${CDP_API_KEY_ID:-}" ] || [ -z "${CDP_API_KEY_SECRET:-}" ]; then
+            echo "CDP faucet credentials are not configured in this GitHub environment; skipping automatic faucet request."
+            echo "attempted=false" >> "$GITHUB_OUTPUT"
+            echo "target_address=$TARGET_ADDRESS" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CDP_DIR="$RUNNER_TEMP/cdp-faucet-client"
+          mkdir -p "$CDP_DIR"
+          cd "$CDP_DIR"
+          npm init -y >/dev/null 2>&1
+          npm install --ignore-scripts --no-audit --no-fund --package-lock=false @coinbase/cdp-sdk@1.56.0 >/dev/null
+
+          FAUCET_ADDRESS="$TARGET_ADDRESS" node --input-type=module <<'NODE'
+          import { CdpClient } from '@coinbase/cdp-sdk';
+
+          const address = process.env.FAUCET_ADDRESS;
+          const apiKeyId = process.env.CDP_API_KEY_ID;
+          const apiKeySecret = process.env.CDP_API_KEY_SECRET;
+          if (!address || !apiKeyId || !apiKeySecret) {
+            throw new Error('CDP faucet bootstrap configuration is incomplete');
+          }
+
+          const client = new CdpClient({ apiKeyId, apiKeySecret });
+          try {
+            for (let i = 1; i <= 5; i += 1) {
+              const response = await client.evm.requestFaucet({
+                address,
+                network: 'base-sepolia',
+                token: 'eth',
+              });
+              console.log(`CDP Base Sepolia ETH faucet claim ${i}/5 submitted: ${response.transactionHash}`);
+              await new Promise(resolve => setTimeout(resolve, 750));
+            }
+          } finally {
+            await client.close();
+          }
+          NODE
+
+          cd "$GITHUB_WORKSPACE"
+          echo "attempted=true" >> "$GITHUB_OUTPUT"
+          echo "target_address=$TARGET_ADDRESS" >> "$GITHUB_OUTPUT"
+
+          for attempt in $(seq 1 30); do
+            AFTER_WEI="$(cast balance "$TARGET_ADDRESS" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+            if [ "$AFTER_WEI" != "0" ]; then
+              echo "Base Sepolia ETH after faucet (wei): $AFTER_WEI"
+              echo "balance_wei=$AFTER_WEI" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::warning::CDP faucet requests were submitted but the Base Sepolia balance is still zero; funded-wallet selection will decide whether another candidate can proceed."
 
       - name: Select a funded Base Sepolia deployment wallet
         id: wallet
