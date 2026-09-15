@@ -86,6 +86,12 @@ export const AGENT_MODULE_MAX_AGE_SECONDS: Readonly<Record<string, number>> = {
   hot_topics: 2 * 86_400,
 };
 
+// The current structural serving views and public GRI reader are latest-state
+// products. Only signed historical Risk Objects and their Risk Gate evaluation
+// use an at-or-before contract today. Historical requests for other modules are
+// rejected rather than silently substituting current data.
+const HISTORICAL_COMPATIBLE_MODULES = new Set(["signed_risk_object", "risk_gate"]);
+
 const QUESTION_TOPIC_RULES: ReadonlyArray<{ topic: AgentQueryTopic; patterns: RegExp[] }> = [
   { topic: "sovereign_risk", patterns: [/\bsovereign\b/i, /\bdebt\b/i, /\bfiscal\b/i, /\bdefault\b/i, /\bbond\b/i] },
   { topic: "macro_risk", patterns: [/\bmacro/i, /\binflation\b/i, /\bgdp\b/i, /\bgrowth\b/i, /\brate\b/i, /\bcentral bank\b/i] },
@@ -142,6 +148,9 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
   if (topics.includes("risk_gate") && !parsed.risk_gate_context) throw new Error("RISK_GATE_CONTEXT_REQUIRED");
   const requiredModules = [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
+  if (parsed.as_of && requiredModules.some((module) => !HISTORICAL_COMPATIBLE_MODULES.has(module))) {
+    throw new Error("HISTORICAL_AS_OF_UNSUPPORTED_FOR_REQUESTED_MODULES");
+  }
   const moduleMaxAge = Object.fromEntries(requiredModules.filter((module) => AGENT_MODULE_MAX_AGE_SECONDS[module]).map((module) => {
     const baseline = AGENT_MODULE_MAX_AGE_SECONDS[module];
     return [module, parsed.max_age_seconds ? Math.min(baseline, parsed.max_age_seconds) : baseline];
