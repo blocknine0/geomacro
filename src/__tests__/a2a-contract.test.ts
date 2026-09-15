@@ -68,29 +68,28 @@ describe("A2A v1 contract", () => {
     ).toThrow();
   });
 
-  it("rejects same-country directional corridors", () => {
-    expect(() =>
-      a2aSendMessageRequestSchema.parse({
-        message: {
-          messageId: "msg-a2a-0004",
-          role: "ROLE_USER",
-          parts: [
-            {
-              data: {
-                skillId: "risk_preflight",
-                input: {
-                  subject: {
-                    type: "corridor",
-                    origin_country_iso3: "IND",
-                    destination_country_iso3: "IND",
-                  },
+  it("rejects same-country directional corridors when the risk skill is extracted", () => {
+    const request = a2aSendMessageRequestSchema.parse({
+      message: {
+        messageId: "msg-a2a-0004",
+        role: "ROLE_USER",
+        parts: [
+          {
+            data: {
+              skillId: "risk_preflight",
+              input: {
+                subject: {
+                  type: "corridor",
+                  origin_country_iso3: "IND",
+                  destination_country_iso3: "IND",
                 },
               },
             },
-          ],
-        },
-      }),
-    ).toThrow();
+          },
+        ],
+      },
+    });
+    expect(() => extractA2ARiskPreflightInput(request.message)).toThrow();
   });
 
   it("publishes official HTTP+JSON v1 discovery while keeping execution disabled", () => {
