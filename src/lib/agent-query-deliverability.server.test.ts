@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildAgentQueryPlan } from "./agent-query-plan";
 
-const loadStructuralContext = vi.fn();
+const mocks = vi.hoisted(() => ({ loadStructuralContext: vi.fn() }));
 vi.mock("./structural-context.server", async () => {
   const actual = await vi.importActual<typeof import("./structural-context.server")>("./structural-context.server");
-  return { ...actual, loadStructuralContext };
+  return { ...actual, loadStructuralContext: mocks.loadStructuralContext };
 });
 
 import { checkAgentQueryDeliverability } from "./agent-query-deliverability.server";
@@ -40,11 +40,11 @@ function context(overrides: Record<string, unknown> = {}) {
 
 const commercialOk = async () => ({ eligible: true, ineligible_source_ids: [] as string[] });
 
-beforeEach(() => loadStructuralContext.mockReset());
+beforeEach(() => mocks.loadStructuralContext.mockReset());
 
 describe("adaptive query pre-payment deliverability", () => {
   it("allows a fresh fully-covered commercially eligible structural query", async () => {
-    loadStructuralContext.mockResolvedValue(context());
+    mocks.loadStructuralContext.mockResolvedValue(context());
     const plan = buildAgentQueryPlan({ subjects: [{ type: "country", country_iso3: "usa" }], topics: ["macro_risk"], max_age_seconds: 172800 });
     const result = await checkAgentQueryDeliverability(plan, {
       now: new Date("2026-09-16T00:00:00.000Z"),
@@ -56,7 +56,7 @@ describe("adaptive query pre-payment deliverability", () => {
 
   it("fails closed before payment when a required module is absent", async () => {
     const base = context();
-    loadStructuralContext.mockResolvedValue({ ...base, observations: [base.observations[0]] });
+    mocks.loadStructuralContext.mockResolvedValue({ ...base, observations: [base.observations[0]] });
     const plan = buildAgentQueryPlan({ subjects: [{ type: "country", country_iso3: "USA" }], topics: ["macro_risk"], max_age_seconds: 172800 });
     const result = await checkAgentQueryDeliverability(plan, {
       now: new Date("2026-09-16T00:00:00.000Z"),
@@ -68,7 +68,7 @@ describe("adaptive query pre-payment deliverability", () => {
   });
 
   it("fails closed when required evidence is stale", async () => {
-    loadStructuralContext.mockResolvedValue(context());
+    mocks.loadStructuralContext.mockResolvedValue(context());
     const plan = buildAgentQueryPlan({ subjects: [{ type: "country", country_iso3: "USA" }], topics: ["macro_risk"], max_age_seconds: 3600 });
     const result = await checkAgentQueryDeliverability(plan, {
       now: new Date("2026-09-16T00:00:00.000Z"),
@@ -79,7 +79,7 @@ describe("adaptive query pre-payment deliverability", () => {
   });
 
   it("fails closed when a required source is not commercially eligible", async () => {
-    loadStructuralContext.mockResolvedValue(context());
+    mocks.loadStructuralContext.mockResolvedValue(context());
     const plan = buildAgentQueryPlan({ subjects: [{ type: "country", country_iso3: "USA" }], topics: ["macro_risk"], max_age_seconds: 172800 });
     const result = await checkAgentQueryDeliverability(plan, {
       now: new Date("2026-09-16T00:00:00.000Z"),
@@ -90,9 +90,13 @@ describe("adaptive query pre-payment deliverability", () => {
     expect(result.ineligible_source_ids).toEqual(["world_bank_wdi"]);
   });
 
-  it("requires explicit governed checker for Risk Gate/Risk Object/GRI modules", async () => {
-    loadStructuralContext.mockResolvedValue(context());
-    const plan = buildAgentQueryPlan({ subjects: [{ type: "country", country_iso3: "USA" }], topics: ["risk_gate"] });
+  it("requires explicit governed checker for Risk Gate/Risk Object modules", async () => {
+    mocks.loadStructuralContext.mockResolvedValue(context());
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["risk_gate"],
+      risk_gate_context: { action_type: "exposure_review", policy_preset: "balanced" },
+    });
     const denied = await checkAgentQueryDeliverability(plan, {
       now: new Date("2026-09-16T00:00:00.000Z"),
       sourceEligibilityChecker: commercialOk,
