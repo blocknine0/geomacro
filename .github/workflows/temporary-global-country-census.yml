@@ -42,3 +42,5 @@ jobs:
           path: global-risk-gate-country-census.json
           if-no-files-found: error
           retention-days: 7
+
+# trigger: production census evidence refresh 2026-09-16
