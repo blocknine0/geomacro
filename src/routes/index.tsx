@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommercialHome } from "@/components/home/commercial-home";
 
-const TITLE = "Geopolitical & Macro Risk Intelligence | Geomacro";
+const TITLE = "Geopolitical + Macro Risk Intelligence | Geomacro";
 const DESCRIPTION =
   "Geomacro turns geopolitical and macro developments into explainable risk scores, evidence, confidence, change attribution and machine-readable decision context.";
 const URL = "https://geomacro.live/";
