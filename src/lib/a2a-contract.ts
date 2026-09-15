@@ -24,6 +24,7 @@ export const A2A_TASK_STATES = [
 export type A2ATaskState = (typeof A2A_TASK_STATES)[number];
 
 const iso3 = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
+const protocolId = z.string().trim().min(1).max(256);
 
 export const a2aRiskPreflightInputSchema = z
   .object({
@@ -85,14 +86,14 @@ export const a2aPartSchema = z
   });
 
 export const a2aMessageSchema = z.object({
-  messageId: z.string().trim().min(1).max(160),
-  taskId: z.string().uuid().optional(),
-  contextId: z.string().trim().min(1).max(160).optional(),
+  messageId: protocolId,
+  taskId: protocolId.optional(),
+  contextId: protocolId.optional(),
   role: z.enum(["ROLE_USER", "ROLE_AGENT"]),
   parts: z.array(a2aPartSchema).min(1).max(8),
   metadata: z.record(z.unknown()).optional(),
   extensions: z.array(z.string().url().max(2_048)).max(16).optional(),
-  referenceTaskIds: z.array(z.string().trim().min(1).max(160)).max(16).optional(),
+  referenceTaskIds: z.array(protocolId).max(16).optional(),
 });
 
 export const a2aPushAuthenticationSchema = z
@@ -104,8 +105,8 @@ export const a2aPushAuthenticationSchema = z
 
 export const a2aPushNotificationConfigSchema = z.object({
   tenant: z.string().trim().max(120).optional(),
-  id: z.string().uuid().optional(),
-  taskId: z.string().uuid().optional(),
+  id: protocolId.optional(),
+  taskId: protocolId.optional(),
   url: z.string().url().max(2_048),
   token: z.string().trim().min(8).max(256).optional(),
   authentication: a2aPushAuthenticationSchema.optional(),
