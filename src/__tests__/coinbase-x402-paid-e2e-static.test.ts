@@ -58,8 +58,16 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
     expect(script).not.toContain("paymentPayload,");
   });
 
+  it("limits secret exposure and hardens the workflow supply chain before signing", () => {
+    expect(workflow).not.toContain("    env:\n      GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY:");
+    expect(workflow).toContain("        env:\n          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY:");
+    expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
+    expect(workflow).toContain("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
+    expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+    expect(workflow).toContain("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+  });
+
   it("preserves sanitized evidence for settlement and no-double-charge verification", () => {
-    expect(workflow).toContain("actions/upload-artifact@v7");
     expect(workflow).toContain("retention-days: 90");
     expect(script).toContain("settlement_tx_hash: txHash");
     expect(script).toContain("payer_usdc_after_replay_atomic");
