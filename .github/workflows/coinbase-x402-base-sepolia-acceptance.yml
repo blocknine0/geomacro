@@ -40,7 +40,7 @@ jobs:
           file=".github/workflows/coinbase-x402-base-sepolia-acceptance.yml"
           grep -q 'workflow_dispatch:' "$file"
           grep -q 'push:' "$file"
-          grep -q "github.event_name == 'push'" "$file"
+          grep -q "github.event_name != 'pull_request'" "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'https://geomacro.live/api/x402/risk' "$file"
           grep -q 'eip155:84532' "$file"
@@ -60,7 +60,7 @@ jobs:
           echo "PASS: public Base Sepolia acceptance workflow is main-only, auto-runs on relevant main pushes, and remains secret-free."
 
   public-acceptance:
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
