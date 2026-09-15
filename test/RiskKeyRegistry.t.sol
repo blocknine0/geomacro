@@ -44,7 +44,7 @@ contract RiskKeyRegistryTest is Test {
         vm.startPrank(owner);
         registry.publishKey(KEY_ID, PUBLIC_KEY_HASH, JWKS_URI, 100, 0);
         vm.expectRevert(RiskKeyRegistry.KeyAlreadyExists.selector);
-        registry.publishKey(KEY_ID, keccak256("different"), JWKS_URI, 100, 0);
+        registry.publishKey(KEY_ID, keccak256(bytes("different")), JWKS_URI, 100, 0);
         vm.stopPrank();
     }
 
@@ -53,16 +53,14 @@ contract RiskKeyRegistryTest is Test {
         registry.publishKey(KEY_ID, PUBLIC_KEY_HASH, JWKS_URI, 100, 0);
         registry.setActiveKey(KEY_ID);
         registry.revokeKey(KEY_ID);
+        vm.expectRevert(RiskKeyRegistry.KeyRevoked.selector);
+        registry.setActiveKey(KEY_ID);
         vm.stopPrank();
 
         RiskKeyRegistry.KeyRecord memory record = registry.getKey(KEY_ID);
         assertTrue(record.revoked);
         assertEq(registry.activeKeyIdHash(), bytes32(0));
         assertFalse(registry.isKeyUsable(KEY_ID, 150));
-
-        vm.prank(owner);
-        vm.expectRevert(RiskKeyRegistry.KeyRevoked.selector);
-        registry.setActiveKey(KEY_ID);
     }
 
     function testOnlyOwnerCanMutateRegistry() public {
