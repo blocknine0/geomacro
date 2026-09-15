@@ -241,7 +241,7 @@ function InstitutionalPage() {
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Private Pilot workflow</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">Check risk before the action moves forward.</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              Risk Gate verifies the country or corridor Risk Object and returns bounded external risk context and a recommendation. The customer's own identity, permissions and policy layer then applies its rules, and the customer keeps control of execution.
+              Risk Gate verifies the country or corridor Risk Object and returns bounded external risk context and a recommendation. The customer's own identity, permissions and policy layer then applies its rules; the customer controls execution.
             </p>
             <Button asChild className="mt-6 gap-2"><Link to="/risk-gate">Review Risk Gate <ArrowRight className="h-4 w-4" /></Link></Button>
           </div>
