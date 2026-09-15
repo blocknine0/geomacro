@@ -1,21 +1,33 @@
 # 2. Product Architecture
 
-Geomacro uses a shared evidence and provenance foundation with product-specific admission and decision policies. Public intelligence, GRI, Ask Geomacro and machine interfaces should not maintain conflicting versions of the same underlying fact.
+Geomacro uses one shared evidence and provenance foundation. Public intelligence, GRI, Ask Geomacro, Private Pilot Risk Objects and Risk Gate must not maintain conflicting versions of the same underlying risk state.
+
+The canonical current architecture is:
 
 ```mermaid
 flowchart TD
-    A[Global intelligence sources] --> B[Normalized observations]
-    B --> C[Evidence + provenance]
-    C --> D[Structured events / state]
-    D --> E[Risk methodology]
-    E --> F[Published intelligence]
-    F --> G[GRI]
-    F --> H[Ask Geomacro]
-    F --> I[Risk Objects]
-    I --> J[Risk Gate]
-    F --> K[Data / API]
-    F --> L[Research]
+    EVIDENCE["Real-world evidence and data"] --> NORMALIZE["Normalize, classify and preserve provenance"]
+    NORMALIZE --> STATE["Structured intelligence state"]
+    STATE --> GRI["Global Risk Index - Live"]
+    STATE --> ASK["Ask Geomacro - Live"]
+    STATE --> COUNTRY["Country Risk Object - Private Pilot"]
+    STATE --> CORRIDOR["Corridor Risk Object - Private Pilot"]
+    COUNTRY --> GATE["Risk Gate - Private Pilot"]
+    CORRIDOR --> GATE
+    GATE --> POLICY["Customer identity + permissions + policy"]
+    POLICY --> ACTION["Customer-controlled action"]
+    STATE --> TECH["Arc / Circle / prediction-market technical proof"]
 ```
+
+This architecture preserves three boundaries:
+
+- **Live public intelligence**: Risk Intelligence, the Global Risk Index and Ask Geomacro expose the current shared intelligence state for human use.
+- **Private Pilot machine decisions**: current signed Risk Object and Risk Gate delivery is scoped to country and directional corridor risk. Risk Gate supplies external risk context; the customer keeps identity, permissions, policy, funds and final execution control.
+- **Technical proof**: Arc, Circle, USDC, CCTP, Bridge & Swap and prediction-market functionality demonstrate programmable-finance integration. They are not the primary commercial product or a production-mainnet claim.
+
+`execution_authorized=false` remains the current Risk Gate execution boundary. Event-specific Risk Objects may be explored in the broader architecture, but they are not part of the current country/corridor Private Pilot contract unless a separately implemented and verified production contract says otherwise.
+
+Data & API is an access and delivery surface over this architecture. Research and documentation are evidence, methodology and trust surfaces. Neither should create a second risk engine or a conflicting copy of product truth.
 
 ## Policy layers
 
