@@ -18,14 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+          bun-version: 1.4.2
+      - name: Verify committed lockfile and install dependencies
+        run: bun install --frozen-lockfile
       - name: Verify Coinbase x402 configuration tests
-        run: npx vitest run src/lib/coinbase-x402.server.test.ts
+        run: bunx vitest run src/lib/coinbase-x402.server.test.ts
       - name: Verify real-funds gate remains explicit
         shell: bash
         run: |
