@@ -264,7 +264,7 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
     Number(snapshotResult.data.independent_story_count) <= 0 ||
     Number(snapshotResult.data.independent_story_count) > Number(snapshotResult.data.event_count)
   ) {
-    throw new Error("Published GRI proof package does not match the current v1.1 proof contract.");
+    throw new Error("Published GRI proof package does not match the current v1.2 proof contract.");
   }
 
   const contributionResult = await supabaseFeed
@@ -371,7 +371,7 @@ export async function loadGriProofPackage(snapshotId: string): Promise<GriProofP
 
     if (!currentClassification || !currentStoryContract) {
       throw new Error(
-        `GRI proof contribution ${row.event_id} does not satisfy the current v1.1 provenance contract.`,
+        `GRI proof contribution ${row.event_id} does not satisfy the current v1.2 provenance contract.`,
       );
     }
   }

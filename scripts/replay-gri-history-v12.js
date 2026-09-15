@@ -391,7 +391,7 @@ async function main() {
   const { start, end } = await resolveRange();
   const events = await fetchEvents(start, end);
 
-  // Replay v1.1 deliberately uses the same current-contract classification
+  // Replay v1.2 deliberately uses the same current-contract classification
   // and immutable story provenance required by live publication.
   //
   // This remains retrospective evidence reconstruction, not lookahead-safe

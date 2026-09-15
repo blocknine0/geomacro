@@ -1276,7 +1276,7 @@ async function main() {
 
   // Pre-migration/operator dry-run deliberately behaves as a methodology
   // baseline and performs no historical snapshot query. This allows the
-  // complete v1.1 input/story/weight/proof path to be audited without any
+  // complete v1.2 input/story/weight/proof path to be audited without any
   // database mutation or dependency on migration 009 having been applied.
   const previousPublication = dryRun
     ? null
