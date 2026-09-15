@@ -1,0 +1,34 @@
+{
+  "protocol_version": "geomacro-a2a/1.0",
+  "agent": {
+    "id": "geomacro",
+    "name": "Geomacro Agent",
+    "mode": "read_and_recommend",
+    "execution_authorized": false
+  },
+  "endpoint": "https://geomacro.live/api/agent/a2a",
+  "verification_keys": "https://geomacro.live/api/risk-object-keys",
+  "operations": ["negotiate", "submit_task", "task_status", "callback"],
+  "capabilities": [
+    {
+      "id": "risk_preflight",
+      "input": "country_or_directional_corridor_plus_policy_context",
+      "output": "signed_risk_object_plus_risk_gate_recommendation"
+    }
+  ],
+  "payment_modes": ["commercial_credit", "x402_testnet"],
+  "transports": ["poll", "callback"],
+  "security": {
+    "request_signatures": "Ed25519",
+    "response_signatures": "Ed25519",
+    "replay_protection": "nonce_registry_plus_expiry",
+    "callbacks": "registered_https_hosts_only"
+  },
+  "boundaries": {
+    "execution_authorized": false,
+    "autonomous_execution": false,
+    "wallet_custody": false,
+    "transaction_signing": false,
+    "outbound_x402_auto_payment": false
+  }
+}
