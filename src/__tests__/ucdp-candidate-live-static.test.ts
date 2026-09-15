@@ -27,6 +27,11 @@ const sourcePolicy = readFileSync(
   "utf8",
 );
 
+const sourceRightsEvidence = readFileSync(
+  new URL("../../scripts/commercial-source-rights-evidence.mjs", import.meta.url),
+  "utf8",
+);
+
 const workflow = readFileSync(
   new URL("../../.github/workflows/ucdp-candidate-sync.yml", import.meta.url),
   "utf8",
@@ -49,8 +54,9 @@ describe("UCDP Candidate live evidence boundary", () => {
 
   it("fails closed on country mapping and registers commercial source policy", () => {
     expect(ingest).toContain('UCDP_MAX_UNMAPPED_ROWS ?? "0"');
-    expect(sourcePolicy).toContain("ucdp_candidate");
-    expect(sourcePolicy).toContain('allowed_statuses: Object.freeze(["VERIFIED"])');
+    expect(sourcePolicy).toContain("COMMERCIAL_SOURCE_RIGHTS_EVIDENCE");
+    expect(sourceRightsEvidence).toContain("ucdp_candidate:");
+    expect(sourceRightsEvidence).toContain('approved_status: "VERIFIED"');
   });
 
   it("uses governed UCDP country-id mappings for known legacy/current labels", () => {
