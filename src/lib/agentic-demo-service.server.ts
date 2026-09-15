@@ -15,7 +15,11 @@ export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
 export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
 
 export type AgenticDemoRunOptions = {
-  mode?: "PUBLIC_SANDBOX" | "X402_PAID" | "GOAT_X402_PAID";
+  mode?:
+    | "PUBLIC_SANDBOX"
+    | "X402_PAID"
+    | "GOAT_X402_PAID"
+    | "COMMERCIAL_PRIVATE_PILOT";
   recordTelemetry?: boolean;
   /**
    * Optional server-controlled correlation ID. Commercial partner integrations
@@ -155,6 +159,25 @@ async function recordDemoTelemetry(input: {
   }
 }
 
+function telemetryIdentity(mode: NonNullable<AgenticDemoRunOptions["mode"]>) {
+  if (mode === "PUBLIC_SANDBOX") {
+    return { responseCode: "DEMO_DELIVERED", externalAgentId: "public_demo" };
+  }
+  if (mode === "GOAT_X402_PAID") {
+    return {
+      responseCode: "GOAT_X402_DEMO_DELIVERED",
+      externalAgentId: "goat_x402_agent",
+    };
+  }
+  if (mode === "COMMERCIAL_PRIVATE_PILOT") {
+    return {
+      responseCode: "COMMERCIAL_PRIVATE_PILOT_DELIVERED",
+      externalAgentId: "commercial_private_pilot",
+    };
+  }
+  return { responseCode: "X402_DEMO_DELIVERED", externalAgentId: "x402_agent" };
+}
+
 export async function runAgenticPreflightDemo(
   raw: unknown,
   options: AgenticDemoRunOptions = {},
@@ -210,22 +233,13 @@ export async function runAgenticPreflightDemo(
     ]);
 
     if (shouldRecordTelemetry) {
+      const telemetry = telemetryIdentity(mode);
       await recordDemoTelemetry({
         requestId,
         status: "delivered",
         httpStatus: 200,
-        responseCode:
-          mode === "PUBLIC_SANDBOX"
-            ? "DEMO_DELIVERED"
-            : mode === "GOAT_X402_PAID"
-              ? "GOAT_X402_DEMO_DELIVERED"
-              : "X402_DEMO_DELIVERED",
-        externalAgentId:
-          mode === "PUBLIC_SANDBOX"
-            ? "public_demo"
-            : mode === "GOAT_X402_PAID"
-              ? "goat_x402_agent"
-              : "x402_agent",
+        responseCode: telemetry.responseCode,
+        externalAgentId: telemetry.externalAgentId,
       });
     }
 
@@ -262,17 +276,13 @@ export async function runAgenticPreflightDemo(
     };
   } catch (error) {
     if (shouldRecordTelemetry) {
+      const telemetry = telemetryIdentity(mode);
       await recordDemoTelemetry({
         requestId,
         status: "delivery_failed",
         httpStatus: 503,
         responseCode: "DEMO_FAILED_CLOSED",
-        externalAgentId:
-          mode === "GOAT_X402_PAID"
-            ? "goat_x402_agent"
-            : mode === "X402_PAID"
-              ? "x402_agent"
-              : "public_demo",
+        externalAgentId: telemetry.externalAgentId,
       });
     }
     throw error;
