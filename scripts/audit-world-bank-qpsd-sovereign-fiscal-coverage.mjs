@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { createHash } from "node:crypto";
 
 const API = "https://api.worldbank.org/v2";
-const SOURCE_ID = "3009";
+const SOURCE_ID = "20";
 const OUTPUT =
   process.env.WORLD_BANK_QPSD_COVERAGE_OUTPUT ??
   "world-bank-qpsd-sovereign-fiscal-coverage.json";
