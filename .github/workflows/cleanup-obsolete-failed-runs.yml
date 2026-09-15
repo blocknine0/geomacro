@@ -1,0 +1,68 @@
+name: Cleanup Obsolete Failed Action Runs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cleanup-obsolete-failed-runs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: cleanup-obsolete-failed-action-runs
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Delete failed runs from obsolete non-main branches
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Preserve canonical-main failures because those runs can carry
+            // production/security/readiness evidence. With no open PRs, failed
+            // runs from non-main branches are obsolete PR/feature-branch history.
+            const failedRuns = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              { owner, repo, status: 'failure', per_page: 100 },
+            );
+
+            const obsolete = failedRuns.filter(
+              (run) => run.head_branch && run.head_branch !== 'main',
+            );
+
+            let deleted = 0;
+            const errors = [];
+            for (const run of obsolete) {
+              try {
+                await github.rest.actions.deleteWorkflowRun({
+                  owner,
+                  repo,
+                  run_id: run.id,
+                });
+                deleted += 1;
+              } catch (error) {
+                errors.push({ id: run.id, name: run.name, message: error.message });
+                core.warning(`Could not delete run ${run.id} (${run.name}): ${error.message}`);
+              }
+            }
+
+            core.summary
+              .addHeading('Obsolete failed Action run cleanup')
+              .addRaw(`Failed runs scanned: ${failedRuns.length}\n\n`)
+              .addRaw(`Deleted non-main failed runs: ${deleted}\n\n`)
+              .addRaw(`Preserved main-branch failed runs: ${failedRuns.length - obsolete.length}\n\n`)
+              .addRaw(`Delete errors: ${errors.length}\n`)
+              .write();
+
+            if (errors.length) {
+              core.setFailed(`${errors.length} obsolete failed run(s) could not be deleted.`);
+            }
