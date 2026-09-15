@@ -26,6 +26,20 @@ export async function loadCommercialRiskObjectForAgentQuery(
   return verifyCommercialRiskObjectArtifact(object, { now: new Date(asOf) }).deliverable ? object : null;
 }
 
+function hasPreviousPublicationChange(object: NonNullable<Awaited<ReturnType<typeof loadCommercialRiskObjectForAgentQuery>>>) {
+  return (
+    typeof object.risk.previous_score === "number" &&
+    Number.isFinite(object.risk.previous_score) &&
+    typeof object.risk.delta === "number" &&
+    Number.isFinite(object.risk.delta) &&
+    Array.isArray(object.attribution) &&
+    object.attribution.length > 0 &&
+    object.attribution.every((row) =>
+      typeof row.delta_contribution === "number" && Number.isFinite(row.delta_contribution)
+    )
+  );
+}
+
 export async function checkAgentQueryExternalModule(input: {
   module: string;
   subject: AgentQueryPlan["subjects"][number];
@@ -59,7 +73,10 @@ export async function checkAgentQueryExternalModule(input: {
 
   if (input.module === "signed_risk_object") {
     try {
-      return Boolean(await loadCommercialRiskObjectForAgentQuery(input.subject, asOf));
+      const object = await loadCommercialRiskObjectForAgentQuery(input.subject, asOf);
+      if (!object) return false;
+      if (input.plan.intent === "change_since") return hasPreviousPublicationChange(object);
+      return true;
     } catch {
       return false;
     }
