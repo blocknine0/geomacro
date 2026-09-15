@@ -46,6 +46,7 @@ jobs:
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
           grep -q 'SUPABASE_DB_URL' "$file"
+          grep -q 'APPLY_REVIEWED_928_THROUGH_933' "$file"
 
           forbidden_functions="supabase functions"' deploy'
           forbidden_secrets="supabase secrets"' set'
@@ -69,6 +70,7 @@ jobs:
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      ONE_SHOT_PRODUCTION_MIGRATION_ACK: APPLY_REVIEWED_928_THROUGH_933
 
     steps:
       - name: Checkout repository
@@ -112,12 +114,8 @@ jobs:
           if (!directMatch && !poolerMatch) {
             throw new Error('SUPABASE_DB_URL does not resolve to the authoritative Geomacro project. Use its direct or Session pooler connection string.');
           }
-          if (!url.password) {
-            throw new Error('SUPABASE_DB_URL must contain the percent-encoded database password');
-          }
-          if (url.pathname !== '/postgres') {
-            throw new Error('SUPABASE_DB_URL must target the postgres database');
-          }
+          if (!url.password) throw new Error('SUPABASE_DB_URL must contain the percent-encoded database password');
+          if (url.pathname !== '/postgres') throw new Error('SUPABASE_DB_URL must target the postgres database');
           console.log('PASS: authoritative production database connection identity confirmed without printing credentials.');
           NODE
 
@@ -132,26 +130,48 @@ jobs:
           set -euo pipefail
           supabase db push --db-url "$SUPABASE_DB_URL" --dry-run | tee /tmp/risk-gate-migration-plan.txt
 
-      - name: Stop after plan
-        if: ${{ github.event_name == 'push' || inputs.mode == 'plan' }}
+      - name: Validate exact reviewed one-shot pending set
+        if: ${{ github.event_name == 'push' }}
         shell: bash
         run: |
-          echo "Plan completed. No production database changes were applied."
+          set -euo pipefail
+          test "$ONE_SHOT_PRODUCTION_MIGRATION_ACK" = "APPLY_REVIEWED_928_THROUGH_933"
+          cat > /tmp/expected-migrations.txt <<'EOF'
+          928_testnet_developer_credential_lifecycle.sql
+          929_commercial_credit_account_concurrency_hardening.sql
+          930_central_security_abuse_control.sql
+          931_central_security_database_readiness.sql
+          932_coinbase_x402_agent_usage_guard.sql
+          933_coinbase_x402_product_audit.sql
+          EOF
+          grep -Eo '[0-9]{3}_[A-Za-z0-9_.-]+\.sql' /tmp/risk-gate-migration-plan.txt | sort -u > /tmp/actual-migrations.txt
+          sort -o /tmp/expected-migrations.txt /tmp/expected-migrations.txt
+          if ! diff -u /tmp/expected-migrations.txt /tmp/actual-migrations.txt; then
+            echo "::error title=Unexpected production migration plan::Refusing one-shot production apply because the pending migration set changed."
+            exit 1
+          fi
+          echo "PASS: pending production migration set exactly matches reviewed 928-933 set."
+
+      - name: Stop after manual plan
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
+        shell: bash
+        run: echo "Plan completed. No production database changes were applied."
 
       - name: Apply pending production migrations
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
           supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Verify no migrations remain pending
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
           supabase db push --db-url "$SUPABASE_DB_URL" --dry-run | tee /tmp/risk-gate-migration-postcheck.txt
           if grep -Eq 'Would push|would push|Pending migrations|pending migrations' /tmp/risk-gate-migration-postcheck.txt; then
-            echo "::warning title=Review post-check::Supabase reported text that may indicate pending migrations remain. Review this step output before live testing."
+            echo "::error title=Production migration post-check failed::Pending migrations remain after apply."
+            exit 1
           fi
-          echo "Production migration post-check completed."
+          echo "PASS: production migration post-check reports no pending migrations."
