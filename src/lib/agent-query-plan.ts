@@ -36,6 +36,12 @@ const corridor = z.object({
   }
 });
 
+const riskGateContext = z.object({
+  policy_preset: z.enum(["balanced", "cautious", "strict"]).default("balanced"),
+  action_type: z.enum(["treasury_payment", "vendor_payment", "agent_payment", "exposure_review"]),
+  amount_usdc: z.number().finite().positive().max(1_000_000_000).optional(),
+}).strict();
+
 export const agentAdaptiveQuerySchema = z.object({
   schema_version: z.literal(AGENT_QUERY_SCHEMA_VERSION).default(AGENT_QUERY_SCHEMA_VERSION),
   question: z.string().trim().min(3).max(2_000).optional(),
@@ -45,6 +51,7 @@ export const agentAdaptiveQuerySchema = z.object({
   max_age_seconds: z.number().int().positive().max(31_536_000).default(86_400),
   evidence: z.enum(["required", "summary"]).default("required"),
   detail: z.enum(["compact", "standard", "full"]).default("standard"),
+  risk_gate_context: riskGateContext.optional(),
   client_request_id: z.string().trim().min(4).max(128).optional(),
 }).strict().superRefine((value, ctx) => {
   if (!value.question && value.topics.length === 0) {
@@ -77,10 +84,7 @@ const TOPIC_MODULES: Record<AgentQueryTopic, readonly string[]> = {
   gri_context: ["gri_context"],
 };
 
-const QUESTION_TOPIC_RULES: ReadonlyArray<{
-  topic: AgentQueryTopic;
-  patterns: RegExp[];
-}> = [
+const QUESTION_TOPIC_RULES: ReadonlyArray<{ topic: AgentQueryTopic; patterns: RegExp[] }> = [
   { topic: "sovereign_risk", patterns: [/\bsovereign\b/i, /\bdebt\b/i, /\bfiscal\b/i, /\bdefault\b/i, /\bbond\b/i] },
   { topic: "macro_risk", patterns: [/\bmacro/i, /\binflation\b/i, /\bgdp\b/i, /\bgrowth\b/i, /\brate\b/i, /\bcentral bank\b/i] },
   { topic: "fx_external_risk", patterns: [/\bfx\b/i, /\bcurrenc/i, /\bforeign exchange\b/i, /\breserves?\b/i, /\bbalance of payments\b/i, /\bexternal\b/i] },
@@ -94,7 +98,7 @@ const QUESTION_TOPIC_RULES: ReadonlyArray<{
   { topic: "food_agriculture", patterns: [/\bfood\b/i, /\bagricultur/i, /\bwheat\b/i, /\bcrop/i, /\bfertilizer/i] },
   { topic: "natural_hazards", patterns: [/\bearthquake\b/i, /\bflood\b/i, /\bcyclone\b/i, /\bhurricane\b/i, /\bwildfire\b/i, /\bnatural hazard/i] },
   { topic: "hot_topics", patterns: [/\bhot topic/i, /\blatest\b/i, /\bcurrent event/i, /\btoday\b/i, /\bright now\b/i, /\bwhat changed\b/i] },
-  { topic: "risk_gate", patterns: [/\brisk gate\b/i, /\bpre[- ]?flight\b/i, /\bshould .* proceed\b/i, /\ballow|block|caution/i] },
+  { topic: "risk_gate", patterns: [/\brisk gate\b/i, /\bpre[- ]?flight\b/i, /\bshould .* proceed\b/i, /\b(?:allow|block|caution)\b/i] },
   { topic: "risk_object", patterns: [/\brisk object\b/i, /\bsigned object\b/i, /\bmachine[- ]readable\b/i] },
   { topic: "gri_context", patterns: [/\bgri\b/i, /\bglobal risk index\b/i, /\bglobal risk\b/i] },
 ];
@@ -136,6 +140,7 @@ export type AgentQueryPlan = {
   max_age_seconds: number;
   evidence: AgentAdaptiveQuery["evidence"];
   detail: AgentAdaptiveQuery["detail"];
+  risk_gate_context: AgentAdaptiveQuery["risk_gate_context"] | null;
   as_of: string | null;
   query_plan_hash: string;
 };
@@ -144,8 +149,9 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   const parsed = agentAdaptiveQuerySchema.parse(raw);
   const inferred = inferAgentQueryTopics(parsed.question);
   const topics = [...new Set([...parsed.topics, ...inferred])].sort() as AgentQueryTopic[];
-  if (topics.length === 0) {
-    throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
+  if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
+  if (topics.includes("risk_gate") && !parsed.risk_gate_context) {
+    throw new Error("RISK_GATE_CONTEXT_REQUIRED");
   }
   const requiredModules = [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
   const normalized = {
@@ -157,6 +163,7 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     max_age_seconds: parsed.max_age_seconds,
     evidence: parsed.evidence,
     detail: parsed.detail,
+    risk_gate_context: parsed.risk_gate_context ?? null,
     as_of: parsed.as_of ?? null,
   };
   return { ...normalized, query_plan_hash: stableHash(normalized) };
