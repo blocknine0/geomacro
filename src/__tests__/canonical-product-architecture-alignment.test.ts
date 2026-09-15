@@ -27,6 +27,13 @@ const CURRENT_PRODUCT_TRUTH_FILES = [
   "docs/COMMERCIAL_INTELLIGENCE.md",
 ] as const;
 
+const MACHINE_BOUNDARY_DOCS = [
+  "src/content/docs/22-machine-readable-risk-objects.md",
+  "src/content/docs/23-product-specific-intelligence-policies.md",
+  "src/content/docs/26-agent-intelligence.md",
+  "docs/RISK_GATE.md",
+] as const;
+
 describe("canonical product architecture alignment", () => {
   it("keeps the screenshot architecture identical across canonical product truth", () => {
     for (const path of CURRENT_PRODUCT_TRUTH_FILES) {
@@ -53,8 +60,10 @@ describe("canonical product architecture alignment", () => {
     const commercial = read("docs/COMMERCIAL_INTELLIGENCE.md");
     const riskGateDoc = read("docs/RISK_GATE.md");
     const riskGateRoute = read("src/routes/risk-gate.tsx");
+    const surfaces = read("src/content/docs/03-product-surfaces.md");
+    const riskObjects = read("src/content/docs/22-machine-readable-risk-objects.md");
 
-    for (const content of [architecture, commercial, riskGateDoc, riskGateRoute]) {
+    for (const content of [architecture, commercial, riskGateDoc, riskGateRoute, surfaces, riskObjects]) {
       expect(content).toContain("Event-specific Risk Objects");
       expect(content).toMatch(/country.*corridor|corridor.*country/is);
     }
@@ -91,11 +100,29 @@ describe("canonical product architecture alignment", () => {
     expect(institutional).toContain("customer controls execution");
   });
 
+  it("keeps machine-facing docs in Risk Gate -> customer policy -> customer action order", () => {
+    for (const path of MACHINE_BOUNDARY_DOCS) {
+      const content = read(path);
+      const gate = content.indexOf("Risk Gate - Private Pilot");
+      const policy = content.indexOf("customer identity + permissions + policy");
+      const action = content.indexOf("customer-controlled action");
+
+      expect(gate, `${path} must name the Private Pilot Risk Gate`).toBeGreaterThanOrEqual(0);
+      expect(policy, `${path} must place customer-owned policy after Risk Gate`).toBeGreaterThan(gate);
+      expect(action, `${path} must place customer-controlled action after customer policy`).toBeGreaterThan(policy);
+      expect(content, `${path} must preserve non-authorization`).toContain("execution_authorized");
+    }
+  });
+
   it("preserves the non-authorizing Risk Gate boundary everywhere it is commercially described", () => {
     for (const path of [
       "README.md",
       "src/content/docs/01-what-is-geomacro.md",
       "src/content/docs/02-product-architecture.md",
+      "src/content/docs/03-product-surfaces.md",
+      "src/content/docs/22-machine-readable-risk-objects.md",
+      "src/content/docs/23-product-specific-intelligence-policies.md",
+      "src/content/docs/26-agent-intelligence.md",
       "docs/CANONICAL_DELIVERY_ARCHITECTURE.md",
       "docs/COMMERCIAL_INTELLIGENCE.md",
       "docs/RISK_GATE.md",
