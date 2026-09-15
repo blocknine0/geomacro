@@ -228,6 +228,13 @@ export type GeomacroRiskObject = {
    */
   corridor_context?: CorridorRiskContext;
 
+  /**
+   * Observation/evaluation timestamp bound into the canonical signed payload
+   * by hardened publication paths. Optional only for backward compatibility
+   * with historical gro-1.1 artifacts created before this trust hardening.
+   */
+  observed_at?: string;
+
   generated_at: string;
   expires_at: string;
 

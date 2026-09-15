@@ -34,6 +34,7 @@ export type PublicRiskObjectVerificationReport = {
   cryptographic_valid: boolean;
   contract_valid: boolean;
   fresh: boolean;
+  signed_observation_present: boolean;
 
   reason_codes: string[];
 
@@ -43,6 +44,8 @@ export type PublicRiskObjectVerificationReport = {
     subject: boolean;
     methodology: boolean;
     timestamps: boolean;
+    /** null means a legacy gro-1.1 artifact predating signed observed_at. */
+    observation_timestamp: boolean | null;
     integrity_hashes_present: boolean;
     payload_hash_matches: boolean;
     signature: boolean;
@@ -57,6 +60,7 @@ export type PublicRiskObjectVerificationReport = {
       id: string | null;
     };
     methodology_version: string | null;
+    observed_at: string | null;
     generated_at: string | null;
     expires_at: string | null;
     payload_hash: string | null;
@@ -235,6 +239,18 @@ export function verifyPublicRiskObjectArtifact(
           shape.object.methodology_version,
         )
       : null;
+  const observedFieldPresent =
+    Boolean(
+      shape.object &&
+        Object.prototype.hasOwnProperty.call(
+          shape.object,
+          "observed_at",
+        ),
+    );
+  const observedAt =
+    shape.object
+      ? stringValue(shape.object.observed_at)
+      : null;
   const generatedAt =
     shape.object
       ? stringValue(shape.object.generated_at)
@@ -295,6 +311,22 @@ export function verifyPublicRiskObjectArtifact(
       Date.parse(expiresAt as string) &&
     Date.parse(generatedAt as string) <=
       now.getTime() + MAX_CLOCK_SKEW_MS;
+
+  /*
+   * Legacy gro-1.1 objects may predate signed observed_at, so absence remains
+   * backward compatible. Once the field is present it is contract-validated,
+   * and because the whole object is canonicalized it is also signature-bound.
+   */
+  const observationTimestampOk =
+    !observedFieldPresent ||
+    Boolean(
+      validTimestamp(observedAt) &&
+        validTimestamp(generatedAt) &&
+        Date.parse(observedAt as string) <=
+          Date.parse(generatedAt as string) &&
+        Date.parse(observedAt as string) <=
+          now.getTime() + MAX_CLOCK_SKEW_MS,
+    );
 
   const integrityHashesPresent =
     Boolean(
@@ -388,6 +420,15 @@ export function verifyPublicRiskObjectArtifact(
     timestampsOk,
     "invalid_timestamps",
   );
+
+  if (observedFieldPresent) {
+    pushReason(
+      reasons,
+      observationTimestampOk,
+      "invalid_observation_timestamp",
+    );
+  }
+
   pushReason(
     reasons,
     integrityHashesPresent,
@@ -422,6 +463,7 @@ export function verifyPublicRiskObjectArtifact(
         subjectOk &&
         methodologyOk &&
         timestampsOk &&
+        observationTimestampOk &&
         integrityHashesPresent,
     );
 
@@ -452,6 +494,8 @@ export function verifyPublicRiskObjectArtifact(
     contract_valid:
       contractValid,
     fresh,
+    signed_observation_present:
+      observedFieldPresent,
 
     reason_codes:
       Array.from(
@@ -464,6 +508,10 @@ export function verifyPublicRiskObjectArtifact(
       subject: subjectOk,
       methodology: methodologyOk,
       timestamps: timestampsOk,
+      observation_timestamp:
+        observedFieldPresent
+          ? observationTimestampOk
+          : null,
       integrity_hashes_present:
         integrityHashesPresent,
       payload_hash_matches:
@@ -481,6 +529,7 @@ export function verifyPublicRiskObjectArtifact(
       },
       methodology_version:
         methodologyVersion,
+      observed_at: observedAt,
       generated_at: generatedAt,
       expires_at: expiresAt,
       payload_hash: payloadHash,

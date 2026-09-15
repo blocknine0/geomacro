@@ -1,0 +1,41 @@
+name: Risk Key Registry CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/RiskKeyRegistry.sol'
+      - 'test/RiskKeyRegistry.t.sol'
+      - 'script/DeployRiskKeyRegistry.s.sol'
+      - 'script/PublishRiskKey.s.sol'
+      - 'foundry.toml'
+      - 'foundry.lock'
+      - 'remappings.txt'
+      - '.gitmodules'
+      - '.github/workflows/risk-key-registry-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout with Foundry libraries
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Build contracts and scripts
+        run: forge build
+
+      - name: Risk key registry lifecycle tests
+        run: forge test --match-contract RiskKeyRegistryTest -vvv

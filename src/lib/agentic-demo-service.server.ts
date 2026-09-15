@@ -10,6 +10,7 @@ import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 import { loadStructuralContext } from "./structural-context.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
+import { publicRiskObjectTrustDiscovery } from "./risk-object-trust-discovery.server";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 
 export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
@@ -64,21 +65,14 @@ function assertSupportedDemoSubject(input: AgenticDemoRequest) {
   }
 }
 
+/**
+ * A signed Risk Object must be delivered byte-for-field complete.
+ *
+ * Do not project/whitelist fields here: removing signed fields produces an
+ * object whose payload hash/signature can no longer be independently verified.
+ */
 function publicRiskObject(object: GeomacroRiskObject) {
-  return {
-    schema_version: object.schema_version,
-    object_id: object.object_id,
-    subject: object.subject,
-    methodology_version: object.methodology_version,
-    risk: object.risk,
-    confidence: object.confidence,
-    attribution: object.attribution,
-    verification: object.verification,
-    commercial_eligibility: object.commercial_eligibility,
-    integrity: object.integrity,
-    generated_at: object.generated_at,
-    expires_at: object.expires_at,
-  };
+  return object;
 }
 
 async function loadRiskObject(objectId: string) {
@@ -255,6 +249,7 @@ export async function runAgenticPreflightDemo(
       policy,
       risk_gate: result.response,
       risk_object: riskObject,
+      risk_object_trust: publicRiskObjectTrustDiscovery(),
       structural_context: structuralContext,
       gri_context: griContext,
       boundaries: {
