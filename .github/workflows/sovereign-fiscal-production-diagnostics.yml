@@ -1,0 +1,72 @@
+name: Sovereign Fiscal Production Diagnostics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/audit-sovereign-fiscal-production-diagnostics.ts"
+      - ".github/workflows/sovereign-fiscal-production-diagnostics.yml"
+      - "src/lib/risk-gate-v2-eurostat-sovereign-fiscal.server.ts"
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - "src/lib/country-risk-v02-normalization.server.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT: sovereign-fiscal-production-diagnostics.json
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate authoritative production read target
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY; do
+            test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }
+          done
+          node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Run read-only sovereign-fiscal diagnostics
+        run: bun scripts/audit-sovereign-fiscal-production-diagnostics.ts
+
+      - name: Validate no-write methodology boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.diagnostics_only == true' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.source_thresholds_changed == false' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.freshness_thresholds_changed == false' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq -e '.interpretation_boundary.debt_concepts_merged == false' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT" >/dev/null
+          jq '{generated_at,source_state,eurostat_release_manifest,row_coverage,adapter_probe,interpretation_boundary}' "$SOVEREIGN_FISCAL_DIAGNOSTICS_OUTPUT"
+
+      - name: Upload sanitized fiscal diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: sovereign-fiscal-production-diagnostics
+          path: sovereign-fiscal-production-diagnostics.json
+          if-no-files-found: error
+          retention-days: 30
