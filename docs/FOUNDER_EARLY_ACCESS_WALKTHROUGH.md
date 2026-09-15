@@ -34,9 +34,12 @@ Explain the sequence:
 
 1. A customer or agent has a proposed action.
 2. Geomacro supplies signed country or directional-corridor risk context.
-3. Integrity, freshness, confidence and policy conditions are evaluated.
-4. Risk Gate v1 returns one of four recommendation states: `CONTINUE`, `REDUCE_LIMIT`, `REQUIRE_APPROVAL` or `PAUSE`.
-5. The customer controls any execution after the recommendation.
+3. Integrity, freshness, confidence and any caller-supplied policy-profile inputs are evaluated inside the bounded Risk Gate request.
+4. Risk Gate v1 returns an advisory state: `CONTINUE`, `REDUCE_LIMIT`, `REQUIRE_APPROVAL` or `PAUSE`.
+5. The customer's own identity, permissions and policy-enforcement layer decides how to handle that advisory response.
+6. Any downstream execution remains under the customer's control.
+
+A caller-supplied policy profile is an evaluation input only. It does not move customer-side policy ownership or enforcement into Geomacro.
 
 `REROUTE` is not a current v1 machine decision. Treat it only as a future/advisory alternative if a lower-risk corridor or route has been separately validated.
 
