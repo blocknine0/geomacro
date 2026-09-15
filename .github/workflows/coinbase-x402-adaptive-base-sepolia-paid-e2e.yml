@@ -1,0 +1,122 @@
+name: Coinbase x402 Adaptive Base Sepolia Paid E2E Proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type exactly COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC to authorize one 0.05 USDC-max Base Sepolia test payment'
+        required: true
+        type: string
+      client_request_id:
+        description: 'Optional deterministic client request ID for reconciliation/retry'
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
+      - ".github/workflows/coinbase-x402-adaptive-base-sepolia-paid-e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coinbase-x402-adaptive-base-sepolia-paid-e2e
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Validate paid-proof safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
+          grep -q 'COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC' "$file"
+          grep -q 'https://geomacro.live/api/x402/intelligence' "$file"
+          grep -q 'https://geomacro.live/api/x402/risk/availability' "$file"
+          grep -q 'EXPECTED_AMOUNT_ATOMIC = 50_000n' "$file"
+          grep -q 'duplicate_charge_count: 0' "$file"
+          grep -q 'payment_signature_persisted: false' "$file"
+          grep -q 'private_key_persisted: false' "$file"
+          ! grep -q 'I_ACCEPT_REAL_USDC' "$file"
+          echo "Adaptive paid proof is pinned to Base Sepolia and cannot activate real-USDC mainnet."
+
+  paid-e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == 'blocknine0' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ACK: ${{ inputs.confirmation }}
+      GEOMACRO_COINBASE_X402_CLIENT_REQUEST_ID: ${{ inputs.client_request_id }}
+      GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ARTIFACT_DIR: artifacts/coinbase-x402-adaptive-base-sepolia-paid
+
+    steps:
+      - name: Validate explicit Base Sepolia payment acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ACK" != "COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC" ]; then
+            echo "::error::Adaptive paid proof requires the exact acknowledgement COINBASE_X402_ADAPTIVE_BASE_SEPOLIA_USDC."
+            exit 1
+          fi
+          echo "Explicit adaptive Base Sepolia test payment acknowledgement accepted." >> "$GITHUB_STEP_SUMMARY"
+          echo "Maximum settlement: exactly 0.05 test USDC if the data is deliverable." >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate repository buyer secret without printing it
+        env:
+          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY" ]; then
+            echo "::error::Repository Actions secret COINBASE_X402_BASE_SEPOLIA_PAID_PROOF is not configured."
+            exit 1
+          fi
+
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Execute one adaptive paid E2E plus replay and underpayment proof
+        env:
+          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        run: node scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs
+
+      - name: Upload sanitized adaptive paid-proof evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coinbase-x402-adaptive-base-sepolia-paid-proof-${{ github.run_id }}
+          path: artifacts/coinbase-x402-adaptive-base-sepolia-paid/*.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record proof boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Network: Base Sepolia / eip155:84532" >> "$GITHUB_STEP_SUMMARY"
+          echo "Asset: Base Sepolia USDC" >> "$GITHUB_STEP_SUMMARY"
+          echo "Maximum authorized payment per run: 0.05 test USDC" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Private key persisted in evidence: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Raw PAYMENT-SIGNATURE persisted in evidence: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Base mainnet acknowledgement changed: false" >> "$GITHUB_STEP_SUMMARY"

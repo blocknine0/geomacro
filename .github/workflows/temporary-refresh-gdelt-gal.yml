@@ -1,0 +1,145 @@
+name: Temporary Refresh GDELT GAL
+
+on:
+  push:
+    branches:
+      - x402-industry-ready-production-v1
+    paths:
+      - ".github/workflows/temporary-refresh-gdelt-gal.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporary-refresh-gdelt-gal-production
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LIVE_INGEST_TOKEN: ${{ secrets.LIVE_INGEST_TOKEN }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness-after-refresh.json
+    steps:
+      - name: Checkout acceptance branch
+        uses: actions/checkout@v7
+        with:
+          ref: x402-industry-ready-production-v1
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production invocation inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL missing"; exit 1; }
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY missing"; exit 1; }
+          test -n "${LIVE_INGEST_TOKEN:-}" || { echo "::error::LIVE_INGEST_TOKEN missing"; exit 1; }
+          test -n "${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN missing"; exit 1; }
+          node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Catch GDELT GAL cursor up to the live window
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > gdelt-gal-refresh-summary.ndjson
+          for i in 1 2 3 4 5 6; do
+            response_file="gdelt-gal-refresh-${i}.json"
+            curl --fail-with-body -sS \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --retry-max-time 90 \
+              -X POST \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-gdelt-ingest" \
+              -H "x-geomacro-ingest-token: ${LIVE_INGEST_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -o "$response_file"
+            jq -e '.ok == true' "$response_file" >/dev/null
+            jq -c '{ok,status,last_source_stamp,files_seen,items_seen,relevant_candidates,accepted,fragment_id}' "$response_file" | tee -a gdelt-gal-refresh-summary.ndjson
+          done
+
+      - name: Structure newly ingested fragments
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > structure-refresh-summary.ndjson
+          for i in 1 2 3; do
+            response_file="structure-refresh-${i}.json"
+            curl --fail-with-body -sS \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --retry-max-time 90 \
+              -X POST \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -o "$response_file"
+            jq -e '.ok == true' "$response_file" >/dev/null
+            jq -c '{ok,status,fragments_considered,fragments_processed,evidence_rows,event_rows,events_created,events_updated}' "$response_file" | tee -a structure-refresh-summary.ndjson
+          done
+
+      - name: Reconcile structured-event commercial rights cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          (async () => {
+            const { data: rights, error } = await db
+              .from('live_structured_event_commercial_rights_evaluation')
+              .select('event_id,evaluated_status,reason_codes');
+            if (error) throw error;
+            let changed = 0;
+            for (const row of rights ?? []) {
+              const { error: updateError } = await db
+                .from('live_structured_events')
+                .update({
+                  commercial_eligibility_status: row.evaluated_status,
+                  commercial_eligibility_reason_codes: row.reason_codes ?? [],
+                })
+                .eq('id', row.event_id);
+              if (updateError) throw updateError;
+              changed++;
+            }
+            console.log(JSON.stringify({ rights_rows_reconciled: changed }));
+          })().catch((error) => { console.error(error); process.exit(1); });
+          NODE
+
+      - name: Prove paid hot-topic boundary after refresh
+        run: bun scripts/audit-agent-hot-topic-readiness.ts --require-pipeline-healthy
+
+      - name: Publish sanitized acceptance summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.pipeline.healthy == true' agent-hot-topic-readiness-after-refresh.json >/dev/null
+          jq -e '.claim_boundary.raw_source_material_redistributed == false' agent-hot-topic-readiness-after-refresh.json >/dev/null
+          jq -e '.claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true' agent-hot-topic-readiness-after-refresh.json >/dev/null
+          jq '{generated_at,pipeline,summary,claim_boundary}' agent-hot-topic-readiness-after-refresh.json
+
+      - name: Upload sanitized refresh evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: temporary-gdelt-gal-refresh-evidence
+          path: |
+            gdelt-gal-refresh-summary.ndjson
+            structure-refresh-summary.ndjson
+            agent-hot-topic-readiness-after-refresh.json
+          if-no-files-found: warn
+          retention-days: 7
