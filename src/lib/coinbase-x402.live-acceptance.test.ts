@@ -106,14 +106,17 @@ describe('live Coinbase x402 Base Sepolia acceptance', () => {
         signal: AbortSignal.timeout(30_000),
       });
 
-      expect(response.ok).toBe(true);
-      const data = (await response.json()) as {
-        valid?: boolean;
-        simulation?: { outcome?: string };
-      };
+      const text = await response.text();
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw new Error(`Coinbase validator returned HTTP ${response.status} non-JSON body: ${text.slice(0, 1000)}`);
+      }
 
-      expect(data.valid).toBe(true);
-      expect(data.simulation?.outcome).toBe('accepted');
+      if (!response.ok || data.valid !== true || (data.simulation as { outcome?: string } | undefined)?.outcome !== 'accepted') {
+        throw new Error(`Coinbase validator rejection: HTTP ${response.status} ${JSON.stringify(data)}`);
+      }
     },
     40_000,
   );
