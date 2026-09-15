@@ -11,7 +11,11 @@ import {
 import {
   CENTRAL_SECURITY_VERSION,
   enforceCentralRequestSecurity,
+  realFundsSecurityState,
 } from "../../src/lib/central-security.server";
+import {
+  assertRealFundsDatabaseSecurityReady,
+} from "../../src/lib/real-funds-security-readiness.server";
 
 
 /**
@@ -57,30 +61,54 @@ export default defineEventHandler(async (event) => {
     code: decision.code,
   };
 
-  if (decision.allowed) return;
+  if (!decision.allowed) {
+    setResponseHeader(event, "Cache-Control", "no-store");
+    if (decision.retryAfterSeconds) {
+      setResponseHeader(
+        event,
+        "Retry-After",
+        String(decision.retryAfterSeconds),
+      );
+    }
 
-  setResponseHeader(event, "Cache-Control", "no-store");
-  if (decision.retryAfterSeconds) {
-    setResponseHeader(
-      event,
-      "Retry-After",
-      String(decision.retryAfterSeconds),
-    );
+    throw createError({
+      statusCode: decision.status,
+      statusMessage: "Request blocked by Geomacro central security policy",
+      data: {
+        ok: false,
+        error: {
+          code: decision.code,
+          message:
+            decision.status === 429
+              ? "Request rate exceeded. Retry after the indicated delay."
+              : "This request cannot be processed safely at this time.",
+        },
+        execution_authorized: false,
+      },
+    });
   }
 
-  throw createError({
-    statusCode: decision.status,
-    statusMessage: "Request blocked by Geomacro central security policy",
-    data: {
-      ok: false,
-      error: {
-        code: decision.code,
-        message:
-          decision.status === 429
-            ? "Request rate exceeded. Retry after the indicated delay."
-            : "This request cannot be processed safely at this time.",
-      },
-      execution_authorized: false,
-    },
-  });
+  if (decision.routeClass === "payment") {
+    const realFunds = realFundsSecurityState();
+    if (realFunds.required) {
+      try {
+        await assertRealFundsDatabaseSecurityReady();
+      } catch {
+        setResponseHeader(event, "Cache-Control", "no-store");
+        throw createError({
+          statusCode: 503,
+          statusMessage: "Real-funds security gate is locked",
+          data: {
+            ok: false,
+            error: {
+              code: "REAL_FUNDS_DATABASE_SECURITY_NOT_READY",
+              message:
+                "Real-funds settlement remains disabled until the central database security posture is verified.",
+            },
+            execution_authorized: false,
+          },
+        });
+      }
+    }
+  }
 });
