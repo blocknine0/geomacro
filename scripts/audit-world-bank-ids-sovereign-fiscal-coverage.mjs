@@ -7,6 +7,8 @@ const OUTPUT =
   process.env.WORLD_BANK_IDS_FISCAL_OUTPUT ??
   "world-bank-ids-sovereign-fiscal-coverage.json";
 const AS_OF = new Date(process.env.WORLD_BANK_IDS_AS_OF ?? Date.now());
+// Matches the existing sovereign-fiscal structural SLA. This audit does not
+// relax production freshness; it measures whether IDS can satisfy it.
 const MAX_AGE_DAYS = Number(process.env.WORLD_BANK_IDS_MAX_AGE_DAYS ?? 800);
 
 const SERIES = Object.freeze([
@@ -14,7 +16,14 @@ const SERIES = Object.freeze([
     id: "DT.TDS.DPPG.GN.ZS",
     concept: "PPG_EXTERNAL_DEBT_SERVICE_PCT_GNI",
     expected_label: "Public and publicly guaranteed debt service (% of GNI)",
-    role: "PRIMARY_SOURCE_SPECIFIC_SOVEREIGN_EXTERNAL_DEBT_SERVICE_CANDIDATE",
+    role: "PRIMARY_SOURCE_SPECIFIC_SOVEREIGN_FISCAL_STRESS_CANDIDATE",
+  },
+  {
+    id: "DT.TDS.DPPG.XP.ZS",
+    concept: "PPG_EXTERNAL_DEBT_SERVICE_PCT_EXPORTS",
+    expected_label:
+      "Public and publicly guaranteed debt service (% of exports of goods, services and primary income)",
+    role: "SECONDARY_SOURCE_SPECIFIC_SOVEREIGN_FISCAL_STRESS_CANDIDATE",
   },
   {
     id: "DT.DOD.DECT.GN.ZS",
@@ -36,7 +45,7 @@ async function requestJson(url) {
         headers: {
           accept: "application/json",
           "user-agent":
-            "Geomacro-World-Bank-IDS-Fiscal-Audit/1.0 (+https://geomacro.live)",
+            "Geomacro-World-Bank-IDS-Fiscal-Audit/1.1 (+https://geomacro.live)",
         },
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -69,7 +78,28 @@ function sorted(values) {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b));
 }
 
-async function fetchCountries() {
+async function fetchIdsDebtorCountries() {
+  const url = `${API}/sources/${SOURCE_ID}/country?per_page=500&format=json`;
+  const { parsed, response_sha256 } = await requestJson(url);
+  const variables = parsed?.source?.[0]?.concept?.[0]?.variable;
+  if (!Array.isArray(variables)) {
+    throw new Error("World Bank IDS debtor-location response shape was invalid");
+  }
+  const rows = variables
+    .map((row) => ({
+      iso3: String(row?.id ?? "").trim().toUpperCase(),
+      name: String(row?.value ?? "").trim(),
+    }))
+    .filter((row) => /^[A-Z]{3}$/.test(row.iso3));
+  return {
+    rows,
+    iso3: sorted(rows.map((row) => row.iso3)),
+    response_sha256,
+    url,
+  };
+}
+
+async function fetchWorldBankCountries() {
   const url = `${API}/country?format=json&per_page=500`;
   const { parsed, response_sha256 } = await requestJson(url);
   if (!Array.isArray(parsed) || !Array.isArray(parsed[1])) {
@@ -78,8 +108,8 @@ async function fetchCountries() {
   const rows = parsed[1]
     .map((row) => ({
       iso3: String(row?.id ?? "").trim().toUpperCase(),
-      region_id: String(row?.region?.id ?? "").trim(),
       name: String(row?.name ?? "").trim(),
+      region_id: String(row?.region?.id ?? "").trim(),
     }))
     .filter(
       (row) => /^[A-Z]{3}$/.test(row.iso3) && row.region_id && row.region_id !== "NA",
@@ -96,8 +126,10 @@ async function fetchSeries(series) {
   const params = new URLSearchParams({
     format: "json",
     source: SOURCE_ID,
-    per_page: "10000",
-    mrnev: "1",
+    per_page: "20000",
+    // World Bank documents MRNEV for latest non-empty values. We fetch several
+    // candidate observations then select the latest valid annual row ourselves.
+    mrnev: "5",
   });
   const url = `${API}/country/all/indicator/${series.id}?${params.toString()}`;
   const { parsed, response_sha256 } = await requestJson(url);
@@ -185,56 +217,95 @@ async function main() {
     throw new Error("WORLD_BANK_IDS_MAX_AGE_DAYS must be positive");
   }
 
-  const countries = await fetchCountries();
-  const countrySet = new Set(countries.iso3);
+  const [idsDebtors, worldBankCountries] = await Promise.all([
+    fetchIdsDebtorCountries(),
+    fetchWorldBankCountries(),
+  ]);
+  const debtorSet = new Set(idsDebtors.iso3);
+  const nonAggregateSet = new Set(worldBankCountries.iso3);
+  const eligibleCountrySet = new Set(
+    idsDebtors.iso3.filter((iso3) => nonAggregateSet.has(iso3)),
+  );
+
   const results = [];
   for (const series of SERIES) {
     const result = await fetchSeries(series);
-    result.non_aggregate_country_iso3 = result.current_or_aging_iso3.filter((iso3) =>
-      countrySet.has(iso3),
+    result.ids_debtor_iso3 = result.current_or_aging_iso3.filter((iso3) =>
+      debtorSet.has(iso3),
     );
-    result.non_aggregate_country_count = result.non_aggregate_country_iso3.length;
+    result.ids_debtor_count = result.ids_debtor_iso3.length;
+    result.non_aggregate_ids_debtor_iso3 = result.current_or_aging_iso3.filter(
+      (iso3) => eligibleCountrySet.has(iso3),
+    );
+    result.non_aggregate_ids_debtor_count =
+      result.non_aggregate_ids_debtor_iso3.length;
     results.push(result);
   }
 
-  const ppg = results.find(
+  const ppgGni = results.find(
     (item) => item.concept === "PPG_EXTERNAL_DEBT_SERVICE_PCT_GNI",
+  );
+  const ppgExports = results.find(
+    (item) => item.concept === "PPG_EXTERNAL_DEBT_SERVICE_PCT_EXPORTS",
   );
   const totalExternal = results.find(
     (item) => item.concept === "TOTAL_EXTERNAL_DEBT_STOCKS_PCT_GNI",
   );
-  if (!ppg || !totalExternal) {
-    throw new Error("World Bank IDS audit did not return both exact series");
+  if (!ppgGni || !ppgExports || !totalExternal) {
+    throw new Error("World Bank IDS audit did not return all exact series");
   }
-  const externalSet = new Set(totalExternal.non_aggregate_country_iso3);
+
+  const ppgGniSet = new Set(ppgGni.non_aggregate_ids_debtor_iso3);
+  const ppgExportsSet = new Set(ppgExports.non_aggregate_ids_debtor_iso3);
+  const fiscalUnion = sorted([
+    ...ppgGni.non_aggregate_ids_debtor_iso3,
+    ...ppgExports.non_aggregate_ids_debtor_iso3,
+  ]);
+  const fiscalIntersection = ppgGni.non_aggregate_ids_debtor_iso3.filter((iso3) =>
+    ppgExportsSet.has(iso3),
+  );
 
   const report = {
-    schema_version: "geomacro-world-bank-ids-sovereign-fiscal-coverage-1.0",
+    schema_version: "geomacro-world-bank-ids-sovereign-fiscal-coverage-1.1",
     generated_at: new Date().toISOString(),
     as_of: AS_OF.toISOString(),
+    max_age_days: MAX_AGE_DAYS,
     writes_performed: false,
     source: {
       provider: "World Bank",
       database: "International Debt Statistics",
       api_source_id: SOURCE_ID,
       license: "CC BY-4.0",
+      official_api_guide:
+        "https://worldbank.github.io/debt-data/api-guide/ids-api-guide-python-1.html",
       primary_indicator_page:
         "https://data.worldbank.org/indicator/DT.TDS.DPPG.GN.ZS",
+      secondary_indicator_page:
+        "https://data.worldbank.org/indicator/DT.TDS.DPPG.XP.ZS",
       comparator_indicator_page:
         "https://data.worldbank.org/indicator/DT.DOD.DECT.GN.ZS",
-      rights_review_status: "EXACT_INDICATOR_PAGES_CC_BY_4_0_VERIFIED_CANDIDATE",
+      rights_review_status:
+        "EXACT_PRIMARY_INDICATOR_CC_BY_4_0_VERIFIED_CANDIDATE",
     },
-    country_metadata: {
-      query_url: countries.url,
-      response_sha256: countries.response_sha256,
-      non_aggregate_world_bank_country_count: countries.iso3.length,
+    source_population: {
+      ids_debtor_location_count: idsDebtors.iso3.length,
+      world_bank_non_aggregate_country_count: worldBankCountries.iso3.length,
+      non_aggregate_ids_debtor_count: eligibleCountrySet.size,
+      ids_debtor_query_url: idsDebtors.url,
+      ids_debtor_response_sha256: idsDebtors.response_sha256,
+      world_bank_country_query_url: worldBankCountries.url,
+      world_bank_country_response_sha256: worldBankCountries.response_sha256,
     },
     methodology_boundary: {
       discovery_only: true,
       primary_metric: "public_and_publicly_guaranteed_debt_service_pct_gni",
+      secondary_metric:
+        "public_and_publicly_guaranteed_debt_service_pct_exports_goods_services_primary_income",
       comparator_metric: "total_external_debt_stocks_pct_gni",
+      primary_and_secondary_are_public_or_publicly_guaranteed_external_debt_service_burden_metrics: true,
+      these_metrics_are_not_total_government_debt_stock: true,
       comparator_contains_private_debt_and_cannot_be_sovereign_fiscal_primary: true,
-      primary_is_external_public_and_publicly_guaranteed_debt_service_not_total_government_debt_stock: true,
+      direct_pooling_across_ppg_gni_and_ppg_exports_raw_values_allowed: false,
       direct_pooling_with_wdi_central_government_debt_allowed: false,
       direct_pooling_with_eurostat_general_government_debt_allowed: false,
       direct_pooling_with_qpsd_general_government_debt_allowed: false,
@@ -244,16 +315,34 @@ async function main() {
       direct_production_fallback_allowed: false,
     },
     coverage_summary: {
-      ppg_debt_service_current_or_aging_country_count: ppg.non_aggregate_country_count,
-      external_debt_stocks_current_or_aging_country_count:
-        totalExternal.non_aggregate_country_count,
-      both_series_current_or_aging_count: ppg.non_aggregate_country_iso3.filter(
-        (iso3) => externalSet.has(iso3),
-      ).length,
-      ppg_peer_minimum_met: ppg.non_aggregate_country_count >= 20,
-      target_100_country_path_plausible_from_ids_primary_alone:
-        ppg.non_aggregate_country_count >= 100,
+      ppg_debt_service_pct_gni_country_count:
+        ppgGni.non_aggregate_ids_debtor_count,
+      ppg_debt_service_pct_exports_country_count:
+        ppgExports.non_aggregate_ids_debtor_count,
+      either_ppg_debt_service_metric_country_count: fiscalUnion.length,
+      both_ppg_debt_service_metrics_country_count: fiscalIntersection.length,
+      primary_ppg_gni_peer_minimum_met:
+        ppgGni.non_aggregate_ids_debtor_count >= 20,
+      secondary_ppg_exports_peer_minimum_met:
+        ppgExports.non_aggregate_ids_debtor_count >= 20,
+      target_100_country_path_plausible_from_primary_alone:
+        ppgGni.non_aggregate_ids_debtor_count >= 100,
+      target_100_country_path_plausible_from_either_source_specific_metric:
+        fiscalUnion.length >= 100,
+      current_production_accepted_country_count_assumed: 26,
       production_supported_country_count_added: 0,
+    },
+    candidate_country_sets: {
+      primary_ppg_gni_iso3: ppgGni.non_aggregate_ids_debtor_iso3,
+      secondary_ppg_exports_iso3: ppgExports.non_aggregate_ids_debtor_iso3,
+      either_ppg_metric_iso3: fiscalUnion,
+      both_ppg_metrics_iso3: fiscalIntersection,
+      primary_only_iso3: ppgGni.non_aggregate_ids_debtor_iso3.filter(
+        (iso3) => !ppgExportsSet.has(iso3),
+      ),
+      secondary_only_iso3: ppgExports.non_aggregate_ids_debtor_iso3.filter(
+        (iso3) => !ppgGniSet.has(iso3),
+      ),
     },
     activation_boundary: {
       production_activation_allowed: false,
@@ -262,11 +351,12 @@ async function main() {
       source_registry_changed: false,
       required_before_activation: [
         "Map exact IDS rows to the authoritative Geomacro sovereign registry",
-        "Build a deterministic source-specific PPG debt-service adapter",
-        "Define and review a separate sovereign-fiscal vulnerability method for PPG debt-service burden",
-        "Run shadow scoring with a concept-consistent peer universe and unchanged confidence/freshness gates",
-        "Persist exact source provenance and CC BY 4.0 attribution",
-        "Run a full production global Risk Gate census before making any country payable",
+        "Build deterministic source-specific PPG debt-service observation adapters",
+        "Define a versioned sovereign-fiscal stress methodology that never mixes unlike raw metrics",
+        "Run shadow normalization with >=20 peers per exact metric and unchanged confidence/freshness gates",
+        "Persist exact source provenance, retrieval hashes and CC BY 4.0 attribution",
+        "Measure overlap with currently accepted countries and other source-specific fiscal methods",
+        "Run the full production global Risk Gate census before making any additional country payable",
       ],
     },
     series: results,
@@ -277,6 +367,7 @@ async function main() {
     JSON.stringify(
       {
         generated_at: report.generated_at,
+        source_population: report.source_population,
         coverage_summary: report.coverage_summary,
         activation_boundary: report.activation_boundary,
       },
