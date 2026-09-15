@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import process from "node:process";
+import { HTTPFacilitatorClient } from "@x402/core/server";
 import { SignJWT, importJWK, importPKCS8 } from "jose";
 import { recordCommercialPaymentEvent } from "./commercial-ops.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 const CDP_HOST = "api.cdp.coinbase.com" as const;
 const CDP_ORIGIN = `https://${CDP_HOST}` as const;
+const CDP_X402_BASE = `${CDP_ORIGIN}/platform/v2/x402` as const;
 const VERIFY_PATH = "/platform/v2/x402/verify" as const;
 const SETTLE_PATH = "/platform/v2/x402/settle" as const;
 
@@ -35,6 +37,8 @@ export type CoinbaseVerifyResult = {
   payer?: string;
   invalidReason?: string;
   invalidMessage?: string;
+  extensions?: Record<string, unknown>;
+  extensionResponses?: Record<string, unknown>;
   extra?: Record<string, unknown>;
 };
 
@@ -46,9 +50,9 @@ export type CoinbaseSettleResult = {
   amount?: string;
   errorReason?: string;
   errorMessage?: string;
-  extra?: Record<string, unknown>;
   extensions?: Record<string, unknown>;
   extensionResponses?: Record<string, unknown>;
+  extra?: Record<string, unknown>;
 };
 
 export type CoinbaseX402Config = {
@@ -82,12 +86,16 @@ export function stableJson(value: unknown): string {
 function parsePriceToAtomic(value: string) {
   const normalized = value.trim();
   if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(normalized)) {
-    throw new Error("COINBASE_X402_PRICE_USDC must be a positive USDC decimal with at most 6 decimal places");
+    throw new Error(
+      "COINBASE_X402_PRICE_USDC must be a positive USDC decimal with at most 6 decimal places",
+    );
   }
   const [whole, fraction = ""] = normalized.split(".");
   const atomic = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
   if (atomic <= 0n) throw new Error("COINBASE_X402_PRICE_USDC must be greater than zero");
-  if (atomic > 100_000_000n) throw new Error("COINBASE_X402_PRICE_USDC exceeds the 100 USDC safety cap");
+  if (atomic > 100_000_000n) {
+    throw new Error("COINBASE_X402_PRICE_USDC exceeds the 100 USDC safety cap");
+  }
   return atomic.toString();
 }
 
@@ -432,59 +440,24 @@ async function generateCdpJwt(path: string) {
     .sign(key);
 }
 
-async function cdpPost<T>(path: string, body: unknown): Promise<T> {
-  const token = await generateCdpJwt(path);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
-  try {
-    const response = await fetch(`${CDP_ORIGIN}${path}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const text = await response.text();
-    let payload: unknown = {};
-    try {
-      payload = text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error(`CDP_INVALID_JSON_RESPONSE:${response.status}`);
-    }
-    if (!response.ok) {
-      const error = payload as Record<string, unknown>;
-      throw new Error(
-        `CDP_HTTP_${response.status}:${String(error.errorType ?? error.errorMessage ?? "request_failed")}`,
-      );
-    }
-    return payload as T;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("CDP_REQUEST_TIMEOUT");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function facilitatorRequest(paymentPayload: Record<string, unknown>, config: CoinbaseX402Config) {
-  return {
-    x402Version: 2,
-    paymentPayload,
-    paymentRequirements: coinbaseX402PaymentRequirements(config),
-  };
-}
+const facilitator = new HTTPFacilitatorClient({
+  url: CDP_X402_BASE,
+  timeoutMs: 20_000,
+  createAuthHeaders: async () => ({
+    verify: { Authorization: `Bearer ${await generateCdpJwt(VERIFY_PATH)}` },
+    settle: { Authorization: `Bearer ${await generateCdpJwt(SETTLE_PATH)}` },
+  }),
+});
 
 export async function verifyCoinbaseX402(
   paymentPayload: Record<string, unknown>,
   config: CoinbaseX402Config,
 ) {
   assertCoinbasePaymentBinding(paymentPayload, config);
-  return cdpPost<CoinbaseVerifyResult>(VERIFY_PATH, facilitatorRequest(paymentPayload, config));
+  return (await facilitator.verify(
+    paymentPayload as Parameters<typeof facilitator.verify>[0],
+    coinbaseX402PaymentRequirements(config) as Parameters<typeof facilitator.verify>[1],
+  )) as CoinbaseVerifyResult;
 }
 
 export async function settleCoinbaseX402(
@@ -492,18 +465,38 @@ export async function settleCoinbaseX402(
   config: CoinbaseX402Config,
 ) {
   assertCoinbasePaymentBinding(paymentPayload, config);
-  return cdpPost<CoinbaseSettleResult>(SETTLE_PATH, facilitatorRequest(paymentPayload, config));
+  return (await facilitator.settle(
+    paymentPayload as Parameters<typeof facilitator.settle>[0],
+    coinbaseX402PaymentRequirements(config) as Parameters<typeof facilitator.settle>[1],
+  )) as CoinbaseSettleResult;
 }
 
 export function coinbaseX402PaymentResponseHeader(settlement: CoinbaseSettleResult) {
-  return encodeX402Header(settlement);
+  const { extensionResponses: _serverOnly, ...buyerVisible } = settlement;
+  return encodeX402Header(buyerVisible);
 }
 
-export function coinbaseX402ExtensionResponsesHeader(settlement: CoinbaseSettleResult) {
-  const extensionResponses = settlement.extensionResponses ?? settlement.extensions;
-  return extensionResponses && Object.keys(extensionResponses).length > 0
-    ? encodeX402Header(extensionResponses)
+export function bazaarExtensionOutcome(
+  verify: CoinbaseVerifyResult | null | undefined,
+  settlement: CoinbaseSettleResult | null | undefined,
+) {
+  const responses = settlement?.extensionResponses ?? verify?.extensionResponses;
+  if (!responses || typeof responses !== "object" || Array.isArray(responses)) {
+    return { status: null as string | null, rejectedReason: null as string | null };
+  }
+  const bazaar = responses.bazaar;
+  if (!bazaar || typeof bazaar !== "object" || Array.isArray(bazaar)) {
+    return { status: null as string | null, rejectedReason: null as string | null };
+  }
+  const payload = bazaar as Record<string, unknown>;
+  const status = ["success", "processing", "rejected"].includes(String(payload.status))
+    ? String(payload.status)
     : null;
+  const rejectedReason =
+    status === "rejected" && typeof payload.rejectedReason === "string"
+      ? payload.rejectedReason.slice(0, 500)
+      : null;
+  return { status, rejectedReason };
 }
 
 function payerTelemetryId(payer: string | null | undefined) {
@@ -598,6 +591,8 @@ export async function persistCoinbaseSettlementTelemetry(input: {
   config: CoinbaseX402Config;
   paymentFingerprint: string;
   bazaarExtensionEchoed: boolean;
+  bazaarStatus: string | null;
+  bazaarRejectedReason: string | null;
 }) {
   try {
     const db = requireRiskSupabase();
@@ -616,7 +611,9 @@ export async function persistCoinbaseSettlementTelemetry(input: {
       })
       .select("id")
       .single();
-    if (requestError || !requestRow) throw requestError ?? new Error("agent request telemetry unavailable");
+    if (requestError || !requestRow) {
+      throw requestError ?? new Error("agent request telemetry unavailable");
+    }
 
     const { data: paymentRow, error: paymentError } = await db
       .from("agent_payments")
@@ -633,7 +630,9 @@ export async function persistCoinbaseSettlementTelemetry(input: {
       })
       .select("id")
       .single();
-    if (paymentError || !paymentRow) throw paymentError ?? new Error("agent payment telemetry unavailable");
+    if (paymentError || !paymentRow) {
+      throw paymentError ?? new Error("agent payment telemetry unavailable");
+    }
 
     await db.from("agent_api_requests").update({ payment_id: paymentRow.id }).eq("id", requestRow.id);
 
@@ -667,6 +666,8 @@ export async function persistCoinbaseSettlementTelemetry(input: {
         request_id: input.requestId,
         rail: "coinbase_cdp_exact",
         bazaar_extension_echoed: input.bazaarExtensionEchoed,
+        bazaar_status: input.bazaarStatus,
+        bazaar_rejected_reason: input.bazaarRejectedReason,
         execution_authorized: false,
         requires_mainnet_reconciliation_before_revenue_classification:
           input.config.commercialEnvironment === "mainnet",
