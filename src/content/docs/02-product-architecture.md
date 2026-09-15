@@ -27,15 +27,17 @@ This architecture preserves three boundaries:
 
 `execution_authorized=false` remains the current Risk Gate execution boundary. Event-specific Risk Objects may be explored in the broader architecture, but they are not part of the current country/corridor Private Pilot contract unless a separately implemented and verified production contract says otherwise.
 
+The customer owns the identity, permissions and policy layer shown downstream of Risk Gate. An integration may supply a customer-owned policy profile to a bounded Risk Gate request, but that is an evaluation input only: Geomacro does not own or enforce the customer's policy and does not authorize the customer's downstream action.
+
 Data & API is an access and delivery surface over this architecture. Research and documentation are evidence, methodology and trust surfaces. Neither should create a second risk engine or a conflicting copy of product truth.
 
 ### One data foundation, multiple delivery adapters
 
 Browser, authenticated API, Testnet pay-per-call and agent/x402 surfaces may use different authentication, entitlement, payment, response-shaping and audit adapters, but they still resolve from the same governed intelligence foundation and canonical product services. Pay-per-call changes access and settlement; it does not create a separate dataset, score engine, Risk Object path or Risk Gate implementation.
 
-“Same data” means the same governed evidence/provenance foundation and relevant canonical service contract. Product-specific rules may still differ: GRI has its own scoring admission, Risk Objects have subject/verification rules, and Risk Gate applies customer policy. Those are documented derived uses of shared intelligence, not conflicting copies of reality.
+“Same data” means the same governed evidence/provenance foundation and relevant canonical service contract. Product-specific rules may still differ: GRI has its own scoring admission, Risk Objects have subject/verification rules, and Risk Gate can evaluate bounded caller context. Those are documented derived uses of shared intelligence, not conflicting copies of reality.
 
-The repository-wide invariant for adding any new delivery or payment rail is documented in `docs/CANONICAL_DELIVERY_ARCHITECTURE.md`: reuse canonical intelligence first, then add only the access, transport, entitlement, policy or settlement adapter required by that surface.
+The repository-wide invariant for adding any new delivery or payment rail is documented in `docs/CANONICAL_DELIVERY_ARCHITECTURE.md`: reuse canonical intelligence first, then add only the access, transport, entitlement, policy-input or settlement adapter required by that surface while preserving the customer-control boundary.
 
 ## Policy layers
 
