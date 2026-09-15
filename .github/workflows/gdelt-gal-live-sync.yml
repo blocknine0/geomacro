@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "supabase/functions/live-gdelt-ingest/**"
+      - "scripts/sync-gdelt-gal-production.mjs"
       - "supabase/functions/live-structure-intelligence/**"
       - "scripts/audit-agent-hot-topic-readiness.ts"
       - "supabase/migrations/049_structured_event_source_rights_view.sql"
@@ -33,7 +33,6 @@ jobs:
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      LIVE_INGEST_TOKEN: ${{ secrets.LIVE_INGEST_TOKEN }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness-after-sync.json
 
@@ -55,10 +54,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_INGEST_TOKEN LIVE_STRUCTURE_TOKEN; do
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN; do
             test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }
           done
           node scripts/db/assert-authoritative-supabase.mjs
+          bun --check scripts/sync-gdelt-gal-production.mjs
 
       - name: Catch GDELT GAL cursor up to the live window
         shell: bash
@@ -67,16 +67,7 @@ jobs:
           : > gdelt-gal-sync-summary.ndjson
           for i in 1 2 3 4; do
             response_file="gdelt-gal-sync-${i}.json"
-            curl --fail-with-body -sS \
-              --retry 3 \
-              --retry-all-errors \
-              --retry-delay 2 \
-              --retry-max-time 90 \
-              -X POST \
-              "${APP_SUPABASE_URL%/}/functions/v1/live-gdelt-ingest" \
-              -H "x-geomacro-ingest-token: ${LIVE_INGEST_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -o "$response_file"
+            GDELT_GAL_SYNC_OUTPUT="$response_file" bun scripts/sync-gdelt-gal-production.mjs
             jq -e '.ok == true' "$response_file" >/dev/null
             jq -c '{ok,status,source_stamp:(.latest_source_stamp // .last_source_stamp // null),source_files:(.source_files // .files_seen // 0),items_seen:(.items_seen // 0),items_accepted:(.items_accepted // .accepted // 0),fragment_id:(.fragment_id // null)}' "$response_file" | tee -a gdelt-gal-sync-summary.ndjson
           done
