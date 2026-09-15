@@ -1,0 +1,132 @@
+name: Production Intelligence Readiness
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/global-risk-gate-country-census.ts"
+      - "scripts/audit-agent-hot-topic-readiness.ts"
+      - "scripts/audit-global-realtime-source-freshness.mjs"
+      - "src/lib/agent-query-hot-topics.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - "src/lib/risk-gate-v2-request-readiness.ts"
+      - "supabase/migrations/928_hot_topic_claims.sql"
+      - "supabase/migrations/929_hot_topic_claim_identity.sql"
+      - ".github/workflows/production-intelligence-readiness.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "33 */2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-intelligence-readiness
+  cancel-in-progress: false
+
+jobs:
+  country-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GLOBAL_RISK_GATE_CENSUS_OUTPUT: global-risk-gate-country-census.json
+      GLOBAL_RISK_GATE_CENSUS_CONCURRENCY: "3"
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production database target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Generate global country readiness census
+        run: bun scripts/global-risk-gate-country-census.ts --require-any-accepted
+
+      - name: Validate and publish sanitized census summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.summary.accepted_country_count >= 1' global-risk-gate-country-census.json >/dev/null
+          jq '{generated_at,denominator,summary,claim_boundary}' global-risk-gate-country-census.json
+
+      - name: Upload country readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-global-risk-gate-country-readiness
+          path: global-risk-gate-country-census.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  hot-topic-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness.json
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production database target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Prove external realtime source freshness without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-realtime-source-freshness.mjs | tee global-realtime-source-freshness.log
+          grep -q 'PASS: GLOBAL REALTIME SOURCE FRESHNESS PROOF COMPLETE - NO WRITES' global-realtime-source-freshness.log
+          jq -e '.writes_performed == false' global-realtime-source-freshness.json >/dev/null
+          jq -e '.summary.failed_sources == 0' global-realtime-source-freshness.json >/dev/null
+
+      - name: Generate paid hot-topic readiness proof
+        run: bun scripts/audit-agent-hot-topic-readiness.ts --require-pipeline-healthy
+
+      - name: Validate commercial delivery boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.pipeline.healthy == true' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.claim_boundary.raw_source_material_redistributed == false' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true' agent-hot-topic-readiness.json >/dev/null
+          jq -e '.claim_boundary.current_signal_with_only_blocked_rights_is_not_chargeable_for_hot_topics == true' agent-hot-topic-readiness.json >/dev/null
+          jq '{generated_at,pipeline,summary,claim_boundary}' agent-hot-topic-readiness.json
+
+      - name: Upload sanitized hot-topic readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-hot-topic-readiness
+          path: |
+            agent-hot-topic-readiness.json
+            global-realtime-source-freshness.json
+            global-realtime-source-freshness.log
+          if-no-files-found: warn
+          retention-days: 30
