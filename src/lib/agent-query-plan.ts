@@ -4,32 +4,17 @@ import { z } from "zod";
 export const AGENT_QUERY_SCHEMA_VERSION = "geomacro.agent-query.v1" as const;
 
 export const AGENT_QUERY_TOPICS = [
-  "sovereign_risk",
-  "macro_risk",
-  "fx_external_risk",
-  "sanctions_restrictions",
-  "conflict_geopolitics",
-  "trade_corridor",
-  "energy_commodities",
-  "critical_minerals",
-  "political_governance",
-  "banking_financial_system",
-  "food_agriculture",
-  "natural_hazards",
-  "hot_topics",
-  "risk_gate",
-  "risk_object",
-  "gri_context",
+  "sovereign_risk", "macro_risk", "fx_external_risk", "sanctions_restrictions",
+  "conflict_geopolitics", "trade_corridor", "energy_commodities", "critical_minerals",
+  "political_governance", "banking_financial_system", "food_agriculture", "natural_hazards",
+  "hot_topics", "risk_gate", "risk_object", "gri_context",
 ] as const;
-
 export type AgentQueryTopic = (typeof AGENT_QUERY_TOPICS)[number];
 
 const iso3 = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/);
 const country = z.object({ type: z.literal("country"), country_iso3: iso3 });
 const corridor = z.object({
-  type: z.literal("corridor"),
-  origin_country_iso3: iso3,
-  destination_country_iso3: iso3,
+  type: z.literal("corridor"), origin_country_iso3: iso3, destination_country_iso3: iso3,
 }).superRefine((value, ctx) => {
   if (value.origin_country_iso3 === value.destination_country_iso3) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Corridor endpoints must differ" });
@@ -48,21 +33,19 @@ export const agentAdaptiveQuerySchema = z.object({
   subjects: z.array(z.union([country, corridor])).min(1).max(25),
   topics: z.array(z.enum(AGENT_QUERY_TOPICS)).max(16).default([]),
   as_of: z.string().datetime({ offset: true }).optional(),
-  max_age_seconds: z.number().int().positive().max(31_536_000).default(86_400),
+  // Optional request-wide freshness override. It can only make the built-in
+  // module SLA stricter, never relax it. Structural and live-event data have
+  // deliberately different publication cadences.
+  max_age_seconds: z.number().int().positive().max(94_608_000).optional(),
   evidence: z.enum(["required", "summary"]).default("required"),
   detail: z.enum(["compact", "standard", "full"]).default("standard"),
   risk_gate_context: riskGateContext.optional(),
   client_request_id: z.string().trim().min(4).max(128).optional(),
 }).strict().superRefine((value, ctx) => {
   if (!value.question && value.topics.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["topics"],
-      message: "Provide at least one explicit topic or a question that can be deterministically classified",
-    });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["topics"], message: "Provide at least one explicit topic or a question that can be deterministically classified" });
   }
 });
-
 export type AgentAdaptiveQuery = z.infer<typeof agentAdaptiveQuerySchema>;
 
 const TOPIC_MODULES: Record<AgentQueryTopic, readonly string[]> = {
@@ -82,6 +65,25 @@ const TOPIC_MODULES: Record<AgentQueryTopic, readonly string[]> = {
   risk_gate: ["signed_risk_object", "risk_gate"],
   risk_object: ["signed_risk_object"],
   gri_context: ["gri_context"],
+};
+
+// Freshness is a data-contract SLA, not one arbitrary global window. Annual
+// official structural series remain usable under bounded age windows while
+// sanctions/hot-topic data must be substantially fresher.
+export const AGENT_MODULE_MAX_AGE_SECONDS: Readonly<Record<string, number>> = {
+  sovereign_fiscal: 800 * 86_400,
+  political_governance: 800 * 86_400,
+  macro_monetary: 400 * 86_400,
+  external_fx: 400 * 86_400,
+  sanctions_restrictions: 7 * 86_400,
+  geopolitical_security: 45 * 86_400,
+  trade_corridor: 400 * 86_400,
+  energy_commodities: 120 * 86_400,
+  critical_minerals: 400 * 86_400,
+  banking_financial_system: 400 * 86_400,
+  food_agriculture: 180 * 86_400,
+  natural_hazards: 30 * 86_400,
+  hot_topics: 2 * 86_400,
 };
 
 const QUESTION_TOPIC_RULES: ReadonlyArray<{ topic: AgentQueryTopic; patterns: RegExp[] }> = [
@@ -106,30 +108,17 @@ const QUESTION_TOPIC_RULES: ReadonlyArray<{ topic: AgentQueryTopic; patterns: Re
 function normalizeQuestion(question: string | undefined) {
   return question ? question.trim().replace(/\s+/g, " ").toLowerCase() : null;
 }
-
 export function inferAgentQueryTopics(question: string | undefined): AgentQueryTopic[] {
   if (!question) return [];
-  const matches = QUESTION_TOPIC_RULES
-    .filter((rule) => rule.patterns.some((pattern) => pattern.test(question)))
-    .map((rule) => rule.topic);
+  const matches = QUESTION_TOPIC_RULES.filter((rule) => rule.patterns.some((pattern) => pattern.test(question))).map((rule) => rule.topic);
   return [...new Set(matches)].sort() as AgentQueryTopic[];
 }
-
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, child]) => [key, canonicalize(child)]),
-    );
-  }
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a],[b]) => a.localeCompare(b)).map(([key, child]) => [key, canonicalize(child)]));
   return value;
 }
-
-function stableHash(value: unknown) {
-  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
-}
+function stableHash(value: unknown) { return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex"); }
 
 export type AgentQueryPlan = {
   schema_version: typeof AGENT_QUERY_SCHEMA_VERSION;
@@ -137,7 +126,8 @@ export type AgentQueryPlan = {
   subjects: AgentAdaptiveQuery["subjects"];
   topics: AgentQueryTopic[];
   required_modules: string[];
-  max_age_seconds: number;
+  requested_max_age_seconds: number | null;
+  module_max_age_seconds: Record<string, number>;
   evidence: AgentAdaptiveQuery["evidence"];
   detail: AgentAdaptiveQuery["detail"];
   risk_gate_context: AgentAdaptiveQuery["risk_gate_context"] | null;
@@ -150,17 +140,20 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   const inferred = inferAgentQueryTopics(parsed.question);
   const topics = [...new Set([...parsed.topics, ...inferred])].sort() as AgentQueryTopic[];
   if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
-  if (topics.includes("risk_gate") && !parsed.risk_gate_context) {
-    throw new Error("RISK_GATE_CONTEXT_REQUIRED");
-  }
+  if (topics.includes("risk_gate") && !parsed.risk_gate_context) throw new Error("RISK_GATE_CONTEXT_REQUIRED");
   const requiredModules = [...new Set(topics.flatMap((topic) => TOPIC_MODULES[topic]))].sort();
+  const moduleMaxAge = Object.fromEntries(requiredModules.filter((module) => AGENT_MODULE_MAX_AGE_SECONDS[module]).map((module) => {
+    const baseline = AGENT_MODULE_MAX_AGE_SECONDS[module];
+    return [module, parsed.max_age_seconds ? Math.min(baseline, parsed.max_age_seconds) : baseline];
+  }));
   const normalized = {
     schema_version: AGENT_QUERY_SCHEMA_VERSION,
     question_key: normalizeQuestion(parsed.question),
     subjects: parsed.subjects,
     topics,
     required_modules: requiredModules,
-    max_age_seconds: parsed.max_age_seconds,
+    requested_max_age_seconds: parsed.max_age_seconds ?? null,
+    module_max_age_seconds: moduleMaxAge,
     evidence: parsed.evidence,
     detail: parsed.detail,
     risk_gate_context: parsed.risk_gate_context ?? null,
@@ -169,19 +162,6 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   return { ...normalized, query_plan_hash: stableHash(normalized) };
 }
 
-export function paymentBindingForAgentQuery(input: {
-  queryPlan: AgentQueryPlan;
-  amountAtomic: string;
-  network: string;
-  asset: string;
-  payTo: string;
-}) {
-  return stableHash({
-    schema_version: input.queryPlan.schema_version,
-    query_plan_hash: input.queryPlan.query_plan_hash,
-    amount_atomic: input.amountAtomic,
-    network: input.network,
-    asset: input.asset.toLowerCase(),
-    pay_to: input.payTo.toLowerCase(),
-  });
+export function paymentBindingForAgentQuery(input: { queryPlan: AgentQueryPlan; amountAtomic: string; network: string; asset: string; payTo: string }) {
+  return stableHash({ schema_version: input.queryPlan.schema_version, query_plan_hash: input.queryPlan.query_plan_hash, amount_atomic: input.amountAtomic, network: input.network, asset: input.asset.toLowerCase(), pay_to: input.payTo.toLowerCase() });
 }
