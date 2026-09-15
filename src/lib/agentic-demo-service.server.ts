@@ -22,6 +22,12 @@ export type AgenticDemoRunOptions = {
     | "COMMERCIAL_PRIVATE_PILOT";
   recordTelemetry?: boolean;
   /**
+   * Public/x402 technical-proof routes stay on the narrow demo subject set.
+   * Entitled private-pilot callers may use the broader governed Risk Gate
+   * country/corridor surface and still fail closed when subject data is not ready.
+   */
+  enforceDemoSubjectAllowlist?: boolean;
+  /**
    * Optional server-controlled correlation ID. Commercial partner integrations
    * can reuse their durable request UUID so the paid order, Risk Gate audit and
    * delivered intelligence all share one traceable identity. Public callers do
@@ -183,7 +189,10 @@ export async function runAgenticPreflightDemo(
   options: AgenticDemoRunOptions = {},
 ) {
   const parsed = agenticDemoRequestSchema.parse(raw);
-  assertSupportedDemoSubject(parsed);
+  const mode = options.mode ?? "PUBLIC_SANDBOX";
+  const enforceDemoSubjectAllowlist =
+    options.enforceDemoSubjectAllowlist ?? mode !== "COMMERCIAL_PRIVATE_PILOT";
+  if (enforceDemoSubjectAllowlist) assertSupportedDemoSubject(parsed);
 
   const requestId = options.requestId?.trim() || randomUUID();
   if (requestId.length < 1 || requestId.length > 256) {
@@ -191,7 +200,6 @@ export async function runAgenticPreflightDemo(
   }
 
   const policy = demoPolicyFromPreset(parsed.policy_preset);
-  const mode = options.mode ?? "PUBLIC_SANDBOX";
   const shouldRecordTelemetry = options.recordTelemetry ?? true;
   const actionContext: {
     action_type: string;
