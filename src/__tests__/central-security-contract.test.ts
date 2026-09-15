@@ -180,6 +180,12 @@ describe("central security deployment contract", () => {
     expect(readinessMigration).toContain("relrowsecurity");
     expect(readinessMigration).toContain("has_table_privilege('anon'");
     expect(readinessMigration).toContain("has_table_privilege('authenticated'");
+    expect(readinessMigration).toContain("'siwe_login_nonces'");
+    expect(readinessMigration).toContain("'testnet_tester_sessions'");
+    expect(readinessMigration).toContain("'testnet_developer_credentials'");
+    expect(readinessMigration).toContain("'commercial_api_credentials'");
+    expect(readinessMigration).toContain("'risk_gate_api_clients'");
+    expect(readinessMigration).toContain("'coinbase_x402_deliveries'");
     expect(readinessMigration).toContain("browser_exposed_table_count");
     expect(readinessMigration).toContain("to service_role");
     expect(readinessServer).toContain("REAL_FUNDS_DATABASE_SECURITY_NOT_READY");
