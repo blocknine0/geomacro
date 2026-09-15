@@ -10,6 +10,41 @@ const PERMISSIONS_POLICY = [
   "geolocation=()",
 ].join(", ");
 
+const NOINDEX_FOLLOW_PATHS = new Set([
+  "/arena",
+  "/bridge-swap",
+  "/demo",
+  "/onchain",
+  "/pipeline",
+  "/portfolio",
+  "/testnet-access",
+]);
+
+function applySearchIndexingHeaders(headers: Headers, requestUrl: string, status: number) {
+  const url = new URL(requestUrl);
+  const pathname = url.pathname.replace(/\/+$/, "") || "/";
+
+  // Error responses, machine endpoints and internal/test tooling should never
+  // become search results. This header also covers non-HTML responses where a
+  // page-level <meta name="robots"> tag cannot exist.
+  if (
+    status >= 400 ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/internal/") ||
+    pathname === "/testnet-console"
+  ) {
+    headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    return;
+  }
+
+  // Keep secondary technical-proof and tester surfaces directly accessible,
+  // while preventing them from competing with Geomacro's primary risk-
+  // intelligence pages in search. `follow` preserves link discovery.
+  if (NOINDEX_FOLLOW_PATHS.has(pathname)) {
+    headers.set("X-Robots-Tag", "noindex, follow, noarchive");
+  }
+}
+
 /**
  * Apply low-risk browser security controls without introducing a restrictive
  * source allow-list that could accidentally break wallet, Circle, Arc, RPC or
@@ -54,10 +89,13 @@ export function secureServerResponse(
   // Protocol-switching responses must remain untouched.
   if (response.status === 101) return response;
 
+  const headers = applyGlobalSecurityHeaders(response.headers, requestUrl);
+  applySearchIndexingHeaders(headers, requestUrl, response.status);
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: applyGlobalSecurityHeaders(response.headers, requestUrl),
+    headers,
   });
 }
 

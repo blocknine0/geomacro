@@ -7,7 +7,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getPublicIntelligence } from "@/lib/public-intelligence.functions";
+import {
+  getPublicIntelligence,
+  type PublicIntelligenceRow,
+} from "@/lib/public-intelligence.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
 
 export type IntelEvent = {
@@ -75,6 +78,20 @@ function timeOf(e: IntelEvent) {
   return new Date(e.publishedAt ?? e.createdAt).getTime();
 }
 
+function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
+  return rows.map((r) => ({
+    id: String(r.id),
+    title: r.source_title ?? "Untitled event",
+    summary: r.summary ?? null,
+    category: r.category ?? null,
+    severity: num(r.severity),
+    delta: num(r.delta),
+    sourceName: null,
+    createdAt: String(r.created_at),
+    publishedAt: r.published_at ?? null,
+  }));
+}
+
 function build(rows: IntelEvent[], now: number): Intelligence {
   const in24h = rows.filter((r) => new Date(r.createdAt).getTime() >= now - DAY);
   const usedFallbackWindow = in24h.length === 0;
@@ -137,14 +154,22 @@ function build(rows: IntelEvent[], now: number): Intelligence {
   };
 }
 
-export function useIntelligence(refreshMs = 5 * 60 * 1000) {
+/** Build the exact public intelligence read model from canonical public rows. */
+export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
+  return build(mapPublicRows(rows), now);
+}
+
+export function useIntelligence(
+  initialData: Intelligence | null = null,
+  refreshMs = 5 * 60 * 1000,
+) {
   const loadPublicIntelligence = useServerFn(getPublicIntelligence);
-  const [data, setData] = useState<Intelligence | null>(null);
-  const [status, setStatus] = useState<IntelStatus>("loading");
+  const [data, setData] = useState<Intelligence | null>(initialData);
+  const [status, setStatus] = useState<IntelStatus>(initialData ? "ready" : "loading");
   const [error, setError] = useState<UserError | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(initialData ? Date.now() : null);
   const [reloadKey, setReloadKey] = useState(0);
-  const hasData = useRef(false);
+  const hasData = useRef(Boolean(initialData));
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -158,17 +183,7 @@ export function useIntelligence(refreshMs = 5 * 60 * 1000) {
         const rows = await loadPublicIntelligence({ data: {} });
         if (cancelled) return;
 
-        const mapped: IntelEvent[] = rows.map((r) => ({
-          id: String(r.id),
-          title: r.source_title ?? "Untitled event",
-          summary: r.summary ?? null,
-          category: r.category ?? null,
-          severity: num(r.severity),
-          delta: num(r.delta),
-          sourceName: null,
-          createdAt: String(r.created_at),
-          publishedAt: r.published_at ?? null,
-        }));
+        const mapped = mapPublicRows(rows);
 
         if (mapped.length === 0) {
           hasData.current = false;

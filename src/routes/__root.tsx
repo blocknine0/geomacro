@@ -15,6 +15,11 @@ import { installClipboardCompatibility } from "../lib/clipboard-compat";
 import { SiteShell } from "../components/site-shell";
 import { WalletProvider } from "../hooks/WalletProvider";
 
+const DEFAULT_TITLE = "Geopolitical & Macro Risk Intelligence | Geomacro";
+const DEFAULT_DESCRIPTION =
+  "Geomacro turns geopolitical and macro developments into explainable risk intelligence with evidence, confidence, change attribution and machine-readable decision context.";
+const DEFAULT_OG_IMAGE = "https://geomacro.live/og-image-v2.png";
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -80,19 +85,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Geomacro: Geopolitical + Macro Risk Intelligence" },
-      { name: "description", content: "Geomacro turns global geopolitical and macro events into structured, explainable risk intelligence with evidence, confidence and change attribution." },
+      { title: DEFAULT_TITLE },
+      { name: "description", content: DEFAULT_DESCRIPTION },
       { name: "author", content: "Geomacro" },
-      { property: "og:title", content: "Geomacro: Geopolitical + Macro Risk Intelligence" },
-      { property: "og:description", content: "Geomacro turns global geopolitical and macro events into structured, explainable risk intelligence with evidence, confidence and change attribution." },
+      { name: "application-name", content: "Geomacro" },
+      { name: "theme-color", content: "#0b1117" },
+      { name: "format-detection", content: "telephone=no, address=no, email=no" },
+      { property: "og:title", content: DEFAULT_TITLE },
+      { property: "og:description", content: DEFAULT_DESCRIPTION },
       { property: "og:site_name", content: "Geomacro" },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "en_US" },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
+      { property: "og:image:secure_url", content: DEFAULT_OG_IMAGE },
+      { property: "og:image:alt", content: "Geomacro geopolitical and macro risk intelligence" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@GeomacroLive" },
-      { name: "twitter:title", content: "Geomacro: Geopolitical + Macro Risk Intelligence" },
-      { name: "twitter:description", content: "Geomacro turns global geopolitical and macro events into structured, explainable risk intelligence with evidence, confidence and change attribution." },
-      { property: "og:image", content: "https://geomacro.live/og-image-v2.png" },
-      { name: "twitter:image", content: "https://geomacro.live/og-image-v2.png" },
     ],
     links: [
       {
@@ -104,6 +112,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
       { rel: "shortcut icon", href: "/favicon.ico" },
       { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://geomacro.live/#organization",
+              name: "Geomacro",
+              url: "https://geomacro.live/",
+              logo: {
+                "@type": "ImageObject",
+                url: "https://geomacro.live/icon-512.png",
+              },
+              email: "contact@geomacro.live",
+              sameAs: ["https://github.com/blocknine0/geomacro"],
+              description:
+                "Geopolitical and macro risk intelligence infrastructure for human and machine decisions.",
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://geomacro.live/#website",
+              url: "https://geomacro.live/",
+              name: "Geomacro",
+              publisher: { "@id": "https://geomacro.live/#organization" },
+              inLanguage: "en",
+            },
+          ],
+        }),
+      },
     ],
   }),
   shellComponent: RootShell,

@@ -1,0 +1,49 @@
+# Geomacro
+
+> Geopolitical and macro risk intelligence infrastructure for human and machine decisions.
+
+Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The primary product is the intelligence layer: live risk intelligence, the Global Risk Index (GRI), grounded research, machine-readable Risk Objects and Risk Gate decision context.
+
+## Current product status
+
+- Risk Intelligence: LIVE
+- Global Risk Index (GRI): LIVE
+- Ask Geomacro: LIVE
+- Research and methodology: LIVE
+- Risk API: PRIVATE PILOT
+- Risk Gate: PRIVATE PILOT
+- Arc Testnet, prediction markets, Circle CCTP and Bridge & Swap: TECHNICAL PROOF
+
+Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as production mainnet, real-money institutional settlement or independent security certification.
+
+## Canonical product pages
+
+- Home: https://geomacro.live/
+- Risk Intelligence: https://geomacro.live/intelligence
+- Global Risk Index: https://geomacro.live/global-risk
+- Risk Gate: https://geomacro.live/risk-gate
+- Ask Geomacro: https://geomacro.live/ask-geomacro
+- Data & API: https://geomacro.live/data-api
+- For Institutions: https://geomacro.live/institutional
+- Research: https://geomacro.live/research
+- Documentation: https://geomacro.live/docs
+- About & Trust: https://geomacro.live/about
+- Contact: https://geomacro.live/contact
+
+## Key product boundaries
+
+- Geomacro provides external risk context. It does not custody customer funds or authorize customer transactions.
+- Risk Gate currently keeps `execution_authorized=false` at the Geomacro boundary.
+- The current Private Pilot scope is country and directional corridor risk.
+- GRI is an evidence-weighted risk-intelligence measure, not a market probability and not a guarantee of future outcomes.
+- Missing or unavailable evidence is not silently converted into zero risk.
+
+## Technical implementation
+
+Public repository: https://github.com/blocknine0/geomacro
+
+The repository is publicly viewable. Its repository licence governs reuse; public visibility does not imply unrestricted open-source licensing.
+
+## Contact
+
+Email: contact@geomacro.live

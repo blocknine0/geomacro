@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
-Disallow: /demo
+Disallow: /api/
+Disallow: /internal/
+Disallow: /testnet-console
 
 Sitemap: https://geomacro.live/sitemap.xml

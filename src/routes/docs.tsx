@@ -3,33 +3,73 @@ import { ArrowRight } from "lucide-react";
 import { DocumentHeader } from "@/components/docs/docs-layout";
 import { DOCS_GROUPS, DOCS_MANIFEST, DOCS_PAGE_COUNT } from "@/lib/docs-content";
 
-const TITLE = "Documentation · Geomacro";
+const TITLE = "Geomacro Documentation | GRI, Risk Objects & Risk Gate";
 const DESCRIPTION =
-  "Public documentation for Geomacro's geopolitical and macro risk intelligence infrastructure: evidence, GRI methodology, change attribution, Risk Objects, Risk Gate, data governance, reliability and technical proof.";
+  "Read Geomacro's public documentation for geopolitical and macro risk intelligence, GRI methodology, evidence governance, Risk Objects, Risk Gate and APIs.";
+const URL = "https://geomacro.live/docs";
+const IMAGE = "https://geomacro.live/og-image-v2.png";
 
 export const Route = createFileRoute("/docs")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://geomacro.live/docs" },
+      { property: "og:url", content: URL },
+      { property: "og:image", content: IMAGE },
+      { property: "og:image:secure_url", content: IMAGE },
+      { property: "og:image:alt", content: "Geomacro public risk intelligence documentation" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
+      { name: "twitter:image", content: IMAGE },
+      { name: "twitter:image:alt", content: "Geomacro public risk intelligence documentation" },
     ],
-    links: [{ rel: "canonical", href: "https://geomacro.live/docs" }],
-    scripts: [{
-      type: "application/ld+json",
-      children: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "TechArticle",
-        headline: "Geomacro Documentation",
-        url: "https://geomacro.live/docs",
-        description: DESCRIPTION,
-        isPartOf: { "@type": "WebSite", name: "Geomacro", url: "https://geomacro.live/" },
-      }),
-    }],
+    links: [{ rel: "canonical", href: URL }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Geomacro Documentation",
+          url: URL,
+          description: DESCRIPTION,
+          inLanguage: "en",
+          isPartOf: { "@id": "https://geomacro.live/#website" },
+          publisher: { "@id": "https://geomacro.live/#organization" },
+          mainEntity: {
+            "@type": "ItemList",
+            name: "Geomacro public documentation",
+            numberOfItems: DOCS_PAGE_COUNT,
+          },
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            {
+              "@type": "ListItem",
+              position: 1,
+              name: "Geomacro",
+              item: "https://geomacro.live/",
+            },
+            {
+              "@type": "ListItem",
+              position: 2,
+              name: "Documentation",
+              item: URL,
+            },
+          ],
+        }),
+      },
+    ],
   }),
   component: DocsIndexPage,
 });
