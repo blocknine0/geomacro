@@ -1,0 +1,42 @@
+name: Coinbase x402 Mainnet Readiness
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "server/routes/api/x402/**"
+      - "docs/COINBASE_X402_MAINNET_READINESS.md"
+      - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  locked-mainnet-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Verify committed lockfile and install dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify Coinbase x402 configuration tests
+        run: bunx vitest run src/lib/coinbase-x402.server.test.ts
+      - name: Verify real-funds gate remains explicit
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'COINBASE_X402_MAINNET_ACK' src/lib/coinbase-x402.server.ts
+          grep -q 'I_ACCEPT_REAL_USDC' src/lib/coinbase-x402.server.ts
+          grep -q '0.02' src/lib/coinbase-x402.server.test.ts
+          grep -q '20000' src/lib/coinbase-x402.server.test.ts
+          if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
+            echo 'ERROR: .env.example must never activate the real-USDC gate.' >&2
+            exit 1
+          fi
