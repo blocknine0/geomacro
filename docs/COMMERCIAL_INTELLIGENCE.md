@@ -16,7 +16,7 @@ Prediction markets and programmable onchain execution are secondary application,
 | Global Risk Index | Live | Versioned aggregate risk with evidence, confidence and change attribution |
 | Ask Geomacro | Live | Intelligence query surface grounded in stored Geomacro data |
 | Risk API | Private Pilot | Machine-readable country/corridor intelligence delivery |
-| Risk Gate | Private Pilot | Verifiable pre-flight country/corridor risk context for customer-controlled policy decisions |
+| Risk Gate | Private Pilot | Verifiable pre-flight country/corridor risk context before customer-owned policy and execution |
 | Prediction Markets | Technical Proof | Experimental market and feedback layer |
 | Arc / USDC / Circle / CCTP | Technical Proof | Programmable execution and settlement proof |
 
@@ -40,6 +40,8 @@ Risk Gate - Private Pilot
 ```
 
 Data & API is an access and delivery surface over the shared intelligence state. Research and documentation are methodology, evidence and trust surfaces. Neither should become an independent risk engine or a conflicting product truth.
+
+The customer owns the identity, permissions and policy layer. A caller may supply a customer-owned policy profile to a bounded Risk Gate request, but Geomacro does not own or enforce that policy and never authorizes downstream execution.
 
 ## Risk API
 
@@ -68,19 +70,20 @@ The current Private Pilot consumes country and directional corridor Risk Objects
 
 Event-specific Risk Objects remain a broader product direction only. They must not be represented as part of the current Private Pilot until a corresponding implementation, production contract, verification path and commercial eligibility boundary are separately established.
 
-GRI and Risk Gate share the same governed intelligence, provenance, attribution and verification principles, while retaining product-specific admission and decision policies.
+GRI and Risk Gate share the same governed intelligence, provenance, attribution and verification principles, while retaining product-specific admission and decision-context rules.
 
-Canonical policy model:
+Canonical product sequence:
 
 ```text
-Risk Object
-+ Customer identity
-+ Permissions
-+ Customer policy
-= Recommendation returned to the customer system
+Country / directional corridor Risk Object
+        -> Risk Gate recommendation / decision context
+        -> Customer identity + permissions + policy
+        -> Customer-controlled action
 ```
 
-Canonical policy outcomes include:
+Where an approved integration supplies a customer-owned policy profile to Risk Gate, the service may evaluate that profile to return bounded decision context. That does not transfer ownership or enforcement of the policy to Geomacro.
+
+Canonical recommendation outcomes include:
 
 - CONTINUE
 - REDUCE_LIMIT
@@ -90,9 +93,9 @@ Canonical policy outcomes include:
 
 A Risk Object should expose current risk, previous risk, delta, attribution, confidence, evidence, freshness, methodology version and integrity information.
 
-A policy evaluation should include reason codes, relevant risk drivers, confidence, evidence references, policy version and evaluation timestamp.
+A Risk Gate response should include reason codes, relevant risk drivers, confidence, evidence references, methodology/policy-profile version where applicable and evaluation timestamp.
 
-Geomacro supplies verifiable decision context. The customer controls policy and execution. The current external Risk Gate boundary remains `execution_authorized=false`.
+Geomacro supplies verifiable decision context. The customer controls identity, permissions, policy, funds and execution. The current external Risk Gate boundary remains `execution_authorized=false`.
 
 Risk Gate does not itself custody funds, submit trades, move assets or make the customer's final financial decision.
 
@@ -131,12 +134,10 @@ Commercially eligible evidence and data
 For Risk Gate, the execution boundary remains:
 
 ```text
-Country/Corridor Risk Object
-+ Customer Identity
-+ Permissions
-+ Customer Policy
-= Risk Gate Recommendation
--> Customer-Controlled Action
+Country / directional corridor Risk Object
+        -> Risk Gate - Private Pilot
+        -> Customer Identity + Permissions + Policy
+        -> Customer-Controlled Action
 ```
 
 Optional x402 access or payment may sit in front of approved machine interfaces. The core risk calculation, provenance system and database must not depend on x402.
