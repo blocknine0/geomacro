@@ -10,10 +10,11 @@ Geomacro is currently in an early commercialization stage.
 | Risk API | PRIVATE PILOT |
 | Risk Gate | PRIVATE PILOT |
 | Prediction markets / Arc / CCTP / Bridge & Swap | TECHNICAL PROOF |
+| Controlled founding-pilot commercial package | INTERNAL / PILOT-LED |
 | Professional subscription packaging | PLANNED |
 | Broad institutional/enterprise service | PLANNED / pilot-led |
 
-Exact Early Access pricing, quotas, support commitments and contractual service levels are not yet publicly final.
+Geomacro has internally defined controlled founding-pilot pricing, support, incident and customer-use boundaries for Early Access. Those internal terms are not public list pricing, a production uptime/latency SLA, general availability or evidence of paying customers. Customer-specific quotas and contractual service commitments are agreed only through an appropriate SOW/agreement and only where current operational evidence supports them.
 
 The intended commercial model prioritizes recurring professional intelligence and institutional/API revenue, while Testnet/onchain applications remain secondary.
 
