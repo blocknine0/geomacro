@@ -125,6 +125,7 @@ describe("central security deployment contract", () => {
 
     expect(vite).toContain('serverDir: "./server"');
     expect(middleware).toContain("enforceCentralRequestSecurity");
+    expect(middleware).toContain("assertRealFundsDatabaseSecurityReady");
     expect(middleware).toContain("defineEventHandler");
     expect(middleware).toContain("X-Content-Type-Options");
     expect(middleware).toContain("Retry-After");
@@ -147,5 +148,26 @@ describe("central security deployment contract", () => {
     expect(migration).not.toMatch(/\bbearer_token\b/i);
     expect(migration).not.toMatch(/\bpayment_signature\b/i);
     expect(migration).not.toMatch(/\bcookie_value\b/i);
+  });
+
+  it("requires aggregate RLS and browser-privilege verification before real funds", () => {
+    const readinessMigration = readFileSync(
+      "supabase/migrations/931_central_security_database_readiness.sql",
+      "utf8",
+    );
+    const readinessServer = readFileSync(
+      "src/lib/real-funds-security-readiness.server.ts",
+      "utf8",
+    );
+
+    expect(readinessMigration).toContain("central_security_database_readiness");
+    expect(readinessMigration).toContain("relrowsecurity");
+    expect(readinessMigration).toContain("has_table_privilege('anon'");
+    expect(readinessMigration).toContain("has_table_privilege('authenticated'");
+    expect(readinessMigration).toContain("browser_exposed_table_count");
+    expect(readinessMigration).toContain("to service_role");
+    expect(readinessServer).toContain("REAL_FUNDS_DATABASE_SECURITY_NOT_READY");
+    expect(readinessServer).toContain("missing_table_count");
+    expect(readinessServer).toContain("browser_exposed_table_count");
   });
 });
