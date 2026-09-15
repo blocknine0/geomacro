@@ -49,7 +49,7 @@ describe("Testnet API pay-per-call alignment gate", () => {
     expect(developer).toContain("const apiKey = `gmk_test_");
     expect(developer).toContain("const apiSecret = `gms_test_");
     expect(developer).toContain('apiCredentialDigest(apiSecret, "testnet-api-secret")');
-    expect(developer).toContain("api_secret: apiSecret");
+    expect(developer).toContain("api_secret: input.apiSecret");
     expect(developer).toContain("shown_once: true");
     expect(developer).toContain("provision_testnet_metered_access");
     expect(commercialAccess).toContain("TESTNET_API_KEY_SECRET_REQUIRED");
