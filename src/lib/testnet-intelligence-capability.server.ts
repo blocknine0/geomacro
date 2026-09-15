@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { answerQuestion } from "./ask-intelligence.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
+import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { corridorSubjectId } from "./corridor-risk-engine";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
@@ -12,7 +13,6 @@ import {
   getLatestCompatibleCountryRiskObject,
   getRiskObjectByObjectId,
 } from "./risk-object-store.server";
-import { verifyPublicRiskObjectArtifact } from "./risk-object-verification.server";
 import {
   loadStructuralContext,
   type StructuralObservation,
@@ -119,7 +119,21 @@ export function publicRiskObject(object: GeomacroRiskObject): GeomacroRiskObject
   return object;
 }
 
-async function loadVerifiedRiskObject(subject: Exclude<TestnetIntelligenceSubject, { type: "global" }>) {
+function publicCommercialDelivery(
+  report: ReturnType<typeof verifyCommercialRiskObjectArtifact>,
+) {
+  return {
+    policy_version: report.policy_version,
+    deliverable: report.deliverable,
+    commercial_eligibility_status: report.commercial_eligibility_status,
+    embedded_verification_status: report.embedded_verification_status,
+    reason_codes: report.reason_codes,
+  };
+}
+
+async function loadVerifiedRiskObject(
+  subject: Exclude<TestnetIntelligenceSubject, { type: "global" }>,
+) {
   const object = subject.type === "country"
     ? await getLatestCompatibleCountryRiskObject(subject.country_iso3)
     : await getLatestCompatibleCorridorRiskObject(
@@ -127,16 +141,19 @@ async function loadVerifiedRiskObject(subject: Exclude<TestnetIntelligenceSubjec
       );
 
   if (!object) throw new Error("SIGNED_RISK_OBJECT_UNAVAILABLE");
-  const verification = verifyPublicRiskObjectArtifact(object);
-  if (!verification.valid || !verification.cryptographic_valid) {
-    throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  const commercialVerification = verifyCommercialRiskObjectArtifact(object);
+  if (!commercialVerification.deliverable) {
+    throw new Error("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
   }
-  return { object, verification };
+  return {
+    object,
+    verification: commercialVerification.public_verification,
+    commercialVerification,
+  };
 }
 
 function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
-  const changePoints =
-    risk.previous === null ? null : risk.score - risk.previous;
+  const changePoints = risk.previous === null ? null : risk.score - risk.previous;
   const generatedAtMs = Date.parse(risk.snapshotAsOf);
   const ageSeconds = Number.isFinite(generatedAtMs)
     ? Math.max(0, Math.round((Date.now() - generatedAtMs) / 1000))
@@ -260,9 +277,9 @@ async function riskGateBundle(
 
   const stored = await getRiskObjectByObjectId(result.context.risk_object_id);
   if (!stored) throw new Error("SIGNED_RISK_OBJECT_UNAVAILABLE");
-  const verification = verifyPublicRiskObjectArtifact(stored);
-  if (!verification.valid || !verification.cryptographic_valid) {
-    throw new Error("SIGNED_RISK_OBJECT_NOT_VERIFIED");
+  const commercialVerification = verifyCommercialRiskObjectArtifact(stored);
+  if (!commercialVerification.deliverable) {
+    throw new Error("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
   }
 
   const [structural, gri] = await Promise.all([
@@ -288,7 +305,8 @@ async function riskGateBundle(
       policy,
       risk_gate: result.response,
       risk_object: publicRiskObject(stored),
-      risk_object_verification: verification,
+      risk_object_verification: commercialVerification.public_verification,
+      commercial_delivery: publicCommercialDelivery(commercialVerification),
       structural_context: structural.payload,
       gri_context: publicGri(gri),
       execution_authorized: false,
@@ -372,11 +390,12 @@ export async function runCanonicalTestnetIntelligence(input: {
   if (request.capability === "signed_risk_object") {
     const subject = request.subject;
     if (!subject || subject.type === "global") throw new Error("SUBJECT_REQUIRED");
-    const { object, verification } = await loadVerifiedRiskObject(subject);
+    const { object, verification, commercialVerification } = await loadVerifiedRiskObject(subject);
     return {
       data: {
         risk_object: publicRiskObject(object),
         public_verification: verification,
+        commercial_delivery: publicCommercialDelivery(commercialVerification),
         execution_authorized: false,
       },
       subject_type: subject.type,
