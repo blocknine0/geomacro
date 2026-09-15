@@ -8,7 +8,7 @@ on:
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "src/routes/api.x402.risk.ts"
-      - "supabase/migrations/926_coinbase_x402_delivery_ledger.sql"
+      - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
 
 permissions:
   contents: read
@@ -35,9 +35,6 @@ jobs:
           grep -q 'eip155:84532' "$file"
           grep -q '0x036CbD53842c5426634e7929541eC2318f3dCF7e' "$file"
 
-          # Build forbidden strings from fragments so this validator does not
-          # match its own source text. The public acceptance job is intentionally
-          # unable to sign or settle payments and must remain secret-free.
           forbidden_cdp="CDP_API_KEY_"'SECRET'
           forbidden_private="PRIVATE_"'KEY'
           forbidden_seed="SEED_"'PHRASE'
