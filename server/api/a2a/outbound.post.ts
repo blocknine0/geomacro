@@ -11,6 +11,9 @@ import { GEOMACRO_A2A_PROTOCOL_VERSION } from "../../../src/lib/a2a-contract";
 import { sendTrustedA2AMessage } from "../../../src/lib/a2a-client.server";
 import { A2AServiceError } from "../../../src/lib/a2a-service.server";
 import {
+  assertA2AOutboundCapabilityNegotiation,
+} from "../../../src/lib/a2a-trusted-peer.server";
+import {
   authenticateCommercialApiRequest,
   CommercialAccessError,
 } from "../../../src/lib/commercial-access.server";
@@ -66,7 +69,35 @@ export default defineEventHandler(async (event) => {
       },
     });
     const principal = await authenticateCommercialApiRequest(authRequest);
-    return await sendTrustedA2AMessage({ principal, raw: body });
+    const negotiation = await assertA2AOutboundCapabilityNegotiation(body);
+
+    const record = body as Record<string, unknown>;
+    const rawMessage =
+      record.message && typeof record.message === "object" && !Array.isArray(record.message)
+        ? (record.message as Record<string, unknown>)
+        : {};
+    const rawMetadata =
+      rawMessage.metadata &&
+      typeof rawMessage.metadata === "object" &&
+      !Array.isArray(rawMessage.metadata)
+        ? (rawMessage.metadata as Record<string, unknown>)
+        : {};
+    const forwarded = {
+      ...record,
+      message: {
+        ...rawMessage,
+        metadata: {
+          ...rawMetadata,
+          skillId: negotiation.required_skill_id,
+        },
+      },
+    };
+
+    const result = await sendTrustedA2AMessage({ principal, raw: forwarded });
+    return {
+      ...result,
+      negotiation,
+    };
   } catch (error) {
     if (error instanceof A2AServiceError || error instanceof CommercialAccessError) {
       return fail(event, error.status, error.code, error.message);
