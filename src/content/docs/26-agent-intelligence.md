@@ -17,7 +17,7 @@ customer identity + permissions + policy
         ↓
 CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE / REROUTE
         ↓
-caller-controlled action
+customer-controlled action
 ```
 
 Risk Gate verifies the relevant risk context and returns a bounded recommendation. An integration may supply a customer-owned policy profile as an evaluation input, but the customer or caller owns the identity, permissions, policy, compliance rules and any downstream action.
