@@ -13,6 +13,7 @@ import {
   REAL_FUNDS_SECURITY_ACK,
   centralSecurityClientKey,
   classifyCentralSecurityRoute,
+  enforceCentralRequestSecurity,
   realFundsSecurityState,
 } from "../lib/central-security.server";
 
@@ -76,6 +77,45 @@ describe("Geomacro central security route boundary", () => {
     expect(key).toMatch(/^[0-9a-f]{64}$/);
     expect(key).not.toContain("203.0.113.7");
   });
+
+  it("rejects dangerous methods and oversized request envelopes before database work", async () => {
+    const methodDecision = await enforceCentralRequestSecurity({
+      pathname: "/api/health",
+      method: "TRACE",
+      headers: new Headers(),
+    });
+    expect(methodDecision).toMatchObject({
+      allowed: false,
+      status: 405,
+      code: "CENTRAL_SECURITY_METHOD_BLOCKED",
+    });
+
+    const headerDecision = await enforceCentralRequestSecurity({
+      pathname: "/api/risk-gate",
+      method: "POST",
+      headers: new Headers({
+        authorization: `Bearer ${"x".repeat(5000)}`,
+      }),
+    });
+    expect(headerDecision).toMatchObject({
+      allowed: false,
+      status: 431,
+      code: "CENTRAL_SECURITY_HEADERS_TOO_LARGE",
+    });
+
+    const bodyDecision = await enforceCentralRequestSecurity({
+      pathname: "/api/x402/risk",
+      method: "POST",
+      headers: new Headers({
+        "content-length": String(64 * 1024),
+      }),
+    });
+    expect(bodyDecision).toMatchObject({
+      allowed: false,
+      status: 413,
+      code: "CENTRAL_SECURITY_BODY_TOO_LARGE",
+    });
+  });
 });
 
 
@@ -99,6 +139,27 @@ describe("real-funds security release gate", () => {
     expect(state.required).toBe(true);
     expect(state.ready).toBe(false);
     expect(state.goat_mainnet).toBe(true);
+  });
+
+  it("blocks a mainnet payment request before distributed processing when central gates are absent", async () => {
+    process.env.COINBASE_X402_ENVIRONMENT = "production";
+    delete process.env.GEOMACRO_CENTRAL_SECURITY_MODE;
+    delete process.env.GEOMACRO_REAL_FUNDS_SECURITY_ACK;
+    delete process.env.GEOMACRO_SECURITY_FINGERPRINT_PEPPER;
+    delete process.env.GEOMACRO_API_CREDENTIAL_PEPPER;
+
+    const decision = await enforceCentralRequestSecurity({
+      pathname: "/api/x402/risk",
+      method: "POST",
+      headers: new Headers(),
+    });
+
+    expect(decision).toMatchObject({
+      allowed: false,
+      status: 503,
+      code: "REAL_FUNDS_SECURITY_GATE_LOCKED",
+      routeClass: "payment",
+    });
   });
 
   it("requires enforcement mode, owner acknowledgement and two dedicated peppers", () => {
