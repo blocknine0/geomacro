@@ -2,7 +2,9 @@ import {
   createHash,
   createPrivateKey,
   createPublicKey,
+  randomBytes,
   sign as signBytes,
+  timingSafeEqual,
   verify as verifyBytes,
 } from "node:crypto";
 import type { A2ASignature } from "./a2a-contract";
@@ -89,6 +91,35 @@ export function verifyA2AEnvelopeSignature(
   }
 }
 
+function sameHex(left: string, right: string) {
+  if (!/^[a-f0-9]{64}$/i.test(left) || !/^[a-f0-9]{64}$/i.test(right)) return false;
+  const a = Buffer.from(left.toLowerCase(), "hex");
+  const b = Buffer.from(right.toLowerCase(), "hex");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function verifyA2ASignedValue(
+  value: unknown,
+  integrity: A2ASignature,
+  publicKeySpkiB64: string,
+): boolean {
+  try {
+    if (integrity.scheme !== "Ed25519") return false;
+    if (integrity.canonicalization !== "geomacro-a2a-json-v1") return false;
+    const canonical = canonicalA2AJson(value);
+    const expectedHash = createHash("sha256").update(canonical, "utf8").digest("hex");
+    if (!sameHex(expectedHash, integrity.payload_hash)) return false;
+    return verifyBytes(
+      null,
+      Buffer.from(canonical, "utf8"),
+      publicKeyFromSpkiBase64(publicKeySpkiB64),
+      Buffer.from(integrity.signature, "base64"),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function assertA2AEnvelopeFresh(envelope: A2ASignedEnvelopeLike, nowMs = Date.now()) {
   const issued = Date.parse(envelope.issued_at);
   const expires = Date.parse(envelope.expires_at);
@@ -118,10 +149,7 @@ export function createGeomacroSignedEnvelope(payload: unknown, ttlMs = 120_000) 
     protocol_version: "geomacro-a2a/1.0",
     agent_id: "geomacro",
     key_id: keyId,
-    nonce: createHash("sha256")
-      .update(`${issuedAt.toISOString()}:${Math.random()}:${process.pid}`)
-      .digest("base64url")
-      .slice(0, 32),
+    nonce: randomBytes(24).toString("base64url"),
     issued_at: issuedAt.toISOString(),
     expires_at: new Date(issuedAt.getTime() + ttlMs).toISOString(),
     payload,
