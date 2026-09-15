@@ -128,7 +128,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run | tee /tmp/risk-gate-migration-plan.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee /tmp/risk-gate-migration-plan.txt
 
       - name: Validate exact reviewed one-shot pending set
         if: ${{ github.event_name == 'push' }}
@@ -169,7 +169,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run | tee /tmp/risk-gate-migration-postcheck.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee /tmp/risk-gate-migration-postcheck.txt
           if grep -Eq 'Would push|would push|Pending migrations|pending migrations' /tmp/risk-gate-migration-postcheck.txt; then
             echo "::error title=Production migration post-check failed::Pending migrations remain after apply."
             exit 1
