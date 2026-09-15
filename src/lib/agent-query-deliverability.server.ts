@@ -53,10 +53,12 @@ const STRUCTURAL_MODULE_ALIASES: Record<string, readonly string[]> = {
   banking_financial_system: ["banking_financial_system", "banking", "financial_system"],
   food_agriculture: ["food_agriculture", "food", "agriculture"],
   natural_hazards: ["natural_hazards", "hazards", "disaster"],
-  hot_topics: ["hot_topics", "live_event", "event", "news"],
 };
 
-const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context"]);
+// Governed modules that are not served from the commercial structural warehouse.
+// They each have a dedicated checker and fail closed when that runtime cannot
+// prove deliverability.
+const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context", "hot_topics"]);
 
 function observationTime(row: StructuralObservation): number | null {
   const raw = row.observed_at ?? row.published_at ?? row.retrieved_at;
