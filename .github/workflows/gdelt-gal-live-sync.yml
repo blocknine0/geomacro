@@ -1,0 +1,161 @@
+name: GDELT GAL Live Hot-Topic Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/live-gdelt-ingest/**"
+      - "supabase/functions/live-structure-intelligence/**"
+      - "scripts/audit-agent-hot-topic-readiness.ts"
+      - "supabase/migrations/049_structured_event_source_rights_view.sql"
+      - "supabase/migrations/050_structured_event_commercial_rights_sync.sql"
+      - "supabase/migrations/051_internal_handoff_source_rights_resolution.sql"
+      - "supabase/migrations/052_admitted_event_derived_delivery_policy.sql"
+      - ".github/workflows/gdelt-gal-live-sync.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "4,19,34,49 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gdelt-gal-live-hot-topic-production
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LIVE_INGEST_TOKEN: ${{ secrets.LIVE_INGEST_TOKEN }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness-after-sync.json
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production invocation boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_INGEST_TOKEN LIVE_STRUCTURE_TOKEN; do
+            test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }
+          done
+          node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Catch GDELT GAL cursor up to the live window
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > gdelt-gal-sync-summary.ndjson
+          for i in 1 2 3 4; do
+            response_file="gdelt-gal-sync-${i}.json"
+            curl --fail-with-body -sS \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --retry-max-time 90 \
+              -X POST \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-gdelt-ingest" \
+              -H "x-geomacro-ingest-token: ${LIVE_INGEST_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -o "$response_file"
+            jq -e '.ok == true' "$response_file" >/dev/null
+            jq -c '{ok,status,source_stamp:(.latest_source_stamp // .last_source_stamp // null),source_files:(.source_files // .files_seen // 0),items_seen:(.items_seen // 0),items_accepted:(.items_accepted // .accepted // 0),fragment_id:(.fragment_id // null)}' "$response_file" | tee -a gdelt-gal-sync-summary.ndjson
+          done
+
+      - name: Structure newly ingested fragments
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > structure-sync-summary.ndjson
+          for i in 1 2 3; do
+            response_file="structure-sync-${i}.json"
+            curl --fail-with-body -sS \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --retry-max-time 90 \
+              -X POST \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -o "$response_file"
+            jq -e '.ok == true' "$response_file" >/dev/null
+            jq -c '{ok,status,fragments_considered:(.fragments_considered // 0),fragments_processed:(.fragments_processed // 0),evidence_rows:(.evidence_rows // 0),event_rows:(.event_rows // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file" | tee -a structure-sync-summary.ndjson
+          done
+
+      - name: Reconcile stored event eligibility from authoritative provenance view
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+          const db = createClient(
+            process.env.APP_SUPABASE_URL,
+            process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false, autoRefreshToken: false } },
+          );
+          (async () => {
+            const { data: rights, error } = await db
+              .from('live_structured_event_commercial_rights_evaluation')
+              .select('event_id,evaluated_status,reason_codes');
+            if (error) throw error;
+            let changed = 0;
+            for (const row of rights ?? []) {
+              const { error: updateError } = await db
+                .from('live_structured_events')
+                .update({
+                  commercial_eligibility_status: row.evaluated_status,
+                  commercial_eligibility_reason_codes: row.reason_codes ?? [],
+                })
+                .eq('id', row.event_id);
+              if (updateError) throw updateError;
+              changed += 1;
+            }
+            console.log(JSON.stringify({ rights_rows_reconciled: changed }));
+          })().catch((error) => { console.error(error); process.exit(1); });
+          NODE
+
+      - name: Prove paid hot-topic boundary after sync
+        run: bun scripts/audit-agent-hot-topic-readiness.ts --require-pipeline-healthy
+
+      - name: Validate sanitized commercial-delivery boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' agent-hot-topic-readiness-after-sync.json >/dev/null
+          jq -e '.pipeline.healthy == true' agent-hot-topic-readiness-after-sync.json >/dev/null
+          jq -e '.claim_boundary.raw_source_material_redistributed == false' agent-hot-topic-readiness-after-sync.json >/dev/null
+          jq -e '.claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true' agent-hot-topic-readiness-after-sync.json >/dev/null
+          jq -e '.claim_boundary.current_signal_with_only_blocked_rights_is_not_chargeable_for_hot_topics == true' agent-hot-topic-readiness-after-sync.json >/dev/null
+          jq '{generated_at,pipeline,summary,claim_boundary}' agent-hot-topic-readiness-after-sync.json
+
+      - name: Upload sanitized hot-topic sync evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gdelt-gal-live-hot-topic-sync
+          path: |
+            gdelt-gal-sync-summary.ndjson
+            structure-sync-summary.ndjson
+            agent-hot-topic-readiness-after-sync.json
+          if-no-files-found: warn
+          retention-days: 30
