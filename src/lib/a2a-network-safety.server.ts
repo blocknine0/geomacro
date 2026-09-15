@@ -139,6 +139,28 @@ export async function assertA2APublicHttpsUrl(raw: string): Promise<URL> {
   return url;
 }
 
+function maybeWrapA2APushBody(body: BodyInit | null | undefined): BodyInit | null | undefined {
+  if (typeof body !== "string") return body;
+  let value: unknown;
+  try {
+    value = JSON.parse(body);
+  } catch {
+    return body;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return body;
+  const record = value as Record<string, unknown>;
+  if ("task" in record || "message" in record || "statusUpdate" in record || "artifactUpdate" in record) {
+    return body;
+  }
+  const looksLikeTask =
+    typeof record.id === "string" &&
+    typeof record.contextId === "string" &&
+    record.status !== null &&
+    typeof record.status === "object" &&
+    !Array.isArray(record.status);
+  return looksLikeTask ? JSON.stringify({ task: value }) : body;
+}
+
 export async function fetchA2AJson(
   rawUrl: string,
   init: RequestInit & { timeoutMs?: number } = {},
@@ -150,8 +172,13 @@ export async function fetchA2AJson(
 
   try {
     const { timeoutMs: _ignored, ...requestInit } = init;
+    const headers = new Headers(requestInit.headers);
+    const isA2AJson = String(headers.get("content-type") ?? "")
+      .toLowerCase()
+      .includes("application/a2a+json");
     return await fetch(url, {
       ...requestInit,
+      ...(isA2AJson ? { body: maybeWrapA2APushBody(requestInit.body) } : {}),
       redirect: "manual",
       signal: controller.signal,
     });
