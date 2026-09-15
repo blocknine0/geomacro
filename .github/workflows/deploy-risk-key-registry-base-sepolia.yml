@@ -1,0 +1,246 @@
+name: Deploy Base Sepolia Risk Key Registry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-risk-key-registry-base-sepolia.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-risk-key-registry-base-sepolia
+  cancel-in-progress: false
+
+jobs:
+  deploy-and-anchor:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
+      RISK_OBJECT_SIGNING_KEY_ID: geomacro-risk-2026-02
+      RISK_OBJECT_JWKS_URI: https://geomacro.live/.well-known/jwks.json
+
+    steps:
+      - name: Checkout canonical main with Foundry dependencies
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Validate registry contract before broadcast
+        run: forge test --match-path test/RiskKeyRegistry.t.sol
+
+      - name: Validate required secrets without printing them
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+          SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOYER_PRIVATE_KEY:-}" ]; then
+            echo "::error::COINBASE_X402_BASE_SEPOLIA_PAID_PROOF is not configured."
+            exit 1
+          fi
+          if [ -z "${SIGNING_PRIVATE_KEY_PKCS8_B64:-}" ]; then
+            echo "::error::RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 is not configured."
+            exit 1
+          fi
+
+      - name: Derive current public Risk Object key locally
+        env:
+          SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createHash, createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+
+          const raw = process.env.SIGNING_PRIVATE_KEY_PKCS8_B64?.trim();
+          if (!raw) throw new Error('Risk Object signing private key is missing');
+
+          const privateKey = createPrivateKey({
+            key: Buffer.from(raw, 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error(`Expected Ed25519 key, received ${privateKey.asymmetricKeyType ?? 'unknown'}`);
+          }
+
+          const spki = Buffer.from(createPublicKey(privateKey).export({
+            format: 'der',
+            type: 'spki',
+          }));
+          const publicB64 = spki.toString('base64');
+          const fingerprint = createHash('sha256').update(spki).digest('hex');
+
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/risk-object-public-spki.b64`, publicB64, { mode: 0o600 });
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/risk-object-public-fingerprint.txt`, fingerprint, { mode: 0o600 });
+          console.log(`Derived Ed25519 public-key fingerprint: ${fingerprint}`);
+          NODE
+
+      - name: Deploy RiskKeyRegistry on Base Sepolia
+        id: deploy
+        env:
+          PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
+          BALANCE_WEI="$(cast balance "$DEPLOYER" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          if [ "$BALANCE_WEI" = "0" ]; then
+            echo "::error::Base Sepolia deployment wallet has no ETH for gas."
+            exit 1
+          fi
+
+          echo "Base Sepolia deployer: $DEPLOYER"
+          forge script script/DeployRiskKeyRegistry.s.sol:DeployRiskKeyRegistry \
+            --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+            --broadcast
+
+          BROADCAST_JSON="broadcast/DeployRiskKeyRegistry.s.sol/84532/run-latest.json"
+          test -f "$BROADCAST_JSON"
+
+          REGISTRY="$(jq -r '.transactions[] | select(.contractName == "RiskKeyRegistry" and .contractAddress != null) | .contractAddress' "$BROADCAST_JSON" | head -n1)"
+          if ! [[ "$REGISTRY" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::Unable to resolve deployed RiskKeyRegistry address from Foundry broadcast evidence."
+            exit 1
+          fi
+
+          DEPLOY_TX="$(jq -r '.transactions[] | select(.contractName == "RiskKeyRegistry" and .hash != null) | .hash' "$BROADCAST_JSON" | head -n1)"
+          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
+          echo "deployer=$DEPLOYER" >> "$GITHUB_OUTPUT"
+          echo "deploy_tx=$DEPLOY_TX" >> "$GITHUB_OUTPUT"
+
+      - name: Publish and activate current Ed25519 key hash
+        id: publish
+        env:
+          PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+          RISK_KEY_REGISTRY_ADDRESS: ${{ steps.deploy.outputs.registry }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64="$(cat "$RUNNER_TEMP/risk-object-public-spki.b64")"
+          export RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64
+
+          forge script script/PublishRiskKey.s.sol:PublishRiskKey \
+            --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+            --broadcast
+
+          BROADCAST_JSON="broadcast/PublishRiskKey.s.sol/84532/run-latest.json"
+          test -f "$BROADCAST_JSON"
+
+          PUBLISH_TXS="$(jq -r '[.transactions[] | select(.hash != null) | .hash] | join(",")' "$BROADCAST_JSON")"
+          PUBLIC_KEY_HASH="$(cast keccak "$RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64")"
+          echo "publish_txs=$PUBLISH_TXS" >> "$GITHUB_OUTPUT"
+          echo "public_key_hash=$PUBLIC_KEY_HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed trust anchor independently
+        env:
+          REGISTRY: ${{ steps.deploy.outputs.registry }}
+          EXPECTED_OWNER: ${{ steps.deploy.outputs.deployer }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CODE="$(cast code "$REGISTRY" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          if [ -z "$CODE" ] || [ "$CODE" = "0x" ]; then
+            echo "::error::No contract bytecode found at deployed registry address."
+            exit 1
+          fi
+
+          OWNER="$(cast call "$REGISTRY" 'owner()(address)' --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          if [ "${OWNER,,}" != "${EXPECTED_OWNER,,}" ]; then
+            echo "::error::RiskKeyRegistry owner does not match the deployment wallet."
+            exit 1
+          fi
+
+          ACTIVE="$(cast call "$REGISTRY" 'activeKeyIdHash()(bytes32)' --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          EXPECTED_ACTIVE="$(cast keccak "$RISK_OBJECT_SIGNING_KEY_ID")"
+          if [ "${ACTIVE,,}" != "${EXPECTED_ACTIVE,,}" ]; then
+            echo "::error::RiskKeyRegistry active key does not match the expected Risk Object signing key."
+            exit 1
+          fi
+
+          NOW="$(date +%s)"
+          USABLE="$(cast call "$REGISTRY" 'isKeyUsable(string,uint64)(bool)' "$RISK_OBJECT_SIGNING_KEY_ID" "$NOW" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          if [ "$USABLE" != "true" ]; then
+            echo "::error::Published Risk Object signing key is not currently usable according to the registry."
+            exit 1
+          fi
+
+      - name: Write sanitized deployment evidence
+        env:
+          REGISTRY: ${{ steps.deploy.outputs.registry }}
+          DEPLOYER: ${{ steps.deploy.outputs.deployer }}
+          DEPLOY_TX: ${{ steps.deploy.outputs.deploy_tx }}
+          PUBLISH_TXS: ${{ steps.publish.outputs.publish_txs }}
+          PUBLIC_KEY_HASH: ${{ steps.publish.outputs.public_key_hash }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          FINGERPRINT="$(cat "$RUNNER_TEMP/risk-object-public-fingerprint.txt")"
+
+          jq -n \
+            --arg network "Base Sepolia" \
+            --arg caip2 "eip155:84532" \
+            --arg registry "$REGISTRY" \
+            --arg owner "$DEPLOYER" \
+            --arg deploy_tx "$DEPLOY_TX" \
+            --arg publish_txs "$PUBLISH_TXS" \
+            --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" \
+            --arg public_key_hash "$PUBLIC_KEY_HASH" \
+            --arg public_key_fingerprint_sha256 "$FINGERPRINT" \
+            --arg jwks_uri "$RISK_OBJECT_JWKS_URI" \
+            --arg deployed_from_commit "$GITHUB_SHA" \
+            --arg deployed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              network: $network,
+              caip2: $caip2,
+              registry: $registry,
+              owner: $owner,
+              deploy_tx: $deploy_tx,
+              publish_txs: ($publish_txs | split(",") | map(select(length > 0))),
+              key_id: $key_id,
+              public_key_hash: $public_key_hash,
+              public_key_fingerprint_sha256: $public_key_fingerprint_sha256,
+              jwks_uri: $jwks_uri,
+              deployed_from_commit: $deployed_from_commit,
+              deployed_at: $deployed_at,
+              private_key_persisted: false,
+              execution_authorized: false
+            }' > artifacts/base-sepolia-risk-key-registry.json
+
+          {
+            echo "# Base Sepolia Risk Key Registry"
+            echo
+            echo "- Registry: \`$REGISTRY\`"
+            echo "- Owner: \`$DEPLOYER\`"
+            echo "- Deploy tx: \`$DEPLOY_TX\`"
+            echo "- Key ID: \`$RISK_OBJECT_SIGNING_KEY_ID\`"
+            echo "- Public-key hash: \`$PUBLIC_KEY_HASH\`"
+            echo "- JWKS: $RISK_OBJECT_JWKS_URI"
+            echo "- Chain: Base Sepolia / eip155:84532"
+            echo "- Private key persisted: false"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized registry deployment evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: base-sepolia-risk-key-registry-${{ github.run_id }}
+          path: artifacts/base-sepolia-risk-key-registry.json
+          if-no-files-found: error
+          retention-days: 90
