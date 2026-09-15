@@ -8,14 +8,21 @@ on:
       - 'src/__tests__/risk-gate-dependency-recovery.test.ts'
       - 'src/__tests__/risk-object-key-lifecycle.test.ts'
       - 'src/__tests__/commercial-runtime-security.test.ts'
+      - 'src/__tests__/central-security-contract.test.ts'
       - 'src/lib/risk-gate-api.server.ts'
       - 'src/lib/risk-object-signing.server.ts'
+      - 'src/lib/central-security.server.ts'
+      - 'src/lib/real-funds-security-readiness.server.ts'
+      - 'server/middleware/00-central-security.ts'
+      - 'supabase/migrations/930_central_security_abuse_control.sql'
+      - 'supabase/migrations/931_central_security_database_readiness.sql'
       - 'scripts/audit-p0-secret-boundaries.mjs'
       - 'scripts/p0-risk-object-key-drill.ts'
       - 'scripts/load-test-risk-gate-staging.ts'
       - 'docs/SECURITY_RESILIENCE_EVIDENCE.md'
       - 'docs/SECURITY_OPERATIONS_BASELINE.md'
       - 'docs/MAINNET_PRODUCTION_READINESS.md'
+      - 'docs/CENTRAL_SECURITY_REAL_FUNDS_GATE.md'
       - '.github/workflows/p0-security-resilience-evidence.yml'
   push:
     branches: [main]
@@ -24,14 +31,21 @@ on:
       - 'src/__tests__/risk-gate-dependency-recovery.test.ts'
       - 'src/__tests__/risk-object-key-lifecycle.test.ts'
       - 'src/__tests__/commercial-runtime-security.test.ts'
+      - 'src/__tests__/central-security-contract.test.ts'
       - 'src/lib/risk-gate-api.server.ts'
       - 'src/lib/risk-object-signing.server.ts'
+      - 'src/lib/central-security.server.ts'
+      - 'src/lib/real-funds-security-readiness.server.ts'
+      - 'server/middleware/00-central-security.ts'
+      - 'supabase/migrations/930_central_security_abuse_control.sql'
+      - 'supabase/migrations/931_central_security_database_readiness.sql'
       - 'scripts/audit-p0-secret-boundaries.mjs'
       - 'scripts/p0-risk-object-key-drill.ts'
       - 'scripts/load-test-risk-gate-staging.ts'
       - 'docs/SECURITY_RESILIENCE_EVIDENCE.md'
       - 'docs/SECURITY_OPERATIONS_BASELINE.md'
       - 'docs/MAINNET_PRODUCTION_READINESS.md'
+      - 'docs/CENTRAL_SECURITY_REAL_FUNDS_GATE.md'
       - '.github/workflows/p0-security-resilience-evidence.yml'
   workflow_dispatch:
 
@@ -68,6 +82,7 @@ jobs:
           src/__tests__/risk-gate-dependency-recovery.test.ts
           src/__tests__/risk-object-key-lifecycle.test.ts
           src/__tests__/commercial-runtime-security.test.ts
+          src/__tests__/central-security-contract.test.ts
 
       - name: Build production browser and server boundaries
         run: bun run build
@@ -90,10 +105,12 @@ jobs:
             echo '## P0 security and resilience evidence'
             echo
             echo '- Dependency outage/recovery regression: PASS'
+            echo '- Central request / brute-force / real-funds gate contract: PASS'
             echo '- Privileged source + compiled browser boundary audit: PASS'
             echo '- Ephemeral Risk Object key rotation/revocation drill: PASS'
             echo '- Staging-load production-host guard: PASS'
             echo '- Production/customer load test performed here: false'
+            echo '- Production edge/WAF/DDoS control verified here: false'
             echo '- Production signing key rotated here: false'
             echo '- Independent external security review performed here: false'
           } >> "$GITHUB_STEP_SUMMARY"
