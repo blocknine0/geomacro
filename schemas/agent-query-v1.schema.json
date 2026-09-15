@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geomacro.live/schemas/agent-query-v1.schema.json",
+  "title": "Geomacro Adaptive Agent Query v1",
+  "description": "Deterministic request contract for question-adaptive Geomacro risk intelligence. Natural-language questions may select only governed topics and intents; unsupported or ambiguous requests fail closed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["subjects"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "geomacro.agent-query.v1",
+      "default": "geomacro.agent-query.v1"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 2000
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "items": { "$ref": "#/$defs/subject" }
+    },
+    "topics": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/topic" },
+      "default": []
+    },
+    "intent": { "$ref": "#/$defs/intent" },
+    "ranking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric"],
+      "properties": {
+        "metric": { "type": "string", "const": "risk_object_score" },
+        "order": {
+          "type": "string",
+          "enum": ["high_to_low", "low_to_high"],
+          "default": "high_to_low"
+        },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 25 }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline"],
+      "properties": {
+        "baseline": { "type": "string", "const": "previous_published" }
+      }
+    },
+    "as_of": { "type": "string", "format": "date-time" },
+    "max_age_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 94608000,
+      "description": "Optional request-wide freshness ceiling. Server module SLAs remain authoritative and this value can only tighten them."
+    },
+    "evidence": {
+      "type": "string",
+      "enum": ["required", "summary"],
+      "default": "required"
+    },
+    "detail": {
+      "type": "string",
+      "enum": ["compact", "standard", "full"],
+      "default": "standard"
+    },
+    "risk_gate_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_type"],
+      "properties": {
+        "policy_preset": {
+          "type": "string",
+          "enum": ["balanced", "cautious", "strict"],
+          "default": "balanced"
+        },
+        "action_type": {
+          "type": "string",
+          "enum": ["treasury_payment", "vendor_payment", "agent_payment", "exposure_review"]
+        },
+        "amount_usdc": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000
+        }
+      }
+    },
+    "client_request_id": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 128
+    }
+  },
+  "anyOf": [
+    { "required": ["question"] },
+    { "required": ["intent"] },
+    {
+      "required": ["topics"],
+      "properties": { "topics": { "minItems": 1 } }
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "required": ["intent"],
+        "properties": { "intent": { "const": "ranking_filter" } }
+      },
+      "then": {
+        "required": ["ranking"],
+        "properties": { "subjects": { "minItems": 2 } }
+      }
+    },
+    {
+      "if": { "required": ["ranking"] },
+      "then": {
+        "required": ["intent"],
+        "properties": { "intent": { "const": "ranking_filter" } }
+      }
+    },
+    {
+      "if": {
+        "required": ["intent"],
+        "properties": { "intent": { "const": "change_since" } }
+      },
+      "then": {
+        "required": ["change"],
+        "properties": { "subjects": { "minItems": 1, "maxItems": 1 } }
+      }
+    },
+    {
+      "if": { "required": ["change"] },
+      "then": {
+        "required": ["intent"],
+        "properties": { "intent": { "const": "change_since" } }
+      }
+    },
+    {
+      "if": {
+        "required": ["intent"],
+        "properties": { "intent": { "const": "comparison" } }
+      },
+      "then": { "properties": { "subjects": { "minItems": 2 } } }
+    },
+    {
+      "if": {
+        "required": ["intent"],
+        "properties": { "intent": { "enum": ["single_subject", "corridor", "risk_gate"] } }
+      },
+      "then": { "properties": { "subjects": { "minItems": 1, "maxItems": 1 } } }
+    },
+    {
+      "if": {
+        "required": ["topics"],
+        "properties": { "topics": { "contains": { "const": "risk_gate" } } }
+      },
+      "then": { "required": ["risk_gate_context"] }
+    },
+    {
+      "if": { "required": ["risk_gate_context"] },
+      "then": {
+        "required": ["topics"],
+        "properties": { "topics": { "contains": { "const": "risk_gate" } } }
+      }
+    }
+  ],
+  "$defs": {
+    "topic": {
+      "type": "string",
+      "enum": [
+        "sovereign_risk",
+        "macro_risk",
+        "fx_external_risk",
+        "sanctions_restrictions",
+        "conflict_geopolitics",
+        "trade_corridor",
+        "energy_commodities",
+        "critical_minerals",
+        "political_governance",
+        "banking_financial_system",
+        "food_agriculture",
+        "natural_hazards",
+        "hot_topics",
+        "risk_gate",
+        "risk_object",
+        "gri_context"
+      ]
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "single_subject",
+        "comparison",
+        "ranking_filter",
+        "corridor",
+        "change_since",
+        "audit",
+        "risk_gate"
+      ]
+    },
+    "iso3": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{3}$"
+    },
+    "subject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "country_iso3"],
+          "properties": {
+            "type": { "const": "country" },
+            "country_iso3": { "$ref": "#/$defs/iso3" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "origin_country_iso3", "destination_country_iso3"],
+          "properties": {
+            "type": { "const": "corridor" },
+            "origin_country_iso3": { "$ref": "#/$defs/iso3" },
+            "destination_country_iso3": { "$ref": "#/$defs/iso3" }
+          }
+        }
+      ]
+    }
+  }
+}
