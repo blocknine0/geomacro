@@ -36,12 +36,12 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(paidRoute).toContain("PAYMENT_QUERY_PLAN_MISMATCH");
   });
 
-  it("rechecks deliverability before settlement", () => {
-    const firstCheck = paidRoute.indexOf("checkAgentQueryDeliverability");
-    const finalCheck = paidRoute.indexOf("FINAL_AVAILABILITY");
-    const settle = paidRoute.indexOf("settleCoinbaseX402");
-    expect(firstCheck).toBeGreaterThanOrEqual(0);
-    expect(finalCheck).toBeGreaterThan(firstCheck);
-    expect(settle).toBeGreaterThan(finalCheck);
+  it("rechecks deliverability and prepares the product before settlement", () => {
+    const finalCheck = paidRoute.indexOf("FINAL_AVAILABILITY_CHECK_FAILED");
+    const prepare = paidRoute.indexOf("await prepareCoinbaseX402Delivery");
+    const settle = paidRoute.indexOf("await settleCoinbaseX402");
+    expect(finalCheck).toBeGreaterThanOrEqual(0);
+    expect(prepare).toBeGreaterThan(finalCheck);
+    expect(settle).toBeGreaterThan(prepare);
   });
 });
