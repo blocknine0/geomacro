@@ -25,6 +25,11 @@ const MODULE_ALIASES: Record<string, readonly string[]> = {
 
 const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context", "hot_topics"]);
 
+type LoadedRiskObject = {
+  subject: AgentQueryPlan["subjects"][number];
+  object: NonNullable<Awaited<ReturnType<typeof loadCommercialRiskObjectForAgentQuery>>>;
+};
+
 function moduleMatches(module: string, dimension: string) {
   const normalized = dimension.trim().toLowerCase();
   return (MODULE_ALIASES[module] ?? [module]).some(
@@ -183,6 +188,117 @@ function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
   };
 }
 
+function intentAnalysis(plan: AgentQueryPlan, riskObjects: LoadedRiskObject[]) {
+  if (plan.intent === "ranking_filter") {
+    if (!plan.ranking || riskObjects.length !== plan.subjects.length) {
+      throw new Error("RANKING_PRODUCT_NOT_DELIVERABLE");
+    }
+    const multiplier = plan.ranking.order === "high_to_low" ? -1 : 1;
+    const rows = riskObjects
+      .map(({ subject, object }) => ({
+        subject,
+        risk_object_id: object.object_id,
+        score: object.risk.score,
+        label: object.risk.label,
+        confidence: object.confidence,
+        delta: object.risk.delta,
+        methodology_version: object.methodology_version,
+        verification_status: object.verification.status,
+      }))
+      .sort((a, b) => {
+        const byScore = (a.score - b.score) * multiplier;
+        return byScore || stableJson(a.subject).localeCompare(stableJson(b.subject));
+      })
+      .slice(0, plan.ranking.limit ?? plan.subjects.length)
+      .map((row, index) => ({ rank: index + 1, ...row }));
+    return {
+      type: "ranking_filter",
+      metric: plan.ranking.metric,
+      order: plan.ranking.order,
+      complete_subject_coverage: true,
+      evaluated_subject_count: plan.subjects.length,
+      rows,
+    };
+  }
+
+  if (plan.intent === "change_since") {
+    const entry = riskObjects[0];
+    if (
+      !entry ||
+      typeof entry.object.risk.previous_score !== "number" ||
+      typeof entry.object.risk.delta !== "number"
+    ) {
+      throw new Error("CHANGE_ATTRIBUTION_NOT_DELIVERABLE");
+    }
+    return {
+      type: "change_since",
+      baseline: "previous_published",
+      subject: entry.subject,
+      risk_object_id: entry.object.object_id,
+      previous_score: entry.object.risk.previous_score,
+      current_score: entry.object.risk.score,
+      delta: entry.object.risk.delta,
+      direction: entry.object.risk.direction,
+      drivers: entry.object.attribution.map((driver) => ({
+        driver: driver.driver,
+        previous_to_current_delta_contribution: driver.delta_contribution,
+        current_score_contribution: driver.score_contribution,
+        event_count: driver.event_count,
+        weight: driver.weight,
+      })),
+      methodology_version: entry.object.methodology_version,
+    };
+  }
+
+  if (plan.intent === "audit") {
+    if (riskObjects.length !== plan.subjects.length) throw new Error("AUDIT_PRODUCT_NOT_DELIVERABLE");
+    return {
+      type: "audit",
+      independently_verifiable: true,
+      signed_object_count: riskObjects.length,
+      objects: riskObjects.map(({ subject, object }) => ({
+        subject,
+        risk_object_id: object.object_id,
+        methodology_version: object.methodology_version,
+        calculation_hash: object.integrity.calculation_hash,
+        data_hash: object.integrity.data_hash,
+        input_hash: object.integrity.input_hash,
+        payload_hash: object.integrity.payload_hash,
+        signature_scheme: object.integrity.signature_scheme,
+        signing_key_id: object.integrity.signing_key_id,
+        verification_status: object.verification.status,
+        commercial_eligibility_status: object.commercial_eligibility.status,
+        provenance: object.provenance,
+      })),
+    };
+  }
+
+  if (plan.intent === "comparison") {
+    return {
+      type: "comparison",
+      atomic_subject_coverage: true,
+      compared_subject_count: plan.subjects.length,
+      compared_modules: plan.required_modules,
+      missing_subjects: [],
+    };
+  }
+
+  if (plan.intent === "corridor") {
+    return { type: "corridor", directional: true, subject: plan.subjects[0] };
+  }
+
+  if (plan.intent === "risk_gate") {
+    return {
+      type: "risk_gate",
+      advisory_only: true,
+      execution_authorized: false,
+      action_context: plan.risk_gate_context,
+    };
+  }
+
+  return { type: "single_subject", subject: plan.subjects[0] };
+}
+
 export async function assembleAgentQueryResponse(input: {
   plan: AgentQueryPlan;
   requestId: string;
@@ -194,7 +310,7 @@ export async function assembleAgentQueryResponse(input: {
   const includeRiskGate = plan.required_modules.includes("risk_gate");
   const includeHotTopics = plan.required_modules.includes("hot_topics");
 
-  const riskObjects = includeRiskObject
+  const riskObjects: LoadedRiskObject[] = includeRiskObject
     ? await Promise.all(plan.subjects.map(async (subject) => {
         const object = await loadCommercialRiskObjectForAgentQuery(subject, plan.as_of ?? new Date().toISOString());
         if (!object) throw new Error("SIGNED_RISK_OBJECT_NOT_DELIVERABLE");
@@ -215,6 +331,7 @@ export async function assembleAgentQueryResponse(input: {
     : [];
 
   const gri = plan.required_modules.includes("gri_context") ? publicGri(await readPublicGlobalRisk()) : null;
+  const adaptiveAnalysis = intentAnalysis(plan, riskObjects);
 
   const core = {
     schema_version: "geomacro.adaptive-intelligence-response.v1",
@@ -224,11 +341,15 @@ export async function assembleAgentQueryResponse(input: {
     query_plan_hash: plan.query_plan_hash,
     question_interpretation: {
       normalized_question: plan.question_key,
+      intent: plan.intent,
       topics: plan.topics,
       required_modules: plan.required_modules,
+      ranking: plan.ranking,
+      change: plan.change,
     },
     subjects: plan.subjects,
     as_of: plan.as_of ?? new Date().toISOString(),
+    analysis: adaptiveAnalysis,
     structural,
     hot_topics: hotTopics,
     risk_gate: riskGates,
@@ -238,6 +359,9 @@ export async function assembleAgentQueryResponse(input: {
       query_schema_version: plan.schema_version,
       response_schema_version: "geomacro.adaptive-intelligence-response.v1",
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
+      intent_method: "deterministic-governed-v1",
+      ranking_metric: plan.ranking?.metric ?? null,
+      change_baseline: plan.change?.baseline ?? null,
     },
     limitations: {
       execution_authorized: false,
