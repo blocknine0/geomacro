@@ -81,15 +81,43 @@ jobs:
               unresolvedMain: 0,
               currentFailure: 0,
             };
+            const preservedGroups = {
+              active: new Map(),
+              protected: new Map(),
+              unresolvedMain: new Map(),
+              currentFailure: new Map(),
+            };
+
+            function remember(group, run, note = '') {
+              const key = String(run.workflow_id);
+              const existing = preservedGroups[group].get(key) || {
+                workflow_id: run.workflow_id,
+                name: run.name,
+                path: run.path,
+                count: 0,
+                newest_run_id: run.id,
+                newest_created_at: run.created_at,
+                note,
+              };
+              existing.count += 1;
+              if (new Date(run.created_at).getTime() > new Date(existing.newest_created_at).getTime()) {
+                existing.newest_run_id = run.id;
+                existing.newest_created_at = run.created_at;
+              }
+              if (note) existing.note = note;
+              preservedGroups[group].set(key, existing);
+            }
 
             for (const run of failedRuns) {
               if (activeWorkflowIds.has(run.workflow_id)) {
                 preserved.active += 1;
+                remember('active', run, 'workflow currently queued/in_progress');
                 continue;
               }
 
               if (protectedPaths.has(run.path)) {
                 preserved.protected += 1;
+                remember('protected', run, 'ongoing GOAT acceptance evidence');
                 continue;
               }
 
@@ -102,6 +130,7 @@ jobs:
 
               if (run.head_branch !== 'main') {
                 preserved.currentFailure += 1;
+                remember('currentFailure', run, 'failure is not attributable to canonical main');
                 continue;
               }
 
@@ -109,6 +138,7 @@ jobs:
               const latest = mainRuns[0];
               if (!latest || latest.status !== 'completed') {
                 preserved.active += 1;
+                remember('active', run, 'latest main run is not completed');
                 continue;
               }
 
@@ -126,8 +156,10 @@ jobs:
                 deletable.push(run);
               } else if (latest.id === run.id) {
                 preserved.currentFailure += 1;
+                remember('currentFailure', run, `latest main run is still ${latest.conclusion}`);
               } else {
                 preserved.unresolvedMain += 1;
+                remember('unresolvedMain', run, `no later successful main run in latest ${mainRuns.length} runs`);
               }
             }
 
@@ -147,6 +179,29 @@ jobs:
               }
             }
 
+            function emitGroup(label, map) {
+              const rows = [...map.values()].sort((a, b) => b.count - a.count);
+              core.info(`PRESERVED_GROUP ${label}: ${rows.length} workflow(s)`);
+              for (const row of rows) {
+                core.info(
+                  `PRESERVED ${label} | workflow_id=${row.workflow_id} | count=${row.count} | name=${row.name} | path=${row.path} | newest_run=${row.newest_run_id} | newest_at=${row.newest_created_at} | note=${row.note}`,
+                );
+              }
+              return rows;
+            }
+
+            const activeRows = emitGroup('active', preservedGroups.active);
+            const protectedRows = emitGroup('protected', preservedGroups.protected);
+            const unresolvedRows = emitGroup('unresolvedMain', preservedGroups.unresolvedMain);
+            const currentRows = emitGroup('currentFailure', preservedGroups.currentFailure);
+
+            const markdownRows = [
+              ...activeRows.map((row) => ['active', row]),
+              ...protectedRows.map((row) => ['protected', row]),
+              ...unresolvedRows.map((row) => ['unresolved main', row]),
+              ...currentRows.map((row) => ['current failure', row]),
+            ];
+
             core.summary
               .addHeading('Obsolete failed Action run cleanup')
               .addRaw(`Failed runs scanned: ${failedRuns.length}\n\n`)
@@ -155,7 +210,24 @@ jobs:
               .addRaw(`Preserved protected acceptance evidence: ${preserved.protected}\n\n`)
               .addRaw(`Preserved unresolved main failures: ${preserved.unresolvedMain}\n\n`)
               .addRaw(`Preserved latest current failures: ${preserved.currentFailure}\n\n`)
-              .addRaw(`Delete errors: ${errors.length}\n`)
+              .addRaw(`Delete errors: ${errors.length}\n\n`)
+              .addHeading('Preserved workflow groups', 2)
+              .addTable([
+                [
+                  { data: 'Reason', header: true },
+                  { data: 'Workflow', header: true },
+                  { data: 'Path', header: true },
+                  { data: 'Failures', header: true },
+                  { data: 'Newest run', header: true },
+                ],
+                ...markdownRows.map(([reason, row]) => [
+                  reason,
+                  row.name,
+                  row.path || '—',
+                  String(row.count),
+                  String(row.newest_run_id),
+                ]),
+              ])
               .write();
 
             if (errors.length) {
