@@ -23,7 +23,7 @@ This architecture preserves three boundaries:
 
 - **Live public intelligence**: Risk Intelligence, the Global Risk Index and Ask Geomacro expose the current shared intelligence state for human use.
 - **Private Pilot machine decisions**: current signed Risk Object and Risk Gate delivery is scoped to country and directional corridor risk. Risk Gate supplies external risk context; the customer keeps identity, permissions, policy, funds and final execution control.
-- **Technical proof**: Arc, Circle, USDC, CCTP, Bridge & Swap and prediction-market functionality demonstrate programmable-finance integration. They are not the primary commercial product or a production-mainnet claim.
+- **Technical proof**: Arc, Circle, USDC, CCTP, Bridge & Swap and prediction-market functionality demonstrate programmable-finance integration. They are not the primary commercial product or a production-mainnet claim. **Prediction markets are permanently Arc Testnet-only and are excluded from Geomacro's production/mainnet commercialization path.**
 
 `execution_authorized=false` remains the current Risk Gate execution boundary. Event-specific Risk Objects may be explored in the broader architecture, but they are not part of the current country/corridor Private Pilot contract unless a separately implemented and verified production contract says otherwise.
 
@@ -37,7 +37,7 @@ Browser, authenticated API, Testnet pay-per-call and agent/x402 surfaces may use
 
 “Same data” means the same governed evidence/provenance foundation and relevant canonical service contract. Product-specific rules may still differ: GRI has its own scoring admission, Risk Objects have subject/verification rules, and Risk Gate can evaluate bounded caller context. Those are documented derived uses of shared intelligence, not conflicting copies of reality.
 
-The repository-wide invariant for adding any new delivery or payment rail is documented in `docs/CANONICAL_DELIVERY_ARCHITECTURE.md`: reuse canonical intelligence first, then add only the access, transport, entitlement, policy-input or settlement adapter required by that surface while preserving the customer-control boundary.
+The repository-wide invariant for adding any new delivery or payment rail is documented in `docs/CANONICAL_DELIVERY_ARCHITECTURE.md`: reuse canonical intelligence first, then add only the access, transport, entitlement, policy-input or settlement adapter required by that surface while preserving the customer-control boundary. Production/mainnet promotion must also satisfy `docs/MAINNET_PRODUCTION_READINESS.md`.
 
 ## Policy layers
 
