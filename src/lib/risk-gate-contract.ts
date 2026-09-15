@@ -81,8 +81,15 @@ export type RiskGateResponse = {
   decision:
     RiskGateDecision;
   /**
-   * Buyer-facing semantic action. This is still advisory decision context and
-   * never grants execution authority.
+   * Compatibility semantic label for the advisory Risk Gate result.
+   *
+   * `ALLOW` means only that the supplied Risk Gate policy profile produced no
+   * configured escalation. It is never transaction permission, customer-side
+   * policy enforcement, compliance clearance or execution authorization.
+   * Consumers must treat `execution_authorized=false` as the authoritative
+   * execution boundary for every current Risk Gate response.
+   *
+   * See docs/RISK_GATE_ADVISORY_ACTIONS.md.
    */
   recommended_action:
     RiskGateRecommendedAction;
