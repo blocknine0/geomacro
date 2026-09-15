@@ -249,7 +249,7 @@ function InstitutionalPage() {
             {[
               "The customer or agent submits an action for review.",
               "Geomacro verifies the current country or corridor Risk Object, evidence, confidence, freshness and issuer integrity.",
-              "Risk Gate returns bounded decision context such as CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL, PAUSE or REROUTE.",
+              "Risk Gate returns bounded decision context such as CONTINUE, REDUCE_LIMIT, REQUIRE_APPROVAL or PAUSE.",
               "The customer's own identity, permissions and policy layer applies its rules after the Risk Gate response.",
               "Any execution after that remains under the customer's control.",
             ].map((step, index) => (
