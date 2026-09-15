@@ -259,7 +259,7 @@ export function calculateGri(rows, asOf = new Date()) {
 
   if (eligible.length !== rows.length) {
     throw new Error(
-      `GRI v1.1 fail-closed input rejection: ` +
+      `GRI v1.2 fail-closed input rejection: ` +
       `${rows.length - eligible.length} of ${rows.length} supplied event(s) ` +
       `lack complete current classification/story provenance or violate the observation contract.`
     );
