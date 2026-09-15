@@ -29,6 +29,14 @@ This architecture preserves three boundaries:
 
 Data & API is an access and delivery surface over this architecture. Research and documentation are evidence, methodology and trust surfaces. Neither should create a second risk engine or a conflicting copy of product truth.
 
+### One data foundation, multiple delivery adapters
+
+Browser, authenticated API, Testnet pay-per-call and agent/x402 surfaces may use different authentication, entitlement, payment, response-shaping and audit adapters, but they still resolve from the same governed intelligence foundation and canonical product services. Pay-per-call changes access and settlement; it does not create a separate dataset, score engine, Risk Object path or Risk Gate implementation.
+
+“Same data” means the same governed evidence/provenance foundation and relevant canonical service contract. Product-specific rules may still differ: GRI has its own scoring admission, Risk Objects have subject/verification rules, and Risk Gate applies customer policy. Those are documented derived uses of shared intelligence, not conflicting copies of reality.
+
+The repository-wide invariant for adding any new delivery or payment rail is documented in `docs/CANONICAL_DELIVERY_ARCHITECTURE.md`: reuse canonical intelligence first, then add only the access, transport, entitlement, policy or settlement adapter required by that surface.
+
 ## Policy layers
 
 Geomacro separates several decisions that are easy to confuse:
