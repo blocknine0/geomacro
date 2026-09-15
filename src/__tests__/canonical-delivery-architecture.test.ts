@@ -87,16 +87,31 @@ describe("canonical one-data multi-delivery architecture", () => {
     expect(x402).toContain("execution_authorized: false");
   });
 
-  it("documents payment and delivery adapters as non-authoritative for risk truth", () => {
+  it("keeps a single documented architecture contract across product and delivery surfaces", () => {
+    const contract = read("docs/CANONICAL_DELIVERY_ARCHITECTURE.md");
     const architecture = read("src/content/docs/02-product-architecture.md");
     const readme = read("README.md");
     const commercial = read("docs/COMMERCIAL_INTELLIGENCE.md");
     const testnet = read("docs/TESTNET_DEVELOPER_API.md");
 
-    for (const content of [architecture, readme, commercial, testnet]) {
-      expect(content).toContain("one governed intelligence foundation");
-      expect(content).toContain("pay-per-call");
-      expect(content).toContain("not a separate risk engine");
-    }
+    expect(contract).toContain("one governed intelligence foundation");
+    expect(contract).toContain("pay-per-call");
+    expect(contract).toContain("not a separate risk engine");
+    expect(contract).toContain("same underlying data truth");
+
+    expect(architecture).toContain("one shared evidence and provenance foundation");
+    expect(architecture).toContain("Data & API is an access and delivery surface over this architecture");
+    expect(architecture).toContain("second risk engine");
+
+    expect(readme).toContain("Real-world evidence and data");
+    expect(readme).toContain("Structured intelligence state");
+    expect(readme).toContain("Customer-controlled action");
+
+    expect(commercial).toContain("Data & API is an access and delivery surface over the shared intelligence state");
+    expect(commercial).toContain("core risk calculation, provenance system and database must not depend on x402");
+
+    expect(testnet).toContain("same canonical Geomacro intelligence pipeline");
+    expect(testnet).toContain("There is no separate API-only risk database");
+    expect(testnet).toContain("Payment model: pay per API call");
   });
 });
