@@ -155,6 +155,17 @@ describe("central security deployment contract", () => {
     expect(migration).not.toMatch(/\bcookie_value\b/i);
   });
 
+  it("canonical environment template keeps the real-funds acknowledgement blank", () => {
+    const env = readFileSync(".env.example", "utf8");
+    expect(env).toContain("GEOMACRO_CENTRAL_SECURITY_MODE=enforce");
+    expect(env).toContain("GEOMACRO_REAL_FUNDS_SECURITY_ACK=\n");
+    expect(env).toContain("GEOMACRO_SECURITY_FINGERPRINT_PEPPER=\n");
+    expect(env).toContain("GEOMACRO_API_CREDENTIAL_PEPPER=\n");
+    expect(env).not.toContain(
+      `GEOMACRO_REAL_FUNDS_SECURITY_ACK=${REAL_FUNDS_SECURITY_ACK}`,
+    );
+  });
+
   it("requires aggregate RLS and browser-privilege verification before real funds", () => {
     const readinessMigration = readFileSync(
       "supabase/migrations/931_central_security_database_readiness.sql",
