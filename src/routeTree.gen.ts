@@ -43,6 +43,7 @@ import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
+import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
@@ -217,6 +218,11 @@ const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
   path: '/api/testnet-tester/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiX402RiskRoute = ApiX402RiskRouteImport.update({
+  id: '/api/x402/risk',
+  path: '/api/x402/risk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoatPilotArtifactRoute = ApiGoatPilotArtifactRouteImport.update({
   id: '/api/goat/pilot/artifact',
   path: '/api/goat/pilot/artifact',
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -307,6 +314,7 @@ export interface FileRoutesByTo {
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
+  '/api/x402/risk': typeof ApiX402RiskRoute
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/api/demo/feedback'
     | '/api/demo/preflight'
     | '/api/testnet-tester/$'
+    | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -427,6 +437,7 @@ export interface FileRouteTypes {
     | '/api/demo/feedback'
     | '/api/demo/preflight'
     | '/api/testnet-tester/$'
+    | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/api/demo/feedback'
     | '/api/demo/preflight'
     | '/api/testnet-tester/$'
+    | '/api/x402/risk'
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
@@ -506,6 +518,7 @@ export interface RootRouteChildren {
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
+  ApiX402RiskRoute: typeof ApiX402RiskRoute
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
@@ -751,6 +764,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestnetTesterSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/x402/risk': {
+      id: '/api/x402/risk'
+      path: '/api/x402/risk'
+      fullPath: '/api/x402/risk'
+      preLoaderRoute: typeof ApiX402RiskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/goat/pilot/artifact': {
       id: '/api/goat/pilot/artifact'
       path: '/api/goat/pilot/artifact'
@@ -810,6 +830,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
+  ApiX402RiskRoute: ApiX402RiskRoute,
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
