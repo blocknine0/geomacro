@@ -1,0 +1,66 @@
+name: Coinbase Bazaar One-Time Live Check 20260915
+
+on:
+  push:
+    branches:
+      - run/coinbase-bazaar-live-check-20260915
+
+permissions:
+  contents: read
+
+jobs:
+  live-check:
+    if: ${{ github.actor == 'blocknine0' && github.ref == 'refs/heads/run/coinbase-bazaar-live-check-20260915' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check live Geomacro x402 routes and Coinbase Bazaar
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          STATUS_URL='https://geomacro.live/api/x402/bazaar-status'
+          RISK_URL='https://geomacro.live/api/x402/risk'
+          CDP_SEARCH='https://api.cdp.coinbase.com/platform/v2/x402/discovery/search'
+
+          echo '=== Geomacro Bazaar status route ==='
+          status_code=$(curl -sS -o /tmp/status.json -w '%{http_code}' "$STATUS_URL" || true)
+          echo "HTTP $status_code"
+          cat /tmp/status.json || true
+          echo
+
+          echo '=== Geomacro x402 risk manifest ==='
+          risk_code=$(curl -sS -o /tmp/risk.json -w '%{http_code}' "$RISK_URL" || true)
+          echo "HTTP $risk_code"
+          cat /tmp/risk.json || true
+          echo
+
+          echo '=== Coinbase Bazaar exact URL search ==='
+          curl -sS -G "$CDP_SEARCH" \
+            --data-urlencode 'urlSubstring=geomacro.live/api/x402/risk' \
+            --data-urlencode 'network=eip155:84532' \
+            --data-urlencode 'limit=20' \
+            -o /tmp/cdp.json
+          cat /tmp/cdp.json
+          echo
+
+          indexed=$(jq -r '[.resources[]? | select(.resource == "https://geomacro.live/api/x402/risk")] | length' /tmp/cdp.json)
+          echo "Exact indexed matches: $indexed"
+
+          {
+            echo '## Coinbase Bazaar live check'
+            echo "- Geomacro status route HTTP: $status_code"
+            echo "- Geomacro risk route HTTP: $risk_code"
+            echo "- Exact Bazaar matches: $indexed"
+            echo '- Network filter: eip155:84532 (Base Sepolia)'
+            echo '- Payment performed by this workflow: no'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$risk_code" != '200' ]; then
+            echo '::error::Live x402 risk GET is not healthy.'
+            exit 1
+          fi
+
+          if [ "$indexed" -lt 1 ]; then
+            echo '::warning::Geomacro is not yet present in the Coinbase Bazaar search result.'
+          fi
