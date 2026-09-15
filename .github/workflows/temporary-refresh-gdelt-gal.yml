@@ -3,7 +3,7 @@ name: Temporary Refresh GDELT GAL
 on:
   push:
     branches:
-      - x402-industry-ready-production-v1
+      - ops/refresh-gdelt-production-once
     paths:
       - ".github/workflows/temporary-refresh-gdelt-gal.yml"
 
@@ -29,7 +29,7 @@ jobs:
       - name: Checkout acceptance branch
         uses: actions/checkout@v7
         with:
-          ref: x402-industry-ready-production-v1
+          ref: ops/refresh-gdelt-production-once
           persist-credentials: false
 
       - name: Setup Bun
