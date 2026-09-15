@@ -28,6 +28,10 @@ import {
   publicRiskObjectTrustDiscovery,
 } from "../lib/risk-object-trust-discovery.server";
 
+import {
+  verifyPublicRiskObjectArtifact,
+} from "../lib/risk-object-verification.server";
+
 function fixture(): GeomacroRiskObject {
   return {
     schema_version: GRO_SCHEMA_VERSION,
@@ -122,7 +126,7 @@ describe("independently verifiable Risk Object trust", () => {
       public_key_spki_b64: key.publicKey,
     });
 
-    expect((signed as typeof signed & { observed_at?: string }).observed_at).toBe(
+    expect(signed.observed_at).toBe(
       "2026-09-15T13:20:00.000Z",
     );
 
@@ -132,7 +136,21 @@ describe("independently verifiable Risk Object trust", () => {
       }),
     ).toEqual({ valid: true, reason: null });
 
-    const tampered = {
+    const report = verifyPublicRiskObjectArtifact(signed, {
+      now: new Date("2026-09-15T14:00:00.000Z"),
+      verification_keys: {
+        [key.keyId]: key.publicKey,
+      },
+    });
+
+    expect(report.valid).toBe(true);
+    expect(report.signed_observation_present).toBe(true);
+    expect(report.checks.observation_timestamp).toBe(true);
+    expect(report.artifact.observed_at).toBe(
+      "2026-09-15T13:20:00.000Z",
+    );
+
+    const tampered: GeomacroRiskObject = {
       ...signed,
       observed_at: "2026-09-15T13:25:00.000Z",
     };
