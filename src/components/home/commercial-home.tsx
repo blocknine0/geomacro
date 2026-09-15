@@ -198,8 +198,9 @@ export function CommercialHome() {
                 "Action submitted for review",
                 "Country / corridor Risk Object verified",
                 "Evidence, confidence and freshness checked",
+                "Risk Gate recommendation returned to the customer's system",
                 "Customer-owned policy applied by the customer system",
-                "Recommendation returned to the customer's system",
+                "Any downstream execution remains customer-controlled",
               ].map((text) => (
                 <div key={text} className="flex items-start gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {text}
