@@ -55,7 +55,7 @@ jobs:
     env:
       RESOURCE_URL: https://geomacro.live/api/x402/risk
       EXPECTED_NETWORK: eip155:84532
-      EXPECTED_USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+      EXPECTED_USDC: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
     steps:
       - name: Check public readiness
         shell: bash
