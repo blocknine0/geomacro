@@ -13,7 +13,9 @@ const V1_DECISIONS = [
 ] as const;
 
 const CURRENT_V1_SURFACES = [
+  "README.md",
   "src/routes/risk-gate.tsx",
+  "src/routes/institutional.tsx",
   "src/content/docs/03-product-surfaces.md",
   "src/content/docs/26-agent-intelligence.md",
 ] as const;
@@ -40,8 +42,12 @@ describe("Risk Gate v1 decision contract", () => {
     expect(route).not.toContain('\"REROUTE\"');
     expect(route).toContain("execution_authorized = false");
 
+    const readme = read("README.md");
+    const institutional = read("src/routes/institutional.tsx");
     const surfaces = read("src/content/docs/03-product-surfaces.md");
     const agentDocs = read("src/content/docs/26-agent-intelligence.md");
+    expect(readme).toContain("`REROUTE` is reserved as a future/advisory alternative");
+    expect(institutional).not.toContain("PAUSE or REROUTE");
     expect(surfaces).toContain("`REROUTE` is not a current v1 machine decision");
     expect(agentDocs).toContain("`REROUTE` is not a current Risk Gate v1 machine decision");
   });
