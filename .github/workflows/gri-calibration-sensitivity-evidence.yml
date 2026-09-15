@@ -1,0 +1,61 @@
+name: GRI Calibration & Sensitivity Evidence
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "41 4 * * 1"
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/audit-gri-v12-sensitivity.mjs'
+      - 'scripts/audit-gri-validation-evidence.mjs'
+      - 'scripts/lib/gri-sensitivity-v12.js'
+      - 'docs/GRI_CALIBRATION_SENSITIVITY_EVIDENCE.md'
+      - '.github/workflows/gri-calibration-sensitivity-evidence.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gri-calibration-sensitivity-evidence
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+      GRI_METHOD_VERSION: gri-v1.2.0
+      GRI_PROOF_VERSION: gri-proof-v1.2.0
+      GRI_VALIDATION_VERSION: gri-validation-v1.1.0
+      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
+      GRI_SENSITIVITY_ARTIFACT: artifacts/gri-v12-sensitivity.json
+      GRI_VALIDATION_EVIDENCE_ARTIFACT: artifacts/gri-validation-evidence.json
+
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+
+      - name: Audit published validation evidence
+        run: node scripts/audit-gri-validation-evidence.mjs
+
+      - name: Audit current v1.2 parameter sensitivity
+        run: node scripts/audit-gri-v12-sensitivity.mjs
+
+      - name: Upload read-only GRI evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: gri-calibration-sensitivity-${{ github.run_id }}
+          path: |
+            artifacts/gri-validation-evidence.json
+            artifacts/gri-v12-sensitivity.json
+          if-no-files-found: warn
+          retention-days: 90
