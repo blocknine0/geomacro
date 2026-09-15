@@ -1,0 +1,63 @@
+name: World Bank IDS Sovereign Fiscal Coverage Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-world-bank-ids-sovereign-fiscal-coverage.mjs"
+      - ".github/workflows/world-bank-ids-sovereign-fiscal-coverage.yml"
+      - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run live World Bank IDS sovereign-fiscal coverage audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-world-bank-ids-sovereign-fiscal-coverage.mjs | tee world-bank-ids-sovereign-fiscal-coverage.log
+          grep -q 'PASS: WORLD BANK IDS SOVEREIGN-FISCAL COVERAGE AUDIT COMPLETE - NO WRITES' world-bank-ids-sovereign-fiscal-coverage.log
+
+      - name: Enforce discovery-only rights and methodology boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s world-bank-ids-sovereign-fiscal-coverage.json
+          jq -e '.writes_performed == false' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.source.license == "CC BY-4.0"' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.methodology_boundary.discovery_only == true' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.methodology_boundary.direct_pooling_across_ppg_gni_and_ppg_exports_raw_values_allowed == false' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.methodology_boundary.direct_production_fallback_allowed == false' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.activation_boundary.production_activation_allowed == false' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.activation_boundary.scoring_changed == false' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.activation_boundary.country_payability_changed == false' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.coverage_summary.production_supported_country_count_added == 0' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.series | length == 3' world-bank-ids-sovereign-fiscal-coverage.json >/dev/null
+          echo 'PASS: IDS discovery remains no-write and cannot promote countries.'
+
+      - name: Print candidate coverage summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq '{generated_at,source_population,coverage_summary,activation_boundary}' world-bank-ids-sovereign-fiscal-coverage.json
+
+      - name: Upload IDS source coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: world-bank-ids-sovereign-fiscal-coverage
+          path: |
+            world-bank-ids-sovereign-fiscal-coverage.json
+            world-bank-ids-sovereign-fiscal-coverage.log
+          if-no-files-found: warn
+          retention-days: 30
