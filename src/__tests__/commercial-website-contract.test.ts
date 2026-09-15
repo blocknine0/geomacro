@@ -1,11 +1,47 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
+const CANONICAL_ARCHITECTURE_TOKENS = [
+  "Real-world evidence and data",
+  "Normalize, classify and preserve provenance",
+  "Structured intelligence state",
+  "Global Risk Index - Live",
+  "Ask Geomacro - Live",
+  "Country Risk Object - Private Pilot",
+  "Corridor Risk Object - Private Pilot",
+  "Risk Gate - Private Pilot",
+  "Customer identity + permissions + policy",
+  "Customer-controlled action",
+  "Arc / Circle / prediction-market technical proof",
+] as const;
+
 describe("commercial website source-of-truth contract", () => {
+  it("keeps the canonical end-to-end product architecture aligned across source-of-truth docs", () => {
+    for (const path of ["README.md", "src/content/docs/02-product-architecture.md"]) {
+      const content = read(path);
+      for (const token of CANONICAL_ARCHITECTURE_TOKENS) {
+        expect(content, `${path} is missing canonical architecture node: ${token}`).toContain(token);
+      }
+    }
+
+    const overview = read("src/content/docs/01-what-is-geomacro.md");
+    expect(overview).toContain("Country Risk Object - Private Pilot");
+    expect(overview).toContain("Corridor Risk Object - Private Pilot");
+    expect(overview).toContain("Customer identity + permissions + policy");
+    expect(overview).toContain("Customer-controlled action");
+    expect(overview).toContain("execution_authorized=false");
+
+    const commercial = read("docs/COMMERCIAL_INTELLIGENCE.md");
+    expect(commercial).toContain("Current Private Pilot scope is country and directional corridor risk");
+    expect(commercial).toContain("Event-specific Risk Objects remain a broader product direction only");
+    expect(commercial).toContain("execution_authorized=false");
+    expect(commercial).not.toContain("+-- Event scope    -> Event Risk Object");
+  });
+
   it("keeps intelligence products primary and technical proof secondary", () => {
     const shell = read("src/components/site-shell.tsx");
 
@@ -21,6 +57,18 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Bridge & Swap"');
     expect(shell).toContain('title="Intelligence products"');
     expect(shell).toContain('title="Technical proof"');
+  });
+
+  it("keeps the homepage on the same architecture and status boundaries", () => {
+    const home = read("src/components/home/commercial-home.tsx");
+
+    expect(home).toContain("Live geopolitical + macro risk intelligence");
+    expect(home).toContain("Risk Gate · Private Pilot");
+    expect(home).toContain("Arc / Circle · Technical Proof");
+    expect(home).toContain("Country / corridor Risk Object verified");
+    expect(home).toContain("execution_authorized");
+    expect(home).toContain("Secondary technical proof");
+    expect(home).toContain("They are not the main commercial product");
   });
 
   it("keeps public intelligence surfaces wallet-free by default", () => {
@@ -68,6 +116,18 @@ describe("commercial website source-of-truth contract", () => {
     ]) {
       expect(read(path)).toContain("TechnicalProofBanner");
     }
+  });
+
+  it("keeps the active roadmap intelligence-first and removes the stale market-first source of truth", () => {
+    const roadmap = read("src/components/sections/roadmap-section.tsx");
+
+    expect(roadmap).toContain("Intelligence foundation");
+    expect(roadmap).toContain("Commercial hardening");
+    expect(roadmap).toContain("Institutional Early Access");
+    expect(roadmap).toContain("Production expansion");
+    expect(roadmap).not.toContain("Autonomous Market Factory");
+    expect(roadmap).not.toContain("Mainnet Deployment");
+    expect(existsSync(join(ROOT, "src/lib/roadmap.ts"))).toBe(false);
   });
 
   it("redirects superseded public routes to the canonical product surface", () => {
