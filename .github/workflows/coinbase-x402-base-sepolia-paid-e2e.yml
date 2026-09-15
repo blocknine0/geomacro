@@ -21,13 +21,11 @@ concurrency:
 
 jobs:
   paid-e2e:
+    if: ${{ github.actor == 'blocknine0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    environment: coinbase-x402-base-sepolia-paid-proof
     env:
-      GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY }}
-      GEOMACRO_COINBASE_X402_BUYER_ADDRESS: ${{ secrets.GEOMACRO_COINBASE_X402_BUYER_ADDRESS }}
-      GEOMACRO_COINBASE_X402_BASE_SEPOLIA_RPC: ${{ secrets.GEOMACRO_COINBASE_X402_BASE_SEPOLIA_RPC }}
+      GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
       GEOMACRO_COINBASE_X402_E2E_ACK: ${{ inputs.confirmation }}
       GEOMACRO_COINBASE_X402_CLIENT_REQUEST_ID: ${{ inputs.client_request_id }}
       GEOMACRO_COINBASE_X402_E2E_ARTIFACT_DIR: artifacts/coinbase-x402-base-sepolia-paid
@@ -44,16 +42,18 @@ jobs:
           echo "Hard per-run payment cap: 0.05 test USDC." >> "$GITHUB_STEP_SUMMARY"
           echo "Commercial revenue: false." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Validate protected buyer secret without printing it
+      - name: Validate repository buyer secret without printing it
         shell: bash
         run: |
           if [ -z "$GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY" ]; then
-            echo "::error::GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY is not configured in the protected coinbase-x402-base-sepolia-paid-proof environment."
+            echo "::error::Repository Actions secret COINBASE_X402_BASE_SEPOLIA_PAID_PROOF is not configured."
             exit 1
           fi
 
       - name: Checkout exact workflow ref
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
