@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
+  a2aMessageSchema,
   a2aSendMessageRequestSchema,
   extractA2ARiskPreflightInput,
   geomacroA2AAgentCard,
@@ -46,7 +47,22 @@ describe("A2A v1 contract", () => {
     expect(input.action_type).toBe("agent_payment");
   });
 
-  it("rejects unsupported file/url parts and ambiguous part payloads", () => {
+  it("supports the v1 Part variants but rejects ambiguous payloads", () => {
+    for (const part of [
+      { text: "hello" },
+      { data: { hello: "world" }, mediaType: "application/json" },
+      { raw: "aGVsbG8=", mediaType: "application/octet-stream" },
+      { url: "https://agent.example.com/artifact.json", mediaType: "application/json" },
+    ]) {
+      expect(
+        a2aMessageSchema.parse({
+          messageId: `msg-${Object.keys(part)[0]}`,
+          role: "ROLE_USER",
+          parts: [part],
+        }).parts,
+      ).toHaveLength(1);
+    }
+
     expect(() =>
       a2aSendMessageRequestSchema.parse({
         message: {
@@ -66,6 +82,17 @@ describe("A2A v1 contract", () => {
         },
       }),
     ).toThrow();
+  });
+
+  it("accepts protocol string IDs while leaving Geomacro-local UUID enforcement to the HTTP boundary", () => {
+    const message = a2aMessageSchema.parse({
+      messageId: "remote-message-1",
+      taskId: "remote-task-opaque-1",
+      contextId: "remote-context-opaque-1",
+      role: "ROLE_USER",
+      parts: [{ text: "continue" }],
+    });
+    expect(message.taskId).toBe("remote-task-opaque-1");
   });
 
   it("rejects same-country directional corridors when the risk skill is extracted", () => {
@@ -101,11 +128,23 @@ describe("A2A v1 contract", () => {
     });
     expect(card.capabilities.pushNotifications).toBe(true);
     expect(card.capabilities.streaming).toBe(false);
+    expect(card.securitySchemes.geomacroBearer).toHaveProperty(
+      "httpAuthSecurityScheme.scheme",
+      "Bearer",
+    );
+    expect(card.securitySchemes.geomacroTestnetKey).toHaveProperty(
+      "apiKeySecurityScheme.location",
+      "header",
+    );
+    expect(card.securityRequirements[0]).toHaveProperty(
+      "schemes.geomacroBearer.list",
+      [],
+    );
     expect(card.skills[0].id).toBe("risk_preflight");
     expect(card.skills[0].description).toContain("never authorizes execution");
   });
 
-  it("keeps the static well-known Agent Card aligned", () => {
+  it("keeps the static well-known Agent Card aligned with dynamic discovery", () => {
     const staticCard = JSON.parse(
       readFileSync("public/.well-known/agent-card.json", "utf8"),
     );
@@ -114,6 +153,8 @@ describe("A2A v1 contract", () => {
     expect(staticCard.version).toBe(dynamicCard.version);
     expect(staticCard.supportedInterfaces).toEqual(dynamicCard.supportedInterfaces);
     expect(staticCard.capabilities).toEqual(dynamicCard.capabilities);
+    expect(staticCard.securitySchemes).toEqual(dynamicCard.securitySchemes);
+    expect(staticCard.securityRequirements).toEqual(dynamicCard.securityRequirements);
     expect(staticCard.skills[0].id).toBe(dynamicCard.skills[0].id);
   });
 });
