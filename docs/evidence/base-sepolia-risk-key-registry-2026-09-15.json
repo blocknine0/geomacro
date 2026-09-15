@@ -1,0 +1,23 @@
+{
+  "network": "Base Sepolia",
+  "caip2": "eip155:84532",
+  "registry": "0xb1881d2f0026395d5016b90031a8acc651a2e316",
+  "owner": "0x0C8fb1055C22dF132659f3C453dd7B2093f7AD58",
+  "deploy_tx": "0xc048a319148e37b4dd12fd035d72bd6375b54151414a6c99fb32f6e8b6e0a04f",
+  "publish_txs": [
+    "0xd5539f5c37f836b1e55863859b656e2f3b02f9a541369272e81c7069f68abffb",
+    "0x939b6e80ce05524f37c319b99b2e9876ac3e6c3d2676c271deabd171f208e4be"
+  ],
+  "key_id": "geomacro-risk-2026-02",
+  "public_key_hash": "0xcd1f77d2d9f72408d45deb71f46b19195cc82902c05a8a0946c77e66e1dcc258",
+  "public_key_fingerprint_sha256": "526a7956d2a9ccd10b94d05fd4bc19e4464f1e431734bc60ab5b0d9c9b1ad6ec",
+  "jwks_uri": "https://geomacro.live/.well-known/jwks.json",
+  "gas_provider": "existing_balance",
+  "faucet_tx": null,
+  "deployed_from_commit": "5e228f63d3f1d2dd0fc38c07af9e61d52c417790",
+  "deployed_at": "2026-09-15T16:41:12Z",
+  "private_key_persisted": false,
+  "execution_authorized": false,
+  "github_actions_run_id": 34996472294,
+  "github_artifact_digest": "sha256:ef5929294b75fe6b900404534c96b98dfad588613c1cd5534be8fe699270bbfb"
+}
