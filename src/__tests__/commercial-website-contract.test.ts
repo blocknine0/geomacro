@@ -22,6 +22,7 @@ const CANONICAL_ARCHITECTURE_TOKENS = [
 const COMMERCIAL_PUBLIC_SURFACES = [
   "src/routes/index.tsx",
   "src/components/home/commercial-home.tsx",
+  "src/routes/agent-access.tsx",
   "src/routes/about.tsx",
   "src/routes/institutional.tsx",
   "src/routes/risk-gate.tsx",
@@ -30,7 +31,7 @@ const COMMERCIAL_PUBLIC_SURFACES = [
 
 const STALE_PRIMARY_POSITIONING = [
   "autonomous prediction market",
-  "natively settled in USDC on Arc",
+  "natively settled in usdc on arc",
   "prediction-market-first",
   "prediction market is the product",
 ] as const;
@@ -69,6 +70,7 @@ describe("commercial website source-of-truth contract", () => {
       "/intelligence",
       "/global-risk",
       "/ask-geomacro",
+      "/agent-access",
       "/risk-gate",
       "/data-api",
       "/institutional",
@@ -98,36 +100,44 @@ describe("commercial website source-of-truth contract", () => {
     }
   });
 
-  it("keeps intelligence products primary and technical proof secondary", () => {
+  it("keeps the primary navigation focused and moves supporting material into Resources", () => {
     const shell = read("src/components/site-shell.tsx");
 
     expect(shell).toContain('label: "Intelligence"');
     expect(shell).toContain('label: "Risk Indices"');
-    expect(shell).toContain('label: "Risk Gate"');
     expect(shell).toContain('label: "Ask Geomacro"');
+    expect(shell).toContain('label: "Access & Pricing"');
+    expect(shell).toContain('label: "Risk Gate"');
+    expect(shell).toContain('label: "For Institutions"');
     expect(shell).toContain('label: "Data & API"');
     expect(shell).toContain('label: "Research"');
-    expect(shell).toContain('label: "For Institutions"');
+    expect(shell).toContain('label: "Documentation"');
+    expect(shell).toContain("Resources");
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(shell).toContain('label: "Bridge & Swap"');
-    expect(shell).toContain('title="Intelligence products"');
+    expect(shell).toContain('title="Product"');
+    expect(shell).toContain('title="Resources"');
     expect(shell).toContain('title="Technical proof"');
   });
 
-  it("keeps the homepage on the same architecture and status boundaries", () => {
+  it("keeps the homepage optimized for fast comprehension rather than procurement evidence", () => {
     const home = read("src/components/home/commercial-home.tsx");
+    const shell = read("src/components/site-shell.tsx");
+    const evidenceRoutes = shell.match(/const PRODUCTION_EVIDENCE_ROUTES = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
 
-    expect(home).toContain("Live geopolitical + macro + critical-mineral intelligence");
+    expect(home).toContain("Geomacro in 40 seconds");
+    expect(home).toContain("Understand global risk");
+    expect(home).toContain("Agent pay-per-call · Mainnet pre-launch");
     expect(home).toContain("Risk Gate · Private Pilot");
-    expect(home).toContain("Arc / Circle · Technical Proof");
-    expect(home).toContain("Country / corridor Risk Object verified");
+    expect(home).toContain("Free for evaluation. Paid when you need depth, automation or scale.");
     expect(home).toContain("execution_authorized");
     expect(home).toContain("Secondary technical proof");
-    expect(home).toContain("They are not the main commercial product");
+    expect(home).toContain("prediction markets remain Testnet-only");
+    expect(evidenceRoutes).not.toContain('"/"');
   });
 
-  it("keeps public intelligence surfaces wallet-free by default", () => {
+  it("keeps public intelligence and commercial-information surfaces wallet-free by default", () => {
     const shell = read("src/components/site-shell.tsx");
 
     expect(shell).toContain("if (!address && !executionContext) return null");
@@ -135,6 +145,20 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('pathname === "/onchain"');
     expect(shell).toContain('pathname === "/bridge-swap"');
     expect(shell).not.toContain('pathname === "/intelligence" ||');
+    expect(shell).not.toContain('pathname === "/agent-access" ||');
+  });
+
+  it("keeps the pay-per-call product pre-launch until production funds are authorized", () => {
+    const route = read("src/routes/agent-access.tsx");
+
+    expect(route).toContain("ACCESS & PRICING · MAINNET PAY-PER-CALL PRE-LAUNCH · REAL FUNDS OFF");
+    expect(route).toContain("0.02 USDC / successful paid call");
+    expect(route).toContain("Free deliverability check before payment");
+    expect(route).toContain("live HTTP 402 challenge or approved provider plan is the payment authority");
+    expect(route).toContain("Credit pools are usage allowances, not public monetary list prices");
+    expect(route).toContain("execution_authorized=false");
+    expect(route).not.toContain("Buy now");
+    expect(route).not.toContain("Pay now");
   });
 
   it("keeps Risk Gate within the verified Private Pilot scope", () => {
@@ -167,16 +191,17 @@ describe("commercial website source-of-truth contract", () => {
     const route = read("src/routes/data-api.tsx");
 
     expect(route).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
-    expect(route).toContain("PUBLIC · FREE");
-    expect(route).toContain("FOUNDING ANALYST PILOT");
-    expect(route).toContain("FOUNDING API + RISK GATE PILOT");
+    expect(route).toContain("LIVE · FREE");
+    expect(route).toContain("MAINNET PRE-LAUNCH");
+    expect(route).toContain("FOUNDING PILOT");
+    expect(route).toContain("FOUNDING / PRIVATE PILOT");
     expect(route).toContain("INSTITUTIONAL");
     expect(route).toContain("POST https://geomacro.live/api/commercial/structural");
+    expect(route).toContain("POST https://geomacro.live/api/x402/intelligence");
     expect(route).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(route).toContain("ENDPOINT_COMPOSED_V0_1");
     expect(route).toContain("route_modeling_status = NOT_MODELED");
     expect(route).toContain("execution_authorized=false");
-    expect(route).not.toContain("PUBLIC · GEOMACRO AGENT V1");
   });
 
   it("keeps Arc, Circle and market routes explicitly technical proof", () => {
@@ -193,12 +218,12 @@ describe("commercial website source-of-truth contract", () => {
     expect(arena).toContain("not planning a prediction-market mainnet or real-money launch");
   });
 
-  it("keeps the active roadmap intelligence-first and removes the stale market-first source of truth", () => {
+  it("keeps the active roadmap in the commercial release order", () => {
     const roadmap = read("src/components/sections/roadmap-section.tsx");
 
-    expect(roadmap).toContain("Intelligence foundation");
-    expect(roadmap).toContain("Commercial hardening");
-    expect(roadmap).toContain("Institutional Early Access");
+    expect(roadmap).toContain("Public intelligence foundation");
+    expect(roadmap).toContain("Commercial hardening + pre-launch machine access");
+    expect(roadmap).toContain("Coordinated commercial launch");
     expect(roadmap).toContain("Production expansion");
     expect(roadmap).not.toContain("Autonomous Market Factory");
     expect(roadmap).not.toContain("Mainnet Deployment");
@@ -233,6 +258,7 @@ describe("commercial website source-of-truth contract", () => {
     expect(contact).toContain("contact@geomacro.live");
     expect(robots).toContain("https://geomacro.live/sitemap.xml");
     expect(robots).not.toContain("https://www.geomacro.live/sitemap.xml");
+    expect(sitemap).toContain("https://geomacro.live/agent-access");
     expect(sitemap).toContain("https://geomacro.live/risk-gate");
     expect(sitemap).toContain("https://geomacro.live/ask-geomacro");
     expect(sitemap).toContain("https://geomacro.live/data-api");

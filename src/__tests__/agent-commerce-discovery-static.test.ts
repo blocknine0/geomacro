@@ -26,6 +26,14 @@ describe("agent commerce machine discovery contract", () => {
     expect(distribution.official_launch_required_before_public_submission).toBe(true);
   });
 
+  it("links human and machine discovery to the same access source of truth", () => {
+    expect(agent.discovery.access_pricing).toBe("https://geomacro.live/agent-access");
+    expect(agent.commercial.human_access_page).toBe("https://geomacro.live/agent-access");
+    expect(commerce.discovery.access_pricing).toBe("https://geomacro.live/agent-access");
+    expect(docs).toContain("https://geomacro.live/agent-access");
+    expect(llms).toContain("Agent Access & Plans: https://geomacro.live/agent-access");
+  });
+
   it("uses the payment challenge/provider plan as authoritative pricing", () => {
     expect(commerce.commercial_contract.pricing_authority).toBe(
       "payment_challenge_or_provider_plan",

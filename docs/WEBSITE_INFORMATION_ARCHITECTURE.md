@@ -2,32 +2,42 @@
 
 Status: commercial source of truth for the public website.
 
-This document defines what each public route is responsible for, what it should not duplicate, and the intended buyer journey. It exists to prevent the website drifting back toward a prediction-market-first identity or mixing Live, Private Pilot, planned and Technical Proof claims.
+This document defines what each public route is responsible for, what it should not duplicate, and the intended buyer journey. It prevents the website from drifting back toward a prediction-market-first identity or mixing LIVE, PRIVATE PILOT, MAINNET PRE-LAUNCH and TECHNICAL PROOF claims.
 
 ## Product hierarchy
 
 ```text
 Geomacro
   |
-  +-- Public intelligence
+  +-- Public intelligence · LIVE
   |     +-- Intelligence
-  |     +-- Global Risk Index
+  |     +-- Geopolitical Risk Index
+  |     +-- Macroeconomic Risk Index
+  |     +-- Critical Minerals Risk Index
   |     +-- Ask Geomacro
   |
-  +-- Commercial delivery
-  |     +-- Risk Gate · Private Pilot
-  |     +-- Data & API · Public + Private Pilot
-  |     +-- For Institutions · Early Access / pilot workflow
+  +-- Commercial access
+  |     +-- Access & Pricing
+  |     |     +-- Free Explorer · LIVE
+  |     |     +-- Pay per call · MAINNET PRE-LAUNCH
+  |     |     +-- Professional intelligence · FOUNDING PILOT
+  |     |     +-- API + Risk Gate · PRIVATE / FOUNDING PILOT
+  |     |     +-- Institutional · CONTRACTED / PILOT-LED
+  |     +-- Risk Gate · PRIVATE PILOT
+  |     +-- For Institutions
   |
-  +-- Evidence and trust
+  +-- Resources
+  |     +-- Data & API
   |     +-- Research
   |     +-- Documentation
   |     +-- About & Trust
   |     +-- Roadmap
+  |     +-- Contact
   |
   +-- Technical Proof
+        +-- Testnet API / agentic-commerce demo
         +-- Data Pipeline
-        +-- Prediction Markets
+        +-- Prediction Markets · permanent Testnet-only
         +-- Arc / Onchain
         +-- Bridge & Swap
 ```
@@ -39,38 +49,53 @@ Prediction markets, Arc, Circle and wallet execution are secondary Technical Pro
 Use these labels consistently:
 
 - **LIVE**: deployed public capability users can actually use now.
-- **PRIVATE PILOT**: implemented capability available only through scoped pilot access; not generally available production service.
-- **COMMERCIAL DIRECTION**: planned/being built professional capability; do not imply current availability.
+- **FOUNDING PILOT / PRIVATE PILOT**: implemented capability available only through scoped access; not anonymous general availability.
+- **MAINNET PRE-LAUNCH**: production path is prepared but real-money activation remains disabled until launch gates and explicit owner authorization are complete.
+- **CONTRACTED / PILOT-LED**: availability depends on an agreed customer scope rather than public self-serve access.
 - **TECHNICAL PROOF**: working implementation used to demonstrate engineering/integration capability, not the primary commercial product.
 - **PLANNED**: roadmap intent only.
 
 Do not replace these with ambiguous labels such as "Soon" when a more exact status is known.
+
+## Commercial access ladder
+
+A public visitor should be able to understand the access model without knowing any payment protocol:
+
+1. **Free Explorer**: public Risk Intelligence, three Risk Indices, Ask Geomacro, Research and methodology. Cost: Free.
+2. **Pay per call**: occasional governed machine intelligence for AI agents after deliberate mainnet activation. Prepared price: 0.02 USDC per successful paid call. The live HTTP 402 challenge/provider plan is authoritative.
+3. **Professional intelligence**: deeper analytics/history/attribution and governed views. Starting usage allowance: 5,000 credits / 30 days. Commercial fee is agreed before activation while self-serve pricing is not live.
+4. **API + Risk Gate**: recurring governed machine delivery, signed Risk Objects and Risk Gate. Starting usage allowance: 20,000 credits / 30 days. Commercial fee is agreed before activation.
+5. **Institutional**: contracted volume, coverage, controls and support. Current starting usage pool: 100,000 credits / month, followed by contracted scaling and commercial terms.
+
+Credit pools are usage allowances, not public monetary list prices. A payment rail never expands product entitlement, source rights or execution authority.
 
 ## Global navigation
 
 ### Primary desktop navigation
 
 1. Intelligence
-2. Global Risk Index
-3. Risk Gate
-4. Ask Geomacro
-5. Data & API
-6. Research
-7. For Institutions
+2. Risk Indices
+3. Ask Geomacro
+4. Access & Pricing
+5. Risk Gate
+6. For Institutions
+7. Resources dropdown
 8. Technical Proof dropdown
 
-Desktop primary navigation should only render when it fits without compression; narrower screens use the grouped mobile menu.
+Supporting reference material belongs inside **Resources** rather than competing with the primary product journey. Resources contains Data & API, Research, Documentation, About & Trust, Roadmap and Contact.
+
+Desktop primary navigation should render only when it fits without destructive compression; narrower screens use grouped mobile navigation.
 
 ### Mobile navigation groups
 
-- Intelligence products
-- Reference
+- Product
+- Resources
 - Technical proof
 - Account, only when relevant
 
 ### Wallet rule
 
-A disconnected visitor should not see wallet connection as a primary action on public intelligence, GRI, Risk Gate, Data/API, Research, Institutional, About, Roadmap, Contact or Docs pages.
+A disconnected visitor should not see wallet connection as a primary action on public intelligence, Risk Indices, Access & Pricing, Risk Gate, Data/API, Research, Institutional, About, Roadmap, Contact or Docs pages.
 
 Wallet connection belongs to explicit testnet/execution surfaces such as Prediction Markets, Arc/Onchain, Bridge & Swap, Portfolio and transaction flows. A user who is already connected may still see compact wallet state elsewhere.
 
@@ -78,202 +103,157 @@ Wallet connection belongs to explicit testnet/execution surfaces such as Predict
 
 ### `/` — Homepage
 
-**Job:** explain Geomacro in under one screen, prove that the product is real, then move the right visitor toward the appropriate product or pilot.
+**Job:** make any reasonably informed visitor understand Geomacro in roughly 40 seconds, then move that visitor to the right depth.
 
-**Order:**
+**Above-the-fold answer must communicate:**
 
-1. intelligence-first hero + three primary CTAs;
-2. short Observe → Structure → Score & explain → Deliver flow;
-3. live Global Risk Index proof;
-4. product surfaces and exact availability states;
-5. Risk Gate commercial wedge;
-6. buyer/use-case fit;
-7. Ask Geomacro sample interaction;
-8. secondary Technical Proof links;
-9. research/docs/trust references.
+- **what** Geomacro is: explainable geopolitical, macroeconomic and critical-mineral risk intelligence;
+- **how** it works: evidence -> structure -> Risk Indices / context -> human or machine delivery;
+- **who** it is for: traders/researchers, analysts, risk/treasury teams, developers and AI agents;
+- **how to access it**: free public research, professional depth, governed API/Risk Gate, mainnet pay-per-call when deliberately enabled.
 
-**Do not:** make markets/onchain the hero, require a wallet, repeat the entire Institutional page, or turn the homepage into full technical documentation.
+The homepage is a comprehension and conversion surface, not a procurement dossier. Detailed coverage-census evidence belongs on due-diligence surfaces such as Risk Gate, Data & API, Research, Institutional and About & Trust.
+
+**Do not:** make markets/onchain the hero, require a wallet, show dense procurement evidence above the hero, bury current product status, or imply mainnet pay-per-call is live before activation.
 
 ### `/intelligence` — Live Intelligence
 
 **Job:** professional current-intelligence workspace.
 
-**Keep:** live/updating state, search/filter/sort, current events, highest risk, movement/emerging/fading views when supported, source/time context, GRI sidebar/context, clear empty/degraded states.
+Keep current/updating state, search/filter/sort, current events, source/time context, clear degraded states and next steps into Risk Indices, Ask Geomacro, Access & Pricing or institutional workflows.
 
-**Primary next steps:** open an event, inspect GRI, ask a grounded question, or move to institutional/Risk Gate workflows.
+### `/global-risk` — Risk Indices
 
-**Do not:** duplicate full GRI methodology or sell testnet markets as the primary value.
+**Job:** canonical public presentation of the three separate current indices:
 
-### `/global-risk` — Global Risk Index
+- Geopolitical Risk Index
+- Macroeconomic Risk Index
+- Critical Minerals Risk Index
 
-**Job:** canonical public GRI score, history, composition, evidence/confidence and proof/verification surface.
-
-**Keep:** verified snapshot state, exact score/change, attribution, evidence coverage, methodology, hashes/proof and historical context.
-
-**Primary next steps:** Intelligence, GRI architecture, Research/Docs.
-
-**Do not:** describe GRI as a probability, treat missing evidence as zero risk, or include Crypto as a current v1.2 scoring domain.
-
-### `/risk-gate` — Risk Gate
-
-**Job:** explain the first commercial B2B decision product and convert appropriate visitors into Private Pilot conversations.
-
-**Keep:** PRIVATE PILOT label, country + directional corridor current scope, signed GRO/pre-flight architecture, customer-policy separation, decision outputs, implemented controls, limitations and pilot CTA.
-
-**Primary CTA:** request/discuss Private Pilot.
-
-**Do not:** claim GA, production SLA, full logistics-route modelling, autonomous transaction authorization or event-specific Risk Objects as current pilot scope.
+Keep verified snapshot state, exact score/change, attribution, evidence coverage, methodology, hashes/proof and historical context. Historical combined GRI remains lineage/audit context, not a second live headline product.
 
 ### `/ask-geomacro` — Ask Geomacro
 
-**Job:** grounded conversational access to stored Geomacro intelligence and canonical GRI context.
+**Job:** grounded conversational access to stored Geomacro intelligence and current Risk Indices.
 
-**Keep:** example questions, evidence-grounding boundary, sources/evidence in answers, unavailable/weak-evidence state.
+Do not imply unrestricted web search, unsupported certainty or autonomous trading advice.
 
-**Primary next steps:** Intelligence, GRI, Research.
+### `/agent-access` — Access & Pricing
 
-**Do not:** imply unrestricted web search or unsupported certainty.
+**Job:** explain the commercial access ladder for traders, professionals, developers and AI agents on one page.
+
+**Must include:**
+
+- MAINNET PRE-LAUNCH status until real-funds activation is deliberately completed;
+- Free Explorer vs pay per call vs Professional vs API + Risk Gate vs Institutional;
+- prepared 0.02 USDC/call economics with the live HTTP 402 challenge/provider plan as payment authority;
+- Professional/API/institutional credits clearly described as usage allowances rather than monetary list prices;
+- free deliverability check before a chargeable machine request;
+- clear example request;
+- explicit non-investment-advice and non-execution boundary;
+- `execution_authorized=false` for Risk Gate context;
+- customer-controlled identity, permissions, policy, funds and execution.
+
+**Do not:** show a purchase CTA while production funds are disabled, call the service live before launch, imply every topic/country is always deliverable, present credit allowances as subscription prices, or imply paying authorizes a trade/payment.
+
+### `/risk-gate` — Risk Gate
+
+**Job:** explain the B2B decision-context product and convert appropriate visitors into Private Pilot conversations.
+
+Keep PRIVATE PILOT label, country + directional-corridor current scope, signed Risk Object/pre-flight architecture, customer-policy separation, implemented controls, limitations and pilot CTA.
 
 ### `/data-api` — Data & API
 
-**Job:** explain machine-readable delivery and exactly what access exists today.
+**Job:** explain governed machine-readable delivery and exactly what access exists today.
 
-**Order:**
-
-1. PUBLIC + PRIVATE PILOT hero;
-2. availability matrix: Live Public / Private Pilot / Commercial Direction;
-3. conceptual Risk Object fields;
-4. Private Pilot controls;
-5. current scope and non-goals;
-6. pilot CTA + technical docs.
-
-**Do not:** publish a conceptual JSON example as if it overrides the canonical code schema, imply anonymous GA API access, or imply customer transaction custody/execution.
+Keep public-vs-commercial boundary, entitlement semantics, structural endpoint, Risk Object fields, source-rights boundary and links to Access & Pricing for commercial path selection.
 
 ### `/institutional` — For Institutions
 
-**Job:** translate Geomacro into real buyer workflows and founding-pilot scope.
+**Job:** translate Geomacro into real buyer workflows and contracted/founding-pilot scope.
 
-**Keep:** live GRI/context where useful, current top risks, treasury/payments/risk/supply-chain/agent use cases, concrete pilot workflow, what a founding pilot can include, current boundaries and direct contact CTA.
-
-**Primary CTA:** discuss founding pilot.
-
-**Do not:** duplicate every research detail or make product pricing/SLAs look finalized before they are.
+Keep treasury/payments/risk/supply-chain/agent use cases, concrete pilot workflow, current boundaries and direct contact CTA. Do not imply finalized enterprise SLA, unlimited coverage or customer adoption evidence.
 
 ### `/research` — Research & Methodology
 
 **Job:** public research hub and gateway to evidence/methodology detail.
 
-**Keep:** GRI methodology, proof/reproducibility, change attribution, source governance/reliability, research standard, links to current GRI and 52-page Docs.
-
-**Do not:** duplicate all Docs content or overstate predictive validation.
+Keep Risk Indices methodology/proof/reproducibility/change attribution/source governance and research limitations. Detailed coverage evidence is appropriate here because the visitor is explicitly evaluating methodology and proof.
 
 ### `/docs` and `/docs/*` — Documentation
 
 **Job:** canonical deep technical/product reference.
 
-**Keep:** 52-page manifest, stable navigation, exact methodology/status boundaries, architecture/code concepts, source governance, determinism, Risk Objects/Risk Gate, commercial availability and Technical Proof sections.
-
-**Do not:** let documentation terminology become a second product identity or silently diverge from implemented versions.
+Docs must use the same access ladder, status vocabulary, current three-index product identity, pay-per-call pre-launch boundary and Risk Gate non-execution boundary as the website.
 
 ### `/about` — About & Trust
 
-**Job:** explain company/product identity, transparency standard, current product statuses, privacy posture and important limitations.
+**Job:** explain company/product identity, transparency standard, current product statuses, privacy posture and important limitations. Due-diligence evidence can live here without cluttering the homepage.
 
-**Do not:** make unsupported certification/audit claims or imply open-source rights beyond the repository licence.
+Do not make unsupported certification, independent-audit, customer-adoption or SLA claims.
 
 ### `/roadmap` — Roadmap
 
 **Job:** show execution order and release gates, not a marketing wishlist.
 
-**Keep order:** commercial/source-of-truth hardening → data/GRI → Risk Objects/Risk Gate → security/resilience → Early Access/commercial package → permanent demo/deck → design partners/paid pilots → broader production expansion.
+Current order:
 
-**Do not:** present planned capabilities as already live.
+1. public intelligence foundation;
+2. commercial hardening + pre-launch machine access;
+3. coordinated commercial launch after source-rights/security/operations gates;
+4. production expansion after evidence and customer validation.
+
+Mainnet activation is a controlled release action, not a development milestone automatically triggered by code completion.
 
 ### `/contact` — Contact
 
-**Job:** one low-friction path for pilots, technical questions and strategic conversations.
+**Job:** one low-friction path for controlled professional access, pilots, technical questions and strategic conversations.
 
-**Canonical email:** `contact@geomacro.live`.
+Canonical email: `contact@geomacro.live`.
 
-### `/pipeline` — Data Pipeline · Technical Proof
+### Technical-proof routes
 
-**Job:** expose technical processing architecture and engineering evidence for sophisticated visitors.
-
-**Must carry Technical Proof context.** Link back to primary Intelligence/GRI products.
-
-### `/arena` — Prediction Markets · Technical Proof
-
-**Job:** preserve the testnet prediction-market application/feedback layer and technical history.
-
-**Must carry Technical Proof/Testnet context.** It is not the homepage product identity.
-
-### `/onchain` — Arc / Onchain · Technical Proof
-
-**Job:** show programmable-finance/onchain implementation evidence.
-
-**Must carry Technical Proof/Testnet context.** No general production settlement claim.
-
-### `/bridge-swap` — Bridge & Swap · Technical Proof
-
-**Job:** show Circle/Arc bridge and swap implementation on supported testnet rails.
-
-**Must carry Technical Proof/Testnet context.** Wallet connection is appropriate here.
-
-### `/portfolio` and transaction/account routes
-
-**Job:** user-specific technical/testnet account state.
-
-These are not primary commercial navigation items. Only surface Portfolio in global navigation when a wallet is connected.
+`/testnet-access`, `/demo`, `/pipeline`, `/arena`, `/onchain` and `/bridge-swap` are engineering/integration proof. Prediction markets remain permanently Testnet-only. These routes must not be presented as the primary commercial product or as proof that production mainnet settlement is already live.
 
 ### Legacy routes
 
-- `/feed` → redirect permanently in product terms to `/intelligence` while preserving old links.
-- `/bridge` → redirect to `/bridge-swap`.
+- `/feed` -> `/intelligence`
+- `/bridge` -> `/bridge-swap`
 
 Redirect-only routes must not appear in the sitemap as canonical pages.
 
-## Content density rules
-
-- Homepage: concise commercial overview; roughly one decision per section.
-- Product pages: enough detail to understand value, status, workflow and next action without reading Docs.
-- Institutional: workflow and buyer detail, not methodology dump.
-- Research: methodology map, not the complete specification.
-- Docs: deepest detail and canonical technical reference.
-- Technical Proof: engineering evidence only after an explicit status boundary.
-
 ## Commercial conversion paths
 
-### Analyst / professional
+### Trader / individual researcher
 
-`Home → Intelligence → GRI / Ask → Research / Docs`
+`Home -> Intelligence / Risk Indices / Ask -> Access & Pricing -> Free or Professional path`
+
+### AI agent / developer
+
+`Home -> Access & Pricing -> free deliverability check / Data & API -> Docs -> commercial activation`
 
 ### Institutional buyer
 
-`Home → For Institutions → Risk Gate / Data & API → Contact`
-
-### Developer / agent builder
-
-`Home → Data & API → Risk Gate → Docs → Contact`
+`Home -> For Institutions -> Risk Gate / Data & API -> Contact`
 
 ### Technical due diligence
 
-`Home / About → Docs / GRI Architecture → Pipeline / Technical Proof → GitHub`
-
-### Existing testnet user
-
-`Technical Proof → wallet-enabled flow → Portfolio / transaction surfaces`
+`Home / About -> Docs / Research -> Pipeline / Technical Proof -> GitHub`
 
 ## Final release checks
 
 Before a commercial website release:
 
 1. every primary nav target builds and is reachable;
-2. mobile navigation contains the same commercial products in grouped form;
-3. no public-intelligence route requires wallet connection;
-4. all redirect-only routes are excluded from sitemap canonical URLs;
-5. GRI pages use the current three-domain v1.2 contract;
-6. Risk Gate remains labelled Private Pilot until production gates are satisfied;
-7. Arc/Circle/markets remain labelled Technical Proof;
-8. contact identity is `contact@geomacro.live`;
-9. canonical/OG metadata use `https://geomacro.live`;
-10. Product CI tests and production build pass.
+2. `/agent-access` is represented as Access & Pricing in nav/footer and appears in sitemap/machine-readable product references;
+3. homepage communicates what/how/who/access in roughly one screen;
+4. procurement/coverage proof is absent from the homepage but available on appropriate due-diligence surfaces;
+5. no public-intelligence or commercial-information route requires wallet connection;
+6. all redirect-only routes are excluded from sitemap canonical URLs;
+7. public Risk Indices remain the current three separate indices;
+8. Risk Gate remains PRIVATE PILOT and non-authorizing until verified production evidence changes that status;
+9. pay-per-call remains MAINNET PRE-LAUNCH until real-funds activation is deliberately completed;
+10. Arc/Circle/markets remain TECHNICAL PROOF where applicable and prediction markets remain Testnet-only;
+11. contact identity is `contact@geomacro.live`;
+12. canonical/OG metadata use `https://geomacro.live`;
+13. Product CI, production build, route generation and prelaunch-lock checks pass.

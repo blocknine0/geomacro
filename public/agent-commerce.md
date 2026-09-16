@@ -4,6 +4,14 @@ Status: PRE-LAUNCH. Real-money settlement is disabled on every provider until th
 
 Geomacro exposes bounded geopolitical and macro risk intelligence to software and AI agents. Payment/discovery providers are adapters around one canonical intelligence contract; they do not fork the underlying methodology or widen data entitlement.
 
+## Human-readable access
+
+Canonical commercial access and pricing page:
+
+- `https://geomacro.live/agent-access`
+
+That page explains the current access ladder for Free Explorer, pay-per-call agents, Professional intelligence, API + Risk Gate and Institutional use. Static website pricing is informational; the live payment challenge or approved provider plan remains authoritative for machine-payment terms.
+
 ## Canonical machine surfaces
 
 - Agent discovery: `/.well-known/geomacro-agent.json`
@@ -12,7 +20,7 @@ Geomacro exposes bounded geopolitical and macro risk intelligence to software an
 - Coinbase pre-launch adaptive intelligence: `POST /api/x402/intelligence`
 - Circle Gateway pre-launch adaptive intelligence: `POST /api/x402/circle/intelligence`
 - Nevermined sandbox adaptive intelligence: `POST /api/x402/nevermined/intelligence`
-- Human-readable product documentation: `/data-api` and `/risk-gate`
+- Human-readable product documentation: `/agent-access`, `/data-api` and `/risk-gate`
 
 The payment challenge or provider plan is the authoritative source for the price and accepted payment terms. A static discovery document is never authoritative pricing.
 
