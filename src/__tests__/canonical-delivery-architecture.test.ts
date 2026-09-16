@@ -133,8 +133,8 @@ describe("canonical one-data multi-delivery architecture", () => {
     expect(readme).toContain("Structured intelligence state");
     expect(readme).toContain("Customer-controlled action");
 
-    expect(commercial).toContain("Data & API is an access and delivery surface over the shared intelligence state");
-    expect(commercial).toContain("core risk calculation, provenance system and database must not depend on x402");
+    expect(commercial).toContain("Data & API, Access & Pricing, institutional packaging, agent protocols and payment rails are delivery or presentation layers over the shared intelligence state");
+    expect(commercial).toContain("Payment or access mechanisms, including x402, must never bypass source-license or commercial-use restrictions");
 
     expect(testnet).toContain("same canonical Geomacro intelligence pipeline");
     expect(testnet).toContain("There is no separate API-only risk database");
