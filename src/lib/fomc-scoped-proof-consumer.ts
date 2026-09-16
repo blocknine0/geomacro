@@ -68,7 +68,7 @@ function assertSha256(value: unknown, field: string): asserts value is string {
   }
 }
 
-function assertIntegerCount(value: unknown, field: string) {
+function assertIntegerCount(value: unknown, field: string): asserts value is number {
   if (!Number.isInteger(value) || Number(value) < 0) {
     throw new Error(`${field} must be a non-negative integer`);
   }
@@ -97,13 +97,12 @@ export function validateFomcScopedProofArtifact(
     assertSha256(raw[field], field);
   }
 
-  for (const field of [
-    "sample_count",
-    "material_event_sample_count",
-    "control_sample_count",
-  ]) {
-    assertIntegerCount(raw[field], field);
-  }
+  const sampleCount = raw.sample_count;
+  const materialEventCount = raw.material_event_sample_count;
+  const controlCount = raw.control_sample_count;
+  assertIntegerCount(sampleCount, "sample_count");
+  assertIntegerCount(materialEventCount, "material_event_sample_count");
+  assertIntegerCount(controlCount, "control_sample_count");
 
   if (raw.methodology_calibrated !== false) {
     throw new Error("FOMC scoped proof methodology must remain uncalibrated");
@@ -133,10 +132,10 @@ export function validateFomcScopedProofArtifact(
   }
 
   if (!Array.isArray(raw.samples)) throw new Error("FOMC scoped proof samples are required");
-  if (raw.samples.length !== raw.sample_count) {
+  if (raw.samples.length !== sampleCount) {
     throw new Error("FOMC scoped proof sample_count mismatch");
   }
-  if (raw.sample_count !== raw.material_event_sample_count + raw.control_sample_count) {
+  if (sampleCount !== materialEventCount + controlCount) {
     throw new Error("FOMC scoped proof denominator counts do not add up");
   }
   if (stableHash(raw.samples) !== raw.samples_hash) {
@@ -160,10 +159,10 @@ export function validateFomcScopedProofArtifact(
     else if (sample.outcome === "NO_MATERIAL_EVENT") controls += 1;
     else throw new Error("FOMC scoped proof cannot contain INVALIDATED samples");
   }
-  if (materialEvents !== raw.material_event_sample_count) {
+  if (materialEvents !== materialEventCount) {
     throw new Error("FOMC scoped proof material-event count mismatch");
   }
-  if (controls !== raw.control_sample_count) {
+  if (controls !== controlCount) {
     throw new Error("FOMC scoped proof control count mismatch");
   }
 
