@@ -17,6 +17,24 @@ on:
       - "bun.lock"
       - "docs/security/DEPENDENCY_EXCEPTIONS.md"
       - ".github/workflows/security-resilience-gate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/risk-*.ts"
+      - "src/lib/corridor-risk-*.ts"
+      - "src/__tests__/risk-*.test.ts"
+      - "src/lib/a2a-*.ts"
+      - "server/api/a2a/**"
+      - "src/__tests__/a2a-*.test.ts"
+      - "docs/A2A_AGENT_NETWORK.md"
+      - "scripts/stress-risk-gate-core.ts"
+      - "supabase/migrations/**"
+      - "package.json"
+      - "package-lock.json"
+      - "bun.lock"
+      - "docs/security/DEPENDENCY_EXCEPTIONS.md"
+      - ".github/workflows/security-resilience-gate.yml"
   workflow_dispatch:
 
 permissions:
