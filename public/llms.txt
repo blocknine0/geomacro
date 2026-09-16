@@ -12,7 +12,8 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Research and methodology: LIVE
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
-- Paid agent / x402 access: CONTROLLED ACCEPTANCE; real-funds mainnet activation is a separate launch gate
+- Paid agent / x402 access: PRE-LAUNCH; non-production acceptance only
+- Coinbase, GOAT, Nevermined and other real-money rails: DISABLED pending coordinated official launch
 - Arc Testnet, prediction markets, Circle CCTP and Bridge & Swap: TECHNICAL PROOF
 
 Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as production mainnet, real-money institutional settlement or independent security certification.
@@ -28,6 +29,7 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - For Institutions: https://geomacro.live/institutional
 - Research: https://geomacro.live/research
 - Documentation: https://geomacro.live/docs
+- Agent commerce: https://geomacro.live/agent-commerce.md
 - About & Trust: https://geomacro.live/about
 - Contact: https://geomacro.live/contact
 
@@ -40,6 +42,7 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - Requests with unavailable, stale or commercially ineligible required coverage are not chargeable.
 - A successful machine payment unlocks only the bounded requested product; it does not widen the customer's entitlement or expose raw/private warehouse data.
 - Payment does not authorize a downstream financial action. Risk Gate remains non-authorizing and `execution_authorized=false`.
+- During pre-launch, all real-money provider activation remains disabled even if an individual adapter is technically ready.
 
 ## Key product boundaries
 
