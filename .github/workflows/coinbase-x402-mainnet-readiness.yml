@@ -3,6 +3,7 @@ name: Coinbase x402 Mainnet Readiness
 on:
   pull_request:
     paths:
+      - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "server/routes/api/x402/**"
@@ -28,15 +29,22 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Verify Coinbase x402 configuration tests
         run: bunx vitest run src/lib/coinbase-x402.server.test.ts
-      - name: Verify real-funds gate remains explicit
+      - name: Verify coordinated real-funds gates remain explicit and inactive in source
         shell: bash
         run: |
           set -euo pipefail
+          grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
+          grep -q 'GEOMACRO_COMMERCIAL_LAUNCH_ACK' src/lib/commercial-launch-gate.server.ts
+          grep -q 'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH' src/lib/commercial-launch-gate.server.ts
           grep -q 'COINBASE_X402_MAINNET_ACK' src/lib/coinbase-x402.server.ts
           grep -q 'I_ACCEPT_REAL_USDC' src/lib/coinbase-x402.server.ts
           grep -q '0.02' src/lib/coinbase-x402.server.test.ts
           grep -q '20000' src/lib/coinbase-x402.server.test.ts
+          if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
+            echo 'ERROR: .env.example must never activate the coordinated commercial launch gate.' >&2
+            exit 1
+          fi
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
-            echo 'ERROR: .env.example must never activate the real-USDC gate.' >&2
+            echo 'ERROR: .env.example must never activate the Coinbase real-USDC gate.' >&2
             exit 1
           fi
