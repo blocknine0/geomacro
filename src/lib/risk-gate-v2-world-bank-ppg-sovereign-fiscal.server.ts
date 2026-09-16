@@ -66,9 +66,18 @@ async function loadCleanPpgManifest(asOf: string) {
     .eq("source_id", SOURCE_ID)
     .eq("write_completed", true)
     .lte("coverage_end", asOf)
+    // World Bank has many governed release manifests. Filter for this exact
+    // derived PPG/GNI contract in PostgREST before limiting rows; otherwise a
+    // valid older-coverage PPG manifest can be pushed out by newer unrelated
+    // World Bank releases and the production fallback silently remains absent.
+    .contains("metadata", {
+      kind: MANIFEST_KIND,
+      metric: WORLD_BANK_PPG_SOVEREIGN_FISCAL_METRIC,
+      semantic_boundary: SEMANTIC_BOUNDARY,
+    })
     .order("coverage_end", { ascending: false })
     .order("retrieved_at", { ascending: false })
-    .limit(50);
+    .limit(10);
   if (result.error) throw result.error;
 
   for (const row of result.data ?? []) {
