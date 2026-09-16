@@ -7,10 +7,16 @@
   "resources": [],
   "freeResources": [
     {
+      "resource": "https://geomacro.live/api/agent/question-preflight",
+      "method": "POST",
+      "price": "free",
+      "description": "Question-first preflight. Resolves a bounded natural-language question into the exact governed paid_request and query_plan_hash, then checks deliverability without returning premium intelligence or requesting payment."
+    },
+    {
       "resource": "https://geomacro.live/api/x402/risk/availability",
       "method": "POST",
       "price": "free",
-      "description": "No-charge deliverability check. It determines whether the requested intelligence can be safely produced before any payment is requested."
+      "description": "No-charge deliverability check for an already structured adaptive query. It determines whether the requested intelligence can be safely produced before any payment is requested."
     }
   ],
   "plannedResources": [
@@ -41,6 +47,12 @@
       "production_enabled": false
     }
   ],
+  "privacy": {
+    "question_planning_external_llm": false,
+    "raw_question_sent_to_payment_provider": false,
+    "raw_payment_proof_persisted": false,
+    "prepared_premium_payload_encrypted_at_rest": true
+  },
   "discovery": {
     "openapi": "https://geomacro.live/openapi-x402.json",
     "commerce": "https://geomacro.live/.well-known/geomacro-commerce.json",
