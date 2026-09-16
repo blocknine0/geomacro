@@ -1,0 +1,93 @@
+{
+  "version": "1.0.0",
+  "mode": "prelaunch",
+  "live_watcher_activation": false,
+  "rules": {
+    "commercial_signal_requires_runtime_source_gate": true,
+    "raw_source_payload_publication": false,
+    "candidate_sources_default_enabled": false,
+    "minimum_poll_minutes_for_scheduled_fallback": 5
+  },
+  "governed_existing_sources": {
+    "gdelt_v2_events": {
+      "provider": "GDELT Project",
+      "scope": "GLOBAL",
+      "transport": "15-minute release files",
+      "existing_workflow": ".github/workflows/gdelt-v2-event-sync.yml",
+      "current_schedule_minutes": 15,
+      "rights_register_status": "VERIFIED",
+      "runtime_commercial_signal_activation": false,
+      "early_warning_use": "INGESTION_AND_RESEARCH_ONLY_UNTIL_EXPLICIT_PROMOTION",
+      "event_families": ["conflict", "political_instability", "trade_policy", "other"]
+    },
+    "usgs_earthquake_hazards": {
+      "provider": "U.S. Geological Survey",
+      "scope": "GLOBAL",
+      "transport": "official GeoJSON summary feed",
+      "existing_workflow": ".github/workflows/usgs-earthquake-hazards-sync.yml",
+      "current_schedule_minutes": 60,
+      "upstream_feed_update_minutes": 1,
+      "rights_register_status": "VERIFIED",
+      "runtime_commercial_signal_activation": false,
+      "early_warning_use": "INGESTION_AND_RESEARCH_ONLY_UNTIL_EXPLICIT_PROMOTION",
+      "event_families": ["natural_disaster"]
+    }
+  },
+  "official_source_candidates": {
+    "ecb_news_rss": {
+      "provider": "European Central Bank",
+      "scope": "EURO_AREA",
+      "country_or_region_timezone": "Europe/Brussels",
+      "transport_candidate": "RSS",
+      "discovery_url": "https://www.ecb.europa.eu/home/html/rss.en.html",
+      "rights_status": "REVIEW_REQUIRED",
+      "adapter_status": "NOT_IMPLEMENTED",
+      "enabled": false,
+      "event_families": ["monetary_policy", "banking_liquidity", "regulatory_policy"]
+    },
+    "bank_of_england_rss": {
+      "provider": "Bank of England",
+      "scope": "GBR",
+      "country_or_region_timezone": "Europe/London",
+      "transport_candidate": "RSS",
+      "discovery_url": "https://www.bankofengland.co.uk/rss",
+      "rights_status": "REVIEW_REQUIRED",
+      "adapter_status": "NOT_IMPLEMENTED",
+      "enabled": false,
+      "event_families": ["monetary_policy", "banking_liquidity", "regulatory_policy"]
+    },
+    "bank_of_japan_rss": {
+      "provider": "Bank of Japan",
+      "scope": "JPN",
+      "country_or_region_timezone": "Asia/Tokyo",
+      "transport_candidate": "RSS",
+      "discovery_url": "https://www.boj.or.jp/en/tips.htm",
+      "rights_status": "REVIEW_REQUIRED",
+      "adapter_status": "NOT_IMPLEMENTED",
+      "enabled": false,
+      "event_families": ["monetary_policy", "currency_fx", "banking_liquidity"]
+    },
+    "federal_reserve_releases": {
+      "provider": "Board of Governors of the Federal Reserve System",
+      "scope": "USA",
+      "country_or_region_timezone": "America/New_York",
+      "transport_candidate": "OFFICIAL_RELEASE_AND_DATA_FEEDS",
+      "discovery_url": "https://www.federalreserve.gov/newsevents.htm",
+      "rights_status": "REVIEW_REQUIRED",
+      "adapter_status": "NOT_IMPLEMENTED",
+      "enabled": false,
+      "event_families": ["monetary_policy", "banking_liquidity", "regulatory_policy"]
+    },
+    "ofac_recent_actions": {
+      "provider": "U.S. Department of the Treasury / OFAC",
+      "scope": "GLOBAL",
+      "country_or_region_timezone": "America/New_York",
+      "transport_candidate": "OFFICIAL_RECENT_ACTIONS",
+      "discovery_url": "https://ofac.treasury.gov/recent-actions/sanctions-list-updates",
+      "rights_status": "REVIEW_REQUIRED",
+      "adapter_status": "NOT_IMPLEMENTED",
+      "enabled": false,
+      "event_families": ["sanctions", "trade_policy", "regulatory_policy"]
+    }
+  }
+}
