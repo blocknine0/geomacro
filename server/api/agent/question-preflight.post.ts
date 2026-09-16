@@ -13,6 +13,9 @@ const MAX_BODY_BYTES = 8 * 1024;
 
 function headers(event: Parameters<typeof setResponseHeaders>[0]) {
   setResponseHeaders(event, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
     "Cache-Control": "no-store, max-age=0",
     Pragma: "no-cache",
     "X-Content-Type-Options": "nosniff",
@@ -90,7 +93,14 @@ export default defineEventHandler(async (event) => {
   try {
     const result = await preflightPaidQuestion(parsed);
     setResponseStatus(event, result.ok ? 200 : 422);
-    return result;
+    return {
+      ...result,
+      paid_endpoint: "/api/agent/paid-question",
+      privacy: {
+        ...result.privacy,
+        durable_prepared_payload_encrypted_at_rest: true,
+      },
+    };
   } catch (error) {
     if (error instanceof ZodError) {
       setResponseStatus(event, 400);
