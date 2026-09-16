@@ -1,0 +1,5 @@
+Contact: mailto:contact@geomacro.live
+Canonical: https://geomacro.live/.well-known/security.txt
+Policy: https://geomacro.live/about#product-use
+Preferred-Languages: en
+Expires: 2027-09-17T00:00:00.000Z
