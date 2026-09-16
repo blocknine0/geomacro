@@ -15,6 +15,17 @@
       "asset": "USDC",
       "provider_gate_env": "COINBASE_X402_MAINNET_ACK"
     },
+    "circle_gateway_x402": {
+      "status": "prelaunch_acceptance",
+      "launch_cohort": true,
+      "production_enabled": false,
+      "test_network": "Arc Testnet technical proof remains separate",
+      "production_network": "Base",
+      "asset": "USDC",
+      "provider_gate_env": "CIRCLE_X402_MAINNET_ACK",
+      "production_endpoint": "/api/x402/circle/intelligence",
+      "arc_mainnet_enabled": false
+    },
     "goat_x402": {
       "status": "deferred_manual_mainnet_merchant_onboarding",
       "launch_cohort": false,
@@ -38,6 +49,7 @@
   "distribution": {
     "coinbase_bazaar": "testnet_indexing_evidence_only",
     "agentic_market": "prelaunch",
+    "circle_agent_marketplace": "prelaunch_submission_hold",
     "goat": "testnet_proof_only_mainnet_deferred_manual_onboarding",
     "nevermined": "prelaunch",
     "other_registries": "prelaunch"
