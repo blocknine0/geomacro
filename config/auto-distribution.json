@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "mode": "prelaunch",
+  "default_dry_run": true,
+  "live_publish_enabled": false,
+  "public_alert_policy": {
+    "allowed_content_types": ["early_warning"],
+    "required_visibility": "public",
+    "allowed_statuses": ["WARNING", "CRITICAL"],
+    "minimum_confidence": 0.7,
+    "minimum_independent_evidence": 2,
+    "require_official_or_independent_confirmation": true,
+    "never_publish_fields": [
+      "premium_evidence",
+      "premium_analysis",
+      "customer_context",
+      "private_notes",
+      "raw_source_content",
+      "api_keys",
+      "payment_proof"
+    ]
+  },
+  "channels": {
+    "telegram": {"enabled": true, "cost_class": "free", "max_chars": 3900},
+    "discord": {"enabled": true, "cost_class": "free", "max_chars": 1900},
+    "bluesky": {"enabled": true, "cost_class": "free", "max_chars": 290},
+    "mastodon": {"enabled": true, "cost_class": "free", "max_chars": 450},
+    "linkedin": {
+      "enabled": false,
+      "cost_class": "approval_required",
+      "reason": "Enable only after LinkedIn Community Management API approval."
+    },
+    "x": {
+      "enabled": false,
+      "cost_class": "paid",
+      "reason": "Excluded from the zero-cost core. Enable only after explicit spend approval."
+    }
+  }
+}
