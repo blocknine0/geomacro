@@ -1,0 +1,103 @@
+name: WDI PPG Fiscal Shadow Production Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ingest-wdi-ppg-debt-service-live.mjs"
+      - "scripts/audit-wdi-ppg-fiscal-shadow-census.ts"
+      - "src/lib/risk-gate-v2-wdi-ppg-sovereign-fiscal.ts"
+      - "src/lib/risk-gate-v2-wdi-ppg-sovereign-fiscal.server.ts"
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - ".github/workflows/wdi-ppg-fiscal-shadow-production.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ingest-wdi-ppg-debt-service-live.mjs"
+      - "scripts/audit-wdi-ppg-fiscal-shadow-census.ts"
+      - "src/lib/risk-gate-v2-wdi-ppg-sovereign-fiscal.ts"
+      - "src/lib/risk-gate-v2-wdi-ppg-sovereign-fiscal.server.ts"
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - ".github/workflows/wdi-ppg-fiscal-shadow-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wdi-ppg-fiscal-shadow-production
+  cancel-in-progress: false
+
+jobs:
+  shadow-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WDI_PPG_INGEST_OUTPUT: wdi-ppg-debt-service-ingest.json
+      WDI_PPG_FISCAL_SHADOW_CENSUS_OUTPUT: wdi-ppg-fiscal-shadow-census.json
+      WDI_PPG_FISCAL_SHADOW_CONCURRENCY: "3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Validate authoritative production database target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Dry-run exact WDI PPG source on pull requests
+        if: github.event_name == 'pull_request'
+        run: node scripts/ingest-wdi-ppg-debt-service-live.mjs
+      - name: Enforce pull-request no-write and source coverage gate
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' wdi-ppg-debt-service-ingest.json >/dev/null
+          jq -e '.source.world_bank_api_source_id == "2"' wdi-ppg-debt-service-ingest.json >/dev/null
+          jq -e '.source.indicator_id == "DT.TDS.DPPG.GN.ZS"' wdi-ppg-debt-service-ingest.json >/dev/null
+          jq -e '.fetched.fresh_or_aging_country_count >= 100' wdi-ppg-debt-service-ingest.json >/dev/null
+          jq -e '.methodology_boundary.raw_cross_concept_pooling_allowed == false' wdi-ppg-debt-service-ingest.json >/dev/null
+      - name: Backfill verified WDI PPG observations after merge
+        if: github.event_name != 'pull_request'
+        run: node scripts/ingest-wdi-ppg-debt-service-live.mjs --write
+      - name: Verify persisted PPG peer universe after backfill
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == true' wdi-ppg-debt-service-ingest.json >/dev/null
+          jq -e '.persisted.fresh_or_aging_country_count >= 100' wdi-ppg-debt-service-ingest.json >/dev/null
+          jq -e '.persisted.minimum_peer_gate_met == true' wdi-ppg-debt-service-ingest.json >/dev/null
+      - name: Run authoritative shadow Risk Gate census
+        if: github.event_name != 'pull_request'
+        run: bun scripts/audit-wdi-ppg-fiscal-shadow-census.ts --require-100
+      - name: Enforce no-payability shadow boundary
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' wdi-ppg-fiscal-shadow-census.json >/dev/null
+          jq -e '.production_adapter_changed == false' wdi-ppg-fiscal-shadow-census.json >/dev/null
+          jq -e '.summary.shadow_accepted_country_count >= 100' wdi-ppg-fiscal-shadow-census.json >/dev/null
+          jq -e '.claim_boundary.shadow_only == true' wdi-ppg-fiscal-shadow-census.json >/dev/null
+          jq -e '.claim_boundary.production_country_payability_changed == false' wdi-ppg-fiscal-shadow-census.json >/dev/null
+          jq -e '.claim_boundary.execution_authorized_is_false == true' wdi-ppg-fiscal-shadow-census.json >/dev/null
+      - name: Upload sanitized PPG fiscal evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wdi-ppg-fiscal-shadow-production-proof
+          path: |
+            wdi-ppg-debt-service-ingest.json
+            wdi-ppg-fiscal-shadow-census.json
+          if-no-files-found: warn
+          retention-days: 30
