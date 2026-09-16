@@ -1,6 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import process from "node:process";
-import { stableCommerceJson } from "./agent-commerce-delivery.server";
 
 export const AGENT_COMMERCE_PAYLOAD_ENVELOPE_VERSION = "geomacro.agent-commerce.encrypted-payload.v1" as const;
 const ALGORITHM = "aes-256-gcm" as const;
@@ -19,6 +18,13 @@ type EncryptedPayloadEnvelope = {
 
 function sha256(value: string) {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
 }
 
 function keyFromEnvironment() {
@@ -59,7 +65,7 @@ export function isEncryptedCommercePayload(value: unknown): value is EncryptedPa
 
 export function encryptCommercePayload(payload: unknown) {
   const { key, keyId } = keyFromEnvironment();
-  const plaintext = stableCommerceJson(payload);
+  const plaintext = stableJson(payload);
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv(ALGORITHM, key, iv);
   cipher.setAAD(Buffer.from(AGENT_COMMERCE_PAYLOAD_ENVELOPE_VERSION, "utf8"));
