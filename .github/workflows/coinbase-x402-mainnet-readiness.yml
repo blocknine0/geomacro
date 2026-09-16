@@ -50,6 +50,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # This job proves exact-main source readiness only. It never reads
+          # production CDP credentials, never sets launch acknowledgements, and
+          # never performs a mainnet settlement.
           grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
           grep -q 'GEOMACRO_COMMERCIAL_LAUNCH_ACK' src/lib/commercial-launch-gate.server.ts
           grep -q 'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH' src/lib/commercial-launch-gate.server.ts
