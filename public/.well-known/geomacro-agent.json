@@ -8,6 +8,7 @@
     "execution_authorized": false
   },
   "discovery": {
+    "access_pricing": "https://geomacro.live/agent-access",
     "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "agent_commerce_docs": "https://geomacro.live/agent-commerce.md",
     "llms": "https://geomacro.live/llms.txt",
@@ -68,6 +69,7 @@
   "commercial": {
     "launch_state": "prelaunch",
     "production_funds_authorized": false,
+    "human_access_page": "https://geomacro.live/agent-access",
     "structured_data_registry_version": "structured-entitlements-v1.0.0",
     "credit_contract_version": "credits-v1.1.0",
     "free_web": "public_website_dashboard_only",
