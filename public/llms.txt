@@ -93,6 +93,9 @@ Where pre-launch machine-payment integrations are exposed for testing or discove
 - payment success does not authorize a downstream financial action;
 - real-money provider activation remains disabled until the coordinated launch gates and explicit owner authorization are satisfied.
 
+During pre-launch, all real-money provider activation remains disabled.
+Base mainnet disabled pending coordinated launch.
+GOAT mainnet: DEFERRED pending manual merchant application/approval.
 Arc mainnet is not automatically enabled by this prepared architecture.
 
 ## Current machine-readable request scope
