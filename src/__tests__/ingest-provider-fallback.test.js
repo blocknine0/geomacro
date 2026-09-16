@@ -19,7 +19,6 @@ const envExample = readFileSync(
 
 const workflows = [
   '../../.github/workflows/auto-ingest-news.yml',
-  '../../.github/workflows/dry-run-multisource-news.yml',
   '../../.github/workflows/reclassify-gri-evidence.yml',
 ].map((relativePath) =>
   readFileSync(
@@ -81,7 +80,7 @@ describe(
     );
 
     it(
-      'keeps env and workflow wiring for Gemini and Mistral',
+      'keeps env and active workflow wiring for Gemini and Mistral',
       () => {
         expect(envExample).toContain(
           'GEMINI_API_KEY='
