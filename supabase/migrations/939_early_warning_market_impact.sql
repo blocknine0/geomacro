@@ -19,10 +19,8 @@ alter table public.early_warning_alerts
   add column if not exists market_impact_hash text;
 
 alter table public.early_warning_alerts
-  drop constraint if exists early_warning_market_impact_object_check,
   add constraint early_warning_market_impact_object_check
     check (market_impact is null or jsonb_typeof(market_impact) = 'object'),
-  drop constraint if exists early_warning_market_impact_binding_check,
   add constraint early_warning_market_impact_binding_check
     check (
       (
