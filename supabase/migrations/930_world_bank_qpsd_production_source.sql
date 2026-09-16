@@ -31,10 +31,10 @@ values (
   false,
   true,
   true,
-  true,
+  false,
   'GLOBAL',
   'QUARTERLY',
-  'Exact QPSD Data Catalog dataset 0037906 / DataBank source 3009 only. General-government and central-government debt remain distinct source-specific concepts. Customer delivery is derived intelligence with attribution/provenance; no blanket raw bulk redistribution.'
+  'Exact QPSD Data Catalog dataset 0037906 / DataBank source 3009 only. Rights are reviewed and ingestion may be prepared, but commercial signal activation remains disabled until the source-specific shadow methodology, authoritative registry mapping and full production country census pass. General-government and central-government debt remain distinct concepts; no raw pooling or blanket bulk redistribution.'
 )
 on conflict (source_id)
 do update set
@@ -98,7 +98,7 @@ order by
   o.normalized_hash desc;
 
 comment on view public.live_world_bank_qpsd_latest is
-  'Latest governed commercially eligible QPSD observations per country and source-specific government-sector metric. General-government and central-government values are not pooled.';
+  'Latest governed commercially eligible QPSD observations per country and source-specific government-sector metric. The view remains empty while live_external_sources.enabled_for_commercial_signals=false; activation requires an explicit later promotion after shadow/census evidence. General-government and central-government values are not pooled.';
 
 revoke all on public.live_world_bank_qpsd_latest
   from public, anon, authenticated;
