@@ -8,6 +8,7 @@ on:
     paths:
       - "config/auto-distribution.json"
       - "scripts/marketing/**"
+      - "supabase/migrations/940_early_warning_distribution_claims.sql"
       - ".github/workflows/auto-distribution-shadow.yml"
       - "src/lib/public-early-warning-rss.ts"
       - "src/routes/api.early-warning.ts"
@@ -36,6 +37,9 @@ jobs:
 
       - name: Validate canonical feed adapter offline
         run: node scripts/marketing/test-public-feed-adapter.mjs
+
+      - name: Validate durable receipt claim/finalize contract
+        run: node scripts/marketing/test-distribution-receipt-ledger.mjs
 
       - name: Render canonical feed fixture without external writes
         run: >-
