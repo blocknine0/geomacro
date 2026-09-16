@@ -23,6 +23,20 @@ The main Geomacro repository owns the proof-metric formulas in `src/lib/early-wa
 
 The consumer validates the historical artifact before it reaches those formulas. It verifies the schema version, exact claim scope, artifact and sample hashes, denominator counts, sample scope, and all publication/commercial safety flags.
 
+## Offline consumption
+
+Once a real historical proof artifact exists, consume it without network or database access:
+
+```bash
+bun scripts/early-warning/consume-fomc-scoped-proof.ts \
+  --input /path/to/fomc-proof-samples.json \
+  --output /path/to/fomc-proof-metrics.json
+```
+
+The command refuses to overwrite an existing output file. The bounded metrics output contains the source artifact hash, exact scope, proof metrics, publication-readiness result and safety flags. It deliberately does not copy raw replay samples into the output.
+
+Without `--output`, the same bounded result is written to stdout.
+
 ## Publication boundary
 
 The adapter deliberately invokes the existing publication-readiness gate with the main-repo minimums:
