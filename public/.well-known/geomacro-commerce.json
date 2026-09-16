@@ -41,12 +41,14 @@
       "description": "A bounded adaptive country or directional-corridor assessment assembled from the currently deliverable Geomacro modules selected for the caller's question, topic and intent.",
       "question_preflight_endpoint": "https://geomacro.live/api/agent/question-preflight",
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "canonical_paid_endpoint": "https://geomacro.live/api/agent/paid-question",
+      "structured_compatibility_endpoint": "https://geomacro.live/api/x402/intelligence",
       "question_first_flow": [
         "POST question to question_preflight_endpoint",
         "receive deterministic paid_request, query_plan_hash, deliverability and exact configured price metadata",
-        "send the exact paid_request to a supported paid provider endpoint",
+        "send the exact paid_request to canonical_paid_endpoint",
         "bind payment proof to product and query_plan_hash",
-        "receive the exact prepared structured response after verified settlement"
+        "receive the exact encrypted-before-settlement structured response after verified settlement"
       ],
       "privacy": {
         "external_llm_for_question_planning": false,
@@ -57,7 +59,8 @@
       },
       "providers": {
         "coinbase_x402": {
-          "endpoint": "https://geomacro.live/api/x402/intelligence",
+          "endpoint": "https://geomacro.live/api/agent/paid-question",
+          "structured_compatibility_endpoint": "https://geomacro.live/api/x402/intelligence",
           "environment": "Base Sepolia acceptance complete; Base mainnet code-gated",
           "launch_cohort": true,
           "production_enabled": false
