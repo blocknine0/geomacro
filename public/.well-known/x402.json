@@ -1,0 +1,61 @@
+{
+  "x402Version": 2,
+  "name": "Geomacro Risk Intelligence",
+  "description": "Machine-readable geopolitical and macro risk intelligence for software and AI-agent pre-flight decisions.",
+  "status": "prelaunch",
+  "productionFundsAuthorized": false,
+  "resources": [],
+  "freeResources": [
+    {
+      "resource": "https://geomacro.live/api/x402/risk/availability",
+      "method": "POST",
+      "price": "free",
+      "description": "No-charge deliverability check. It determines whether the requested intelligence can be safely produced before any payment is requested."
+    }
+  ],
+  "plannedResources": [
+    {
+      "resource": "https://geomacro.live/api/x402/intelligence",
+      "method": "POST",
+      "product": "geomacro_adaptive_risk_intelligence_v1",
+      "provider": "coinbase_x402",
+      "pricing": "runtime_402_challenge_only",
+      "production_enabled": false
+    },
+    {
+      "resource": "https://geomacro.live/api/x402/circle/intelligence",
+      "method": "POST",
+      "product": "geomacro_adaptive_risk_intelligence_v1",
+      "provider": "circle_gateway_x402",
+      "pricing": "runtime_402_challenge_only",
+      "production_enabled": false,
+      "approved_initial_mainnet_network": "eip155:8453",
+      "arc_mainnet_enabled": false
+    },
+    {
+      "resource": "https://geomacro.live/api/x402/nevermined/intelligence",
+      "method": "POST",
+      "product": "geomacro_adaptive_risk_intelligence_v1",
+      "provider": "nevermined",
+      "pricing": "provider_plan_runtime_only",
+      "production_enabled": false
+    }
+  ],
+  "discovery": {
+    "openapi": "https://geomacro.live/openapi-x402.json",
+    "commerce": "https://geomacro.live/.well-known/geomacro-commerce.json",
+    "agent": "https://geomacro.live/.well-known/geomacro-agent.json",
+    "llms": "https://geomacro.live/llms.txt"
+  },
+  "boundaries": {
+    "execution_authorized": false,
+    "wallet_custody": false,
+    "transaction_signing": false,
+    "raw_private_warehouse_delivery": false
+  },
+  "hosting_fallback": {
+    "mode": "static_prelaunch",
+    "reason": "The current public host serves static well-known resources reliably while runtime server-route support is deployment-dependent.",
+    "production_launch_rule": "This fallback must not advertise paid production resources until a coordinated owner-authorized launch updates the discovery document from verified live provider configuration."
+  }
+}
