@@ -37,13 +37,14 @@ jobs:
             echo "=== ${file} ===" | tee -a qpsd-bulk-structure.txt
             head -n 4 "$file" | tee -a qpsd-bulk-structure.txt
           done < <(find qpsd-bulk -type f \( -name '*.csv' -o -name '*.CSV' \) | sort)
+          echo '=== EXACT FISCAL SERIES ===' | tee -a qpsd-bulk-structure.txt
+          grep -m 2 -F '"Gross PSD, General Gov., All maturities, All instruments, Nominal Value, % of GDP"' qpsd-bulk/QPSDCSV.csv | tee -a qpsd-bulk-structure.txt
+          grep -m 2 -F '"Gross PSD, Central Gov., All maturities, All instruments, Nominal Value, % of GDP"' qpsd-bulk/QPSDCSV.csv | tee -a qpsd-bulk-structure.txt
 
       - name: Use quarterly MRV compatibility mode for legacy API comparison
         shell: bash
         run: |
           set -euo pipefail
-          # The API route is retained only as a comparison while the official
-          # DataBank bulk-file contract is pinned. It cannot promote countries.
           sed -i 's/mrnev: "1"/mrv: "12"/' scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs
           grep -q 'mrv: "12"' scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs
 
