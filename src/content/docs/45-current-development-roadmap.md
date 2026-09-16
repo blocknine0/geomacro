@@ -5,7 +5,7 @@ Geomacro's commercialization order is deliberately staged so public claims follo
 ## Current hardening
 
 - align website, repository and documentation as one source of truth
-- complete GRI/data reliability and provenance controls
+- complete Risk Indices/data reliability, audited GRI v1.2 lineage and provenance controls
 - harden Risk Object / Risk Gate contracts
 - finish security, privacy and resilience evidence
 - verify commercial source eligibility
