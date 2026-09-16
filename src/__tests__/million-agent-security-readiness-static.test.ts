@@ -91,15 +91,19 @@ describe("million-agent and data-leak evidence harnesses", () => {
     expect(stress).toContain("bounded_maximum_overshoot");
   });
 
-  it("fails the build if secrets, server source, source maps or private material enter public output", () => {
+  it("fails the build on actual secrets, server source, source maps or private material", () => {
     const scan = read("scripts/security/scan-public-build.mjs");
 
     expect(scan).toContain("FORBIDDEN_PUBLIC_FILE");
     expect(scan).toContain("ACTUAL_SECRET_VALUE_EXPOSED");
-    expect(scan).toContain("SERVER_SECRET_IDENTIFIER_EXPOSED");
+    expect(scan).toContain("sensitiveIdentifierMarkers");
+    expect(scan).toContain("observed_sensitive_identifiers");
+    expect(scan).toContain("PRIVATE_KEY_MATERIAL_EXPOSED");
+    expect(scan).toContain("SERVER_SOURCE_MARKER_EXPOSED");
     expect(scan).toContain("PUBLIC_SOURCEMAP_REFERENCE");
     expect(scan).toContain("-----BEGIN PRIVATE KEY-----");
     expect(scan).toContain("supabase/migrations");
     expect(scan).toContain("source_maps_forbidden: true");
+    expect(scan).toContain("actual_secret_values_persisted: false");
   });
 });
