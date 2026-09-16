@@ -6,6 +6,8 @@ on:
       - "scripts/audit-wdi-source2-fiscal-expansion.mjs"
       - ".github/workflows/wdi-source2-fiscal-expansion.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
 
 permissions:
   contents: read
@@ -38,6 +40,8 @@ jobs:
           jq -e '.country_payability_changed == false' wdi-source2-fiscal-expansion.json >/dev/null
           jq -e '.methodology_boundary.raw_cross_concept_pooling_allowed == false' wdi-source2-fiscal-expansion.json >/dev/null
           jq -e '.methodology_boundary.external_debt_is_not_relabelled_as_central_government_debt == true' wdi-source2-fiscal-expansion.json >/dev/null
+          jq -e '.methodology_boundary.public_guaranteed_debt_service_is_a_separate_public_external_debt_pressure_concept == true' wdi-source2-fiscal-expansion.json >/dev/null
+          jq -e '.methodology_boundary.debt_service_is_not_relabelled_as_debt_stock == true' wdi-source2-fiscal-expansion.json >/dev/null
           jq -e '.methodology_boundary.production_sovereign_fiscal_module_changed == false' wdi-source2-fiscal-expansion.json >/dev/null
 
       - name: Print live coverage summary
