@@ -50,9 +50,8 @@ function ConnectButton() {
     useWallet();
   const executionContext = isWalletRoute(pathname);
 
-  // Public intelligence, risk indices, Research, Docs, institutions and the
-  // browser demo are intentionally wallet-free. Preserve a connected user's
-  // state, but do not turn wallet connection into a prerequisite for research.
+  // Public intelligence, Risk Indices, Agent Access, Research, Docs,
+  // institutions and the browser demo are intentionally wallet-free.
   if (!address && !executionContext) return null;
 
   if (!address) {
@@ -123,8 +122,9 @@ function ConnectButton() {
 const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/global-risk", label: "Risk Indices" },
-  { to: "/risk-gate", label: "Risk Gate" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
+  { to: "/agent-access", label: "Agent Access" },
+  { to: "/risk-gate", label: "Risk Gate" },
   { to: "/data-api", label: "Data & API" },
   { to: "/research", label: "Research" },
   { to: "/institutional", label: "For Institutions" },
@@ -255,7 +255,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             </div>
 
-            <nav aria-label="Primary" className="hidden items-center gap-2.5 text-xs text-muted-foreground xl:flex 2xl:gap-4">
+            <nav aria-label="Primary" className="hidden items-center gap-2 text-[11px] text-muted-foreground xl:flex 2xl:gap-3.5 2xl:text-xs">
               {PRIMARY_NAV.map((item) => (
                 <Link
                   key={item.to}
@@ -306,6 +306,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
+                  <Link to="/agent-access" className="hover:text-foreground">Agent Access</Link>
                   <Link to="/risk-gate" className="hover:text-foreground">Risk Gate</Link>
                   <Link to="/data-api" className="hover:text-foreground">Data & API</Link>
                 </div>
@@ -349,7 +350,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span>Dated 114-country controlled-workflow evidence · Private Pilot Risk Gate · Mainnet pre-launch</span>
+              <span>Dated 114-country controlled-workflow evidence · Risk Gate Private Pilot · Agent mainnet pre-launch</span>
               <details>
                 <summary className="cursor-pointer">Arc technical context</summary>
                 <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>
