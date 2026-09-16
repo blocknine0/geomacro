@@ -1,5 +1,13 @@
 import process from "node:process";
+import {
+  Payments,
+  buildPaymentRequired,
+  type SettlePermissionsResult,
+  type VerifyPermissionsResult,
+  type X402PaymentRequired,
+} from "@nevermined-io/payments";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
+import { commerceFingerprint } from "./agent-commerce-delivery.server";
 
 export const NEVERMINED_ENVIRONMENTS = {
   sandbox: {
@@ -80,4 +88,91 @@ export function isNeverminedX402Configured() {
   } catch {
     return false;
   }
+}
+
+export function neverminedPaymentRequired(
+  config: NeverminedX402Config,
+  endpoint: string,
+): X402PaymentRequired {
+  return buildPaymentRequired(config.planId, {
+    endpoint,
+    httpVerb: "POST",
+    scheme: config.scheme,
+    environment: config.environment,
+    description:
+      "Geomacro source-governed geopolitical and macro risk intelligence for autonomous agents.",
+    mimeType: "application/json",
+  });
+}
+
+function neverminedPayments(config: NeverminedX402Config) {
+  return Payments.getInstance({
+    nvmApiKey: config.apiKey,
+    environment: config.environment,
+  });
+}
+
+export async function verifyNeverminedPermissions(input: {
+  config: NeverminedX402Config;
+  paymentRequired: X402PaymentRequired;
+  token: string;
+}): Promise<VerifyPermissionsResult> {
+  return neverminedPayments(input.config).facilitator.verifyPermissions({
+    paymentRequired: input.paymentRequired,
+    x402AccessToken: input.token,
+    maxAmount: input.config.maxAmount,
+  });
+}
+
+export async function settleNeverminedPermissions(input: {
+  config: NeverminedX402Config;
+  paymentRequired: X402PaymentRequired;
+  token: string;
+  agentRequestId?: string;
+}): Promise<SettlePermissionsResult> {
+  return neverminedPayments(input.config).facilitator.settlePermissions({
+    paymentRequired: input.paymentRequired,
+    x402AccessToken: input.token,
+    maxAmount: input.config.maxAmount,
+    ...(input.agentRequestId ? { agentRequestId: input.agentRequestId } : {}),
+  });
+}
+
+/**
+ * Never infer a successful charge from `success` alone. Nevermined supports
+ * both balance-backed credits and pay-as-you-go rails with different evidence.
+ */
+export function assessNeverminedSettlement(settlement: SettlePermissionsResult) {
+  const transaction = String(settlement.transaction ?? "").trim();
+  const orderTx = String(settlement.orderTx ?? "").trim();
+  const creditsRedeemed = Number(settlement.creditsRedeemed ?? "0");
+
+  if (!settlement.success) {
+    return {
+      settled: false,
+      reference: null as string | null,
+      reason: settlement.errorReason ?? "NEVERMINED_SETTLEMENT_FAILED",
+    };
+  }
+
+  if (settlement.billingModel === "pay-as-you-go") {
+    const reference = orderTx || transaction;
+    return reference
+      ? { settled: true, reference, reason: null as string | null }
+      : { settled: false, reference: null, reason: "NEVERMINED_PAYG_REFERENCE_MISSING" };
+  }
+
+  // Missing billingModel is intentionally treated as legacy credits semantics,
+  // matching the SDK contract. A successful credit redemption still needs
+  // positive redeemed credits before Geomacro releases the paid response.
+  if (Number.isFinite(creditsRedeemed) && creditsRedeemed > 0) {
+    const reference = orderTx || transaction || `nvm-credits:${commerceFingerprint(settlement)}`;
+    return { settled: true, reference, reason: null as string | null };
+  }
+
+  return {
+    settled: false,
+    reference: null as string | null,
+    reason: "NEVERMINED_CREDIT_REDEMPTION_NOT_PROVEN",
+  };
 }
