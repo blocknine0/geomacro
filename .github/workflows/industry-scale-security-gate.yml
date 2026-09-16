@@ -1,0 +1,147 @@
+name: Industry Scale Security Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/middleware/00-central-security.ts"
+      - "src/lib/central-security.server.ts"
+      - "src/lib/real-funds-security-readiness.server.ts"
+      - "src/__tests__/central-security-contract.test.ts"
+      - "src/__tests__/million-agent-security-readiness-static.test.ts"
+      - "scripts/scale/**"
+      - "scripts/security/**"
+      - "scripts/ops/external-surface-security-smoke.mjs"
+      - "supabase/migrations/93*_central_security*.sql"
+      - "supabase/migrations/94*_central_security*.sql"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/industry-scale-security-gate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "server/middleware/00-central-security.ts"
+      - "src/lib/central-security.server.ts"
+      - "src/lib/real-funds-security-readiness.server.ts"
+      - "src/__tests__/central-security-contract.test.ts"
+      - "src/__tests__/million-agent-security-readiness-static.test.ts"
+      - "scripts/scale/**"
+      - "scripts/security/**"
+      - "scripts/ops/external-surface-security-smoke.mjs"
+      - "supabase/migrations/93*_central_security*.sql"
+      - "supabase/migrations/94*_central_security*.sql"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/industry-scale-security-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: industry-scale-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  million-agent-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: timeout 5m bun install --frozen-lockfile
+
+      - name: Central security and scale contracts
+        run: >-
+          timeout 5m bunx vitest run
+          src/__tests__/central-security-contract.test.ts
+          src/__tests__/million-agent-security-readiness-static.test.ts
+
+      - name: Database migration safety
+        run: timeout 4m bun run db:safety
+
+      - name: Production build
+        run: timeout 8m bun run build
+
+      - name: Public build secret and source exposure scan
+        run: timeout 3m node scripts/security/scan-public-build.mjs
+
+      - name: One-million adversarial envelope and credential-spray model
+        run: >-
+          timeout 8m bun run scripts/security/adversarial-envelope-stress.ts
+          --cases=1000000
+          --spray-agents=1000000
+
+      - name: One-million virtual-agent business-flow readiness
+        run: >-
+          timeout 10m bun run scripts/scale/million-agent-readiness.ts
+          --agents=1000000
+
+      - name: Verify evidence boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const paths = [
+            "artifacts/public-build-security-scan.json",
+            "artifacts/adversarial-security-stress.json",
+            "artifacts/million-agent-readiness.json",
+          ];
+
+          for (const path of paths) {
+            const evidence = JSON.parse(fs.readFileSync(path, "utf8"));
+            if (evidence.result !== "PASS") {
+              throw new Error(`${path} did not PASS`);
+            }
+          }
+
+          const adversarial = JSON.parse(
+            fs.readFileSync("artifacts/adversarial-security-stress.json", "utf8"),
+          );
+          if (adversarial.boundary.production_host_contacted !== false) {
+            throw new Error("Adversarial stress must never contact production");
+          }
+          if (adversarial.boundary.brute_force_network_attack_performed !== false) {
+            throw new Error("Adversarial stress must remain non-destructive/in-process");
+          }
+
+          const scale = JSON.parse(
+            fs.readFileSync("artifacts/million-agent-readiness.json", "utf8"),
+          );
+          if (scale.population.agents !== 1000000) {
+            throw new Error("Expected exactly one million virtual agents");
+          }
+          if (scale.boundary.real_http_capacity_claim !== false) {
+            throw new Error("Synthetic readiness must not claim live HTTP capacity");
+          }
+          if (scale.boundary.real_payment_performed !== false) {
+            throw new Error("Scale readiness must not perform real payment");
+          }
+          if (scale.boundary.production_activation_performed !== false) {
+            throw new Error("Scale readiness must not activate production");
+          }
+          NODE
+
+      - name: Upload industry-scale security evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: industry-scale-security-${{ github.run_id }}
+          path: |
+            artifacts/public-build-security-scan.json
+            artifacts/adversarial-security-stress.json
+            artifacts/million-agent-readiness.json
+          if-no-files-found: warn
+          retention-days: 90
