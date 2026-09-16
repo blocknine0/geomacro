@@ -9,8 +9,8 @@ import {
 
 describe("governed hot-topic taxonomy", () => {
   it("publishes a versioned definition for every family", () => {
-    expect(HOT_TOPIC_TAXONOMY_VERSION).toBe("geomacro.hot-topic-family.v1");
-    expect(HOT_TOPIC_FAMILIES).toHaveLength(18);
+    expect(HOT_TOPIC_TAXONOMY_VERSION).toBe("geomacro.hot-topic-family.v2");
+    expect(HOT_TOPIC_FAMILIES).toHaveLength(30);
     expect(Object.keys(HOT_TOPIC_FAMILY_DEFINITIONS).sort()).toEqual(
       [...HOT_TOPIC_FAMILIES].sort(),
     );
@@ -41,6 +41,18 @@ describe("governed hot-topic taxonomy", () => {
     ["earthquake and tsunami", "natural_hazards"],
     ["bank run and liquidity crisis", "banking_financial_system"],
     ["cross-border trade corridor disruption", "trade_corridor_disruption"],
+    ["ransomware cyberattack caused an internet outage", "cyber_digital_infrastructure"],
+    ["semiconductor and AI chip controls tightened", "technology_semiconductors_ai_controls"],
+    ["public health emergency after infectious disease outbreak", "public_health_biosecurity"],
+    ["refugee and forced displacement crisis", "migration_refugee_displacement"],
+    ["extreme weather and heatwave disrupt operations", "climate_extreme_weather"],
+    ["water scarcity and reservoir shortage", "water_resource_stress"],
+    ["market selloff and volatility spike", "capital_markets_asset_stress"],
+    ["property crisis and mortgage stress", "housing_property_stress"],
+    ["airspace closure causes flight cancellations", "aviation_transport_disruption"],
+    ["steel and iron ore commodity shortage", "industrial_commodities_metals"],
+    ["new legislation triggers a regulatory change", "legal_regulatory_policy"],
+    ["nuclear facility security and radiation incident", "nuclear_security"],
   ] as const)("maps %s to %s", (question, expected) => {
     expect(inferHotTopicFamiliesFromQuestion(question)).toContain(expected);
   });
@@ -48,12 +60,13 @@ describe("governed hot-topic taxonomy", () => {
   it("can classify one event into multiple relevant families without inventing exclusivity", () => {
     const families = classifyHotTopicEvent({
       event_type: "export control",
-      title: "Rare earth export controls disrupt supply chains",
-      summary: "Shipping and logistics reroute after new restrictions",
+      title: "Rare earth and semiconductor export controls disrupt supply chains",
+      summary: "Shipping and logistics reroute after new technology restrictions",
       domain: "rare_earth",
     });
     expect(families).toContain("sanctions_export_controls");
     expect(families).toContain("critical_minerals");
+    expect(families).toContain("technology_semiconductors_ai_controls");
     expect(families).toContain("supply_chain_logistics");
     expect(families).toContain("shipping_chokepoints");
   });
