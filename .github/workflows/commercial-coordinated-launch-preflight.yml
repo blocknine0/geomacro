@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "config/commercial-launch-manifest.json"
+      - "package.json"
+      - "bun.lock"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
@@ -68,8 +70,8 @@ jobs:
           set -euo pipefail
           grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
           grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
-          grep -q 'https://facilitator.sandbox.nevermined.app' src/lib/nevermined-x402.server.ts
-          grep -q 'https://facilitator.live.nevermined.app' src/lib/nevermined-x402.server.ts
+          grep -q 'https://api.sandbox.nevermined.app/' src/lib/nevermined-x402.server.ts
+          grep -q 'https://api.live.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
           grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
@@ -84,6 +86,26 @@ jobs:
             echo 'ERROR: GOAT mainnet must remain disabled before coordinated launch.' >&2
             exit 1
           fi
+      - name: Verify Nevermined transport stays dependency-free and contract-pinned
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const p = await Bun.file("package.json").json();
+            if (p.dependencies?.["@nevermined-io/payments"] !== undefined) {
+              throw new Error("Nevermined SDK dependency must remain absent while its transitive graph violates advisory policy");
+            }
+          '
+          if grep -Fq '@nevermined-io/payments' bun.lock; then
+            echo 'ERROR: vulnerable Nevermined SDK graph re-entered bun.lock.' >&2
+            exit 1
+          fi
+          grep -q 'NEVERMINED_API_VERSION = "1.1"' src/lib/nevermined-x402.server.ts
+          grep -q '"/api/v1/x402/verify"' src/lib/nevermined-x402.server.ts
+          grep -q '"/api/v1/x402/settle"' src/lib/nevermined-x402.server.ts
+          grep -q '"Nevermined-Version": config.apiVersion' src/lib/nevermined-x402.server.ts
+          grep -q 'redirect: "manual"' src/lib/nevermined-x402.server.ts
+          grep -q 'AbortSignal.timeout' src/lib/nevermined-x402.server.ts
       - name: Verify paid delivery remains source-rights and freshness gated
         shell: bash
         run: |
