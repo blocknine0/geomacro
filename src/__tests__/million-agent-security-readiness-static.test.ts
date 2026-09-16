@@ -106,7 +106,7 @@ describe("million-agent and data-leak evidence harnesses", () => {
     expect(scan).toContain("SERVER_SOURCE_MARKER_EXPOSED");
     expect(scan).toContain("PUBLIC_SOURCEMAP_REFERENCE");
     expect(scan).toContain("-----BEGIN PRIVATE KEY-----");
-    expect(scan).toContain("supabase/migrations");
+    expect(scan).toContain("supabase\\/migrations");
     expect(scan).toContain("source_maps_forbidden: true");
     expect(scan).toContain("actual_secret_values_persisted: false");
   });
