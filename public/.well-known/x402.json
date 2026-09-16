@@ -21,11 +21,12 @@
   ],
   "plannedResources": [
     {
-      "resource": "https://geomacro.live/api/x402/intelligence",
+      "resource": "https://geomacro.live/api/agent/paid-question",
       "method": "POST",
       "product": "geomacro_adaptive_risk_intelligence_v1",
       "provider": "coinbase_x402",
       "pricing": "runtime_402_challenge_only",
+      "durable_prepared_payload": "aes-256-gcm-encrypted-before-settlement",
       "production_enabled": false
     },
     {
