@@ -1,0 +1,126 @@
+{
+  "schema_version": "geomacro.agent-commerce.v1",
+  "service": {
+    "id": "geomacro-risk-intelligence",
+    "name": "Geomacro Risk Intelligence",
+    "description": "Machine-readable geopolitical and macro risk intelligence for human and software-agent decisions.",
+    "status": "prelaunch",
+    "canonical_origin": "https://geomacro.live",
+    "execution_authorized": false
+  },
+  "discovery": {
+    "agent_card": "https://geomacro.live/.well-known/geomacro-agent.json",
+    "human_machine_docs": "https://geomacro.live/agent-commerce.md",
+    "llms": "https://geomacro.live/llms.txt",
+    "openapi": "https://geomacro.live/docs/openapi/geomacro-v1.yaml",
+    "availability": "https://geomacro.live/api/x402/risk/availability"
+  },
+  "commercial_contract": {
+    "launch_state": "prelaunch",
+    "production_funds_authorized": false,
+    "pricing_authority": "payment_challenge_or_provider_plan",
+    "static_catalog_price_authoritative": false,
+    "prepayment_deliverability_required": true,
+    "commercial_source_eligibility_required": true,
+    "freshness_policy_required": true,
+    "idempotency_required": true,
+    "reconciliation_required": true,
+    "paid_but_undelivered_requires_reconciliation": true,
+    "testnet_or_sandbox_is_revenue": false
+  },
+  "offers": [
+    {
+      "id": "adaptive-risk-intelligence-v1",
+      "name": "Adaptive Risk Intelligence",
+      "description": "A bounded adaptive country or directional-corridor assessment assembled from the currently deliverable Geomacro modules requested by topic and intent.",
+      "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "providers": {
+        "coinbase_x402": {
+          "endpoint": "https://geomacro.live/api/x402/intelligence",
+          "environment": "Base Sepolia prelaunch acceptance",
+          "launch_cohort": true,
+          "production_enabled": false
+        },
+        "nevermined": {
+          "endpoint": "https://geomacro.live/api/x402/nevermined/intelligence",
+          "environment": "Nevermined sandbox prelaunch acceptance",
+          "launch_cohort": true,
+          "production_enabled": false
+        },
+        "goat_x402": {
+          "environment": "GOAT Testnet3 technical proof",
+          "launch_cohort": false,
+          "production_enabled": false,
+          "production_status": "deferred_manual_mainnet_merchant_onboarding"
+        }
+      },
+      "subjects": [
+        "country_iso3",
+        "directional_corridor_origin_iso3_to_destination_iso3"
+      ],
+      "topics": [
+        "sovereign_risk",
+        "macro_risk",
+        "fx_external_risk",
+        "sanctions_restrictions",
+        "conflict_geopolitics",
+        "trade_corridor",
+        "energy_commodities",
+        "critical_minerals",
+        "political_governance",
+        "banking_financial_system",
+        "food_agriculture",
+        "natural_hazards",
+        "hot_topics",
+        "risk_gate",
+        "risk_object",
+        "gri_context"
+      ],
+      "intents": [
+        "single_subject",
+        "comparison",
+        "ranking_filter",
+        "corridor",
+        "change_since",
+        "audit",
+        "risk_gate"
+      ],
+      "risk_gate_context": {
+        "policy_presets": ["balanced", "cautious", "strict"],
+        "action_types": [
+          "treasury_payment",
+          "vendor_payment",
+          "agent_payment",
+          "exposure_review"
+        ],
+        "execution_authorized": false
+      }
+    }
+  ],
+  "discovery_terms": [
+    "country risk",
+    "geopolitical risk",
+    "macroeconomic risk",
+    "sovereign risk",
+    "treasury pre-flight risk context",
+    "cross-border corridor risk",
+    "supplier-country exposure context",
+    "geopolitical escalation context",
+    "portfolio geopolitical exposure context",
+    "signed risk object",
+    "machine-readable risk evidence",
+    "risk gate"
+  ],
+  "boundaries": {
+    "autonomous_execution": false,
+    "wallet_custody": false,
+    "transaction_signing": false,
+    "financial_advice": false,
+    "legal_advice": false,
+    "sanctions_screening_replacement": false,
+    "counterparty_due_diligence_replacement": false,
+    "raw_private_warehouse_delivery": false,
+    "full_physical_route_or_vessel_model": false,
+    "future_event_guarantee": false
+  }
+}
