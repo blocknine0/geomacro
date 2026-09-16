@@ -12,6 +12,31 @@ A sovereign country can enter the paid catalog only when the production census c
 
 Coverage is data-driven. No USA/CHN or G20 production allowlist defines the catalog, and thresholds must not be lowered to inflate the supported-country count.
 
+## Latest verified production census
+
+On 2026-09-16, the controlled QPSD production-promotion workflow completed the full four-module sovereign census against the authoritative production database and passed the protected `>=100` acceptance gate.
+
+Measured result:
+
+- enabled sovereign denominator: **194**;
+- accepted country-review states: **114**;
+- fail-closed country states: **80**;
+- accepted sovereign-fiscal methodology split: **57 World Bank QPSD + 57 governed World Bank PPG**;
+- every accepted Risk Gate result retained `execution_authorized=false`;
+- missing or unverified required input continued to fail closed;
+- World Bank QPSD remained enabled only after the promotion gate passed;
+- rollback was not required because the final promotion checks succeeded.
+
+Evidence anchor:
+
+- GitHub Actions workflow: `QPSD Production Promotion Census`;
+- run id: `35088622534`;
+- source commit: `8533d352e1661953e0ce12a51c6f72b00c4b13a4`;
+- evidence artifact: `qpsd-production-promotion-census`;
+- artifact digest: `sha256:74d4effcaac191b915bb87dbe73d0fae0ac294b1e4ea571454bfaefb66ee453a`.
+
+This completes the current 100+ sovereign **country-review readiness** milestone. It does **not** mean all 194 countries are supported, every commercial product is deliverable for every accepted country, a production SLA exists, an independent audit has occurred, or Geomacro may authorize or execute a financial transaction. It also did not activate x402, real-money settlement or Base mainnet.
+
 ## Structural source priority
 
 ### Activate/backfill first after exact contract validation
@@ -84,4 +109,4 @@ If the first check fails, do not issue a payable challenge. If the final check o
 - owner-controlled production wallet/CDP configuration is available;
 - explicit real-USDC activation authorization is provided last.
 
-Base mainnet remains locked until all gates are green.
+The maximum-country census gate is now evidenced for the current Risk Gate country-review methodology. The remaining launch gates above stay independent. Base mainnet remains locked until all required launch gates are green and explicit owner authorization is provided last.

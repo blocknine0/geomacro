@@ -31,7 +31,21 @@ The global country census is the source of truth for measured country-review rea
 - `sovereign_fiscal`
 - `macro_monetary`
 
-The census must report the exact accepted count, fail-closed count, percentage and per-country reasons. Do not replace this measured denominator with a marketing country count.
+Latest verified census, 2026-09-16:
+
+- enabled sovereign denominator: **194**;
+- accepted: **114**;
+- fail-closed: **80**;
+- accepted sovereign-fiscal methodology split: **57 World Bank QPSD + 57 governed World Bank PPG**;
+- accepted results with `execution_authorized=false`: **114 / 114**.
+
+The protected `>=100` promotion gate passed in `QPSD Production Promotion Census` run `35088622534` on commit `8533d352e1661953e0ce12a51c6f72b00c4b13a4`. The evidence artifact `qpsd-production-promotion-census` has digest `sha256:74d4effcaac191b915bb87dbe73d0fae0ac294b1e4ea571454bfaefb66ee453a`.
+
+World Bank QPSD remained active after the successful promotion check. Governed World Bank PPG remains the next compatible fiscal fallback where QPSD does not provide the accepted source-specific state. Countries with missing or unverified required modules remain fail-closed.
+
+This measured result is **country-review coverage for the current four-module methodology**. It is not an all-country guarantee, not a production SLA, not independent certification, not proof that every product is payable for every accepted country, and not authorization for Geomacro to execute a transaction.
+
+The census must continue to report the exact accepted count, fail-closed count, percentage and per-country reasons. Do not replace this measured denominator with a marketing country count.
 
 ## Source-governance boundary
 
@@ -46,6 +60,8 @@ For Coinbase x402, GOAT, credits, subscriptions and every future paid rail, use 
 `request -> no-charge deliverability/eligibility check -> payment challenge only if deliverable -> payment verification -> final deliverability re-check -> response preparation + durable persistence -> settlement -> delivery`
 
 If the pre-check, final re-check or preparation fails, settlement is not allowed. A payment rail must never turn an unsupported country into a supported country.
+
+The 2026-09-16 country census did not activate x402, Base mainnet, real-money settlement or autonomous execution. Those launch gates remain separate and fail closed.
 
 ## Expansion procedure
 
@@ -63,4 +79,6 @@ To increase the accepted-country count:
 
 ## Marketing boundary
 
-Geomacro may say it targets broad/global sovereign coverage and may publish the exact measured supported-country count from the latest production census. It must not say `all countries` unless the current production census actually accepts the entire enabled-sovereign denominator.
+Geomacro may publish the exact measured supported-country count from the latest production census with its denominator, methodology boundary and verification date. The current evidence-backed claim is **114 of 194 enabled sovereign countries accepted for four-module Risk Gate country review on 2026-09-16, with the remaining 80 fail-closed**.
+
+Geomacro must not say `all countries`, `fully production ready`, `independently audited`, or imply automatic execution authority unless separate current evidence specifically supports those claims.

@@ -14,6 +14,7 @@ import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedBackground } from "@/components/animated-background";
+import { ProductionCoverageProof } from "@/components/production-coverage-proof";
 import {
   Sheet,
   SheetContent,
@@ -145,6 +146,15 @@ const REFERENCE_NAV = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
+const PRODUCTION_EVIDENCE_ROUTES = new Set([
+  "/",
+  "/risk-gate",
+  "/data-api",
+  "/research",
+  "/institutional",
+  "/about",
+]);
+
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 
 function TechnicalProofMenu() {
@@ -202,10 +212,12 @@ function MobileGroup({
 }
 
 export function SiteShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { network, address } = useWallet();
   const activeNet = network ?? preferredNetwork();
   const technicalMobile = TECHNICAL_NAV.map(({ to, label }) => ({ to, label }));
   const accountMobile = address ? [{ to: "/portfolio" as const, label: "Portfolio" }] : [];
+  const showProductionEvidence = PRODUCTION_EVIDENCE_ROUTES.has(pathname);
 
   return (
     <div className="relative min-h-screen text-foreground">
@@ -272,6 +284,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
+        {showProductionEvidence ? <ProductionCoverageProof /> : null}
+
         <main id="main-content" className="flex-1">
           {children}
         </main>
@@ -333,7 +347,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span>Public intelligence · Private Pilot Risk Gate · Testable technical proof</span>
+              <span>114-country production-workflow proof · Private Pilot Risk Gate · Mainnet pre-launch</span>
               <details>
                 <summary className="cursor-pointer">Arc technical context</summary>
                 <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>
