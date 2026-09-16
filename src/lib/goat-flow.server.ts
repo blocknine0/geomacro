@@ -3,6 +3,8 @@ import {
   randomUUID,
 } from "node:crypto";
 
+import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
+
 export const GOAT_FLOW_ENVIRONMENTS = {
   testnet3: {
     chain_id: 48816,
@@ -161,7 +163,11 @@ export function requireGoatFlowConfig(): GoatFlowConfig {
     throw new Error("GOATX402_ENVIRONMENT must be testnet3 or mainnet");
   }
 
-  const expected = GOAT_FLOW_ENVIRONMENTS[environment];
+  if (environment === "mainnet") {
+  assertCommercialLaunchAuthorized("goat_x402");
+}
+
+const expected = GOAT_FLOW_ENVIRONMENTS[environment];
   const configuredApi = process.env.GOATX402_API_URL?.trim() || expected.api_url;
 
   let parsed: URL;
