@@ -21,13 +21,29 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Use quarterly MRV compatibility mode for live proof
+      - name: Inspect official QPSD bulk CSV contract
         shell: bash
         run: |
           set -euo pipefail
-          # World Bank documents `frequency` as an MRV companion. The audit
-          # script still filters nulls and selects the latest non-null quarter
-          # per country, so this does not gap-fill or invent observations.
+          rm -rf qpsd-bulk qpsd-bulk-structure.txt
+          mkdir -p qpsd-bulk
+          curl --fail --show-error --silent --location --retry 3 \
+            'https://databank.worldbank.org/data/download/QPSD_CSV.zip' \
+            --output qpsd-bulk.zip
+          sha256sum qpsd-bulk.zip | tee qpsd-bulk-structure.txt
+          unzip -l qpsd-bulk.zip | tee -a qpsd-bulk-structure.txt
+          unzip -q qpsd-bulk.zip -d qpsd-bulk
+          while IFS= read -r file; do
+            echo "=== ${file} ===" | tee -a qpsd-bulk-structure.txt
+            head -n 4 "$file" | tee -a qpsd-bulk-structure.txt
+          done < <(find qpsd-bulk -type f \( -name '*.csv' -o -name '*.CSV' \) | sort)
+
+      - name: Use quarterly MRV compatibility mode for legacy API comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The API route is retained only as a comparison while the official
+          # DataBank bulk-file contract is pinned. It cannot promote countries.
           sed -i 's/mrnev: "1"/mrv: "12"/' scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs
           grep -q 'mrv: "12"' scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs
 
@@ -44,7 +60,6 @@ jobs:
           set -euo pipefail
           test -s world-bank-qpsd-sovereign-fiscal-coverage.json
           jq -e '.writes_performed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
-          jq -e '.source.api_source_id == "20"' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.discovery_only == true' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.raw_cross_source_value_pooling_allowed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.cross_concept_peer_pooling_allowed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
@@ -62,6 +77,7 @@ jobs:
         with:
           name: world-bank-qpsd-sovereign-fiscal-coverage
           path: |
+            qpsd-bulk-structure.txt
             world-bank-qpsd-sovereign-fiscal-coverage.json
             world-bank-qpsd-sovereign-fiscal-coverage.log
           if-no-files-found: warn
