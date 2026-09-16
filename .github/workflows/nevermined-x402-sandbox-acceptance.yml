@@ -114,7 +114,7 @@ jobs:
           const e = JSON.parse(fs.readFileSync('artifacts/nevermined-sandbox-acceptance.json', 'utf8'));
           if (e.environment !== 'sandbox') throw new Error('artifact must be sandbox');
           if (e.commercial_revenue !== false) throw new Error('sandbox cannot be revenue');
-          if (e.production_activation_performed !== false) throw new Error('sandbox acceptance cannot activate production');
+          if (e.production_activation_performed !== false) throw new Error('production activation must be false');
           if (e.secrets_recorded !== false || e.payer_identity_recorded !== false) throw new Error('artifact privacy boundary failed');
           if (e.verify_valid !== true || e.settlement_evidence_valid !== true) throw new Error('provider acceptance evidence incomplete');
           NODE
