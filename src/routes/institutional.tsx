@@ -11,10 +11,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RiskBadge, RiskScore, RiskTrend } from "@/components/foundation/risk";
-import { RiskChart } from "@/components/home/risk-chart";
+import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
 import { prettyCategory, useIntelligence } from "@/lib/use-intelligence";
-import { useGlobalRisk } from "@/lib/use-global-risk";
+import { useRiskIndices } from "@/lib/use-risk-indices";
 
 const TITLE = "Institutional Risk Intelligence · Geomacro";
 const DESCRIPTION =
@@ -76,9 +75,8 @@ export const Route = createFileRoute("/institutional")({
 });
 
 function InstitutionalPage() {
-  const risk = useGlobalRisk();
+  const riskIndices = useRiskIndices();
   const intel = useIntelligence();
-  const series = risk.data?.series["7D"]?.buckets ?? null;
   const topEvents = intel.data?.topRisks.slice(0, 6) ?? [];
   const tableEvents = intel.data?.today.slice(0, 10) ?? [];
 
@@ -125,28 +123,39 @@ function InstitutionalPage() {
           <div className="rounded-2xl border border-border/70 bg-card/40 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Global Risk Index</p>
-                {risk.data ? <RiskScore score={risk.data.score} size="lg" className="mt-3" /> : <p className="mt-3 text-sm text-muted-foreground">Verified snapshot unavailable.</p>}
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Verified Risk Indices</p>
+                <p className="mt-2 text-sm text-muted-foreground">Geopolitical, macroeconomic and critical-mineral risk are reviewed separately.</p>
               </div>
-              <Button asChild variant="outline" size="sm"><Link to="/global-risk">Verify GRI</Link></Button>
+              <Button asChild variant="outline" size="sm"><Link to="/global-risk">Open Risk Indices</Link></Button>
             </div>
 
-            {risk.data && series && series.length > 1 ? (
-              <RiskChart buckets={series} label="Verified GRI, last 7 days" height={190} className="mt-6" />
+            {riskIndices.data ? (
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                {riskIndices.data.indices.map((index) => (
+                  <article key={index.key} className="rounded-xl border border-border/60 bg-background/30 p-4">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{index.name}</p>
+                    {index.status === "available" && index.score !== null ? (
+                      <>
+                        <div className="mt-3"><RiskBadge score={index.score} showScore /></div>
+                        {index.changePoints !== null ? <div className="mt-3"><RiskTrend delta={index.changePoints} /></div> : null}
+                        <dl className="mt-4 grid grid-cols-2 gap-2">
+                          <Metric label="Evidence" value={String(index.eventCount)} />
+                          <Metric label="Stories" value={String(index.independentStoryCount)} />
+                        </dl>
+                      </>
+                    ) : (
+                      <div className="mt-4 h-14 animate-pulse rounded-lg bg-muted/30" aria-label="Refreshing verified reading" />
+                    )}
+                  </article>
+                ))}
+              </div>
             ) : (
-              <div className="mt-6 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-                The historical chart appears when enough current-methodology snapshots are available.
+              <div className="mt-6 grid gap-3 sm:grid-cols-3" aria-label="Refreshing verified risk indices">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div key={index} className="h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
+                ))}
               </div>
             )}
-
-            {risk.data ? (
-              <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Metric label="Evidence" value={String(risk.data.eventCount)} />
-                <Metric label="Stories" value={String(risk.data.independentStoryCount)} />
-                <Metric label="Sources" value={risk.data.sourceCount === null ? "—" : String(risk.data.sourceCount)} />
-                <Metric label="Coverage" value={`${Math.round(risk.data.coverage * 100)}%`} />
-              </dl>
-            ) : null}
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-card/40 p-5 sm:p-6">

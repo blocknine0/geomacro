@@ -102,7 +102,7 @@ describe("commercial website source-of-truth contract", () => {
     const shell = read("src/components/site-shell.tsx");
 
     expect(shell).toContain('label: "Intelligence"');
-    expect(shell).toContain('label: "Global Risk Index"');
+    expect(shell).toContain('label: "Risk Indices"');
     expect(shell).toContain('label: "Risk Gate"');
     expect(shell).toContain('label: "Ask Geomacro"');
     expect(shell).toContain('label: "Data & API"');
@@ -118,7 +118,7 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps the homepage on the same architecture and status boundaries", () => {
     const home = read("src/components/home/commercial-home.tsx");
 
-    expect(home).toContain("Live geopolitical + macro risk intelligence");
+    expect(home).toContain("Live geopolitical + macro + critical-mineral intelligence");
     expect(home).toContain("Risk Gate · Private Pilot");
     expect(home).toContain("Arc / Circle · Technical Proof");
     expect(home).toContain("Country / corridor Risk Object verified");

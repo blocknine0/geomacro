@@ -1,10 +1,11 @@
 /**
- * Canonical public read model for every Global Risk Index surface.
+ * Canonical public read model for legacy Global Risk Index consumers.
  *
- * Public pages no longer query Supabase directly from the browser. Every GRI
- * surface calls the same same-origin server function, which reads the app-owned
- * authoritative data store, verifies freshness/proof requirements and returns
- * one normalized public contract. There is no synthetic client fallback.
+ * During the public migration to separate risk indices, existing homepage,
+ * institutional and agent-facing consumers keep this compatibility hook. The
+ * server attempts the app-owned database first and then the authoritative
+ * Supabase Edge read. A refresh failure never destroys an already verified
+ * reading and never turns the website into a visible runtime-error surface.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -65,17 +66,18 @@ export function useGlobalRisk(refreshMs = 5 * 60 * 1000) {
         setStatus("ready");
       } catch (err) {
         if (cancelled) return;
-        hasData.current = false;
-        setData(null);
-        setUpdatedAt(null);
-        setError(
-          reportError(
-            "useGlobalRisk",
-            err,
-            "loading the canonical global risk index",
-          ),
+
+        // Report diagnostics without converting public risk surfaces into an
+        // error card. If a verified reading already exists, keep it visible.
+        // On a cold start, keep the neutral loading state and retry on the
+        // normal refresh cadence or explicit retry action.
+        reportError(
+          "useGlobalRisk",
+          err,
+          "refreshing the verified risk index compatibility reading",
         );
-        setStatus("error");
+        setError(null);
+        setStatus(hasData.current ? "ready" : "loading");
       }
     }
 

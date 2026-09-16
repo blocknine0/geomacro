@@ -50,9 +50,9 @@ function ConnectButton() {
     useWallet();
   const executionContext = isWalletRoute(pathname);
 
-  // Public intelligence, GRI, Research, Docs, institutions and the browser
-  // demo are intentionally wallet-free. Preserve a connected user's state,
-  // but do not turn wallet connection into a prerequisite for research.
+  // Public intelligence, risk indices, Research, Docs, institutions and the
+  // browser demo are intentionally wallet-free. Preserve a connected user's
+  // state, but do not turn wallet connection into a prerequisite for research.
   if (!address && !executionContext) return null;
 
   if (!address) {
@@ -122,7 +122,7 @@ function ConnectButton() {
 
 const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
-  { to: "/global-risk", label: "Global Risk Index" },
+  { to: "/global-risk", label: "Risk Indices" },
   { to: "/risk-gate", label: "Risk Gate" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
   { to: "/data-api", label: "Data & API" },
@@ -304,7 +304,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <p className="font-medium text-foreground">Product</p>
                 <div className="mt-3 flex flex-col gap-2">
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
-                  <Link to="/global-risk" className="hover:text-foreground">Global Risk Index</Link>
+                  <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
                   <Link to="/risk-gate" className="hover:text-foreground">Risk Gate</Link>
                   <Link to="/data-api" className="hover:text-foreground">Data & API</Link>

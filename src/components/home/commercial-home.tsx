@@ -18,9 +18,9 @@ import { useGlobalRisk } from "@/lib/use-global-risk";
 import { GRI_METHOD_VERSION } from "@/lib/gri-current-contract";
 
 const FLOW = [
-  ["1", "Observe", "We collect current geopolitical and macro developments from governed sources."],
+  ["1", "Observe", "We collect current geopolitical, macro and critical-mineral developments from governed sources."],
   ["2", "Structure", "Each development is classified, time-stamped and linked to the evidence behind it."],
-  ["3", "Score & explain", "GRI and country or corridor views show the current risk level, what changed and how confident the evidence is."],
+  ["3", "Score & explain", "Separate risk indices and country or corridor views show the current risk level, what changed and how confident the evidence is."],
   ["4", "Deliver", "Analysts and software systems can use that context in their own review and approval process."],
 ] as const;
 
@@ -29,7 +29,7 @@ const PRODUCT_CARDS = [
     icon: Radio,
     status: "LIVE",
     title: "Risk Intelligence",
-    body: "See current geopolitical and macro developments with severity, confidence, evidence and context.",
+    body: "See current geopolitical, macro and critical-mineral developments with severity, confidence, evidence and context.",
     to: "/intelligence" as const,
     cta: "Explore intelligence",
   },
@@ -37,7 +37,7 @@ const PRODUCT_CARDS = [
     icon: Bot,
     status: "LIVE",
     title: "Ask Geomacro",
-    body: "Ask about Geomacro's recorded evidence and current GRI. Answers stay within evidence Geomacro can cite.",
+    body: "Ask about Geomacro's recorded evidence and current risk indices. Answers stay within evidence Geomacro can cite.",
     to: "/ask-geomacro" as const,
     cta: "Ask a risk question",
   },
@@ -94,20 +94,20 @@ export function CommercialHome() {
               variant="outline"
               className="gap-2 border-primary/40 bg-primary/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-primary"
             >
-              <Radio className="h-3 w-3" /> Live geopolitical + macro risk intelligence
+              <Radio className="h-3 w-3" /> Live geopolitical + macro + critical-mineral intelligence
             </Badge>
             <h1 className="mt-6 max-w-4xl text-[clamp(2.4rem,6vw,5.4rem)] font-semibold leading-[0.98] tracking-tight">
               Know what changed. <span className="text-primary">Know why it matters.</span>
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Geomacro tracks geopolitical and macro developments, shows how risk is changing, and links each view back to evidence. Analysts can review it directly, while software systems can use the same context without handing execution control to Geomacro.
+              Geomacro tracks geopolitical, macro and critical-mineral developments, shows how risk is changing, and links each view back to evidence. Analysts can review it directly, while software systems can use the same context without handing execution control to Geomacro.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="gap-2">
                 <Link to="/intelligence">Explore intelligence <ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link to="/global-risk">View Global Risk Index</Link>
+                <Link to="/global-risk">View Risk Indices</Link>
               </Button>
               <Button asChild size="lg" variant="ghost">
                 <Link to="/institutional">Discuss a pilot</Link>
@@ -126,7 +126,7 @@ export function CommercialHome() {
           <div className="rounded-2xl border border-border/70 bg-card/55 p-6 backdrop-blur-sm sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">How Geomacro works</p>
-              <span className="font-mono text-[10px] text-muted-foreground">GRI {GRI_METHOD_VERSION}</span>
+              <span className="font-mono text-[10px] text-muted-foreground">Verified proof · {GRI_METHOD_VERSION}</span>
             </div>
             <ol className="mt-6 space-y-5">
               {FLOW.map(([step, title, body]) => (
@@ -158,7 +158,7 @@ export function CommercialHome() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Product surfaces</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Choose the part of Geomacro that fits the job.</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Public intelligence and the GRI are live now. Ask Geomacro works from stored evidence. Risk Gate and API access are available only through a controlled Private Pilot.
+            Public intelligence and the separate risk indices are live now. Ask Geomacro works from stored evidence. Risk Gate and API access are available only through a controlled Private Pilot.
           </p>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
