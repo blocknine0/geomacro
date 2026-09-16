@@ -58,6 +58,37 @@ if (sourceResult.data.enabled_for_commercial_signals !== false) {
   throw new Error("GDELT commercial-signal activation must remain false during calibration");
 }
 
+const latestResult = await db
+  .from("live_external_observations")
+  .select("observed_at,source_record_id")
+  .eq("source_id", SOURCE_ID)
+  .eq("quality_status", "VERIFIED")
+  .eq("commercial_eligibility_status", "VERIFIED")
+  .not("observed_at", "is", null)
+  .order("observed_at", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+if (latestResult.error) throw latestResult.error;
+if (!latestResult.data?.observed_at) {
+  throw new Error("No verified GDELT observations exist in production");
+}
+
+const latestAvailableMs = new Date(latestResult.data.observed_at).getTime();
+if (!Number.isFinite(latestAvailableMs)) {
+  throw new Error(`Latest GDELT observed_at is invalid: ${latestResult.data.observed_at}`);
+}
+const latestAvailableFreshnessMinutes = Math.max(
+  0,
+  (asOf.getTime() - latestAvailableMs) / 60_000,
+);
+
+if (latestAvailableFreshnessMinutes > MAX_FRESHNESS_MINUTES) {
+  throw new Error(
+    `GDELT production ingestion is stale: latest verified observation ${new Date(latestAvailableMs).toISOString()} is ${latestAvailableFreshnessMinutes.toFixed(2)} minutes old (limit ${MAX_FRESHNESS_MINUTES})`,
+  );
+}
+
 const observations = [];
 for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
   const result = await db
@@ -83,17 +114,19 @@ for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
 }
 
 if (observations.length === 0) {
-  throw new Error("No verified GDELT observations found in the two-hour calibration window");
+  throw new Error(
+    `No verified GDELT observations found between ${start.toISOString()} and ${asOf.toISOString()} despite latest verified row at ${new Date(latestAvailableMs).toISOString()}`,
+  );
 }
 
-const latestObservedMs = Math.max(
+const latestWindowMs = Math.max(
   ...observations.map((row) => new Date(row.observed_at).getTime()).filter(Number.isFinite),
 );
-if (!Number.isFinite(latestObservedMs)) throw new Error("GDELT observations have no valid timestamps");
-const freshnessMinutes = Math.max(0, (asOf.getTime() - latestObservedMs) / 60_000);
+if (!Number.isFinite(latestWindowMs)) throw new Error("GDELT observations have no valid timestamps");
+const freshnessMinutes = Math.max(0, (asOf.getTime() - latestWindowMs) / 60_000);
 if (freshnessMinutes > MAX_FRESHNESS_MINUTES) {
   throw new Error(
-    `GDELT calibration data is stale: ${freshnessMinutes.toFixed(2)} minutes old`,
+    `GDELT calibration window is stale: ${freshnessMinutes.toFixed(2)} minutes old`,
   );
 }
 
@@ -137,6 +170,7 @@ console.log(
         enabled_for_ingestion: sourceResult.data.enabled_for_ingestion,
         enabled_for_commercial_signals: sourceResult.data.enabled_for_commercial_signals,
       },
+      latest_verified_observation_utc: new Date(latestAvailableMs).toISOString(),
       verified_observations_read: observations.length,
       countries_with_features: features.length,
       latest_observation_freshness_minutes: Number(freshnessMinutes.toFixed(2)),
