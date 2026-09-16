@@ -1,0 +1,91 @@
+name: GDELT Escalation Calibration Check
+
+on:
+  pull_request:
+    paths:
+      - "scripts/early-warning/gdelt-country-escalation-core.mjs"
+      - "scripts/early-warning/gdelt-country-escalation-core.test.mjs"
+      - "scripts/early-warning/validate-gdelt-country-escalation-live.mjs"
+      - "docs/EARLY_WARNING_CALIBRATION.md"
+      - ".github/workflows/gdelt-escalation-calibration-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/early-warning/gdelt-country-escalation-core.mjs"
+      - "scripts/early-warning/validate-gdelt-country-escalation-live.mjs"
+      - ".github/workflows/gdelt-escalation-calibration-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Test deterministic country escalation features
+        run: bunx vitest run scripts/early-warning/gdelt-country-escalation-core.test.mjs
+
+      - name: Prove validator is read-only and cannot activate product signals
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=scripts/early-warning/validate-gdelt-country-escalation-live.mjs
+          if grep -Eq '\.(insert|upsert|update|delete)\(' "$file"; then
+            echo 'ERROR: live calibration validator contains a database mutation method.' >&2
+            exit 1
+          fi
+          if grep -Eq 'persistEarlyWarningAlert|persistGovernedEarlyWarningAlert|upsertObservations' "$file"; then
+            echo 'ERROR: calibration validator imports or calls a persistence path.' >&2
+            exit 1
+          fi
+          grep -q 'commercial_signal_activation: false' "$file"
+          grep -q 'public_alert_activation: false' "$file"
+          grep -q 'database_write: false' "$file"
+          grep -q 'enabled_for_commercial_signals !== false' "$file"
+          grep -q 'enabled_for_commercial_signals = false' supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql
+          echo 'PASS: GDELT calibration path is structurally read-only and signal-disabled.'
+
+      - name: Validate live production GDELT observations read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_URL:-}" || { echo '::error::APP_SUPABASE_URL secret is missing'; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo '::error::SUPABASE_SERVICE_ROLE_KEY secret is missing'; exit 1; }
+          bun scripts/early-warning/validate-gdelt-country-escalation-live.mjs 2>&1 | tee gdelt-escalation-calibration.log
+          grep -q 'PASS: GDELT COUNTRY ESCALATION LIVE READ-ONLY CALIBRATION; NO ALERT OR COMMERCIAL ACTIVATION' gdelt-escalation-calibration.log
+          grep -q '"mode": "READ_ONLY_RESEARCH_CALIBRATION"' gdelt-escalation-calibration.log
+          grep -q '"enabled_for_commercial_signals": false' gdelt-escalation-calibration.log
+          grep -q '"database_write": false' gdelt-escalation-calibration.log
+          countries="$(awk '/"countries_with_features":/{gsub(/[^0-9]/,"",$0); print $0; exit}' gdelt-escalation-calibration.log)"
+          observations="$(awk '/"verified_observations_read":/{gsub(/[^0-9]/,"",$0); print $0; exit}' gdelt-escalation-calibration.log)"
+          test -n "$countries" && test "$countries" -gt 0
+          test -n "$observations" && test "$observations" -gt 0
+          echo "PASS: live read-only calibration saw ${observations} observations across ${countries} countries."
+
+      - name: Upload calibration evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gdelt-escalation-calibration
+          path: gdelt-escalation-calibration.log
+          if-no-files-found: warn
+          retention-days: 30
