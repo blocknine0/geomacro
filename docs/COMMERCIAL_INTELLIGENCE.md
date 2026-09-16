@@ -6,25 +6,41 @@ Geomacro is geopolitical, macroeconomic and critical-mineral risk intelligence i
 
 The core product turns real-world events into structured, explainable, machine-readable risk intelligence for human and machine decision systems.
 
-Prediction markets and programmable onchain execution are secondary application, feedback and technical-proof layers.
+Prediction markets and programmable onchain execution are secondary application, feedback and technical-proof layers. Prediction markets remain permanently Testnet-only.
 
 ## Product status
 
 | Surface | Status | Role |
 | --- | --- | --- |
-| Risk Intelligence | Live | Structured geopolitical, macroeconomic and critical-mineral risk intelligence |
-| Geopolitical Risk Index | Live | Separate verified geopolitical risk reading with audited GRI v1.2 lineage |
-| Macroeconomic Risk Index | Live | Separate verified macroeconomic risk reading with audited GRI v1.2 lineage |
-| Critical Minerals Risk Index | Live | Separate verified critical-minerals risk reading with audited GRI v1.2 lineage |
-| Ask Geomacro | Live | Intelligence query surface grounded in stored Geomacro data |
-| Risk API | Private Pilot | Machine-readable country/corridor intelligence delivery |
-| Risk Gate | Private Pilot | Verifiable pre-flight country/corridor risk context before customer-owned policy and execution |
-| Prediction Markets | Technical Proof | Experimental market and feedback layer |
-| Arc / USDC / Circle / CCTP | Technical Proof | Programmable execution and settlement proof |
-
-Private Pilot does not mean a generally available public hosted API, self-serve production authentication, production SLA or finalized public pricing interface currently exists.
+| Risk Intelligence | LIVE | Structured geopolitical, macroeconomic and critical-mineral risk intelligence |
+| Geopolitical Risk Index | LIVE | Separate verified geopolitical risk reading with audited GRI v1.2 lineage |
+| Macroeconomic Risk Index | LIVE | Separate verified macroeconomic risk reading with audited GRI v1.2 lineage |
+| Critical Minerals Risk Index | LIVE | Separate verified critical-minerals risk reading with audited GRI v1.2 lineage |
+| Ask Geomacro | LIVE | Intelligence query surface grounded in stored Geomacro data |
+| Free Explorer | LIVE | Public website/dashboard evaluation experience, not a free structured API |
+| Professional intelligence | FOUNDING PILOT | Deeper history, attribution, governed views and agreed exports for professional users |
+| AI-agent pay per call | MAINNET PRE-LAUNCH | Prepared one-request machine access with production real-money activation disabled |
+| Risk API | PRIVATE PILOT | Machine-readable country/corridor intelligence delivery |
+| Risk Gate | PRIVATE PILOT | Verifiable pre-flight country/corridor risk context before customer-owned policy and execution |
+| Institutional | CONTRACTED / PILOT-LED | Agreed coverage, volume, controls and support rather than anonymous self-serve access |
+| Prediction Markets | TECHNICAL PROOF | Experimental Testnet market and feedback layer |
+| Arc / USDC / Circle / CCTP | TECHNICAL PROOF | Programmable execution and settlement proof |
 
 The separate public Risk Indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline product.
+
+## Commercial access ladder
+
+Geomacro uses one governed intelligence core with multiple access policies:
+
+1. **Free Explorer — LIVE**: public Risk Intelligence, Risk Indices, Ask Geomacro, Research and methodology.
+2. **Pay per call — MAINNET PRE-LAUNCH**: occasional governed machine intelligence for AI agents after deliberate production activation. Prepared launch price: **0.02 USDC per successful paid call**. The live HTTP 402 challenge or approved provider plan is authoritative.
+3. **Professional intelligence — FOUNDING PILOT**: current starting package uses **5,000 credits / 30 days** for deeper human workflows.
+4. **API + Risk Gate — PRIVATE / FOUNDING PILOT**: current starting package uses **20,000 credits / 30 days** for recurring governed machine access and Risk Gate workflows.
+5. **Institutional — CONTRACTED / PILOT-LED**: current starting model uses a **100,000-credit monthly pool**, followed by contracted scope and volume.
+
+These starting packages are commercial controls, not evidence of general availability, recurring revenue, customer adoption or a production SLA.
+
+A subscription, invoice, payment challenge or provider plan resolves to a canonical entitlement. The entitlement defines the permitted capability, subject scope, history depth and response limits. A payment mechanism cannot widen source rights, data access or execution authority.
 
 ## Canonical architecture
 
@@ -34,6 +50,8 @@ Real-world evidence and data
         -> Structured intelligence state
              +-- Separate Risk Indices - Live
              +-- Ask Geomacro - Live
+             +-- Free / Professional human access
+             +-- Pay-per-call agent access - Mainnet pre-launch
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
              +-- Arc / Circle / prediction-market technical proof
@@ -43,7 +61,7 @@ Risk Gate - Private Pilot
         -> Customer-controlled action
 ```
 
-Data & API is an access and delivery surface over the shared intelligence state. Research and documentation are methodology, evidence and trust surfaces. Neither should become an independent risk engine or a conflicting product truth.
+Data & API, Access & Pricing, institutional packaging, agent protocols and payment rails are delivery or presentation layers over the shared intelligence state. Research and documentation are methodology, evidence and trust surfaces. None should become an independent risk engine or conflicting product truth.
 
 The customer owns the identity, permissions and policy layer. A caller may supply a customer-owned policy profile to a bounded Risk Gate request, but Geomacro does not own or enforce that policy and never authorizes downstream execution.
 
@@ -65,6 +83,31 @@ real-world evidence
 A production contract should expose risk scope, score, delta, drivers, confidence, evidence references, timestamps, methodology, provenance and integrity information.
 
 Undocumented Supabase internals are not a public API contract.
+
+## Pay-per-call agent product
+
+Canonical machine product: `geomacro_adaptive_risk_intelligence_v1`.
+
+Prepared flow:
+
+```text
+agent question + subject + topics
+        -> free deliverability check
+        -> if deliverable: exact HTTP 402 payment requirement
+        -> verified USDC settlement
+        -> bounded governed intelligence response
+```
+
+Current canonical paths:
+
+- free deliverability check: `POST /api/x402/risk/availability`;
+- Coinbase-compatible prepared paid resource: `POST /api/x402/intelligence`;
+- Circle Gateway adapter: `POST /api/x402/circle/intelligence`;
+- Nevermined adapter: `POST /api/x402/nevermined/intelligence`.
+
+Production real-money activation remains disabled until coordinated launch gates and explicit owner authorization are complete.
+
+A request that cannot currently be delivered with the required evidence, freshness, product support and commercial source eligibility is not chargeable.
 
 ## Risk Gate
 
@@ -114,11 +157,13 @@ Geomacro sells structured and derived intelligence, not unrestricted copies of t
 
 Commercial delivery must use only sources and derived data eligible for the intended commercial use.
 
-Source eligibility should be explicit and fail closed. Research-only, non-commercial, license-review-pending or otherwise restricted sources must not silently enter paid Risk API or Risk Gate payloads.
+Source eligibility should be explicit and fail closed. Research-only, non-commercial, license-review-pending or otherwise restricted sources must not silently enter paid Risk API, Risk Gate or pay-per-call payloads.
 
 When commercial rights are uncertain, that source should be excluded from the commercial delivery path until its permitted use is verified.
 
 Payment or access mechanisms, including x402, must never bypass source-license or commercial-use restrictions.
+
+Payment success purchases only the bounded intelligence product. It does not authorize a trade, payment, transfer or any other downstream customer action.
 
 ## Architecture boundary
 
@@ -129,10 +174,12 @@ Commercially eligible evidence and data
         -> Normalize, classify and preserve provenance
         -> Shared structured intelligence state
              +-- Public domains -> Separate Risk Indices - Live
+             +-- Human access   -> Free / Professional
+             +-- Agent access   -> Pay per call - Mainnet pre-launch
              +-- Country scope  -> Country Risk Object - Private Pilot
              +-- Corridor scope -> Corridor Risk Object - Private Pilot
         -> Delta + Attribution + Evidence + Confidence + Freshness + Integrity
-        -> Ask Geomacro / approved Risk API delivery / Risk Gate
+        -> Ask Geomacro / approved Risk API delivery / Risk Gate / agent response
         -> Human or customer-controlled machine decision systems
 ```
 
@@ -146,8 +193,6 @@ Country / directional corridor Risk Object
         -> Customer Identity + Permissions + Policy
         -> Customer-Controlled Action
 ```
-
-Optional x402 access or payment may sit in front of approved machine interfaces. The core risk calculation, provenance system and database must not depend on x402.
 
 Optional secondary technical-proof path:
 
