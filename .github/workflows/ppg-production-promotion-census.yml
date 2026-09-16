@@ -3,6 +3,7 @@ name: PPG Production Promotion Census
 on:
   push:
     branches:
+      - main
       - feat/ppg-production-fiscal-fallback
     paths:
       - "scripts/ingest-world-bank-ppg-sovereign-fiscal-live.mjs"
