@@ -1,0 +1,69 @@
+name: Early Warning Distribution Shadow
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "config/auto-distribution.json"
+      - "scripts/marketing/**"
+      - "supabase/migrations/94*_early_warning_distribution*.sql"
+      - ".github/workflows/auto-distribution-shadow.yml"
+      - "src/lib/public-early-warning-rss.ts"
+      - "src/routes/api.early-warning.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: early-warning-distribution-shadow
+  cancel-in-progress: true
+
+jobs:
+  shadow-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Validate canonical feed adapter offline
+        run: node scripts/marketing/test-public-feed-adapter.mjs
+
+      - name: Validate durable receipt claim/finalize contract
+        run: node scripts/marketing/test-distribution-receipt-ledger.mjs
+
+      - name: Render canonical feed fixture without external writes
+        run: >-
+          node scripts/marketing/poll-public-early-warning.mjs
+          --input=scripts/marketing/fixtures/sample-public-early-warning-feed.json
+          --limit=5
+          --channels=telegram,discord,bluesky,mastodon
+
+      - name: Verify live mode remains locked
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/marketing/poll-public-early-warning.mjs \
+            --input=scripts/marketing/fixtures/sample-public-early-warning-feed.json \
+            --live; then
+            echo "ERROR: shadow poller unexpectedly accepted --live" >&2
+            exit 1
+          fi
+          echo "PASS: live distribution remains fail-closed."
+
+      - name: Poll live bounded feed in scheduled/manual runs
+        if: ${{ github.event_name != 'pull_request' }}
+        run: >-
+          node scripts/marketing/poll-public-early-warning.mjs
+          --url=https://geomacro.live/api/early-warning
+          --limit=5
+          --channels=telegram,discord,bluesky,mastodon
