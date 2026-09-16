@@ -16,6 +16,7 @@
     "llms": "https://geomacro.live/llms.txt",
     "openapi": "https://geomacro.live/openapi-x402.json",
     "full_openapi": "https://geomacro.live/docs/openapi/geomacro-v1.yaml",
+    "question_preflight": "https://geomacro.live/api/agent/question-preflight",
     "availability": "https://geomacro.live/api/x402/risk/availability"
   },
   "commercial_contract": {
@@ -29,14 +30,31 @@
     "idempotency_required": true,
     "reconciliation_required": true,
     "paid_but_undelivered_requires_reconciliation": true,
+    "question_plan_binding_required": true,
+    "durable_prepared_payload_encryption_required": true,
     "testnet_or_sandbox_is_revenue": false
   },
   "offers": [
     {
       "id": "adaptive-risk-intelligence-v1",
       "name": "Adaptive Risk Intelligence",
-      "description": "A bounded adaptive country or directional-corridor assessment assembled from the currently deliverable Geomacro modules requested by topic and intent.",
+      "description": "A bounded adaptive country or directional-corridor assessment assembled from the currently deliverable Geomacro modules selected for the caller's question, topic and intent.",
+      "question_preflight_endpoint": "https://geomacro.live/api/agent/question-preflight",
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "question_first_flow": [
+        "POST question to question_preflight_endpoint",
+        "receive deterministic paid_request, query_plan_hash, deliverability and exact configured price metadata",
+        "send the exact paid_request to a supported paid provider endpoint",
+        "bind payment proof to product and query_plan_hash",
+        "receive the exact prepared structured response after verified settlement"
+      ],
+      "privacy": {
+        "external_llm_for_question_planning": false,
+        "raw_question_sent_to_payment_provider": false,
+        "raw_payment_proof_persisted": false,
+        "raw_client_request_id_persisted": false,
+        "prepared_premium_payload_encrypted_at_rest": true
+      },
       "providers": {
         "coinbase_x402": {
           "endpoint": "https://geomacro.live/api/x402/intelligence",
