@@ -67,6 +67,8 @@ describe("Early Warning proof metrics", () => {
 
     expect(metrics.resolved_sample_count).toBe(5);
     expect(metrics.invalidated_sample_count).toBe(1);
+    expect(metrics.alert_sample_count).toBe(3);
+    expect(metrics.no_alert_sample_count).toBe(2);
     expect(metrics.confusion_matrix).toEqual({
       true_positive: 2,
       false_positive: 1,
@@ -105,9 +107,11 @@ describe("Early Warning proof metrics", () => {
     ).toThrow(/cannot precede detection/);
   });
 
-  it("blocks public proof claims while methodology or evaluation universe is insufficient", () => {
+  it("blocks public proof claims when calibration or sampling-universe evidence is missing", () => {
     const result = evaluateProofPublicationReadiness({
       methodology_calibrated: false,
+      material_event_universe_complete: false,
+      control_period_sampling_documented: false,
       minimum_resolved_samples: 2,
       minimum_material_events: 1,
       minimum_countries: 1,
@@ -134,13 +138,17 @@ describe("Early Warning proof metrics", () => {
 
     expect(result.publishable).toBe(false);
     expect(result.reasons).toContain("methodology_not_calibrated");
-    expect(result.reasons).toContain("missed_event_universe_not_demonstrated");
+    expect(result.reasons).toContain("material_event_universe_not_complete");
+    expect(result.reasons).toContain("control_period_sampling_not_documented");
+    expect(result.reasons).toContain("no_alert_samples_missing");
     expect(result.reasons).toContain("control_period_universe_not_demonstrated");
   });
 
-  it("can become proof-publishable only with calibrated methodology and explicit missed/control samples", () => {
+  it("can become proof-publishable with calibrated methodology and documented complete sampling", () => {
     const result = evaluateProofPublicationReadiness({
       methodology_calibrated: true,
+      material_event_universe_complete: true,
+      control_period_sampling_documented: true,
       minimum_resolved_samples: 4,
       minimum_material_events: 2,
       minimum_countries: 2,
@@ -184,6 +192,44 @@ describe("Early Warning proof metrics", () => {
 
     expect(result.publishable).toBe(true);
     expect(result.reasons).toEqual(["eligible"]);
+    expect(result.universe_assertions).toEqual({
+      material_event_universe_complete: true,
+      control_period_sampling_documented: true,
+    });
+  });
+
+  it("does not require an observed false negative when the material-event universe is independently complete", () => {
+    const result = evaluateProofPublicationReadiness({
+      methodology_calibrated: true,
+      material_event_universe_complete: true,
+      control_period_sampling_documented: true,
+      minimum_resolved_samples: 2,
+      minimum_material_events: 1,
+      minimum_countries: 2,
+      samples: [
+        {
+          sample_id: "tp-perfect",
+          country_iso3: "IND",
+          event_family: "conflict",
+          alert_issued: true,
+          alert_status: "WARNING",
+          detected_at_utc: "2026-09-16T08:00:00Z",
+          outcome: "MATERIAL_EVENT",
+          outcome_observed_at_utc: "2026-09-16T10:00:00Z",
+        },
+        {
+          sample_id: "tn-control",
+          country_iso3: "JPN",
+          event_family: "monetary_policy",
+          alert_issued: false,
+          outcome: "NO_MATERIAL_EVENT",
+        },
+      ],
+    });
+
+    expect(result.metrics.confusion_matrix.false_negative).toBe(0);
+    expect(result.metrics.recall).toBe(1);
+    expect(result.publishable).toBe(true);
   });
 
   it("keeps ledger-only metrics explicitly unable to claim recall", () => {
@@ -208,6 +254,6 @@ describe("Early Warning proof metrics", () => {
     expect(result.confirmation_share).toBe(0.5);
     expect(result.false_alert_share).toBe(0.5);
     expect(result.recall).toBeNull();
-    expect(result.recall_reason).toMatch(/missed material events/);
+    expect(result.recall_reason).toMatch(/independently enumerated material events/);
   });
 });
