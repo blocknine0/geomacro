@@ -31,6 +31,7 @@ import { Route as RiskGateRouteImport } from './routes/risk-gate'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as TestnetAccessRouteImport } from './routes/testnet-access'
 import { Route as TestnetConsoleRouteImport } from './routes/testnet-console'
+import { Route as ApiEarlyWarningRouteImport } from './routes/api.early-warning'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiPublicDataProxyRouteImport } from './routes/api.public-data-proxy'
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
@@ -162,6 +163,11 @@ const TestnetConsoleRoute = TestnetConsoleRouteImport.update({
   path: '/testnet-console',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEarlyWarningRoute = ApiEarlyWarningRouteImport.update({
+  id: '/api/early-warning',
+  path: '/api/early-warning',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/roadmap': typeof RoadmapRoute
   '/testnet-access': typeof TestnetAccessRoute
   '/testnet-console': typeof TestnetConsoleRoute
+  '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
@@ -332,6 +339,7 @@ export interface FileRoutesByTo {
   '/roadmap': typeof RoadmapRoute
   '/testnet-access': typeof TestnetAccessRoute
   '/testnet-console': typeof TestnetConsoleRoute
+  '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
@@ -377,6 +385,7 @@ export interface FileRoutesById {
   '/roadmap': typeof RoadmapRoute
   '/testnet-access': typeof TestnetAccessRoute
   '/testnet-console': typeof TestnetConsoleRoute
+  '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
@@ -423,6 +432,7 @@ export interface FileRouteTypes {
     | '/roadmap'
     | '/testnet-access'
     | '/testnet-console'
+    | '/api/early-warning'
     | '/api/health'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/roadmap'
     | '/testnet-access'
     | '/testnet-console'
+    | '/api/early-warning'
     | '/api/health'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
@@ -511,6 +522,7 @@ export interface FileRouteTypes {
     | '/roadmap'
     | '/testnet-access'
     | '/testnet-console'
+    | '/api/early-warning'
     | '/api/health'
     | '/api/public-data-proxy'
     | '/api/risk-gate'
@@ -556,6 +568,7 @@ export interface RootRouteChildren {
   RoadmapRoute: typeof RoadmapRoute
   TestnetAccessRoute: typeof TestnetAccessRoute
   TestnetConsoleRoute: typeof TestnetConsoleRoute
+  ApiEarlyWarningRoute: typeof ApiEarlyWarningRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiPublicDataProxyRoute: typeof ApiPublicDataProxyRoute
   ApiRiskGateRoute: typeof ApiRiskGateRoute
@@ -734,6 +747,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestnetConsoleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/early-warning': {
+      id: '/api/early-warning'
+      path: '/api/early-warning'
+      fullPath: '/api/early-warning'
+      preLoaderRoute: typeof ApiEarlyWarningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -900,6 +920,7 @@ const rootRouteChildren: RootRouteChildren = {
   RoadmapRoute: RoadmapRoute,
   TestnetAccessRoute: TestnetAccessRoute,
   TestnetConsoleRoute: TestnetConsoleRoute,
+  ApiEarlyWarningRoute: ApiEarlyWarningRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiPublicDataProxyRoute: ApiPublicDataProxyRoute,
   ApiRiskGateRoute: ApiRiskGateRoute,
