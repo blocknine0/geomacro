@@ -8,6 +8,7 @@ const migration = readFileSync(
 const service = readFileSync("src/lib/commercial-growth.server.ts", "utf8");
 const getRoute = readFileSync("server/api/internal/commercial-growth.get.ts", "utf8");
 const postRoute = readFileSync("server/api/internal/commercial-growth.post.ts", "utf8");
+const dashboard = readFileSync("server/routes/internal/commercial-ops.get.ts", "utf8");
 const manifest = JSON.parse(
   readFileSync("config/commercial-launch-manifest.json", "utf8"),
 ) as any;
@@ -30,6 +31,11 @@ describe("commercial growth automation safety contract", () => {
     expect(service).toContain('.eq("auto_publish_allowed", false)');
     expect(postRoute).toContain("publication_performed: false");
     expect(postRoute).not.toContain('action: "publish"');
+    expect(dashboard).toContain("Approve");
+    expect(dashboard).toContain("Reject");
+    expect(dashboard).toContain("No external publication performed");
+    expect(dashboard).not.toContain("action:'publish'");
+    expect(dashboard).not.toContain('action:"publish"');
   });
 
   it("keeps the marketing queue private and service-role only", () => {
@@ -42,6 +48,9 @@ describe("commercial growth automation safety contract", () => {
     );
     expect(getRoute).toContain("requireCommercialOpsToken");
     expect(postRoute).toContain("requireCommercialOpsToken");
+    expect(dashboard).toContain("x-geomacro-ops-token");
+    expect(dashboard).not.toContain("localStorage");
+    expect(dashboard).not.toContain("document.cookie");
   });
 
   it("does not expose payer/customer identity in automatic milestone evidence", () => {
