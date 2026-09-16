@@ -104,7 +104,7 @@ Eligibility does not mean live publishing is enabled. `config/auto-distribution.
 
 ## Storage
 
-Migration `936_early_warning_alert_ledger.sql` adds:
+Migration `937_early_warning_alert_ledger.sql` adds:
 
 - `early_warning_alerts` for canonical signals and later outcome evidence;
 - `early_warning_distribution_receipts` for per-channel durable idempotency and delivery status.
