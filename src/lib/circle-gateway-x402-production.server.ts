@@ -48,6 +48,10 @@ function requireSellerAddress() {
   return value as `0x${string}`;
 }
 
+function facilitator() {
+  return new BatchFacilitatorClient();
+}
+
 export function getCircleGatewayProductionConfig(): CircleGatewayProductionConfig | null {
   const environment = process.env.CIRCLE_X402_ENVIRONMENT?.trim().toLowerCase() ?? "";
   if (!environment) return null;
@@ -94,8 +98,7 @@ export function getCircleGatewayProductionConfig(): CircleGatewayProductionConfi
 export async function getCircleGatewayProductionRequirement(
   config: CircleGatewayProductionConfig,
 ): Promise<CircleGatewayPaymentRequirement> {
-  const facilitator = new BatchFacilitatorClient();
-  const supported = await facilitator.getSupported();
+  const supported = await facilitator().getSupported();
   const kind = supported.kinds.find(
     (candidate) =>
       candidate.x402Version === 2 &&
@@ -119,6 +122,25 @@ export async function getCircleGatewayProductionRequirement(
   };
 }
 
+export async function verifyCircleGatewayProduction(
+  paymentPayload: unknown,
+  requirement: CircleGatewayPaymentRequirement,
+) {
+  assertProviderRealFundsSecurityReady();
+  assertCommercialLaunchAuthorized("circle_gateway_x402");
+
+  const verified = await facilitator().verify(
+    paymentPayload as Parameters<BatchFacilitatorClient["verify"]>[0],
+    requirement as Parameters<BatchFacilitatorClient["verify"]>[1],
+  );
+
+  return {
+    valid: verified.isValid === true,
+    invalid_reason: verified.invalidReason ?? null,
+    payer: verified.payer ?? null,
+  };
+}
+
 export async function settleCircleGatewayProduction(
   paymentPayload: unknown,
   requirement: CircleGatewayPaymentRequirement,
@@ -126,10 +148,10 @@ export async function settleCircleGatewayProduction(
   assertProviderRealFundsSecurityReady();
   assertCommercialLaunchAuthorized("circle_gateway_x402");
 
-  const facilitator = new BatchFacilitatorClient();
-  const settled = await facilitator.settle(
-    paymentPayload as Parameters<typeof facilitator.settle>[0],
-    requirement as Parameters<typeof facilitator.settle>[1],
+  const client = facilitator();
+  const settled = await client.settle(
+    paymentPayload as Parameters<typeof client.settle>[0],
+    requirement as Parameters<typeof client.settle>[1],
   );
 
   if (!settled.success) {
@@ -143,7 +165,10 @@ export async function settleCircleGatewayProduction(
     settlement_reference: settled.transaction ?? null,
     network: settled.network || requirement.network,
     amount_atomic: requirement.amount,
-    amount_usdc: (Number(requirement.amount) / 1_000_000).toFixed(6).replace(/0+$/, "").replace(/\.$/, ""),
+    amount_usdc: (Number(requirement.amount) / 1_000_000)
+      .toFixed(6)
+      .replace(/0+$/, "")
+      .replace(/\.$/, ""),
     accounting_state: "commercial_pending_accounting" as const,
     reconciliation_required: true as const,
     execution_authorized: false as const,
