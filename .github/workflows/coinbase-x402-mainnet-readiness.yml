@@ -9,6 +9,19 @@ on:
       - "src/lib/coinbase-x402.server.test.ts"
       - "server/routes/api/x402/**"
       - "docs/COINBASE_X402_MAINNET_READINESS.md"
+      - ".env.example"
+      - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/commercial-launch-gate.server.ts"
+      - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "server/routes/api/x402/**"
+      - "docs/COINBASE_X402_MAINNET_READINESS.md"
+      - ".env.example"
       - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
   workflow_dispatch:
 
