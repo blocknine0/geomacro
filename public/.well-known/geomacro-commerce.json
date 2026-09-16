@@ -10,9 +10,12 @@
   },
   "discovery": {
     "agent_card": "https://geomacro.live/.well-known/geomacro-agent.json",
+    "x402": "https://geomacro.live/.well-known/x402",
+    "x402_json": "https://geomacro.live/.well-known/x402.json",
     "human_machine_docs": "https://geomacro.live/agent-commerce.md",
     "llms": "https://geomacro.live/llms.txt",
-    "openapi": "https://geomacro.live/docs/openapi/geomacro-v1.yaml",
+    "openapi": "https://geomacro.live/openapi-x402.json",
+    "full_openapi": "https://geomacro.live/docs/openapi/geomacro-v1.yaml",
     "availability": "https://geomacro.live/api/x402/risk/availability"
   },
   "commercial_contract": {
@@ -37,21 +40,31 @@
       "providers": {
         "coinbase_x402": {
           "endpoint": "https://geomacro.live/api/x402/intelligence",
-          "environment": "Base Sepolia prelaunch acceptance",
+          "environment": "Base Sepolia acceptance complete; Base mainnet code-gated",
           "launch_cohort": true,
           "production_enabled": false
+        },
+        "circle_gateway": {
+          "endpoint": "https://geomacro.live/api/x402/intelligence",
+          "environment": "Circle Gateway production adapter prepared; current Arc route remains Testnet technical proof",
+          "launch_cohort": true,
+          "production_enabled": false,
+          "production_status": "adapter_ready_locked_until_coordinated_launch",
+          "approved_initial_mainnet_network": "eip155:8453",
+          "arc_mainnet_enabled": false
         },
         "nevermined": {
           "endpoint": "https://geomacro.live/api/x402/nevermined/intelligence",
           "environment": "Nevermined sandbox prelaunch acceptance",
           "launch_cohort": true,
-          "production_enabled": false
+          "production_enabled": false,
+          "production_status": "code_ready_pending_live_plan_credentials_and_launch_authorization"
         },
         "goat_x402": {
-          "environment": "GOAT Testnet3 technical proof",
-          "launch_cohort": false,
+          "environment": "GOAT Testnet3 technical proof; Mainnet merchant onboarding available",
+          "launch_cohort": true,
           "production_enabled": false,
-          "production_status": "deferred_manual_mainnet_merchant_onboarding"
+          "production_status": "onboarding_ready_pending_manual_merchant_approval_and_launch_authorization"
         }
       },
       "subjects": [
