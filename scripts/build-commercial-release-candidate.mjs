@@ -40,9 +40,13 @@ function sha256(buffer) {
 }
 
 function requireCommitSha() {
-  const value = String(process.env.GITHUB_SHA || process.env.COMMERCIAL_RC_GIT_SHA || "").trim();
+  // Explicit candidate identity must win over GitHub's event SHA. On pull_request
+  // events GITHUB_SHA can be a synthetic merge commit, while the workflow passes
+  // the exact PR head through COMMERCIAL_RC_GIT_SHA. On main pushes the workflow
+  // passes github.sha through the same explicit variable.
+  const value = String(process.env.COMMERCIAL_RC_GIT_SHA || process.env.GITHUB_SHA || "").trim();
   if (!/^[0-9a-f]{40}$/i.test(value)) {
-    throw new Error("A full 40-character GITHUB_SHA or COMMERCIAL_RC_GIT_SHA is required");
+    throw new Error("A full 40-character COMMERCIAL_RC_GIT_SHA or GITHUB_SHA is required");
   }
   return value.toLowerCase();
 }
