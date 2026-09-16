@@ -209,6 +209,7 @@ jobs:
           set -euo pipefail
           grep -q '^  push:' .github/workflows/coinbase-x402-mainnet-readiness.yml
           grep -q '^  push:' .github/workflows/nevermined-x402-sandbox-acceptance.yml
+          grep -q 'This job proves exact-main source readiness only' .github/workflows/coinbase-x402-mainnet-readiness.yml
           grep -q "github.event_name == 'workflow_dispatch' && inputs.run_provider_settlement == true" .github/workflows/nevermined-x402-sandbox-acceptance.yml
           grep -q 'Real provider settlement is intentionally manual-only' .github/workflows/nevermined-x402-sandbox-acceptance.yml
       - name: Verify provider-neutral settlement ordering is locked in source
