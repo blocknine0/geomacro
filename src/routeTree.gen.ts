@@ -48,6 +48,7 @@ import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
+import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
 import { Route as ApiX402RiskAvailabilityRouteImport } from './routes/api.x402.risk_.availability'
 
@@ -246,6 +247,12 @@ const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
   path: '/api/goat/pilot/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiX402CircleIntelligenceRoute =
+  ApiX402CircleIntelligenceRouteImport.update({
+    id: '/api/x402/circle_/intelligence',
+    path: '/api/x402/circle/intelligence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiX402NeverminedIntelligenceRoute =
   ApiX402NeverminedIntelligenceRouteImport.update({
     id: '/api/x402/nevermined_/intelligence',
@@ -298,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
 }
@@ -341,6 +349,7 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
 }
@@ -385,6 +394,7 @@ export interface FileRoutesById {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk_/availability': typeof ApiX402RiskAvailabilityRoute
 }
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
   fileRoutesByTo: FileRoutesByTo
@@ -473,6 +484,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
   id:
@@ -516,6 +528,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
     | '/api/x402/risk_/availability'
   fileRoutesById: FileRoutesById
@@ -560,6 +573,7 @@ export interface RootRouteChildren {
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
+  ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
   ApiX402NeverminedIntelligenceRoute: typeof ApiX402NeverminedIntelligenceRoute
   ApiX402RiskAvailabilityRoute: typeof ApiX402RiskAvailabilityRoute
 }
@@ -839,6 +853,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/x402/circle_/intelligence': {
+      id: '/api/x402/circle_/intelligence'
+      path: '/api/x402/circle/intelligence'
+      fullPath: '/api/x402/circle/intelligence'
+      preLoaderRoute: typeof ApiX402CircleIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/x402/nevermined_/intelligence': {
       id: '/api/x402/nevermined_/intelligence'
       path: '/api/x402/nevermined/intelligence'
@@ -896,6 +917,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
+  ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,
   ApiX402RiskAvailabilityRoute: ApiX402RiskAvailabilityRoute,
 }
