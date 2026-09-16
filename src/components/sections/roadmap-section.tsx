@@ -5,29 +5,29 @@ const PHASES = [
     status: "SHIPPED",
     tone: "text-emerald-300",
     title: "Intelligence foundation",
-    body: "Live event intelligence, versioned Global Risk Index, explainable drivers, evidence/confidence surfaces and Arc/Circle technical proof.",
-    items: ["Live intelligence", "GRI v1.2", "Change attribution", "Arc Testnet technical proof"],
+    body: "Live event intelligence, separate geopolitical, macroeconomic and critical-mineral Risk Indices, explainable drivers, evidence/confidence surfaces and Arc/Circle technical proof.",
+    items: ["Live intelligence", "Separate Risk Indices", "GRI v1.2 proof lineage", "Change attribution"],
   },
   {
     status: "IN PROGRESS",
     tone: "text-amber-300",
     title: "Commercial hardening",
-    body: "Turn the working system into a defensible Private Pilot with source-rights controls, signed Risk Objects, Risk Gate, security evidence and reproducible CI.",
+    body: "Turn the working system into a defensible Private Pilot with source-rights controls, signed Risk Objects, Risk Gate, security evidence, buyer-ready product boundaries and reproducible CI.",
     items: ["Risk Gate Private Pilot", "Commercial source rights", "Security & resilience", "Website / repo source of truth"],
   },
   {
     status: "NEXT",
     tone: "text-sky-300",
     title: "Institutional Early Access",
-    body: "Run controlled pilots with financial, treasury, payments, risk and agent teams. Validate decision usefulness, integration requirements and willingness to pay.",
-    items: ["Design partners", "Staging load evidence", "Pilot package & pricing", "First paid pilot"],
+    body: "Run controlled design-partner pilots with financial, treasury, payments, risk, supply-chain and agent teams. Measure decision usefulness, integration fit, operational friction and willingness to pay.",
+    items: ["Design partners", "Scoped staging evidence", "Pilot package & terms", "First paid pilot"],
   },
   {
     status: "LATER",
     tone: "text-muted-foreground",
     title: "Production expansion",
-    body: "Expand coverage, enterprise controls and programmable integrations only after security, reliability, legal and customer validation gates are met.",
-    items: ["Production SLA", "Broader data coverage", "Enterprise workflows", "Controlled mainnet integrations"],
+    body: "Expand coverage, enterprise controls, contractual service commitments and programmable integrations only after security, reliability, legal, source-rights and customer-validation gates are met.",
+    items: ["Production operations", "Broader governed coverage", "Enterprise workflows", "Controlled mainnet integrations"],
   },
 ] as const;
 
@@ -38,7 +38,7 @@ export function RoadmapSection() {
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Current roadmap</p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">From working intelligence to trusted commercial infrastructure.</h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro prioritizes reliability, explainability, security and real customer validation before broader production expansion. The roadmap reflects current product gates rather than a feature wishlist.
+          Geomacro prioritizes reliability, explainability, security, source rights and real customer validation before broader production expansion. The roadmap reflects current evidence gates rather than a feature wishlist.
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export function RoadmapSection() {
       </div>
 
       <div className="mt-10 rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-relaxed text-muted-foreground">
-        <span className="font-medium text-foreground">Launch gate:</span> Early Access remains conditional on scoped security/resilience validation, remediation of critical/high findings, source-rights review for paid delivery and a controlled staging test. Full production launch requires a broader readiness review.
+        <span className="font-medium text-foreground">Early Access gate:</span> external availability remains conditional on scoped security/resilience validation, remediation of critical/high findings, source-rights review for paid delivery, controlled staging evidence and an agreed customer-use boundary. Broader production requires a separate readiness review and must not be inferred from a pilot milestone.
       </div>
     </section>
   );
