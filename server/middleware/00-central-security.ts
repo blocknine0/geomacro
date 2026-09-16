@@ -20,6 +20,14 @@ import {
 } from "../../src/lib/real-funds-security-readiness.server";
 
 
+const MAX_PROXY_IDENTITY_HEADER_BYTES = 2048;
+const GENERIC_PROXY_IDENTITY_HEADERS = [
+  "x-forwarded-for",
+  "x-real-ip",
+  "true-client-ip",
+] as const;
+
+
 /**
  * Geomacro-wide HTTP security boundary.
  *
@@ -51,6 +59,29 @@ export default defineEventHandler(async (event) => {
   const method = event.method || "GET";
   const headers = new Headers(getRequestHeaders(event));
 
+  // Reject oversized proxy identity material before potentially removing it.
+  // This preserves the request-envelope size invariant even when untrusted
+  // forwarding headers are ignored for client identity.
+  const oversizedProxyHeader = GENERIC_PROXY_IDENTITY_HEADERS.find(
+    (name) => (headers.get(name)?.length ?? 0) > MAX_PROXY_IDENTITY_HEADER_BYTES,
+  );
+
+  if (oversizedProxyHeader) {
+    setResponseHeader(event, "Cache-Control", "no-store");
+    throw createError({
+      statusCode: 431,
+      statusMessage: "Request headers are too large",
+      data: {
+        ok: false,
+        error: {
+          code: "CENTRAL_SECURITY_HEADERS_TOO_LARGE",
+          message: "This request cannot be processed safely at this time.",
+        },
+        execution_authorized: false,
+      },
+    });
+  }
+
   // Generic forwarding headers are client-spoofable unless every ingress edge
   // is explicitly configured to strip and overwrite them. Geomacro's current
   // production target is Cloudflare/Nitro, so cf-connecting-ip remains the
@@ -65,9 +96,9 @@ export default defineEventHandler(async (event) => {
       .toLowerCase() === "true";
 
   if (!trustGenericProxyHeaders) {
-    headers.delete("x-forwarded-for");
-    headers.delete("x-real-ip");
-    headers.delete("true-client-ip");
+    for (const name of GENERIC_PROXY_IDENTITY_HEADERS) {
+      headers.delete(name);
+    }
   }
 
   const decision = await enforceCentralRequestSecurity({
