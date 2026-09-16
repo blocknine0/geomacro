@@ -14,7 +14,9 @@ on:
       - "src/lib/nevermined-x402.server.ts"
       - "src/lib/nevermined-x402.server.test.ts"
       - "src/routes/api.x402.nevermined_.intelligence.ts"
+      - "src/lib/goat-flow.server.ts"
       - "src/lib/goat-pilot-service.server.ts"
+      - "src/__tests__/goat-flow-contract.test.ts"
       - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
       - "src/__tests__/goat-mainnet-readiness-static.test.ts"
       - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
@@ -47,6 +49,7 @@ jobs:
           src/lib/commercial-launch-gate.server.test.ts
           src/lib/coinbase-x402.server.test.ts
           src/lib/nevermined-x402.server.test.ts
+          src/__tests__/goat-flow-contract.test.ts
           src/__tests__/agent-commerce-delivery-ledger-static.test.ts
           src/__tests__/goat-mainnet-readiness-static.test.ts
           src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
@@ -70,6 +73,8 @@ jobs:
           set -euo pipefail
           grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
           grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
+          grep -q 'assertCommercialLaunchAuthorized("goat_x402")' src/lib/goat-flow.server.ts
+          grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED' src/lib/goat-pilot-service.server.ts
           grep -q 'https://api.sandbox.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'https://api.live.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
