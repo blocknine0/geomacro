@@ -30,12 +30,26 @@ describe("public GRI runtime resilience", () => {
     expect(server).toContain("The verified risk indices are temporarily unavailable. Please retry.");
   });
 
-  it("handles a controlled unavailable response in the client instead of exposing a server runtime exception", () => {
-    const hook = read("src/lib/use-global-risk.ts");
+  it("keeps website risk surfaces fail-soft instead of showing an error state", () => {
+    const legacyHook = read("src/lib/use-global-risk.ts");
+    const indicesHook = read("src/lib/use-risk-indices.ts");
 
-    expect(hook).toContain("if (!response.ok)");
-    expect(hook).toContain("throw new Error(response.message)");
-    expect(hook).toContain('setStatus("error")');
+    expect(legacyHook).toContain("if (!response.ok)");
+    expect(legacyHook).toContain("throw new Error(response.message)");
+    expect(legacyHook).toContain('setStatus(hasData.current ? "ready" : "loading")');
+    expect(legacyHook).not.toContain('setStatus("error")');
+    expect(indicesHook).toContain('setStatus(hasData.current ? "ready" : "loading")');
+    expect(indicesHook).not.toContain('setStatus("error")');
+  });
+
+  it("never discards a previously verified reading because a refresh failed", () => {
+    const legacyHook = read("src/lib/use-global-risk.ts");
+    const indicesHook = read("src/lib/use-risk-indices.ts");
+
+    const legacyCatch = legacyHook.split("} catch (err) {")[1] ?? "";
+    const indicesCatch = indicesHook.split("} catch (caught) {")[1] ?? "";
+    expect(legacyCatch).not.toContain("setData(null)");
+    expect(indicesCatch).not.toContain("setData(null)");
   });
 
   it("does not add a synthetic score or browser database fallback", () => {
