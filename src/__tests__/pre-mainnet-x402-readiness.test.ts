@@ -117,17 +117,22 @@ describe("pre-mainnet x402 readiness", () => {
   it("keeps every marketplace target production-disabled in the committed manifest", () => {
     const manifest = JSON.parse(read("config/agent-marketplace-distribution.json")) as {
       state: string;
+      canonical_x402_discovery: string;
+      x402_extensionless_compatibility_alias: string;
       canonical_circle_paid_endpoint: string;
       targets: Record<string, { production_enabled: boolean }>;
-      submission_identity: { approved_endpoint_paths: string[] };
+      submission_identity: { approved_endpoint_paths: string[]; discovery_paths: string[] };
     };
     expect(manifest.state).toBe("prelaunch_hold");
+    expect(manifest.canonical_x402_discovery).toBe("https://geomacro.live/.well-known/x402.json");
+    expect(manifest.x402_extensionless_compatibility_alias).toBe("https://geomacro.live/.well-known/x402");
     expect(manifest.canonical_circle_paid_endpoint).toBe(
       "https://geomacro.live/api/x402/circle/intelligence",
     );
     expect(manifest.submission_identity.approved_endpoint_paths).toContain(
       "/api/x402/circle/intelligence",
     );
+    expect(manifest.submission_identity.discovery_paths[0]).toBe("/.well-known/x402.json");
     expect(Object.values(manifest.targets).every((target) => target.production_enabled === false)).toBe(true);
   });
 
@@ -138,7 +143,8 @@ describe("pre-mainnet x402 readiness", () => {
     const middleware = read("server/middleware/00-central-security.ts");
     const circleRoute = read("src/routes/api.x402.circle_.intelligence.ts");
 
-    expect(commerce.discovery.x402).toBe("https://geomacro.live/.well-known/x402");
+    expect(commerce.discovery.x402).toBe("https://geomacro.live/.well-known/x402.json");
+    expect(commerce.discovery.x402_extensionless_alias).toBe("https://geomacro.live/.well-known/x402");
     expect(commerce.commercial_contract.production_funds_authorized).toBe(false);
     expect(commerce.offers[0].providers.circle_gateway.endpoint).toBe(
       "https://geomacro.live/api/x402/circle/intelligence",

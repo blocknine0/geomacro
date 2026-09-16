@@ -29,6 +29,10 @@ describe("final non-mainnet launch acceptance contract", () => {
     expect(live).toContain('commerce?.commercial_contract?.production_funds_authorized === false');
     expect(live).toContain('discovery?.status === "prelaunch"');
     expect(live).toContain('discovery?.productionFundsAuthorized === false');
+    expect(live).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA");
+    expect(live).toContain("/.well-known/geomacro-build.json");
+    expect(live).toContain('optionalCompatibilityAliases = ["/.well-known/x402"]');
+    expect(live).toContain('"/.well-known/x402.json"');
     expect(live).toContain('evidence.result = "FAIL"');
     expect(live).toContain("persistEvidence();");
 
@@ -73,6 +77,8 @@ describe("final non-mainnet launch acceptance contract", () => {
   it("keeps host-compatible x402 discovery truthful and prelaunch-only", () => {
     const extensionless = JSON.parse(read("public/.well-known/x402"));
     const json = JSON.parse(read("public/.well-known/x402.json"));
+    const commerce = JSON.parse(read("public/.well-known/geomacro-commerce.json"));
+    const marketplace = JSON.parse(read("config/agent-marketplace-distribution.json"));
 
     expect(extensionless).toEqual(json);
     expect(json.x402Version).toBe(2);
@@ -88,6 +94,23 @@ describe("final non-mainnet launch acceptance contract", () => {
     }
     expect(json.hosting_fallback.mode).toBe("static_prelaunch");
     expect(json.hosting_fallback.production_launch_rule).toContain("must not advertise paid production resources");
+    expect(commerce.discovery.x402).toBe("https://geomacro.live/.well-known/x402.json");
+    expect(commerce.discovery.x402_extensionless_alias).toBe("https://geomacro.live/.well-known/x402");
+    expect(marketplace.canonical_x402_discovery).toBe("https://geomacro.live/.well-known/x402.json");
+    expect(marketplace.x402_extensionless_compatibility_alias).toBe("https://geomacro.live/.well-known/x402");
+  });
+
+  it("requires post-publish live acceptance instead of racing Git sync", () => {
+    const workflow = read(".github/workflows/final-nonmainnet-launch-acceptance.yml");
+    const mirror = read(".github/workflows/sync-lovable-main.yml");
+
+    expect(workflow).toContain("published_sha");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(workflow).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ inputs.published_sha }}");
+    expect(workflow).toContain('[[ "${PUBLISHED_SHA,,}" == "${GITHUB_SHA,,}" ]]');
+    expect(mirror).toContain("public/.well-known/geomacro-build.json");
+    expect(mirror).toContain('"canonical_main_sha": "${GITHUB_SHA}"');
+    expect(mirror).toContain('"production_activation_performed": false');
   });
 
   it("does not embed production launch acknowledgements or permit production load targeting", () => {
