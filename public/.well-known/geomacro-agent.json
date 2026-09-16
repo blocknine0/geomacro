@@ -35,7 +35,10 @@
     {
       "id": "adaptive_risk_intelligence",
       "access": "prelaunch_x402_or_provider_sandbox",
+      "question_preflight_endpoint": "https://geomacro.live/api/agent/question-preflight",
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
+      "question_only_supported_via_preflight": true,
       "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
       "content_type": "application/json",
       "execution_authorized": false
@@ -50,6 +53,15 @@
     "freshness_policy_required_for_paid_delivery": true,
     "external_web_search": false,
     "synthetic_fallback_score": false
+  },
+  "privacy": {
+    "question_planning_external_llm": false,
+    "raw_question_sent_to_payment_provider": false,
+    "payment_proof_persisted_raw": false,
+    "client_request_id_persisted_raw": false,
+    "prepared_premium_payload_encrypted_at_rest": true,
+    "paid_and_preflight_http_cache": "no-store",
+    "transport": "https"
   },
   "boundaries": {
     "free_api_access": false,
