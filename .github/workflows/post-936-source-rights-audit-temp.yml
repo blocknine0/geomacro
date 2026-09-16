@@ -1,0 +1,61 @@
+name: Post 936 Source Rights Audit Temp
+
+on:
+  push:
+    branches:
+      - ops/apply-commercial-source-rights-936
+    paths:
+      - ".github/workflows/post-936-source-rights-audit-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Validate authoritative read-only target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SUPABASE_PROJECT_ID:-}" && -n "${SUPABASE_DB_URL:-}" ]]
+          [[ "$SUPABASE_PROJECT_ID" == "$EXPECTED_SUPABASE_PROJECT_REF" ]]
+
+      - name: Export commercial source census
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'ELIGIBLE_RAW_EVIDENCE_SOURCE_IDS:'
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "
+            select source_id
+            from public.live_external_sources
+            where commercial_usage_status='COMMERCIAL_OK'
+              and enabled_for_ingestion=true
+              and raw_redistribution_allowed=true
+            order by source_id;
+          "
+          echo 'COUNTS:'
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "
+            select
+              count(*)::text || ' registered|' ||
+              count(*) filter (where commercial_usage_status='COMMERCIAL_OK')::text || ' commercial_ok|' ||
+              count(*) filter (where enabled_for_ingestion)::text || ' ingestion_enabled|' ||
+              count(*) filter (where enabled_for_commercial_signals)::text || ' commercial_signals_enabled|' ||
+              count(*) filter (where commercial_usage_status='COMMERCIAL_OK' and enabled_for_ingestion and raw_redistribution_allowed)::text || ' paid_raw_evidence_eligible|' ||
+              count(*) filter (where enabled_for_ingestion and not raw_redistribution_allowed)::text || ' ingestion_enabled_raw_blocked'
+            from public.live_external_sources;
+          "
+          echo 'TARGETS:'
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "
+            select source_id || '|' || commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text || '|' || raw_redistribution_allowed::text || '|' || attribution_required::text
+            from public.live_external_sources
+            where source_id in ('world_bank_wgi_political_stability','usgs_mcs')
+            order by source_id;
+          "
+          echo 'READ_ONLY_AUDIT=true'
+          echo 'PRODUCTION_PAYMENT_RAIL_ACTIVATED=false'
