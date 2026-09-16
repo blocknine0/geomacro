@@ -78,7 +78,14 @@ The Edge Function:
 - does not expose upstream publisher identity fields;
 - returns an opaque unavailable response if verification fails.
 
-The normal app-owned direct database read remains the first compatibility path for existing `useGlobalRisk()` surfaces. If that hosted read is unavailable, the server fetches the same verified package from the authoritative Edge Function. A public unavailable state is returned only if both paths fail.
+The normal app-owned direct database read remains the first compatibility path for existing `useGlobalRisk()` surfaces. If that hosted read is unavailable, the server fetches the same verified package from the authoritative Edge Function. A public unavailable response is produced internally only if both verified paths fail.
+
+Website hooks deliberately fail soft:
+
+- an already verified reading remains visible when a later refresh fails;
+- a cold-start outage stays in a neutral loading/retry state instead of rendering a public error card;
+- diagnostics are still logged through the application error reporter;
+- a failed read never becomes zero or a synthetic score.
 
 ## Transition strategy
 
@@ -87,12 +94,13 @@ The normal app-owned direct database read remains the first compatibility path f
 - add the three-index public contract;
 - serve it from the authoritative read-only Edge Function;
 - switch `/global-risk` to the separate-index workspace while preserving the existing URL and SEO history;
-- retain a legacy verified `GlobalRisk` compatibility payload from the Edge Function so homepage, institutional and other existing consumers do not fail while they migrate;
+- switch the homepage risk preview to the three-index contract;
+- retain a legacy verified `GlobalRisk` compatibility payload from the Edge Function so institutional, intelligence and other existing consumers do not fail while they migrate;
 - do not mutate historical `gri_snapshots`.
 
 ### Phase 2 — consumer migration
 
-Replace combined-GRI language/cards on remaining public surfaces with the three-index contract. Internal systems that genuinely need a multi-domain context object may keep an explicitly named composite internal object, but it must not be presented as the public headline index.
+Replace combined-GRI language/cards on remaining secondary public surfaces with the three-index contract. Internal systems that genuinely need a multi-domain context object may keep an explicitly named composite internal object, but it must not be presented as the public headline index.
 
 ### Phase 3 — independently persisted next-generation indices
 
@@ -114,18 +122,25 @@ Historical GRI v1.2 remains immutable audit evidence.
 
 ## Production deployment
 
-The Edge Function is intentionally deployed through the guarded manual workflow:
+The Edge Function deployment is owned by:
 
 `.github/workflows/deploy-public-risk-indices-edge.yml`
 
-Apply mode is allowed only from `main`, checks the authoritative Supabase project ref, deploys `public-risk-indices` with public JWT verification disabled because the function exposes bounded public read-only data, and performs a live smoke test requiring:
+Pull requests run only the read-only/deployment guard validation. A relevant push to exact `main` automatically deploys the function to the authoritative Supabase project and performs the live smoke test. Manual `workflow_dispatch` remains available with `plan` and `apply` modes for diagnosis or controlled redeployment.
 
-- HTTP 200;
-- contract `risk-indices-v1.0.0`;
-- parent `gri-v1.2.0`;
-- proof `gri-proof-v1.2.0`;
-- verification status `verified`;
-- exactly three expected index keys;
-- verified legacy compatibility payload.
+The deployment path:
 
-No migration, score recomputation, payment activation, mainnet activation or write permission is part of this deployment.
+- checks the exact authoritative project ref `ldpwajisioljyjtojvfx`;
+- requires the existing production Supabase deployment credentials;
+- deploys only `public-risk-indices`;
+- uses public JWT verification disabled because the endpoint is intentionally bounded public read-only data;
+- performs no database migration or data write;
+- smoke-checks HTTP 200;
+- requires contract `risk-indices-v1.0.0`;
+- requires parent `gri-v1.2.0`;
+- requires proof `gri-proof-v1.2.0`;
+- requires verification status `verified`;
+- requires exactly the three expected index keys;
+- requires the verified legacy compatibility payload.
+
+No score recomputation, payment activation, mainnet activation or write permission is part of this deployment.
