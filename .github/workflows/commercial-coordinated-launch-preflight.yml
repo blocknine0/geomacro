@@ -8,6 +8,8 @@ on:
       - "src/lib/commercial-launch-gate.server.test.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
+      - "src/lib/nevermined-x402.server.ts"
+      - "src/lib/nevermined-x402.server.test.ts"
       - "src/lib/goat-pilot-service.server.ts"
       - "src/__tests__/goat-mainnet-readiness-static.test.ts"
       - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
@@ -38,6 +40,7 @@ jobs:
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
           src/lib/coinbase-x402.server.test.ts
+          src/lib/nevermined-x402.server.test.ts
           src/__tests__/goat-mainnet-readiness-static.test.ts
           src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
       - name: Verify manifest remains prelaunch
@@ -59,6 +62,9 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
+          grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
+          grep -q 'https://facilitator.sandbox.nevermined.app' src/lib/nevermined-x402.server.ts
+          grep -q 'https://facilitator.live.nevermined.app' src/lib/nevermined-x402.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
           grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
