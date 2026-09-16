@@ -1,0 +1,56 @@
+name: Early Warning Proof Metrics Check
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/early-warning-proof-metrics.ts"
+      - "src/lib/early-warning-proof-metrics.test.ts"
+      - "docs/EARLY_WARNING_PROOF_METRICS.md"
+      - ".github/workflows/early-warning-proof-metrics-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/early-warning-proof-metrics.ts"
+      - "src/lib/early-warning-proof-metrics.test.ts"
+      - ".github/workflows/early-warning-proof-metrics-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Test proof metrics and publication gate
+        run: bunx vitest run src/lib/early-warning-proof-metrics.test.ts
+
+      - name: Verify statistical claim boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=src/lib/early-warning-proof-metrics.ts
+          grep -q 'RESOLVED_ALERTS_ONLY_NOT_RECALL' "$file"
+          grep -q 'methodology_not_calibrated' "$file"
+          grep -q 'material_event_universe_not_complete' "$file"
+          grep -q 'control_period_sampling_not_documented' "$file"
+          grep -q 'no_alert_samples_missing' "$file"
+          grep -q 'control_period_universe_not_demonstrated' "$file"
+          grep -q 'minimum_resolved_samples ?? 100' "$file"
+          grep -q 'minimum_material_events ?? 30' "$file"
+          grep -q 'minimum_countries ?? 5' "$file"
+          echo 'PASS: proof metrics cannot manufacture recall from alerts-only data or publish an uncalibrated or undocumented evaluation claim.'
