@@ -4,6 +4,7 @@ import {
   PUBLIC_EARLY_WARNING_FEED_VERSION,
   loadPublicEarlyWarningFeed,
 } from "../lib/public-early-warning-feed.server";
+import { renderPublicEarlyWarningRss } from "../lib/public-early-warning-rss";
 
 const BASE_HEADERS = {
   "X-Content-Type-Options": "nosniff",
@@ -16,6 +17,11 @@ const BASE_HEADERS = {
 const PUBLIC_HEADERS = {
   ...BASE_HEADERS,
   "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=60",
+} as const;
+
+const RSS_HEADERS = {
+  ...PUBLIC_HEADERS,
+  "Content-Type": "application/rss+xml; charset=utf-8",
 } as const;
 
 const ERROR_HEADERS = {
@@ -49,9 +55,20 @@ export const Route = createFileRoute("/api/early-warning")({
         const url = new URL(request.url);
         const country = url.searchParams.get("country");
         const limit = url.searchParams.get("limit");
+        const format = (url.searchParams.get("format") || "json").trim().toLowerCase();
+
+        if (format !== "json" && format !== "rss") {
+          return errorResponse(400, "invalid_query");
+        }
 
         try {
           const feed = await loadPublicEarlyWarningFeed({ country, limit });
+          if (format === "rss") {
+            return new Response(renderPublicEarlyWarningRss(feed), {
+              status: 200,
+              headers: RSS_HEADERS,
+            });
+          }
           return Response.json(feed, { status: 200, headers: PUBLIC_HEADERS });
         } catch (error) {
           const message = error instanceof Error ? error.message : "";
