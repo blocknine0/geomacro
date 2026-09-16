@@ -70,3 +70,4 @@ jobs:
             echo 'ERROR: .env.example must never activate the Coinbase real-USDC gate.' >&2
             exit 1
           fi
+          echo 'PASS: Coinbase exact-head source readiness verified without production credentials or settlement.'
