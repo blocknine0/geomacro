@@ -19,7 +19,10 @@ describe("public production coverage proof", () => {
     expect(panel).toContain("80 remained fail-closed");
     expect(panel).toContain("execution_authorized=false");
     expect(panel).toContain("did not activate x402, real-money payments, Base mainnet or autonomous execution");
-    expect(panel).toContain("not an all-country claim, transaction authorization, production SLA, independent audit or mainnet launch claim");
+    expect(panel).toContain("not an all-country product guarantee");
+    expect(panel).toContain("production SLA");
+    expect(panel).toContain("independent security audit");
+    expect(panel).toContain("mainnet-launch claim");
   });
 
   it("surfaces one shared proof panel on the primary commercial and trust routes", () => {
@@ -30,7 +33,7 @@ describe("public production coverage proof", () => {
       expect(shell).toContain(`"${route}"`);
     }
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
-    expect(shell).toContain("114-country production-workflow proof · Private Pilot Risk Gate · Mainnet pre-launch");
+    expect(shell).toContain("Dated 114-country controlled-workflow evidence · Private Pilot Risk Gate · Mainnet pre-launch");
   });
 
   it("keeps machine-readable website context aligned with the same measured claim", () => {
