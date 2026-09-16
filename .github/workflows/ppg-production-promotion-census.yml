@@ -8,6 +8,7 @@ on:
     paths:
       - "scripts/ingest-world-bank-ppg-sovereign-fiscal-live.mjs"
       - "src/lib/risk-gate-v2-world-bank-ppg-sovereign-fiscal.server.ts"
+      - "src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts"
       - "src/lib/risk-gate-v2-macro-module-state.server.ts"
       - "scripts/global-risk-gate-country-census.ts"
       - ".github/workflows/ppg-production-promotion-census.yml"
