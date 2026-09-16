@@ -79,7 +79,7 @@ describe("commercial public surface v2", () => {
     expect(contact).toContain("The decision point Geomacro would support");
     expect(contact).toContain("How you would judge a useful pilot");
     expect(contact).toContain("Do not email seed phrases, private keys, production secrets");
-    expect(contact).toContain("agree any commercial, support, security and data-handling boundaries");
+    expect(contact).toContain("Agree any commercial, support, security and data-handling boundaries");
   });
 
   it("documents fail-soft public Risk Indices without synthetic fallback", () => {
