@@ -60,6 +60,9 @@ jobs:
           fi
           grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
 
+  # Real provider settlement is intentionally manual-only. Push/PR runs prove
+  # the static sandbox/live boundary but can never consume provider credentials
+  # or settle even sandbox value.
   provider-sandbox-settlement:
     if: github.event_name == 'workflow_dispatch' && inputs.run_provider_settlement == true
     needs: sandbox-contract
