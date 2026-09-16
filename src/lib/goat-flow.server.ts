@@ -153,10 +153,6 @@ export function requireGoatFlowConfig(): GoatFlowConfig {
     throw new Error("GOATX402_ENVIRONMENT must be testnet3 or mainnet");
   }
 
-  if (environment === "mainnet") {
-    assertCommercialLaunchAuthorized("goat_x402");
-  }
-
   const expected = GOAT_FLOW_ENVIRONMENTS[environment];
   const configuredApi = process.env.GOATX402_API_URL?.trim() || expected.api_url;
 
@@ -175,6 +171,14 @@ export function requireGoatFlowConfig(): GoatFlowConfig {
     parsed.hash
   ) {
     throw new Error("GOATX402_API_URL must match the official selected GOAT Flow origin");
+  }
+
+  // Validate provider origin before evaluating production authorization so a
+  // misrouted mainnet configuration fails for the precise trust-boundary reason.
+  // A valid GOAT mainnet origin is still blocked unless the coordinated launch
+  // acknowledgement is explicitly present.
+  if (environment === "mainnet") {
+    assertCommercialLaunchAuthorized("goat_x402");
   }
 
   const apiKey = requiredEnv("GOATX402_API_KEY", 512);
