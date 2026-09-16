@@ -9,13 +9,16 @@ describe("public production coverage proof", () => {
   it("publishes the exact current census while preserving the non-authorizing boundary", () => {
     const panel = read("src/components/production-coverage-proof.tsx");
 
+    expect(panel).toContain("const VERIFIED_COUNTRY_COUNT = 114");
+    expect(panel).toContain("const ENABLED_SOVEREIGN_DENOMINATOR = 194");
+    expect(panel).toContain("const FAIL_CLOSED_COUNTRY_COUNT = 80");
+    expect(panel).toContain("const QPSD_ACCEPTED_FISCAL_COUNT = 57");
+    expect(panel).toContain("const PPG_ACCEPTED_FISCAL_COUNT = 57");
     expect(panel).toContain("114 sovereign countries passed the current four-module Risk Gate review census");
     expect(panel).toContain("all 194 enabled sovereign countries");
     expect(panel).toContain("80 remained fail-closed");
-    expect(panel).toContain("57 + 57");
     expect(panel).toContain("execution_authorized=false");
     expect(panel).toContain("did not activate x402, real-money payments, Base mainnet or autonomous execution");
-    expect(panel).toContain("not an all-country claim");
     expect(panel).toContain("not an all-country claim, transaction authorization, production SLA, independent audit or mainnet launch claim");
   });
 
