@@ -139,4 +139,16 @@ assert.ok(
   'claim RPC must remain service-role only',
 );
 
+const capSql = await fs.readFile('supabase/migrations/941_early_warning_distribution_attempt_cap.sql', 'utf8');
+assert.ok(capSql.includes('attempt_count <= 5'), 'receipt ledger must hard-cap delivery attempts at five');
+
+const config = JSON.parse(await fs.readFile('config/auto-distribution.json', 'utf8'));
+assert.equal(config.mode, 'prelaunch-shadow');
+assert.equal(config.live_publish_enabled, false);
+assert.equal(config.receipt_policy.contract_version, DISTRIBUTION_RECEIPT_CONTRACT_VERSION);
+assert.equal(config.receipt_policy.lease_seconds, 120);
+assert.equal(config.receipt_policy.max_attempts_per_alert_channel, 5);
+assert.equal(config.receipt_policy.ambiguous_outcome_retry, 'manual_only');
+assert.equal(config.receipt_policy.live_worker_wired, false);
+
 console.log('PASS: Early Warning distribution receipt lease/idempotency contract is fail-closed.');
