@@ -4,8 +4,6 @@
 
 Geomacro uses three deliberately separated layers:
 
-GitHub `main` remains the application source authority; in this project that means `blocknine0/geomacro:main`.
-
 1. **GitHub `blocknine0/geomacro` `main`** is the application source authority. Code, routes, UI, server handlers, tests and deployment contracts are changed through reviewed GitHub branches and pull requests.
 2. **External Supabase project `ldpwajisioljyjtojvfx`** is the production application database authority. Lovable Cloud or hosting-injected Supabase projects must never silently replace it.
 3. **Lovable hosting** is the frontend/SSR hosting surface. The existing Lovable project is linked to the Lovable-created GitHub repository `blocknine0/geomacro-160c8e56`, so canonical `main` is mirrored one way into that repository before Lovable picks up the change.
@@ -31,12 +29,13 @@ It:
 - checks out canonical `blocknine0/geomacro`;
 - clones the existing Lovable-linked repository `blocknine0/geomacro-160c8e56`;
 - copies the canonical tree into the Lovable mirror;
-- preserves mirror-only `.lovable/` metadata and mirror workflow files;
+- preserves mirror-only `.lovable/` metadata and excludes canonical privileged workflow files from the mirror;
 - writes `.geomacro-canonical-main` with the exact source commit SHA;
+- writes `public/.well-known/geomacro-build.json` with the exact canonical main SHA and a non-activation boundary;
 - commits only when the mirror actually differs;
 - pushes the resulting snapshot to the mirror `main` branch.
 
-The workflow deliberately excludes `.github/workflows/` from the copied tree so CI and privileged operational workflows run only in the canonical repository.
+The public build marker is deployment evidence only. It does not authorize production payments, mainnet, Early Warning push distribution or any other launch action.
 
 ### One-time credential
 
@@ -50,22 +49,35 @@ Do not paste the token into source code, Lovable chat, issues, logs or screensho
 
 If the secret is missing, the mirror workflow exits successfully with a notice and performs no cross-repository write. Canonical `main` remains authoritative.
 
-## Zero-credit development path
+## Zero-credit development and publish path
 
 Use this flow for normal changes:
 
 1. Make code changes in `blocknine0/geomacro` through a branch/PR.
 2. Let Product CI, CodeQL and **Hosting Alignment** pass.
 3. Merge to canonical `main`.
-4. `Sync Canonical Main to Lovable` mirrors the exact source tree into `blocknine0/geomacro-160c8e56:main`.
+4. `Sync Canonical Main to Lovable` mirrors the exact source tree into `blocknine0/geomacro-160c8e56:main` and stamps `public/.well-known/geomacro-build.json` with the canonical SHA.
 5. Lovable Git sync sees the new commit on its linked `main` branch automatically.
 6. In Lovable, do **not** ask the chat agent to rewrite, sync or publish the project.
 7. Open the normal **Publish** dialog and click **Publish changes**.
-8. Run the live smoke workflow after publication.
+8. After publication, manually dispatch `Final Non-Mainnet Launch Acceptance` and provide the exact 40-character canonical main SHA in `published_sha`.
+9. The live smoke must read the same SHA back from `https://geomacro.live/.well-known/geomacro-build.json`. A stale deployment cannot pass the strict acceptance run.
 
 Normal GitHub development and mirror sync do not consume Lovable chat credits.
 
 Do not disconnect/reconnect the Lovable project merely to force a sync. That changes the repository relationship and is not the deployment mechanism for this project.
+
+## x402 hosting compatibility
+
+The canonical seller discovery document is:
+
+`https://geomacro.live/.well-known/x402.json`
+
+The repository also keeps `/.well-known/x402` as a compatibility alias through both static and server-route implementations. Some hosting/CDN configurations do not expose extensionless files under `/.well-known`, so the extensionless alias is not the required deployment contract.
+
+The strict live acceptance gate requires the portable `.json` resource, the commerce and agent discovery files, OpenAPI, `llms.txt`, and the exact-SHA build marker. If the extensionless alias returns `200`, it is validated as the same safe prelaunch discovery contract. A host-level `404` for that optional alias is recorded but does not conceal failure of the canonical `.json` resource.
+
+During prelaunch, both committed x402 discovery representations remain fail-closed: no paid production resources are advertised and production funds remain unauthorized.
 
 ## Supabase runtime contract
 
@@ -120,4 +132,8 @@ The guard fails if the repository drifts back toward:
 
 ## Publishing incident rule
 
-A Lovable **internal error** during chat or publishing is a hosting-platform incident, not a reason to edit production application code blindly. First confirm canonical GitHub CI/build is green, confirm the mirror workflow reached `blocknine0/geomacro-160c8e56:main`, then use Lovable's normal Git **Re-check** and **Publish changes** controls. Escalate to Lovable support only if its linked repository is current but the editor still refuses to sync or publish.
+A Lovable **internal error** during chat or publishing is a hosting-platform incident, not a reason to edit production application code blindly. First confirm canonical GitHub CI/build is green and the mirror workflow reached `blocknine0/geomacro-160c8e56:main`. Then use Lovable's normal Git **Re-check** and **Publish changes** controls.
+
+Do not treat a successful mirror push as proof that the live site has deployed the commit. The exact-SHA live acceptance check exists specifically to separate Git synchronization from publication.
+
+Escalate to Lovable support only if the linked repository is current but the editor still refuses to sync or publish.
