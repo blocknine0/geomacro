@@ -52,7 +52,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_alert public.early_warning_alerts%rowtype;
@@ -206,7 +206,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_receipt public.early_warning_distribution_receipts%rowtype;
