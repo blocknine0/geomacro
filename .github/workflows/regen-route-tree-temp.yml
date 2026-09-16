@@ -1,0 +1,34 @@
+name: Regenerate route tree temp
+
+on:
+  push:
+    branches:
+      - feature/early-warning-public-feed-v1
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/early-warning-public-feed-v1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Commit generated route tree
+        run: |
+          if git diff --quiet -- src/routeTree.gen.ts; then
+            echo "Route tree already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routeTree.gen.ts
+          git commit -m "chore: regenerate TanStack route tree"
+          git push origin HEAD:feature/early-warning-public-feed-v1
