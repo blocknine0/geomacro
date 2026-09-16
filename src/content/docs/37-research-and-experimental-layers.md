@@ -14,12 +14,16 @@ Examples:
 
 | Capability | Status |
 |---|---|
-| Public risk intelligence | LIVE |
-| Global Risk Index | LIVE |
+| Public Risk Intelligence | LIVE |
+| Geopolitical Risk Index | LIVE |
+| Macroeconomic Risk Index | LIVE |
+| Critical Minerals Risk Index | LIVE |
 | Ask Geomacro | LIVE |
 | Risk API / Risk Gate | PRIVATE PILOT |
 | Prediction markets | TECHNICAL PROOF |
 | Arc / CCTP / Bridge & Swap | TECHNICAL PROOF |
 | Broad professional/enterprise packaging | PLANNED |
+
+The current public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current headline product.
 
 A roadmap item or experimental implementation must never be presented as generally available solely because code exists.
