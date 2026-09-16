@@ -1,0 +1,41 @@
+name: Nevermined SDK Lockfile Sync
+
+on:
+  push:
+    branches:
+      - feat/commercial-distribution-foundation
+    paths:
+      - ".github/workflows/nevermined-lockfile-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/commercial-distribution-foundation
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Add pinned Nevermined Payments SDK and refresh lockfile
+        run: bun add --exact @nevermined-io/payments@1.13.0
+      - name: Commit dependency lock update
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json bun.lock
+          if git diff --cached --quiet; then
+            echo "No lockfile changes required."
+            exit 0
+          fi
+          git commit -m "build: pin Nevermined payments SDK 1.13.0"
+          git push origin HEAD:feat/commercial-distribution-foundation
