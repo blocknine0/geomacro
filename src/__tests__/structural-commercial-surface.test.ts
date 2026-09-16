@@ -10,7 +10,7 @@ const packageDoc = readFileSync(
 describe("structural data commercial surface", () => {
   it("publishes the paid commercial endpoint and machine discovery without a free API promise", () => {
     expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
-    expect(page).toContain('"capability": "structural_country_profile"');
+    expect(page).toContain("Country structural profile");
     expect(page).toContain("/.well-known/geomacro-agent.json");
     expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(page).not.toContain("bounded public structured-data digest");
