@@ -17,7 +17,7 @@ The request body uses the canonical Geomacro adaptive-intelligence query contrac
 1. Submit the adaptive intelligence request without a payment proof.
 2. If the request is fully deliverable and commercially eligible, Geomacro returns HTTP `402` with Nevermined payment requirements.
 3. The client obtains a valid Nevermined x402 payment proof and retries with the `payment-signature` header.
-4. Geomacro verifies the proof through the configured Nevermined **sandbox** facilitator.
+4. Geomacro verifies the proof against the pinned Nevermined sandbox x402 backend contract.
 5. Geomacro re-checks deliverability and source eligibility.
 6. The exact response is assembled, hashed and durably prepared in the provider-neutral delivery ledger before settlement.
 7. Nevermined settlement is attempted once.
@@ -25,9 +25,24 @@ The request body uses the canonical Geomacro adaptive-intelligence query contrac
 
 Ambiguous settlement is locked for reconciliation. Geomacro does not automatically resubmit a payment proof after an uncertain settlement outcome.
 
+## Transport contract and dependency policy
+
+The adapter is pinned to the Nevermined backend API contract targeted by Payments SDK `1.13.0`:
+
+- sandbox backend: `https://api.sandbox.nevermined.app/`
+- live backend: `https://api.live.nevermined.app/`
+- verify: `POST /api/v1/x402/verify`
+- settle: `POST /api/v1/x402/settle`
+- backend version header: `Nevermined-Version: 1.1`
+- crypto network mapping: Base Sepolia in sandbox and Base mainnet in live
+
+Geomacro does **not** currently install `@nevermined-io/payments` in the production dependency graph. During pre-launch hardening, the SDK introduced transitive high/moderate dependency advisories that violated Geomacro's security gate. Rather than weakening that gate, Geomacro uses a small server-only HTTP adapter matching the pinned official wire contract. Reintroducing the SDK requires the dependency graph to satisfy the same advisory policy.
+
+The adapter fails closed on redirects, oversized/non-JSON backend responses, environment/API-key mismatch, malformed result fields and unsupported card networks. Verify and settle calls are bounded by timeouts, and settlement is never automatically retried after an ambiguous network outcome.
+
 ## Supported settlement semantics
 
-The adapter follows the installed Nevermined Payments SDK contract rather than inferring charge success from `success=true` alone:
+Geomacro does not infer charge success from `success=true` alone:
 
 - pay-as-you-go settlement requires a non-empty provider settlement reference (`orderTx` or `transaction`);
 - credit-based settlement requires a positive redeemed-credit amount;
@@ -35,7 +50,7 @@ The adapter follows the installed Nevermined Payments SDK contract rather than i
 
 ## Privacy and safety boundaries
 
-Geomacro does not persist the raw `payment-signature`, wallet private material, Nevermined API keys, authorization headers or facilitator credentials in the delivery ledger or commercial analytics.
+Geomacro does not persist the raw `payment-signature`, wallet private material, Nevermined API keys, authorization headers or provider credentials in the delivery ledger or commercial analytics.
 
 Payer and recipient references are hashed before persistence where they are needed for reconciliation or attribution.
 
