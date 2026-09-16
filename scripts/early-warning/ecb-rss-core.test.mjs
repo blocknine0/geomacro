@@ -21,6 +21,25 @@ describe("ECB RSS core", () => {
     expect(items[1].event_family_candidate).toBe("regulatory_policy");
   });
 
+  it("decodes XML entities exactly once", () => {
+    const encoded = fixture.replace(
+      "ECB Banking Supervision publishes supervisory priorities",
+      "ECB &amp;lt;test&amp;gt; &amp; policy",
+    );
+    const items = parseEcbPressRss(encoded);
+    expect(items[1].title).toBe("ECB &lt;test&gt; & policy");
+    expect(items[1].title).not.toContain("<test>");
+  });
+
+  it("leaves CDATA content literal instead of entity-decoding it again", () => {
+    const encodedCdata = fixture.replace(
+      "ECB announces monetary policy decisions",
+      "ECB &amp; monetary policy decisions",
+    );
+    const items = parseEcbPressRss(encodedCdata);
+    expect(items[0].title).toBe("ECB &amp; monetary policy decisions");
+  });
+
   it("classifies only explicit title patterns and otherwise returns other", () => {
     expect(classifyEcbTitle("ECB announces key ECB interest rates")).toBe("monetary_policy");
     expect(classifyEcbTitle("ECB updates collateral framework")).toBe("banking_liquidity");
