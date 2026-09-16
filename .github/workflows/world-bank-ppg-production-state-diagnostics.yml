@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "scripts/audit-world-bank-ppg-production-state.ts"
+      - "scripts/audit-world-bank-ppg-builder-diagnostics.ts"
       - ".github/workflows/world-bank-ppg-production-state-diagnostics.yml"
   workflow_dispatch:
 
@@ -19,6 +20,7 @@ jobs:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       WORLD_BANK_PPG_STATE_DIAGNOSTICS_OUTPUT: world-bank-ppg-production-state-diagnostics.json
+      WORLD_BANK_PPG_BUILDER_DIAGNOSTICS_OUTPUT: world-bank-ppg-builder-diagnostics.json
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,19 +41,27 @@ jobs:
       - name: Run read-only PPG state diagnostics
         run: bun scripts/audit-world-bank-ppg-production-state.ts | tee world-bank-ppg-production-state-diagnostics.log
 
+      - name: Trace normalization, pure builder and server adapter
+        run: bun scripts/audit-world-bank-ppg-builder-diagnostics.ts | tee world-bank-ppg-builder-diagnostics.log
+
       - name: Enforce no-write boundary
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'PASS: WORLD BANK PPG PRODUCTION STATE DIAGNOSTICS COMPLETE - NO WRITES' world-bank-ppg-production-state-diagnostics.log
+          grep -q 'PASS: WORLD BANK PPG BUILDER DIAGNOSTICS COMPLETE - NO WRITES' world-bank-ppg-builder-diagnostics.log
           test -s world-bank-ppg-production-state-diagnostics.json
+          test -s world-bank-ppg-builder-diagnostics.json
           jq -e '.writes_performed == false' world-bank-ppg-production-state-diagnostics.json >/dev/null
+          jq -e '.writes_performed == false' world-bank-ppg-builder-diagnostics.json >/dev/null
           jq -e '.claim_boundary.no_writes == true' world-bank-ppg-production-state-diagnostics.json >/dev/null
+          jq -e '.claim_boundary.no_writes == true' world-bank-ppg-builder-diagnostics.json >/dev/null
           jq -e '.claim_boundary.no_scoring_change == true' world-bank-ppg-production-state-diagnostics.json >/dev/null
           jq -e '.claim_boundary.no_threshold_relaxation == true' world-bank-ppg-production-state-diagnostics.json >/dev/null
           jq -e '.claim_boundary.no_country_payability_change == true' world-bank-ppg-production-state-diagnostics.json >/dev/null
           jq -e '.claim_boundary.no_mainnet_change == true' world-bank-ppg-production-state-diagnostics.json >/dev/null
           jq '{generated_at,source_registration,manifest,observation_summary,state_summary,claim_boundary}' world-bank-ppg-production-state-diagnostics.json
+          jq '{generated_at,row_count,freshness_counts,snapshot,exact_manifest_query,pure_builder_results,server_adapter_results,diagnosis,claim_boundary}' world-bank-ppg-builder-diagnostics.json
 
       - name: Upload sanitized PPG diagnostics
         if: always()
@@ -61,5 +71,7 @@ jobs:
           path: |
             world-bank-ppg-production-state-diagnostics.json
             world-bank-ppg-production-state-diagnostics.log
+            world-bank-ppg-builder-diagnostics.json
+            world-bank-ppg-builder-diagnostics.log
           if-no-files-found: warn
           retention-days: 30
