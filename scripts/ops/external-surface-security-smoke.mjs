@@ -18,7 +18,7 @@ async function request(path, init = {}) {
     redirect: "follow",
     signal: AbortSignal.timeout(timeoutMs),
     headers: {
-      "user-agent": "GeomacroExternalSurfaceSecurity/1.0",
+      "user-agent": "GeomacroExternalSurfaceSecurity/1.1",
       ...(init.headers || {}),
     },
     ...init,
@@ -30,7 +30,6 @@ async function request(path, init = {}) {
 const home = await request("/");
 assert(home.response.status === 200, `Homepage expected 200, got ${home.response.status}`);
 
-const headers = Object.fromEntries(home.response.headers.entries());
 const hsts = home.response.headers.get("strict-transport-security") || "";
 const xcto = home.response.headers.get("x-content-type-options") || "";
 const referrer = home.response.headers.get("referrer-policy") || "";
@@ -52,11 +51,66 @@ assert(!probe.text.includes(probeLiteral), "Raw script reflection detected in ho
 const missing = await request("/__geomacro_launch_acceptance_missing_route__");
 assert(!/ReferenceError:\s|TypeError:\s|at\s+\S+\s+\([^\n]+:\d+:\d+\)|node_modules\//i.test(missing.text), "Missing-route response appears to expose a server stack trace");
 
+const sensitivePathProbes = [
+  {
+    path: "/.env",
+    forbidden: ["SUPABASE_SERVICE_ROLE_KEY=", "CDP_API_KEY_SECRET=", "GEOMACRO_API_CREDENTIAL_PEPPER="],
+  },
+  {
+    path: "/.git/HEAD",
+    forbidden: ["ref: refs/heads/", "ref: refs/remotes/"],
+  },
+  {
+    path: "/src/lib/risk-supabase.server.ts",
+    forbidden: ["requireRiskSupabase", "SUPABASE_SERVICE_ROLE_KEY", "AUTHORITATIVE_RISK_PROJECT_REF"],
+  },
+  {
+    path: "/server/middleware/00-central-security.ts",
+    forbidden: ["enforceCentralRequestSecurity", "GEOMACRO_REAL_FUNDS_SECURITY_ACK"],
+  },
+  {
+    path: "/supabase/migrations/930_central_security_abuse_control.sql",
+    forbidden: ["central_security_request_buckets", "consume_central_security_budget"],
+  },
+  {
+    path: "/package.json",
+    forbidden: ["\"packageManager\"", "\"dependencies\"", "\"scripts\""],
+  },
+  {
+    path: "/bun.lock",
+    forbidden: ["lockfileVersion", "workspace"],
+  },
+  {
+    path: "/wrangler.toml",
+    forbidden: ["account_id", "compatibility_date", "vars"],
+  },
+];
+
+const sensitiveProbeResults = [];
+for (const item of sensitivePathProbes) {
+  const result = await request(item.path);
+  const leakedMarkers = item.forbidden.filter((marker) => result.text.includes(marker));
+  assert(
+    leakedMarkers.length === 0,
+    `Sensitive path ${item.path} exposed forbidden marker(s): ${leakedMarkers.join(", ")}`,
+  );
+  assert(
+    !/-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/.test(result.text),
+    `Sensitive path ${item.path} exposed private key material`,
+  );
+  sensitiveProbeResults.push({
+    path: item.path,
+    status: result.response.status,
+    forbidden_markers_absent: true,
+    private_key_material_absent: true,
+  });
+}
+
 const securityTxt = await request("/.well-known/security.txt");
 const securityTxtPresent = securityTxt.response.status === 200 && /contact:/i.test(securityTxt.text);
 
 const evidence = {
-  schema_version: "geomacro.external-surface-security-smoke.v1",
+  schema_version: "geomacro.external-surface-security-smoke.v1.1",
   generated_at: new Date().toISOString(),
   target: baseUrl,
   outside_in_http_check: true,
@@ -73,9 +127,12 @@ const evidence = {
     x_powered_by_absent: true,
     raw_reflected_script_probe_absent: true,
     stack_trace_probe_absent: true,
+    sensitive_file_markers_absent: true,
+    private_key_material_absent: true,
     security_txt_present: securityTxtPresent,
     csp_present: csp.length > 0,
   },
+  sensitive_path_probes: sensitiveProbeResults,
   response_headers: {
     "strict-transport-security": hsts,
     "x-content-type-options": xcto,
