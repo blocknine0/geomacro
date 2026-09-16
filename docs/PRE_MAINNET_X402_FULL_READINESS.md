@@ -12,7 +12,8 @@ The canonical machine product is `geomacro_adaptive_risk_intelligence_v1`.
 - Canonical Coinbase-compatible paid resource: `POST /api/x402/intelligence`
 - Nevermined adapter: `POST /api/x402/nevermined/intelligence`
 - Existing Circle/Arc proof: `POST /api/agent/risk` on Arc Testnet only
-- Standard discovery: `/.well-known/x402` and `/.well-known/x402.json`
+- Canonical host-compatible x402 discovery: `/.well-known/x402.json`
+- Extensionless x402 compatibility alias: `/.well-known/x402`
 - Commerce catalog: `/.well-known/geomacro-commerce.json`
 - Focused marketplace OpenAPI: `/openapi-x402.json`
 
@@ -109,8 +110,8 @@ No application is submitted by this repository change.
 
 The repository now carries one launch package for marketplaces and autonomous buyers:
 
-- `/.well-known/x402`
-- `/.well-known/x402.json`
+- `/.well-known/x402.json` — canonical host-compatible discovery
+- `/.well-known/x402` — extensionless compatibility alias when the hosting layer exposes it
 - `/openapi-x402.json`
 - `/.well-known/geomacro-commerce.json`
 - `/.well-known/geomacro-agent.json`
@@ -118,6 +119,8 @@ The repository now carries one launch package for marketplaces and autonomous bu
 - `/api/x402/risk/availability`
 
 The x402 discovery document is deliberately fail-closed. While production flags are off, its `resources` array is empty and `productionFundsAuthorized=false`. It can describe planned resources without advertising a payable mainnet service.
+
+The canonical marketplace/discovery configuration points to `/.well-known/x402.json`. The extensionless alias remains available in source for compatible runtimes but is not relied on as the portable hosting contract.
 
 Static catalog prices are never authoritative. The live HTTP 402 challenge or provider plan is the payment authority.
 
