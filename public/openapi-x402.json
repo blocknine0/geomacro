@@ -63,11 +63,12 @@
         }
       },
       "post": {
-        "summary": "Buy adaptive geopolitical and macro risk intelligence",
+        "summary": "Buy adaptive geopolitical and macro risk intelligence via Coinbase-compatible x402",
         "operationId": "buyGeomacroAdaptiveRiskIntelligence",
         "description": "The first valid unpaid request returns HTTP 402 with authoritative x402 payment requirements. A paid retry returns the requested structured intelligence only after payment verification/settlement and protected delivery-claim checks.",
         "security": [],
         "x-payment-info": {
+          "provider": "coinbase_x402",
           "price": "runtime-402-challenge",
           "currency": "USDC",
           "protocols": [
@@ -114,12 +115,75 @@
         }
       }
     },
+    "/api/x402/circle/intelligence": {
+      "get": {
+        "summary": "Inspect the Circle Gateway x402 resource",
+        "operationId": "getGeomacroCircleGatewayX402Resource",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Current runtime Circle Gateway resource metadata"
+          },
+          "503": {
+            "description": "Circle production rail is not configured, not currently supported, or remains locked"
+          }
+        }
+      },
+      "post": {
+        "summary": "Buy adaptive geopolitical and macro risk intelligence via Circle Gateway x402",
+        "operationId": "buyGeomacroAdaptiveRiskIntelligenceCircleGateway",
+        "description": "This route uses the same canonical Geomacro intelligence and delivery contract. Circle Gateway production remains disabled before coordinated launch. When explicitly activated later, payment requirements are built from Circle's runtime-supported Gateway kind on the approved Base-mainnet USDC rail.",
+        "security": [],
+        "x-payment-info": {
+          "provider": "circle_gateway_x402",
+          "price": "runtime-402-challenge",
+          "currency": "USDC",
+          "approved_initial_network": "eip155:8453",
+          "arc_mainnet_enabled": false,
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "production_enabled": false,
+          "availability_endpoint": "/api/x402/risk/availability"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid structured response with execution_authorized=false"
+          },
+          "402": {
+            "description": "Circle Gateway payment required or payment proof invalid"
+          },
+          "409": {
+            "description": "Replay, duplicate-processing, or business-term conflict"
+          },
+          "422": {
+            "description": "Not currently deliverable; payment is not accepted"
+          },
+          "503": {
+            "description": "Circle provider, delivery ledger, intelligence dependency, or settlement reconciliation state unavailable; fails closed"
+          }
+        }
+      }
+    },
     "/api/x402/nevermined/intelligence": {
       "post": {
         "summary": "Nevermined provider adapter for the same adaptive intelligence product",
         "operationId": "buyGeomacroAdaptiveRiskIntelligenceNevermined",
         "security": [],
         "x-payment-info": {
+          "provider": "nevermined",
           "price": "provider-plan-runtime",
           "currency": "provider-plan",
           "protocols": [
