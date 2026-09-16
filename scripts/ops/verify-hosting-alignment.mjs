@@ -216,10 +216,20 @@ if (proxy.includes("APP_SUPABASE_SERVICE_ROLE_KEY")) fail("public proxy must nev
 else pass("public read proxy remains anon/RLS scoped");
 
 const appDb = read("src/lib/supabase-app.server.ts");
-if (!appDb.includes("process.env.APP_SUPABASE_SERVICE_ROLE_KEY")) {
-  fail("app server client must recognize APP_SUPABASE_SERVICE_ROLE_KEY");
+for (const marker of [
+  "APP_SUPABASE_URL",
+  "APP_SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "resolveAppSupabaseConfig",
+  EXPECTED_SUPABASE_REF,
+]) {
+  if (!appDb.includes(marker)) fail(`app server client must recognize ${marker}`);
+}
+if (/import\.meta\.env\.VITE_SUPABASE_/.test(appDb)) {
+  fail("app server client must never use browser VITE_SUPABASE_* bindings");
 } else {
-  pass("hosted SSR/API writes use the documented APP service-role variable");
+  pass("hosted SSR/API client is project-pinned and supports trusted server env aliases");
 }
 
 const riskDb = read("src/lib/risk-supabase.server.ts");
