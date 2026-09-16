@@ -45,7 +45,7 @@
           "production_enabled": false
         },
         "circle_gateway": {
-          "endpoint": "https://geomacro.live/api/x402/intelligence",
+          "endpoint": "https://geomacro.live/api/x402/circle/intelligence",
           "environment": "Circle Gateway production adapter prepared; current Arc route remains Testnet technical proof",
           "launch_cohort": true,
           "production_enabled": false,
@@ -61,10 +61,10 @@
           "production_status": "code_ready_pending_live_plan_credentials_and_launch_authorization"
         },
         "goat_x402": {
-          "environment": "GOAT Testnet3 technical proof; Mainnet merchant onboarding available",
-          "launch_cohort": true,
+          "environment": "GOAT Testnet3 technical proof; Mainnet merchant onboarding package prepared",
+          "launch_cohort": false,
           "production_enabled": false,
-          "production_status": "onboarding_ready_pending_manual_merchant_approval_and_launch_authorization"
+          "production_status": "deferred_manual_mainnet_merchant_onboarding"
         }
       },
       "subjects": [
