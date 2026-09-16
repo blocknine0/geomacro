@@ -1,0 +1,64 @@
+{
+  "feed_schema_version": "geomacro.public-early-warning-feed.v1",
+  "generated_at_utc": "2026-09-16T08:13:10.000Z",
+  "filters": {"country": null, "limit": 5},
+  "count": 1,
+  "items": [
+    {
+      "schema_version": "early-warning-1.0",
+      "alert_key": "sample-ind-20260916-public-001",
+      "country": {
+        "iso3": "IND",
+        "name": "India",
+        "local_timezone": "Asia/Kolkata"
+      },
+      "event": {
+        "family": "monetary_policy",
+        "title": "Sample policy-sensitive risk event for distribution testing",
+        "primary_cause": "A verified policy development with potential cross-market transmission"
+      },
+      "early_warning": {
+        "status": "WARNING",
+        "cews_score": 76.4,
+        "confidence": 0.86,
+        "independent_evidence_count": 3,
+        "official_source_present": true,
+        "methodology_version": "cews-v0.1.0-provisional",
+        "methodology_calibrated": false
+      },
+      "transmission_channels": ["rates", "currency", "capital_flows", "equities"],
+      "market_relevance": {
+        "equities": "HIGH",
+        "crypto": "MODERATE",
+        "fx": "VERY_HIGH",
+        "rates": "HIGH",
+        "commodities": "LOW"
+      },
+      "market_impact": null,
+      "timestamps": {
+        "detected_at_utc": "2026-09-16T08:12:41.000Z",
+        "detected_at_local": "2026-09-16T13:42:41+05:30",
+        "published_at_utc": "2026-09-16T08:13:00.000Z"
+      },
+      "integrity": {
+        "evidence_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "calculation_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+        "market_impact_hash": null
+      },
+      "public_url": "https://geomacro.live/intelligence/sample",
+      "boundaries": {
+        "structural_pressure_only": true,
+        "market_price_prediction": false,
+        "trading_instruction": false,
+        "public_performance_claims_allowed": false
+      }
+    }
+  ],
+  "boundaries": {
+    "informational_decision_support": true,
+    "structural_pressure_only": true,
+    "market_price_prediction": false,
+    "trading_instruction": false,
+    "performance_claim": false
+  }
+}
