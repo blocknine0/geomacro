@@ -1,0 +1,44 @@
+name: Commercial Branch Main Sync Check
+
+on:
+  push:
+    branches:
+      - feat/commercial-distribution-foundation
+    paths:
+      - ".github/workflows/commercial-branch-sync-temp.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-check:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout commercial branch with history
+        uses: actions/checkout@v7
+        with:
+          ref: feat/commercial-distribution-foundation
+          fetch-depth: 0
+      - name: Fetch current main and attempt merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set +e
+          git merge --no-edit origin/main
+          code=$?
+          set -e
+          if [[ $code -ne 0 ]]; then
+            echo 'MERGE_CONFLICTS_BEGIN'
+            git diff --name-only --diff-filter=U
+            echo 'MERGE_CONFLICTS_END'
+            git status --short
+            git merge --abort
+            exit 2
+          fi
+          echo 'MERGE_CLEAN'
+          git push origin HEAD:feat/commercial-distribution-foundation
