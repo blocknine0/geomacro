@@ -79,10 +79,14 @@ describe("World Bank QPSD governed production sovereign-fiscal fallback", () => 
     expect(macro).toContain("fallback_sovereign_fiscal: ppgFiscal");
   });
 
-  it("makes promotion transactional and requires the full production census to prove 100+", () => {
+  it("ingests while scoring is locked, then promotes transactionally and proves 100+", () => {
     expect(promotion).toContain("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'");
     expect(promotion).toContain("supabase/migrations/938_world_bank_qpsd_production_source.sql");
-    expect(promotion).toContain("Refusing first-promotion because QPSD observations already exist while scoring is locked");
+    const ingestIndex = promotion.indexOf("Ingest and verify fresh QPSD while scoring stays locked");
+    const promoteIndex = promotion.indexOf("Enable QPSD as a reversible production candidate");
+    expect(ingestIndex).toBeGreaterThan(-1);
+    expect(promoteIndex).toBeGreaterThan(ingestIndex);
+    expect(promotion).toContain('"source_commercial_signals_enabled_during_ingest": false');
     expect(promotion).toContain("enabled_for_commercial_signals: true");
     expect(promotion).toContain("bun scripts/global-risk-gate-country-census.ts --require-any-accepted");
     expect(promotion).toContain(".summary.accepted_country_count >= 100");
