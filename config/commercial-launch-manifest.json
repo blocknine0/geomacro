@@ -23,12 +23,12 @@
       "provider_gate_env": "GOATX402_MAINNET_COMMERCIAL_ENABLED"
     },
     "nevermined": {
-      "status": "adapter_pending",
+      "status": "prelaunch_acceptance",
       "production_enabled": false,
       "test_network": "sandbox",
       "production_network": "production",
       "asset": "plan_or_x402_contract",
-      "provider_gate_env": null
+      "provider_gate_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK"
     }
   },
   "distribution": {
