@@ -1,0 +1,120 @@
+{
+  "schema_version": "geomacro.agent-marketplace-distribution.v1",
+  "state": "prelaunch_hold",
+  "official_launch_required_before_public_submission": true,
+  "canonical_service_origin": "https://geomacro.live",
+  "canonical_commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
+  "canonical_availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+  "initial_launch_cohort": [
+    "coinbase_bazaar",
+    "coinbase_agentic_market",
+    "x402_new",
+    "circle_agent_marketplace",
+    "x402scan",
+    "x402_list",
+    "nevermined_registry"
+  ],
+  "targets": {
+    "coinbase_bazaar": {
+      "status": "prelaunch_ready_auto_discovery",
+      "listing_mode": "automatic_from_valid_x402_payment_and_bazaar_extension",
+      "public_submission_required": false,
+      "launch_action": "enable approved Coinbase production rail, complete capped smoke purchase, verify Bazaar indexing",
+      "production_enabled": false
+    },
+    "coinbase_agentic_market": {
+      "status": "prelaunch_ready_auto_index",
+      "listing_mode": "automatic_index_of_bazaar_services",
+      "public_submission_required": false,
+      "launch_action": "verify the Bazaar-indexed Geomacro resource appears with truthful metadata and live activity",
+      "production_enabled": false
+    },
+    "x402_new": {
+      "status": "prelaunch_ready_auto_index",
+      "listing_mode": "automatic_index_of_public_x402_discovery_network",
+      "public_submission_required": false,
+      "launch_action": "verify post-launch Bazaar metadata has propagated to the directory",
+      "production_enabled": false
+    },
+    "circle_agent_marketplace": {
+      "status": "submission_package_ready_hold_until_launch",
+      "listing_mode": "provider_submission_and_live_service_validation",
+      "public_submission_required": true,
+      "launch_action": "submit Geomacro service after the approved production endpoint is live and then verify Discovery API visibility",
+      "preferred_category": "FINANCIAL_ANALYSIS",
+      "production_enabled": false
+    },
+    "x402scan": {
+      "status": "submission_package_ready_hold_until_launch",
+      "listing_mode": "origin_schema_discovery_then_explicit_registration",
+      "public_submission_required": true,
+      "launch_action": "run origin discovery against geomacro.live, review detected routes, register only the approved production endpoints",
+      "production_enabled": false
+    },
+    "x402_list": {
+      "status": "submission_package_ready_hold_until_launch",
+      "listing_mode": "submit_service_for_probe_and_human_review",
+      "public_submission_required": true,
+      "launch_action": "submit the canonical service URL and approved endpoint paths only after they return valid production 402 challenges",
+      "category": "resolve_from_current_directory_categories_at_submission",
+      "production_enabled": false
+    },
+    "nevermined_registry": {
+      "status": "sandbox_acceptance_then_launch_listing",
+      "listing_mode": "provider_registry_listing",
+      "public_submission_required": true,
+      "launch_action": "complete sandbox acceptance, configure approved production plan, then publish the provider listing as part of the coordinated launch",
+      "production_enabled": false
+    },
+    "pay_sh_pay_skills": {
+      "status": "deferred_chain_incompatible_with_initial_launch",
+      "listing_mode": "registry_pull_request",
+      "public_submission_required": true,
+      "deferred_reason": "Current pay-skills provider publication requires paid x402/MPP endpoints on Solana mainnet accepting USDC or USDT. Geomacro's initial production cohort is not adding a Solana payment rail solely for directory coverage.",
+      "production_enabled": false
+    },
+    "goat_mainnet": {
+      "status": "deferred_manual_mainnet_merchant_onboarding",
+      "listing_mode": "provider_specific_manual_onboarding",
+      "public_submission_required": true,
+      "deferred_reason": "Manual GOAT mainnet merchant application/approval is outside the initial commercial launch cohort.",
+      "production_enabled": false
+    }
+  },
+  "submission_identity": {
+    "service_name": "Geomacro Risk Intelligence",
+    "website": "https://geomacro.live",
+    "contact_email": "contact@geomacro.live",
+    "short_description": "Machine-readable geopolitical and macro risk intelligence for country, directional-corridor and financial-agent pre-flight decisions.",
+    "long_description": "Geomacro provides source-governed geopolitical and macro risk intelligence to software and AI agents. Requests are checked for current deliverability, freshness and commercial source eligibility before payment is requested. Paid delivery can include structured risk context, signed Risk Objects and non-executing Risk Gate decision context. Geomacro does not custody funds, sign customer transactions or replace sanctions screening, legal advice or counterparty due diligence.",
+    "approved_endpoint_paths": [
+      "/api/x402/intelligence"
+    ],
+    "nevermined_endpoint_paths": [
+      "/api/x402/nevermined/intelligence"
+    ],
+    "free_preflight_endpoint_paths": [
+      "/api/x402/risk/availability"
+    ],
+    "keywords": [
+      "geopolitical risk",
+      "macroeconomic risk",
+      "country risk",
+      "sovereign risk",
+      "treasury pre-flight risk",
+      "cross-border corridor risk",
+      "signed risk object",
+      "machine-readable risk evidence",
+      "risk gate",
+      "AI agent risk intelligence"
+    ]
+  },
+  "launch_rules": {
+    "never_submit_testnet_or_sandbox_as_commercial_revenue": true,
+    "never_publish_static_price_as_authoritative": true,
+    "verify_live_402_before_manual_submission": true,
+    "verify_directory_metadata_after_listing": true,
+    "record_listing_evidence_in_growth_queue": true,
+    "automatic_public_social_posting": false
+  }
+}
