@@ -82,7 +82,7 @@ function artifact() {
     public_performance_claims_allowed: false,
     commercial_signal_activation: false,
     market_price_prediction: false,
-  } as const;
+  };
   return { ...core, proof_sample_artifact_hash: stableHash(core) };
 }
 
@@ -141,13 +141,13 @@ describe("FOMC scoped proof consumer", () => {
 
   it("rejects public or commercial promotion flags", () => {
     const publicRaw = structuredClone(artifact());
-    publicRaw.public_performance_claims_allowed = true as false;
+    publicRaw.public_performance_claims_allowed = true;
     expect(() => validateFomcScopedProofArtifact(rehash(publicRaw))).toThrow(
       /public_performance_claims_allowed must remain false/,
     );
 
     const commercialRaw = structuredClone(artifact());
-    commercialRaw.commercial_signal_activation = true as false;
+    commercialRaw.commercial_signal_activation = true;
     expect(() => validateFomcScopedProofArtifact(rehash(commercialRaw))).toThrow(
       /commercial_signal_activation must remain false/,
     );
@@ -161,11 +161,11 @@ describe("FOMC scoped proof consumer", () => {
 
   it("rejects schema or broad-completeness drift", () => {
     const schemaRaw = structuredClone(artifact());
-    schemaRaw.schema_version = "future-schema" as typeof schemaRaw.schema_version;
+    schemaRaw.schema_version = "future-schema";
     expect(() => validateFomcScopedProofArtifact(rehash(schemaRaw))).toThrow(/schema mismatch/);
 
     const broadRaw = structuredClone(artifact());
-    broadRaw.broad_monetary_policy_universe_complete = true as false;
+    broadRaw.broad_monetary_policy_universe_complete = true;
     expect(() => validateFomcScopedProofArtifact(rehash(broadRaw))).toThrow(
       /broad monetary-policy completeness must remain false/,
     );
