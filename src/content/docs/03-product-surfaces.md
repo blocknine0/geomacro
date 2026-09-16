@@ -6,21 +6,23 @@ Every public Geomacro capability carries a stage label so technical proof is not
 
 **Status: LIVE**
 
-Structured geopolitical and macro event intelligence with severity, confidence, evidence and timestamps.
+Structured geopolitical, macroeconomic and critical-mineral event intelligence with severity, confidence, evidence and timestamps.
 
-## 3.2 Global Risk Index
+## 3.2 Risk Indices
 
-**Status: LIVE — gri-v1.2.0**
+**Status: LIVE**
 
-The current production GRI is a deterministic, versioned 0–100 index over three active product domains:
+The current public risk-index product presents three domains independently:
 
-- geopolitics
-- macro
-- rare earth / critical minerals
+- **Geopolitical Risk Index**
+- **Macroeconomic Risk Index**
+- **Critical Minerals Risk Index**
 
-GRI v1.2 uses confidence and recency weighting, source concentration caps, independent-story concentration controls, published proof artifacts and exact change attribution. Missing domains are disclosed as reduced coverage rather than treated as zero risk.
+Each index is a risk-intelligence signal with its own current reading, history and change context. Missing or unverifiable domain evidence is not converted into a synthetic zero-risk reading.
 
-GRI is **not** a market probability.
+The three public indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records and are not a second current headline product.
+
+The Risk Indices are **not** prediction-market probabilities, investment recommendations or transaction authorization signals.
 
 ## 3.3 Ask Geomacro
 
@@ -57,7 +59,9 @@ Geomacro does not autonomously execute or authorize the customer's transaction. 
 
 **Status: PUBLIC DATA SURFACES + PRIVATE PILOT MACHINE ACCESS**
 
-Public intelligence and proof surfaces are available today. Authenticated machine delivery, signed Risk Objects and Risk Gate are Private Pilot rather than generally available production APIs.
+Public intelligence, Risk Indices and proof surfaces are available today. Governed machine-readable delivery, signed Risk Objects and Risk Gate remain controlled Private Pilot capabilities rather than generally available production APIs.
+
+Free Explorer is the public website/dashboard experience, not an anonymous free structured API.
 
 ## 3.7 Institutional Intelligence
 
@@ -69,4 +73,4 @@ Geomacro is preparing institution-oriented workflows for treasury, payments, ris
 
 **Status: TECHNICAL PROOF**
 
-Arc Testnet contracts, prediction markets, USDC, CCTP and Bridge & Swap remain accessible as evidence of programmable-finance implementation. They are secondary to the intelligence product.
+Arc Testnet contracts, prediction markets, USDC, CCTP and Bridge & Swap remain accessible as evidence of programmable-finance implementation. They are secondary to the intelligence product and do not imply production mainnet or real-money availability.
