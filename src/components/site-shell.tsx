@@ -147,7 +147,6 @@ const REFERENCE_NAV = [
 ] as const;
 
 const PRODUCTION_EVIDENCE_ROUTES = new Set([
-  "/",
   "/risk-gate",
   "/data-api",
   "/research",
