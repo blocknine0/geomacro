@@ -19,6 +19,12 @@ const OUTCOMES = new Set([
   'SKIPPED',
 ]);
 
+const RECONCILIATION_RESOLUTIONS = new Set([
+  'PUBLISHED',
+  'RETRYABLE_FAILURE',
+  'SKIPPED',
+]);
+
 function stableJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
@@ -145,4 +151,46 @@ export async function finalizeDistributionReceipt({
   return singleRow(data, 'distribution receipt finalize');
 }
 
-export const DISTRIBUTION_RECEIPT_CONTRACT_VERSION = 'early-warning-distribution-lease-v1';
+export async function reconcileDistributionReceipt({
+  supabase,
+  receiptId,
+  resolution,
+  actor,
+  note,
+  externalReference = null,
+  observedPublishedAt = null,
+}) {
+  if (!supabase?.rpc) throw new Error('supabase service client is required');
+  const normalizedReceiptId = requiredText(receiptId, 'receiptId', 80);
+  const normalizedResolution = requiredText(resolution, 'resolution', 32).toUpperCase();
+  if (!RECONCILIATION_RESOLUTIONS.has(normalizedResolution)) {
+    throw new Error('unsupported reconciliation resolution');
+  }
+  const normalizedActor = requiredText(actor, 'actor', 120);
+  const normalizedNote = requiredText(note, 'note', 1000);
+  if (normalizedNote.length < 8) throw new Error('note must be at least 8 characters');
+  const reference = boundedText(externalReference, 'externalReference', 500);
+  let publishedAt = null;
+  if (observedPublishedAt != null) {
+    publishedAt = requiredText(observedPublishedAt, 'observedPublishedAt', 80);
+    if (!Number.isFinite(Date.parse(publishedAt))) {
+      throw new Error('observedPublishedAt must be an ISO timestamp');
+    }
+    if (normalizedResolution !== 'PUBLISHED') {
+      throw new Error('observedPublishedAt is only valid for PUBLISHED reconciliation');
+    }
+  }
+
+  const { data, error } = await supabase.rpc('reconcile_early_warning_distribution', {
+    p_receipt_id: normalizedReceiptId,
+    p_resolution: normalizedResolution,
+    p_actor: normalizedActor,
+    p_note: normalizedNote,
+    p_external_reference: reference,
+    p_observed_published_at: publishedAt,
+  });
+  if (error) throw new Error(`distribution receipt reconciliation failed: ${error.message || 'unknown error'}`);
+  return singleRow(data, 'distribution receipt reconciliation');
+}
+
+export const DISTRIBUTION_RECEIPT_CONTRACT_VERSION = 'early-warning-distribution-lease-v2';
