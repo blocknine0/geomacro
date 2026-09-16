@@ -104,14 +104,13 @@ async function assertSourceRegistration() {
     .maybeSingle();
   if (result.error) throw result.error;
   const source = result.data;
-  if (!source) throw new Error("World Bank QPSD source is not registered; apply migration 930 first");
+  if (!source) throw new Error("World Bank QPSD source is not registered; apply migration 938 first");
   if (
     source.commercial_usage_status !== "COMMERCIAL_OK" ||
     source.enabled_for_ingestion !== true ||
-    source.enabled_for_commercial_signals !== true ||
     source.licence_name !== "CC BY 4.0"
   ) {
-    throw new Error("World Bank QPSD source-state mismatch for production ingestion");
+    throw new Error("World Bank QPSD source-state mismatch for governed ingestion");
   }
   return source;
 }
@@ -332,9 +331,16 @@ async function main() {
     .upsert(manifest, { onConflict: "source_id,release_id" });
   if (manifestWrite.error) throw manifestWrite.error;
 
+  // Validate persistence directly from the governed observation store. The
+  // customer-facing latest view intentionally stays empty while commercial
+  // scoring is locked, so first-promotion ingest can finish before activation.
   const persisted = await db
-    .from("live_world_bank_qpsd_latest")
+    .from("live_external_observations")
     .select("country_iso3,metric")
+    .eq("source_id", SOURCE_ID)
+    .eq("quality_status", "VERIFIED")
+    .eq("commercial_eligibility_status", COMMERCIAL_ELIGIBILITY_STATUS)
+    .in("metric", SERIES.map((series) => series.metric))
     .limit(1000);
   if (persisted.error) throw persisted.error;
   const persistedByMetric = Object.fromEntries(
@@ -349,9 +355,22 @@ async function main() {
     ]),
   );
 
+  for (const series of SERIES) {
+    const expected = coverage[series.metric]?.peer_universe_eligible
+      ? coverage[series.metric].fresh_country_count
+      : 0;
+    if (expected >= FIXED_PEER_MINIMUM && persistedByMetric[series.metric] < FIXED_PEER_MINIMUM) {
+      throw new Error(
+        `Persisted QPSD peer universe for ${series.metric} is below fixed minimum ${FIXED_PEER_MINIMUM}`,
+      );
+    }
+  }
+
   console.log(JSON.stringify({
     source_id: SOURCE_ID,
     source_licence_name: source.licence_name ?? null,
+    source_commercial_signals_enabled_during_ingest:
+      source.enabled_for_commercial_signals === true,
     bulk_file_sha256: bulk.file_sha256,
     last_quarter: bulk.last_quarter,
     coverage,
