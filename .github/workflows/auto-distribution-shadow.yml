@@ -8,7 +8,7 @@ on:
     paths:
       - "config/auto-distribution.json"
       - "scripts/marketing/**"
-      - "supabase/migrations/940_early_warning_distribution_claims.sql"
+      - "supabase/migrations/94*_early_warning_distribution*.sql"
       - ".github/workflows/auto-distribution-shadow.yml"
       - "src/lib/public-early-warning-rss.ts"
       - "src/routes/api.early-warning.ts"
