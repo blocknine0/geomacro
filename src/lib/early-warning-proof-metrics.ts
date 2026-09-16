@@ -15,6 +15,8 @@ export type ReplaySample = {
 
 export type ProofReadinessInput = {
   methodology_calibrated: boolean;
+  material_event_universe_complete: boolean;
+  control_period_sampling_documented: boolean;
   samples: ReplaySample[];
   minimum_resolved_samples?: number;
   minimum_material_events?: number;
@@ -58,7 +60,12 @@ function assertSample(sample: ReplaySample) {
   if (sample.outcome === "MATERIAL_EVENT" && outcomeMs === null) {
     throw new Error(`material event requires outcome_observed_at_utc: ${sample.sample_id}`);
   }
-  if (detectedMs !== null && outcomeMs !== null && sample.outcome === "MATERIAL_EVENT" && outcomeMs < detectedMs) {
+  if (
+    detectedMs !== null &&
+    outcomeMs !== null &&
+    sample.outcome === "MATERIAL_EVENT" &&
+    outcomeMs < detectedMs
+  ) {
     throw new Error(`material outcome cannot precede detection in proof sample: ${sample.sample_id}`);
   }
 }
@@ -126,6 +133,7 @@ export function computeEarlyWarningProofMetrics(samples: ReplaySample[]) {
   const resolved = truePositive + falsePositive + falseNegative + trueNegative;
   const materialEvents = truePositive + falseNegative;
   const alertsIssued = truePositive + falsePositive;
+  const noAlertSamples = falseNegative + trueNegative;
 
   return {
     proof_version: EARLY_WARNING_PROOF_VERSION,
@@ -133,6 +141,8 @@ export function computeEarlyWarningProofMetrics(samples: ReplaySample[]) {
     resolved_sample_count: resolved,
     invalidated_sample_count: invalidated,
     country_count: resolvedCountries.size,
+    alert_sample_count: alertsIssued,
+    no_alert_sample_count: noAlertSamples,
     confusion_matrix: {
       true_positive: truePositive,
       false_positive: falsePositive,
@@ -168,18 +178,29 @@ export function evaluateProofPublicationReadiness(input: ProofReadinessInput) {
   if (minimumResolved <= 0 || minimumMaterial <= 0 || minimumCountries <= 0) {
     throw new Error("proof readiness minimums must be positive");
   }
+  if (typeof input.methodology_calibrated !== "boolean") {
+    throw new Error("methodology_calibrated must be boolean");
+  }
+  if (typeof input.material_event_universe_complete !== "boolean") {
+    throw new Error("material_event_universe_complete must be boolean");
+  }
+  if (typeof input.control_period_sampling_documented !== "boolean") {
+    throw new Error("control_period_sampling_documented must be boolean");
+  }
 
   const metrics = computeEarlyWarningProofMetrics(input.samples);
   const reasons: string[] = [];
 
   if (!input.methodology_calibrated) reasons.push("methodology_not_calibrated");
+  if (!input.material_event_universe_complete) reasons.push("material_event_universe_not_complete");
+  if (!input.control_period_sampling_documented) reasons.push("control_period_sampling_not_documented");
   if (metrics.resolved_sample_count < minimumResolved) reasons.push("insufficient_resolved_samples");
   if (metrics.material_event_count < minimumMaterial) reasons.push("insufficient_material_events");
   if (metrics.country_count < minimumCountries) reasons.push("insufficient_country_coverage");
-  if (metrics.confusion_matrix.false_negative === 0 && metrics.material_event_count === metrics.alerts_issued_count) {
-    reasons.push("missed_event_universe_not_demonstrated");
+  if (metrics.no_alert_sample_count === 0) reasons.push("no_alert_samples_missing");
+  if (metrics.confusion_matrix.true_negative === 0) {
+    reasons.push("control_period_universe_not_demonstrated");
   }
-  if (metrics.confusion_matrix.true_negative === 0) reasons.push("control_period_universe_not_demonstrated");
 
   return {
     publishable: reasons.length === 0,
@@ -188,6 +209,10 @@ export function evaluateProofPublicationReadiness(input: ProofReadinessInput) {
       minimum_resolved_samples: minimumResolved,
       minimum_material_events: minimumMaterial,
       minimum_countries: minimumCountries,
+    },
+    universe_assertions: {
+      material_event_universe_complete: input.material_event_universe_complete,
+      control_period_sampling_documented: input.control_period_sampling_documented,
     },
     metrics,
   };
@@ -204,7 +229,9 @@ export function computeResolvedAlertLedgerMetrics(
   }>,
 ) {
   const resolved = alerts.filter(
-    (row) => row.outcome_status === "MATERIAL_EVENT_CONFIRMED" || row.outcome_status === "NO_MATERIAL_EVENT",
+    (row) =>
+      row.outcome_status === "MATERIAL_EVENT_CONFIRMED" ||
+      row.outcome_status === "NO_MATERIAL_EVENT",
   );
   const confirmed = resolved.filter((row) => row.outcome_status === "MATERIAL_EVENT_CONFIRMED");
   const falseAlerts = resolved.filter((row) => row.outcome_status === "NO_MATERIAL_EVENT");
@@ -221,6 +248,7 @@ export function computeResolvedAlertLedgerMetrics(
     false_alert_share: round6(ratio(falseAlerts.length, resolved.length)),
     median_confirmed_lead_time_seconds: median(leads),
     recall: null,
-    recall_reason: "Recall requires a labeled opportunity universe that includes missed material events.",
+    recall_reason:
+      "Recall requires a labeled opportunity universe that includes independently enumerated material events, including any missed events.",
   };
 }
