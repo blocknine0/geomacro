@@ -75,7 +75,7 @@
     "risk_api": "paid_private_pilot",
     "institutional_sla": "not_generally_available",
     "price_source": "authoritative_payment_challenge_or_provider_plan",
-    "launch_cohort": ["coinbase_x402", "nevermined"],
+    "launch_cohort": ["coinbase_x402", "circle_gateway_x402", "nevermined"],
     "deferred_providers": {
       "goat_x402_mainnet": "manual_merchant_application_and_approval_required"
     },
