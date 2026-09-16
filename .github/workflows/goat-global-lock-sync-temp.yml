@@ -1,4 +1,4 @@
-name: GOAT Coordinated Launch Lock Sync
+name: GOAT Coordinated Launch Lock Format
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  patch-goat-lock:
+  format-goat-lock:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -20,52 +20,36 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: feat/commercial-distribution-foundation
-      - name: Apply exact GOAT global launch lock patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("src/lib/goat-flow.server.ts")
-          text = path.read_text()
-
-          import_anchor = 'import {\n  createHmac,\n  randomUUID,\n} from "node:crypto";\n\n'
-          import_insert = import_anchor + 'import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";\n\n'
-          if 'assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server"' not in text:
-              if text.count(import_anchor) != 1:
-                  raise SystemExit("GOAT import anchor mismatch; refusing non-exact patch")
-              text = text.replace(import_anchor, import_insert, 1)
-
-          expected_anchor = '  const expected = GOAT_FLOW_ENVIRONMENTS[environment];'
-          gate_insert = '''  if (environment === "mainnet") {
-            assertCommercialLaunchAuthorized("goat_x402");
-          }
-
-          const expected = GOAT_FLOW_ENVIRONMENTS[environment];'''
-          if 'assertCommercialLaunchAuthorized("goat_x402")' not in text:
-              if text.count(expected_anchor) != 1:
-                  raise SystemExit("GOAT expected-environment anchor mismatch; refusing non-exact patch")
-              text = text.replace(expected_anchor, gate_insert, 1)
-
-          path.write_text(text)
-          PY
-      - name: Verify patch scope and syntax anchors
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Format only GOAT Flow source
+        run: bunx prettier --write src/lib/goat-flow.server.ts
+      - name: Verify lock survived formatting and scope is exact
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server"' src/lib/goat-flow.server.ts
           grep -q 'assertCommercialLaunchAuthorized("goat_x402")' src/lib/goat-flow.server.ts
-          grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED' src/lib/goat-pilot-service.server.ts
           git diff --check
           changed="$(git diff --name-only)"
-          test "$changed" = "src/lib/goat-flow.server.ts"
-      - name: Commit GOAT global launch lock
+          if [[ -n "$changed" && "$changed" != "src/lib/goat-flow.server.ts" ]]; then
+            echo "ERROR: formatter changed unexpected files: $changed" >&2
+            exit 1
+          fi
+      - name: Commit formatted GOAT lock
         shell: bash
         run: |
           set -euo pipefail
+          if git diff --quiet -- src/lib/goat-flow.server.ts; then
+            echo 'GOAT Flow source is already formatted.'
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/lib/goat-flow.server.ts
-          git commit -m "security: add GOAT coordinated launch lock"
+          git commit -m "style: format GOAT coordinated launch lock"
           git push origin HEAD:feat/commercial-distribution-foundation
