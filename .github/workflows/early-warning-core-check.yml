@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "src/lib/early-warning-*.ts"
-      - "supabase/migrations/936_early_warning_alert_ledger.sql"
+      - "supabase/migrations/937_early_warning_alert_ledger.sql"
       - "docs/EARLY_WARNING_ENGINE.md"
       - ".github/workflows/early-warning-core-check.yml"
   push:
@@ -12,7 +12,7 @@ on:
       - main
     paths:
       - "src/lib/early-warning-*.ts"
-      - "supabase/migrations/936_early_warning_alert_ledger.sql"
+      - "supabase/migrations/937_early_warning_alert_ledger.sql"
       - ".github/workflows/early-warning-core-check.yml"
 
 permissions:
@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          file="supabase/migrations/936_early_warning_alert_ledger.sql"
+          file="supabase/migrations/937_early_warning_alert_ledger.sql"
           grep -q "methodology_calibrated boolean not null default false" "$file"
           grep -q "published early warning core fields are immutable" "$file"
           grep -q "early_warning_distribution_unique_channel" "$file"
