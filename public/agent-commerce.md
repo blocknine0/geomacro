@@ -1,22 +1,27 @@
 # Geomacro Agent Commerce
 
-Status: PRE-LAUNCH. Real-money settlement is disabled on every provider until the coordinated official launch.
+Status: PRE-LAUNCH. Real-money settlement is disabled on every provider until the applicable coordinated official launch.
 
 Geomacro exposes bounded geopolitical and macro risk intelligence to software and AI agents. Payment/discovery providers are adapters around one canonical intelligence contract; they do not fork the underlying methodology or widen data entitlement.
 
 ## Canonical machine surfaces
 
-- Discovery: `/.well-known/geomacro-agent.json`
+- Agent discovery: `/.well-known/geomacro-agent.json`
+- Commerce catalog: `/.well-known/geomacro-commerce.json`
 - No-charge deliverability check: `POST /api/x402/risk/availability`
-- Paid adaptive intelligence: `POST /api/x402/intelligence`
-- Legacy/bounded x402 risk resource: `POST /api/x402/risk`
+- Coinbase pre-launch adaptive intelligence: `POST /api/x402/intelligence`
+- Nevermined sandbox adaptive intelligence: `POST /api/x402/nevermined/intelligence`
 - Human-readable product documentation: `/data-api` and `/risk-gate`
+
+The payment challenge or provider plan is the authoritative source for the price and accepted payment terms. A static discovery document is never authoritative pricing.
 
 ## Pre-launch rule
 
-Coinbase, GOAT, Nevermined and any additional compatible rail remain test/sandbox/disabled until all common acceptance gates pass. No provider may be activated early simply because its integration finishes first.
+The initial commercial launch cohort is Coinbase x402 plus Nevermined. Both remain non-production/disabled until all common acceptance gates pass and the exact release candidate receives explicit owner authorization.
 
-The official launch gate requires explicit owner approval after the release candidate is frozen and the exact release commit has passed the required security, payment, delivery, source-rights and reconciliation checks.
+GOAT Testnet3 remains a technical proof path. GOAT mainnet is deliberately excluded from the initial launch cohort because mainnet merchant access requires manual provider application/approval. Its production runtime locks remain in place, and it can be added only in a later coordinated release after that onboarding is complete.
+
+A provider cannot be activated early merely because its integration finishes first. Within an approved launch cohort, all required common gates must pass before any production-funds switch is enabled.
 
 ## Commercial delivery contract
 
@@ -26,8 +31,8 @@ A successful payment unlocks only the requested bounded resource. It never expos
 
 ## Payment invariants
 
-- exact price and accepted rail are disclosed before authorization;
-- network, asset, amount and recipient must bind to the paid retry;
+- exact price and accepted rail are disclosed by the authoritative payment challenge/provider plan before authorization;
+- network, asset, amount and recipient must bind to the paid retry where the provider contract exposes those terms;
 - a payment proof/token cannot be reused for a changed request;
 - idempotent replay of the same valid request must not create a duplicate charge;
 - concurrent duplicate requests must not independently settle;
@@ -35,6 +40,19 @@ A successful payment unlocks only the requested bounded resource. It never expos
 - payment and fulfillment are tracked as separate states;
 - paid-but-undelivered cases must enter a visible remedy/reconciliation state;
 - sensitive payment signatures, wallet keys and facilitator secrets are never stored in analytics artifacts.
+
+## Current machine-readable request scope
+
+Subjects:
+
+- country by ISO3 code;
+- directional corridor by origin ISO3 and destination ISO3.
+
+Supported adaptive topics include sovereign risk, macro risk, FX/external risk, sanctions/restrictions context, conflict/geopolitics, trade corridor context, energy/commodities, critical minerals, political/governance risk, banking/financial-system context, food/agriculture, natural hazards, hot topics, Risk Gate, signed Risk Object and GRI context.
+
+Supported request intents include single-subject assessment, comparison, bounded ranking/filter, directional corridor, change-since, audit/provenance and Risk Gate evaluation.
+
+Risk Gate context currently supports balanced/cautious/strict policy presets for treasury payment, vendor payment, agent payment and exposure-review contexts. The output remains advisory and non-executing.
 
 ## Response boundary
 
@@ -44,22 +62,24 @@ Geomacro supplies risk context and a non-executing Risk Gate decision. `executio
 
 ### Coinbase x402
 
-Prepared for Base mainnet but held behind an explicit real-funds acknowledgement. Pre-launch acceptance remains on non-production infrastructure.
-
-### GOAT
-
-Merchant integration must complete non-production acceptance, order idempotency, provider verification and payment-to-delivery reconciliation before launch. Production configuration is not assumed from testnet configuration.
+In the initial launch cohort. Base Sepolia is used for pre-launch acceptance. Base mainnet remains disabled behind the coordinated Geomacro launch gate and the provider-specific real-USDC acknowledgement.
 
 ### Nevermined
 
-Use the Nevermined sandbox during integration. Map Nevermined payment plans/permissions to the same Geomacro request and delivery ledger. Production/live facilitator configuration remains disabled until coordinated launch.
+In the initial launch cohort. Integration uses the Nevermined sandbox during pre-launch and maps payment verification/settlement to the same Geomacro delivery ledger. Production/live configuration remains disabled until the coordinated launch.
+
+### GOAT
+
+GOAT Testnet3 remains technical proof only. GOAT mainnet is deferred from the initial commercial launch cohort pending manual merchant application/approval. The existing mainnet production locks remain fail-closed and are not a prerequisite for the Coinbase + Nevermined launch cohort.
 
 ## Machine discovery vocabulary
 
-Supported discovery descriptions may include country risk, geopolitical risk, macroeconomic risk, treasury pre-flight context, cross-border corridor risk, supplier-country exposure, geopolitical escalation context, portfolio geopolitical exposure, signed Risk Objects and machine-readable risk evidence when those capabilities are actually supported by the current production contract.
+Supported discovery descriptions may include country risk, geopolitical risk, macroeconomic risk, treasury pre-flight risk context, cross-border corridor risk, supplier-country exposure context, geopolitical escalation context, portfolio geopolitical exposure context, signed Risk Objects and machine-readable risk evidence when those capabilities are supported by the current delivery contract.
 
-Do not advertise unsupported sanctions screening, autonomous execution, legal compliance, counterparty scoring, vessel routing or full logistics-path modelling.
+Do not advertise autonomous execution, wallet custody, transaction signing, sanctions-screening replacement, counterparty due-diligence replacement, legal compliance, vessel routing or full logistics-path modelling.
 
-## Launch evidence
+## Growth and marketing boundary
 
 Marketplace presence is distribution, not revenue. Testnet/sandbox settlement is technical evidence, not revenue. Commercial revenue is counted only after a real-funds settlement is reconciled to the correct delivered Geomacro resource on an activated production rail.
+
+Verified production milestones may generate private channel-specific marketing drafts. Automatic public publishing is disabled. Every external marketing post requires explicit owner approval, and customer/payer identity, raw requests and private source details remain excluded.
