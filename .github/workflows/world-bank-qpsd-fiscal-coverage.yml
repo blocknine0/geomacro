@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs"
+      - "src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts"
+      - "src/__tests__/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.test.ts"
+      - "docs/WORLD_BANK_QPSD_SOURCE_REVIEW.md"
       - ".github/workflows/world-bank-qpsd-fiscal-coverage.yml"
       - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
   workflow_dispatch:
@@ -66,6 +69,18 @@ jobs:
           jq -e '.series | length == 2' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.series[] | .peer_universe_eligible == true' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           echo 'PASS: QPSD discovery remains no-write and cannot promote countries.'
+
+      - name: Enforce source-specific shadow implementation boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'DP.DOD.DECT.CR.GG.Z1' src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts
+          grep -q 'DP.DOD.DECT.CR.CG.Z1' src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts
+          grep -q 'cross_concept_pooling_allowed: false' src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts
+          grep -q 'raw_cross_source_pooling_allowed: false' src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts
+          grep -q 'coverage: "LIMITED"' src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts
+          grep -q 'production_activation_allowed=false' docs/WORLD_BANK_QPSD_SOURCE_REVIEW.md
+          echo 'PASS: QPSD source-specific shadow methodology exists but production remains locked.'
 
       - name: Upload QPSD source coverage evidence
         if: always()
