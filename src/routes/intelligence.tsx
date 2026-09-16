@@ -16,9 +16,9 @@ import {
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 
-const TITLE = "Live Geopolitical & Macro Risk Intelligence | Geomacro";
+const TITLE = "Live Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION =
-  "Follow current geopolitical and macro risk through scored events, evidence context, timestamps and Geomacro's verified separate risk indices for professional research.";
+  "Follow current geopolitical, macroeconomic and critical-mineral risk through scored events, evidence context, timestamps and Geomacro's verified separate Risk Indices for professional research.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -40,12 +40,12 @@ export const Route = createFileRoute("/intelligence")({
       { property: "og:image:secure_url", content: IMAGE },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "Geomacro live geopolitical and macro risk intelligence" },
+      { property: "og:image:alt", content: "Geomacro live geopolitical, macroeconomic and critical-minerals risk intelligence" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: IMAGE },
-      { name: "twitter:image:alt", content: "Geomacro live geopolitical and macro risk intelligence" },
+      { name: "twitter:image:alt", content: "Geomacro live geopolitical, macroeconomic and critical-minerals risk intelligence" },
     ],
     links: [{ rel: "canonical", href: URL }],
     scripts: [
@@ -100,7 +100,7 @@ function IntelligencePage() {
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Follow the geopolitical and macro developments currently shaping risk. Each event keeps its recorded score, movement, source context and timestamp so you can inspect the underlying record rather than a separate display-only ranking.
+          Follow the geopolitical, macroeconomic and critical-mineral developments currently shaping risk. Each event keeps its recorded score, movement, evidence context and timestamp so you can inspect the underlying record rather than a separate display-only ranking.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">You do not need a wallet to read or research this intelligence.</p>
       </header>
