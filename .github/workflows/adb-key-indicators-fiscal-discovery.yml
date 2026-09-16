@@ -8,6 +8,8 @@ on:
       - ".github/workflows/adb-key-indicators-fiscal-discovery.yml"
       - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
   workflow_dispatch:
+  schedule:
+    - cron: "41 4 * * 2"
 
 permissions:
   contents: read
