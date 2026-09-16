@@ -11,8 +11,10 @@ import {
 import {
   CENTRAL_SECURITY_VERSION,
   enforceCentralRequestSecurity,
-  realFundsSecurityState,
 } from "../../src/lib/central-security.server";
+import {
+  providerRealFundsSecurityState,
+} from "../../src/lib/provider-real-funds-security.server";
 import {
   assertRealFundsDatabaseSecurityReady,
 } from "../../src/lib/real-funds-security-readiness.server";
@@ -89,7 +91,25 @@ export default defineEventHandler(async (event) => {
   }
 
   if (decision.routeClass === "payment") {
-    const realFunds = realFundsSecurityState();
+    const realFunds = providerRealFundsSecurityState();
+
+    if (realFunds.required && !realFunds.ready) {
+      setResponseHeader(event, "Cache-Control", "no-store");
+      throw createError({
+        statusCode: 503,
+        statusMessage: "Real-funds security gate is locked",
+        data: {
+          ok: false,
+          error: {
+            code: "PROVIDER_REAL_FUNDS_SECURITY_GATE_LOCKED",
+            message:
+              "Production payment rails remain disabled until central security, owner acknowledgement, coordinated launch acknowledgement and dedicated server-side peppers are all configured.",
+          },
+          execution_authorized: false,
+        },
+      });
+    }
+
     if (realFunds.required) {
       try {
         await assertRealFundsDatabaseSecurityReady();
