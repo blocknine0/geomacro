@@ -66,11 +66,12 @@ describe("public SEO contract", () => {
   it("makes Access and Pricing a crawlable commercial landing page without claiming mainnet is live", () => {
     const route = read("src/routes/agent-access.tsx");
 
-    expect(route).toContain("AI Agent Risk Intelligence & Pay-per-Call Access | Geomacro");
+    expect(route).toContain("Access & Pricing | AI Agent Pay-per-Call Risk Intelligence | Geomacro");
     expect(route).toContain('const URL = "https://geomacro.live/agent-access"');
     expect(route).toContain('name: "robots", content: "index, follow');
-    expect(route).toContain("MAINNET PAY-PER-CALL · PRE-LAUNCH · REAL FUNDS OFF");
+    expect(route).toContain("ACCESS & PRICING · MAINNET PAY-PER-CALL PRE-LAUNCH · REAL FUNDS OFF");
     expect(route).toContain("0.02 USDC / successful paid call");
+    expect(route).toContain("Credit pools are usage allowances, not public monetary list prices");
   });
 
   it("server-renders unique intelligence event metadata and body data", () => {
