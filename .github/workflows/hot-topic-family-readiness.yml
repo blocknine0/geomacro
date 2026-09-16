@@ -53,13 +53,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v1"' src/lib/hot-topic-taxonomy.ts
+          grep -q 'HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v2"' src/lib/hot-topic-taxonomy.ts
           grep -q 'raw_source_material_redistributed: false' src/lib/agent-query-hot-topics.server.ts
           grep -q 'article_text_redistributed: false' src/lib/agent-query-hot-topics.server.ts
           grep -q 'unclassified_events_excluded_from_family_specific_results: true' src/lib/agent-query-hot-topics.server.ts
           ! grep -q 'evidence_refs' src/lib/agent-query-hot-topics.server.ts
           ! grep -q 'source_url' src/lib/agent-query-hot-topics.server.ts
-          echo 'PASS: governed hot-topic family delivery boundary is static-safe'
+          echo 'PASS: governed hot-topic v2 family delivery boundary is static-safe'
 
   production-readiness:
     if: github.event_name != 'pull_request'
@@ -96,8 +96,8 @@ jobs:
           set -euo pipefail
           jq -e '.writes_performed == false' hot-topic-family-readiness.json >/dev/null
           jq -e '.source_pipeline.healthy == true' hot-topic-family-readiness.json >/dev/null
-          jq -e '.summary.governed_family_count == 18' hot-topic-family-readiness.json >/dev/null
-          jq -e '.summary.taxonomy_supported_family_count == 18' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.governed_family_count == 30' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.taxonomy_supported_family_count == 30' hot-topic-family-readiness.json >/dev/null
           jq -e '.summary.future_timestamp_event_count == 0' hot-topic-family-readiness.json >/dev/null
           jq -e '.claim_boundary.raw_article_or_publisher_material_redistributed == false' hot-topic-family-readiness.json >/dev/null
           jq -e '.claim_boundary.event_detection_does_not_substitute_for_required_structural_module == true' hot-topic-family-readiness.json >/dev/null
