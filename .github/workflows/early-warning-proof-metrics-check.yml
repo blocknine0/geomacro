@@ -46,9 +46,11 @@ jobs:
           file=src/lib/early-warning-proof-metrics.ts
           grep -q 'RESOLVED_ALERTS_ONLY_NOT_RECALL' "$file"
           grep -q 'methodology_not_calibrated' "$file"
-          grep -q 'missed_event_universe_not_demonstrated' "$file"
+          grep -q 'material_event_universe_not_complete' "$file"
+          grep -q 'control_period_sampling_not_documented' "$file"
+          grep -q 'no_alert_samples_missing' "$file"
           grep -q 'control_period_universe_not_demonstrated' "$file"
           grep -q 'minimum_resolved_samples ?? 100' "$file"
           grep -q 'minimum_material_events ?? 30' "$file"
           grep -q 'minimum_countries ?? 5' "$file"
-          echo 'PASS: proof metrics cannot manufacture recall from alerts-only data or publish an uncalibrated proof claim.'
+          echo 'PASS: proof metrics cannot manufacture recall from alerts-only data or publish an uncalibrated or undocumented evaluation claim.'
