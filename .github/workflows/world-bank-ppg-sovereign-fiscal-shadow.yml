@@ -1,0 +1,79 @@
+name: World Bank PPG Sovereign Fiscal Shadow
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
+      - "scripts/audit-world-bank-ppg-sovereign-fiscal-shadow.ts"
+      - "src/lib/risk-gate-v2-world-bank-ppg-sovereign-fiscal.ts"
+      - "src/__tests__/risk-gate-v2-world-bank-ppg-sovereign-fiscal.test.ts"
+      - ".github/workflows/world-bank-ppg-sovereign-fiscal-shadow.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  shadow-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Reproduce current World Bank PPG ratio coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-world-bank-ppg-debt-stock-ratio.mjs | tee world-bank-ppg-debt-stock-ratio.log
+          grep -q 'PASS: WORLD BANK PPG EXTERNAL DEBT STOCK RATIO AUDIT COMPLETE - NO WRITES' world-bank-ppg-debt-stock-ratio.log
+
+      - name: Run versioned Risk Gate v2 shadow methodology
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-world-bank-ppg-sovereign-fiscal-shadow.ts | tee world-bank-ppg-sovereign-fiscal-shadow.log
+          grep -q 'PASS: WORLD BANK PPG SOVEREIGN-FISCAL SHADOW REACHES 100 COUNTRIES - NO PRODUCTION CHANGES' world-bank-ppg-sovereign-fiscal-shadow.log
+
+      - name: Test pure methodology contract
+        run: bunx vitest run src/__tests__/risk-gate-v2-world-bank-ppg-sovereign-fiscal.test.ts
+
+      - name: Enforce shadow-only and no-payability boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.production_activation_allowed == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.scoring_production_changed == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.country_payability_changed == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.base_mainnet_gate_changed == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.shadow_summary.eligible_shadow_country_count >= 100' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.shadow_summary.target_reached == true' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.methodology_boundary.raw_values_pooled_with_central_or_general_government_debt == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.methodology_boundary.ppg_external_debt_relabelled_as_total_government_debt == false' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+          jq -e '.methodology_boundary.production_requires_new_global_country_census == true' world-bank-ppg-sovereign-fiscal-shadow.json >/dev/null
+
+      - name: Upload shadow evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: world-bank-ppg-sovereign-fiscal-shadow
+          path: |
+            world-bank-ppg-debt-stock-ratio.json
+            world-bank-ppg-debt-stock-ratio.log
+            world-bank-ppg-sovereign-fiscal-shadow.json
+            world-bank-ppg-sovereign-fiscal-shadow.log
+          if-no-files-found: warn
+          retention-days: 30
