@@ -6,8 +6,10 @@ on:
       - "scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs"
       - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
       - "scripts/audit-world-bank-sovereign-fiscal-path-union.mjs"
+      - "scripts/commercial-source-rights-evidence.mjs"
       - "src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts"
       - "src/__tests__/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.test.ts"
+      - "supabase/migrations/930_world_bank_qpsd_production_source.sql"
       - "docs/WORLD_BANK_QPSD_SOURCE_REVIEW.md"
       - ".github/workflows/world-bank-qpsd-fiscal-coverage.yml"
       - "docs/MULTI_SOURCE_ACTIVATION_MATRIX.md"
@@ -98,6 +100,23 @@ jobs:
           jq -e '.methodology_boundary.source_path_presence_is_not_payability == true' world-bank-sovereign-fiscal-path-union.json >/dev/null
           jq -e '.activation_boundary.production_supported_country_count_added == 0' world-bank-sovereign-fiscal-path-union.json >/dev/null
           echo 'PASS: World Bank source-path audits remain no-write and cannot promote countries.'
+
+      - name: Enforce QPSD rights and activation separation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'world_bank_qpsd: Object.freeze' scripts/commercial-source-rights-evidence.mjs
+          grep -q 'approved_status: "VERIFIED"' scripts/commercial-source-rights-evidence.mjs
+          grep -q "'world_bank_qpsd'" supabase/migrations/930_world_bank_qpsd_production_source.sql
+          grep -q "'COMMERCIAL_OK'" supabase/migrations/930_world_bank_qpsd_production_source.sql
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('supabase/migrations/930_world_bank_qpsd_production_source.sql').read_text()
+          values = text.split('values (', 1)[1].split(')\non conflict', 1)[0]
+          if "\n  false,\n  'GLOBAL'," not in values:
+              raise SystemExit('QPSD enabled_for_commercial_signals must remain false before explicit promotion')
+          print('PASS: QPSD rights are verified while commercial-signal activation remains disabled.')
+          PY
 
       - name: Enforce source-specific shadow implementation boundary
         shell: bash
