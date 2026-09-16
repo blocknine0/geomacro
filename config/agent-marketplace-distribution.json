@@ -4,7 +4,8 @@
   "official_launch_required_before_public_submission": true,
   "canonical_service_origin": "https://geomacro.live",
   "canonical_commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
-  "canonical_x402_discovery": "https://geomacro.live/.well-known/x402",
+  "canonical_x402_discovery": "https://geomacro.live/.well-known/x402.json",
+  "x402_extensionless_compatibility_alias": "https://geomacro.live/.well-known/x402",
   "canonical_openapi": "https://geomacro.live/openapi-x402.json",
   "canonical_availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
   "canonical_paid_endpoint": "https://geomacro.live/api/x402/intelligence",
@@ -58,7 +59,7 @@
       "status": "registration_package_ready_hold_until_launch",
       "listing_mode": "free_origin_registration_then_crawler_probe",
       "public_submission_required": true,
-      "launch_action": "register geomacro.live only after an approved production endpoint returns a valid 402; verify crawler sees OpenAPI and x402 discovery without testnet leakage",
+      "launch_action": "register geomacro.live only after an approved production endpoint returns a valid 402; verify crawler sees OpenAPI and canonical x402 JSON discovery without testnet leakage",
       "production_enabled": false
     },
     "payapi_market": {
@@ -132,8 +133,8 @@
     "nevermined_endpoint_paths": ["/api/x402/nevermined/intelligence"],
     "free_preflight_endpoint_paths": ["/api/x402/risk/availability"],
     "discovery_paths": [
-      "/.well-known/x402",
       "/.well-known/x402.json",
+      "/.well-known/x402",
       "/.well-known/geomacro-commerce.json",
       "/.well-known/geomacro-agent.json",
       "/openapi-x402.json",

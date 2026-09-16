@@ -6,9 +6,13 @@ on:
     paths:
       - '.github/workflows/final-nonmainnet-launch-acceptance.yml'
       - '.github/workflows/auto-distribution-shadow.yml'
+      - '.github/workflows/sync-lovable-main.yml'
       - 'config/auto-distribution.json'
+      - 'config/agent-marketplace-distribution.json'
       - 'public/.well-known/x402'
       - 'public/.well-known/x402.json'
+      - 'public/.well-known/geomacro-commerce.json'
+      - 'public/llms.txt'
       - 'scripts/db/disposable-backup-restore-drill.sh'
       - 'scripts/marketing/auto-distribute-alert.mjs'
       - 'scripts/marketing/distribution-receipt-ledger.mjs'
@@ -21,6 +25,7 @@ on:
       - 'scripts/ops/nonproduction-rollback-incident-drill.mjs'
       - 'scripts/load-test-risk-gate-staging.ts'
       - 'src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts'
+      - 'src/__tests__/pre-mainnet-x402-readiness.test.ts'
       - 'src/lib/public-early-warning-rss.ts'
       - 'src/routes/api.early-warning.ts'
       - 'supabase/migrations/937_early_warning_alert_ledger.sql'
@@ -30,9 +35,13 @@ on:
     paths:
       - '.github/workflows/final-nonmainnet-launch-acceptance.yml'
       - '.github/workflows/auto-distribution-shadow.yml'
+      - '.github/workflows/sync-lovable-main.yml'
       - 'config/auto-distribution.json'
+      - 'config/agent-marketplace-distribution.json'
       - 'public/.well-known/x402'
       - 'public/.well-known/x402.json'
+      - 'public/.well-known/geomacro-commerce.json'
+      - 'public/llms.txt'
       - 'scripts/db/disposable-backup-restore-drill.sh'
       - 'scripts/marketing/auto-distribute-alert.mjs'
       - 'scripts/marketing/distribution-receipt-ledger.mjs'
@@ -45,12 +54,17 @@ on:
       - 'scripts/ops/nonproduction-rollback-incident-drill.mjs'
       - 'scripts/load-test-risk-gate-staging.ts'
       - 'src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts'
+      - 'src/__tests__/pre-mainnet-x402-readiness.test.ts'
       - 'src/lib/public-early-warning-rss.ts'
       - 'src/routes/api.early-warning.ts'
       - 'supabase/migrations/937_early_warning_alert_ledger.sql'
       - 'supabase/migrations/94*_early_warning_distribution*.sql'
   workflow_dispatch:
     inputs:
+      published_sha:
+        description: 'Exact canonical main SHA already published through Lovable Publish changes'
+        required: true
+        type: string
       staging_requests:
         description: 'Bounded staging requests (max 2000)'
         required: true
@@ -226,14 +240,23 @@ jobs:
           retention-days: 90
 
   live-surface-smoke:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Require published SHA to match dispatched main SHA
+        shell: bash
+        env:
+          PUBLISHED_SHA: ${{ inputs.published_sha }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "${PUBLISHED_SHA,,}" == "${GITHUB_SHA,,}" ]]
       - name: Setup Node 22
         uses: actions/setup-node@v7
         with:
@@ -242,6 +265,7 @@ jobs:
         env:
           GEOMACRO_LIVE_BASE_URL: https://geomacro.live
           GEOMACRO_LIVE_EXPECTED_HOST: geomacro.live
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ inputs.published_sha }}
         run: node scripts/ops/live-launch-surface-smoke.mjs
       - name: Upload live smoke evidence
         if: always()
@@ -344,10 +368,12 @@ jobs:
             echo '- Contract/self-tests (including receipt-wired Early Warning shadow lock): ${{ needs.contract.result }}'
             echo '- Disposable migration + backup/restore: ${{ needs.database-backup-restore.result }}'
             echo '- Rollback/incident drill: ${{ needs.rollback-incident.result }}'
-            echo '- Live surface smoke: ${{ needs.live-surface-smoke.result }}'
+            echo '- Live surface smoke (manual after Lovable Publish changes): ${{ needs.live-surface-smoke.result }}'
             echo '- Outside-in security smoke: ${{ needs.external-surface-security.result }}'
-            echo '- Isolated staging load/SLO: ${{ needs.staging-load.result }}'
+            echo '- Isolated staging load/SLO (manual strict run): ${{ needs.staging-load.result }}'
             echo
+            echo 'Automatic main-push acceptance intentionally does not claim the live site has published the new mirror commit.'
+            echo 'A strict workflow_dispatch run requires the exact published canonical SHA and verifies it from /.well-known/geomacro-build.json.'
             echo 'No real-money payment or production/mainnet activation is performed by this workflow.'
             echo 'Early Warning public push remains disabled unless separately owner-authorized and activated.'
             echo 'Outside-in security smoke is not a third-party penetration test or certification.'

@@ -97,7 +97,8 @@ Machine discovery:
 
 - Agent discovery: https://geomacro.live/.well-known/geomacro-agent.json
 - Commerce discovery: https://geomacro.live/.well-known/geomacro-commerce.json
-- x402 discovery: https://geomacro.live/.well-known/x402
+- x402 discovery: https://geomacro.live/.well-known/x402.json
+- x402 compatibility alias: https://geomacro.live/.well-known/x402
 - Focused x402 OpenAPI: https://geomacro.live/openapi-x402.json
 
 A commercial entitlement defines the permitted capability, subject scope, history depth and response limits. Payment rails do not widen the underlying Geomacro entitlement.
