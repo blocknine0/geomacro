@@ -2,7 +2,7 @@
 
 ## Product identity
 
-Geomacro is geopolitical and macro risk intelligence infrastructure.
+Geomacro is geopolitical, macroeconomic and critical-mineral risk intelligence infrastructure.
 
 The core product turns real-world events into structured, explainable, machine-readable risk intelligence for human and machine decision systems.
 
@@ -12,8 +12,10 @@ Prediction markets and programmable onchain execution are secondary application,
 
 | Surface | Status | Role |
 | --- | --- | --- |
-| Risk Intelligence | Live | Structured geopolitical and macro risk intelligence |
-| Global Risk Index | Live | Versioned aggregate risk with evidence, confidence and change attribution |
+| Risk Intelligence | Live | Structured geopolitical, macroeconomic and critical-mineral risk intelligence |
+| Geopolitical Risk Index | Live | Separate verified geopolitical risk reading with audited GRI v1.2 lineage |
+| Macroeconomic Risk Index | Live | Separate verified macroeconomic risk reading with audited GRI v1.2 lineage |
+| Critical Minerals Risk Index | Live | Separate verified critical-minerals risk reading with audited GRI v1.2 lineage |
 | Ask Geomacro | Live | Intelligence query surface grounded in stored Geomacro data |
 | Risk API | Private Pilot | Machine-readable country/corridor intelligence delivery |
 | Risk Gate | Private Pilot | Verifiable pre-flight country/corridor risk context before customer-owned policy and execution |
@@ -22,13 +24,15 @@ Prediction markets and programmable onchain execution are secondary application,
 
 Private Pilot does not mean a generally available public hosted API, self-serve production authentication, production SLA or finalized public pricing interface currently exists.
 
+The separate public Risk Indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline product.
+
 ## Canonical architecture
 
 ```text
 Real-world evidence and data
         -> Normalize, classify and preserve provenance
         -> Structured intelligence state
-             +-- Global Risk Index - Live
+             +-- Separate Risk Indices - Live
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
@@ -66,11 +70,11 @@ Undocumented Supabase internals are not a public API contract.
 
 Risk Gate is the pre-flight decision-context layer.
 
-The current Private Pilot consumes country and directional corridor Risk Objects rather than blindly applying the global GRI score to every decision.
+The current Private Pilot consumes country and directional corridor Risk Objects rather than blindly applying a global or standalone public index score to every decision.
 
 Event-specific Risk Objects remain a broader product direction only. They must not be represented as part of the current Private Pilot until a corresponding implementation, production contract, verification path and commercial eligibility boundary are separately established.
 
-GRI and Risk Gate share the same governed intelligence, provenance, attribution and verification principles, while retaining product-specific admission and decision-context rules.
+The public Risk Indices, audited GRI lineage and Risk Gate share the same governed intelligence, provenance, attribution and verification principles while retaining product-specific admission, scoring and decision-context rules.
 
 Canonical product sequence:
 
@@ -124,13 +128,15 @@ Current primary commercial path:
 Commercially eligible evidence and data
         -> Normalize, classify and preserve provenance
         -> Shared structured intelligence state
-             +-- Global scope   -> Global Risk Index - Live
+             +-- Public domains -> Separate Risk Indices - Live
              +-- Country scope  -> Country Risk Object - Private Pilot
              +-- Corridor scope -> Corridor Risk Object - Private Pilot
         -> Delta + Attribution + Evidence + Confidence + Freshness + Integrity
         -> Ask Geomacro / approved Risk API delivery / Risk Gate
         -> Human or customer-controlled machine decision systems
 ```
+
+The public indices preserve the audited GRI v1.2 parent/proof lineage; historical combined-GRI records remain audit evidence rather than a second current product.
 
 For Risk Gate, the execution boundary remains:
 

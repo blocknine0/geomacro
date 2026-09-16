@@ -1,6 +1,6 @@
 # Geomacro
 
-**Geopolitical and macro risk intelligence infrastructure for human and machine decisions.**
+**Explainable geopolitical, macroeconomic and critical-mineral risk intelligence for human and machine decisions.**
 
 [![Live App](https://img.shields.io/badge/Live-geomacro.live-FF6B00?style=for-the-badge)](https://geomacro.live)
 [![Arc Testnet](https://img.shields.io/badge/Technical_Proof-Arc_Testnet-2775CA?style=for-the-badge)](https://testnet.arcscan.app/address/0x2F874FB07084a22D2bB314D0762Af57Cb1856868)
@@ -11,7 +11,9 @@
 **Documentation:** https://geomacro.live/docs  
 **Security policy:** [SECURITY.md](SECURITY.md)
 
-Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The core product is the intelligence layer: live event intelligence, the Global Risk Index (GRI), grounded research, machine-readable risk objects and pre-flight decision context.
+Geomacro turns real-world geopolitical, macroeconomic and strategic-resource developments into structured, explainable risk intelligence. The primary product is the intelligence layer: live event intelligence, separate verified Risk Indices, grounded research, machine-readable Risk Objects and bounded Risk Gate decision context.
+
+The current public product presents three independent risk domains: **Geopolitical Risk Index**, **Macroeconomic Risk Index** and **Critical Minerals Risk Index**. They preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline product.
 
 Prediction markets, Arc Testnet contracts, USDC, Circle CCTP and swap flows are **secondary technical-proof and application layers**. They demonstrate how Geomacro intelligence can connect to programmable-finance workflows, but they are not the primary company identity.
 
@@ -21,13 +23,15 @@ Prediction markets, Arc Testnet contracts, USDC, Circle CCTP and swap flows are 
 
 | Surface | Status | Product truth |
 |---|---|---|
-| Risk Intelligence | **LIVE** | Public scored event intelligence with source context and timestamps |
-| Global Risk Index | **LIVE** | Verified `gri-v1.2.0` snapshots with evidence, confidence, attribution and proof hashes |
-| Ask Geomacro | **LIVE** | Grounded query interface over stored Geomacro intelligence and the canonical published GRI |
+| Risk Intelligence | **LIVE** | Public scored event intelligence with evidence context and timestamps |
+| Geopolitical Risk Index | **LIVE** | Separate verified geopolitical risk reading with audited GRI v1.2 lineage |
+| Macroeconomic Risk Index | **LIVE** | Separate verified macroeconomic risk reading with audited GRI v1.2 lineage |
+| Critical Minerals Risk Index | **LIVE** | Separate verified critical-minerals risk reading with audited GRI v1.2 lineage |
+| Ask Geomacro | **LIVE** | Grounded query interface over stored Geomacro intelligence and verified risk context |
 | Research / methodology | **LIVE** | Public methodology, provenance and technical documentation |
 | Risk API | **PRIVATE PILOT** | Controlled machine-readable country/corridor risk delivery |
-| Risk Gate | **PRIVATE PILOT** | Signed risk context plus fail-closed pre-flight policy evaluation |
-| Professional intelligence packaging | **PLANNED COMMERCIAL DIRECTION** | Deeper history, alerts, exports and professional workflows as they are validated and shipped |
+| Risk Gate | **PRIVATE PILOT** | Signed risk context plus fail-closed bounded advisory evaluation |
+| Professional intelligence packaging | **PLANNED COMMERCIAL DIRECTION** | Deeper history, alerts, exports and professional workflows as validated and shipped |
 | Prediction markets / Arc / CCTP / Bridge & Swap | **TECHNICAL PROOF** | Testnet application and programmable-finance implementation |
 
 `LIVE`, `PRIVATE PILOT`, `TECHNICAL PROOF`, `PLANNED` and `LEGACY` are intentionally distinct status labels. Code existence alone does not imply general availability, a production SLA, independent methodology validation, external security certification or customer adoption.
@@ -40,7 +44,7 @@ Prediction markets, Arc Testnet contracts, USDC, Circle CCTP and swap flows are 
 graph TD;
     SOURCES["Real-world evidence and data"] --> STRUCTURE["Normalize, classify and preserve provenance"];
     STRUCTURE --> EVENTS["Structured intelligence state"];
-    EVENTS --> GRI["Global Risk Index - Live"];
+    EVENTS --> INDICES["Separate Risk Indices - Live"];
     EVENTS --> ASK["Ask Geomacro - Live"];
     EVENTS --> COUNTRY["Country Risk Object - Private Pilot"];
     EVENTS --> CORRIDOR["Corridor Risk Object - Private Pilot"];
@@ -53,23 +57,28 @@ graph TD;
 
 The architecture separates **risk intelligence** from **transaction execution**:
 
-- public intelligence, GRI, Ask Geomacro and research do not require a wallet;
-- Geomacro Risk Gate provides external risk context rather than custody or autonomous transaction authorization;
-- customer identity, permissions, compliance policy and downstream execution remain separate from the risk calculation;
-- `execution_authorized=false` remains the current Geomacro Risk Gate boundary;
-- Arc contract state remains authoritative for the financial state of the secondary onchain application layer.
+- public Risk Intelligence, Risk Indices, Ask Geomacro and research do not require a wallet;
+- Geomacro Risk Gate provides external risk context and a bounded advisory response rather than custody or autonomous transaction authorization;
+- customer identity, permissions, compliance policy, funds and downstream execution remain customer-controlled;
+- `execution_authorized=false` remains the current external Risk Gate boundary;
+- stale, incomplete, expired or unverifiable risk context must fail closed rather than become implicit approval;
+- Arc contract state remains authoritative only for the financial state of the secondary onchain technical-proof layer.
+
+Data & API is an access and delivery surface over the same governed intelligence foundation. Payment rails do not create a second risk engine or widen the underlying entitlement.
 
 ---
 
-## Global Risk Index (GRI) v1.2
+## Public Risk Indices and audited GRI v1.2 lineage
 
-The current public GRI contract is **`gri-v1.2.0`**. Historical v1.0/v1.1 code is retained only where explicitly labelled for compatibility, replay or audit reproducibility.
+The public product now exposes the three risk domains independently. The historical combined GRI remains the audited parent methodology and proof lineage used to preserve reproducibility and historical verification.
+
+The persisted parent contract is **`gri-v1.2.0`** with proof lineage **`gri-proof-v1.2.0`**. Historical v1.0/v1.1 code is retained only where explicitly labelled for compatibility, replay or audit reproducibility.
 
 GRI v1.2 is deterministic **after event classification and current-contract story assignment**. Severity and confidence are upstream model-produced inputs with versioned provenance; the numeric aggregate contains no discretionary manual adjustment and no LLM call.
 
-### Current scoring domains
+### Parent scoring domains
 
-The current public GRI uses exactly three base domains:
+The audited parent methodology uses exactly three base domains:
 
 ```text
 geopolitics = 1/3
@@ -77,9 +86,9 @@ macro       = 1/3
 rare_earth  = 1/3
 ```
 
-Crypto and other research/technical data streams may exist elsewhere in the broader Geomacro architecture, but they are **not current GRI v1.2 scoring domains**.
+The public naming for the third standalone index is **Critical Minerals Risk Index** while the historical storage category remains `rare_earth` to preserve proof compatibility.
 
-If an eligible domain has no evidence, it is excluded rather than treated as zero risk. Active weights are renormalized and coverage is reported separately.
+If an eligible domain has no verified evidence, missing evidence is not converted into zero risk. Public risk-index presentation is fail-soft: a previously verified reading may remain visible during a refresh problem, while a cold read uses a neutral loading/refreshing state rather than fabricating a replacement score.
 
 ### Evidence weighting
 
@@ -91,7 +100,7 @@ decayWeight      = 2 ^ (-ageHours_i / 24)
 rawWeight_i      = confidenceWeight * decayWeight
 ```
 
-Current canonical controls include:
+Canonical parent controls include:
 
 - trailing **72-hour** lookback;
 - **24-hour** exponential half-life;
@@ -103,29 +112,23 @@ Current canonical controls include:
 
 The source cap prevents one publisher from dominating a domain through article volume. The story cap prevents many publishers repeating one underlying development from creating multiple independent evidence budgets.
 
-### Score and change attribution
+### Proof and change attribution
 
-```text
-categoryScore_c = weighted mean of eligible event severity after source + story caps
-GRI_raw         = Σ(active normalized domain weight × categoryScore_c)
-GRI_display     = round(GRI_raw)
-```
-
-Published snapshots retain the higher-precision raw score and contribution-level evidence. Change attribution reconciles current vs previous contribution values so a material score move can be traced to the observations and domain contributions that changed.
-
-The public proof surface exposes, where available and verified:
+Published proof lineage retains, where available and verified:
 
 - methodology version and methodology hash;
 - input, evidence, calculation and proof hashes;
 - current and previous raw scores;
-- change attribution and reconciliation residuals;
+- contribution-level change attribution and reconciliation residuals;
 - event, independent-story and source counts;
 - evidence coverage and weighted confidence;
 - immutable snapshot verification URLs.
 
-GRI is an **evidence-weighted risk-intelligence measure**, not a market probability and not a guarantee of future outcomes.
+The current standalone Risk Indices report domain-level changes independently. Historical combined-GRI contribution values remain audit records and are not presented as the current standalone index delta.
 
-Canonical commands:
+These indices are **risk-intelligence signals**, not prediction-market probabilities, investment recommendations or guarantees of future outcomes.
+
+Canonical parent-methodology commands:
 
 ```bash
 bun run gri:compute
@@ -134,7 +137,7 @@ bun run gri:validate
 bun run gri:replay
 ```
 
-See [docs/GRI_METHODOLOGY.md](docs/GRI_METHODOLOGY.md), [docs/GRI_ARCHITECTURE.md](docs/GRI_ARCHITECTURE.md) and [docs/GRI_TRANSPARENCY_REQUIREMENTS.md](docs/GRI_TRANSPARENCY_REQUIREMENTS.md).
+See [docs/RISK_INDICES_ARCHITECTURE.md](docs/RISK_INDICES_ARCHITECTURE.md), [docs/GRI_METHODOLOGY.md](docs/GRI_METHODOLOGY.md), [docs/GRI_ARCHITECTURE.md](docs/GRI_ARCHITECTURE.md) and [docs/GRI_TRANSPARENCY_REQUIREMENTS.md](docs/GRI_TRANSPARENCY_REQUIREMENTS.md).
 
 ---
 
@@ -148,10 +151,9 @@ The current answer engine:
 - applies bounded deterministic relevance ranking;
 - requires evidence to clear relevance thresholds;
 - withholds interpretation when evidence is weak;
-- uses the same fresh verified canonical GRI that other public surfaces use;
-- does **not** compute a private fallback GRI;
+- can use verified current risk context while keeping the historical GRI lineage explicit;
+- does **not** silently manufacture a fallback risk score;
 - does **not** silently add open-web evidence;
-- does **not** use an external LLM provider in the current answer engine;
 - applies input validation, same-origin protection and application-level burst limiting.
 
 The current request limiter is an abuse-control mechanism, not a durable distributed commercial quota system.
@@ -160,9 +162,9 @@ The current request limiter is an abuse-control mechanism, not a durable distrib
 
 ## Geomacro Risk Object and Risk Gate
 
-Risk API and Risk Gate are **Private Pilot** capabilities.
+Risk API and Risk Gate are **Private Pilot** capabilities for current country and directional-corridor workflows.
 
-The current repository implements a commercial backend foundation for country and directional corridor risk, including:
+The repository implements a commercial backend foundation including:
 
 - versioned Geomacro Risk Objects (GROs);
 - Ed25519 issuer signing and signature verification;
@@ -171,7 +173,7 @@ The current repository implements a commercial backend foundation for country an
 - authenticated external requests;
 - database-backed per-client rate limiting;
 - immutable decision audit records;
-- caller-owned execution after an explicit policy decision.
+- customer-controlled downstream action after the Geomacro response.
 
 A simplified decision flow is:
 
@@ -183,19 +185,43 @@ graph LR;
     POLICY --> EXEC["Customer-controlled execution"];
 ```
 
-The current v1 machine decision contract has four advisory states. A caller-supplied policy profile may be evaluated inside the bounded Risk Gate request, but that input is not customer-side policy enforcement. Customer policy ownership and enforcement remain downstream of the Geomacro response. `REROUTE` is reserved as a future/advisory alternative only when a lower-risk corridor or route is separately validated; it is not a fifth current v1 decision.
+The current v1 machine decision contract has four advisory states: `CONTINUE`, `REDUCE_LIMIT`, `REQUIRE_APPROVAL` and `PAUSE`.
 
-Geomacro does not represent Risk Gate as a wallet custodian, autonomous transaction signer, sanctions-screening replacement or generally available production service.
+A caller-supplied policy profile may be evaluated inside the bounded Risk Gate request, but **that input is not customer-side policy enforcement**. Customer policy ownership and enforcement remain downstream of the Geomacro response. `REROUTE` is reserved as a future/advisory alternative when a lower-risk corridor or route is separately validated; it is not a fifth current v1 decision.
+
+Geomacro does not represent Risk Gate as a wallet custodian, autonomous transaction signer, sanctions-screening replacement or generally available production service. The customer retains identity, permissions, policy, funds and final execution control.
 
 ### Current corridor scope
 
-The current corridor methodology is a **directional endpoint-composed pilot**. It composes signed origin and destination country risk context to validate the subject, API, signing and policy architecture.
+The current corridor methodology is a **directional endpoint-composed pilot**. It composes signed origin and destination country risk context and adds direct bilateral evidence only when eligible evidence explicitly links the pair.
 
-It does **not** claim full modelling of maritime routes, ports, intermediary jurisdictions, vessels, counterparties, transaction-specific sanctions exposure or complete logistics paths.
+It does **not** claim full modelling of maritime routes, ports, intermediary jurisdictions, vessels, counterparties, correspondent banks, transaction-specific sanctions exposure or complete logistics paths.
 
-Commercial source eligibility is also a launch gate. Research-only, restricted or license-review-pending evidence must fail closed and remain outside paid machine delivery until the permitted use is confirmed.
+Commercial source eligibility is a launch gate. Research-only, restricted or license-review-pending evidence must fail closed and remain outside paid machine delivery until permitted use is confirmed.
 
 See [docs/RISK_GATE.md](docs/RISK_GATE.md).
+
+---
+
+## Data, API and commercial delivery
+
+Free Explorer is the public website/dashboard experience, not a free structured API.
+
+Commercial machine delivery is entitlement-controlled. The entitlement defines the permitted capability, subject scope, history depth and response limits. A payment provider cannot widen the payload.
+
+Current commercial structured endpoint:
+
+```text
+POST https://geomacro.live/api/commercial/structural
+```
+
+Machine discovery is published at:
+
+- `/.well-known/geomacro-agent.json`
+- `/.well-known/geomacro-commerce.json`
+- `/.well-known/x402`
+
+Paid agent/x402 production activation remains **PRE-LAUNCH**. Production real-money provider activation and mainnet activation remain disabled until the coordinated launch gates and explicit owner authorization are satisfied.
 
 ---
 
@@ -214,7 +240,7 @@ graph LR;
     SCORE -->|No| CONTEXT["Context only"];
 ```
 
-Supabase provides the structured application read model and persistence layer. The separate private `blocknine0/geomacro-historical-data` repository is the historical research warehouse for governed historical ingestion and backfill work. Historical reconstruction is kept distinct from evidence that Geomacro actually emitted a score in real time.
+Supabase provides the structured application read model and persistence layer. Governed historical ingestion/backfill is kept distinct from evidence that Geomacro actually emitted a score in real time.
 
 Core product principles:
 
@@ -224,6 +250,14 @@ Core product principles:
 4. fail closed on incompatible methodology/provenance states;
 5. never manufacture missing data for presentation;
 6. keep commercial source rights separate from technical ingestability.
+
+---
+
+## Dated controlled coverage evidence
+
+A controlled four-module Risk Gate census completed on **2026-09-16** evaluated **194** enabled sovereign countries under that workflow. **114** passed every required current module and **80** remained fail-closed. Every accepted result preserved `execution_authorized=false`.
+
+This is a dated workflow-coverage result, not an all-country product guarantee, institutional deployment claim, production SLA or promise that every product/request shape is deliverable for all accepted countries.
 
 ---
 
@@ -270,13 +304,13 @@ The codebase includes controls such as:
 - immutable Risk Gate audit persistence;
 - server-side credential boundaries;
 - migration-safety checks;
-- explicit GRI methodology/proof verification;
+- explicit methodology/proof verification;
 - onchain upgrade/dispute security controls in the technical-proof layer;
 - scheduled monitoring and reconciliation workflows.
 
-Before external Early Access is represented as production-ready, the relevant system must also pass the planned security and resilience gates, including appropriately scoped security review, stress/resilience testing, remediation and re-testing of critical/high findings, incident/recovery procedures and evidence preservation.
+Before external Early Access is represented as production-ready, the relevant system must pass the planned security and resilience gates. Do not claim "unhackable", independent certification, third-party audit, production SLA or institutional validation unless it has actually been obtained and documented.
 
-Do not claim "unhackable", independent certification, third-party audit, production SLA or institutional validation unless it has actually been obtained and documented.
+Security reports: `security@geomacro.live` or the process documented in [SECURITY.md](SECURITY.md). Never submit seed phrases, private keys or production secrets through public product surfaces.
 
 ---
 
@@ -287,20 +321,14 @@ geomacro/
 ├── src/
 │   ├── routes/                 # Public product + technical-proof routes
 │   ├── components/             # UI and product components
-│   └── lib/                    # GRI, Ask, Risk Gate, data and application logic
-├── scripts/
-│   ├── compute-gri-v12.js      # Current GRI computation
-│   ├── verify-gri-snapshot-v12.js
-│   ├── validate-gri-v12.js
-│   ├── replay-gri-history-v12.js
-│   └── ...                     # ingestion, lifecycle and operational tooling
-├── supabase/
-│   └── migrations/             # Versioned database contracts
+│   └── lib/                    # Risk indices, Ask, Risk Gate, data and application logic
+├── scripts/                    # ingestion, GRI lineage, validation and operational tooling
+├── supabase/                   # migrations and edge functions
 ├── contracts/                  # Arc Testnet Solidity implementation
 ├── script/                     # Foundry deployment/upgrade scripts
 ├── test/                       # Solidity tests
 ├── docs/                       # Canonical technical/product documentation
-├── .github/workflows/          # CI, GRI publication and automation
+├── .github/workflows/          # CI and automation
 ├── SECURITY.md
 └── package.json
 ```
@@ -371,34 +399,34 @@ Use `.env.example` only as a variable-name template. Never commit service-role c
 
 ## Documentation
 
-Start with the public documentation at https://geomacro.live/docs or the repository contracts below:
+Start with https://geomacro.live/docs and the repository contracts below:
 
+- [Risk Indices architecture](docs/RISK_INDICES_ARCHITECTURE.md)
 - [Commercial intelligence](docs/COMMERCIAL_INTELLIGENCE.md)
-- [GRI architecture](docs/GRI_ARCHITECTURE.md)
-- [GRI methodology v1.2](docs/GRI_METHODOLOGY.md)
+- [GRI methodology v1.2 lineage](docs/GRI_METHODOLOGY.md)
 - [GRI transparency requirements](docs/GRI_TRANSPARENCY_REQUIREMENTS.md)
 - [Risk Gate](docs/RISK_GATE.md)
+- [Canonical delivery architecture](docs/CANONICAL_DELIVERY_ARCHITECTURE.md)
+- [Structural data commercial package](docs/STRUCTURAL_DATA_COMMERCIAL_PACKAGE.md)
 - [Database schema ownership](docs/DATABASE_SCHEMA_OWNERSHIP.md)
 - [Website information architecture](docs/WEBSITE_INFORMATION_ARCHITECTURE.md)
 - [Security policy](SECURITY.md)
-
-The live documentation also publishes a structured 52-page product/methodology reference covering evidence governance, reliability, source/story concentration controls, Risk Objects, commercial boundaries, corridor risk, historical intelligence and technical-proof layers.
 
 ---
 
 ## Commercialization and launch gates
 
-Geomacro is early-stage and pre-revenue. The permanent objective is a production-grade global risk-intelligence product, not a one-off hackathon artifact.
+Geomacro is early-stage and pre-revenue. The objective is a production-grade global risk-intelligence product, not a one-off hackathon artifact.
 
 Current priorities are:
 
 1. keep website, docs and implementation on one source of truth;
-2. harden current GRI/data reliability and commercial source eligibility;
+2. harden Risk Indices/data reliability and commercial source eligibility;
 3. harden Risk Object/Risk Gate security, privacy and operations;
 4. complete scoped security and resilience testing before external Early Access launch;
-5. validate a narrow country/corridor workflow with real design partners;
+5. validate narrow country/corridor workflows with real design partners;
 6. finalize Early Access pricing, support boundaries and customer terms;
-7. only then create the permanent commercial demo and reusable master pitch deck.
+7. activate production payment/mainnet rails only after coordinated launch gates and explicit owner approval.
 
 Service levels, quotas, customer logos, revenue, independent validation and security certification must be represented only when supported by real evidence.
 
@@ -408,7 +436,7 @@ Service levels, quotas, customer logos, revenue, independent validation and secu
 
 Geomacro provides information and risk-intelligence decision-support tooling. It does not provide financial, investment, legal, trading or sanctions-screening advice.
 
-Risk scores, interpretations and machine-readable policy decisions are not guarantees of future outcomes. The user or customer remains responsible for identity, permissions, compliance obligations, policy and final action.
+Risk scores, interpretations and machine-readable advisory decisions are not guarantees of future outcomes. The user or customer remains responsible for identity, permissions, compliance obligations, policy and final action.
 
 Testnet technical-proof functionality must not be interpreted as production real-money availability.
 

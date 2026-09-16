@@ -3,7 +3,7 @@
     "id": "geomacro",
     "name": "Geomacro Agent",
     "version": "geomacro-agent-v1",
-    "description": "Grounded geopolitical and macro risk intelligence for software and AI agents.",
+    "description": "Grounded geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
     "mode": "read_and_recommend",
     "execution_authorized": false
   },
@@ -43,7 +43,9 @@
   ],
   "grounding": {
     "stored_geomacro_intelligence": true,
+    "current_public_risk_indices": true,
     "canonical_public_gri": true,
+    "canonical_public_gri_role": "parent_gri_v1_2_compatibility_context",
     "commercial_source_eligibility_required_for_paid_delivery": true,
     "freshness_policy_required_for_paid_delivery": true,
     "external_web_search": false,

@@ -9,7 +9,7 @@ const PRODUCT_ARCHITECTURE_TOKENS = [
   "Real-world evidence and data",
   "Normalize, classify and preserve provenance",
   "Structured intelligence state",
-  "Global Risk Index - Live",
+  "Separate Risk Indices - Live",
   "Ask Geomacro - Live",
   "Country Risk Object - Private Pilot",
   "Corridor Risk Object - Private Pilot",
@@ -168,7 +168,7 @@ describe("canonical product architecture alignment", () => {
     expect(root).toContain('import { CommercialHome } from "@/components/home/commercial-home"');
     expect(root).toContain("component: CommercialHome");
     expect(root).not.toContain("HeroSection");
-    expect(root).toContain("Geopolitical + Macro Risk Intelligence");
+    expect(root).toContain("Geopolitical, Macro & Critical Minerals Risk Intelligence");
   });
 
   it("labels Data & API precisely instead of implying a generally public API", () => {

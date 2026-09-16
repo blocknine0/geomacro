@@ -3,9 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { DocumentHeader } from "@/components/docs/docs-layout";
 import { DOCS_GROUPS, DOCS_MANIFEST, DOCS_PAGE_COUNT } from "@/lib/docs-content";
 
-const TITLE = "Geomacro Documentation | GRI, Risk Objects & Risk Gate";
+const TITLE = "Geomacro Documentation | Risk Indices, Risk Objects & Risk Gate";
 const DESCRIPTION =
-  "Read Geomacro's public documentation for geopolitical and macro risk intelligence, GRI methodology, evidence governance, Risk Objects, Risk Gate and APIs.";
+  "Read Geomacro's public documentation for geopolitical, macroeconomic and critical-mineral Risk Indices, evidence governance, the GRI v1.2 proof lineage, Risk Objects, Risk Gate and APIs.";
 const URL = "https://geomacro.live/docs";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
@@ -94,16 +94,16 @@ function DocsIndexPage() {
           <DocumentHeader />
           <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Geomacro public documentation</h1>
           <p className="mt-4 leading-7 text-muted-foreground">
-            Geomacro is geopolitical and macro risk intelligence infrastructure. These documents explain how evidence becomes structured intelligence, how the Global Risk Index is calculated and verified, how machine-readable Risk Objects and Risk Gate work, and which product surfaces are live, Private Pilot, technical proof or planned.
+            Geomacro is geopolitical and macro risk intelligence infrastructure. These documents explain how evidence becomes structured intelligence, how the separate public Risk Indices are produced and verified, how machine-readable Risk Objects and Risk Gate work, and which product surfaces are live, Private Pilot, technical proof or planned.
           </p>
           <p className="mt-4 leading-7 text-muted-foreground">
-            Prediction markets, Arc Testnet, CCTP, Bridge & Swap and smart-contract execution are documented as secondary technical-proof layers, not as Geomacro's primary commercial identity.
+            The current public indices preserve the audited <span className="font-mono text-foreground">gri-v1.2.0</span> parent proof lineage. Historical GRI material therefore remains available as a methodology and audit reference rather than a second live headline product. Prediction markets, Arc Testnet, CCTP, Bridge & Swap and smart-contract execution remain secondary technical-proof layers.
           </p>
 
           <div className="mt-8 rounded-lg border border-border bg-card/30 p-4">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Intelligence flow</p>
             <ol className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs">
-              {["Real-world events", "Structured signals", "Global Risk Index", "Change attribution", "Risk Objects / Risk Gate"].map((step, index, all) => (
+              {["Real-world events", "Structured signals", "Separate Risk Indices", "Change attribution", "Risk Objects / Risk Gate"].map((step, index, all) => (
                 <li key={step} className="flex items-center gap-2">
                   <span className="rounded border border-border bg-background/60 px-2.5 py-1.5 text-foreground">{step}</span>
                   {index < all.length - 1 ? <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden /> : null}
@@ -126,7 +126,7 @@ function DocsIndexPage() {
           </Link>
 
           <p className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-            The canonical current GRI proof reference remains available at <a href="/docs/gri-architecture" className="text-primary underline underline-offset-4 hover:no-underline">GRI Architecture & Proof System</a>.
+            The audited GRI v1.2 parent methodology and proof reference remains available at <a href="/docs/gri-architecture" className="text-primary underline underline-offset-4 hover:no-underline">GRI Architecture & Proof System</a>.
           </p>
         </main>
 

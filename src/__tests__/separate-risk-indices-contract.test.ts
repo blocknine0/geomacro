@@ -45,8 +45,8 @@ describe("separate public risk indices contract", () => {
 
     expect(edge).toContain('status: rawScore === null ? "unavailable" : "available"');
     expect(edge).toContain("score: rawScore === null ? null : Math.round(rawScore)");
-    expect(workspace).toContain("Missing evidence is never displayed as zero risk");
     expect(workspace).toContain("does not substitute zero or a synthetic estimate");
+    expect(workspace).toContain("No zero-risk or synthetic substitute");
   });
 
   it("keeps the Supabase Edge Function read-only and public-data bounded", () => {
@@ -91,6 +91,7 @@ describe("separate public risk indices contract", () => {
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
     const home = read("src/components/home/risk-indices-preview.tsx");
     const commercialHome = read("src/components/home/commercial-home.tsx");
+    const homeSection = read("src/components/home/gri-section.tsx");
 
     expect(route).toContain("RiskIndicesWorkspace");
     expect(route).toContain("Geopolitical, Macro & Critical Minerals");
@@ -99,6 +100,9 @@ describe("separate public risk indices contract", () => {
     expect(home).toContain("Three risks. Three separate readings.");
     expect(commercialHome).toContain("View Risk Indices");
     expect(commercialHome).not.toContain("View Global Risk Index");
+    expect(commercialHome).not.toContain("useGlobalRisk");
+    expect(homeSection).toContain("RiskIndicesSection");
+    expect(homeSection).not.toContain("GlobalRiskIndexSection");
   });
 
   it("never renders a public risk-index unavailable error on primary or secondary website surfaces", () => {
@@ -115,6 +119,9 @@ describe("separate public risk indices contract", () => {
       expect(surface).not.toContain("Risk index store unavailable");
     }
 
+    const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    expect(workspace).not.toContain("risk.error?.message");
+    expect(workspace).not.toContain("Verified risk indices unavailable");
     expect(read("src/routes/intelligence.tsx")).toContain("useRiskIndices");
     expect(read("src/routes/institutional.tsx")).toContain("useRiskIndices");
   });

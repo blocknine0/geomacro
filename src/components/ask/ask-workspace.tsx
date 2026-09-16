@@ -16,7 +16,7 @@ import { reportError, type UserError } from "@/lib/user-errors";
 
 const SUGGESTIONS = [
   "What changed today?",
-  "Why did the GRI change?",
+  "What changed in the risk indices?",
   "What are the biggest emerging risks?",
   "What is driving geopolitical risk?",
   "What is driving macro risk?",
@@ -69,12 +69,12 @@ export function AskWorkspace() {
             <Search className="h-3.5 w-3.5" /> Grounded research · Live
           </span>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Stored evidence + canonical GRI
+            Stored evidence + verified Risk Indices
           </span>
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Ask Geomacro</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Ask about current geopolitical, macro and critical-mineral risk. Geomacro searches its own stored intelligence, uses the same verified GRI shown elsewhere on the site, and exposes the evidence behind the answer.
+          Ask about current geopolitical, macroeconomic and critical-mineral risk. Geomacro searches its own stored intelligence and uses the same verified risk context behind the public Risk Indices, while exposing the evidence behind the answer.
         </p>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           It does not search the open web at question time and it does not invent outside evidence when Geomacro's own record is weak.
@@ -100,7 +100,7 @@ export function AskWorkspace() {
                 maxLength={MAX_LEN}
                 disabled={loading}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Ask about current risk, a domain, or why the GRI moved"
+                placeholder="Ask about current risk, a domain, or what changed"
                 className="h-12"
               />
             </div>
@@ -131,7 +131,7 @@ export function AskWorkspace() {
             {loading ? (
               <div className="rounded-xl border border-border/60 bg-background/25 p-5">
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Checking stored intelligence and the current GRI…
+                  <Loader2 className="h-4 w-4 animate-spin" /> Checking stored intelligence and verified risk context…
                 </p>
               </div>
             ) : error ? (
@@ -146,7 +146,7 @@ export function AskWorkspace() {
               <div className="rounded-xl border border-dashed border-border/70 p-6">
                 <p className="font-medium text-foreground">Start with a real risk question.</p>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Broad current-risk questions, GRI movement questions and domain-specific questions are handled differently so a general prompt is not forced through a narrow keyword match.
+                  Broad current-risk questions, risk-movement questions and domain-specific questions are handled differently so a general prompt is not forced through a narrow keyword match.
                 </p>
               </div>
             )}
@@ -158,7 +158,7 @@ export function AskWorkspace() {
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">What it uses</p>
             <ul className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
               <li>Stored Geomacro intelligence events</li>
-              <li>Current verified GRI context</li>
+              <li>Current verified Risk Indices context</li>
               <li>Stored severity, confidence and movement</li>
               <li>Source links and event-level evidence</li>
             </ul>
@@ -178,7 +178,7 @@ export function AskWorkspace() {
             <Link to="/intelligence">Browse Risk Intelligence <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild variant="outline" className="w-full gap-2">
-            <Link to="/global-risk">Open Global Risk Index <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/global-risk">Open Risk Indices <ArrowRight className="h-4 w-4" /></Link>
           </Button>
         </aside>
       </section>
@@ -269,7 +269,7 @@ function AnswerView({ answer, question }: { answer: AskAnswer; question: string 
       ) : null}
 
       <p className="border-t border-border/60 pt-4 text-xs leading-6 text-muted-foreground">
-        Stored Geomacro evidence only{answer.gri !== null ? ` · Canonical GRI ${answer.gri}` : " · GRI unavailable"}. This is risk intelligence, not financial advice.
+        Stored Geomacro evidence only{answer.gri !== null ? ` · Parent GRI v1.2 context ${answer.gri}` : ""}. Current public product readings are the separate Risk Indices. This is risk intelligence, not financial advice.
       </p>
     </div>
   );

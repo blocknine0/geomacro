@@ -46,13 +46,15 @@ describe("public SEO contract", () => {
     expect(root).toContain('"@id": "https://geomacro.live/#website"');
     expect(root).toContain('name: "application-name", content: "Geomacro"');
     expect(root).toContain('property: "og:locale", content: "en_US"');
+    expect(root).toContain("critical-minerals risk intelligence infrastructure");
     expect(root).not.toContain('{ name: "twitter:title", content: DEFAULT_TITLE }');
   });
 
   it("keeps the homepage intelligence-first with complete crawl metadata", () => {
     const home = read("src/routes/index.tsx");
 
-    expect(home).toContain("Geopolitical + Macro Risk Intelligence | Geomacro");
+    expect(home).toContain("Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro");
+    expect(home).toContain("separate verified Risk Indices");
     expect(home).toContain('name: "robots", content: "index, follow');
     expect(home).toContain('rel: "canonical"');
     expect(home).toContain('name: "twitter:title"');
@@ -84,6 +86,7 @@ describe("public SEO contract", () => {
     expect(docsRoute).toContain('"@type": "BreadcrumbList"');
     expect(docsIndex).toContain('"@type": "CollectionPage"');
     expect(docsIndex).toContain("numberOfItems: DOCS_PAGE_COUNT");
+    expect(docsIndex).toContain("separate public Risk Indices");
   });
 
   it("keeps technical proof and tester surfaces out of the sitemap", () => {
@@ -136,14 +139,23 @@ describe("public SEO contract", () => {
     expect(headers).toContain('"noindex, nofollow, noarchive"');
   });
 
-  it("keeps social assets and AI discovery references resolvable in the build", () => {
+  it("keeps social assets, AI discovery and the security contact standard resolvable in the build", () => {
     expect(existsSync(join(ROOT, "public/og-image-v2.png"))).toBe(true);
     expect(existsSync(join(ROOT, "public/og-signal-card-v2.png"))).toBe(true);
     expect(existsSync(join(ROOT, "public/llms.txt"))).toBe(true);
+    expect(existsSync(join(ROOT, "public/.well-known/security.txt"))).toBe(true);
 
     const llms = read("public/llms.txt");
     expect(llms).toContain("Risk Intelligence: LIVE");
+    expect(llms).toContain("Geopolitical Risk Index: LIVE");
+    expect(llms).toContain("Macroeconomic Risk Index: LIVE");
+    expect(llms).toContain("Critical Minerals Risk Index: LIVE");
     expect(llms).toContain("Risk Gate: PRIVATE PILOT");
     expect(llms).toContain("TECHNICAL PROOF");
+
+    const security = read("public/.well-known/security.txt");
+    expect(security).toContain("Contact: mailto:contact@geomacro.live");
+    expect(security).toContain("Canonical: https://geomacro.live/.well-known/security.txt");
+    expect(security).toContain("Policy: https://geomacro.live/about#product-use");
   });
 });

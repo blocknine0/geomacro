@@ -12,7 +12,7 @@ describe("structural data commercial surface", () => {
     expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
     expect(page).toContain('"capability": "structural_country_profile"');
     expect(page).toContain("/.well-known/geomacro-agent.json");
-    expect(page).toContain("Free Explorer remains the public website and dashboard");
+    expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(page).not.toContain("bounded public structured-data digest");
   });
 

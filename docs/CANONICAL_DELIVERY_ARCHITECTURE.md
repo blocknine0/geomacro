@@ -6,7 +6,7 @@ Status: canonical architecture contract.
 
 Geomacro has **one governed intelligence foundation** and multiple product and delivery surfaces.
 
-Real-world evidence is admitted, normalized, classified and retained with provenance in the canonical intelligence/data layer. GRI, Ask Geomacro, country/corridor Risk Objects, Risk Gate, authenticated APIs, Testnet pay-per-call delivery and agent/x402 technical-proof surfaces must derive from that governed foundation rather than maintaining conflicting copies of risk truth.
+Real-world evidence is admitted, normalized, classified and retained with provenance in the canonical intelligence/data layer. Public Risk Indices, the audited GRI v1.2 lineage, Ask Geomacro, country/corridor Risk Objects, Risk Gate, authenticated APIs, Testnet pay-per-call delivery and agent/x402 technical-proof surfaces must derive from that governed foundation rather than maintaining conflicting copies of risk truth.
 
 Different products may apply their own documented admission, scoring, subject, entitlement, response-shaping or policy rules. That is a different **use of the same underlying data truth**, not permission to create a second source of truth.
 
@@ -20,7 +20,7 @@ This is the product-level architecture that every public surface, document and m
 Real-world evidence and data
         -> Normalize, classify and preserve provenance
         -> Structured intelligence state
-             +-- Global Risk Index - Live
+             +-- Separate Risk Indices - Live
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
@@ -30,6 +30,8 @@ Risk Gate - Private Pilot
         -> Customer identity + permissions + policy
         -> Customer-controlled action
 ```
+
+The separate public Risk Indices are the current headline risk-score product. They expose geopolitical, macroeconomic and critical-mineral risk independently while preserving the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current product.
 
 The customer owns the identity, permissions and policy layer. Geomacro may evaluate a caller-supplied policy profile as part of a bounded Risk Gate response, but that does not transfer ownership or enforcement of customer policy to Geomacro. Geomacro does not authorize or submit the downstream action. The current external boundary is always `execution_authorized=false`.
 
@@ -42,7 +44,7 @@ Every current user-facing or machine-facing surface must fit one of the roles be
 | Surface / route family | Architecture role | Current status / boundary |
 | --- | --- | --- |
 | `/intelligence` and event pages | Public presentation of the structured intelligence state | Live, wallet-free |
-| `/global-risk` | Global Risk Index derived from the governed intelligence state | Live, wallet-free |
+| `/global-risk` | Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices derived from the governed intelligence state | Live, wallet-free; audited GRI v1.2 parent lineage |
 | `/ask-geomacro` | Grounded query surface over the governed intelligence state | Live, wallet-free |
 | Country Risk Object delivery | Signed country-specific machine context | Private Pilot |
 | Directional corridor Risk Object delivery | Signed endpoint-composed corridor machine context | Private Pilot; not full physical-route modelling |
@@ -60,13 +62,13 @@ The primary commercial hierarchy therefore remains:
 
 1. governed real-world evidence and provenance;
 2. structured intelligence state;
-3. live public intelligence, GRI and Ask Geomacro;
+3. live public intelligence, separate Risk Indices and Ask Geomacro;
 4. Private Pilot country/corridor Risk Objects and Risk Gate;
 5. customer-owned identity, permissions and policy;
 6. customer-controlled action;
 7. separate technical-proof/application rails where useful.
 
-Data/API, institutional packaging, agent protocols and payment rails are **delivery or presentation layers around this hierarchy**. They do not insert a new risk engine between the structured intelligence state and the canonical products.
+Data/API, institutional packaging, agent protocols and payment rails are **delivery or presentation layers around this hierarchy**. They do not insert a new risk engine between the structured intelligence state and the canonical products and are never a parallel risk engine.
 
 ## Delivery architecture
 
@@ -77,7 +79,8 @@ Real-world evidence and data
         -> evidence admission + source/commercial-use governance
         -> normalize, classify and preserve provenance
         -> shared structured intelligence state
-             +-- Global Risk Index
+             +-- separate public Risk Indices
+             +-- audited GRI v1.2 parent/proof lineage
              +-- Ask Geomacro
              +-- country Risk Object
              +-- directional corridor Risk Object
@@ -100,14 +103,14 @@ The delivery branch may change authentication, entitlement, rate limits, payment
 
 Examples:
 
-- the public GRI and machine `gri_read` use the canonical GRI read service;
+- the current public Risk Indices and compatibility machine risk reads preserve the same audited GRI v1.2 evidence/proof lineage;
 - the website Ask Geomacro flow and machine `intelligence_query` use the same answer engine;
 - structural country/corridor delivery resolves through the governed structural-context service;
 - signed Risk Object delivery resolves from the canonical Risk Object store and verification path;
 - Risk Gate delivery uses the canonical country/corridor Risk Gate services;
 - a paid surface may redact restricted fields or enforce commercial source eligibility while still using the same governed foundation.
 
-Product-specific rules remain explicit. GRI scoring rules do not become Risk Gate policy rules, and Risk Gate output does not rewrite the GRI. Shared evidence and provenance do not mean all products have identical calculation semantics.
+Product-specific rules remain explicit. Audited GRI v1.2 scoring rules do not become Risk Gate policy rules, and Risk Gate output does not rewrite the public Risk Indices or historical GRI proof lineage. Shared evidence and provenance do not mean all products have identical calculation semantics.
 
 ## Customer-control boundary
 
@@ -160,33 +163,33 @@ The current machine boundary remains `execution_authorized=false`.
 
 | Surface | What can differ | What must remain canonical |
 | --- | --- | --- |
-| Public website | UI, explanation depth, public redaction | stored intelligence, canonical GRI, evidence/provenance contracts |
+| Public website | UI, explanation depth, public redaction | stored intelligence, current Risk Indices, audited GRI v1.2 lineage, evidence/provenance contracts |
 | Ask Geomacro | query and presentation | canonical stored-intelligence answer engine |
 | Authenticated API | entitlement, quotas, response limits | governed structural state and relevant canonical product service |
 | Testnet pay-per-call | Testnet USDC quote, proof, credit accounting, audit | canonical capability runner and underlying intelligence |
 | Risk Object | subject selection and compatible-object lookup | canonical signed object payload + cryptographic verification |
 | Risk Gate | bounded caller context / optional supplied policy profile | canonical country/corridor Risk Object, non-authorizing Risk Gate evaluation and customer-owned downstream policy/execution |
-| Circle/x402 technical proof | HTTP 402/payment rail and settlement telemetry | same Risk Gate/structural/GRI service layer used by the technical demo |
+| Circle/x402 technical proof | HTTP 402/payment rail and settlement telemetry | same Risk Gate/structural/risk-context service layer used by the technical demo |
 | GOAT/Coinbase/A2A adapters | provider protocol, transport, payment or task envelope | same canonical intelligence and non-authorizing Risk Gate boundary |
 | Prediction-market / Arc proof | application mechanics and onchain state | intelligence remains an input/application layer, not a new core risk truth |
 
 ## Permanent boundaries
 
 1. There is no API-only, pay-per-call-only or x402-only risk database.
-2. Delivery adapters may not re-compute an alternative GRI or silently synthesize missing risk data.
+2. Delivery adapters may not re-compute an alternative Risk Index/GRI or silently synthesize missing risk data.
 3. Commercial delivery may be narrower than internal/public research when source rights require it; excluded data must be excluded explicitly and fail closed rather than replaced with invented values.
 4. Country and directional corridor are the current Private Pilot Risk Object/Risk Gate scopes unless a separately implemented and verified contract expands them.
 5. `execution_authorized=false` is invariant for current external Risk Gate delivery.
 6. Customer identity, permissions, policy, funds and final execution remain customer-owned and outside Geomacro's authority.
 7. Arc, Circle, x402, USDC, CCTP, Bridge & Swap and prediction markets are delivery/application/technical-proof layers, not independent risk engines.
 8. Research and documentation explain evidence, methodology and proof; they must not become a separate source of risk truth.
-9. Public Risk Intelligence, GRI and Ask Geomacro remain wallet-free by default. Wallet requirements belong only to explicit technical/execution surfaces.
+9. Public Risk Intelligence, Risk Indices and Ask Geomacro remain wallet-free by default. Wallet requirements belong only to explicit technical/execution surfaces.
 
 ## Regression requirement
 
 Repository tests must fail if:
 
-- a machine-delivery path stops using the canonical Ask, GRI, structural-context, Risk Object or Risk Gate services;
+- a machine-delivery path stops using the canonical Ask, risk-context, structural-context, Risk Object or Risk Gate services;
 - pay-per-call/x402/A2A is changed into an alternate risk-calculation path;
 - public positioning promotes prediction markets, Arc/Circle or settlement rails above the intelligence product;
 - current Private Pilot copy expands Risk Objects/Risk Gate beyond country and directional corridor without a separately verified contract;

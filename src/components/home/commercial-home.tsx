@@ -13,8 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AskGeomacroSection } from "@/components/home/ask-geomacro";
-import { GlobalRiskIndexSection } from "@/components/home/gri-section";
-import { useGlobalRisk } from "@/lib/use-global-risk";
+import { RiskIndicesSection } from "@/components/home/gri-section";
 import { GRI_METHOD_VERSION } from "@/lib/gri-current-contract";
 
 const FLOW = [
@@ -83,8 +82,6 @@ const BUYER_USE_CASES = [
 ] as const;
 
 export function CommercialHome() {
-  const risk = useGlobalRisk();
-
   return (
     <>
       <section className="mx-auto w-full max-w-7xl px-4 pb-10 pt-10 sm:px-6 sm:pt-14 lg:pb-14 lg:pt-16">
@@ -126,7 +123,7 @@ export function CommercialHome() {
           <div className="rounded-2xl border border-border/70 bg-card/55 p-6 backdrop-blur-sm sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">How Geomacro works</p>
-              <span className="font-mono text-[10px] text-muted-foreground">Verified proof · {GRI_METHOD_VERSION}</span>
+              <span className="font-mono text-[10px] text-muted-foreground">Verified proof lineage · {GRI_METHOD_VERSION}</span>
             </div>
             <ol className="mt-6 space-y-5">
               {FLOW.map(([step, title, body]) => (
@@ -145,20 +142,14 @@ export function CommercialHome() {
         </div>
       </section>
 
-      <GlobalRiskIndexSection
-        risk={risk.data}
-        status={risk.status}
-        error={risk.error}
-        updatedAt={risk.updatedAt}
-        retry={risk.retry}
-      />
+      <RiskIndicesSection />
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Product surfaces</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Choose the part of Geomacro that fits the job.</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Public intelligence and the separate risk indices are live now. Ask Geomacro works from stored evidence. Risk Gate and API access are available only through a controlled Private Pilot.
+            Public intelligence and the separate risk indices are live now. Ask Geomacro works from stored evidence. Risk Gate and commercial API access are available only through a controlled Private Pilot.
           </p>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">

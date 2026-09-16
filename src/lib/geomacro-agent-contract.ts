@@ -78,7 +78,7 @@ export function geomacroAgentManifest(origin = "https://geomacro.live") {
       name: "Geomacro Agent",
       version: GEOMACRO_AGENT_VERSION,
       description:
-        "Grounded geopolitical and macro risk intelligence for software and AI agents through paid/private-pilot access.",
+        "Grounded geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents through paid/private-pilot access.",
       mode: "read_and_recommend",
       execution_authorized: false,
     },
@@ -103,7 +103,7 @@ export function geomacroAgentManifest(origin = "https://geomacro.live") {
         request:
           "Country or directional corridor subject plus policy/action context.",
         response:
-          "Signed Risk Object, Risk Gate recommendation, governed structural context where available and canonical GRI context where eligible.",
+          "Signed Risk Object, Risk Gate recommendation, governed structural context where available and current Risk Indices / parent GRI v1.2 context where eligible.",
         execution_authorized: false,
       },
     ],

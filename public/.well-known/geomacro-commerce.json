@@ -3,7 +3,7 @@
   "service": {
     "id": "geomacro-risk-intelligence",
     "name": "Geomacro Risk Intelligence",
-    "description": "Machine-readable geopolitical and macro risk intelligence for human and software-agent decisions.",
+    "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for human and software-agent decisions.",
     "status": "prelaunch",
     "canonical_origin": "https://geomacro.live",
     "execution_authorized": false
@@ -114,6 +114,7 @@
     "country risk",
     "geopolitical risk",
     "macroeconomic risk",
+    "critical minerals risk",
     "sovereign risk",
     "treasury pre-flight risk context",
     "cross-border corridor risk",

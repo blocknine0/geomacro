@@ -9,7 +9,7 @@ const CANONICAL_ARCHITECTURE_TOKENS = [
   "Real-world evidence and data",
   "Normalize, classify and preserve provenance",
   "Structured intelligence state",
-  "Global Risk Index - Live",
+  "Separate Risk Indices - Live",
   "Ask Geomacro - Live",
   "Country Risk Object - Private Pilot",
   "Corridor Risk Object - Private Pilot",
@@ -215,7 +215,7 @@ describe("commercial website source-of-truth contract", () => {
     expect(bridge).toContain("replace: true");
   });
 
-  it("keeps the public GRI architecture on the three-domain v1.2 contract", () => {
+  it("keeps the audited GRI lineage on the three-domain v1.2 contract", () => {
     const gri = read("src/routes/docs_.gri-architecture.tsx");
 
     expect(gri).toContain('["Geopolitics", "1/3"]');

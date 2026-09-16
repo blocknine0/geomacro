@@ -15,9 +15,9 @@ import { installClipboardCompatibility } from "../lib/clipboard-compat";
 import { SiteShell } from "../components/site-shell";
 import { WalletProvider } from "../hooks/WalletProvider";
 
-const DEFAULT_TITLE = "Geopolitical & Macro Risk Intelligence | Geomacro";
+const DEFAULT_TITLE = "Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DEFAULT_DESCRIPTION =
-  "Geomacro turns geopolitical and macro developments into explainable risk intelligence with evidence, confidence, change attribution and machine-readable decision context.";
+  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence with evidence, confidence, change attribution, separate Risk Indices and machine-readable decision context.";
 const DEFAULT_OG_IMAGE = "https://geomacro.live/og-image-v2.png";
 
 function NotFoundComponent() {
@@ -98,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:locale", content: "en_US" },
       { property: "og:image", content: DEFAULT_OG_IMAGE },
       { property: "og:image:secure_url", content: DEFAULT_OG_IMAGE },
-      { property: "og:image:alt", content: "Geomacro geopolitical and macro risk intelligence" },
+      { property: "og:image:alt", content: "Geomacro geopolitical, macroeconomic and critical-minerals risk intelligence" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@GeomacroLive" },
     ],
@@ -129,9 +129,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
                 url: "https://geomacro.live/icon-512.png",
               },
               email: "contact@geomacro.live",
-              sameAs: ["https://github.com/blocknine0/geomacro"],
+              sameAs: ["https://github.com/blocknine0/geomacro", "https://x.com/GeomacroLive"],
               description:
-                "Geopolitical and macro risk intelligence infrastructure for human and machine decisions.",
+                "Geopolitical, macroeconomic and critical-minerals risk intelligence infrastructure for human and machine decisions.",
             },
             {
               "@type": "WebSite",

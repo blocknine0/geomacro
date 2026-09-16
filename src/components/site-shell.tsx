@@ -295,7 +295,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <div>
               <Wordmark height={30} />
               <p className="mt-3 max-w-sm text-sm leading-relaxed">
-                Explainable geopolitical and macro risk intelligence for human and machine decisions.
+                Explainable geopolitical, macroeconomic and critical-mineral risk intelligence for human and machine decisions.
               </p>
               <p className="mt-3 font-mono text-xs">© 2026 Geomacro</p>
             </div>
@@ -338,6 +338,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/about" className="hover:text-foreground">About & Trust</Link>
                   <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
                   <Link to="/contact" className="hover:text-foreground">Contact</Link>
+                  <a href="/about#privacy" className="hover:text-foreground">Privacy</a>
+                  <a href="/about#product-use" className="hover:text-foreground">Product Use</a>
                   <a href="https://x.com/GeomacroLive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
                     <Twitter className="h-3.5 w-3.5" /> X
                   </a>
@@ -347,7 +349,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span>114-country production-workflow proof · Private Pilot Risk Gate · Mainnet pre-launch</span>
+              <span>Dated 114-country controlled-workflow evidence · Private Pilot Risk Gate · Mainnet pre-launch</span>
               <details>
                 <summary className="cursor-pointer">Arc technical context</summary>
                 <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>

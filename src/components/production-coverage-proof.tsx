@@ -20,33 +20,33 @@ export function ProductionCoverageProof() {
                 variant="outline"
                 className="border-primary/35 bg-primary/5 font-mono text-[10px] uppercase tracking-[0.15em] text-primary"
               >
-                Production workflow evidence · verified 16 Sep 2026
+                Controlled coverage evidence · verified 16 Sep 2026
               </Badge>
               <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
                 114 sovereign countries passed the current four-module Risk Gate review census.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                The controlled production workflow evaluated all 194 enabled sovereign countries. 114 had every required current module verified and 80 remained fail-closed. Missing or unverified inputs are not converted into approval.
+                A controlled workflow evaluated all 194 enabled sovereign countries under the current review contract. 114 had every required module verified and 80 remained fail-closed. Missing or unverified inputs are not converted into approval.
               </p>
             </div>
 
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[470px] lg:grid-cols-2">
-              <Metric value={String(VERIFIED_COUNTRY_COUNT)} label="Accepted" />
-              <Metric value={String(FAIL_CLOSED_COUNTRY_COUNT)} label="Fail-closed" />
+              <Metric value={String(VERIFIED_COUNTRY_COUNT)} label="Accepted in census" />
+              <Metric value={String(FAIL_CLOSED_COUNTRY_COUNT)} label="Fail-closed in census" />
               <Metric value={String(ENABLED_SOVEREIGN_DENOMINATOR)} label="Evaluated" />
               <Metric value={`${QPSD_ACCEPTED_FISCAL_COUNT} + ${PPG_ACCEPTED_FISCAL_COUNT}`} label="QPSD + PPG accepted fiscal paths" />
             </div>
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <ProofPoint text="All 114 accepted results keep execution_authorized=false." />
-            <ProofPoint text="QPSD promotion passed the 100+ country gate and remains active; governed PPG fallback remains available." />
-            <ProofPoint text="This proof did not activate x402, real-money payments, Base mainnet or autonomous execution." />
+            <ProofPoint text="All 114 accepted census results keep execution_authorized=false." />
+            <ProofPoint text="QPSD passed the governed promotion gate; governed PPG fallback remains available where the current contract supports it." />
+            <ProofPoint text="This evidence did not activate x402, real-money payments, Base mainnet or autonomous execution." />
           </div>
 
           <div className="mt-5 flex flex-col justify-between gap-4 border-t border-border/60 pt-5 sm:flex-row sm:items-center">
             <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              Claim boundary: this is production-workflow-verified country-review coverage for the current Risk Gate methodology. It is not an all-country claim, transaction authorization, production SLA, independent audit or mainnet launch claim.
+              Claim boundary: this is a dated controlled-workflow coverage result for the current Risk Gate methodology. It is not an all-country product guarantee, transaction authorization, production SLA, independent security audit or mainnet-launch claim, and it does not imply that every product is deliverable for every accepted country or request shape.
             </p>
             <div className="flex shrink-0 flex-wrap gap-2">
               <Button asChild size="sm" variant="outline">

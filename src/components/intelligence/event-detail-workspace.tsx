@@ -143,7 +143,7 @@ export function EventDetailWorkspace({
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild><Link to="/ask-geomacro">Ask Geomacro about current risk</Link></Button>
-            <Button asChild variant="outline"><Link to="/global-risk">Open the Global Risk Index</Link></Button>
+            <Button asChild variant="outline"><Link to="/global-risk">Open Risk Indices</Link></Button>
           </div>
         </section>
       </article>
