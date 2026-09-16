@@ -10,10 +10,15 @@ import {
 import { ZodError } from "zod";
 
 import {
+  AGENT_COMMERCE_BINDING_VERSION,
+  agentCommercePaymentBinding,
+  assertAgentCommercePaymentBinding,
+} from "../../../src/lib/agent-commerce-binding.server";
+import {
   claimAgentCommerceDelivery,
   completeAgentCommerceDelivery,
-  releaseAgentCommerceDelivery,
   prepareAgentCommerceDelivery,
+  releaseAgentCommerceDelivery,
 } from "../../../src/lib/agent-commerce-delivery.server";
 import {
   agentAdaptiveQuerySchema,
@@ -67,7 +72,7 @@ function respond(event: Parameters<typeof setResponseStatus>[0], payload: unknow
   return payload;
 }
 
-function adaptiveExtensions(planHash: string) {
+function adaptiveExtensions(paymentBinding: string) {
   return {
     bazaar: {
       info: {
@@ -87,7 +92,6 @@ function adaptiveExtensions(planHash: string) {
           example: {
             schema_version: "geomacro.adaptive-intelligence-response.v1",
             product: PRODUCT_ID,
-            query_plan_hash: planHash,
             execution_authorized: false,
           },
         },
@@ -102,7 +106,8 @@ function adaptiveExtensions(planHash: string) {
     geomacro: {
       info: {
         product: PRODUCT_ID,
-        query_plan_hash: planHash,
+        binding_version: AGENT_COMMERCE_BINDING_VERSION,
+        payment_binding: paymentBinding,
         execution_authorized: false,
       },
       schema: {
@@ -110,16 +115,17 @@ function adaptiveExtensions(planHash: string) {
         type: "object",
         properties: {
           product: { type: "string" },
-          query_plan_hash: { type: "string" },
+          binding_version: { type: "string" },
+          payment_binding: { type: "string" },
           execution_authorized: { type: "boolean", const: false },
         },
-        required: ["product", "query_plan_hash", "execution_authorized"],
+        required: ["product", "binding_version", "payment_binding", "execution_authorized"],
       },
     },
   };
 }
 
-function paymentRequired(event: Parameters<typeof setResponseStatus>[0], config: CoinbaseX402Config, planHash: string) {
+function paymentRequired(event: Parameters<typeof setResponseStatus>[0], config: CoinbaseX402Config, paymentBinding: string) {
   const resourceUrl = new URL("/api/agent/paid-question", getRequestURL(event)).toString();
   const required = {
     x402Version: 2,
@@ -131,12 +137,12 @@ function paymentRequired(event: Parameters<typeof setResponseStatus>[0], config:
       tags: ["geopolitical-risk", "macro-risk", "country-risk", "risk-gate", "ai-agents"],
     },
     accepts: [coinbaseX402PaymentRequirements(config)],
-    extensions: adaptiveExtensions(planHash),
+    extensions: adaptiveExtensions(paymentBinding),
   };
   return respond(event, required, 402, { "PAYMENT-REQUIRED": encodeX402Header(required) });
 }
 
-function assertQueryBinding(paymentPayload: Record<string, unknown>, planHash: string) {
+function assertQueryBinding(paymentPayload: Record<string, unknown>, expectedBinding: string) {
   const extensions = paymentPayload.extensions;
   if (!extensions || typeof extensions !== "object" || Array.isArray(extensions)) {
     throw new Error("PAYMENT_QUERY_BINDING_EXTENSION_MISSING");
@@ -150,9 +156,10 @@ function assertQueryBinding(paymentPayload: Record<string, unknown>, planHash: s
     throw new Error("PAYMENT_QUERY_BINDING_EXTENSION_MISSING");
   }
   const binding = info as Record<string, unknown>;
-  if (binding.product !== PRODUCT_ID || binding.query_plan_hash !== planHash) {
-    throw new Error("PAYMENT_QUERY_PLAN_MISMATCH");
+  if (binding.product !== PRODUCT_ID || binding.binding_version !== AGENT_COMMERCE_BINDING_VERSION) {
+    throw new Error("PAYMENT_QUERY_BINDING_VERSION_MISMATCH");
   }
+  assertAgentCommercePaymentBinding(binding.payment_binding, expectedBinding);
 }
 
 function replaySettlement(reference: string | null, network: string | null): CoinbaseSettleResult {
@@ -184,9 +191,11 @@ function finalResponse(prepared: Record<string, unknown>, settlement: CoinbaseSe
       settlement_network: settlement.network ?? config.networkName,
       idempotent_replay: replayed,
       query_plan_bound: true,
+      private_binding: true,
     },
     privacy: {
       question_sent_to_payment_provider: false,
+      query_plan_hash_sent_to_payment_provider: false,
       payment_proof_persisted_raw: false,
       prepared_payload_encrypted_at_rest: true,
     },
@@ -259,8 +268,22 @@ export default defineEventHandler(async (event) => {
     return respond(event, { ok: false, chargeable: false, payment_required_now: false, availability, error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
   }
 
+  let privatePaymentBinding: string;
+  try {
+    privatePaymentBinding = agentCommercePaymentBinding({
+      productId: PRODUCT_ID,
+      queryPlanHash: plan.query_plan_hash,
+      amountAtomic: config.amountAtomic,
+      network: config.network,
+      asset: config.asset,
+      payTo: config.payTo,
+    });
+  } catch {
+    return respond(event, { ok: false, chargeable: false, error: { code: "PRIVATE_PAYMENT_BINDING_UNAVAILABLE", message: "Private question-to-payment binding is not configured. Payment is disabled." }, execution_authorized: false }, 503);
+  }
+
   const paymentHeader = getRequestHeader(event, "payment-signature");
-  if (!paymentHeader) return paymentRequired(event, config, plan.query_plan_hash);
+  if (!paymentHeader) return paymentRequired(event, config, privatePaymentBinding);
   if (!config.apiKeyId || !config.apiKeySecret) {
     return respond(event, { ok: false, error: { code: "CDP_API_CREDENTIALS_MISSING", message: "Coinbase CDP settlement credentials are not configured." }, execution_authorized: false }, 503);
   }
@@ -269,15 +292,9 @@ export default defineEventHandler(async (event) => {
   try {
     paymentPayload = decodeCoinbasePaymentHeader(paymentHeader);
     assertCoinbasePaymentBinding(paymentPayload, config);
-    assertQueryBinding(paymentPayload, plan.query_plan_hash);
+    assertQueryBinding(paymentPayload, privatePaymentBinding);
   } catch {
-    const required = {
-      x402Version: 2,
-      resource: { url: new URL("/api/agent/paid-question", getRequestURL(event)).toString() },
-      accepts: [coinbaseX402PaymentRequirements(config)],
-      extensions: adaptiveExtensions(plan.query_plan_hash),
-    };
-    return respond(event, { ok: false, error: { code: "X402_PAYMENT_BINDING_INVALID", message: "Payment proof does not match this exact query and payment requirement." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header(required) });
+    return respond(event, { ok: false, error: { code: "X402_PAYMENT_BINDING_INVALID", message: "Payment proof does not match this exact private question binding and payment requirement." }, execution_authorized: false }, 402, { "PAYMENT-REQUIRED": encodeX402Header({ x402Version: 2, resource: { url: new URL("/api/agent/paid-question", getRequestURL(event)).toString() }, accepts: [coinbaseX402PaymentRequirements(config)], extensions: adaptiveExtensions(privatePaymentBinding) }) });
   }
 
   const paymentFingerprint = coinbasePaymentFingerprint(paymentPayload);
@@ -324,7 +341,7 @@ export default defineEventHandler(async (event) => {
   }
   if (!verified.isValid) {
     await releaseAgentCommerceDelivery({ provider: "coinbase_x402", providerEnvironment: config.commercialEnvironment, paymentFingerprint, claimToken, failureCode: verified.invalidReason ?? "CDP_VERIFY_INVALID" });
-    return paymentRequired(event, config, plan.query_plan_hash);
+    return paymentRequired(event, config, privatePaymentBinding);
   }
 
   let usageReservation;
@@ -374,6 +391,7 @@ export default defineEventHandler(async (event) => {
         settlement_reference: null,
         bazaar_extension_echoed: paymentPayloadEchoesBazaar(paymentPayload),
         query_plan_bound: true,
+        private_binding: true,
       },
     };
     await prepareAgentCommerceDelivery({
