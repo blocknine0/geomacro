@@ -13,36 +13,30 @@ export function RiskIndicesWorkspace() {
   const risk = useRiskIndices();
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
 
-  if (risk.status === "loading" && !risk.data) {
+  if (!risk.data) {
     return (
       <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-16">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          Geomacro Risk Indices
-        </p>
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Geomacro Risk Indices
+            </p>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              Refreshing verified readings
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+              Geomacro is checking the verified public data path. No zero-risk or synthetic substitute is shown while a current reading is being recovered.
+            </p>
+          </div>
+          <Button type="button" variant="outline" onClick={risk.retry} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </div>
+        <div className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Refreshing verified risk indices">
           {[0, 1, 2].map((item) => (
             <div key={item} className="h-56 animate-pulse rounded-2xl border border-border/60 bg-card/30" />
           ))}
         </div>
-      </main>
-    );
-  }
-
-  if (!risk.data) {
-    return (
-      <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-16">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          Geomacro Risk Indices
-        </p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
-          Verified risk indices unavailable
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-          {risk.error?.message ?? "Geomacro could not load the current verified risk-index package."}
-        </p>
-        <Button type="button" variant="outline" onClick={risk.retry} className="mt-6 gap-2">
-          <RefreshCw className="h-4 w-4" /> Retry verified read
-        </Button>
       </main>
     );
   }
@@ -71,7 +65,7 @@ export function RiskIndicesWorkspace() {
             Three risks. Three separate indices.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Geopolitical, macroeconomic and critical-mineral risk are now presented separately instead of being compressed into one combined headline score. Each index keeps the same verified evidence, source and story controls behind the current audited methodology.
+            Geopolitical, macroeconomic and critical-mineral risk are presented separately instead of being compressed into one combined headline score. Each index remains tied to the verified evidence, source controls and proof lineage behind the current audited methodology.
           </p>
         </div>
 
@@ -85,9 +79,9 @@ export function RiskIndicesWorkspace() {
       <Section
         eyebrow="History"
         title="Compare each risk domain on its own scale"
-        copy="Each chart uses the stored category score from comparable verified snapshots. A missing domain is unavailable, never converted into a zero-risk reading."
+        copy="Each chart uses the stored category score from comparable verified snapshots. A missing domain has no current verified reading and is never converted into a zero-risk value."
       >
-        <div className="mb-5 flex gap-1 rounded-lg border border-border/70 p-1 w-fit">
+        <div className="mb-5 flex w-fit gap-1 rounded-lg border border-border/70 p-1">
           {TIMEFRAMES.map((item) => (
             <button
               key={item}
@@ -113,7 +107,7 @@ export function RiskIndicesWorkspace() {
                   <div>
                     <p className="text-sm font-medium">{index.name}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {series.low === null ? "No comparable range yet" : `${fmt(series.low, 1)} low · ${fmt(series.high, 1)} high`}
+                      {series.low === null ? "Comparable history is still building" : `${fmt(series.low, 1)} low · ${fmt(series.high, 1)} high`}
                     </p>
                   </div>
                   <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">{timeframe}</span>
@@ -136,12 +130,12 @@ export function RiskIndicesWorkspace() {
       <Section
         eyebrow="Methodology boundary"
         title="Separated presentation, preserved proof"
-        copy="This first public split is a verified category projection of the existing v1.2 audit package. It does not rewrite historical snapshots or invent a second calculation path."
+        copy="This public split is a verified category projection of the existing v1.2 audit package. It does not rewrite historical snapshots or invent a second calculation path."
       >
         <div className="grid gap-4 md:grid-cols-3">
           <MethodCard title="Independent domain score" body="Each domain score is calculated inside its own evidence pool after confidence, recency, source-cap and story-cap controls." />
           <MethodCard title="No combined headline" body="The public workspace no longer asks users to interpret one blended geopolitical, macro and critical-mineral number." />
-          <MethodCard title="No zero fallback" body="If a domain or verified store is unavailable, the index remains unavailable. Missing evidence is never displayed as zero risk." />
+          <MethodCard title="No zero fallback" body="If a domain has no current verified reading, Geomacro does not manufacture a zero or synthetic estimate." />
         </div>
         <div className="mt-5 rounded-2xl border border-border/70 bg-muted/15 p-5 text-sm leading-7 text-muted-foreground">
           Parent audited methodology: <span className="font-mono text-foreground">{data.parentMethodologyVersion}</span>. Proof scope: <span className="font-mono text-foreground">{data.proofScope}</span>. The next methodology generation can persist fully independent per-index proof objects without mutating the historical GRI v1.2 record.
@@ -151,7 +145,7 @@ export function RiskIndicesWorkspace() {
       <Section
         eyebrow="Integrity"
         title="One verified package, traceable to the exact source snapshot"
-        copy="The three public indices retain the parent snapshot fingerprints so the projection remains reproducible and auditable during the migration from the combined GRI surface."
+        copy="The three public indices retain the parent snapshot fingerprints so the projection remains reproducible and auditable during the migration from the historical combined GRI surface."
       >
         <div className="grid gap-4 md:grid-cols-2">
           <HashCard label="Proof hash" value={data.proofHash} />
@@ -184,9 +178,9 @@ function IndexCard({ index }: { index: PublicRiskIndex }) {
     return (
       <article className="rounded-2xl border border-border/70 bg-card/45 p-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{index.name}</p>
-        <p className="mt-5 text-2xl font-semibold">Unavailable</p>
+        <p className="mt-5 text-2xl font-semibold">Refreshing verified reading</p>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          No verified current-domain score is present. Geomacro does not substitute zero or a synthetic estimate.
+          A current verified domain score is not present in this package. Geomacro does not substitute zero or a synthetic estimate.
         </p>
       </article>
     );
@@ -284,7 +278,7 @@ function fmt(value: number | null, digits: number) {
 
 function formatDate(value: string) {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Unavailable";
+  if (!Number.isFinite(date.getTime())) return "Not recorded";
   return date.toLocaleString(undefined, {
     year: "numeric",
     month: "short",
