@@ -9,6 +9,19 @@ on:
       - "src/lib/coinbase-x402.server.test.ts"
       - "server/routes/api/x402/**"
       - "docs/COINBASE_X402_MAINNET_READINESS.md"
+      - ".env.example"
+      - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/commercial-launch-gate.server.ts"
+      - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "server/routes/api/x402/**"
+      - "docs/COINBASE_X402_MAINNET_READINESS.md"
+      - ".env.example"
       - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
   workflow_dispatch:
 
@@ -37,6 +50,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # This job proves exact-main source readiness only. It never reads
+          # production CDP credentials, never sets launch acknowledgements, and
+          # never performs a mainnet settlement.
           grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
           grep -q 'GEOMACRO_COMMERCIAL_LAUNCH_ACK' src/lib/commercial-launch-gate.server.ts
           grep -q 'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH' src/lib/commercial-launch-gate.server.ts
@@ -44,6 +60,8 @@ jobs:
           grep -q 'I_ACCEPT_REAL_USDC' src/lib/coinbase-x402.server.ts
           grep -q '0.02' src/lib/coinbase-x402.server.test.ts
           grep -q '20000' src/lib/coinbase-x402.server.test.ts
+          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
+          grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
             echo 'ERROR: .env.example must never activate the coordinated commercial launch gate.' >&2
             exit 1
@@ -52,3 +70,4 @@ jobs:
             echo 'ERROR: .env.example must never activate the Coinbase real-USDC gate.' >&2
             exit 1
           fi
+          echo 'PASS: Coinbase exact-head source readiness verified without production credentials or settlement.'
