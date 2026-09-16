@@ -139,8 +139,8 @@ describe("GOAT Flow mainnet-readiness negative payment contract matrix", () => {
   });
 
   it("accepts only the official API origin for the selected environment", () => {
-    process.env.GOATX402_ENVIRONMENT = "mainnet";
-    process.env.GOATX402_API_URL = "https://flow-api.testnet3.goat.network";
+    process.env.GOATX402_ENVIRONMENT = "testnet3";
+    process.env.GOATX402_API_URL = "https://flow-api.goat.network";
 
     expect(() => requireGoatFlowConfig()).toThrow(
       "GOATX402_API_URL must match the official selected GOAT Flow origin",

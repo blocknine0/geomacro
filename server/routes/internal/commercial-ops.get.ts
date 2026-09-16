@@ -16,13 +16,13 @@ export default defineEventHandler((event) => {
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Geomacro Commercial Operations</title>
 <style>
-:root{color-scheme:dark;background:#07090d;color:#f3f5f7;font-family:Inter,ui-sans-serif,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#07090d}main{max-width:1500px;margin:0 auto;padding:28px 22px 70px}.top{display:flex;gap:18px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.13em;color:#8ea0b6}.title{font-size:30px;margin:7px 0 4px}.muted{color:#8f9baa;font-size:13px;line-height:1.5}.panel{border:1px solid #222936;background:#0d1118;border-radius:14px;padding:16px;margin-top:18px}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px;min-width:160px}.field.grow{flex:1;min-width:280px}label{font-size:11px;color:#8f9baa}input,select,button{border:1px solid #303949;background:#111722;color:#eef2f6;border-radius:9px;padding:10px 11px;font:13px inherit}button{cursor:pointer;font-weight:600}button:hover{background:#17202d}.danger{color:#f0b6b6}.ok{color:#a9dfbd}.grid{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;margin-top:18px}.card{border:1px solid #222936;background:#0d1118;border-radius:12px;padding:14px}.card .k{font-size:11px;color:#8f9baa}.card .v{font-size:24px;font-weight:650;margin-top:7px;word-break:break-word}.section-title{font-size:17px;margin:0}.table-wrap{overflow:auto;max-height:560px;margin-top:12px;border:1px solid #202734;border-radius:10px}table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap}th,td{text-align:left;padding:8px 9px;border-bottom:1px solid #1c2430;border-right:1px solid #151c25}th{position:sticky;top:0;background:#111722;z-index:2;color:#aab5c2}td{color:#d9e0e7}.badge{display:inline-block;padding:3px 7px;border:1px solid #364155;border-radius:999px;font:10px ui-monospace,monospace}.notice{padding:11px 13px;border:1px solid #273144;border-radius:10px;background:#0a1018;font-size:12px;color:#aab5c2}.hidden{display:none}@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(130px,1fr))}}
+:root{color-scheme:dark;background:#07090d;color:#f3f5f7;font-family:Inter,ui-sans-serif,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#07090d}main{max-width:1500px;margin:0 auto;padding:28px 22px 70px}.top{display:flex;gap:18px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.13em;color:#8ea0b6}.title{font-size:30px;margin:7px 0 4px}.muted{color:#8f9baa;font-size:13px;line-height:1.5}.panel{border:1px solid #222936;background:#0d1118;border-radius:14px;padding:16px;margin-top:18px}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px;min-width:160px}.field.grow{flex:1;min-width:280px}label{font-size:11px;color:#8f9baa}input,select,button{border:1px solid #303949;background:#111722;color:#eef2f6;border-radius:9px;padding:10px 11px;font:13px inherit}button{cursor:pointer;font-weight:600}button:hover{background:#17202d}button:disabled{cursor:not-allowed;opacity:.45}.danger{color:#f0b6b6}.ok{color:#a9dfbd}.grid{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;margin-top:18px}.card{border:1px solid #222936;background:#0d1118;border-radius:12px;padding:14px}.card .k{font-size:11px;color:#8f9baa}.card .v{font-size:24px;font-weight:650;margin-top:7px;word-break:break-word}.section-title{font-size:17px;margin:0}.table-wrap{overflow:auto;max-height:560px;margin-top:12px;border:1px solid #202734;border-radius:10px}table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap}th,td{text-align:left;padding:8px 9px;border-bottom:1px solid #1c2430;border-right:1px solid #151c25}th{position:sticky;top:0;background:#111722;z-index:2;color:#aab5c2}td{color:#d9e0e7}.badge{display:inline-block;padding:3px 7px;border:1px solid #364155;border-radius:999px;font:10px ui-monospace,monospace}.notice{padding:11px 13px;border:1px solid #273144;border-radius:10px;background:#0a1018;font-size:12px;color:#aab5c2}.hidden{display:none}.draft-actions{display:flex;gap:6px}.draft-actions button{padding:6px 8px;font-size:11px}.approve{border-color:#315544}.reject{border-color:#5a3838}@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(130px,1fr))}}
 </style>
 </head>
 <body>
 <main>
   <div class="top">
-    <div><div class="eyebrow">GEOMACRO · OWNER-ONLY</div><h1 class="title">Commercial Operations & Proof</h1><div class="muted">Usage, entitlements, payments, settlement, testnet/mainnet separation, delivery evidence and shareable proof. Upstream news-source identities are never exposed here.</div></div>
+    <div><div class="eyebrow">GEOMACRO · OWNER-ONLY</div><h1 class="title">Commercial Operations & Proof</h1><div class="muted">Usage, entitlements, payments, settlement, testnet/mainnet separation, delivery evidence, growth drafts and shareable proof. Upstream news-source identities are never exposed here.</div></div>
     <div class="badge">execution_authorized = false</div>
   </div>
 
@@ -50,6 +50,16 @@ export default defineEventHandler((event) => {
     </div>
 
     <div class="panel">
+      <div class="top"><div><h2 class="section-title">Marketing draft queue</h2><div class="muted">Evidence-backed drafts only. Testnet/sandbox is not revenue. Approve/reject changes review state only; this page cannot publish to any external channel.</div></div><div class="badge">auto_publish = false</div></div>
+      <div class="controls" style="margin-top:12px">
+        <div class="field"><label>Draft status</label><select id="growthStatus"><option selected>all</option><option>draft</option><option>approved</option><option>rejected</option><option>published</option></select></div>
+        <button id="reloadGrowth">Reload drafts</button>
+      </div>
+      <div id="growthStatusText" class="muted" style="margin-top:10px"></div>
+      <div id="growthTable" class="table-wrap"></div>
+    </div>
+
+    <div class="panel">
       <div class="top"><div><h2 class="section-title">Daily usage rollup</h2></div></div>
       <div id="usageRollup" class="table-wrap"></div>
     </div>
@@ -70,7 +80,7 @@ export default defineEventHandler((event) => {
       <div id="proofStatus" class="muted" style="margin-top:10px"></div>
     </div>
 
-    <div class="notice" style="margin-top:18px">Internal detail is owner-only. Public proof is a separately generated redacted snapshot, never a direct public view of internal ledger tables.</div>
+    <div class="notice" style="margin-top:18px">Internal detail is owner-only. Public proof is a separately generated redacted snapshot, never a direct public view of internal ledger tables. Marketing approval is also separate from publication: approved drafts are not posted automatically.</div>
   </div>
 </main>
 <script>
@@ -83,6 +93,13 @@ function table(rows){
   const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))];
   return '<table><thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+keys.map(k=>'<td>'+esc(typeof r[k]==='object'?JSON.stringify(r[k]):r[k])+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
 }
+function growthTable(rows){
+  if(!Array.isArray(rows)||!rows.length)return '<div class="muted" style="padding:12px">No marketing drafts.</div>';
+  return '<table><thead><tr><th>created_at</th><th>trigger</th><th>title</th><th>status</th><th>channel_copies</th><th>evidence_sha256</th><th>review</th></tr></thead><tbody>'+rows.map(r=>{
+    const actions=r.status==='draft'?'<div class="draft-actions"><button class="approve growth-action" data-id="'+esc(r.id)+'" data-action="approve">Approve</button><button class="reject growth-action" data-id="'+esc(r.id)+'" data-action="reject">Reject</button></div>':'—';
+    return '<tr><td>'+esc(r.created_at)+'</td><td>'+esc(r.trigger_type)+'<br><span class="muted">'+esc(r.trigger_key)+'</span></td><td>'+esc(r.title)+'</td><td><span class="badge">'+esc(r.status)+'</span></td><td>'+esc(JSON.stringify(r.channel_copies||{}))+'</td><td>'+esc(r.evidence_sha256)+'</td><td>'+actions+'</td></tr>';
+  }).join('')+'</tbody></table>';
+}
 function summarize(data){
   const usage=data.recent_usage||[], pay=data.recent_payments||[];
   const req=usage.length, ok=usage.filter(x=>x.success).length;
@@ -93,6 +110,27 @@ function summarize(data){
   const cards=[['Requests shown',req],['Success rate',req?((ok/req)*100).toFixed(1)+'%':'0%'],['Credits charged',credits],['Settled payments',settled],['Revenue-classified payments',revenue],['Testnet payments',testnet]];
   $('cards').innerHTML=cards.map(([k,v])=>'<div class="card"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>').join('');
 }
+async function loadGrowth(){
+  if(!opsToken){$('growthStatusText').textContent='Load the dashboard first.';return}
+  $('growthStatusText').textContent='Loading drafts…';
+  try{
+    const status=$('growthStatus').value;
+    const r=await fetch('/api/internal/commercial-growth?status='+encodeURIComponent(status)+'&limit=100',{headers:{'x-geomacro-ops-token':opsToken,'accept':'application/json'},cache:'no-store'});
+    const j=await r.json(); if(!r.ok||!j.ok)throw new Error(j?.error?.message||'Draft load failed');
+    $('growthTable').innerHTML=growthTable(j.data); $('growthStatusText').innerHTML='<span class="ok">Loaded '+esc(j.data.length)+' draft(s). No external publication performed.</span>';
+  }catch(e){$('growthStatusText').innerHTML='<span class="danger">'+esc(e.message)+'</span>'}
+}
+async function reviewGrowth(id,action){
+  if(!opsToken)return;
+  $('growthStatusText').textContent=(action==='approve'?'Approving':'Rejecting')+' draft…';
+  try{
+    const r=await fetch('/api/internal/commercial-growth',{method:'POST',headers:{'content-type':'application/json','x-geomacro-ops-token':opsToken},body:JSON.stringify({action,id,reviewer:'geomacro_owner'})});
+    const j=await r.json(); if(!r.ok||!j.ok)throw new Error(j?.error?.message||'Review failed');
+    if(j.publication_performed!==false)throw new Error('Safety boundary violation: review unexpectedly reported publication');
+    $('growthStatusText').innerHTML='<span class="ok">Draft '+esc(action)+'d. No external publication performed.</span>';
+    await loadGrowth();
+  }catch(e){$('growthStatusText').innerHTML='<span class="danger">'+esc(e.message)+'</span>'}
+}
 async function load(){
   opsToken=$('token').value.trim();
   if(opsToken.length<32){$('status').innerHTML='<span class="danger">Enter the owner token.</span>';return}
@@ -102,6 +140,7 @@ async function load(){
     const j=await r.json(); if(!r.ok||!j.ok)throw new Error(j?.error?.message||'Load failed');
     summarize(j.data); $('usageTable').innerHTML=table(j.data.recent_usage); $('paymentTable').innerHTML=table(j.data.recent_payments); $('usageRollup').innerHTML=table(j.data.usage_rollup); $('paymentRollup').innerHTML=table(j.data.payment_rollup);
     $('content').classList.remove('hidden'); $('status').innerHTML='<span class="ok">Loaded '+esc(j.data.generated_at)+'</span>';
+    await loadGrowth();
   }catch(e){$('status').innerHTML='<span class="danger">'+esc(e.message)+'</span>'}
 }
 async function publishProof(){
@@ -115,7 +154,7 @@ async function publishProof(){
     const url=location.origin+j.public_path; $('proofStatus').innerHTML='<span class="ok">Published:</span> <a style="color:#b8cdf2" target="_blank" rel="noopener" href="'+esc(url)+'">'+esc(url)+'</a>';
   }catch(e){$('proofStatus').innerHTML='<span class="danger">'+esc(e.message)+'</span>'}
 }
-$('load').addEventListener('click',load); $('publish').addEventListener('click',publishProof); $('forget').addEventListener('click',()=>{opsToken='';$('token').value='';$('content').classList.add('hidden');$('status').textContent='Token cleared from page memory.'});
+$('load').addEventListener('click',load); $('reloadGrowth').addEventListener('click',loadGrowth); $('growthStatus').addEventListener('change',loadGrowth); $('growthTable').addEventListener('click',e=>{const b=e.target.closest('.growth-action');if(!b)return;const id=b.getAttribute('data-id'),action=b.getAttribute('data-action');if(id&&(action==='approve'||action==='reject'))reviewGrowth(id,action)}); $('publish').addEventListener('click',publishProof); $('forget').addEventListener('click',()=>{opsToken='';$('token').value='';$('content').classList.add('hidden');$('status').textContent='Token cleared from page memory.'});
 </script>
 </body>
 </html>`;

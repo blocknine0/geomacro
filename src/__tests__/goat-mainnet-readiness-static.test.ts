@@ -7,6 +7,7 @@ const migration = readFileSync(
 );
 const service = readFileSync("src/lib/goat-pilot-service.server.ts", "utf8");
 const flow = readFileSync("src/lib/goat-flow.server.ts", "utf8");
+const envExample = readFileSync(".env.example", "utf8");
 
 describe("GOAT x402 mainnet-readiness static acceptance contract", () => {
   it("keeps Testnet3 and Mainnet explicitly separated with official chain identities", () => {
@@ -17,10 +18,15 @@ describe("GOAT x402 mainnet-readiness static acceptance contract", () => {
     expect(migration).toContain("environment in ('testnet3', 'mainnet')");
   });
 
-  it("keeps mainnet commercial fulfillment disabled until the explicit production gate is enabled", () => {
+  it("requires both the coordinated Geomacro launch lock and the GOAT-specific mainnet gate", () => {
+    expect(flow).toContain('assertCommercialLaunchAuthorized("goat_x402")');
     expect(service).toContain("GOATX402_MAINNET_COMMERCIAL_ENABLED");
     expect(service).toContain("GOAT_MAINNET_DISABLED");
     expect(service).toContain("mainnet commercial fulfillment is disabled until production launch gates pass");
+    expect(envExample).toContain("GOATX402_MAINNET_COMMERCIAL_ENABLED=false");
+    expect(envExample).not.toContain(
+      "GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH",
+    );
   });
 
   it("serializes idempotent request claims and distinguishes replay from conflicting terms", () => {

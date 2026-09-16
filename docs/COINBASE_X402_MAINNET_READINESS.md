@@ -11,7 +11,14 @@ Status: PREPARED, REAL-FUNDS GATE LOCKED.
 
 ## Activation boundary
 
-Production must fail closed unless `COINBASE_X402_MAINNET_ACK` exactly equals `I_ACCEPT_REAL_USDC` and all required production configuration is present. Keep that acknowledgement blank while preparing mainnet. Production credentials, a receiver address, and the approved price do not by themselves authorize real-USDC settlement.
+Coinbase production now requires **two independent owner-controlled acknowledgements**:
+
+1. `GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH`
+2. `COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC`
+
+The global acknowledgement coordinates the official Geomacro commercial launch across payment/distribution rails. The Coinbase-specific acknowledgement authorizes this provider only. Neither value may substitute for the other.
+
+Keep both acknowledgements blank throughout pre-launch preparation and acceptance testing. Production credentials, a receiver address, the approved price, or a provider-specific production setting do not by themselves authorize real-USDC settlement.
 
 ## Testnet evidence boundary
 
@@ -21,10 +28,12 @@ The successful Base Sepolia acceptance evidence remains historical testnet evide
 
 - dedicated Base mainnet receiver address with ownership and recovery verified
 - production Coinbase Developer Platform credentials stored server-side
-- production deployment environment configured
+- production deployment environment configured but not activated
 - settlement monitoring and reconciliation owner assigned
 - commercial data/source licensing confirmed for paid responses
-- exact deployment commit has green Product CI, CodeQL/security, and x402 acceptance/readiness checks
+- exact frozen release-candidate commit has green Product CI, CodeQL/security, schema, source-rights, resilience, and x402 acceptance/readiness checks
+- the coordinated launch manifest records every enabled provider/marketplace and its exact tested release candidate
+- explicit owner authorization to set the global coordinated-launch acknowledgement
 - explicit owner authorization to set `COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC`
 
-Until the final acknowledgement is explicitly authorized, Base mainnet settlement remains disabled.
+Until **both** acknowledgements are explicitly authorized during the coordinated official launch, Base mainnet settlement remains disabled.

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const route = readFileSync("src/routes/api.goat.pilot.order.ts", "utf8");
 const service = readFileSync("src/lib/goat-pilot-service.server.ts", "utf8");
+const flow = readFileSync("src/lib/goat-flow.server.ts", "utf8");
 
 describe("GOAT environment-aware commercial metadata", () => {
   it("derives 402 commercial metadata from the selected environment", () => {
@@ -16,7 +17,8 @@ describe("GOAT environment-aware commercial metadata", () => {
     expect(service).toContain("Production settlement evidence; revenue recognition still follows Geomacro accounting/legal policy.");
   });
 
-  it("keeps mainnet behind the explicit production gate", () => {
+  it("keeps mainnet behind both the global and GOAT-specific production gates", () => {
+    expect(flow).toContain('assertCommercialLaunchAuthorized("goat_x402")');
     expect(service).toContain("GOATX402_MAINNET_COMMERCIAL_ENABLED");
     expect(service).toContain("GOAT_MAINNET_DISABLED");
   });

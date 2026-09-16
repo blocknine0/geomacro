@@ -1,0 +1,189 @@
+name: Commercial Coordinated Launch Preflight
+
+on:
+  pull_request:
+    paths:
+      - "config/commercial-launch-manifest.json"
+      - "config/agent-marketplace-distribution.json"
+      - "docs/AGENT_MARKETPLACE_LAUNCH_PACKAGE.md"
+      - "package.json"
+      - "bun.lock"
+      - "public/.well-known/geomacro-agent.json"
+      - "public/.well-known/geomacro-commerce.json"
+      - "public/agent-commerce.md"
+      - "public/llms.txt"
+      - "src/lib/commercial-launch-gate.server.ts"
+      - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/lib/agent-commerce-delivery.server.ts"
+      - "src/lib/commercial-growth.server.ts"
+      - "server/api/internal/commercial-growth.get.ts"
+      - "server/api/internal/commercial-growth.post.ts"
+      - "server/routes/internal/commercial-ops.get.ts"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "src/lib/nevermined-x402.server.ts"
+      - "src/lib/nevermined-x402.server.test.ts"
+      - "src/routes/api.x402.nevermined_.intelligence.ts"
+      - "src/lib/goat-flow.server.ts"
+      - "src/lib/goat-pilot-service.server.ts"
+      - "src/__tests__/goat-flow-contract.test.ts"
+      - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
+      - "src/__tests__/agent-commerce-discovery-static.test.ts"
+      - "src/__tests__/commercial-growth-automation-static.test.ts"
+      - "src/__tests__/goat-mainnet-readiness-static.test.ts"
+      - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
+      - "src/lib/commercial-source-eligibility.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - "supabase/migrations/934_agent_commerce_delivery_ledger.sql"
+      - "supabase/migrations/935_commercial_marketing_draft_queue.sql"
+      - ".env.example"
+      - ".github/workflows/commercial-coordinated-launch-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prelaunch-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify launch, delivery, discovery, growth and provider gates
+        run: >-
+          bunx vitest run
+          src/lib/commercial-launch-gate.server.test.ts
+          src/lib/coinbase-x402.server.test.ts
+          src/lib/nevermined-x402.server.test.ts
+          src/__tests__/goat-flow-contract.test.ts
+          src/__tests__/agent-commerce-delivery-ledger-static.test.ts
+          src/__tests__/agent-commerce-discovery-static.test.ts
+          src/__tests__/commercial-growth-automation-static.test.ts
+          src/__tests__/goat-mainnet-readiness-static.test.ts
+          src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
+      - name: Verify manifest remains prelaunch
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const manifest = await Bun.file("config/commercial-launch-manifest.json").json();
+            if (manifest.launch_mode !== "prelaunch") throw new Error("launch_mode must remain prelaunch before owner-authorized launch");
+            if (manifest.production_funds_authorized !== false) throw new Error("production_funds_authorized must remain false");
+            if (manifest.official_launch_announced !== false) throw new Error("official_launch_announced must remain false");
+            for (const [name, provider] of Object.entries(manifest.providers ?? {})) {
+              if (provider.production_enabled !== false) throw new Error(`${name} production_enabled must remain false`);
+            }
+            if (manifest.providers?.coinbase_x402?.launch_cohort !== true) throw new Error("Coinbase must remain in the initial launch cohort");
+            if (manifest.providers?.nevermined?.launch_cohort !== true) throw new Error("Nevermined must remain in the initial launch cohort");
+            if (manifest.providers?.goat_x402?.launch_cohort !== false) throw new Error("GOAT mainnet must remain outside the initial cohort until manual merchant onboarding completes");
+            if (manifest.providers?.goat_x402?.status !== "deferred_manual_mainnet_merchant_onboarding") throw new Error("GOAT deferred status must remain explicit");
+            if (manifest.launch_rule?.allow_partial_provider_launch !== false) throw new Error("partial launch inside the approved cohort must remain disabled");
+            if (manifest.launch_rule?.allow_automatic_public_marketing_before_launch !== false) throw new Error("automatic public marketing must remain disabled before launch");
+          '
+      - name: Verify source and environment defaults cannot silently activate production
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
+          grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
+          grep -q 'assertCommercialLaunchAuthorized("goat_x402")' src/lib/goat-flow.server.ts
+          grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED' src/lib/goat-pilot-service.server.ts
+          grep -q 'https://api.sandbox.nevermined.app/' src/lib/nevermined-x402.server.ts
+          grep -q 'https://api.live.nevermined.app/' src/lib/nevermined-x402.server.ts
+          grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
+          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
+          grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
+          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+          grep -q '^NEVERMINED_NVM_API_KEY=$' .env.example
+          grep -q '^NEVERMINED_PLAN_ID=$' .env.example
+          if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
+            echo 'ERROR: global launch authorization must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
+            echo 'ERROR: Coinbase mainnet acknowledgement must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^NEVERMINED_X402_ENVIRONMENT=live$' .env.example; then
+            echo 'ERROR: Nevermined live must remain disabled before coordinated launch.' >&2
+            exit 1
+          fi
+          if grep -Eq '^GOATX402_MAINNET_COMMERCIAL_ENABLED=true$' .env.example; then
+            echo 'ERROR: GOAT mainnet must remain disabled before later manual onboarding and coordinated release.' >&2
+            exit 1
+          fi
+      - name: Verify Nevermined transport stays dependency-free and contract-pinned
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const p = await Bun.file("package.json").json();
+            if (p.dependencies?.["@nevermined-io/payments"] !== undefined) {
+              throw new Error("Nevermined SDK dependency must remain absent while its transitive graph violates advisory policy");
+            }
+          '
+          if grep -Fq '@nevermined-io/payments' bun.lock; then
+            echo 'ERROR: vulnerable Nevermined SDK graph re-entered bun.lock.' >&2
+            exit 1
+          fi
+          grep -q 'NEVERMINED_API_VERSION = "1.1"' src/lib/nevermined-x402.server.ts
+          grep -q '"/api/v1/x402/verify"' src/lib/nevermined-x402.server.ts
+          grep -q '"/api/v1/x402/settle"' src/lib/nevermined-x402.server.ts
+          grep -q '"Nevermined-Version": config.apiVersion' src/lib/nevermined-x402.server.ts
+          grep -q 'redirect: "manual"' src/lib/nevermined-x402.server.ts
+          grep -q 'AbortSignal.timeout' src/lib/nevermined-x402.server.ts
+      - name: Verify paid delivery remains source-rights and freshness gated
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'assertCommercialSourcesEligible' src/lib/agent-query-deliverability.server.ts
+          grep -q 'COMMERCIAL_SOURCE_NOT_ELIGIBLE' src/lib/agent-query-deliverability.server.ts
+          grep -q 'STALE_REQUIRED_DATA' src/lib/agent-query-deliverability.server.ts
+          grep -q 'status === "COMMERCIAL_OK"' src/lib/commercial-source-eligibility.server.ts
+          grep -q 'raw_redistribution_allowed' src/lib/commercial-source-eligibility.server.ts
+      - name: Verify provider-neutral settlement ordering is locked in source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'claim_agent_commerce_delivery' supabase/migrations/934_agent_commerce_delivery_ledger.sql
+          grep -q 'prepare_agent_commerce_delivery' supabase/migrations/934_agent_commerce_delivery_ledger.sql
+          grep -q 'PREPARED_LEASE_EXPIRED_RECONCILIATION_REQUIRED' supabase/migrations/934_agent_commerce_delivery_ledger.sql
+          grep -q 'prepareAgentCommerceDelivery' src/routes/api.x402.nevermined_.intelligence.ts
+          grep -q 'settleNeverminedPermissions' src/routes/api.x402.nevermined_.intelligence.ts
+          grep -q 'manualReview: true' src/routes/api.x402.nevermined_.intelligence.ts
+      - name: Verify agent commerce discovery remains truthful and prelaunch
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const c = await Bun.file("public/.well-known/geomacro-commerce.json").json();
+            if (c.service?.status !== "prelaunch") throw new Error("commerce catalog must remain prelaunch");
+            if (c.service?.execution_authorized !== false) throw new Error("commerce discovery must remain non-executing");
+            if (c.commercial_contract?.production_funds_authorized !== false) throw new Error("discovery cannot authorize production funds");
+            if (c.commercial_contract?.static_catalog_price_authoritative !== false) throw new Error("static catalog cannot become authoritative pricing");
+            const p = c.offers?.[0]?.providers ?? {};
+            if (p.coinbase_x402?.launch_cohort !== true || p.coinbase_x402?.production_enabled !== false) throw new Error("Coinbase discovery cohort mismatch");
+            if (p.nevermined?.launch_cohort !== true || p.nevermined?.production_enabled !== false) throw new Error("Nevermined discovery cohort mismatch");
+            if (p.goat_x402?.launch_cohort !== false || p.goat_x402?.production_enabled !== false) throw new Error("GOAT discovery must remain deferred");
+          '
+          grep -q '/.well-known/geomacro-commerce.json' public/llms.txt
+          grep -q '/.well-known/geomacro-commerce.json' public/agent-commerce.md
+          grep -q 'manual merchant application/approval' public/agent-commerce.md
+      - name: Verify marketing automation remains approval-gated and revenue-evidence only
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "new.environment not in ('mainnet', 'fiat')" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q "new.payment_status <> 'settled'" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q "new.reconciliation_status <> 'matched'" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q "new.commercial_revenue is not true" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q 'check (requires_human_approval = true)' supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q 'check (auto_publish_allowed = false)' supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q 'publication_performed: false' server/api/internal/commercial-growth.post.ts

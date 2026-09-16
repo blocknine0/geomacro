@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { COMMERCIAL_LAUNCH_ACK } from "./commercial-launch-gate.server";
 import {
   COINBASE_X402_MAINNET_ACK,
   COINBASE_X402_MAINNET_NETWORK,
@@ -16,6 +17,7 @@ import {
 } from "./coinbase-x402.server";
 
 const ENV_KEYS = [
+  "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
   "COINBASE_X402_ENVIRONMENT",
   "COINBASE_X402_PAY_TO",
   "COINBASE_X402_PRICE_USDC",
@@ -45,9 +47,15 @@ describe("Coinbase x402 configuration", () => {
     expect(config?.commercialEnvironment).toBe("testnet");
   });
 
-  it("refuses production until the explicit real-USDC acknowledgement and price are set", () => {
+  it("requires both the global coordinated-launch gate and Coinbase-specific mainnet gate", () => {
     process.env.COINBASE_X402_ENVIRONMENT = "production";
     process.env.COINBASE_X402_PAY_TO = PAY_TO;
+
+    expect(() => getCoinbaseX402Config()).toThrow(
+      "COINBASE_X402_PRODUCTION_LOCKED_UNTIL_COORDINATED_GEOMACRO_LAUNCH",
+    );
+
+    process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK = COMMERCIAL_LAUNCH_ACK;
     expect(() => getCoinbaseX402Config()).toThrow("Production x402 is locked");
 
     process.env.COINBASE_X402_MAINNET_ACK = COINBASE_X402_MAINNET_ACK;
@@ -64,10 +72,21 @@ describe("Coinbase x402 configuration", () => {
     expect(config?.commercialEnvironment).toBe("mainnet");
   });
 
-  it("keeps production locked when the acknowledgement is blank or incorrect even at the approved price", () => {
+  it("does not allow a Coinbase-specific acknowledgement to bypass the global launch lock", () => {
     process.env.COINBASE_X402_ENVIRONMENT = "production";
     process.env.COINBASE_X402_PAY_TO = PAY_TO;
     process.env.COINBASE_X402_PRICE_USDC = "0.02";
+    process.env.COINBASE_X402_MAINNET_ACK = COINBASE_X402_MAINNET_ACK;
+    expect(() => getCoinbaseX402Config()).toThrow(
+      "COINBASE_X402_PRODUCTION_LOCKED_UNTIL_COORDINATED_GEOMACRO_LAUNCH",
+    );
+  });
+
+  it("does not allow the global launch acknowledgement to bypass the Coinbase-specific lock", () => {
+    process.env.COINBASE_X402_ENVIRONMENT = "production";
+    process.env.COINBASE_X402_PAY_TO = PAY_TO;
+    process.env.COINBASE_X402_PRICE_USDC = "0.02";
+    process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK = COMMERCIAL_LAUNCH_ACK;
     expect(() => getCoinbaseX402Config()).toThrow("Production x402 is locked");
     process.env.COINBASE_X402_MAINNET_ACK = "NOT_AUTHORIZED";
     expect(() => getCoinbaseX402Config()).toThrow("Production x402 is locked");

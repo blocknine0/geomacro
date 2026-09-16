@@ -5,6 +5,7 @@ import {
   it,
 } from "vitest";
 
+import { COMMERCIAL_LAUNCH_ACK } from "../lib/commercial-launch-gate.server";
 import {
   GOAT_FLOW_ENVIRONMENTS,
   calculateGoatFlowSignature,
@@ -16,6 +17,7 @@ import {
 } from "../lib/goat-flow.server";
 
 const originalEnv = {
+  globalLaunchAck: process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK,
   environment: process.env.GOATX402_ENVIRONMENT,
   apiUrl: process.env.GOATX402_API_URL,
   apiKey: process.env.GOATX402_API_KEY,
@@ -23,11 +25,20 @@ const originalEnv = {
   merchantId: process.env.GOATX402_MERCHANT_ID,
 };
 
+function configureGoat(environment: "testnet3" | "mainnet") {
+  process.env.GOATX402_ENVIRONMENT = environment;
+  delete process.env.GOATX402_API_URL;
+  process.env.GOATX402_API_KEY = "test-key";
+  process.env.GOATX402_API_SECRET = "test-secret";
+  process.env.GOATX402_MERCHANT_ID = "merchant_test";
+}
+
 afterEach(() => {
   const restore = (name: string, value: string | undefined) => {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   };
+  restore("GEOMACRO_COMMERCIAL_LAUNCH_ACK", originalEnv.globalLaunchAck);
   restore("GOATX402_ENVIRONMENT", originalEnv.environment);
   restore("GOATX402_API_URL", originalEnv.apiUrl);
   restore("GOATX402_API_KEY", originalEnv.apiKey);
@@ -51,6 +62,39 @@ describe("GOAT Flow partner contract", () => {
       rpc_url: "https://rpc.goat.network",
       commercial_revenue: true,
     });
+  });
+
+  it("keeps Testnet3 available without the coordinated production acknowledgement", () => {
+    delete process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK;
+    configureGoat("testnet3");
+
+    expect(requireGoatFlowConfig()).toEqual(
+      expect.objectContaining({
+        environment: "testnet3",
+        api_url: GOAT_FLOW_ENVIRONMENTS.testnet3.api_url,
+      }),
+    );
+  });
+
+  it("blocks GOAT mainnet at the low-level provider config without the global launch acknowledgement", () => {
+    delete process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK;
+    configureGoat("mainnet");
+
+    expect(() => requireGoatFlowConfig()).toThrow(
+      "GOAT_X402_PRODUCTION_LOCKED_UNTIL_COORDINATED_GEOMACRO_LAUNCH",
+    );
+  });
+
+  it("opens only the low-level GOAT mainnet config after the exact global acknowledgement", () => {
+    configureGoat("mainnet");
+    process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK = COMMERCIAL_LAUNCH_ACK;
+
+    expect(requireGoatFlowConfig()).toEqual(
+      expect.objectContaining({
+        environment: "mainnet",
+        api_url: GOAT_FLOW_ENVIRONMENTS.mainnet.api_url,
+      }),
+    );
   });
 
   it("matches the documented GOAT HMAC delimiter algorithm for a fixed vector", () => {

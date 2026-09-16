@@ -3,9 +3,15 @@
     "id": "geomacro",
     "name": "Geomacro Agent",
     "version": "geomacro-agent-v1",
-    "description": "Grounded geopolitical and macro risk intelligence for software and AI agents through paid/private-pilot access.",
+    "description": "Grounded geopolitical and macro risk intelligence for software and AI agents.",
     "mode": "read_and_recommend",
     "execution_authorized": false
+  },
+  "discovery": {
+    "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
+    "agent_commerce_docs": "https://geomacro.live/agent-commerce.md",
+    "llms": "https://geomacro.live/llms.txt",
+    "a2a_card": "https://geomacro.live/.well-known/agent-card.json"
   },
   "endpoint": "https://geomacro.live/api/agent/risk",
   "a2a": {
@@ -21,8 +27,16 @@
   "capabilities": [
     {
       "id": "risk_preflight",
-      "access": "x402_technical_proof_or_paid_private_pilot",
+      "access": "paid_private_pilot_or_nonproduction_agent_commerce",
       "method": "POST",
+      "content_type": "application/json",
+      "execution_authorized": false
+    },
+    {
+      "id": "adaptive_risk_intelligence",
+      "access": "prelaunch_x402_or_provider_sandbox",
+      "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
       "content_type": "application/json",
       "execution_authorized": false
     }
@@ -30,6 +44,8 @@
   "grounding": {
     "stored_geomacro_intelligence": true,
     "canonical_public_gri": true,
+    "commercial_source_eligibility_required_for_paid_delivery": true,
+    "freshness_policy_required_for_paid_delivery": true,
     "external_web_search": false,
     "synthetic_fallback_score": false
   },
@@ -37,14 +53,19 @@
     "free_api_access": false,
     "free_structured_download": false,
     "financial_advice": false,
+    "legal_advice": false,
     "autonomous_execution": false,
     "wallet_custody": false,
     "transaction_signing": false,
     "sanctions_screening_replacement": false,
+    "counterparty_due_diligence_replacement": false,
     "raw_data_delivery": false,
+    "full_physical_route_or_vessel_model": false,
     "corridor_model": "directional endpoint-composed pilot"
   },
   "commercial": {
+    "launch_state": "prelaunch",
+    "production_funds_authorized": false,
     "structured_data_registry_version": "structured-entitlements-v1.0.0",
     "credit_contract_version": "credits-v1.1.0",
     "free_web": "public_website_dashboard_only",
@@ -53,6 +74,12 @@
     "commercial_structured_api": "/api/commercial/structural",
     "risk_api": "paid_private_pilot",
     "institutional_sla": "not_generally_available",
-    "x402_price_note": "Current Arc Testnet x402 pricing is technical proof only and is not institutional pricing or commercial revenue."
+    "price_source": "authoritative_payment_challenge_or_provider_plan",
+    "launch_cohort": ["coinbase_x402", "nevermined"],
+    "deferred_providers": {
+      "goat_x402_mainnet": "manual_merchant_application_and_approval_required"
+    },
+    "testnet_or_sandbox_is_revenue": false,
+    "automatic_public_marketing": false
   }
 }

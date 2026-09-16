@@ -1,0 +1,113 @@
+name: Nevermined x402 Sandbox Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/nevermined-x402.server.ts"
+      - "src/lib/nevermined-x402.server.test.ts"
+      - "src/routes/api.x402.nevermined_.intelligence.ts"
+      - "scripts/nevermined-sandbox-acceptance.ts"
+      - ".env.example"
+      - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
+  workflow_dispatch:
+    inputs:
+      run_provider_settlement:
+        description: "Run the real Nevermined sandbox verify + settle probe using configured sandbox credentials"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify Nevermined sandbox/live separation and transport contract
+        run: bunx vitest run src/lib/nevermined-x402.server.test.ts
+      - name: Verify committed defaults stay non-production
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+          grep -q '^NEVERMINED_NVM_API_KEY=$' .env.example
+          grep -q '^NEVERMINED_PLAN_ID=$' .env.example
+          grep -q '^NEVERMINED_X402_SCHEME=nvm:erc4337$' .env.example
+          grep -q '^NEVERMINED_X402_MAX_AMOUNT=$' .env.example
+          if grep -Eq '^NEVERMINED_X402_ENVIRONMENT=live$' .env.example; then
+            echo 'ERROR: Nevermined live environment must not be committed as active.' >&2
+            exit 1
+          fi
+          grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
+
+  provider-sandbox-settlement:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_provider_settlement == true
+    needs: sandbox-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEVERMINED_X402_ENVIRONMENT: sandbox
+      NEVERMINED_NVM_API_KEY: ${{ secrets.NEVERMINED_SANDBOX_NVM_API_KEY }}
+      NEVERMINED_PLAN_ID: ${{ vars.NEVERMINED_SANDBOX_PLAN_ID }}
+      NEVERMINED_X402_SCHEME: nvm:erc4337
+      NEVERMINED_X402_MAX_AMOUNT: ${{ vars.NEVERMINED_SANDBOX_MAX_AMOUNT }}
+      NEVERMINED_SANDBOX_X402_ACCESS_TOKEN: ${{ secrets.NEVERMINED_SANDBOX_X402_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Refuse missing credentials or any production launch acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in NEVERMINED_NVM_API_KEY NEVERMINED_PLAN_ID NEVERMINED_X402_MAX_AMOUNT NEVERMINED_SANDBOX_X402_ACCESS_TOKEN; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "ERROR: required sandbox configuration $name is missing." >&2
+              exit 1
+            fi
+          done
+          if [[ -n "${GEOMACRO_COMMERCIAL_LAUNCH_ACK:-}" ]]; then
+            echo 'ERROR: commercial launch acknowledgement must not be present during sandbox acceptance.' >&2
+            exit 1
+          fi
+          if [[ "${NEVERMINED_X402_ENVIRONMENT}" != "sandbox" ]]; then
+            echo 'ERROR: acceptance workflow is sandbox-only.' >&2
+            exit 1
+          fi
+      - name: Run Nevermined sandbox verify and settle acceptance
+        run: bun scripts/nevermined-sandbox-acceptance.ts artifacts/nevermined-sandbox-acceptance.json
+      - name: Verify artifact is explicitly non-revenue and secret-free
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const e = JSON.parse(fs.readFileSync('artifacts/nevermined-sandbox-acceptance.json', 'utf8'));
+          if (e.environment !== 'sandbox') throw new Error('artifact must be sandbox');
+          if (e.commercial_revenue !== false) throw new Error('sandbox cannot be revenue');
+          if (e.production_activation_performed !== false) throw new Error('sandbox acceptance cannot activate production');
+          if (e.secrets_recorded !== false || e.payer_identity_recorded !== false) throw new Error('artifact privacy boundary failed');
+          if (e.verify_valid !== true || e.settlement_evidence_valid !== true) throw new Error('provider acceptance evidence incomplete');
+          NODE
+      - name: Upload Nevermined sandbox evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nevermined-sandbox-acceptance-${{ github.sha }}
+          path: artifacts/nevermined-sandbox-acceptance.json
+          if-no-files-found: error
+          retention-days: 90

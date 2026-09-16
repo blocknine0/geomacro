@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import process from "node:process";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { SignJWT, importJWK, importPKCS8 } from "jose";
+import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
 import { recordCommercialPaymentEvent } from "./commercial-ops.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
@@ -115,13 +116,13 @@ export function getCoinbaseX402Config(): CoinbaseX402Config | null {
     throw new Error("COINBASE_X402_PAY_TO must be a valid EVM address");
   }
 
-  if (
-    rawEnvironment === "production" &&
-    process.env.COINBASE_X402_MAINNET_ACK?.trim() !== COINBASE_X402_MAINNET_ACK
-  ) {
-    throw new Error(
-      `Production x402 is locked. Set COINBASE_X402_MAINNET_ACK=${COINBASE_X402_MAINNET_ACK} only after Testnet acceptance gates pass.`,
-    );
+  if (rawEnvironment === "production") {
+    assertCommercialLaunchAuthorized("coinbase_x402");
+    if (process.env.COINBASE_X402_MAINNET_ACK?.trim() !== COINBASE_X402_MAINNET_ACK) {
+      throw new Error(
+        `Production x402 is locked. Set COINBASE_X402_MAINNET_ACK=${COINBASE_X402_MAINNET_ACK} only during the coordinated Geomacro launch after all acceptance gates pass.`,
+      );
+    }
   }
 
   const configuredPrice = process.env.COINBASE_X402_PRICE_USDC?.trim();

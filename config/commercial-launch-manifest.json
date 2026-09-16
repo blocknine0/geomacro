@@ -1,0 +1,69 @@
+{
+  "schema_version": "geomacro.commercial-launch-manifest.v1",
+  "launch_mode": "prelaunch",
+  "production_funds_authorized": false,
+  "official_launch_announced": false,
+  "global_launch_ack_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
+  "policy": "All production payment rails in the approved initial launch cohort and their marketplace promotion launch together only after the frozen release candidate passes every required gate and the owner explicitly authorizes the coordinated launch. Providers that require unresolved manual external onboarding remain excluded from that cohort and locked off until separately approved for a later coordinated release.",
+  "providers": {
+    "coinbase_x402": {
+      "status": "prelaunch_acceptance",
+      "launch_cohort": true,
+      "production_enabled": false,
+      "test_network": "Base Sepolia",
+      "production_network": "Base",
+      "asset": "USDC",
+      "provider_gate_env": "COINBASE_X402_MAINNET_ACK"
+    },
+    "goat_x402": {
+      "status": "deferred_manual_mainnet_merchant_onboarding",
+      "launch_cohort": false,
+      "production_enabled": false,
+      "test_network": "GOAT Testnet3",
+      "production_network": "GOAT mainnet",
+      "asset": "provider_capability_resolved",
+      "provider_gate_env": "GOATX402_MAINNET_COMMERCIAL_ENABLED",
+      "deferred_reason": "GOAT mainnet merchant access requires manual provider application/approval. Testnet3 remains technical proof only and GOAT mainnet cannot block the initial commercial launch cohort."
+    },
+    "nevermined": {
+      "status": "prelaunch_acceptance",
+      "launch_cohort": true,
+      "production_enabled": false,
+      "test_network": "sandbox",
+      "production_network": "production",
+      "asset": "plan_or_x402_contract",
+      "provider_gate_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK"
+    }
+  },
+  "distribution": {
+    "coinbase_bazaar": "testnet_indexing_evidence_only",
+    "agentic_market": "prelaunch",
+    "goat": "testnet_proof_only_mainnet_deferred_manual_onboarding",
+    "nevermined": "prelaunch",
+    "other_registries": "prelaunch"
+  },
+  "required_gates": [
+    "commercial_source_rights",
+    "exact_head_product_ci",
+    "codeql_security",
+    "database_schema_safety",
+    "payment_delivery_ledger",
+    "replay_and_concurrency_safety",
+    "ambiguous_settlement_reconciliation",
+    "source_freshness_and_deliverability",
+    "risk_object_signature_verification",
+    "gri_public_proof_consistency",
+    "privacy_safe_revenue_attribution",
+    "launch_cohort_nonproduction_acceptance",
+    "security_and_resilience",
+    "frozen_release_candidate_manifest",
+    "owner_launch_authorization"
+  ],
+  "launch_rule": {
+    "allow_partial_provider_launch": false,
+    "partial_launch_scope": "approved_launch_cohort_only",
+    "allow_testnet_as_revenue": false,
+    "allow_unreconciled_settlement_as_revenue": false,
+    "allow_automatic_public_marketing_before_launch": false
+  }
+}
