@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "config/commercial-launch-manifest.json"
+      - "config/agent-marketplace-distribution.json"
+      - "docs/AGENT_MARKETPLACE_LAUNCH_PACKAGE.md"
       - "package.json"
       - "bun.lock"
       - "public/.well-known/geomacro-agent.json"
@@ -16,6 +18,7 @@ on:
       - "src/lib/commercial-growth.server.ts"
       - "server/api/internal/commercial-growth.get.ts"
       - "server/api/internal/commercial-growth.post.ts"
+      - "server/routes/internal/commercial-ops.get.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "src/lib/nevermined-x402.server.ts"
@@ -97,12 +100,19 @@ jobs:
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
           grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
           grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
+          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+          grep -q '^NEVERMINED_NVM_API_KEY=$' .env.example
+          grep -q '^NEVERMINED_PLAN_ID=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
             echo 'ERROR: global launch authorization must not be committed as active.' >&2
             exit 1
           fi
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
             echo 'ERROR: Coinbase mainnet acknowledgement must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^NEVERMINED_X402_ENVIRONMENT=live$' .env.example; then
+            echo 'ERROR: Nevermined live must remain disabled before coordinated launch.' >&2
             exit 1
           fi
           if grep -Eq '^GOATX402_MAINNET_COMMERCIAL_ENABLED=true$' .env.example; then
