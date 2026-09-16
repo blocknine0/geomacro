@@ -41,6 +41,35 @@ describe("final non-mainnet launch acceptance contract", () => {
     expect(rollback).toContain("production_activation_performed: false");
   });
 
+  it("treats Early Warning distribution as a launch-critical prelaunch surface", () => {
+    const workflow = read(".github/workflows/final-nonmainnet-launch-acceptance.yml");
+    const distribution = JSON.parse(read("config/auto-distribution.json"));
+
+    for (const requiredPath of [
+      "config/auto-distribution.json",
+      "scripts/marketing/auto-distribute-alert.mjs",
+      "scripts/marketing/distribution-receipt-ledger.mjs",
+      "scripts/marketing/poll-public-early-warning.mjs",
+      "src/routes/api.early-warning.ts",
+      "supabase/migrations/937_early_warning_alert_ledger.sql",
+      "supabase/migrations/94*_early_warning_distribution*.sql",
+    ]) {
+      expect(workflow).toContain(requiredPath);
+    }
+
+    expect(workflow).toContain("Verify receipt-wired Early Warning distribution remains shadow-only");
+    expect(workflow).toContain("node scripts/marketing/test-public-feed-adapter.mjs");
+    expect(workflow).toContain("node scripts/marketing/test-distribution-receipt-ledger.mjs");
+    expect(workflow).toContain("Early Warning fixture unexpectedly reached live mode");
+
+    expect(distribution.mode).toBe("prelaunch-shadow");
+    expect(distribution.default_dry_run).toBe(true);
+    expect(distribution.live_publish_enabled).toBe(false);
+    expect(distribution.receipt_policy.live_worker_wired).toBe(true);
+    expect(distribution.receipt_policy.ambiguous_outcome_retry).toBe("manual_only");
+    expect(distribution.receipt_policy.stale_unfinalized_claim_retry).toBe("manual_only");
+  });
+
   it("keeps host-compatible x402 discovery truthful and prelaunch-only", () => {
     const extensionless = JSON.parse(read("public/.well-known/x402"));
     const json = JSON.parse(read("public/.well-known/x402.json"));
