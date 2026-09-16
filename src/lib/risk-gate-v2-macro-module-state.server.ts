@@ -1,5 +1,6 @@
 import { generateCountryMacroRiskComponent } from "./country-risk-v02-macro.server";
 import { generateRiskGateV2EurostatSovereignFiscalModuleState } from "./risk-gate-v2-eurostat-sovereign-fiscal.server";
+import { generateRiskGateV2WorldBankPpgSovereignFiscalModuleState } from "./risk-gate-v2-world-bank-ppg-sovereign-fiscal.server";
 import { buildRiskGateV2SupportedMacroStates } from "./risk-gate-v2-macro-module-state";
 import { composeRiskGateV2MacroStatesWithFiscalFallback } from "./risk-gate-v2-sovereign-fiscal-fallback";
 
@@ -13,8 +14,7 @@ type CountryMacroStateInput = {
 /**
  * Produce only the governed World Bank-backed macro/fiscal states. This export
  * exists so pre-promotion shadow validation can reproduce the WDI baseline
- * without touching a production fallback whose source gate is intentionally
- * still disabled at that stage.
+ * without touching production fallback layers.
  */
 export async function generateCountryRiskGateV2WdiMacroModuleStates(
   input: CountryMacroStateInput,
@@ -36,11 +36,15 @@ export async function generateCountryRiskGateV2WdiMacroModuleStates(
 /**
  * Production adapter for the supported Risk Gate v2 macro/fiscal modules.
  *
- * World Bank WDI remains the primary source. If its governed central-government
- * debt peer universe cannot produce sovereign_fiscal, Eurostat may supply a
- * separate general-government-debt fiscal state only after its own production
- * source gate, clean release manifest and >=20 concept-consistent peers pass.
- * The two debt concepts are never merged into one raw-value or peer universe.
+ * Fiscal precedence is deliberately concept-isolated:
+ *   1. World Bank WDI central-government debt (existing primary method)
+ *   2. Eurostat general-government debt where its governed release is present
+ *   3. World Bank PPG external-debt-stock pressure where an exact clean PPG/GNI
+ *      production manifest is present
+ *
+ * These concepts are never raw-value pooled or placed into one peer universe.
+ * Each fallback must independently satisfy its source gate, exact provenance,
+ * freshness and fixed >=20 comparable-peer requirement.
  */
 export async function generateCountryRiskGateV2MacroModuleStates(
   input: CountryMacroStateInput,
@@ -66,20 +70,35 @@ export async function generateCountryRiskGateV2MacroModuleStates(
       });
   } catch (error) {
     // Before migration 925, the Eurostat source is deliberately scoring-disabled.
-    // Treat only that exact activation boundary as "fallback unavailable" so
-    // shadow validation can continue from the WDI base. Any provider/database/
-    // schema error still propagates and fails closed rather than being hidden.
+    // Treat only that exact activation boundary as "fallback unavailable". Any
+    // provider/database/schema error still propagates and fails closed.
     if (
-      error instanceof Error &&
-      error.message === "Eurostat source-state mismatch for production scoring"
+      !(
+        error instanceof Error &&
+        error.message === "Eurostat source-state mismatch for production scoring"
+      )
     ) {
-      return baseStates;
+      throw error;
     }
-    throw error;
   }
+
+  if (eurostatFiscal) {
+    return composeRiskGateV2MacroStatesWithFiscalFallback({
+      base_states: baseStates,
+      fallback_sovereign_fiscal: eurostatFiscal,
+    });
+  }
+
+  const ppgFiscal =
+    await generateRiskGateV2WorldBankPpgSovereignFiscalModuleState({
+      country_iso3: input.country_iso3,
+      as_of: input.as_of,
+      generated_at: generatedAt,
+      risk_object_ids: input.risk_object_ids,
+    });
 
   return composeRiskGateV2MacroStatesWithFiscalFallback({
     base_states: baseStates,
-    fallback_sovereign_fiscal: eurostatFiscal,
+    fallback_sovereign_fiscal: ppgFiscal,
   });
 }
