@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  decryptCommercePayload,
+  encryptCommercePayload,
+} from "./agent-commerce-payload-crypto.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export type AgentCommerceProvider = "coinbase_x402" | "goat_x402" | "nevermined" | (string & {});
@@ -64,7 +68,9 @@ export async function claimAgentCommerceDelivery(input: {
     p_payment_fingerprint: input.paymentFingerprint,
     p_request_fingerprint: input.requestFingerprint,
     p_product_id: input.productId,
-    p_client_request_id: normalizeBounded(input.clientRequestId, 128),
+    // Client-provided request IDs may contain internal workflow names or other
+    // caller metadata. Persist only a one-way reference hash in the ledger.
+    p_client_request_id: commerceReferenceHash(input.clientRequestId),
     p_source_channel: normalizeBounded(input.sourceChannel, 96),
     p_rail: normalizeBounded(input.rail, 96),
     p_network: normalizeBounded(input.network, 128),
@@ -73,9 +79,13 @@ export async function claimAgentCommerceDelivery(input: {
     p_recipient_hash: commerceReferenceHash(input.recipientReference),
   });
   if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
+  const row = (Array.isArray(data) ? data[0] : data) as AgentCommerceDeliveryClaim | null;
   if (!row) throw new Error("AGENT_COMMERCE_DELIVERY_CLAIM_EMPTY");
-  return row as AgentCommerceDeliveryClaim;
+
+  if (row.response_payload !== null) {
+    row.response_payload = decryptCommercePayload(row.response_payload, row.response_sha256);
+  }
+  return row;
 }
 
 export async function prepareAgentCommerceDelivery(input: {
@@ -86,18 +96,21 @@ export async function prepareAgentCommerceDelivery(input: {
   responsePayload: unknown;
 }) {
   const db = requireRiskSupabase();
-  const responseSha256 = commerceFingerprint(input.responsePayload);
+  // The exact response is prepared before settlement for crash-safe delivery,
+  // but only an authenticated AES-256-GCM envelope is persisted. Missing or
+  // invalid encryption configuration fails closed before any settlement side effect.
+  const encrypted = encryptCommercePayload(input.responsePayload);
   const { data, error } = await db.rpc("prepare_agent_commerce_delivery", {
     p_provider: input.provider,
     p_provider_environment: input.providerEnvironment,
     p_payment_fingerprint: input.paymentFingerprint,
     p_claim_token: input.claimToken,
-    p_response_payload: input.responsePayload,
-    p_response_sha256: responseSha256,
+    p_response_payload: encrypted.envelope,
+    p_response_sha256: encrypted.plaintextSha256,
   });
   if (error) throw error;
   if (data !== true) throw new Error("AGENT_COMMERCE_DELIVERY_PREPARE_LOST_CLAIM");
-  return { responseSha256 };
+  return { responseSha256: encrypted.plaintextSha256 };
 }
 
 export async function completeAgentCommerceDelivery(input: {
