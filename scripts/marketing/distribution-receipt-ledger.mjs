@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { createClient } from '@supabase/supabase-js';
 
 const CHANNELS = new Set([
   'telegram',
@@ -62,12 +61,13 @@ export function distributionPayloadHash({ alertId, channel, payload }) {
     .digest('hex');
 }
 
-export function getDistributionServiceClient(env = process.env) {
+export async function getDistributionServiceClient(env = process.env) {
   const url = env.APP_SUPABASE_URL || env.SUPABASE_URL;
   const key = env.SUPABASE_SERVICE_ROLE_KEY || env.APP_SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error('Supabase URL and service-role key are required for distribution receipt writes');
   }
+  const { createClient } = await import('@supabase/supabase-js');
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
