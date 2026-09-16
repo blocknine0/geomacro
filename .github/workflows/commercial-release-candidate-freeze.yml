@@ -1,0 +1,369 @@
+name: Commercial Release Candidate Freeze Evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/commercial-release-candidate-freeze.yml"
+      - ".github/workflows/commercial-coordinated-launch-preflight.yml"
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact current main commit SHA to freeze"
+        required: true
+        type: string
+      confirmation:
+        description: "Type exactly FREEZE_GEOMACRO_COMMERCIAL_RC_TESTNET_ACCEPTANCE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: commercial-release-candidate-freeze
+  cancel-in-progress: false
+
+jobs:
+  policy-static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify freeze workflow remains prelaunch-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'FREEZE_GEOMACRO_COMMERCIAL_RC_TESTNET_ACCEPTANCE' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q 'COINBASE_X402_BASE_SEPOLIA_USDC' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q 'NEVERMINED_X402_ENVIRONMENT: sandbox' .github/workflows/commercial-release-candidate-freeze.yml
+          if grep -Eq 'COINBASE_X402_MAINNET_ACK:|GEOMACRO_COMMERCIAL_LAUNCH_ACK:|NEVERMINED_X402_ENVIRONMENT: live' .github/workflows/commercial-release-candidate-freeze.yml; then
+            echo 'ERROR: frozen-RC evidence workflow must never activate production payment acknowledgements.' >&2
+            exit 1
+          fi
+
+  freeze-candidate:
+    if: github.event_name == 'workflow_dispatch' && github.actor == 'blocknine0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+      FREEZE_CONFIRMATION: ${{ inputs.confirmation }}
+      GEOMACRO_COINBASE_X402_E2E_ACK: COINBASE_X402_BASE_SEPOLIA_USDC
+      GEOMACRO_COINBASE_X402_E2E_ARTIFACT_DIR: artifacts/coinbase-x402-base-sepolia-paid
+      NEVERMINED_X402_ENVIRONMENT: sandbox
+      NEVERMINED_NVM_API_KEY: ${{ secrets.NEVERMINED_SANDBOX_NVM_API_KEY }}
+      NEVERMINED_PLAN_ID: ${{ vars.NEVERMINED_SANDBOX_PLAN_ID }}
+      NEVERMINED_X402_SCHEME: nvm:erc4337
+      NEVERMINED_X402_MAX_AMOUNT: ${{ vars.NEVERMINED_SANDBOX_MAX_AMOUNT }}
+      NEVERMINED_SANDBOX_X402_ACCESS_TOKEN: ${{ secrets.NEVERMINED_SANDBOX_X402_ACCESS_TOKEN }}
+    steps:
+      - name: Validate explicit freeze acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$FREEZE_CONFIRMATION" != "FREEZE_GEOMACRO_COMMERCIAL_RC_TESTNET_ACCEPTANCE" ]]; then
+            echo 'ERROR: exact frozen-RC acknowledgement is required.' >&2
+            exit 1
+          fi
+          if [[ ! "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'ERROR: candidate_sha must be a full 40-character Git commit SHA.' >&2
+            exit 1
+          fi
+
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prove candidate is still exact current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          [[ "$actual" == "$CANDIDATE_SHA" ]]
+          git fetch --no-tags origin main
+          current_main="$(git rev-parse FETCH_HEAD)"
+          if [[ "$current_main" != "$CANDIDATE_SHA" ]]; then
+            echo "ERROR: candidate is stale. current main is $current_main" >&2
+            exit 1
+          fi
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: timeout 5m bun install --frozen-lockfile
+
+      - name: Verify coordinated launch remains locked off
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const m = await Bun.file("config/commercial-launch-manifest.json").json();
+            if (m.launch_mode !== "prelaunch") throw new Error("launch_mode must remain prelaunch");
+            if (m.production_funds_authorized !== false) throw new Error("production funds must remain unauthorized");
+            if (m.official_launch_announced !== false) throw new Error("official launch must remain unannounced");
+            for (const [name, p] of Object.entries(m.providers ?? {})) {
+              if (p.production_enabled !== false) throw new Error(`${name} production must remain disabled`);
+            }
+          '
+          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
+          grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
+          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+
+      - name: Exact-candidate Product CI suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          set -o pipefail
+          timeout 10m bun run test:app 2>&1 | tee artifacts/frozen-rc-product-tests.log
+          node scripts/test-risk-gate-phase1.mjs
+          node scripts/test-risk-gate-corridor-api-static.mjs
+          timeout 8m bun run build
+          git diff --exit-code -- src/routeTree.gen.ts
+
+      - name: Exact-candidate commercial/provider/source-rights suite
+        run: >-
+          timeout 8m bunx vitest run
+          src/lib/commercial-launch-gate.server.test.ts
+          src/lib/coinbase-x402.server.test.ts
+          src/lib/nevermined-x402.server.test.ts
+          src/__tests__/goat-flow-contract.test.ts
+          src/__tests__/agent-commerce-delivery-ledger-static.test.ts
+          src/__tests__/agent-commerce-discovery-static.test.ts
+          src/__tests__/commercial-growth-automation-static.test.ts
+          src/__tests__/goat-mainnet-readiness-static.test.ts
+          src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
+          src/__tests__/commercial-source-rights-evidence-parity.test.js
+          src/__tests__/commercial-source-rights-runtime-migration.test.js
+
+      - name: Enforce dependency advisory policy
+        shell: bash
+        run: |
+          set +e
+          timeout 3m bun audit 2>&1 | tee artifacts/frozen-rc-dependency-audit.txt
+          audit_code=${PIPESTATUS[0]}
+          set -e
+          if [[ "$audit_code" -eq 0 ]]; then
+            exit 0
+          fi
+          today="$(date -u +%F)"
+          expiry="2026-10-12"
+          [[ "$today" < "$expiry" || "$today" == "$expiry" ]]
+          grep -Fq 'elliptic@6.6.1' artifacts/frozen-rc-dependency-audit.txt
+          grep -Fq 'GHSA-848j-6mx2-7j84' artifacts/frozen-rc-dependency-audit.txt
+          grep -Fq '1 vulnerability (1 low)' artifacts/frozen-rc-dependency-audit.txt
+          if grep -Eqi '(^|[[:space:]])(critical|high|moderate):' artifacts/frozen-rc-dependency-audit.txt; then
+            echo 'ERROR: critical/high/moderate dependency advisory present.' >&2
+            exit 1
+          fi
+
+      - name: Exact-candidate security and resilience suite
+        run: >-
+          timeout 8m bunx vitest run
+          src/__tests__/risk-gate-api-parser.test.ts
+          src/__tests__/risk-gate-api-hardening.test.ts
+          src/__tests__/risk-gate-runtime-fail-closed.test.ts
+          src/__tests__/risk-gate-verification-fail-closed.test.ts
+          src/__tests__/risk-supabase-timeout.test.ts
+      - name: Database migration static safety
+        run: timeout 3m bun run db:safety
+      - name: Deterministic Risk Gate stress run
+        run: timeout 4m bun run scripts/stress-risk-gate-core.ts --iterations 50000
+
+      - name: Setup pinned Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.117.0
+      - name: Start disposable local Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Replay full migration chain from zero
+        run: supabase db reset --local --no-seed
+      - name: Stop disposable Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+      - name: Validate Coinbase public Base Sepolia x402 resource
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -X POST https://api.cdp.coinbase.com/platform/v2/x402/validate \
+            -H 'Content-Type: application/json' \
+            -d '{"resource":"https://geomacro.live/api/x402/risk","method":"POST"}' \
+            > artifacts/coinbase-validator.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const d = JSON.parse(fs.readFileSync('artifacts/coinbase-validator.json', 'utf8'));
+          if (d.valid !== true) throw new Error('Coinbase validator did not return valid=true');
+          if (d.simulation?.outcome !== 'accepted') throw new Error('Coinbase validator simulation not accepted');
+          NODE
+
+      - name: Validate Coinbase Base Sepolia buyer secret without printing it
+        shell: bash
+        env:
+          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        run: |
+          set -euo pipefail
+          [[ -n "$GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY" ]]
+
+      - name: Run capped Coinbase Base Sepolia paid E2E
+        env:
+          GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+        run: node scripts/agentic/coinbase-x402-base-sepolia-e2e.mjs
+
+      - name: Validate Nevermined sandbox configuration without printing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in NEVERMINED_NVM_API_KEY NEVERMINED_PLAN_ID NEVERMINED_X402_MAX_AMOUNT NEVERMINED_SANDBOX_X402_ACCESS_TOKEN; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "ERROR: required Nevermined sandbox configuration $name is missing." >&2
+              exit 1
+            fi
+          done
+          [[ "$NEVERMINED_X402_ENVIRONMENT" == "sandbox" ]]
+
+      - name: Run Nevermined sandbox verify and settle acceptance
+        run: bun scripts/nevermined-sandbox-acceptance.ts artifacts/nevermined-sandbox-acceptance.json
+
+      - name: Verify Nevermined artifact remains non-revenue and secret-free
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const e = JSON.parse(fs.readFileSync('artifacts/nevermined-sandbox-acceptance.json', 'utf8'));
+          if (e.environment !== 'sandbox') throw new Error('Nevermined artifact must be sandbox');
+          if (e.commercial_revenue !== false) throw new Error('sandbox cannot be revenue');
+          if (e.production_activation_performed !== false) throw new Error('production activation must be false');
+          if (e.secrets_recorded !== false || e.payer_identity_recorded !== false) throw new Error('privacy boundary failed');
+          if (e.verify_valid !== true || e.settlement_evidence_valid !== true) throw new Error('provider acceptance evidence incomplete');
+          NODE
+
+      - name: Verify exact-head CodeQL, Hosting Alignment and scheduled GRI proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const repo = process.env.GITHUB_REPOSITORY;
+          const sha = process.env.CANDIDATE_SHA.toLowerCase();
+          const token = process.env.GH_TOKEN;
+          async function api(path) {
+            const r = await fetch(`https://api.github.com${path}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+              }
+            });
+            if (!r.ok) throw new Error(`GitHub API ${r.status}: ${await r.text()}`);
+            return r.json();
+          }
+          const data = await api(`/repos/${repo}/actions/runs?branch=main&per_page=100`);
+          const runs = data.workflow_runs ?? [];
+          function requireRun(name, event) {
+            const run = runs.find(r => r.name === name && r.head_sha?.toLowerCase() === sha && r.event === event && r.conclusion === 'success');
+            if (!run) throw new Error(`Missing successful exact-head ${name} (${event}) run for ${sha}`);
+            return { id: run.id, name: run.name, event: run.event, html_url: run.html_url, head_sha: run.head_sha, conclusion: run.conclusion };
+          }
+          const evidence = {
+            codeql: requireRun('CodeQL Security Scan', 'push'),
+            hosting_alignment: requireRun('Hosting Alignment', 'push'),
+            gri_scheduled: requireRun('GRI Public Proof Consistency', 'schedule')
+          };
+          fs.writeFileSync('artifacts/frozen-rc-exact-head-runs.json', JSON.stringify(evidence, null, 2) + '\n');
+          NODE
+
+      - name: Build immutable frozen release-candidate manifest
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const path = require('path');
+          const sha256 = p => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+          const files = [
+            'package.json',
+            'bun.lock',
+            'config/commercial-launch-manifest.json',
+            'config/agent-marketplace-distribution.json',
+            'docs/COMMERCIAL_SOURCE_RIGHTS.md',
+            '.github/workflows/commercial-release-candidate-freeze.yml'
+          ];
+          const migrations = fs.readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).sort();
+          const migrationDigest = crypto.createHash('sha256');
+          for (const f of migrations) {
+            const p = path.join('supabase/migrations', f);
+            migrationDigest.update(f).update('\0').update(fs.readFileSync(p)).update('\0');
+          }
+          const runs = JSON.parse(fs.readFileSync('artifacts/frozen-rc-exact-head-runs.json', 'utf8'));
+          const manifest = {
+            schema_version: 'geomacro.commercial-frozen-release-candidate.v1',
+            frozen_at: new Date().toISOString(),
+            candidate_sha: process.env.CANDIDATE_SHA,
+            current_main_verified: true,
+            launch_mode: 'prelaunch',
+            production_funds_authorized: false,
+            production_activation_performed: false,
+            official_launch_announced: false,
+            exact_head_evidence: runs,
+            acceptance: {
+              product_ci_equivalent: 'PASS',
+              commercial_preflight: 'PASS',
+              source_rights_parity: 'PASS',
+              security_and_resilience: 'PASS',
+              database_full_replay: 'PASS',
+              coinbase_public_validator: 'PASS',
+              coinbase_base_sepolia_paid_e2e: 'PASS_TESTNET_NON_REVENUE',
+              nevermined_sandbox_verify_settle: 'PASS_SANDBOX_NON_REVENUE',
+              codeql: 'PASS',
+              hosting_alignment: 'PASS',
+              gri_scheduled_proof: 'PASS'
+            },
+            hashes: Object.fromEntries(files.map(p => [p, sha256(p)])),
+            migrations_sha256: migrationDigest.digest('hex'),
+            evidence_hashes: {
+              coinbase_validator: sha256('artifacts/coinbase-validator.json'),
+              nevermined_sandbox: sha256('artifacts/nevermined-sandbox-acceptance.json'),
+              exact_head_runs: sha256('artifacts/frozen-rc-exact-head-runs.json')
+            },
+            owner_launch_authorization: 'NOT_GRANTED',
+            next_action: 'Owner may separately authorize coordinated production activation only after reviewing this artifact.'
+          };
+          fs.writeFileSync(`artifacts/commercial-frozen-rc-${process.env.CANDIDATE_SHA}.json`, JSON.stringify(manifest, null, 2) + '\n');
+          NODE
+
+      - name: Upload frozen release-candidate evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: commercial-frozen-rc-${{ inputs.candidate_sha }}
+          path: |
+            artifacts/commercial-frozen-rc-${{ inputs.candidate_sha }}.json
+            artifacts/frozen-rc-exact-head-runs.json
+            artifacts/frozen-rc-product-tests.log
+            artifacts/frozen-rc-dependency-audit.txt
+            artifacts/risk-gate-core-stress.json
+            artifacts/coinbase-validator.json
+            artifacts/coinbase-x402-base-sepolia-paid/*.json
+            artifacts/nevermined-sandbox-acceptance.json
+          if-no-files-found: error
+          retention-days: 180
+
+      - name: Record non-production boundary
+        if: always()
+        shell: bash
+        run: |
+          echo 'Frozen candidate evidence does not authorize production funds.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Coinbase payment in this workflow is Base Sepolia test USDC only, capped by the existing E2E script.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Nevermined acceptance in this workflow is sandbox only and commercial_revenue=false.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Production activation performed: false.' >> "$GITHUB_STEP_SUMMARY"
