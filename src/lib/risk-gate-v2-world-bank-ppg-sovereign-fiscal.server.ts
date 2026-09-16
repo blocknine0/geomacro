@@ -114,7 +114,7 @@ async function loadCleanPpgManifest(asOf: string) {
       denominator_license: "CC BY-4.0",
       numerator_response_sha256: metadata.numerator_response_sha256,
       denominator_response_sha256: metadata.denominator_response_sha256,
-      same_country_same_year_join: true,
+      same_country_same_year_join_required: true,
       semantic_boundary: SEMANTIC_BOUNDARY,
     };
     return {
