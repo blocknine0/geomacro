@@ -2,11 +2,15 @@ import {
   coinbaseX402PaymentRequirements,
   getCoinbaseX402Config,
 } from "./coinbase-x402.server";
+import {
+  getCircleGatewayProductionConfig,
+  getCircleGatewayProductionRequirement,
+} from "./circle-gateway-x402-production.server";
 import { providerRealFundsSecurityState } from "./provider-real-funds-security.server";
 
 const CANONICAL_PRODUCT = "geomacro_adaptive_risk_intelligence_v1" as const;
 
-export function buildX402DiscoveryDocument(originInput: string) {
+export async function buildX402DiscoveryDocument(originInput: string) {
   const origin = originInput.replace(/\/$/, "");
   const state = providerRealFundsSecurityState();
   const resources: Array<Record<string, unknown>> = [];
@@ -18,6 +22,7 @@ export function buildX402DiscoveryDocument(originInput: string) {
         resources.push({
           resource: `${origin}/api/x402/intelligence`,
           method: "POST",
+          provider: "coinbase_x402",
           product: CANONICAL_PRODUCT,
           description:
             "Adaptive source-governed geopolitical and macro risk intelligence with signed Risk Object and non-executing Risk Gate context where currently deliverable.",
@@ -36,6 +41,37 @@ export function buildX402DiscoveryDocument(originInput: string) {
       }
     } catch {
       // Fail closed. A half-configured production rail must never be advertised.
+    }
+  }
+
+  if (state.providers.circle_gateway_mainnet && state.ready) {
+    try {
+      const config = getCircleGatewayProductionConfig();
+      if (config?.environment === "production") {
+        const requirement = await getCircleGatewayProductionRequirement(config);
+        resources.push({
+          resource: `${origin}/api/x402/circle/intelligence`,
+          method: "POST",
+          provider: "circle_gateway_x402",
+          product: CANONICAL_PRODUCT,
+          description:
+            "Adaptive source-governed geopolitical and macro risk intelligence paid through Circle Gateway on the approved Base-mainnet USDC rail.",
+          tags: [
+            "geopolitical-risk",
+            "macro-risk",
+            "country-risk",
+            "corridor-risk",
+            "risk-gate",
+            "circle-gateway",
+            "ai-agents",
+          ],
+          accepts: [requirement],
+          availability: `${origin}/api/x402/risk/availability`,
+          execution_authorized: false,
+        });
+      }
+    } catch {
+      // Fail closed if Circle support/config cannot be proven at request time.
     }
   }
 
@@ -61,8 +97,19 @@ export function buildX402DiscoveryDocument(originInput: string) {
         resource: `${origin}/api/x402/intelligence`,
         method: "POST",
         product: CANONICAL_PRODUCT,
+        provider: "coinbase_x402",
         pricing: "runtime_402_challenge_only",
-        production_enabled: resources.length > 0,
+        production_enabled: state.providers.coinbase_mainnet && state.ready,
+      },
+      {
+        resource: `${origin}/api/x402/circle/intelligence`,
+        method: "POST",
+        product: CANONICAL_PRODUCT,
+        provider: "circle_gateway_x402",
+        pricing: "runtime_402_challenge_only",
+        production_enabled: state.providers.circle_gateway_mainnet && state.ready,
+        approved_initial_mainnet_network: "eip155:8453",
+        arc_mainnet_enabled: false,
       },
       {
         resource: `${origin}/api/x402/nevermined/intelligence`,
