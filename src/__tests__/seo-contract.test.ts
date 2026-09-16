@@ -13,8 +13,9 @@ const PRIMARY_INDEXABLE_ROUTES = [
   "https://geomacro.live/",
   "https://geomacro.live/intelligence",
   "https://geomacro.live/global-risk",
-  "https://geomacro.live/risk-gate",
   "https://geomacro.live/ask-geomacro",
+  "https://geomacro.live/agent-access",
+  "https://geomacro.live/risk-gate",
   "https://geomacro.live/data-api",
   "https://geomacro.live/institutional",
   "https://geomacro.live/research",
@@ -54,11 +55,22 @@ describe("public SEO contract", () => {
     const home = read("src/routes/index.tsx");
 
     expect(home).toContain("Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro");
-    expect(home).toContain("separate verified Risk Indices");
+    expect(home).toContain("free public research");
+    expect(home).toContain("governed machine access");
     expect(home).toContain('name: "robots", content: "index, follow');
     expect(home).toContain('rel: "canonical"');
     expect(home).toContain('name: "twitter:title"');
     expect(home).toContain('"@type": "WebApplication"');
+  });
+
+  it("makes Access and Pricing a crawlable commercial landing page without claiming mainnet is live", () => {
+    const route = read("src/routes/agent-access.tsx");
+
+    expect(route).toContain("AI Agent Risk Intelligence & Pay-per-Call Access | Geomacro");
+    expect(route).toContain('const URL = "https://geomacro.live/agent-access"');
+    expect(route).toContain('name: "robots", content: "index, follow');
+    expect(route).toContain("MAINNET PAY-PER-CALL · PRE-LAUNCH · REAL FUNDS OFF");
+    expect(route).toContain("0.02 USDC / successful paid call");
   });
 
   it("server-renders unique intelligence event metadata and body data", () => {
@@ -87,6 +99,7 @@ describe("public SEO contract", () => {
     expect(docsIndex).toContain('"@type": "CollectionPage"');
     expect(docsIndex).toContain("numberOfItems: DOCS_PAGE_COUNT");
     expect(docsIndex).toContain("separate public Risk Indices");
+    expect(docsIndex).toContain("mainnet pay-per-call agent path");
   });
 
   it("keeps technical proof and tester surfaces out of the sitemap", () => {
@@ -150,6 +163,7 @@ describe("public SEO contract", () => {
     expect(llms).toContain("Geopolitical Risk Index: LIVE");
     expect(llms).toContain("Macroeconomic Risk Index: LIVE");
     expect(llms).toContain("Critical Minerals Risk Index: LIVE");
+    expect(llms).toContain("AI-agent pay per call / x402: MAINNET PRE-LAUNCH");
     expect(llms).toContain("Risk Gate: PRIVATE PILOT");
     expect(llms).toContain("TECHNICAL PROOF");
 
