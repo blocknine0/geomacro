@@ -12,16 +12,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const TITLE = "Data, API & Agent · Geomacro";
+const TITLE = "Governed Risk Data, API & Agent Access · Geomacro";
 const DESCRIPTION =
-  "Access governed geopolitical and macro risk intelligence through paid structured APIs, signed Risk Objects and Risk Gate outputs.";
+  "Evaluate Geomacro's governed geopolitical, macroeconomic and critical-mineral risk data, commercial structured API, signed Risk Objects and Risk Gate Private Pilot.";
+const URL = "https://geomacro.live/data-api";
+const IMAGE = "https://geomacro.live/og-image-v2.png";
 
 const RISK_OBJECT_FIELDS = [
   ["Subject", "Country or directional corridor in the current controlled scope."],
   ["Risk state", "Current score or state, previous state and quantified change where available."],
   ["Attribution", "Drivers and contribution details that explain material movement."],
   ["Evidence", "Eligible evidence references, coverage and provenance that can be delivered to the customer."],
-  ["Confidence & freshness", "Confidence, generated time, expiry or freshness and degraded-state context."],
+  ["Confidence & freshness", "Confidence, generated time, expiry/freshness and degraded-state context."],
   ["Methodology", "Versioned schema and methodology identifiers plus integrity information."],
 ] as const;
 
@@ -39,11 +41,19 @@ export const Route = createFileRoute("/data-api")({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
+      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
-      { property: "og:url", content: "https://geomacro.live/data-api" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: URL },
+      { property: "og:image", content: IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
     ],
-    links: [{ rel: "canonical", href: "https://geomacro.live/data-api" }],
+    links: [{ rel: "canonical", href: URL }],
   }),
   component: DataApiPage,
 });
@@ -56,16 +66,17 @@ function DataApiPage() {
           GOVERNED DATA · PAID API · AGENT ACCESS
         </Badge>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
-          Structured risk intelligence for software, analysts and AI agents.
+          Use Geomacro risk intelligence inside your own workflow.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro exposes governed geopolitical and macro risk data through controlled paid access. Free Explorer remains the public website and dashboard. API credentials, structured data delivery, signed Risk Objects and Risk Gate are commercial capabilities.
+          Public Risk Intelligence and Risk Indices can be evaluated on the website. Teams that need governed machine-readable delivery can scope a commercial Private Pilot for structured country/corridor data, signed Risk Objects and Risk Gate outputs.
+        </p>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          Free Explorer is website/dashboard access, not a free API. Commercial delivery is entitlement-controlled, source-rights-aware and bounded to the exact capability and subject scope agreed for the pilot.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
-            <Link to="/contact">
-              Request a Founding Pilot <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Link to="/contact">Request a Founding Pilot <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link to="/docs">Read technical documentation</Link>
@@ -73,18 +84,37 @@ function DataApiPage() {
         </div>
       </section>
 
+      <section className="mt-14 grid gap-5 md:grid-cols-3">
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <Database className="h-5 w-5 text-primary" />
+          <h2 className="mt-3 text-xl font-semibold">Governed data</h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Receive only commercially eligible observations and provenance allowed by the customer's entitlement. Missing data remains explicit rather than becoming a fabricated score.
+          </p>
+        </article>
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <Braces className="h-5 w-5 text-primary" />
+          <h2 className="mt-3 text-xl font-semibold">Structured API</h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Machine-readable country/corridor digests and profiles can support internal research, monitoring and application workflows under an active commercial entitlement.
+          </p>
+        </article>
+        <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
+          <Bot className="h-5 w-5 text-primary" />
+          <h2 className="mt-3 text-xl font-semibold">Risk Objects & Risk Gate</h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Signed decision context can carry evidence, confidence, freshness and integrity into a customer-controlled policy workflow. Geomacro does not authorize execution.
+          </p>
+        </article>
+      </section>
+
       <section className="mt-14 rounded-2xl border border-primary/25 bg-primary/[0.04] p-6 sm:p-8">
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <Bot className="h-6 w-6 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-              COMMERCIAL MACHINE ACCESS
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-              One entitlement layer, independent of payment provider.
-            </h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">COMMERCIAL MACHINE ACCESS</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">Entitlement defines the product, not the payment rail.</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              A subscription, invoice or verified machine payment maps to a canonical Geomacro entitlement. The centralized Structured Data Entitlement Registry then decides exactly which capability, subject type, history depth and response limits are allowed. A payment provider cannot widen the payload.
+              A subscription, invoice or verified machine payment maps to a canonical Geomacro entitlement. That entitlement decides the capability, subject type, history depth and response limits. A provider or payment method cannot widen the payload.
             </p>
           </div>
           <div className="rounded-xl border border-border/70 bg-background/60 p-5">
@@ -92,7 +122,7 @@ function DataApiPage() {
             <code className="mt-2 block break-all rounded-md bg-muted/50 p-3 text-xs">
               POST https://geomacro.live/api/commercial/structural
             </code>
-            <p className="mt-5 font-mono text-xs text-muted-foreground">Example paid request</p>
+            <p className="mt-5 font-mono text-xs text-muted-foreground">Example request</p>
             <pre className="mt-2 overflow-x-auto rounded-md bg-muted/50 p-3 text-xs leading-relaxed">
 {`{
   "request_id": "client-request-0001",
@@ -104,7 +134,7 @@ function DataApiPage() {
 }`}
             </pre>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Machine discovery remains available at <code>/.well-known/geomacro-agent.json</code>. The <code>/api/agent/risk</code> route is a bounded paid/private-pilot and x402 technical-proof surface, not a free API fallback.
+              Machine discovery is available at <code>/.well-known/geomacro-agent.json</code>. Access to a discoverable route does not itself grant a commercial entitlement.
             </p>
           </div>
         </div>
@@ -113,9 +143,9 @@ function DataApiPage() {
       <section className="mt-14">
         <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Access model</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight">Who gets what.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight">A clear boundary between evaluation and commercial delivery.</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            The commercial layer is intentionally separated by access surface. Free is public website access. Analyst is a paid professional dashboard/research package. API + Risk Gate and Institutional add machine-readable delivery. Raw/private warehouse access is not a default customer entitlement at any tier.
+            These are current access boundaries, not a promise of self-serve enterprise availability. Pilot scope, permitted use, support, source rights and data handling must be agreed before sensitive or production-dependent workflows are introduced.
           </p>
         </div>
 
@@ -126,10 +156,10 @@ function DataApiPage() {
             <h3 className="mt-2 text-xl font-semibold">Free Explorer</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>Public Risk Intelligence and selected event/evidence pages.</li>
-              <li>Current public GRI visibility and methodology context.</li>
-              <li>Approved public country/corridor views.</li>
+              <li>Current public Risk Indices and methodology context.</li>
+              <li>Approved public country/corridor views where available.</li>
               <li>No API credential or structured-data download.</li>
-              <li>No signed Risk Object or Risk Gate.</li>
+              <li>No signed Risk Object or Risk Gate entitlement.</li>
             </ul>
           </article>
 
@@ -178,7 +208,7 @@ function DataApiPage() {
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Country structural profile</p>
           <h2 className="mt-3 text-2xl font-semibold">Historical context without a fabricated structural score.</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Paid governed profiles can return commercially eligible structural observations, source/coverage metadata and integrity context within the server-owned entitlement limits. Free Explorer does not receive the structured profile payload.
+            Paid governed profiles can return commercially eligible structural observations, source/coverage metadata and integrity context within server-owned entitlement limits. Free Explorer does not receive the structured profile payload.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {STRUCTURAL_FIELDS.map(([title, text]) => (
@@ -256,8 +286,8 @@ function DataApiPage() {
           <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
             <li>No custody or signing of customer wallet transactions.</li>
             <li>No replacement for sanctions/compliance screening or customer approvals.</li>
-            <li>No structural score or hidden structural weighting inside GRI/GRO.</li>
-            <li>No enterprise SLA or third-party certification unless separately obtained.</li>
+            <li>No hidden structural score or structural weighting inside the public Risk Indices or signed Risk Objects.</li>
+            <li>No enterprise SLA or third-party certification unless separately obtained and documented.</li>
           </ul>
         </article>
       </section>
