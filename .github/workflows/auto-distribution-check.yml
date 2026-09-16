@@ -1,0 +1,34 @@
+name: Auto Distribution Check
+
+on:
+  pull_request:
+    paths:
+      - "config/auto-distribution.json"
+      - "scripts/marketing/**"
+      - "docs/AUTO_DISTRIBUTION.md"
+      - "package.json"
+      - ".github/workflows/auto-distribution-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "config/auto-distribution.json"
+      - "scripts/marketing/**"
+      - "package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Render sample alert without external writes
+        run: node scripts/marketing/auto-distribute-alert.mjs --input=scripts/marketing/fixtures/sample-alert.json
