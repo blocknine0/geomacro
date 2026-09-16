@@ -1,0 +1,55 @@
+name: Regional Fiscal Machine Resource Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-regional-fiscal-machine-resources.mjs"
+      - ".github/workflows/regional-fiscal-machine-resources.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Audit direct machine resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-regional-fiscal-machine-resources.mjs | tee regional-fiscal-machine-resources.log
+          grep -q 'PASS: REGIONAL FISCAL MACHINE RESOURCE AUDIT COMPLETE - NO WRITES' regional-fiscal-machine-resources.log
+
+      - name: Enforce discovery boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.source_activation_allowed == false' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.scoring_changed == false' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.country_payability_changed == false' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.claim_boundary.reachability_is_not_rights_approval == true' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.claim_boundary.raw_cross_concept_pooling_allowed == false' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.claim_boundary.production_supported_country_count_added == 0' regional-fiscal-machine-resources.json >/dev/null
+          jq -e '.summary.resource_count == 4' regional-fiscal-machine-resources.json >/dev/null
+
+      - name: Print sanitized resource summary
+        run: jq '{generated_at,summary,results:[.results[]|{source_id,resource_id,reachable,http_status,final_url,byte_length,content_type,csv,json,error}],claim_boundary}' regional-fiscal-machine-resources.json
+
+      - name: Upload sanitized machine-resource evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: regional-fiscal-machine-resources
+          path: |
+            regional-fiscal-machine-resources.json
+            regional-fiscal-machine-resources.log
+          if-no-files-found: warn
+          retention-days: 30
