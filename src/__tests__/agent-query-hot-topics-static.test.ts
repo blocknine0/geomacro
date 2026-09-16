@@ -28,13 +28,25 @@ describe("adaptive hot-topic commercial delivery", () => {
     expect(loader).not.toContain("source_url");
   });
 
-  it("uses a versioned governed family taxonomy for question-specific filtering", () => {
-    expect(taxonomy).toContain('HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v1"');
-    expect(taxonomy).toContain('"military_conflict"');
-    expect(taxonomy).toContain('"sanctions_export_controls"');
-    expect(taxonomy).toContain('"shipping_chokepoints"');
-    expect(taxonomy).toContain('"natural_hazards"');
-    expect(taxonomy).toContain('"banking_financial_system"');
+  it("uses the v2 governed family taxonomy for question-specific filtering", () => {
+    expect(taxonomy).toContain('HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v2"');
+    for (const family of [
+      "military_conflict",
+      "sanctions_export_controls",
+      "shipping_chokepoints",
+      "natural_hazards",
+      "banking_financial_system",
+      "cyber_digital_infrastructure",
+      "technology_semiconductors_ai_controls",
+      "public_health_biosecurity",
+      "migration_refugee_displacement",
+      "climate_extreme_weather",
+      "capital_markets_asset_stress",
+      "legal_regulatory_policy",
+      "nuclear_security",
+    ]) {
+      expect(taxonomy).toContain(`"${family}"`);
+    }
     expect(loader).toContain('inferHotTopicFamiliesFromQuestion(input.plan.question_key)');
     expect(loader).toContain('intersectsRequestedFamilies');
     expect(loader).toContain('requested_families: requestedFamilies');
