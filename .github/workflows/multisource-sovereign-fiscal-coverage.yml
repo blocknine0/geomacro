@@ -1,0 +1,60 @@
+name: Multisource Sovereign Fiscal Coverage Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-multisource-sovereign-fiscal-coverage.mjs"
+      - "docs/SOVEREIGN_FISCAL_SOURCE_EXPANSION_100_COUNTRIES.md"
+      - ".github/workflows/multisource-sovereign-fiscal-coverage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run live multisource fiscal coverage audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-multisource-sovereign-fiscal-coverage.mjs | tee multisource-sovereign-fiscal-coverage.log
+          grep -q 'PASS: MULTISOURCE SOVEREIGN FISCAL COVERAGE AUDIT COMPLETE - NO WRITES' multisource-sovereign-fiscal-coverage.log
+
+      - name: Enforce discovery-only and fail-closed boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s multisource-sovereign-fiscal-coverage.json
+          jq -e '.writes_performed == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.production_activation_allowed == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.scoring_changed == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.country_payability_changed == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.source_contract.raw_cross_source_value_pooling_allowed == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.source_contract.cross_concept_peer_pooling_allowed == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.source_contract.missing_is_zero_risk == false' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.candidate_coverage_summary.production_supported_country_count_added == 0' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.world_bank_indicator_coverage | length == 6' multisource-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.regional_source_candidates | length >= 3' multisource-sovereign-fiscal-coverage.json >/dev/null
+          echo 'PASS: source discovery cannot silently activate scoring or payability.'
+
+      - name: Print candidate coverage summary
+        run: jq '{generated_at,current_production_baseline_accepted_countries,target_accepted_countries,candidate_coverage_summary,regional_metadata_probes}' multisource-sovereign-fiscal-coverage.json
+
+      - name: Upload sanitized source-expansion evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: multisource-sovereign-fiscal-coverage
+          path: |
+            multisource-sovereign-fiscal-coverage.json
+            multisource-sovereign-fiscal-coverage.log
+          if-no-files-found: warn
+          retention-days: 30
