@@ -40,6 +40,8 @@ on:
       - "src/lib/agent-query-deliverability.server.ts"
       - "supabase/migrations/**"
       - ".env.example"
+      - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
+      - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
       - ".github/workflows/commercial-coordinated-launch-preflight.yml"
   push:
     branches:
@@ -82,6 +84,8 @@ on:
       - "src/lib/agent-query-deliverability.server.ts"
       - "supabase/migrations/**"
       - ".env.example"
+      - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
+      - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
       - ".github/workflows/commercial-coordinated-launch-preflight.yml"
   workflow_dispatch:
 
@@ -199,6 +203,13 @@ jobs:
           grep -q 'usgs_mcs' scripts/commercial-source-rights-evidence.mjs
           grep -q "source_id = 'world_bank_wgi_political_stability'" supabase/migrations/936_commercial_source_rights_runtime_parity.sql
           grep -q "source_id = 'usgs_mcs'" supabase/migrations/936_commercial_source_rights_runtime_parity.sql
+      - name: Verify provider readiness workflows preserve exact-head/static boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^  push:' .github/workflows/coinbase-x402-mainnet-readiness.yml
+          grep -q '^  push:' .github/workflows/nevermined-x402-sandbox-acceptance.yml
+          grep -q "github.event_name == 'workflow_dispatch' && inputs.run_provider_settlement == true" .github/workflows/nevermined-x402-sandbox-acceptance.yml
       - name: Verify provider-neutral settlement ordering is locked in source
         shell: bash
         run: |
