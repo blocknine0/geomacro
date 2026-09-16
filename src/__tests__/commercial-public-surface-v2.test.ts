@@ -39,7 +39,8 @@ describe("commercial public surface v2", () => {
     const docs = read("src/routes/docs.tsx");
     const llms = read("public/llms.txt");
 
-    expect(about).toContain("parent/historical proof lineage");
+    expect(about).toContain("audited GRI v1.2 proof lineage");
+    expect(about).toContain("not a second live headline index");
     expect(research).toContain("historical combined GRI remains a versioned proof record");
     expect(docs).toContain("Historical GRI material therefore remains available as a methodology and audit reference");
     expect(llms).toContain("Historical combined-GRI snapshots remain versioned audit records");
@@ -90,5 +91,17 @@ describe("commercial public surface v2", () => {
     expect(availability).toContain("does not receive a synthetic or zero-risk substitute");
     expect(workspace).toContain("Refreshing verified readings");
     expect(workspace).not.toContain("risk.error?.message");
+  });
+
+  it("keeps machine discovery aligned with the same three-domain commercial identity", () => {
+    const agentContract = read("src/lib/geomacro-agent-contract.ts");
+    const agentDiscovery = read("public/.well-known/geomacro-agent.json");
+    const commerceDiscovery = read("public/.well-known/geomacro-commerce.json");
+
+    expect(agentContract).toContain("critical-mineral risk intelligence");
+    expect(agentDiscovery).toContain("critical-mineral risk intelligence");
+    expect(agentDiscovery).toContain('"current_public_risk_indices": true');
+    expect(commerceDiscovery).toContain("critical-mineral risk intelligence");
+    expect(commerceDiscovery).toContain('"critical minerals risk"');
   });
 });
