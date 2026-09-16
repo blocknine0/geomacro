@@ -8,6 +8,7 @@
   "canonical_openapi": "https://geomacro.live/openapi-x402.json",
   "canonical_availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
   "canonical_paid_endpoint": "https://geomacro.live/api/x402/intelligence",
+  "canonical_circle_paid_endpoint": "https://geomacro.live/api/x402/circle/intelligence",
   "initial_launch_cohort": [
     "coinbase_bazaar",
     "coinbase_agentic_market",
@@ -41,7 +42,7 @@
       "status": "submission_ready_hold_until_live_production_402",
       "listing_mode": "provider_submission_plus_live_service_validation",
       "public_submission_required": true,
-      "launch_action": "after canonical production 402 is live, run Circle seller readiness check, submit the service, then verify visibility through Circle Discovery API",
+      "launch_action": "after the dedicated Circle production 402 route is explicitly activated, run seller readiness, submit the service, then verify visibility through Circle Discovery API",
       "preferred_category": "DATA_AND_INTELLIGENCE_FINANCIAL_ANALYSIS",
       "circle_gateway_required_for_listing": false,
       "production_enabled": false
@@ -57,7 +58,7 @@
       "status": "registration_package_ready_hold_until_launch",
       "listing_mode": "free_origin_registration_then_crawler_probe",
       "public_submission_required": true,
-      "launch_action": "register geomacro.live only after the canonical endpoint returns an approved production 402; verify crawler sees OpenAPI and x402 discovery without testnet leakage",
+      "launch_action": "register geomacro.live only after an approved production endpoint returns a valid 402; verify crawler sees OpenAPI and x402 discovery without testnet leakage",
       "production_enabled": false
     },
     "payapi_market": {
@@ -93,7 +94,7 @@
       "status": "manifest_package_ready_hold_until_launch",
       "listing_mode": "base_mainnet_usdc_service_registration",
       "public_submission_required": true,
-      "launch_action": "submit the canonical Base-mainnet USDC resource only after live 402 and smoke settlement validation",
+      "launch_action": "submit an approved Base-mainnet USDC resource only after live 402 and smoke settlement validation",
       "production_enabled": false
     },
     "402bazaar": {
@@ -124,7 +125,10 @@
     "contact_email": "contact@geomacro.live",
     "short_description": "Machine-readable geopolitical and macro risk intelligence for country, directional-corridor and financial-agent pre-flight decisions.",
     "long_description": "Geomacro provides source-governed geopolitical and macro risk intelligence to software and AI agents. Requests are checked for current deliverability, freshness and commercial source eligibility before payment is requested. Paid delivery can include structured risk context, signed Risk Objects and non-executing Risk Gate decision context. Geomacro does not custody funds, sign customer transactions or replace sanctions screening, legal advice or counterparty due diligence.",
-    "approved_endpoint_paths": ["/api/x402/intelligence"],
+    "approved_endpoint_paths": [
+      "/api/x402/intelligence",
+      "/api/x402/circle/intelligence"
+    ],
     "nevermined_endpoint_paths": ["/api/x402/nevermined/intelligence"],
     "free_preflight_endpoint_paths": ["/api/x402/risk/availability"],
     "discovery_paths": [
