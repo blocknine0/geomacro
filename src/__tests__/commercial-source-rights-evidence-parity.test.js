@@ -20,8 +20,22 @@ const EXPECTED_VERIFIED = [
   "usgs_earthquake_hazards",
   "usgs_mcs",
   "world_bank_indicators",
+  "world_bank_qpsd",
   "world_bank_wgi_political_stability",
 ];
+
+const EXPECTED_REVIEWED_ON = {
+  eurostat_government_finance: "2026-09-15",
+  gdelt_v2_events: "2026-09-15",
+  ucdp_candidate: "2026-09-15",
+  ucdp_ged: "2026-09-15",
+  unhcr_refugee_statistics: "2026-09-15",
+  usgs_earthquake_hazards: "2026-09-15",
+  usgs_mcs: "2026-09-15",
+  world_bank_indicators: "2026-09-15",
+  world_bank_qpsd: "2026-09-16",
+  world_bank_wgi_political_stability: "2026-09-15",
+};
 
 describe("commercial source rights evidence parity", () => {
   it("keeps the complete runtime VERIFIED set explicit and reviewed", () => {
@@ -30,7 +44,7 @@ describe("commercial source rights evidence parity", () => {
     for (const sourceId of VERIFIED_COMMERCIAL_SOURCE_IDS) {
       const evidence = COMMERCIAL_SOURCE_RIGHTS_EVIDENCE[sourceId];
       expect(evidence.approved_status).toBe("VERIFIED");
-      expect(evidence.reviewed_on).toBe("2026-09-15");
+      expect(evidence.reviewed_on).toBe(EXPECTED_REVIEWED_ON[sourceId]);
       expect(evidence.provider.length).toBeGreaterThan(2);
       expect(evidence.dataset.length).toBeGreaterThan(4);
       expect(evidence.licence.length).toBeGreaterThan(4);
@@ -61,7 +75,7 @@ describe("commercial source rights evidence parity", () => {
   });
 
   it("keeps every runtime VERIFIED source visible in the commercialization control document", () => {
-    expect(rightsDoc).toContain("**Last reviewed:** 2026-09-15");
+    expect(rightsDoc).toContain("**Last reviewed:** 2026-09-16");
     for (const sourceId of VERIFIED_COMMERCIAL_SOURCE_IDS) {
       expect(rightsDoc).toContain(`\`${sourceId}\``);
     }

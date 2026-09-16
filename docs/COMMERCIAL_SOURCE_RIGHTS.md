@@ -1,7 +1,7 @@
 # Commercial source-rights evidence register
 
 **Status:** commercialization control document  
-**Last reviewed:** 2026-09-15
+**Last reviewed:** 2026-09-16
 
 This register records the engineering evidence and delivery restrictions used when Geomacro marks an external source eligible for paid Risk API / Risk Gate delivery.
 
@@ -28,6 +28,7 @@ Unknown or omitted eligibility fails closed as `UNVERIFIED`.
 | Source ID | Dataset / product | Current engineering status | Commercial delivery rule |
 |---|---|---:|---|
 | `world_bank_indicators` | World Development Indicators, World Bank source `2` | `VERIFIED` | Permitted only for the exact pinned WDI contract with attribution and provenance retained |
+| `world_bank_qpsd` | World Bank Quarterly Public Sector Debt (QPSD), DataBank source `3009` | `VERIFIED` | Exact QPSD dataset only. Derived sovereign-fiscal intelligence may be delivered with source attribution/provenance. General-government and central-government concepts remain separate; raw bulk redistribution is disabled |
 | `world_bank_wgi_political_stability` | Worldwide Governance Indicators, 2025 Revision | `VERIFIED` | Permitted for the WGI dataset itself under its recorded CC BY 4.0 terms; underlying third-party source material does not inherit this status |
 | `unhcr_refugee_statistics` | UNHCR Refugee Population Statistics Database | `VERIFIED` | Permitted for normalized/derived use under the dataset-specific CC BY 4.0 terms with required UNHCR attribution |
 | `ucdp_ged` | UCDP Georeferenced Event Dataset | `VERIFIED` | Permitted for the exact current UCDP dataset/version under CC BY 4.0 with required scholarly/dataset citations retained in policy evidence |
@@ -61,6 +62,23 @@ The machine-readable runtime evidence register is `scripts/commercial-source-rig
 - Current engineering eligibility: explicit `VERIFIED` only for the pinned WDI adapter contract above.
 
 A different World Bank catalogue, endpoint, licensed third-party dataset or product must not inherit this status automatically.
+
+### World Bank Quarterly Public Sector Debt (QPSD)
+
+- Adapter source ID: `world_bank_qpsd`
+- Exact dataset: Quarterly Public Sector Debt (QPSD), World Bank DataBank source `3009`, Data Catalog dataset `0037906`.
+- Official catalogue reference: `https://datacatalog.worldbank.org/search/dataset/0037906/quarterly-public-sector-debt`.
+- Recorded dataset classification: Public.
+- Recorded licence: `CC BY 4.0`, subject to the World Bank's applicable dataset additional terms and attribution requirements.
+- Production series are limited to `DP.DOD.DECT.CR.GG.Z1` (general-government gross debt, nominal value, percent of GDP) and `DP.DOD.DECT.CR.CG.Z1` (central-government gross debt, nominal value, percent of GDP).
+- General-government and central-government debt remain separate source-specific concepts and peer universes. Geomacro does not average, pool or relabel them merely to increase country coverage.
+- QPSD values are not pooled with WDI or Eurostat raw debt values. The production fallback hierarchy selects at most one independently validated sovereign-fiscal module state for a country.
+- Normalized observations retain the exact series ID, label, government sector, quarter, bulk-file hash, parser version, licence, retrieval time and country mapping.
+- Raw QPSD bulk redistribution is disabled in the Geomacro customer contract. Commercial customer delivery is Geomacro-derived sovereign-fiscal intelligence with permitted provenance and attribution.
+- Current engineering eligibility is `VERIFIED` for the exact QPSD dataset contract above. Actual production scoring remains separately gated by source operational state, a clean release manifest, the fixed comparable-peer minimum, freshness, full required-module country readiness and the protected global production census.
+- QPSD rights approval does not by itself make a country payable or activate a payment rail.
+
+A different World Bank debt database, catalogue, third-party field or licensed product must not inherit this QPSD status automatically.
 
 ### World Bank Worldwide Governance Indicators
 
