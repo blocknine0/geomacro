@@ -12,6 +12,10 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Research and methodology: LIVE
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
+- Risk Gate country-review coverage: 114 of 194 enabled sovereign countries accepted by the controlled production workflow census on 2026-09-16; 80 remained fail-closed
+- Accepted sovereign-fiscal path split in that census: 57 World Bank QPSD + 57 governed World Bank PPG
+- Every accepted census result preserved `execution_authorized=false`
+- World Bank QPSD governed production source: promotion gate passed and commercial-signal source remains active
 - Paid agent / x402 access: PRE-LAUNCH; non-production acceptance only
 - Coinbase x402: INITIAL LAUNCH COHORT; Base mainnet disabled pending coordinated launch
 - Nevermined: INITIAL LAUNCH COHORT; production/live disabled pending coordinated launch
@@ -84,7 +88,8 @@ Supported intents include single-subject assessment, comparison, bounded ranking
 - Geomacro provides external risk context. It does not custody customer funds or authorize customer transactions.
 - Risk Gate currently keeps `execution_authorized=false` at the Geomacro boundary.
 - The current Private Pilot Risk Object / Risk Gate scope is country and directional corridor risk.
-- Coverage is data-driven; Geomacro does not claim a universal supported-country count without a current production census.
+- The latest controlled production census measured 114 accepted sovereign countries out of 194 enabled sovereign countries. This is current four-module country-review coverage, not an all-country guarantee or a claim that every paid product is deliverable for all 114 under every request shape.
+- The remaining 80 countries fail closed when one or more required current inputs cannot be verified.
 - GRI is an evidence-weighted risk-intelligence measure, not a market probability and not a guarantee of future outcomes.
 - Missing or unavailable evidence is not silently converted into zero risk.
 - Sanctions/restrictions context is not a replacement for sanctions screening or legal/compliance review.
