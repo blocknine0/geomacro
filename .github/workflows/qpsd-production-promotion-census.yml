@@ -45,6 +45,7 @@ jobs:
           grep -q "raw_cross_source_value_pooling_allowed: false" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs
           grep -q "live_world_bank_qpsd_latest" src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts
           grep -q "generateRiskGateV2WorldBankQpsdSovereignFiscalModuleState" src/lib/risk-gate-v2-macro-module-state.server.ts
+          grep -q "enabled_for_commercial_signals = excluded.enabled_for_commercial_signals" supabase/migrations/930_world_bank_qpsd_production_source.sql
           if grep -q "I_ACCEPT_REAL_USDC" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts supabase/migrations/930_world_bank_qpsd_production_source.sql; then
             echo "::error title=Launch-gate boundary violated::QPSD data promotion must not activate Base mainnet payments."
             exit 1
@@ -82,19 +83,22 @@ jobs:
       - name: Validate authoritative production target
         run: node scripts/db/assert-authoritative-supabase.mjs
 
-      - name: Verify QPSD migration is already applied
+      - name: Verify QPSD registration is applied but scoring is still locked
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
           import { createClient } from '@supabase/supabase-js';
           const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-          const source = await db.from('live_external_sources').select('source_id,enabled_for_ingestion,enabled_for_commercial_signals,commercial_usage_status').eq('source_id', 'world_bank_qpsd').maybeSingle();
+          const source = await db.from('live_external_sources').select('source_id,enabled_for_ingestion,enabled_for_commercial_signals,commercial_usage_status,licence_name').eq('source_id', 'world_bank_qpsd').maybeSingle();
           if (source.error) throw source.error;
-          if (!source.data || source.data.enabled_for_ingestion !== true || source.data.enabled_for_commercial_signals !== true || source.data.commercial_usage_status !== 'COMMERCIAL_OK') {
+          if (!source.data || source.data.enabled_for_ingestion !== true || source.data.commercial_usage_status !== 'COMMERCIAL_OK' || source.data.licence_name !== 'CC BY 4.0') {
             throw new Error('Migration 930 is not applied to the authoritative production database. Run the production migration plan/apply workflow first.');
           }
-          console.log('PASS: QPSD production source registration is active.');
+          if (source.data.enabled_for_commercial_signals !== false) {
+            throw new Error('QPSD commercial signals are already enabled. Refusing first-promotion workflow because rollback ownership would be ambiguous.');
+          }
+          console.log('PASS: QPSD source is registered for governed ingestion and remains scoring-locked.');
           NODE
 
       - name: Download official QPSD bulk CSV
@@ -110,6 +114,28 @@ jobs:
           test -s "$WORLD_BANK_QPSD_BULK_CSV"
           sha256sum qpsd-bulk.zip | tee qpsd-bulk-download.sha256
 
+      - name: Enable QPSD as a reversible production candidate
+        id: promote
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          const updated = await db.from('live_external_sources')
+            .update({ enabled_for_commercial_signals: true, updated_at: new Date().toISOString() })
+            .eq('source_id', 'world_bank_qpsd')
+            .eq('commercial_usage_status', 'COMMERCIAL_OK')
+            .eq('enabled_for_ingestion', true)
+            .eq('enabled_for_commercial_signals', false)
+            .select('source_id,enabled_for_commercial_signals');
+          if (updated.error) throw updated.error;
+          if ((updated.data ?? []).length !== 1 || updated.data[0].enabled_for_commercial_signals !== true) {
+            throw new Error('QPSD candidate promotion compare-and-set failed; no census will run.');
+          }
+          console.log('PASS: QPSD candidate scoring enabled for this controlled promotion census.');
+          NODE
+
       - name: Run governed QPSD production ingest
         shell: bash
         run: |
@@ -120,6 +146,7 @@ jobs:
           grep -q '"base_mainnet_gate_changed": false' qpsd-production-ingest.log
 
       - name: Run full four-module production country census
+        id: census
         shell: bash
         run: |
           set -euo pipefail
@@ -127,6 +154,7 @@ jobs:
           test -s "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
 
       - name: Enforce 100-plus accepted countries and QPSD contribution
+        id: enforce
         shell: bash
         run: |
           set -euo pipefail
@@ -136,12 +164,46 @@ jobs:
           jq -e '.claim_boundary.execution_authorized_is_false == true' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
           jq -e '[.countries[] | select(.status == "ACCEPTED") | .risk_gate.execution_authorized] | all(. == false)' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
           jq -e '[.countries[] | select(.status == "ACCEPTED") | .module_states[] | select(.module == "sovereign_fiscal" and (.methodology_version | startswith("risk-gate-v2-sovereign-fiscal-world-bank-qpsd-source-specific-")))] | length >= 1' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
-          jq '{generated_at,denominator,summary,claim_boundary}' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
+          jq '{generated_at,denominator,summary,claim_boundary}' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" | tee qpsd-production-promotion-summary.json
           echo 'PASS: QPSD PROMOTION PRESERVES >=100 PRODUCTION-READY COUNTRIES WITH FAIL-CLOSED GATES'
+
+      - name: Verify successful QPSD promotion remains active
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          const source = await db.from('live_external_sources').select('enabled_for_commercial_signals').eq('source_id', 'world_bank_qpsd').single();
+          if (source.error) throw source.error;
+          if (source.data.enabled_for_commercial_signals !== true) throw new Error('QPSD promotion unexpectedly inactive after passing census');
+          console.log('PASS: QPSD production source remains active after >=100-country acceptance proof.');
+          NODE
+
+      - name: Roll back QPSD candidate on any failed promotion gate
+        if: ${{ failure() && steps.promote.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          const rolled = await db.from('live_external_sources')
+            .update({ enabled_for_commercial_signals: false, updated_at: new Date().toISOString() })
+            .eq('source_id', 'world_bank_qpsd')
+            .eq('enabled_for_commercial_signals', true)
+            .select('source_id,enabled_for_commercial_signals');
+          if (rolled.error) throw rolled.error;
+          if ((rolled.data ?? []).length !== 1 || rolled.data[0].enabled_for_commercial_signals !== false) {
+            throw new Error('CRITICAL: QPSD promotion failed and automatic rollback did not confirm the source lock.');
+          }
+          console.log('PASS: Failed QPSD promotion was rolled back to scoring-disabled state.');
+          NODE
 
       - name: Upload sanitized QPSD production evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: qpsd-production-promotion-census
           path: |
@@ -149,5 +211,6 @@ jobs:
             qpsd-production-ingest.log
             qpsd-production-global-country-census.json
             qpsd-production-global-country-census.log
+            qpsd-production-promotion-summary.json
           if-no-files-found: warn
           retention-days: 30
