@@ -7,6 +7,7 @@ import {
   inferAgentQueryIntent,
   inferAgentQueryTopics,
   type AgentAdaptiveQuery,
+  type AgentQueryTopic,
 } from "./agent-query-plan";
 import { checkAgentQueryDeliverability } from "./agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "./agent-query-external-modules.server";
@@ -31,7 +32,7 @@ const requestSchema = z.object({
 
 export type PaidQuestionPreflightRequest = z.infer<typeof requestSchema>;
 
-type RegistryRow = {
+export type PaidQuestionCountryRegistryRow = {
   iso3: string;
   country_name: string;
   aliases: unknown;
@@ -52,6 +53,7 @@ function normalizeText(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[’']/g, "'")
+    .replace(/[^a-z0-9\s'-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -71,7 +73,7 @@ function boundaryMatch(question: string, term: string) {
   return normalizedQuestion.indexOf(` ${normalizedTerm} `);
 }
 
-function directIso3Matches(question: string, rows: RegistryRow[]) {
+function directIso3Matches(question: string, rows: PaidQuestionCountryRegistryRow[]) {
   const tokens = new Set(question.match(/\b[A-Z]{3}\b/g) ?? []);
   const byIso3 = new Map(rows.map((row) => [row.iso3.toUpperCase(), row]));
   const out: CountryMatch[] = [];
@@ -84,7 +86,7 @@ function directIso3Matches(question: string, rows: RegistryRow[]) {
   return out;
 }
 
-function countryMatches(question: string, rows: RegistryRow[]) {
+function countryMatches(question: string, rows: PaidQuestionCountryRegistryRow[]) {
   const normalizedQuestion = normalizeText(question);
   const matches = [...directIso3Matches(question, rows)];
   for (const row of rows) {
@@ -115,9 +117,9 @@ function countryMatches(question: string, rows: RegistryRow[]) {
   return [...unique.values()].slice(0, MAX_MATCHES);
 }
 
-function mentionsHistoricalTime(question: string) {
+function mentionsUnsupportedHistoricalTime(question: string) {
   return /\b(?:as of|in|during|since)\s+(?:19|20)\d{2}\b/i.test(question)
-    || /\b(?:last year|two years ago|historical|previous year)\b/i.test(question);
+    || /\b(?:yesterday|last\s+(?:day|week|month|quarter|year)|\d+\s+(?:days?|weeks?|months?|quarters?|years?)\s+ago|historical|previous year)\b/i.test(question);
 }
 
 function inferActionType(question: string): "treasury_payment" | "vendor_payment" | "agent_payment" | "exposure_review" {
@@ -157,10 +159,11 @@ function changeSpec(question: string) {
 function looksDirectional(question: string, matches: CountryMatch[]) {
   if (matches.length < 2) return false;
   if (/\b(?:corridor|shipping route|trade route|cross[- ]border)\b/i.test(question)) return true;
+  const normalized = normalizeText(question);
   const first = matches[0];
   const second = matches[1];
-  const between = normalizeText(question).slice(Math.max(0, first.end), Math.max(0, second.start));
-  return /\b(?:to|into|toward|towards|from)\b/.test(between) || /\bfrom\b.*\bto\b/i.test(question);
+  const between = normalized.slice(Math.max(0, first.end), Math.max(0, second.start));
+  return /\b(?:to|into|toward|towards|from)\b/.test(between) || /\bfrom\b.*\bto\b/i.test(normalized);
 }
 
 function subjectsForQuestion(question: string, matches: CountryMatch[]) {
@@ -190,6 +193,15 @@ function questionHash(question: string) {
   return createHash("sha256").update(normalizeText(question), "utf8").digest("hex");
 }
 
+function inferredTopicsForQuestion(question: string): AgentQueryTopic[] {
+  const inferred = inferAgentQueryTopics(question);
+  if (inferred.length > 0) return inferred;
+  // A generic country-risk question is still safely answerable from the signed
+  // governed Risk Object. This avoids forcing callers to know Geomacro topic IDs.
+  if (/\b(?:country\s+)?risks?\b/i.test(question)) return ["risk_object"];
+  throw new Error("QUESTION_TOPIC_UNRESOLVED");
+}
+
 async function loadCountryRegistry() {
   const db = requireRiskSupabase();
   const { data, error } = await db
@@ -198,31 +210,33 @@ async function loadCountryRegistry() {
     .eq("enabled", true)
     .order("iso3");
   if (error) throw error;
-  const rows = (data ?? []) as RegistryRow[];
+  const rows = (data ?? []) as PaidQuestionCountryRegistryRow[];
   if (rows.length === 0) throw new Error("COUNTRY_REGISTRY_UNAVAILABLE");
   return rows;
 }
 
-export async function normalizePaidQuestion(raw: unknown): Promise<AgentAdaptiveQuery> {
+export function normalizePaidQuestionWithRegistry(
+  raw: unknown,
+  rows: PaidQuestionCountryRegistryRow[],
+): AgentAdaptiveQuery {
   const input = requestSchema.parse(raw);
-  if (mentionsHistoricalTime(input.question)) {
+  if (mentionsUnsupportedHistoricalTime(input.question)) {
     throw new Error("QUESTION_HISTORICAL_TIME_REQUIRES_EXPLICIT_STRUCTURED_AS_OF");
   }
+  if (rows.length === 0) throw new Error("COUNTRY_REGISTRY_UNAVAILABLE");
 
-  const rows = await loadCountryRegistry();
   const matches = countryMatches(input.question, rows);
   const subjects = subjectsForQuestion(input.question, matches);
-  const inferredTopics = inferAgentQueryTopics(input.question);
-  if (inferredTopics.length === 0) throw new Error("QUESTION_TOPIC_UNRESOLVED");
-
+  const inferredTopics = inferredTopicsForQuestion(input.question);
   const inferredIntent = inferAgentQueryIntent(input.question);
   const riskGateRequested = inferredTopics.includes("risk_gate") || inferredIntent === "risk_gate";
   const suppliedContext = input.risk_gate_context;
+  const amountUsdc = inferAmountUsdc(input.question);
   const inferredContext = riskGateRequested
     ? {
         policy_preset: "balanced" as const,
         action_type: inferActionType(input.question),
-        ...(inferAmountUsdc(input.question) !== undefined ? { amount_usdc: inferAmountUsdc(input.question) } : {}),
+        ...(amountUsdc !== undefined ? { amount_usdc: amountUsdc } : {}),
       }
     : undefined;
 
@@ -240,6 +254,10 @@ export async function normalizePaidQuestion(raw: unknown): Promise<AgentAdaptive
     risk_gate_context: suppliedContext ?? inferredContext,
     client_request_id: input.client_request_id,
   });
+}
+
+export async function normalizePaidQuestion(raw: unknown): Promise<AgentAdaptiveQuery> {
+  return normalizePaidQuestionWithRegistry(raw, await loadCountryRegistry());
 }
 
 export async function preflightPaidQuestion(raw: unknown) {
