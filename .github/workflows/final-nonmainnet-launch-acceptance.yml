@@ -5,26 +5,50 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/final-nonmainnet-launch-acceptance.yml'
+      - '.github/workflows/auto-distribution-shadow.yml'
+      - 'config/auto-distribution.json'
       - 'public/.well-known/x402'
       - 'public/.well-known/x402.json'
       - 'scripts/db/disposable-backup-restore-drill.sh'
+      - 'scripts/marketing/auto-distribute-alert.mjs'
+      - 'scripts/marketing/distribution-receipt-ledger.mjs'
+      - 'scripts/marketing/poll-public-early-warning.mjs'
+      - 'scripts/marketing/public-feed-adapter.mjs'
+      - 'scripts/marketing/test-distribution-receipt-ledger.mjs'
+      - 'scripts/marketing/test-public-feed-adapter.mjs'
       - 'scripts/ops/live-launch-surface-smoke.mjs'
       - 'scripts/ops/external-surface-security-smoke.mjs'
       - 'scripts/ops/nonproduction-rollback-incident-drill.mjs'
       - 'scripts/load-test-risk-gate-staging.ts'
       - 'src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts'
+      - 'src/lib/public-early-warning-rss.ts'
+      - 'src/routes/api.early-warning.ts'
+      - 'supabase/migrations/937_early_warning_alert_ledger.sql'
+      - 'supabase/migrations/94*_early_warning_distribution*.sql'
   push:
     branches: [main]
     paths:
       - '.github/workflows/final-nonmainnet-launch-acceptance.yml'
+      - '.github/workflows/auto-distribution-shadow.yml'
+      - 'config/auto-distribution.json'
       - 'public/.well-known/x402'
       - 'public/.well-known/x402.json'
       - 'scripts/db/disposable-backup-restore-drill.sh'
+      - 'scripts/marketing/auto-distribute-alert.mjs'
+      - 'scripts/marketing/distribution-receipt-ledger.mjs'
+      - 'scripts/marketing/poll-public-early-warning.mjs'
+      - 'scripts/marketing/public-feed-adapter.mjs'
+      - 'scripts/marketing/test-distribution-receipt-ledger.mjs'
+      - 'scripts/marketing/test-public-feed-adapter.mjs'
       - 'scripts/ops/live-launch-surface-smoke.mjs'
       - 'scripts/ops/external-surface-security-smoke.mjs'
       - 'scripts/ops/nonproduction-rollback-incident-drill.mjs'
       - 'scripts/load-test-risk-gate-staging.ts'
       - 'src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts'
+      - 'src/lib/public-early-warning-rss.ts'
+      - 'src/routes/api.early-warning.ts'
+      - 'supabase/migrations/937_early_warning_alert_ledger.sql'
+      - 'supabase/migrations/94*_early_warning_distribution*.sql'
   workflow_dispatch:
     inputs:
       staging_requests:
@@ -84,6 +108,32 @@ jobs:
               if (provider.production_enabled !== false) throw new Error(`${name} production must remain disabled`);
             }
           '
+      - name: Verify receipt-wired Early Warning distribution remains shadow-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const d = await Bun.file("config/auto-distribution.json").json();
+            if (d.mode !== "prelaunch-shadow") throw new Error("Early Warning distribution must remain prelaunch-shadow");
+            if (d.default_dry_run !== true) throw new Error("Early Warning distribution must default to dry-run");
+            if (d.live_publish_enabled !== false) throw new Error("Early Warning live push must remain disabled");
+            if (d.receipt_policy?.live_worker_wired !== true) throw new Error("Early Warning worker must remain receipt-ledger wired");
+            if (d.receipt_policy?.ambiguous_outcome_retry !== "manual_only") throw new Error("ambiguous delivery retry must remain manual-only");
+            if (d.receipt_policy?.stale_unfinalized_claim_retry !== "manual_only") throw new Error("stale unfinalized delivery retry must remain manual-only");
+          '
+          node scripts/marketing/test-public-feed-adapter.mjs
+          node scripts/marketing/test-distribution-receipt-ledger.mjs
+          node scripts/marketing/poll-public-early-warning.mjs \
+            --input=scripts/marketing/fixtures/sample-public-early-warning-feed.json \
+            --limit=5 \
+            --channels=telegram,discord,bluesky,mastodon \
+            > /tmp/geomacro-early-warning-shadow.json
+          if node scripts/marketing/poll-public-early-warning.mjs \
+            --input=scripts/marketing/fixtures/sample-public-early-warning-feed.json \
+            --live; then
+            echo "ERROR: Early Warning fixture unexpectedly reached live mode" >&2
+            exit 1
+          fi
 
   database-backup-restore:
     runs-on: ubuntu-latest
@@ -291,7 +341,7 @@ jobs:
           {
             echo '## Final non-mainnet launch acceptance'
             echo
-            echo '- Contract/self-tests: ${{ needs.contract.result }}'
+            echo '- Contract/self-tests (including receipt-wired Early Warning shadow lock): ${{ needs.contract.result }}'
             echo '- Disposable migration + backup/restore: ${{ needs.database-backup-restore.result }}'
             echo '- Rollback/incident drill: ${{ needs.rollback-incident.result }}'
             echo '- Live surface smoke: ${{ needs.live-surface-smoke.result }}'
@@ -299,5 +349,6 @@ jobs:
             echo '- Isolated staging load/SLO: ${{ needs.staging-load.result }}'
             echo
             echo 'No real-money payment or production/mainnet activation is performed by this workflow.'
+            echo 'Early Warning public push remains disabled unless separately owner-authorized and activated.'
             echo 'Outside-in security smoke is not a third-party penetration test or certification.'
           } >> "$GITHUB_STEP_SUMMARY"
