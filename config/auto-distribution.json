@@ -2,6 +2,7 @@
   "version": "1.0.0",
   "mode": "prelaunch",
   "default_dry_run": true,
+  "live_publish_enabled": false,
   "public_alert_policy": {
     "allowed_content_types": ["early_warning"],
     "required_visibility": "public",
