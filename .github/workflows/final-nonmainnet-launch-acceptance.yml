@@ -1,0 +1,299 @@
+name: Final Non-Mainnet Launch Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/final-nonmainnet-launch-acceptance.yml'
+      - 'scripts/db/disposable-backup-restore-drill.sh'
+      - 'scripts/ops/live-launch-surface-smoke.mjs'
+      - 'scripts/ops/external-surface-security-smoke.mjs'
+      - 'scripts/ops/nonproduction-rollback-incident-drill.mjs'
+      - 'scripts/load-test-risk-gate-staging.ts'
+      - 'src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/final-nonmainnet-launch-acceptance.yml'
+      - 'scripts/db/disposable-backup-restore-drill.sh'
+      - 'scripts/ops/live-launch-surface-smoke.mjs'
+      - 'scripts/ops/external-surface-security-smoke.mjs'
+      - 'scripts/ops/nonproduction-rollback-incident-drill.mjs'
+      - 'scripts/load-test-risk-gate-staging.ts'
+      - 'src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts'
+  workflow_dispatch:
+    inputs:
+      staging_requests:
+        description: 'Bounded staging requests (max 2000)'
+        required: true
+        default: '120'
+        type: string
+      staging_concurrency:
+        description: 'Staging concurrent workers (max 25)'
+        required: true
+        default: '8'
+        type: string
+      staging_mode:
+        description: 'country, corridor, or mixed'
+        required: true
+        default: 'mixed'
+        type: choice
+        options: [country, corridor, mixed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: final-nonmainnet-launch-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify final acceptance static contract
+        run: bunx vitest run src/__tests__/final-nonmainnet-launch-acceptance-static.test.ts
+      - name: Verify staging load production-host guard
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
+      - name: Verify prelaunch commercial lock remains closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const m = await Bun.file("config/commercial-launch-manifest.json").json();
+            if (m.launch_mode !== "prelaunch") throw new Error("launch_mode must remain prelaunch");
+            if (m.production_funds_authorized !== false) throw new Error("production funds must remain unauthorized");
+            if (m.official_launch_announced !== false) throw new Error("official launch must remain unannounced");
+            for (const [name, provider] of Object.entries(m.providers ?? {})) {
+              if (provider.production_enabled !== false) throw new Error(`${name} production must remain disabled`);
+            }
+          '
+
+  database-backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup pinned Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.117.0
+      - name: Start disposable local Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Replay migrations and perform disposable backup/restore drill
+        env:
+          GEOMACRO_BACKUP_RESTORE_DRILL_ACK: DISPOSABLE_LOCAL_ONLY
+          LAUNCH_DRILL_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db reset --local --no-seed
+          bash scripts/db/disposable-backup-restore-drill.sh
+      - name: Upload backup restore evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: final-nonmainnet-backup-restore-${{ github.run_id }}
+          path: |
+            artifacts/disposable-backup-restore-drill.json
+            artifacts/disposable-public-backup.dump
+          if-no-files-found: error
+          retention-days: 90
+      - name: Stop disposable Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+  rollback-incident:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout current candidate with rollback history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install current candidate dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Build current candidate
+        run: bun run build
+      - name: Build rollback target
+        id: rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          rollback_sha="$(git rev-parse HEAD^)"
+          echo "sha=$rollback_sha" >> "$GITHUB_OUTPUT"
+          git worktree add /tmp/geomacro-rollback "$rollback_sha"
+          cd /tmp/geomacro-rollback
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+      - name: Re-run dependency recovery and key lifecycle tests
+        run: >-
+          bunx vitest run
+          src/__tests__/risk-gate-dependency-recovery.test.ts
+          src/__tests__/risk-object-key-lifecycle.test.ts
+      - name: Run existing Risk Object key rotation drill
+        run: bun scripts/p0-risk-object-key-drill.ts
+      - name: Run nonproduction rollback and incident drill
+        env:
+          GEOMACRO_INCIDENT_DRILL_ACK: NONPRODUCTION_ONLY
+          GEOMACRO_DRILL_CURRENT_SHA: ${{ github.sha }}
+          GEOMACRO_DRILL_ROLLBACK_SHA: ${{ steps.rollback.outputs.sha }}
+        run: node scripts/ops/nonproduction-rollback-incident-drill.mjs
+      - name: Upload rollback incident evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: final-nonmainnet-rollback-incident-${{ github.run_id }}
+          path: |
+            artifacts/nonproduction-rollback-incident-drill.json
+            artifacts/p0-risk-object-key-drill.json
+          if-no-files-found: error
+          retention-days: 90
+
+  live-surface-smoke:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Run live public surface smoke
+        env:
+          GEOMACRO_LIVE_BASE_URL: https://geomacro.live
+          GEOMACRO_LIVE_EXPECTED_HOST: geomacro.live
+        run: node scripts/ops/live-launch-surface-smoke.mjs
+      - name: Upload live smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: final-nonmainnet-live-surface-${{ github.run_id }}
+          path: artifacts/live-launch-surface-smoke.json
+          if-no-files-found: error
+          retention-days: 90
+
+  external-surface-security:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Run outside-in non-destructive security smoke
+        env:
+          GEOMACRO_EXTERNAL_SECURITY_BASE_URL: https://geomacro.live
+          GEOMACRO_EXTERNAL_SECURITY_EXPECTED_HOST: geomacro.live
+        run: node scripts/ops/external-surface-security-smoke.mjs
+      - name: Upload external surface security evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: final-nonmainnet-external-security-${{ github.run_id }}
+          path: artifacts/external-surface-security-smoke.json
+          if-no-files-found: error
+          retention-days: 90
+
+  staging-load:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    env:
+      RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+      RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+      RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
+      RISK_GATE_LOAD_TEST_REQUESTS: ${{ inputs.staging_requests }}
+      RISK_GATE_LOAD_TEST_CONCURRENCY: ${{ inputs.staging_concurrency }}
+      RISK_GATE_LOAD_TEST_MODE: ${{ inputs.staging_mode }}
+      RISK_GATE_LOAD_TEST_COUNTRY_ISO3: USA
+      RISK_GATE_LOAD_TEST_CORRIDOR_ORIGIN_ISO3: USA
+      RISK_GATE_LOAD_TEST_CORRIDOR_DESTINATION_ISO3: CHN
+      RISK_GATE_LOAD_TEST_ALLOW_429: 'false'
+      RISK_GATE_LOAD_TEST_TIMEOUT_MS: '10000'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Require isolated staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${RISK_GATE_STAGING_BASE_URL:-}" ]]
+          [[ -n "${RISK_GATE_STAGING_API_KEY:-}" ]]
+      - name: Run bounded staging Risk Gate load
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts
+      - name: Upload staging SLO evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: final-nonmainnet-staging-load-${{ github.run_id }}
+          path: artifacts/risk-gate-staging-http-load.json
+          if-no-files-found: error
+          retention-days: 90
+
+  summary:
+    if: always()
+    needs:
+      - contract
+      - database-backup-restore
+      - rollback-incident
+      - live-surface-smoke
+      - external-surface-security
+      - staging-load
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record acceptance boundary
+        shell: bash
+        run: |
+          {
+            echo '## Final non-mainnet launch acceptance'
+            echo
+            echo '- Contract/self-tests: ${{ needs.contract.result }}'
+            echo '- Disposable migration + backup/restore: ${{ needs.database-backup-restore.result }}'
+            echo '- Rollback/incident drill: ${{ needs.rollback-incident.result }}'
+            echo '- Live surface smoke: ${{ needs.live-surface-smoke.result }}'
+            echo '- Outside-in security smoke: ${{ needs.external-surface-security.result }}'
+            echo '- Isolated staging load/SLO: ${{ needs.staging-load.result }}'
+            echo
+            echo 'No real-money payment or production/mainnet activation is performed by this workflow.'
+            echo 'Outside-in security smoke is not a third-party penetration test or certification.'
+          } >> "$GITHUB_STEP_SUMMARY"
