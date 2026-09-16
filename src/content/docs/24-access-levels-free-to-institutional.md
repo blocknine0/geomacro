@@ -6,17 +6,19 @@ Geomacro separates what is publicly available today from what is being offered t
 
 Current public surfaces include:
 
-- risk intelligence
-- Global Risk Index and verification context
+- Risk Intelligence
+- separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices with verification context
 - Ask Geomacro
 - public research and methodology
 - technical-proof surfaces clearly labelled as Testnet/secondary
 
+The public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain audit records rather than a second live headline product.
+
 ## Private Pilot
 
-Controlled machine/institutional access currently includes the Risk API and Risk Gate foundation for approved pilot workflows.
+Controlled machine/institutional access currently includes the Risk API, signed country/directional-corridor Risk Objects and Risk Gate foundation for approved pilot workflows.
 
-Private Pilot does **not** imply a generally available production SLA, automated enterprise onboarding or fully validated institutional methodology.
+Private Pilot does **not** imply a generally available production SLA, automated enterprise onboarding, production transaction authorization or fully validated institutional methodology. `execution_authorized=false` remains the Geomacro Risk Gate boundary.
 
 ## Professional / Team — PLANNED COMMERCIAL DIRECTION
 

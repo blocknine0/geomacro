@@ -4,7 +4,7 @@
 
 Risk Gate is a **Private Pilot** capability.
 
-The current repository implements the first commercial backend foundation for country and corridor pre-flight risk evaluation, including:
+The current repository implements the commercial backend foundation for country and directional corridor pre-flight risk evaluation, including:
 
 - versioned Geomacro Risk Objects (GROs);
 - Ed25519 issuer signing and signature verification;
@@ -16,7 +16,7 @@ The current repository implements the first commercial backend foundation for co
 - immutable decision audit records;
 - caller-owned execution after an explicit customer-controlled decision.
 
-These capabilities are implemented and tested as Private Pilot infrastructure. They **must not** be represented as generally available production service, production wallet interception, autonomous transaction authorization, full corridor/logistics modelling, or independently validated institutional risk methodology.
+These capabilities are implemented and tested as Private Pilot infrastructure. They **must not** be represented as generally available production service, production wallet interception, autonomous transaction authorization, full corridor/logistics modelling or independently validated institutional risk methodology.
 
 `execution_authorized` remains `false` at the Geomacro boundary. Geomacro supplies risk context and a bounded recommendation; the customer retains identity, permissions, policy, funds and control of any downstream execution.
 
@@ -24,13 +24,11 @@ Commercial source eligibility is not yet fully verified across all candidate evi
 
 ## Thesis
 
-Financial systems and autonomous agents increasingly have rails to move money, rebalance positions and initiate transactions.
-
-What they often lack is a verifiable way to understand when geopolitical or macroeconomic conditions have changed enough that their financial behaviour should be reviewed.
+Financial systems and autonomous agents increasingly have rails to move money, rebalance positions and initiate transactions. What they often lack is a verifiable way to understand when geopolitical, macroeconomic or strategic-resource conditions have changed enough that their financial behaviour should be reviewed.
 
 Geomacro provides that external risk context.
 
-> Geomacro turns changes in geopolitical and macro risk into verifiable, machine-readable context that financial systems and autonomous agents can check before they act.
+> Geomacro turns changes in real-world risk into verifiable, machine-readable context that financial systems and autonomous agents can check before they act.
 
 ## Core principle
 
@@ -49,11 +47,13 @@ A Risk Object should expose enough information to inspect:
 
 The product primitive is therefore **decision context**, not merely a scalar score.
 
-## Relationship to the Global Risk Index
+## Relationship to the public Risk Indices and audited GRI lineage
 
-GRI and Risk Gate share Geomacro's broader intelligence, provenance, attribution and verification principles, but they are not interchangeable outputs.
+The separate public Geopolitical, Macroeconomic and Critical Minerals Risk Indices and Risk Gate share Geomacro's broader intelligence, provenance, attribution and verification principles, but they are not interchangeable outputs.
 
-Risk Gate does **not** apply the global GRI score as a universal transaction rule.
+Risk Gate does **not** apply a public Risk Index score, or the historical combined GRI, as a universal transaction rule.
+
+The public Risk Indices preserve the audited `gri-v1.2.0` parent methodology and `gri-proof-v1.2.0` proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current headline product.
 
 The canonical current product architecture is:
 
@@ -61,7 +61,7 @@ The canonical current product architecture is:
 Real-world evidence and data
         -> Normalize, classify and preserve provenance
         -> Structured intelligence state
-             +-- Global Risk Index - Live
+             +-- Separate Risk Indices - Live
              +-- Ask Geomacro - Live
              +-- Country Risk Object - Private Pilot --+
              +-- Corridor Risk Object - Private Pilot -+-> Risk Gate - Private Pilot
@@ -76,7 +76,7 @@ Country and directional corridor Risk Objects are the current Private Pilot comm
 
 ## First commercial wedge
 
-Risk Gate v1 begins with country and corridor risk.
+Risk Gate v1 begins with country and directional corridor risk.
 
 Example subjects:
 
@@ -87,10 +87,11 @@ Corridor: India -> UAE
 
 Relevant risk drivers may include, where validated and commercially eligible:
 
-- sanctions and restrictions;
+- sanctions and restrictions context;
 - conflict and political instability;
 - macroeconomic stress;
 - FX/currency stress;
+- energy, commodity or critical-mineral stress;
 - shipping or supply-chain disruption;
 - relevant policy and regulatory shocks.
 
@@ -100,7 +101,7 @@ The buyer is not purchasing a prediction about one isolated headline. The intend
 
 The current corridor implementation is a **directional endpoint-composed pilot**.
 
-It evaluates corridor context using the origin and destination country Risk Objects under the pilot corridor methodology. It is useful for validating the product/API/policy architecture, but it is **not** a claim of full physical-route risk modelling.
+It evaluates corridor context using the origin and destination country Risk Objects under the pilot corridor methodology and can add direct bilateral evidence only when eligible evidence explicitly links the pair. It is useful for validating the product/API/policy architecture, but it is **not** a claim of full physical-route risk modelling.
 
 The current corridor pilot must not be described as modelling all of the following unless those capabilities are separately built and validated:
 
@@ -108,8 +109,9 @@ The current corridor pilot must not be described as modelling all of the followi
 - port-by-port logistics risk;
 - intermediary jurisdictions;
 - counterparty-specific exposure;
-- sanctions-screening of a particular transaction or entity;
+- transaction- or entity-specific sanctions screening;
 - vessel or shipment routing;
+- correspondent-bank paths;
 - full supply-chain dependency graphs.
 
 ## Geomacro Risk Object (GRO)
@@ -213,10 +215,17 @@ Risk Gate advisory response: CONTINUE / REDUCE_LIMIT / REQUIRE_APPROVAL / PAUSE
 Customer identity + permissions + policy enforcement
         |
         v
-Customer-controlled execution
+Customer-controlled action
 ```
 
-The current v1 machine decision contract has four advisory states. `REROUTE` is not a current v1 decision; it remains a future/advisory alternative only when a lower-risk corridor or route is separately validated.
+The current v1 machine decision contract has four advisory states:
+
+- `CONTINUE`
+- `REDUCE_LIMIT`
+- `REQUIRE_APPROVAL`
+- `PAUSE`
+
+`REROUTE` is not a current v1 decision; it remains a future/advisory alternative only when a lower-risk corridor or route is separately validated.
 
 The current service can accept a caller-supplied policy profile as an input to produce bounded decision context. That profile is an evaluation input inside the Risk Gate request, not customer-side policy enforcement. Customer identity, permissions, policy design and enforcement, compliance obligations and execution remain customer-controlled.
 
@@ -229,8 +238,8 @@ Risk intelligence alone does not determine the customer's final financial action
 The canonical product boundary is:
 
 ```text
-Risk Object
-        -> Risk Gate recommendation / decision context
+Country / directional corridor Risk Object
+        -> Risk Gate - Private Pilot
         -> Customer identity + permissions + policy
         -> Customer-controlled action
 ```
@@ -249,7 +258,7 @@ Geomacro Risk Gate does not itself:
 
 ## Private Pilot external API
 
-The current external Risk Gate API foundation supports authenticated country and corridor requests.
+The current external Risk Gate API foundation supports authenticated country and directional corridor requests.
 
 Key controls include:
 
@@ -281,7 +290,7 @@ Unauthenticated attacker-controlled traffic is not written into the commercial a
 
 Risk Gate must distinguish a valid verified state from a degraded or unverifiable state.
 
-Relevant states should include, as supported by the implemented contracts:
+Relevant states include, where supported by the implemented contracts:
 
 - `VERIFIED` — required integrity/freshness checks passed;
 - `STALE` — a last verified object exists but freshness has passed;
@@ -338,13 +347,15 @@ x402 or another machine-payment/access mechanism may become a commercial rail, b
 
 A payment, transport or agent protocol is an adapter over canonical Geomacro intelligence, not a separate risk engine and never an execution authorization path.
 
+Production real-money provider activation remains disabled until coordinated launch gates and explicit owner authorization are satisfied.
+
 ## Why Risk Gate is different
 
 Risk Gate combines five layers in one decision-context architecture:
 
-1. **External-world intelligence** — geopolitical and macro developments become structured risk rather than remaining only headlines or narrative research.
+1. **External-world intelligence** — geopolitical, macroeconomic and strategic-resource developments become structured risk rather than remaining only headlines or narrative research.
 2. **Change intelligence** — the system exposes what changed, by how much and why instead of returning only a static score.
-3. **Subject-specific risk** — global, country and corridor views share verification principles without applying one global scalar to every decision.
+3. **Subject-specific risk** — public domain indices, country and corridor views share verification principles without applying one public/global scalar to every decision.
 4. **Verifiable machine context** — Risk Objects carry versioning, freshness, integrity and issuer-verification primitives.
 5. **Pre-flight separation** — Geomacro provides external risk context before action while customer identity, permissions, policy and execution remain customer-controlled.
 
@@ -399,8 +410,6 @@ Customer identity + permissions + policy enforcement
 Customer-controlled action
 ```
 
-`REROUTE` may appear only as a separately validated advisory alternative in a later contract; it is not part of the current v1 decision enum.
-
 For early pilots, the same underlying intelligence may be delivered through founder-supported workflows, controlled product access, structured reports/alerts and private machine-readable interfaces while the production service is hardened.
 
 ## Commercial data and source eligibility
@@ -415,25 +424,6 @@ For each source, Geomacro should maintain policy metadata sufficient to decide w
 - redistribution;
 - customer-facing evidence/citations;
 - machine-readable commercial delivery.
-
-Conceptually:
-
-```text
-Source
-   |
-   v
-Rights + eligibility check
-   |
-   +-- eligible ----------> normalization + risk engine
-   |                              |
-   |                              v
-   |                       derived intelligence
-   |                              |
-   |                              v
-   |                       GRO / Risk Gate
-   |
-   +-- not eligible ------> excluded from commercial delivery
-```
 
 Geomacro commercializes structured/derived risk intelligence, not unrestricted copies of third-party datasets.
 
@@ -490,13 +480,11 @@ Risk Gate must remain labelled **Private Pilot** until deployed evidence satisfi
 - pilot pricing and support expectations;
 - service/availability commitments documented only when they can actually be supported.
 
-Passing these gates must be based on deployed and verified capability, not roadmap intent or documentation alone.
+Passing these gates must be based on evidence rather than code existence alone.
 
-## Current evidence boundary
+## What this does not yet prove
 
-The current Risk Gate foundation has passed repository-level tests and real authenticated Private Pilot proof flows for country and directional corridor requests, including immutable audit persistence.
-
-That evidence is meaningful engineering proof, but it is **not** equivalent to:
+Current repository implementation and internal tests do not, by themselves, prove:
 
 - independent third-party security certification;
 - independent methodology validation;
