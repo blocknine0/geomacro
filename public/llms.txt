@@ -13,7 +13,10 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
 - Paid agent / x402 access: PRE-LAUNCH; non-production acceptance only
-- Coinbase, GOAT, Nevermined and other real-money rails: DISABLED pending coordinated official launch
+- Coinbase x402: INITIAL LAUNCH COHORT; Base mainnet disabled pending coordinated launch
+- Nevermined: INITIAL LAUNCH COHORT; production/live disabled pending coordinated launch
+- GOAT Testnet3: TECHNICAL PROOF ONLY
+- GOAT mainnet: DEFERRED pending manual merchant application/approval; not an initial-launch blocker
 - Arc Testnet, prediction markets, Circle CCTP and Bridge & Swap: TECHNICAL PROOF
 
 Technical-proof surfaces are secondary to the risk-intelligence product and must not be interpreted as production mainnet, real-money institutional settlement or independent security certification.
@@ -36,15 +39,45 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 
 ## Machine access and payment boundary
 
-- Machine discovery: https://geomacro.live/.well-known/geomacro-agent.json
+- Agent discovery: https://geomacro.live/.well-known/geomacro-agent.json
+- Commerce discovery: https://geomacro.live/.well-known/geomacro-commerce.json
 - No-charge x402 deliverability check: POST https://geomacro.live/api/x402/risk/availability
 - Coinbase pre-launch adaptive intelligence resource: POST https://geomacro.live/api/x402/intelligence
 - Nevermined sandbox adaptive intelligence resource: POST https://geomacro.live/api/x402/nevermined/intelligence
+- The payment challenge/provider plan is the authoritative source for price and accepted payment terms; static discovery metadata is not authoritative pricing.
 - The exact requested intelligence must pass deliverability checks before a payment challenge is issued.
 - Requests with unavailable, stale or commercially ineligible required coverage are not chargeable.
 - A successful machine payment unlocks only the bounded requested product; it does not widen the customer's entitlement or expose raw/private warehouse data.
 - Payment does not authorize a downstream financial action. Risk Gate remains non-authorizing and `execution_authorized=false`.
 - During pre-launch, all real-money provider activation remains disabled even if an individual adapter is technically ready.
+
+## Current machine-readable request scope
+
+Supported subjects:
+
+- country by ISO3 code;
+- directional corridor by origin ISO3 and destination ISO3.
+
+Supported adaptive topics:
+
+- sovereign risk;
+- macro risk;
+- FX/external risk;
+- sanctions/restrictions context;
+- conflict/geopolitics;
+- trade-corridor context;
+- energy/commodities;
+- critical minerals;
+- political/governance risk;
+- banking/financial-system context;
+- food/agriculture;
+- natural hazards;
+- hot topics;
+- Risk Gate;
+- signed Risk Object;
+- GRI context.
+
+Supported intents include single-subject assessment, comparison, bounded ranking/filter, directional corridor, change-since, audit/provenance and Risk Gate evaluation.
 
 ## Key product boundaries
 
@@ -54,7 +87,18 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - Coverage is data-driven; Geomacro does not claim a universal supported-country count without a current production census.
 - GRI is an evidence-weighted risk-intelligence measure, not a market probability and not a guarantee of future outcomes.
 - Missing or unavailable evidence is not silently converted into zero risk.
+- Sanctions/restrictions context is not a replacement for sanctions screening or legal/compliance review.
 - Corridor composition does not imply full physical-route, vessel, counterparty or logistics-path modelling.
+
+## Commercial launch cohort
+
+The initial coordinated commercial launch cohort is Coinbase x402 plus Nevermined. Both remain production-disabled until the frozen release candidate passes required product, security, source-rights, payment, delivery, reconciliation and evidence gates and receives explicit owner authorization.
+
+GOAT mainnet is excluded from the initial cohort until manual merchant application/approval is complete. GOAT Testnet3 remains non-revenue technical proof and the mainnet runtime remains fail-closed.
+
+## Marketing boundary
+
+Verified production milestones may generate private evidence-backed marketing drafts for owner review. Testnet/sandbox activity is never treated as commercial revenue. Automatic public posting is disabled; every external post requires explicit owner approval.
 
 ## Technical implementation
 
