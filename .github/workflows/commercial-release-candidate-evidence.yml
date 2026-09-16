@@ -7,10 +7,13 @@ on:
       - "config/agent-marketplace-distribution.json"
       - "public/.well-known/geomacro-agent.json"
       - "public/.well-known/geomacro-commerce.json"
+      - "public/openapi-x402.json"
       - "public/agent-commerce.md"
       - "public/llms.txt"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/circle-gateway-x402-production.server.ts"
+      - "src/routes/api.x402.circle_.intelligence.ts"
       - "src/lib/nevermined-x402.server.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/lib/commercial-growth.server.ts"
@@ -45,10 +48,10 @@ jobs:
           if (e.production_activation_performed !== false) throw new Error('RC evidence cannot activate production');
           if (e.production_funds_authorized !== false) throw new Error('RC evidence cannot authorize production funds');
           if (e.official_launch_announced !== false) throw new Error('RC evidence cannot announce launch');
-          if (JSON.stringify(e.payment_launch_cohort) !== JSON.stringify(['coinbase_x402','nevermined'])) throw new Error('unexpected payment launch cohort');
+          if (JSON.stringify(e.payment_launch_cohort) !== JSON.stringify(['coinbase_x402','circle_gateway_x402','nevermined'])) throw new Error('unexpected payment launch cohort');
           if (!e.deferred_payment_providers?.goat_x402_mainnet) throw new Error('GOAT mainnet deferral is missing');
           const hashes = e.tracked_file_sha256 || {};
-          if (Object.keys(hashes).length < 10) throw new Error('tracked-file evidence is incomplete');
+          if (Object.keys(hashes).length < 14) throw new Error('tracked-file evidence is incomplete');
           for (const [file, hash] of Object.entries(hashes)) {
             if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error(`invalid hash for ${file}`);
           }
