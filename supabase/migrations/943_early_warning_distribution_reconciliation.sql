@@ -41,6 +41,27 @@ alter table public.early_warning_distribution_reconciliations enable row level s
 revoke all on table public.early_warning_distribution_reconciliations from PUBLIC, anon, authenticated;
 grant all on table public.early_warning_distribution_reconciliations to service_role;
 
+create or replace function public.guard_early_warning_distribution_reconciliation_immutable()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  raise exception 'Early Warning distribution reconciliation audit records are immutable';
+end;
+$$;
+
+revoke all on function public.guard_early_warning_distribution_reconciliation_immutable()
+  from PUBLIC, anon, authenticated;
+grant execute on function public.guard_early_warning_distribution_reconciliation_immutable()
+  to service_role;
+
+create trigger early_warning_distribution_reconciliation_immutable
+before update or delete on public.early_warning_distribution_reconciliations
+for each row
+execute function public.guard_early_warning_distribution_reconciliation_immutable();
+
 create or replace function public.reconcile_early_warning_distribution(
   p_receipt_id uuid,
   p_resolution text,
@@ -95,7 +116,7 @@ begin
   end if;
 
   if p_observed_published_at is not null and p_observed_published_at > v_now + interval '5 minutes' then
-    raise exception 'observed published time cannot be in the future';
+    raise exception 'observed published time cannot be materially in the future';
   end if;
 
   select * into v_receipt
@@ -175,6 +196,6 @@ grant execute on function public.reconcile_early_warning_distribution(uuid, text
   to service_role;
 
 comment on table public.early_warning_distribution_reconciliations is
-  'Append-only audit records for explicit manual resolution of ambiguous Early Warning delivery receipts.';
+  'Immutable append-only audit records for explicit manual resolution of ambiguous Early Warning delivery receipts.';
 comment on function public.reconcile_early_warning_distribution(uuid, text, text, text, text, timestamptz) is
-  'Manually resolves an ambiguous delivery receipt as PUBLISHED, RETRYABLE_FAILURE, or SKIPPED and appends an audit record. Service-role only.';
+  'Manually resolves an ambiguous delivery receipt as PUBLISHED, RETRYABLE_FAILURE, or SKIPPED and appends an immutable audit record. Service-role only.';
