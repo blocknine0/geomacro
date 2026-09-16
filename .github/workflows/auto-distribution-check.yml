@@ -31,3 +31,14 @@ jobs:
           node-version: "22"
       - name: Render sample alert without external writes
         run: node scripts/marketing/auto-distribute-alert.mjs --input=scripts/marketing/fixtures/sample-alert.json
+      - name: Verify live public publishing fails closed in prelaunch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/marketing/auto-distribute-alert.mjs \
+            --input=scripts/marketing/fixtures/sample-alert.json \
+            --live; then
+            echo "ERROR: live distribution unexpectedly succeeded while live_publish_enabled=false" >&2
+            exit 1
+          fi
+          echo "PASS: prelaunch live distribution is blocked."
