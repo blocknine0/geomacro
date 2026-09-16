@@ -1,15 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Briefcase, ExternalLink, Github, Mail, Network, ShieldCheck } from "lucide-react";
 
-const TITLE = "Contact Geomacro · Private Pilots, Integrations & Partnerships";
+const TITLE = "Contact Geomacro · Pilots, Integrations & Partnerships";
 const DESCRIPTION =
-  "Talk with Geomacro about a focused Private Pilot, institutional risk workflow, API integration or strategic partnership.";
+  "Talk with Geomacro about professional access, a focused Private Pilot, institutional risk workflow, API/agent integration or strategic partnership.";
 const URL = "https://geomacro.live/contact";
 const X_URL = "https://x.com/GeomacroLive";
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 const EMAIL = "contact@geomacro.live";
 const PILOT_EMAIL = `mailto:${EMAIL}?subject=${encodeURIComponent("Geomacro Private Pilot discussion")}`;
-const INTEGRATION_EMAIL = `mailto:${EMAIL}?subject=${encodeURIComponent("Geomacro API / integration discussion")}`;
+const INTEGRATION_EMAIL = `mailto:${EMAIL}?subject=${encodeURIComponent("Geomacro API / agent integration discussion")}`;
 const PARTNERSHIP_EMAIL = `mailto:${EMAIL}?subject=${encodeURIComponent("Geomacro strategic partnership discussion")}`;
 
 export const Route = createFileRoute("/contact")({
@@ -58,7 +58,7 @@ const contactPaths = [
   {
     icon: Network,
     title: "API, agent or workflow integration",
-    text: "Discuss governed data delivery, signed Risk Objects, Risk Gate or machine-readable integration for an existing product or internal workflow.",
+    text: "Discuss governed data delivery, pay-per-call agent access, signed Risk Objects, Risk Gate or machine-readable integration for an existing product or internal workflow.",
     cta: "Discuss an integration",
     href: INTEGRATION_EMAIL,
   },
@@ -76,7 +76,7 @@ const PILOT_DETAILS = [
   "The country, directional corridor or risk problem you want to evaluate.",
   "The decision point Geomacro would support, such as review, limit change, escalation or monitoring.",
   "What you use today and what is missing from that process.",
-  "The interface you need: analyst review, structured export, API, Risk Object or Risk Gate.",
+  "The interface you need: professional workspace, structured export, API, Risk Object, Risk Gate or agent access.",
   "How you would judge a useful pilot and the intended evaluation window.",
 ] as const;
 
@@ -87,11 +87,16 @@ function ContactPage() {
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Contact</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Bring a real risk workflow.</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-          The most useful conversation starts with a concrete decision or monitoring problem. Geomacro is currently focused on narrow Private Pilots, integration discussions and strategic partnerships rather than broad self-serve enterprise onboarding.
+          The most useful conversation starts with a concrete decision, monitoring or integration problem. Geomacro is currently focused on controlled professional access, narrow Private Pilots and strategic integrations rather than broad self-serve enterprise onboarding.
         </p>
-        <a href={`mailto:${EMAIL}`} className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-          <Mail className="h-4 w-4" /> {EMAIL}
-        </a>
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
+          <a href={`mailto:${EMAIL}`} className="inline-flex items-center gap-2 font-medium text-primary hover:underline">
+            <Mail className="h-4 w-4" /> {EMAIL}
+          </a>
+          <Link to="/agent-access" className="font-medium text-primary hover:underline">
+            Compare access & pricing first
+          </Link>
+        </div>
       </section>
 
       <section className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -137,14 +142,14 @@ function ContactPage() {
           <ol className="mt-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
             <li><span className="font-mono text-primary">01</span> Confirm the workflow and whether current Geomacro coverage can support it.</li>
             <li><span className="font-mono text-primary">02</span> Define the subject scope, evidence/data eligibility, interface and evaluation criteria.</li>
-            <li><span className="font-mono text-primary">03</span> Agree any commercial, support, security and data-handling boundaries before a Private Pilot begins.</li>
+            <li><span className="font-mono text-primary">03</span> Agree commercial, support, security and data-handling boundaries before paid or sensitive access begins.</li>
           </ol>
         </article>
       </section>
 
       <section className="mt-10 flex flex-col justify-between gap-5 rounded-2xl border border-border/70 bg-card/30 p-5 sm:flex-row sm:items-center">
         <div className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          <span className="font-medium text-foreground">Current stage:</span> Geomacro is founder-led, early-stage and focused on evidence-backed Private Pilots. A conversation or access request becomes a commercial relationship only when it is separately agreed.
+          <span className="font-medium text-foreground">Current stage:</span> Geomacro is founder-led and early-stage. Public intelligence is live; professional/API/Risk Gate access is controlled; mainnet pay-per-call remains pre-launch. A conversation or access request becomes a commercial relationship only when separately agreed.
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-md border border-border/70 px-3 py-2 text-sm hover:border-primary/40">

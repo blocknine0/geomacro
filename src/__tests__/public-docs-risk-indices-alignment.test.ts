@@ -65,7 +65,8 @@ describe("public documentation risk-indices alignment", () => {
   it("keeps commercialization roadmap terminology on Risk Indices while retaining GRI audit lineage", () => {
     const roadmap = read("src/content/docs/45-current-development-roadmap.md");
 
-    expect(roadmap).toContain("Risk Indices/data reliability, audited GRI v1.2 lineage and provenance controls");
+    expect(roadmap).toContain("separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
+    expect(roadmap).toContain("audited GRI v1.2 parent proof lineage and change-attribution foundation");
     expect(roadmap).not.toContain("complete GRI/data reliability and provenance controls");
   });
 });

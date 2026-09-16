@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 
 const TITLE = "Governed Risk Data, API & Agent Access · Geomacro";
 const DESCRIPTION =
-  "Evaluate Geomacro's governed geopolitical, macroeconomic and critical-mineral risk data, commercial structured API, signed Risk Objects and Risk Gate Private Pilot.";
+  "Evaluate Geomacro's governed geopolitical, macroeconomic and critical-mineral risk data, commercial structured API, pre-launch pay-per-call agent intelligence, signed Risk Objects and Risk Gate Private Pilot.";
 const URL = "https://geomacro.live/data-api";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
@@ -69,16 +69,19 @@ function DataApiPage() {
           Use Geomacro risk intelligence inside your own workflow.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Public Risk Intelligence and Risk Indices can be evaluated on the website. Teams that need governed machine-readable delivery can scope a commercial Private Pilot for structured country/corridor data, signed Risk Objects and Risk Gate outputs.
+          Public Risk Intelligence and Risk Indices can be evaluated on the website. Teams that need governed machine-readable delivery can scope a commercial Private Pilot, while AI agents have a prepared pay-per-call path for deliberate mainnet launch.
         </p>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Free Explorer is website/dashboard access, not a free API. Commercial delivery is entitlement-controlled, source-rights-aware and bounded to the exact capability and subject scope agreed for the pilot.
+          Free Explorer is website/dashboard access, not a free API. Commercial delivery is entitlement-controlled, source-rights-aware and bounded to the capability and subject scope Geomacro can actually deliver.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
-            <Link to="/contact">Request a Founding Pilot <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/agent-access">Compare agent access & plans <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild size="lg" variant="outline">
+            <Link to="/contact">Request a Founding Pilot</Link>
+          </Button>
+          <Button asChild size="lg" variant="ghost">
             <Link to="/docs">Read technical documentation</Link>
           </Button>
         </div>
@@ -89,7 +92,7 @@ function DataApiPage() {
           <Database className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-xl font-semibold">Governed data</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Receive only commercially eligible observations and provenance allowed by the customer's entitlement. Missing data remains explicit rather than becoming a fabricated score.
+            Receive only commercially eligible observations and provenance allowed by the entitlement. Missing data remains explicit rather than becoming a fabricated score.
           </p>
         </article>
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
@@ -101,9 +104,9 @@ function DataApiPage() {
         </article>
         <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
           <Bot className="h-5 w-5 text-primary" />
-          <h2 className="mt-3 text-xl font-semibold">Risk Objects & Risk Gate</h2>
+          <h2 className="mt-3 text-xl font-semibold">Pay per call + Risk Gate</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Signed decision context can carry evidence, confidence, freshness and integrity into a customer-controlled policy workflow. Geomacro does not authorize execution.
+            AI agents can use a prepared one-request payment path after mainnet launch, while signed Risk Objects and Risk Gate carry bounded context into customer-controlled policy workflows.
           </p>
         </article>
       </section>
@@ -116,25 +119,31 @@ function DataApiPage() {
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               A subscription, invoice or verified machine payment maps to a canonical Geomacro entitlement. That entitlement decides the capability, subject type, history depth and response limits. A provider or payment method cannot widen the payload.
             </p>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              Mainnet pay-per-call is currently PRE-LAUNCH. The prepared price is 0.02 USDC per successful paid intelligence call, but production funds remain disabled until coordinated launch gates and explicit owner authorization are complete.
+            </p>
           </div>
-          <div className="rounded-xl border border-border/70 bg-background/60 p-5">
-            <p className="font-mono text-xs text-muted-foreground">Paid structured endpoint</p>
-            <code className="mt-2 block break-all rounded-md bg-muted/50 p-3 text-xs">
-              POST https://geomacro.live/api/commercial/structural
-            </code>
-            <p className="mt-5 font-mono text-xs text-muted-foreground">Example request</p>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-muted/50 p-3 text-xs leading-relaxed">
-{`{
-  "request_id": "client-request-0001",
-  "capability": "structural_country_profile",
-  "subject": {
-    "type": "country",
-    "country_iso3": "IND"
-  }
-}`}
-            </pre>
-            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Machine discovery is available at <code>/.well-known/geomacro-agent.json</code>. Access to a discoverable route does not itself grant a commercial entitlement.
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border/70 bg-background/60 p-5">
+              <p className="font-mono text-xs text-muted-foreground">Paid structured endpoint</p>
+              <code className="mt-2 block break-all rounded-md bg-muted/50 p-3 text-xs">
+                POST https://geomacro.live/api/commercial/structural
+              </code>
+            </div>
+            <div className="rounded-xl border border-border/70 bg-background/60 p-5">
+              <p className="font-mono text-xs text-muted-foreground">Prepared pay-per-call agent flow</p>
+              <code className="mt-2 block break-all rounded-md bg-muted/50 p-3 text-xs">
+                POST https://geomacro.live/api/x402/risk/availability
+              </code>
+              <code className="mt-2 block break-all rounded-md bg-muted/50 p-3 text-xs">
+                POST https://geomacro.live/api/x402/intelligence
+              </code>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Deliverability is checked before a chargeable request. When production is enabled, the live HTTP 402 challenge or approved provider plan is the payment authority.
+              </p>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Machine discovery is available at <code>/.well-known/geomacro-agent.json</code>, <code>/.well-known/geomacro-commerce.json</code> and <code>/.well-known/x402</code>. Discoverability does not itself grant a commercial entitlement.
             </p>
           </div>
         </div>
@@ -143,49 +152,58 @@ function DataApiPage() {
       <section className="mt-14">
         <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Access model</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight">A clear boundary between evaluation and commercial delivery.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight">One governed core, multiple ways to access it.</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            These are current access boundaries, not a promise of self-serve enterprise availability. Pilot scope, permitted use, support, source rights and data handling must be agreed before sensitive or production-dependent workflows are introduced.
+            These are current access boundaries, not a promise of anonymous self-serve enterprise availability. Pilot scope, permitted use, support, source rights and data handling must be agreed before sensitive or production-dependent workflows are introduced.
           </p>
         </div>
 
-        <div className="mt-7 grid gap-5 lg:grid-cols-4">
+        <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-5">
           <article className="rounded-2xl border border-border/70 bg-card/50 p-6">
             <Database className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">PUBLIC · FREE</p>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">LIVE · FREE</p>
             <h3 className="mt-2 text-xl font-semibold">Free Explorer</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
-              <li>Public Risk Intelligence and selected event/evidence pages.</li>
-              <li>Current public Risk Indices and methodology context.</li>
-              <li>Approved public country/corridor views where available.</li>
-              <li>No API credential or structured-data download.</li>
-              <li>No signed Risk Object or Risk Gate entitlement.</li>
+              <li>Public Risk Intelligence and selected evidence pages.</li>
+              <li>Current public Risk Indices and methodology.</li>
+              <li>Ask Geomacro.</li>
+              <li>No API credential or paid machine entitlement.</li>
+            </ul>
+          </article>
+
+          <article className="rounded-2xl border border-amber-400/25 bg-amber-400/[0.04] p-6">
+            <Bot className="h-5 w-5 text-primary" />
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-amber-200">MAINNET PRE-LAUNCH</p>
+            <h3 className="mt-2 text-xl font-semibold">Pay per call</h3>
+            <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
+              <li>Prepared 0.02 USDC per successful paid call.</li>
+              <li>Free deliverability check first.</li>
+              <li>Question-adaptive governed intelligence.</li>
+              <li>Real funds currently disabled.</li>
             </ul>
           </article>
 
           <article className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6">
             <FileCheck2 className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING ANALYST PILOT</p>
-            <h3 className="mt-2 text-xl font-semibold">Professional intelligence</h3>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING PILOT</p>
+            <h3 className="mt-2 text-xl font-semibold">Professional</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>5,000 credits / 30 days.</li>
-              <li>Deeper analytics, historical context and attribution.</li>
-              <li>Governed country/corridor profile views.</li>
-              <li>Agreed structured exports where scoped.</li>
-              <li>No automatic API credential, Risk Object or Risk Gate.</li>
+              <li>Deeper analytics, history and attribution.</li>
+              <li>Governed profile views.</li>
+              <li>Agreed exports where scoped.</li>
             </ul>
           </article>
 
           <article className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6">
             <Braces className="h-5 w-5 text-primary" />
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING API + RISK GATE PILOT</p>
-            <h3 className="mt-2 text-xl font-semibold">Risk API + Risk Gate</h3>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">FOUNDING / PRIVATE PILOT</p>
+            <h3 className="mt-2 text-xl font-semibold">API + Risk Gate</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>20,000 credits / 30 days.</li>
-              <li>Authenticated machine-readable governed data.</li>
-              <li>Country/corridor digests and profiles.</li>
-              <li>Signed Risk Objects and Risk Gate bundles.</li>
-              <li>Controlled API/export access for an agreed workflow.</li>
+              <li>Authenticated governed data.</li>
+              <li>Signed Risk Objects.</li>
+              <li>Risk Gate bundles for agreed workflows.</li>
             </ul>
           </article>
 
@@ -195,9 +213,9 @@ function DataApiPage() {
             <h3 className="mt-2 text-xl font-semibold">Contracted deployment</h3>
             <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li>100,000-credit monthly starting pool, then contracted volume.</li>
-              <li>Contracted countries, corridors and historical depth.</li>
-              <li>Wider API volume, structured exports and monitoring cadence.</li>
-              <li>Enterprise controls and support only where implemented and contracted.</li>
+              <li>Contracted coverage and history.</li>
+              <li>Higher API volume and monitoring cadence.</li>
+              <li>Controls/support only where implemented and contracted.</li>
             </ul>
           </article>
         </div>
@@ -265,6 +283,7 @@ function DataApiPage() {
             <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Review-gated or commercially unverified sources stay outside customer delivery.</li>
             <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Raw/private historical warehouse data is never a default customer-facing product.</li>
             <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Risk Gate returns context and recommendation; <code>execution_authorized=false</code>.</li>
+            <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Payment success purchases the bounded intelligence product; it does not authorize a trade, payment or transfer.</li>
           </ul>
         </div>
       </section>
@@ -295,13 +314,14 @@ function DataApiPage() {
       <section className="mt-14 border-t border-border/60 pt-8">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-semibold">Have one real country, corridor or agent workflow?</h2>
+            <h2 className="text-xl font-semibold">Choose the access model that matches the workflow.</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Use Free Explorer to evaluate the public intelligence product. If the workflow needs deeper history, structured API delivery, signed data or policy context, scope the appropriate commercial pilot.
+              Evaluate the public product free, preview pay-per-call agent economics, or scope deeper professional/API access without changing Geomacro's source-rights and execution boundaries.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">
-            <Button asChild><Link to="/contact">Discuss a pilot</Link></Button>
+            <Button asChild><Link to="/agent-access">Compare plans</Link></Button>
+            <Button asChild variant="outline"><Link to="/contact">Discuss a pilot</Link></Button>
             <Button asChild variant="outline"><Link to="/risk-gate">See Risk Gate</Link></Button>
           </div>
         </div>

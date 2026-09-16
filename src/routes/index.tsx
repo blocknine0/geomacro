@@ -3,7 +3,7 @@ import { CommercialHome } from "@/components/home/commercial-home";
 
 const TITLE = "Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
 const DESCRIPTION =
-  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence with separate verified Risk Indices, evidence, confidence, change attribution and machine-readable decision context.";
+  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence for traders, analysts, institutions and AI agents, with free public research, verified Risk Indices and governed machine access.";
 const URL = "https://geomacro.live/";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 

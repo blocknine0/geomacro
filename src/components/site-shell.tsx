@@ -50,9 +50,6 @@ function ConnectButton() {
     useWallet();
   const executionContext = isWalletRoute(pathname);
 
-  // Public intelligence, risk indices, Research, Docs, institutions and the
-  // browser demo are intentionally wallet-free. Preserve a connected user's
-  // state, but do not turn wallet connection into a prerequisite for research.
   if (!address && !executionContext) return null;
 
   if (!address) {
@@ -123,31 +120,31 @@ function ConnectButton() {
 const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/global-risk", label: "Risk Indices" },
-  { to: "/risk-gate", label: "Risk Gate" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
-  { to: "/data-api", label: "Data & API" },
-  { to: "/research", label: "Research" },
+  { to: "/agent-access", label: "Access & Pricing" },
+  { to: "/risk-gate", label: "Risk Gate" },
   { to: "/institutional", label: "For Institutions" },
+] as const;
+
+const RESOURCE_NAV = [
+  { to: "/data-api", label: "Data & API", description: "Governed machine-readable data and integration options" },
+  { to: "/research", label: "Research", description: "Methodology, validation and evidence governance" },
+  { to: "/docs", label: "Documentation", description: "Canonical product and technical reference" },
+  { to: "/about", label: "About & Trust", description: "Product boundaries, privacy and trust posture" },
+  { to: "/roadmap", label: "Roadmap", description: "Commercialization order and release gates" },
+  { to: "/contact", label: "Contact", description: "Pilots, integrations and partnerships" },
 ] as const;
 
 const TECHNICAL_NAV = [
   { to: "/testnet-access", label: "Testnet API", description: "Wallet-first developer API and pay-per-call Testnet USDC access" },
   { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and Circle x402 access" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
-  { to: "/arena", label: "Prediction Markets", description: "Testnet application and feedback layer" },
+  { to: "/arena", label: "Prediction Markets", description: "Permanent Testnet application and feedback layer" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
   { to: "/bridge-swap", label: "Bridge & Swap", description: "Circle / Arc testnet implementation" },
 ] as const;
 
-const REFERENCE_NAV = [
-  { to: "/docs", label: "Documentation" },
-  { to: "/about", label: "About & Trust" },
-  { to: "/roadmap", label: "Roadmap" },
-  { to: "/contact", label: "Contact" },
-] as const;
-
 const PRODUCTION_EVIDENCE_ROUTES = new Set([
-  "/",
   "/risk-gate",
   "/data-api",
   "/research",
@@ -156,6 +153,31 @@ const PRODUCTION_EVIDENCE_ROUTES = new Set([
 ]);
 
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
+
+function ResourcesMenu() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap transition hover:text-foreground">
+          Resources <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          Evaluate and verify Geomacro
+        </DropdownMenuLabel>
+        {RESOURCE_NAV.map((item) => (
+          <DropdownMenuItem key={item.to} asChild>
+            <Link to={item.to} className="flex flex-col items-start gap-0.5 py-2">
+              <span>{item.label}</span>
+              <span className="text-xs text-muted-foreground">{item.description}</span>
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function TechnicalProofMenu() {
   return (
@@ -215,6 +237,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { network, address } = useWallet();
   const activeNet = network ?? preferredNetwork();
+  const resourceMobile = RESOURCE_NAV.map(({ to, label }) => ({ to, label }));
   const technicalMobile = TECHNICAL_NAV.map(({ to, label }) => ({ to, label }));
   const accountMobile = address ? [{ to: "/portfolio" as const, label: "Portfolio" }] : [];
   const showProductionEvidence = PRODUCTION_EVIDENCE_ROUTES.has(pathname);
@@ -243,8 +266,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     <SheetTitle><Wordmark height={26} /></SheetTitle>
                   </SheetHeader>
                   <nav className="mt-7 space-y-6" aria-label="Mobile navigation">
-                    <MobileGroup title="Intelligence products" items={PRIMARY_NAV} />
-                    <MobileGroup title="Reference" items={REFERENCE_NAV} />
+                    <MobileGroup title="Product" items={PRIMARY_NAV} />
+                    <MobileGroup title="Resources" items={resourceMobile} />
                     <MobileGroup title="Technical proof" items={technicalMobile} />
                     {accountMobile.length > 0 ? <MobileGroup title="Account" items={accountMobile} /> : null}
                   </nav>
@@ -255,7 +278,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Link>
             </div>
 
-            <nav aria-label="Primary" className="hidden items-center gap-2.5 text-xs text-muted-foreground xl:flex 2xl:gap-4">
+            <nav aria-label="Primary" className="hidden items-center gap-3 text-xs text-muted-foreground xl:flex 2xl:gap-4">
               {PRIMARY_NAV.map((item) => (
                 <Link
                   key={item.to}
@@ -266,6 +289,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   {item.label}
                 </Link>
               ))}
+              <ResourcesMenu />
               <TechnicalProofMenu />
             </nav>
 
@@ -306,16 +330,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
+                  <Link to="/agent-access" className="hover:text-foreground">Access & Pricing</Link>
                   <Link to="/risk-gate" className="hover:text-foreground">Risk Gate</Link>
-                  <Link to="/data-api" className="hover:text-foreground">Data & API</Link>
+                  <Link to="/institutional" className="hover:text-foreground">For Institutions</Link>
                 </div>
               </div>
               <div>
-                <p className="font-medium text-foreground">Solutions</p>
+                <p className="font-medium text-foreground">Resources</p>
                 <div className="mt-3 flex flex-col gap-2">
-                  <Link to="/institutional" className="hover:text-foreground">For Institutions</Link>
+                  <Link to="/data-api" className="hover:text-foreground">Data & API</Link>
                   <Link to="/research" className="hover:text-foreground">Research</Link>
                   <Link to="/docs" className="hover:text-foreground">Documentation</Link>
+                  <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
                 </div>
               </div>
               <div>
@@ -336,7 +362,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 <p className="font-medium text-foreground">Company</p>
                 <div className="mt-3 flex flex-col gap-2">
                   <Link to="/about" className="hover:text-foreground">About & Trust</Link>
-                  <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
                   <Link to="/contact" className="hover:text-foreground">Contact</Link>
                   <a href="/about#privacy" className="hover:text-foreground">Privacy</a>
                   <a href="/about#product-use" className="hover:text-foreground">Product Use</a>
@@ -349,7 +374,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span>Dated 114-country controlled-workflow evidence · Private Pilot Risk Gate · Mainnet pre-launch</span>
+              <span>Risk Gate Private Pilot · Agent mainnet pre-launch · Prediction markets Testnet-only</span>
               <details>
                 <summary className="cursor-pointer">Arc technical context</summary>
                 <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>

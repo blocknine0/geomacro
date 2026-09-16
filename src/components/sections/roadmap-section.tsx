@@ -4,30 +4,30 @@ const PHASES = [
   {
     status: "SHIPPED",
     tone: "text-emerald-300",
-    title: "Intelligence foundation",
-    body: "Live event intelligence, separate geopolitical, macroeconomic and critical-mineral Risk Indices, explainable drivers, evidence/confidence surfaces and Arc/Circle technical proof.",
-    items: ["Live intelligence", "Separate Risk Indices", "GRI v1.2 proof lineage", "Change attribution"],
+    title: "Public intelligence foundation",
+    body: "Live event intelligence, separate geopolitical, macroeconomic and critical-mineral Risk Indices, Ask Geomacro, explainable drivers, evidence/confidence surfaces and audited GRI v1.2 proof lineage.",
+    items: ["Live intelligence", "Separate Risk Indices", "Ask Geomacro", "GRI v1.2 proof lineage", "Change attribution"],
   },
   {
     status: "IN PROGRESS",
     tone: "text-amber-300",
-    title: "Commercial hardening",
-    body: "Turn the working system into a defensible Private Pilot with source-rights controls, signed Risk Objects, Risk Gate, security evidence, buyer-ready product boundaries and reproducible CI.",
-    items: ["Risk Gate Private Pilot", "Commercial source rights", "Security & resilience", "Website / repo source of truth"],
+    title: "Commercial hardening + pre-launch machine access",
+    body: "Harden professional subscriptions, governed API delivery, signed Risk Objects, Risk Gate, source-rights controls, security evidence and the prepared pay-per-call agent path without enabling production funds.",
+    items: ["Professional access model", "Risk Gate Private Pilot", "Commercial source rights", "Security & resilience", "x402/mainnet pre-launch lock"],
   },
   {
     status: "NEXT",
     tone: "text-sky-300",
-    title: "Institutional Early Access",
-    body: "Run controlled design-partner pilots with financial, treasury, payments, risk, supply-chain and agent teams. Measure decision usefulness, integration fit, operational friction and willingness to pay.",
-    items: ["Design partners", "Scoped staging evidence", "Pilot package & terms", "First paid pilot"],
+    title: "Coordinated commercial launch",
+    body: "Launch only after production credentials, deployment evidence, source-rights and security gates are complete. Public research remains free while approved professional plans, API access and pay-per-call agent intelligence move into a verified commercial state.",
+    items: ["Design partners", "First paid pilot", "Capped real-USDC smoke purchase", "Marketplace listings", "Subscription activation"],
   },
   {
     status: "LATER",
     tone: "text-muted-foreground",
     title: "Production expansion",
-    body: "Expand coverage, enterprise controls, contractual service commitments and programmable integrations only after security, reliability, legal, source-rights and customer-validation gates are met.",
-    items: ["Production operations", "Broader governed coverage", "Enterprise workflows", "Controlled mainnet integrations"],
+    body: "Expand governed coverage, enterprise controls, contractual service commitments, professional workflow features and additional machine distribution only after operational evidence and customer validation support them.",
+    items: ["Production operations", "Broader governed coverage", "Enterprise workflows", "Additional marketplaces", "Controlled mainnet integrations"],
   },
 ] as const;
 
@@ -36,9 +36,9 @@ export function RoadmapSection() {
     <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="max-w-4xl">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Current roadmap</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">From working intelligence to trusted commercial infrastructure.</h1>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">From free public intelligence to controlled commercial infrastructure.</h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro prioritizes reliability, explainability, security, source rights and real customer validation before broader production expansion. The roadmap reflects current evidence gates rather than a feature wishlist.
+          Geomacro keeps public research useful while commercial access becomes progressively more governed: professional depth for people, structured API/Risk Gate for teams, and pay-per-call intelligence for AI agents. Production funds are not enabled merely because the code path exists.
         </p>
       </div>
 
@@ -68,8 +68,13 @@ export function RoadmapSection() {
         ))}
       </div>
 
-      <div className="mt-10 rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-relaxed text-muted-foreground">
-        <span className="font-medium text-foreground">Early Access gate:</span> external availability remains conditional on scoped security/resilience validation, remediation of critical/high findings, source-rights review for paid delivery, controlled staging evidence and an agreed customer-use boundary. Broader production requires a separate readiness review and must not be inferred from a pilot milestone.
+      <div className="mt-10 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">Commercial launch gate:</span> source-rights review, security/resilience evidence, critical/high remediation, production database controls, provider credentials, exact deployment commit and explicit coordinated-launch authorization must all be satisfied before real-money machine access is enabled.
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-card/40 p-6 text-sm leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">What launch does not change:</span> Geomacro remains a risk-intelligence provider. Risk Gate stays non-authorizing with <code>execution_authorized=false</code>, and customer identity, permissions, policy, funds and downstream execution remain customer-controlled.
+        </div>
       </div>
     </section>
   );

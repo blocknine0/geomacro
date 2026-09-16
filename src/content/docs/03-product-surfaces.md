@@ -1,6 +1,6 @@
 # 3. Product Surfaces
 
-Every public Geomacro capability carries a stage label so technical proof is not confused with commercial availability.
+Every public Geomacro capability carries a stage label so live intelligence, controlled commercial access, pre-launch payments and technical proof are not confused with one another.
 
 ## 3.1 Risk Intelligence
 
@@ -28,9 +28,25 @@ The Risk Indices are **not** prediction-market probabilities, investment recomme
 
 **Status: LIVE**
 
-Ask Geomacro is a grounded query interface over stored Geomacro intelligence. The current answer engine does not use external web search or a general-purpose LLM to invent missing evidence. Weak matches cause interpretation to be withheld.
+Ask Geomacro is a grounded query interface over stored Geomacro intelligence. The current answer engine does not use unrestricted external web search or a general-purpose LLM to invent missing evidence. Weak matches cause interpretation to be withheld.
 
-## 3.4 Risk Objects
+## 3.4 Access & Pricing
+
+**Status: MIXED BY ACCESS MODEL**
+
+The commercial access page explains one shared intelligence core through five access models:
+
+- **Free Explorer — LIVE**
+- **Pay per call — MAINNET PRE-LAUNCH**
+- **Professional intelligence — FOUNDING PILOT**
+- **API + Risk Gate — PRIVATE / FOUNDING PILOT**
+- **Institutional — CONTRACTED / PILOT-LED**
+
+The prepared pay-per-call product uses a 0.02 USDC per successful paid call launch price, but static website pricing is informational. The live HTTP 402 challenge or approved provider plan is authoritative when production is enabled. Real-money activation remains disabled until coordinated launch gates and explicit owner authorization are complete.
+
+A payment method never widens source rights, data entitlement, supported subjects or execution authority.
+
+## 3.5 Risk Objects
 
 **Status: PRIVATE PILOT**
 
@@ -38,7 +54,7 @@ Machine-readable risk objects package subject-specific risk context, evidence, c
 
 Current Private Pilot work includes signed country and directional corridor Geomacro Risk Objects and verification infrastructure. Availability and schema guarantees remain subject to pilot-stage change. Event-specific Risk Objects are not part of the current Private Pilot contract.
 
-## 3.5 Risk Gate
+## 3.6 Risk Gate
 
 **Status: PRIVATE PILOT**
 
@@ -55,22 +71,22 @@ Current v1 recommendation states are:
 
 Geomacro does not autonomously execute or authorize the customer's transaction. The external boundary remains `execution_authorized = false`.
 
-## 3.6 Data & API
+## 3.7 Data & API
 
 **Status: PUBLIC DATA SURFACES + PRIVATE PILOT MACHINE ACCESS**
 
 Public intelligence, Risk Indices and proof surfaces are available today. Governed machine-readable delivery, signed Risk Objects and Risk Gate remain controlled Private Pilot capabilities rather than generally available production APIs.
 
-Free Explorer is the public website/dashboard experience, not an anonymous free structured API.
+Free Explorer is the public website/dashboard experience, not an anonymous free structured API. The pay-per-call x402 path is a separate pre-launch commercial access mechanism around the same governed intelligence core.
 
-## 3.7 Institutional Intelligence
+## 3.8 Institutional Intelligence
 
-**Status: EARLY ACCESS / PRIVATE PILOT CONVERSATIONS**
+**Status: CONTRACTED / PILOT-LED**
 
-Geomacro is preparing institution-oriented workflows for treasury, payments, risk, strategy, supply chain, research and automated financial systems. Geomacro does not claim institutional deployment where none exists.
+Geomacro is building institution-oriented workflows for treasury, payments, risk, strategy, supply chain, research and automated financial systems. Availability depends on an agreed scope, and Geomacro does not claim institutional deployment, production SLA or broad enterprise adoption where none exists.
 
-## 3.8 Technical Proof
+## 3.9 Technical Proof
 
 **Status: TECHNICAL PROOF**
 
-Arc Testnet contracts, prediction markets, USDC, CCTP and Bridge & Swap remain accessible as evidence of programmable-finance implementation. They are secondary to the intelligence product and do not imply production mainnet or real-money availability.
+Arc Testnet contracts, prediction markets, USDC, CCTP and Bridge & Swap remain accessible as evidence of programmable-finance implementation. They are secondary to the intelligence product and do not imply production mainnet or real-money availability. Prediction markets remain permanently Testnet-only.

@@ -25,15 +25,17 @@ describe("public production coverage proof", () => {
     expect(panel).toContain("mainnet-launch claim");
   });
 
-  it("surfaces one shared proof panel on the primary commercial and trust routes", () => {
+  it("keeps the proof panel on due-diligence routes rather than the homepage", () => {
     const shell = read("src/components/site-shell.tsx");
+    const routeSet = shell.match(/const PRODUCTION_EVIDENCE_ROUTES = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
 
     expect(shell).toContain('import { ProductionCoverageProof } from "@/components/production-coverage-proof"');
-    for (const route of ["/", "/risk-gate", "/data-api", "/research", "/institutional", "/about"]) {
-      expect(shell).toContain(`"${route}"`);
+    for (const route of ["/risk-gate", "/data-api", "/research", "/institutional", "/about"]) {
+      expect(routeSet).toContain(`"${route}"`);
     }
+    expect(routeSet).not.toContain('"/"');
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
-    expect(shell).toContain("Dated 114-country controlled-workflow evidence · Private Pilot Risk Gate · Mainnet pre-launch");
+    expect(shell).toContain("Risk Gate Private Pilot · Agent mainnet pre-launch · Prediction markets Testnet-only");
   });
 
   it("keeps machine-readable website context aligned with the same measured claim", () => {

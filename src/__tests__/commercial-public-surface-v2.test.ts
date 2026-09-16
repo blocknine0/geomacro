@@ -29,7 +29,7 @@ describe("commercial public surface v2", () => {
     }
 
     expect(read("src/routes/about.tsx")).toContain("Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
-    expect(read("src/routes/data-api.tsx")).toContain("Current public Risk Indices and methodology context");
+    expect(read("src/routes/data-api.tsx")).toContain("Current public Risk Indices and methodology.");
     expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved audited lineage");
   });
 
@@ -61,14 +61,14 @@ describe("commercial public surface v2", () => {
     expect(read("public/.well-known/security.txt")).toContain("contact@geomacro.live");
   });
 
-  it("keeps the coverage banner dated and non-production-claiming", () => {
+  it("keeps dated coverage evidence on due-diligence routes without turning the global shell into a procurement banner", () => {
     const proof = read("src/components/production-coverage-proof.tsx");
     const shell = read("src/components/site-shell.tsx");
 
     expect(proof).toContain("Controlled coverage evidence · verified 16 Sep 2026");
     expect(proof).toContain("dated controlled-workflow coverage result");
     expect(proof).not.toContain("Production workflow evidence");
-    expect(shell).toContain("Dated 114-country controlled-workflow evidence");
+    expect(shell).toContain("Risk Gate Private Pilot · Agent mainnet pre-launch · Prediction markets Testnet-only");
     expect(shell).not.toContain("114-country production-workflow proof");
   });
 
@@ -79,7 +79,7 @@ describe("commercial public surface v2", () => {
     expect(contact).toContain("The decision point Geomacro would support");
     expect(contact).toContain("How you would judge a useful pilot");
     expect(contact).toContain("Do not email seed phrases, private keys, production secrets");
-    expect(contact).toContain("Agree any commercial, support, security and data-handling boundaries");
+    expect(contact).toContain("Agree commercial, support, security and data-handling boundaries before paid or sensitive access begins");
   });
 
   it("documents fail-soft public Risk Indices without synthetic fallback", () => {

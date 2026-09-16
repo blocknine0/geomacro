@@ -1,57 +1,95 @@
 # 27. Agent Distribution
 
-Geomacro's machine-delivery foundation is the authenticated Private Pilot Risk API / Risk Gate interface, with a separate Arc Testnet x402 technical-proof path for agent-native pay-per-call access.
+Geomacro separates the intelligence product from the transport or payment rail used to access it. The same governed product boundaries apply whether access is through an authenticated Private Pilot API, a subscription, an invoice, x402 or another approved marketplace/provider.
 
-The product remains transport-agnostic: the intelligence and Risk Object contracts do not depend on one marketplace, wallet or payment rail.
+## Current distribution architecture
 
-## Current
+### Governed API / Risk Gate — PRIVATE PILOT
 
-- authenticated country/corridor Risk Gate API foundation
-- signed machine-readable Risk Objects
-- versioned verification and audit contracts
-- free public technical sandbox at `POST /api/demo/preflight`
-- Circle x402 / USDC technical-proof route at `POST /api/agent/risk`
-- Arc Testnet payment requirements using HTTP 402 and Circle Gateway batching
-- `execution_authorized = false` preserved in both free and paid responses
+- authenticated country/corridor Risk Gate API foundation;
+- signed machine-readable Risk Objects;
+- versioned verification and audit contracts;
+- entitlement-controlled structured delivery;
+- `execution_authorized=false` preserved in Risk Gate responses.
 
-## x402 implementation status
+### Agent pay per call — MAINNET PRE-LAUNCH
 
-The x402 route is **IMPLEMENTED AS TECHNICAL PROOF**, not yet a production commercial endpoint.
+Canonical product: `geomacro_adaptive_risk_intelligence_v1`.
 
-Current test contract:
+Prepared public machine flow:
 
-- network: Arc Testnet (`eip155:5042002`)
-- asset: test USDC
-- test price: `0.001 USDC` per call
-- supported public demo subjects: USA, CHN, USA→CHN, CHN→USA
-- seller/pay-to address supplied by server-only `CIRCLE_X402_SELLER_ADDRESS`
-- unpaid valid requests return HTTP `402` with `PAYMENT-REQUIRED`
-- paid retries are verified and settled before the prepared Risk Gate resource is returned
-- payer identity is hashed before persistence in telemetry
+- free deliverability check: `POST /api/x402/risk/availability`;
+- canonical Coinbase-compatible paid resource: `POST /api/x402/intelligence`;
+- prepared production price: **0.02 USDC per successful paid call**;
+- standard discovery: `/.well-known/x402` and `/.well-known/x402.json`;
+- focused OpenAPI: `/openapi-x402.json`;
+- agent discovery: `/.well-known/geomacro-agent.json`;
+- commerce catalog: `/.well-known/geomacro-commerce.json`.
 
-The test price is not institutional pricing. The route does not authorize or execute customer transactions.
+The live HTTP 402 challenge or approved provider plan is authoritative for price when production is enabled. Static website/catalog prices are informational only.
 
-## Public-deployment gates
+Production real-money activation remains disabled until the coordinated launch gates and explicit owner authorization are satisfied.
 
-Do not describe the x402 route as publicly live until all of these are complete:
+## Provider readiness
 
-1. a dedicated Arc Testnet seller address is configured;
-2. migration `035_agentic_demo_feedback.sql` is applied to the authoritative application database;
-3. the real unpaid `402 → payment → settlement → resource` path passes end-to-end on Arc Testnet;
-4. isolated staging HTTP resilience testing passes;
-5. the scoped pre-demo security review is complete and critical/high findings are fixed and re-tested.
+### Coinbase CDP x402 / Base mainnet
 
-## Planned distribution options
+Code-ready and locked for coordinated launch. The implementation includes exact price binding, payment/query binding, replay protection, idempotent delivery, duplicate/conflicting-proof controls, settlement telemetry and a central real-funds gate.
 
-Potential future interfaces include:
+### Circle Gateway / Circle Agent Marketplace
 
-- formal OpenAPI developer specification and SDK generation
-- webhooks
-- MCP-compatible adapters
-- agent-to-agent interfaces
-- marketplace integrations
-- additional payment/access rails where appropriate
+Production adapter prepared and locked. The legacy Arc/Circle route remains a separate Testnet technical proof. Circle production cannot bypass the provider-wide launch/security gate.
 
-These remain **PLANNED** unless separately implemented and verified.
+### Nevermined
 
-A payment/access mechanism must never bypass source-rights restrictions or become part of the core risk calculation methodology.
+Provider integration is code-ready with live-plan/provider inputs intentionally absent before launch. Sandbox/live separation and the coordinated-launch lock remain mandatory.
+
+### GOAT Flow
+
+Mainnet-capable code and onboarding material are prepared, while external merchant approval remains a manual launch dependency. Testnet values must never be copied into mainnet configuration.
+
+## Existing Testnet technical proof
+
+Geomacro also retains the earlier agentic-commerce proof path:
+
+- free public technical sandbox at `POST /api/demo/preflight`;
+- Circle x402 / USDC technical-proof route at `POST /api/agent/risk`;
+- Arc Testnet payment requirements using test USDC;
+- Testnet technical-proof price: `0.001 USDC` per call where that route is configured;
+- `execution_authorized=false` preserved.
+
+This Testnet route is not the production commercial pay-per-call product and must not be used to imply mainnet availability.
+
+## Coordinated-launch distribution queue
+
+Prepared primary launch cohort includes:
+
+- Coinbase Bazaar;
+- Coinbase Agentic Market;
+- Circle Agent Marketplace;
+- x402.new;
+- Agent402.tools;
+- PayAPI Market;
+- x402scan;
+- x402 List;
+- Nevermined registry;
+- true402.
+
+GOAT Flow mainnet onboarding runs in parallel after merchant approval. Additional directories/marketplaces can be added only when their current requirements are compatible with Geomacro's entitlement, security and source-rights boundaries.
+
+A marketplace listing never widens the intelligence product, supported subjects, source rights or execution authority.
+
+## Launch gates
+
+No provider becomes production-enabled merely because its adapter exists. Real-money activation requires the provider-wide security invariant and coordinated-launch acknowledgement, including:
+
+- security mode in enforce state;
+- explicit real-funds security acknowledgement;
+- explicit coordinated commercial launch acknowledgement;
+- dedicated fingerprint/API-credential secrets;
+- production database security readiness;
+- provider-specific production credentials/receiver configuration;
+- exact deployment commit with required CI/security checks green;
+- capped first real-money purchase and settlement/delivery reconciliation.
+
+The payment/access mechanism must never bypass source-rights restrictions or become part of the core risk-calculation methodology.
