@@ -57,6 +57,8 @@ jobs:
           grep -q 'I_ACCEPT_REAL_USDC' src/lib/coinbase-x402.server.ts
           grep -q '0.02' src/lib/coinbase-x402.server.test.ts
           grep -q '20000' src/lib/coinbase-x402.server.test.ts
+          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
+          grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
             echo 'ERROR: .env.example must never activate the coordinated commercial launch gate.' >&2
             exit 1
