@@ -66,19 +66,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - name: Resolve exact evaluated SHA
+        id: evaluated
+        shell: bash
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          sha="${PR_HEAD_SHA:-$EVENT_SHA}"
+          [[ "$sha" =~ ^[0-9a-fA-F]{40}$ ]]
+          echo "sha=${sha,,}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout exact evaluated ref
         uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.evaluated.outputs.sha }}
+          persist-credentials: false
+
+      - name: Prove exact evaluated checkout
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.evaluated.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]]
+
       - name: Build prelaunch release candidate evidence
         env:
-          COMMERCIAL_RC_GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          COMMERCIAL_RC_GIT_SHA: ${{ steps.evaluated.outputs.sha }}
         run: node scripts/build-commercial-release-candidate.mjs artifacts/commercial-release-candidate.json
+
       - name: Verify evidence remains non-authorizing
         shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.evaluated.outputs.sha }}
         run: |
           set -euo pipefail
           node - <<'NODE'
           const fs = require('fs');
           const e = JSON.parse(fs.readFileSync('artifacts/commercial-release-candidate.json', 'utf8'));
+          if (e.git_sha !== process.env.EXPECTED_SHA) throw new Error(`RC evidence SHA mismatch: ${e.git_sha} != ${process.env.EXPECTED_SHA}`);
           if (e.status !== 'prelaunch_evidence_only') throw new Error('unexpected RC status');
           if (e.production_activation_performed !== false) throw new Error('RC evidence cannot activate production');
           if (e.production_funds_authorized !== false) throw new Error('RC evidence cannot authorize production funds');
@@ -110,10 +138,11 @@ jobs:
             if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error(`invalid hash for ${file}`);
           }
           NODE
+
       - name: Upload release candidate evidence
         uses: actions/upload-artifact@v4
         with:
-          name: commercial-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          name: commercial-release-candidate-${{ steps.evaluated.outputs.sha }}
           path: artifacts/commercial-release-candidate.json
           if-no-files-found: error
           retention-days: 90
