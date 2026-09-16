@@ -13,8 +13,12 @@ const inputPath = args.get('input');
 if (!inputPath) throw new Error('Missing --input=<alert.json>');
 
 const alert = JSON.parse(await fs.readFile(path.resolve(root, inputPath), 'utf8'));
-const dryRun = args.has('live') ? false : config.default_dry_run !== false;
-const forcedChannels = String(args.get('channels') || '').split(',').map((x) => x.trim()).filter(Boolean);
+const requestedLive = args.has('live');
+if (requestedLive && config.live_publish_enabled !== true) {
+  throw new Error('Live public distribution is disabled by config/auto-distribution.json');
+}
+const dryRun = !requestedLive;
+const requestedChannels = String(args.get('channels') || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 function requireField(name) {
   const value = alert[name];
@@ -42,14 +46,27 @@ const visibility = String(alert.visibility).toLowerCase();
 const status = String(alert.status).toUpperCase();
 const confidence = Number(alert.confidence);
 const evidenceCount = Number(alert.independent_evidence_count || 0);
+const iso3 = String(alert.country_iso3).toUpperCase();
+
+if (!/^[A-Z]{3}$/.test(iso3)) throw new Error('country_iso3 must be a three-letter ISO-style code');
+if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new Error('confidence must be between 0 and 1');
+if (!Number.isInteger(evidenceCount) || evidenceCount < 0) throw new Error('independent_evidence_count must be a non-negative integer');
+if (!Number.isFinite(Date.parse(alert.detected_at_utc))) throw new Error('detected_at_utc must be a valid ISO timestamp');
+if (!Number.isFinite(Date.parse(alert.detected_at_local))) throw new Error('detected_at_local must be a valid ISO timestamp');
+try {
+  new Intl.DateTimeFormat('en-US', { timeZone: alert.country_timezone }).format(new Date(alert.detected_at_utc));
+} catch {
+  throw new Error('country_timezone must be a valid IANA timezone');
+}
 
 const contentTypeOkay = config.public_alert_policy.allowed_content_types.includes(contentType);
 const visibilityOkay = visibility === config.public_alert_policy.required_visibility;
 const statusOkay = config.public_alert_policy.allowed_statuses.includes(status);
-const evidenceOkay = Boolean(alert.official_source_present) || evidenceCount >= config.public_alert_policy.minimum_independent_evidence;
+const evidenceRequired = config.public_alert_policy.require_official_or_independent_confirmation !== false;
+const evidenceOkay = !evidenceRequired || Boolean(alert.official_source_present) || evidenceCount >= config.public_alert_policy.minimum_independent_evidence;
 const eligible = contentTypeOkay && visibilityOkay && statusOkay && confidence >= config.public_alert_policy.minimum_confidence && evidenceOkay;
 
-if (!eligible && !args.has('force')) {
+if (!eligible) {
   console.log(JSON.stringify({
     published: false,
     reason: 'alert_not_publicly_eligible',
@@ -85,7 +102,7 @@ function truncate(text, max) {
 
 function compactBase() {
   return [
-    `Geomacro ${status} · ${alert.country} (${alert.country_iso3})`,
+    `Geomacro ${status} · ${alert.country} (${iso3})`,
     alert.event_title,
     `Cause: ${alert.primary_cause}`,
     relevantAssets.length ? `Relevance: ${relevantAssets.join(' · ')}` : null,
@@ -99,7 +116,7 @@ function compactBase() {
 function detailedBase() {
   return [
     `GEOMACRO EARLY WARNING · ${status}`,
-    `${alert.country} (${alert.country_iso3})`,
+    `${alert.country} (${iso3})`,
     '',
     alert.event_title,
     '',
@@ -191,12 +208,18 @@ async function sendMastodon(text, idempotencyKey) {
 }
 
 const adapters = { telegram: sendTelegram, discord: sendDiscord, bluesky: sendBluesky, mastodon: sendMastodon };
-const channels = forcedChannels.length
-  ? forcedChannels
-  : Object.entries(config.channels).filter(([, value]) => value.enabled && value.cost_class === 'free').map(([key]) => key);
+const defaultChannels = Object.entries(config.channels)
+  .filter(([, value]) => value.enabled && value.cost_class === 'free')
+  .map(([key]) => key);
+const channels = requestedChannels.length ? requestedChannels : defaultChannels;
 
 const output = { alert_id: alert.alert_id, dry_run: dryRun, channels: {} };
 for (const channel of channels) {
+  const channelPolicy = config.channels[channel];
+  if (!channelPolicy || channelPolicy.enabled !== true || channelPolicy.cost_class !== 'free') {
+    output.channels[channel] = { skipped: 'channel_not_enabled_for_free_distribution' };
+    continue;
+  }
   if (!adapters[channel]) {
     output.channels[channel] = { skipped: 'unsupported_adapter' };
     continue;
