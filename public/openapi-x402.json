@@ -1,0 +1,289 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Geomacro Agent Pay-Per-Call API",
+    "version": "1.0.0-prelaunch",
+    "description": "Prelaunch contract for machine-readable geopolitical and macro risk intelligence. Production pricing is authoritative only in the live HTTP 402 challenge or provider plan. Risk Gate context never authorizes transaction execution.",
+    "contact": {
+      "name": "Geomacro",
+      "email": "contact@geomacro.live",
+      "url": "https://geomacro.live"
+    },
+    "x-guidance": "Call the free availability endpoint first. Pay only when the requested subject and required modules are currently deliverable. Every paid response preserves execution_authorized=false."
+  },
+  "servers": [
+    {
+      "url": "https://geomacro.live"
+    }
+  ],
+  "paths": {
+    "/api/x402/risk/availability": {
+      "post": {
+        "summary": "Check intelligence deliverability before payment",
+        "operationId": "checkGeomacroX402Availability",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deliverability result. This call never charges."
+          },
+          "400": {
+            "description": "Invalid or unsupported query"
+          },
+          "422": {
+            "description": "Requested intelligence is not currently deliverable and payment must not be requested"
+          },
+          "503": {
+            "description": "Availability cannot be proven; payment remains disabled"
+          }
+        }
+      }
+    },
+    "/api/x402/intelligence": {
+      "get": {
+        "summary": "Inspect the canonical Coinbase-compatible x402 resource",
+        "operationId": "getGeomacroX402Resource",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Current runtime resource metadata"
+          },
+          "503": {
+            "description": "Production rail is not configured or remains locked"
+          }
+        }
+      },
+      "post": {
+        "summary": "Buy adaptive geopolitical and macro risk intelligence via Coinbase-compatible x402",
+        "operationId": "buyGeomacroAdaptiveRiskIntelligence",
+        "description": "The first valid unpaid request returns HTTP 402 with authoritative x402 payment requirements. A paid retry returns the requested structured intelligence only after payment verification/settlement and protected delivery-claim checks.",
+        "security": [],
+        "x-payment-info": {
+          "provider": "coinbase_x402",
+          "price": "runtime-402-challenge",
+          "currency": "USDC",
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "production_enabled": false,
+          "availability_endpoint": "/api/x402/risk/availability"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid structured response. execution_authorized remains false.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptiveResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required or payment proof invalid. PAYMENT-REQUIRED is authoritative."
+          },
+          "409": {
+            "description": "Replay conflict, duplicate in progress, or payment proof bound to different business terms"
+          },
+          "422": {
+            "description": "Not currently deliverable; payment is not accepted"
+          },
+          "503": {
+            "description": "Provider, delivery ledger, intelligence dependency, or reconciliation state unavailable; fails closed"
+          }
+        }
+      }
+    },
+    "/api/x402/circle/intelligence": {
+      "get": {
+        "summary": "Inspect the Circle Gateway x402 resource",
+        "operationId": "getGeomacroCircleGatewayX402Resource",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Current runtime Circle Gateway resource metadata"
+          },
+          "503": {
+            "description": "Circle production rail is not configured, not currently supported, or remains locked"
+          }
+        }
+      },
+      "post": {
+        "summary": "Buy adaptive geopolitical and macro risk intelligence via Circle Gateway x402",
+        "operationId": "buyGeomacroAdaptiveRiskIntelligenceCircleGateway",
+        "description": "This route uses the same canonical Geomacro intelligence and delivery contract. Circle Gateway production remains disabled before coordinated launch. When explicitly activated later, payment requirements are built from Circle's runtime-supported Gateway kind on the approved Base-mainnet USDC rail.",
+        "security": [],
+        "x-payment-info": {
+          "provider": "circle_gateway_x402",
+          "price": "runtime-402-challenge",
+          "currency": "USDC",
+          "approved_initial_network": "eip155:8453",
+          "arc_mainnet_enabled": false,
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "production_enabled": false,
+          "availability_endpoint": "/api/x402/risk/availability"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid structured response with execution_authorized=false"
+          },
+          "402": {
+            "description": "Circle Gateway payment required or payment proof invalid"
+          },
+          "409": {
+            "description": "Replay, duplicate-processing, or business-term conflict"
+          },
+          "422": {
+            "description": "Not currently deliverable; payment is not accepted"
+          },
+          "503": {
+            "description": "Circle provider, delivery ledger, intelligence dependency, or settlement reconciliation state unavailable; fails closed"
+          }
+        }
+      }
+    },
+    "/api/x402/nevermined/intelligence": {
+      "post": {
+        "summary": "Nevermined provider adapter for the same adaptive intelligence product",
+        "operationId": "buyGeomacroAdaptiveRiskIntelligenceNevermined",
+        "security": [],
+        "x-payment-info": {
+          "provider": "nevermined",
+          "price": "provider-plan-runtime",
+          "currency": "provider-plan",
+          "protocols": [
+            {
+              "x402": {}
+            }
+          ],
+          "production_enabled": false,
+          "availability_endpoint": "/api/x402/risk/availability"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptiveQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid structured response with execution_authorized=false"
+          },
+          "402": {
+            "description": "Provider payment required or proof invalid"
+          },
+          "409": {
+            "description": "Replay or idempotency conflict"
+          },
+          "422": {
+            "description": "Not currently deliverable; payment is not accepted"
+          },
+          "503": {
+            "description": "Provider or intelligence dependency unavailable; fails closed"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdaptiveQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "subjects"],
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "subjects": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_age_seconds": {
+            "type": "integer",
+            "minimum": 60
+          },
+          "detail": {
+            "enum": ["compact", "standard", "detailed"]
+          },
+          "client_request_id": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      },
+      "AdaptiveResponse": {
+        "type": "object",
+        "required": ["schema_version", "product", "execution_authorized"],
+        "properties": {
+          "schema_version": {
+            "const": "geomacro.adaptive-intelligence-response.v1"
+          },
+          "product": {
+            "const": "geomacro_adaptive_risk_intelligence_v1"
+          },
+          "execution_authorized": {
+            "const": false
+          },
+          "payment": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

@@ -40,10 +40,16 @@ describe("agent commerce machine discovery contract", () => {
     );
   });
 
-  it("puts Coinbase and Nevermined in the payment cohort while deferring GOAT mainnet", () => {
+  it("puts Coinbase, Circle and Nevermined in the payment cohort while deferring GOAT mainnet", () => {
     const providers = commerce.offers[0].providers;
     expect(providers.coinbase_x402.launch_cohort).toBe(true);
     expect(providers.coinbase_x402.production_enabled).toBe(false);
+    expect(providers.circle_gateway.launch_cohort).toBe(true);
+    expect(providers.circle_gateway.production_enabled).toBe(false);
+    expect(providers.circle_gateway.endpoint).toBe(
+      "https://geomacro.live/api/x402/circle/intelligence",
+    );
+    expect(providers.circle_gateway.arc_mainnet_enabled).toBe(false);
     expect(providers.nevermined.launch_cohort).toBe(true);
     expect(providers.nevermined.production_enabled).toBe(false);
     expect(providers.goat_x402.launch_cohort).toBe(false);
@@ -51,9 +57,13 @@ describe("agent commerce machine discovery contract", () => {
     expect(providers.goat_x402.production_status).toBe(
       "deferred_manual_mainnet_merchant_onboarding",
     );
-    expect(agent.commercial.launch_cohort).toEqual(["coinbase_x402", "nevermined"]);
+    expect(agent.commercial.launch_cohort).toEqual([
+      "coinbase_x402",
+      "circle_gateway_x402",
+      "nevermined",
+    ]);
     expect(distribution.targets.goat_mainnet.status).toBe(
-      "deferred_manual_mainnet_merchant_onboarding",
+      "onboarding_ready_pending_manual_merchant_approval",
     );
     expect(llms).toContain("GOAT mainnet: DEFERRED pending manual merchant application/approval");
   });
@@ -138,6 +148,9 @@ describe("agent commerce machine discovery contract", () => {
     expect(commerce.offers[0].providers.coinbase_x402.endpoint).toBe(
       "https://geomacro.live/api/x402/intelligence",
     );
+    expect(commerce.offers[0].providers.circle_gateway.endpoint).toBe(
+      "https://geomacro.live/api/x402/circle/intelligence",
+    );
     expect(commerce.offers[0].providers.nevermined.endpoint).toBe(
       "https://geomacro.live/api/x402/nevermined/intelligence",
     );
@@ -146,6 +159,9 @@ describe("agent commerce machine discovery contract", () => {
     );
     expect(distribution.canonical_availability_endpoint).toBe(
       "https://geomacro.live/api/x402/risk/availability",
+    );
+    expect(distribution.canonical_circle_paid_endpoint).toBe(
+      "https://geomacro.live/api/x402/circle/intelligence",
     );
   });
 });

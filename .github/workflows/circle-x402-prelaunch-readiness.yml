@@ -1,0 +1,93 @@
+name: Circle x402 Prelaunch Readiness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "config/commercial-launch-manifest.json"
+      - "config/agent-marketplace-distribution.json"
+      - "config/prelaunch-mainnet-x402.env.example"
+      - "public/.well-known/geomacro-agent.json"
+      - "public/.well-known/geomacro-commerce.json"
+      - "public/openapi-x402.json"
+      - "src/lib/circle-gateway-x402-production.server.ts"
+      - "src/lib/provider-real-funds-security.server.ts"
+      - "src/lib/x402-discovery.server.ts"
+      - "src/routes/api.x402.circle_.intelligence.ts"
+      - "src/__tests__/pre-mainnet-x402-readiness.test.ts"
+      - ".github/workflows/circle-x402-prelaunch-readiness.yml"
+  push:
+    branches: [main]
+    paths:
+      - "config/commercial-launch-manifest.json"
+      - "config/agent-marketplace-distribution.json"
+      - "config/prelaunch-mainnet-x402.env.example"
+      - "public/.well-known/geomacro-agent.json"
+      - "public/.well-known/geomacro-commerce.json"
+      - "public/openapi-x402.json"
+      - "src/lib/circle-gateway-x402-production.server.ts"
+      - "src/lib/provider-real-funds-security.server.ts"
+      - "src/lib/x402-discovery.server.ts"
+      - "src/routes/api.x402.circle_.intelligence.ts"
+      - "src/__tests__/pre-mainnet-x402-readiness.test.ts"
+      - ".github/workflows/circle-x402-prelaunch-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Run Circle and multi-provider prelaunch contract tests
+        run: bunx vitest run src/__tests__/pre-mainnet-x402-readiness.test.ts src/__tests__/agent-commerce-discovery-static.test.ts
+      - name: Verify Circle production remains off in committed templates and manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^CIRCLE_X402_ENVIRONMENT=$' config/prelaunch-mainnet-x402.env.example
+          grep -q '^CIRCLE_X402_MAINNET_ACK=$' config/prelaunch-mainnet-x402.env.example
+          grep -q '^CIRCLE_X402_PRODUCTION_NETWORKS=eip155:8453$' config/prelaunch-mainnet-x402.env.example
+          if grep -Eq '^CIRCLE_X402_ENVIRONMENT=production$|^CIRCLE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' config/prelaunch-mainnet-x402.env.example; then
+            echo 'ERROR: Circle production must remain disabled in prelaunch.' >&2
+            exit 1
+          fi
+          bun -e '
+            const launch = await Bun.file("config/commercial-launch-manifest.json").json();
+            const provider = launch.providers?.circle_gateway_x402;
+            if (!provider) throw new Error("Circle launch provider missing");
+            if (provider.launch_cohort !== true) throw new Error("Circle must remain in the prepared initial cohort");
+            if (provider.production_enabled !== false) throw new Error("Circle production must remain disabled");
+            if (provider.arc_mainnet_enabled !== false) throw new Error("Arc mainnet must remain disabled");
+            const commerce = await Bun.file("public/.well-known/geomacro-commerce.json").json();
+            const circle = commerce.offers?.[0]?.providers?.circle_gateway;
+            if (circle?.production_enabled !== false) throw new Error("Circle commerce discovery must remain production-disabled");
+            if (circle?.endpoint !== "https://geomacro.live/api/x402/circle/intelligence") throw new Error("Circle endpoint mismatch");
+            if (circle?.arc_mainnet_enabled !== false) throw new Error("Circle Arc mainnet boundary mismatch");
+            const openapi = await Bun.file("public/openapi-x402.json").json();
+            const payment = openapi.paths?.["/api/x402/circle/intelligence"]?.post?.["x-payment-info"];
+            if (payment?.production_enabled !== false) throw new Error("Circle OpenAPI must remain production-disabled");
+            if (payment?.arc_mainnet_enabled !== false) throw new Error("Circle OpenAPI must keep Arc mainnet disabled");
+          '
+      - name: Verify provider-wide security gate covers Circle
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'circle_gateway_mainnet' src/lib/provider-real-funds-security.server.ts
+          grep -q 'CIRCLE_X402_ENVIRONMENT' src/lib/provider-real-funds-security.server.ts
+          grep -q 'assertProviderRealFundsSecurityReady' src/lib/circle-gateway-x402-production.server.ts
+          grep -q 'assertCommercialLaunchAuthorized("circle_gateway_x402")' src/lib/circle-gateway-x402-production.server.ts
+          grep -q 'getSupported' src/lib/circle-gateway-x402-production.server.ts
+          grep -q 'verifyCircleGatewayProduction' src/routes/api.x402.circle_.intelligence.ts
+          grep -q 'settleCircleGatewayProduction' src/routes/api.x402.circle_.intelligence.ts
+          grep -q 'manualReview: true' src/routes/api.x402.circle_.intelligence.ts

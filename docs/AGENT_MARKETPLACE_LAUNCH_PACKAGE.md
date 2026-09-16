@@ -2,7 +2,7 @@
 
 Status: **PRE-LAUNCH HOLD**
 
-This package prepares Geomacro for coordinated distribution without publishing or activating a real-money service early. The approved initial production cohort is Coinbase x402 + Nevermined. GOAT mainnet is deferred until manual merchant onboarding is complete.
+This package prepares Geomacro for coordinated distribution without publishing or activating a real-money service early. The approved initial production cohort is Coinbase x402 + Circle Gateway x402 + Nevermined. GOAT mainnet is deferred until manual merchant onboarding is complete.
 
 ## Canonical provider identity
 
@@ -28,6 +28,7 @@ This package prepares Geomacro for coordinated distribution without publishing o
 - Agent-commerce docs: `https://geomacro.live/agent-commerce.md`
 - Free deliverability check: `POST https://geomacro.live/api/x402/risk/availability`
 - Coinbase x402 adaptive resource: `POST https://geomacro.live/api/x402/intelligence`
+- Circle Gateway x402 adaptive resource: `POST https://geomacro.live/api/x402/circle/intelligence`
 - Nevermined adaptive resource: `POST https://geomacro.live/api/x402/nevermined/intelligence`
 
 Static discovery documents do not set the payable price. The actual provider payment challenge or configured provider plan is authoritative.
@@ -68,23 +69,25 @@ x402.new continuously indexes the public x402 discovery network/Bazaar. No separ
 
 ### 4. Circle Agent Marketplace
 
-Use Circle's current provider-listing submission path after the production endpoint is live. Preferred category for the current product is `FINANCIAL_ANALYSIS` unless Circle's submission taxonomy changes before launch.
+Use Circle's current provider-listing submission path only after the dedicated Circle production endpoint is explicitly activated and returns a valid production 402. Preferred category for the current product is `FINANCIAL_ANALYSIS` unless Circle's submission taxonomy changes before launch.
 
-Submit the canonical provider identity above and only production-ready endpoint paths. After approval/listing, query Circle's Discovery API and verify the returned resource URL, network, USDC asset, amount, recipient and provider metadata against Geomacro's own authoritative payment contract before marking the listing verified.
+Submit the canonical provider identity above and the dedicated Circle endpoint `https://geomacro.live/api/x402/circle/intelligence`. After approval/listing, query Circle's Discovery API and verify the returned resource URL, network, USDC asset, amount, recipient and provider metadata against Geomacro's own authoritative payment contract before marking the listing verified.
+
+The prepared Circle settlement path is Base-mainnet USDC only. Arc mainnet remains disabled. The runtime must discover the currently supported Circle Gateway verifying contract before advertising or accepting payment.
 
 ### 5. x402scan
 
-First run x402scan's origin/schema discovery without registering. Review exactly which routes are detected. Register only the approved production x402 endpoint after the launch gate is open. Do not register Testnet3, Base Sepolia or sandbox routes as commercial services.
+First run x402scan's origin/schema discovery without registering. Review exactly which routes are detected. Register only approved production x402 endpoints after the launch gate is open. Do not register Testnet3, Base Sepolia or sandbox routes as commercial services.
 
 ### 6. x402-list
 
-After the production endpoint returns a valid 402 challenge, submit:
+After approved production endpoints return valid 402 challenges, submit:
 
 - base URL: `https://geomacro.live`
 - service name: `Geomacro Risk Intelligence`
 - website: `https://geomacro.live`
 - contact: `contact@geomacro.live`
-- endpoint paths: `/api/x402/intelligence`
+- endpoint paths: `/api/x402/intelligence` and `/api/x402/circle/intelligence` when each is live and verified
 - description: use the canonical short/long copy above
 - category: resolve against the directory's live category list on submission day rather than hard-coding a stale category
 
@@ -123,6 +126,8 @@ Once verified, the owner-only growth queue may generate a private marketing draf
 
 - real-money production funds;
 - Coinbase Base mainnet production acknowledgement;
+- Circle production environment and Circle mainnet acknowledgement;
+- Arc mainnet for the Circle path;
 - Nevermined production/live facilitator use;
 - GOAT mainnet commercial fulfillment;
 - public marketplace submissions that would prematurely announce the production service;
