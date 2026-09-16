@@ -10,8 +10,8 @@
   },
   "discovery": {
     "agent_card": "https://geomacro.live/.well-known/geomacro-agent.json",
-    "x402": "https://geomacro.live/.well-known/x402",
-    "x402_json": "https://geomacro.live/.well-known/x402.json",
+    "x402": "https://geomacro.live/.well-known/x402.json",
+    "x402_extensionless_alias": "https://geomacro.live/.well-known/x402",
     "human_machine_docs": "https://geomacro.live/agent-commerce.md",
     "llms": "https://geomacro.live/llms.txt",
     "openapi": "https://geomacro.live/openapi-x402.json",
