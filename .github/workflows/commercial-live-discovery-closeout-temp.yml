@@ -1,0 +1,52 @@
+name: Commercial Live Discovery Closeout Probe
+
+on:
+  push:
+    branches:
+      - feat/commercial-prelaunch-closeout
+    paths:
+      - ".github/workflows/commercial-live-discovery-closeout-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify live machine-discovery files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          base='https://geomacro.live'
+          curl --fail --silent --show-error --max-time 20 "$base/.well-known/geomacro-commerce.json" > artifacts/geomacro-commerce.json
+          curl --fail --silent --show-error --max-time 20 "$base/.well-known/geomacro-agent.json" > artifacts/geomacro-agent.json
+          curl --fail --silent --show-error --max-time 20 "$base/llms.txt" > artifacts/llms.txt
+          curl --fail --silent --show-error --max-time 20 "$base/agent-commerce.md" > artifacts/agent-commerce.md
+          node <<'NODE'
+          const fs = require('fs');
+          const c = JSON.parse(fs.readFileSync('artifacts/geomacro-commerce.json','utf8'));
+          const a = JSON.parse(fs.readFileSync('artifacts/geomacro-agent.json','utf8'));
+          const llms = fs.readFileSync('artifacts/llms.txt','utf8');
+          const md = fs.readFileSync('artifacts/agent-commerce.md','utf8');
+          if (c.service?.status !== 'prelaunch') throw new Error('live commerce catalog must remain prelaunch');
+          if (c.service?.execution_authorized !== false) throw new Error('live commerce catalog execution boundary mismatch');
+          if (c.commercial_contract?.production_funds_authorized !== false) throw new Error('live catalog cannot authorize production funds');
+          const providers = c.offers?.[0]?.providers ?? {};
+          if (providers.coinbase_x402?.launch_cohort !== true || providers.coinbase_x402?.production_enabled !== false) throw new Error('Coinbase live discovery state mismatch');
+          if (providers.nevermined?.launch_cohort !== true || providers.nevermined?.production_enabled !== false) throw new Error('Nevermined live discovery state mismatch');
+          if (providers.goat_x402?.launch_cohort !== false || providers.goat_x402?.production_enabled !== false) throw new Error('GOAT live discovery must remain deferred');
+          if (!llms.includes('/.well-known/geomacro-commerce.json')) throw new Error('llms.txt missing commerce catalog');
+          if (!md.includes('/.well-known/geomacro-commerce.json')) throw new Error('agent-commerce.md missing commerce catalog');
+          if (!JSON.stringify(a).includes('execution_authorized')) throw new Error('agent card missing execution boundary');
+          console.log('PASS: live machine discovery matches coordinated prelaunch policy.');
+          NODE
+      - name: Upload public discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: commercial-live-discovery-closeout-${{ github.sha }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
