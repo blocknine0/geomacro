@@ -1,13 +1,14 @@
 import fs from "node:fs";
 import { createHash } from "node:crypto";
 
-const API = "https://api.worldbank.org/v2";
-const SOURCE_ID = "20";
 const OUTPUT =
   process.env.WORLD_BANK_QPSD_COVERAGE_OUTPUT ??
   "world-bank-qpsd-sovereign-fiscal-coverage.json";
+const BULK_CSV =
+  process.env.WORLD_BANK_QPSD_BULK_CSV ?? "qpsd-bulk/QPSDCSV.csv";
 const AS_OF = new Date(process.env.WORLD_BANK_QPSD_AS_OF ?? Date.now());
 const MAX_AGE_DAYS = Number(process.env.WORLD_BANK_QPSD_MAX_AGE_DAYS ?? 550);
+const FIXED_PEER_MINIMUM = 20;
 
 const SERIES = Object.freeze([
   {
@@ -24,39 +25,40 @@ const SERIES = Object.freeze([
     expected_label:
       "Gross PSD, Central Gov., All maturities, All instruments, Nominal Value, % of GDP",
     production_role:
-      "SOURCE_SPECIFIC_CENTRAL_GOVERNMENT_COMPARATOR",
+      "SOURCE_SPECIFIC_CENTRAL_GOVERNMENT_FISCAL_CANDIDATE",
   },
 ]);
 
-const sha256 = (text) =>
-  createHash("sha256").update(text, "utf8").digest("hex");
+function sha256Buffer(buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
+}
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function requestJson(url) {
-  let lastError;
-  for (let attempt = 1; attempt <= 4; attempt++) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          accept: "application/json",
-          "user-agent":
-            "Geomacro-World-Bank-QPSD-Coverage-Audit/1.0 (+https://geomacro.live)",
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (quoted) {
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        current += char;
       }
-      const text = await response.text();
-      const parsed = JSON.parse(text);
-      return { parsed, response_sha256: sha256(text), url };
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt === 4) throw lastError;
-      await sleep(600 * 2 ** (attempt - 1));
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
     }
   }
-  throw lastError ?? new Error("World Bank QPSD request failed");
+  values.push(current);
+  return values;
 }
 
 function parseQuarterEnd(value) {
@@ -75,120 +77,125 @@ function sorted(values) {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b));
 }
 
-async function fetchWorldBankCountries() {
-  const url = `${API}/country?format=json&per_page=500`;
-  const { parsed, response_sha256 } = await requestJson(url);
-  if (!Array.isArray(parsed) || !Array.isArray(parsed[1])) {
-    throw new Error("World Bank country metadata response shape was invalid");
+function latestObservation(fields, quarterColumns) {
+  for (let index = quarterColumns.length - 1; index >= 0; index -= 1) {
+    const column = quarterColumns[index];
+    const raw = String(fields[column.index] ?? "").trim();
+    if (!raw) continue;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) continue;
+    const observedAt = parseQuarterEnd(column.period);
+    if (!observedAt || observedAt > AS_OF) continue;
+    return {
+      period: column.period,
+      observed_at: observedAt.toISOString(),
+      age_days: ageDays(observedAt, AS_OF),
+      value,
+    };
   }
-
-  const rows = parsed[1]
-    .map((row) => ({
-      iso3: String(row?.id ?? "").trim().toUpperCase(),
-      name: String(row?.name ?? "").trim(),
-      region_id: String(row?.region?.id ?? "").trim(),
-      region_name: String(row?.region?.value ?? "").trim(),
-    }))
-    .filter(
-      (row) => /^[A-Z]{3}$/.test(row.iso3) && row.region_id && row.region_id !== "NA",
-    );
-
-  return {
-    iso3: sorted(rows.map((row) => row.iso3)),
-    rows,
-    response_sha256,
-    url,
-  };
+  return null;
 }
 
-async function fetchSeries(series) {
-  const params = new URLSearchParams({
-    format: "json",
-    source: SOURCE_ID,
-    per_page: "20000",
-    mrnev: "1",
-    frequency: "Q",
-  });
-  const url = `${API}/country/all/indicator/${series.id}?${params.toString()}`;
-  const { parsed, response_sha256 } = await requestJson(url);
-  if (!Array.isArray(parsed) || !Array.isArray(parsed[1])) {
-    throw new Error(`World Bank QPSD ${series.id} response shape was invalid`);
+function auditBulkCsv() {
+  if (!fs.existsSync(BULK_CSV)) {
+    throw new Error(`Official QPSD bulk CSV not found: ${BULK_CSV}`);
+  }
+  const bytes = fs.readFileSync(BULK_CSV);
+  const text = bytes.toString("utf8").replace(/^\uFEFF/, "");
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) throw new Error("QPSD bulk CSV is empty");
+
+  const header = parseCsvLine(lines[0]);
+  if (
+    header[0] !== "Country Name" ||
+    header[1] !== "Country Code" ||
+    header[2] !== "Indicator Name" ||
+    header[3] !== "Indicator Code"
+  ) {
+    throw new Error(`Unexpected QPSD bulk header: ${header.slice(0, 4).join(" | ")}`);
   }
 
-  const metadata = parsed[0] ?? {};
-  const rows = parsed[1]
-    .map((row) => {
-      const iso3 = String(row?.countryiso3code ?? "").trim().toUpperCase();
-      const period = String(row?.date ?? "").trim();
-      const observedAt = parseQuarterEnd(period);
-      const value = row?.value == null ? null : Number(row.value);
-      const label = String(row?.indicator?.value ?? "").trim();
-      return {
-        iso3,
-        period,
-        observed_at: observedAt?.toISOString() ?? null,
-        value,
-        label,
-      };
-    })
-    .filter(
-      (row) =>
-        /^[A-Z]{3}$/.test(row.iso3) &&
-        row.observed_at &&
-        Number.isFinite(row.value),
-    );
+  const quarterColumns = header
+    .map((period, index) => ({ period, index }))
+    .filter((item) => parseQuarterEnd(item.period));
+  if (quarterColumns.length === 0) throw new Error("QPSD bulk CSV has no quarterly columns");
 
-  const labels = sorted(rows.map((row) => row.label).filter(Boolean));
-  if (!labels.includes(series.expected_label)) {
-    throw new Error(
-      `World Bank QPSD ${series.id} label mismatch: ${labels.join(" | ") || "none"}`,
-    );
-  }
+  const targetById = new Map(SERIES.map((series) => [series.id, series]));
+  const observations = new Map(SERIES.map((series) => [series.id, []]));
+  const datasetCountries = new Set();
+  const observedLabels = new Map(SERIES.map((series) => [series.id, new Set()]));
 
-  const latestByCountry = new Map();
-  for (const row of rows) {
-    const current = latestByCountry.get(row.iso3);
-    if (!current || Date.parse(row.observed_at) > Date.parse(current.observed_at)) {
-      latestByCountry.set(row.iso3, row);
+  for (let i = 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.includes("DP.DOD.DECT.CR.")) {
+      const prefix = parseCsvLine(line.slice(0, Math.min(line.length, 512)));
+      const maybeIso3 = String(prefix[1] ?? "").trim().toUpperCase();
+      if (/^[A-Z]{3}$/.test(maybeIso3)) datasetCountries.add(maybeIso3);
+      continue;
     }
+    const fields = parseCsvLine(line);
+    const countryName = String(fields[0] ?? "").trim();
+    const iso3 = String(fields[1] ?? "").trim().toUpperCase();
+    const label = String(fields[2] ?? "").trim();
+    const seriesId = String(fields[3] ?? "").trim();
+    if (/^[A-Z]{3}$/.test(iso3)) datasetCountries.add(iso3);
+    const series = targetById.get(seriesId);
+    if (!series || !/^[A-Z]{3}$/.test(iso3)) continue;
+    observedLabels.get(seriesId).add(label);
+    const latest = latestObservation(fields, quarterColumns);
+    if (!latest) continue;
+    observations.get(seriesId).push({
+      iso3,
+      country_name: countryName,
+      ...latest,
+    });
   }
 
-  const latest = [...latestByCountry.values()].sort((a, b) =>
-    a.iso3.localeCompare(b.iso3),
-  );
-  const fresh = latest.filter((row) => {
-    const observedAt = new Date(row.observed_at);
-    return observedAt <= AS_OF && ageDays(observedAt, AS_OF) <= MAX_AGE_DAYS;
+  const results = SERIES.map((series) => {
+    const labels = sorted(observedLabels.get(series.id));
+    if (labels.length !== 1 || labels[0] !== series.expected_label) {
+      throw new Error(
+        `QPSD ${series.id} label mismatch: ${labels.join(" | ") || "none"}`,
+      );
+    }
+    const latest = observations
+      .get(series.id)
+      .sort((a, b) => a.iso3.localeCompare(b.iso3));
+    const fresh = latest.filter((row) => row.age_days <= MAX_AGE_DAYS);
+    return {
+      series_id: series.id,
+      concept: series.concept,
+      production_role: series.production_role,
+      exact_label: series.expected_label,
+      latest_non_null_country_count: latest.length,
+      fresh_or_aging_country_count: fresh.length,
+      latest_non_null_iso3: latest.map((row) => row.iso3),
+      fresh_or_aging_iso3: fresh.map((row) => row.iso3),
+      latest_period_distribution: latest.reduce((acc, row) => {
+        acc[row.period] = (acc[row.period] ?? 0) + 1;
+        return acc;
+      }, {}),
+      freshness_max_age_days: MAX_AGE_DAYS,
+      fixed_peer_minimum: FIXED_PEER_MINIMUM,
+      peer_universe_eligible: fresh.length >= FIXED_PEER_MINIMUM,
+      fresh_or_aging_rows: fresh,
+    };
   });
 
   return {
-    series_id: series.id,
-    concept: series.concept,
-    production_role: series.production_role,
-    exact_label: series.expected_label,
-    source_id: SOURCE_ID,
-    query_url: url,
-    response_sha256,
-    api_metadata: {
-      page: metadata.page ?? null,
-      pages: metadata.pages ?? null,
-      per_page: metadata.per_page ?? null,
-      total: metadata.total ?? null,
-      lastupdated: metadata.lastupdated ?? null,
-    },
-    latest_non_null_country_count: latest.length,
-    fresh_or_aging_country_count: fresh.length,
-    latest_non_null_iso3: latest.map((row) => row.iso3),
-    fresh_or_aging_iso3: fresh.map((row) => row.iso3),
-    latest_period_distribution: latest.reduce((acc, row) => {
-      acc[row.period] = (acc[row.period] ?? 0) + 1;
-      return acc;
-    }, {}),
-    fresh_or_aging_rows: fresh,
+    file_sha256: sha256Buffer(bytes),
+    file_size_bytes: bytes.length,
+    row_count: lines.length - 1,
+    quarterly_column_count: quarterColumns.length,
+    first_quarter: quarterColumns[0].period,
+    last_quarter: quarterColumns.at(-1).period,
+    dataset_country_count: datasetCountries.size,
+    dataset_iso3: sorted(datasetCountries),
+    series: results,
   };
 }
 
-async function main() {
+function main() {
   if (Number.isNaN(AS_OF.getTime())) {
     throw new Error("WORLD_BANK_QPSD_AS_OF must be a valid timestamp");
   }
@@ -196,54 +203,48 @@ async function main() {
     throw new Error("WORLD_BANK_QPSD_MAX_AGE_DAYS must be positive");
   }
 
-  const countryMetadata = await fetchWorldBankCountries();
-  const countrySet = new Set(countryMetadata.iso3);
-  const seriesResults = [];
-  for (const series of SERIES) {
-    const result = await fetchSeries(series);
-    result.world_bank_country_intersection_iso3 = result.fresh_or_aging_iso3.filter(
-      (iso3) => countrySet.has(iso3),
-    );
-    result.world_bank_country_intersection_count =
-      result.world_bank_country_intersection_iso3.length;
-    seriesResults.push(result);
-  }
-
-  const generalGovernment = seriesResults.find(
+  const bulk = auditBulkCsv();
+  const generalGovernment = bulk.series.find(
     (item) => item.concept === "GENERAL_GOVERNMENT_GROSS_DEBT_PCT_GDP",
   );
-  const centralGovernment = seriesResults.find(
+  const centralGovernment = bulk.series.find(
     (item) => item.concept === "CENTRAL_GOVERNMENT_GROSS_DEBT_PCT_GDP",
   );
   if (!generalGovernment || !centralGovernment) {
-    throw new Error("World Bank QPSD audit did not return both fiscal concepts");
+    throw new Error("QPSD bulk audit did not return both fiscal concepts");
   }
 
-  const ggSet = new Set(generalGovernment.world_bank_country_intersection_iso3);
-  const cgSet = new Set(centralGovernment.world_bank_country_intersection_iso3);
+  const ggSet = new Set(generalGovernment.fresh_or_aging_iso3);
+  const cgSet = new Set(centralGovernment.fresh_or_aging_iso3);
+  const sourceSpecificUnion = sorted([...ggSet, ...cgSet]);
+  const both = sorted([...ggSet].filter((iso3) => cgSet.has(iso3)));
 
   const report = {
-    schema_version: "geomacro-world-bank-qpsd-sovereign-fiscal-coverage-1.0",
+    schema_version: "geomacro-world-bank-qpsd-sovereign-fiscal-coverage-2.0",
     generated_at: new Date().toISOString(),
     as_of: AS_OF.toISOString(),
     writes_performed: false,
     source: {
       provider: "World Bank",
       database: "Quarterly Public Sector Debt",
-      api_source_id: SOURCE_ID,
-      api_version: "v2",
-      official_api_documentation:
-        "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392",
-      official_dataset_terms:
-        "https://www.worldbank.org/ext/en/legal/terms-conditions/datasets",
-      rights_review_status: "WORLD_BANK_OPEN_DATA_TERMS_REVIEWED_CANDIDATE",
+      transport: "official_databank_bulk_csv",
+      bulk_download_url: "https://databank.worldbank.org/data/download/QPSD_CSV.zip",
+      data_catalog_url:
+        "https://datacatalog.worldbank.org/search/dataset/0037906/quarterly-public-sector-debt",
+      exact_dataset_license: "CC BY 4.0",
+      classification: "Public",
+      rights_review_status: "EXACT_QPSD_DATASET_CC_BY_4_0_VERIFIED_FOR_CANDIDATE",
       rights_note:
-        "World Bank dataset terms default datasets to CC BY 4.0 unless a dataset is specifically labelled otherwise. Production activation still requires exact-dataset metadata and attribution review to remain recorded in Geomacro source governance.",
+        "The World Bank Data Catalog identifies QPSD as Public and licensed CC BY 4.0. Production activation remains separately gated on deterministic adapter, attribution, source-specific methodology and production census evidence.",
+      bulk_file_sha256: bulk.file_sha256,
+      bulk_file_size_bytes: bulk.file_size_bytes,
+      bulk_row_count: bulk.row_count,
+      first_quarter: bulk.first_quarter,
+      last_quarter: bulk.last_quarter,
     },
     country_metadata: {
-      query_url: countryMetadata.url,
-      response_sha256: countryMetadata.response_sha256,
-      non_aggregate_world_bank_country_count: countryMetadata.iso3.length,
+      qpsd_dataset_country_count: bulk.dataset_country_count,
+      qpsd_dataset_iso3: bulk.dataset_iso3,
     },
     methodology_boundary: {
       discovery_only: true,
@@ -255,34 +256,33 @@ async function main() {
       cross_concept_peer_pooling_allowed: false,
       direct_production_fallback_allowed: false,
       source_specific_peer_universe_required: true,
+      source_specific_hierarchy_candidate_allowed_after_shadow_proof: true,
+      fixed_peer_minimum: FIXED_PEER_MINIMUM,
       fixed_peer_minimum_unchanged: true,
       freshness_thresholds_unchanged: true,
     },
     coverage_summary: {
       general_government_current_or_aging_country_count:
-        generalGovernment.world_bank_country_intersection_count,
+        generalGovernment.fresh_or_aging_country_count,
       central_government_current_or_aging_country_count:
-        centralGovernment.world_bank_country_intersection_count,
-      both_concepts_current_or_aging_count: sorted(
-        generalGovernment.world_bank_country_intersection_iso3.filter((iso3) =>
-          cgSet.has(iso3),
-        ),
-      ).length,
+        centralGovernment.fresh_or_aging_country_count,
+      both_concepts_current_or_aging_count: both.length,
       general_government_only_count: sorted(
-        generalGovernment.world_bank_country_intersection_iso3.filter(
-          (iso3) => !cgSet.has(iso3),
-        ),
+        [...ggSet].filter((iso3) => !cgSet.has(iso3)),
       ).length,
       central_government_only_count: sorted(
-        centralGovernment.world_bank_country_intersection_iso3.filter(
-          (iso3) => !ggSet.has(iso3),
-        ),
+        [...cgSet].filter((iso3) => !ggSet.has(iso3)),
       ).length,
-      target_100_country_path_plausible_from_qpsd_alone:
-        Math.max(
-          generalGovernment.world_bank_country_intersection_count,
-          centralGovernment.world_bank_country_intersection_count,
-        ) >= 100,
+      source_specific_union_country_count: sourceSpecificUnion.length,
+      source_specific_union_iso3: sourceSpecificUnion,
+      general_government_peer_universe_eligible:
+        generalGovernment.peer_universe_eligible,
+      central_government_peer_universe_eligible:
+        centralGovernment.peer_universe_eligible,
+      target_100_country_path_plausible_from_qpsd_source_specific_hierarchy:
+        sourceSpecificUnion.length >= 100 &&
+        generalGovernment.peer_universe_eligible &&
+        centralGovernment.peer_universe_eligible,
       production_supported_country_count_added: 0,
     },
     activation_boundary: {
@@ -291,9 +291,9 @@ async function main() {
       scoring_changed: false,
       country_payability_changed: false,
       next_required_proof:
-        "Map QPSD coverage against the authoritative Geomacro sovereign registry, verify exact dataset rights metadata, build a deterministic adapter, run source-specific shadow scoring with >=20 concept-consistent peers, then run a full production country census before any promotion.",
+        "Map the QPSD source-specific union against the authoritative Geomacro sovereign registry, build a deterministic observation adapter, run separate general-government and central-government shadow peer universes, verify attribution/provenance hashes, then run the full production country census before promotion.",
     },
-    series: seriesResults,
+    series: bulk.series,
   };
 
   fs.writeFileSync(OUTPUT, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -301,6 +301,12 @@ async function main() {
     JSON.stringify(
       {
         generated_at: report.generated_at,
+        source: {
+          transport: report.source.transport,
+          exact_dataset_license: report.source.exact_dataset_license,
+          bulk_file_sha256: report.source.bulk_file_sha256,
+          last_quarter: report.source.last_quarter,
+        },
         coverage_summary: report.coverage_summary,
         activation_boundary: report.activation_boundary,
       },
@@ -311,7 +317,9 @@ async function main() {
   console.log("PASS: WORLD BANK QPSD FISCAL COVERAGE AUDIT COMPLETE - NO WRITES");
 }
 
-main().catch((error) => {
+try {
+  main();
+} catch (error) {
   console.error(error instanceof Error ? error.stack ?? error.message : String(error));
   process.exit(1);
-});
+}
