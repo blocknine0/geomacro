@@ -68,6 +68,20 @@ jobs:
           cd lovable-mirror
           printf '%s\n' "${GITHUB_SHA}" > .geomacro-canonical-main
 
+          # This public marker is deployment evidence only. Lovable still requires
+          # an explicit Publish changes action after Git sync. The live acceptance
+          # workflow reads this file to prove the published site corresponds to the
+          # exact canonical main SHA being accepted.
+          mkdir -p public/.well-known
+          cat > public/.well-known/geomacro-build.json <<EOF
+          {
+            "schema_version": "geomacro.deployment-build.v1",
+            "canonical_repository": "blocknine0/geomacro",
+            "canonical_main_sha": "${GITHUB_SHA}",
+            "production_activation_performed": false
+          }
+          EOF
+
           git config user.name "Geomacro Canonical Sync"
           git config user.email "160921639+blocknine0@users.noreply.github.com"
           git add -A
