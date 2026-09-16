@@ -1,6 +1,16 @@
 name: Deploy public risk indices edge
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-public-risk-indices-edge.yml"
+      - "supabase/functions/public-risk-indices/**"
+      - "src/lib/public-risk-edge.server.ts"
+      - "src/lib/public-risk-indices.functions.ts"
+      - "src/lib/public-risk.functions.ts"
+      - "src/lib/risk-indices.types.ts"
   workflow_dispatch:
     inputs:
       mode:
@@ -41,6 +51,7 @@ jobs:
           file=".github/workflows/deploy-public-risk-indices-edge.yml"
           function="supabase/functions/public-risk-indices/index.ts"
 
+          grep -q 'push:' "$file"
           grep -q 'workflow_dispatch:' "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
@@ -60,7 +71,7 @@ jobs:
           echo "Public risk indices deployment guardrails are present."
 
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
@@ -97,14 +108,14 @@ jobs:
         with:
           version: 2.117.0
 
-      - name: Stop after deployment plan
-        if: ${{ inputs.mode == 'plan' }}
+      - name: Stop after manual deployment plan
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
         shell: bash
         run: |
           echo "Plan completed. No production function was deployed."
 
       - name: Deploy read-only public risk indices function
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -113,7 +124,7 @@ jobs:
             --no-verify-jwt
 
       - name: Smoke-check three verified public indices
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
