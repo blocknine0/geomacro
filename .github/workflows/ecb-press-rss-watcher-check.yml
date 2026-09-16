@@ -1,0 +1,68 @@
+name: ECB Press RSS Watcher Check
+
+on:
+  pull_request:
+    paths:
+      - "scripts/early-warning/ecb-rss-core.mjs"
+      - "scripts/early-warning/ecb-rss-core.test.mjs"
+      - "scripts/early-warning/watch-ecb-press-rss.mjs"
+      - "scripts/early-warning/fixtures/ecb-press-sample.xml"
+      - "config/early-warning-watchers.json"
+      - "docs/source-reviews/ECB_PRESS_RSS_REVIEW.md"
+      - ".github/workflows/ecb-press-rss-watcher-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Test parser and classifier fixture
+        run: bunx vitest run scripts/early-warning/ecb-rss-core.test.mjs
+      - name: Fetch live official ECB RSS without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/early-warning/watch-ecb-press-rss.mjs 2>&1 | tee ecb-rss-dry-run.log
+          grep -q 'PASS: ECB PRESS RSS PRELAUNCH DRY RUN; NO DATABASE OR PUBLIC WRITE' ecb-rss-dry-run.log
+          grep -q '"mode": "PRELAUNCH_DRY_RUN_ONLY"' ecb-rss-dry-run.log
+          grep -q '"commercial_signal_activation": false' ecb-rss-dry-run.log
+          grep -q '"database_write": false' ecb-rss-dry-run.log
+          grep -q '"public_publish": false' ecb-rss-dry-run.log
+          grep -q '"raw_body_stored": false' ecb-rss-dry-run.log
+          count="$(awk '/"total_feed_items":/{gsub(/[^0-9]/,"",$0); print $0; exit}' ecb-rss-dry-run.log)"
+          test -n "$count" && test "$count" -gt 0
+          echo "PASS: live ECB RSS returned ${count} bounded metadata items."
+      - name: Prove write flags fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node scripts/early-warning/watch-ecb-press-rss.mjs --write >ecb-write-attempt.log 2>&1; then
+            echo 'ERROR: ECB watcher unexpectedly accepted --write' >&2
+            exit 1
+          fi
+          grep -q 'prelaunch dry-run only' ecb-write-attempt.log
+          echo 'PASS: ECB watcher rejects database/live write flags.'
+      - name: Upload dry-run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ecb-press-rss-dry-run
+          path: |
+            ecb-rss-dry-run.log
+            ecb-write-attempt.log
+          if-no-files-found: warn
+          retention-days: 30
