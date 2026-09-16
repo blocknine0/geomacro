@@ -3,8 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Radio, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RiskBadge, RiskScore, RiskTrend } from "@/components/foundation/risk";
-import { RiskChart } from "@/components/home/risk-chart";
+import { RiskBadge, RiskTrend } from "@/components/foundation/risk";
 import {
   applyIntelFilters,
   availableSorts,
@@ -15,11 +14,11 @@ import {
   type IntelSort,
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
-import { useGlobalRisk } from "@/lib/use-global-risk";
+import { useRiskIndices } from "@/lib/use-risk-indices";
 
 const TITLE = "Live Geopolitical & Macro Risk Intelligence | Geomacro";
 const DESCRIPTION =
-  "Follow current geopolitical and macro risk through scored events, evidence context, timestamps and the verified Global Risk Index for professional research.";
+  "Follow current geopolitical and macro risk through scored events, evidence context, timestamps and Geomacro's verified separate risk indices for professional research.";
 const URL = "https://geomacro.live/intelligence";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -75,7 +74,7 @@ function IntelligencePage() {
     [loaderData.now, loaderData.rows],
   );
   const intel = useIntelligence(initialData);
-  const globalRisk = useGlobalRisk();
+  const riskIndices = useRiskIndices();
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<IntelSort>("risk");
@@ -87,7 +86,6 @@ function IntelligencePage() {
     () => applyIntelFilters(pool, { category, query, sort: activeSort }),
     [pool, category, query, activeSort],
   );
-  const series = globalRisk.data?.series["7D"]?.buckets ?? null;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
@@ -186,31 +184,38 @@ function IntelligencePage() {
           <aside className="space-y-4" aria-label="Intelligence context">
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Global Risk Index</p>
-                <Link to="/global-risk" className="text-xs text-primary hover:underline">Verify</Link>
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Risk Indices</p>
+                <Link to="/global-risk" className="text-xs text-primary hover:underline">Open</Link>
               </div>
-              {globalRisk.data ? (
-                <>
-                  <RiskScore score={globalRisk.data.score} size="md" className="mt-3" />
-                  {globalRisk.data.previous !== null ? (
-                    <div className="mt-3">
-                      <RiskTrend delta={Math.round(globalRisk.data.score - globalRisk.data.previous)} />
+              {riskIndices.data ? (
+                <div className="mt-4 space-y-3">
+                  {riskIndices.data.indices.map((index) => (
+                    <div key={index.key} className="border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium leading-5">{index.name}</p>
+                          <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                            {index.eventCount} evidence · {index.independentStoryCount} stories
+                          </p>
+                        </div>
+                        {index.status === "available" && index.score !== null ? (
+                          <RiskBadge score={index.score} showScore />
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">Refreshing</span>
+                        )}
+                      </div>
+                      {index.changePoints !== null ? (
+                        <div className="mt-2"><RiskTrend delta={index.changePoints} /></div>
+                      ) : null}
                     </div>
-                  ) : null}
-                  {series && series.length > 1 ? (
-                    <RiskChart buckets={series} label="Verified GRI, last 7 days" height={150} className="mt-5" />
-                  ) : (
-                    <p className="mt-4 text-xs text-muted-foreground">Verified history appears when enough snapshots are available.</p>
-                  )}
-                  <dl className="mt-5 grid grid-cols-2 gap-3 text-xs">
-                    <Metric label="Evidence" value={String(globalRisk.data.eventCount)} />
-                    <Metric label="Stories" value={String(globalRisk.data.independentStoryCount)} />
-                    <Metric label="Sources" value={globalRisk.data.sourceCount === null ? "—" : String(globalRisk.data.sourceCount)} />
-                    <Metric label="Coverage" value={`${Math.round(globalRisk.data.coverage * 100)}%`} />
-                  </dl>
-                </>
+                  ))}
+                </div>
               ) : (
-                <p className="mt-3 text-sm text-muted-foreground">Verified GRI snapshot unavailable.</p>
+                <div className="mt-4 space-y-3" aria-label="Refreshing verified risk indices">
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <div key={index} className="h-12 animate-pulse rounded-lg bg-muted/30" />
+                  ))}
+                </div>
               )}
             </div>
 
@@ -232,7 +237,7 @@ function IntelligencePage() {
             <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Ask Geomacro</p>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Ask a question using the same stored intelligence and current verified GRI shown here.
+                Ask a question using the same stored intelligence and current verified risk indices shown here.
               </p>
               <Button asChild variant="outline" className="mt-4 w-full gap-2">
                 <Link to="/ask-geomacro">Ask a question <ArrowRight className="h-4 w-4" /></Link>
@@ -274,15 +279,6 @@ function LoadingGrid() {
       {Array.from({ length: 6 }, (_, index) => (
         <div key={index} className="h-[230px] animate-pulse rounded-2xl border border-border/60 bg-card/30" />
       ))}
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border/60 bg-background/30 p-3">
-      <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-mono text-sm text-foreground">{value}</dd>
     </div>
   );
 }
