@@ -120,7 +120,7 @@ describe('shared source discovery hardening', () => {
     );
   });
 
-  it('wires Guardian query budget into ingestion workflows', () => {
+  it('wires Guardian query budget into active ingestion workflows', () => {
     const envExample = readFileSync(
       new URL(
         '../../.env.example',
@@ -139,7 +139,6 @@ describe('shared source discovery hardening', () => {
 
     for (const workflowPath of [
       '../../.github/workflows/auto-ingest-news.yml',
-      '../../.github/workflows/dry-run-multisource-news.yml',
     ]) {
       const workflow = readFileSync(
         new URL(
