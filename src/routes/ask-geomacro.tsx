@@ -3,7 +3,7 @@ import { AskGeomacroSection } from "@/components/home/ask-geomacro";
 
 const TITLE = "Ask Geomacro | Grounded Geopolitical Risk Research";
 const DESCRIPTION =
-  "Ask geopolitical and macro risk questions grounded in Geomacro's stored evidence and current verified Global Risk Index, with explicit evidence boundaries.";
+  "Ask geopolitical, macroeconomic and critical-mineral risk questions grounded in Geomacro's stored evidence and current verified separate Risk Indices, with explicit evidence boundaries.";
 const URL = "https://geomacro.live/ask-geomacro";
 const IMAGE = "https://geomacro.live/og-signal-card-v2.png";
 
@@ -21,12 +21,12 @@ export const Route = createFileRoute("/ask-geomacro")({
       { property: "og:image:secure_url", content: IMAGE },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "Ask Geomacro grounded geopolitical and macro risk intelligence" },
+      { property: "og:image:alt", content: "Ask Geomacro grounded geopolitical, macroeconomic and critical-mineral risk intelligence" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: IMAGE },
-      { name: "twitter:image:alt", content: "Ask Geomacro grounded geopolitical and macro risk intelligence" },
+      { name: "twitter:image:alt", content: "Ask Geomacro grounded geopolitical, macroeconomic and critical-mineral risk intelligence" },
     ],
     links: [{ rel: "canonical", href: URL }],
     scripts: [
