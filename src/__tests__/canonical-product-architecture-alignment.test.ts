@@ -50,7 +50,7 @@ describe("canonical product architecture alignment", () => {
 
     expect(contract).toContain("one governed intelligence foundation");
     expect(contract).toContain("not a separate risk engine");
-    expect(contract).toContain("There is no API-only, pay-per-call-only or x402-only risk database");
+    expect(contract).toContain("A subscription, payment, authentication or transport adapter is **not a separate risk engine**");
     expect(architecture).toContain("one shared evidence and provenance foundation");
     expect(architecture).toContain("does not create a separate dataset, score engine, Risk Object path or Risk Gate implementation");
   });
@@ -141,7 +141,7 @@ describe("canonical product architecture alignment", () => {
     const predictionDocs = read("src/content/docs/34-prediction-markets.md");
 
     expect(home).toContain("Secondary technical proof");
-    expect(home).toContain("They are not the main commercial product");
+    expect(home).toContain("They are not Geomacro's primary commercial identity");
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(about).toContain("Risk intelligence is the product");
