@@ -70,10 +70,26 @@ jobs:
       - name: Database migration safety
         run: timeout 4m bun run db:safety
 
-      - name: Production build
+      - name: Production build with fake server-secret canaries
+        env:
+          APP_SUPABASE_SERVICE_ROLE_KEY: geomacro-ci-canary-app-service-role-20260917-do-not-ship
+          SUPABASE_SERVICE_ROLE_KEY: geomacro-ci-canary-service-role-20260917-do-not-ship
+          GEOMACRO_API_CREDENTIAL_PEPPER: geomacro-ci-canary-api-credential-pepper-20260917
+          GEOMACRO_SECURITY_FINGERPRINT_PEPPER: geomacro-ci-canary-fingerprint-pepper-20260917
+          CDP_API_KEY_SECRET: geomacro-ci-canary-cdp-secret-20260917-do-not-ship
+          GOATX402_API_KEY: geomacro-ci-canary-goat-secret-20260917-do-not-ship
+          CIRCLE_GATEWAY_API_KEY: geomacro-ci-canary-circle-secret-20260917-do-not-ship
         run: timeout 8m bun run build
 
       - name: Public build secret and source exposure scan
+        env:
+          APP_SUPABASE_SERVICE_ROLE_KEY: geomacro-ci-canary-app-service-role-20260917-do-not-ship
+          SUPABASE_SERVICE_ROLE_KEY: geomacro-ci-canary-service-role-20260917-do-not-ship
+          GEOMACRO_API_CREDENTIAL_PEPPER: geomacro-ci-canary-api-credential-pepper-20260917
+          GEOMACRO_SECURITY_FINGERPRINT_PEPPER: geomacro-ci-canary-fingerprint-pepper-20260917
+          CDP_API_KEY_SECRET: geomacro-ci-canary-cdp-secret-20260917-do-not-ship
+          GOATX402_API_KEY: geomacro-ci-canary-goat-secret-20260917-do-not-ship
+          CIRCLE_GATEWAY_API_KEY: geomacro-ci-canary-circle-secret-20260917-do-not-ship
         run: timeout 3m node scripts/security/scan-public-build.mjs
 
       - name: One-million adversarial envelope and credential-spray model
@@ -105,6 +121,13 @@ jobs:
             if (evidence.result !== "PASS") {
               throw new Error(`${path} did not PASS`);
             }
+          }
+
+          const publicBuild = JSON.parse(
+            fs.readFileSync("artifacts/public-build-security-scan.json", "utf8"),
+          );
+          if (publicBuild.findings.length !== 0) {
+            throw new Error("Public build scan recorded leak findings");
           }
 
           const adversarial = JSON.parse(
