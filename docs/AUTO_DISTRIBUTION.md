@@ -1,6 +1,6 @@
 # Geomacro Public Alert Auto Distribution
 
-Status: CANONICAL FEED INTEGRATED · SHADOW MODE
+Status: CANONICAL FEED INTEGRATED · RECEIPT-WIRED · SHADOW MODE
 
 Geomacro's public alert distributor is a separate lane from the commercial marketing draft queue. Its purpose is to let one verified public Early Warning alert feed multiple free distribution surfaces without rewriting or reclassifying the intelligence per platform.
 
@@ -11,7 +11,7 @@ Geomacro's public alert distributor is a separate lane from the commercial marke
 
 ## Canonical source
 
-The distributor now consumes the bounded public API rather than a separate hand-built alert payload:
+The distributor consumes the bounded public API:
 
 `https://geomacro.live/api/early-warning`
 
@@ -21,11 +21,11 @@ Required public feed schema:
 
 The adapter in `scripts/marketing/public-feed-adapter.mjs` validates the public-feed safety boundaries and converts a public feed item into the narrow distribution payload expected by the channel renderer.
 
-This means the marketing layer does not read raw evidence, source identities, CEWS internals, customer context or internal Risk Objects.
+The marketing layer does not read raw evidence, source identities, CEWS internals, customer context or internal Risk Objects.
 
 ## Free distribution surfaces
 
-Push adapters already supported by the renderer:
+Push adapters supported by the renderer:
 
 - Telegram Bot API
 - Discord incoming webhook
@@ -45,26 +45,43 @@ LinkedIn remains disabled until the required API approval exists. X remains disa
 - `mode = prelaunch-shadow`
 - `default_dry_run = true`
 - `live_publish_enabled = false`
+- `receipt_policy.live_worker_wired = true`
 
 A scheduled GitHub Actions workflow, `.github/workflows/auto-distribution-shadow.yml`, runs every 15 minutes. In scheduled/manual runs it reads the live bounded public feed and renders Telegram, Discord, Bluesky and Mastodon copies without sending them anywhere.
 
 Pull requests use an offline fixture so CI does not depend on the live website.
 
+## Receipt-ledger delivery contract
+
+The guarded future live path now uses the existing service-role-only `early_warning_distribution_receipts` ledger created by migration 937 and hardened by migrations 940, 941 and 942.
+
+Before any push write, the worker:
+
+1. renders the exact bounded channel payload;
+2. hashes the payload and destination context;
+3. atomically claims the alert/channel receipt;
+4. refuses already-published, actively leased, skipped, ambiguous, payload-drifted or exhausted receipts;
+5. writes to the external channel only after a successful claim;
+6. finalizes the durable receipt with `PUBLISHED`, `RETRYABLE_FAILURE`, `AMBIGUOUS` or `SKIPPED`.
+
+A stale unfinalized claim is never automatically retried. It becomes ambiguous/manual-only because a remote service may have accepted a write before the worker lost its final response. This is the duplicate-post safety boundary for runner crashes and network ambiguity.
+
 ## Why live push is still locked
 
-The push poller rejects `--live` even if credentials exist. Live activation requires all of the following:
+The guarded live code path exists, but `live_publish_enabled` remains `false`, so current scheduled and manual runs cannot make external push writes.
 
-1. durable per-alert/per-channel distribution receipt ledger;
-2. duplicate/retry protection for channels that do not provide native idempotency;
-3. channel credentials configured in protected secrets;
-4. canonical public-feed health verified;
-5. explicit owner launch authorization.
+A future live invocation is additionally restricted to the canonical `https://geomacro.live/api/early-warning` source. Live mode refuses fixture input and non-canonical feed paths. The worker also requires:
 
-This prevents duplicate Telegram or Discord posts during retries or runner restarts.
+- the canonical poller's live marker;
+- an available service-role Supabase client for receipt writes;
+- all selected channel credentials before any receipt is claimed;
+- exact explicit owner acknowledgement through `GEOMACRO_EARLY_WARNING_DISTRIBUTION_ACK` with the configured authorization value.
+
+Activation therefore remains a separate, reviewable step after database migration verification, credential provisioning, source-feed health, platform/API terms review, release-candidate security/resilience checks and explicit owner authorization.
 
 ## Eligibility policy
 
-The public renderer still applies the versioned policy in `config/auto-distribution.json`. A normalized alert must be:
+The public renderer applies the versioned policy in `config/auto-distribution.json`. A normalized alert must be:
 
 - `content_type = early_warning`;
 - `visibility = public`;
@@ -124,6 +141,12 @@ Validate the canonical adapter:
 node scripts/marketing/test-public-feed-adapter.mjs
 ```
 
+Validate the durable receipt and worker contract:
+
+```bash
+node scripts/marketing/test-distribution-receipt-ledger.mjs
+```
+
 Render a canonical feed fixture through all free push adapters without network writes:
 
 ```bash
@@ -139,6 +162,8 @@ node scripts/marketing/poll-public-early-warning.mjs \
   --url=https://geomacro.live/api/early-warning \
   --limit=5
 ```
+
+Do not use `--live` during prelaunch. The config gate is intentionally disabled.
 
 ## Credentials reserved for future live activation
 
@@ -158,7 +183,14 @@ Mastodon:
 - `MASTODON_BASE_URL`
 - `MASTODON_ACCESS_TOKEN`
 
-Credentials alone do not activate publishing. The config and durable receipt ledger gates still have to pass.
+Distribution ledger:
+- `APP_SUPABASE_URL` or `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` or `APP_SUPABASE_SERVICE_ROLE_KEY`
+
+Owner launch acknowledgement:
+- `GEOMACRO_EARLY_WARNING_DISTRIBUTION_ACK`
+
+Credentials and acknowledgement alone do not activate publishing. `live_publish_enabled` must still be separately changed after the launch gates pass.
 
 ## Explicitly out of scope
 
@@ -169,6 +201,7 @@ Credentials alone do not activate publishing. The config and durable receipt led
 - engagement manipulation;
 - fabricated urgency or unsupported performance claims;
 - automatic commercial/customer/revenue announcements;
-- automatic trading instructions.
+- automatic trading instructions;
+- payment or mainnet activation.
 
-The purpose is factual distribution of already-public Geomacro intelligence, not spam or engagement manipulation.
+The purpose is factual distribution of already-public Geomacro intelligence, not spam, engagement manipulation or a bypass around the commercial launch process.

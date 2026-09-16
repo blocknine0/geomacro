@@ -142,6 +142,19 @@ assert.ok(
 const capSql = await fs.readFile('supabase/migrations/941_early_warning_distribution_attempt_cap.sql', 'utf8');
 assert.ok(capSql.includes('attempt_count <= 5'), 'receipt ledger must hard-cap delivery attempts at five');
 
+const reclaimSql = await fs.readFile('supabase/migrations/942_early_warning_distribution_fail_closed_reclaim.sql', 'utf8');
+for (const required of [
+  "v_receipt.status = 'PENDING' and v_receipt.attempt_count > 0",
+  'ambiguous_outcome = true',
+  'manual reconciliation required',
+  'v_receipt.attempt_count >= 5',
+  "v_receipt.status not in ('PENDING','FAILED')",
+  "set status = 'PENDING'",
+  'only explicitly retryable finalized failures may be reclaimed',
+]) {
+  assert.ok(reclaimSql.includes(required), `fail-closed reclaim migration missing safeguard: ${required}`);
+}
+
 const config = JSON.parse(await fs.readFile('config/auto-distribution.json', 'utf8'));
 assert.equal(config.mode, 'prelaunch-shadow');
 assert.equal(config.live_publish_enabled, false);
@@ -149,6 +162,39 @@ assert.equal(config.receipt_policy.contract_version, DISTRIBUTION_RECEIPT_CONTRA
 assert.equal(config.receipt_policy.lease_seconds, 120);
 assert.equal(config.receipt_policy.max_attempts_per_alert_channel, 5);
 assert.equal(config.receipt_policy.ambiguous_outcome_retry, 'manual_only');
-assert.equal(config.receipt_policy.live_worker_wired, false);
+assert.equal(config.receipt_policy.stale_unfinalized_claim_retry, 'manual_only');
+assert.equal(config.receipt_policy.live_worker_wired, true);
+assert.equal(config.receipt_policy.owner_launch_ack_env, 'GEOMACRO_EARLY_WARNING_DISTRIBUTION_ACK');
+assert.equal(config.receipt_policy.owner_launch_ack_value, 'I_AUTHORIZE_PUBLIC_EARLY_WARNING_DISTRIBUTION');
 
-console.log('PASS: Early Warning distribution receipt lease/idempotency contract is fail-closed.');
+const worker = await fs.readFile('scripts/marketing/auto-distribute-alert.mjs', 'utf8');
+for (const required of [
+  'claimDistributionReceipt',
+  'finalizeDistributionReceipt',
+  'distributionPayloadHash',
+  'getDistributionServiceClient',
+  "args.has('canonical-feed-live')",
+  'GEOMACRO_EARLY_WARNING_DISTRIBUTION_ACK',
+  "outcome: 'PUBLISHED'",
+  "outcome: 'AMBIGUOUS'",
+  'manual_reconciliation_required',
+  'process.exitCode = 1',
+]) {
+  assert.ok(worker.includes(required), `live worker missing receipt safeguard: ${required}`);
+}
+const claimIndex = worker.indexOf('claim = await claimDistributionReceipt');
+const sendIndex = worker.indexOf("delivery = channel === 'mastodon'");
+assert.ok(claimIndex >= 0 && sendIndex > claimIndex, 'receipt claim must happen before any external channel write');
+
+const poller = await fs.readFile('scripts/marketing/poll-public-early-warning.mjs', 'utf8');
+assert.ok(
+  poller.includes("workerArgs.push('--canonical-feed-live', '--live')"),
+  'canonical feed poller must explicitly opt the worker into live mode',
+);
+assert.ok(
+  poller.includes('requestedLive && inputPath') &&
+    poller.includes("url.pathname !== '/api/early-warning'"),
+  'live poller must reject fixture input and non-canonical feed paths',
+);
+
+console.log('PASS: Early Warning distribution worker is receipt-wired and live activation remains fail-closed.');

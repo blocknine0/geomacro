@@ -17,6 +17,7 @@ const args = new Map(
 
 const root = process.cwd();
 const inputPath = args.get('input');
+const requestedLive = args.has('live');
 const limit = Number(args.get('limit') || 5);
 const channels = String(args.get('channels') || 'telegram,discord,bluesky,mastodon');
 const configuredUrl = String(
@@ -26,8 +27,8 @@ const configuredUrl = String(
 if (!Number.isInteger(limit) || limit < 1 || limit > 25) {
   throw new Error('--limit must be an integer from 1 to 25');
 }
-if (args.has('live')) {
-  throw new Error('The public-feed poller is shadow-only until the durable distribution receipt ledger is implemented');
+if (requestedLive && inputPath) {
+  throw new Error('Live public distribution refuses --input; it must consume the canonical geomacro.live feed');
 }
 
 async function loadFeed() {
@@ -38,6 +39,9 @@ async function loadFeed() {
   if (url.protocol !== 'https:' || url.hostname !== 'geomacro.live') {
     throw new Error('Live feed polling is restricted to https://geomacro.live');
   }
+  if (requestedLive && url.pathname !== '/api/early-warning') {
+    throw new Error('Live public distribution is restricted to https://geomacro.live/api/early-warning');
+  }
   url.searchParams.set('limit', String(limit));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
@@ -45,7 +49,9 @@ async function loadFeed() {
     const response = await fetch(url, {
       headers: {
         accept: 'application/json',
-        'user-agent': 'geomacro-auto-distribution-shadow/1.0',
+        'user-agent': requestedLive
+          ? 'geomacro-auto-distribution-live/1.0'
+          : 'geomacro-auto-distribution-shadow/1.0',
       },
       signal: controller.signal,
     });
@@ -67,15 +73,14 @@ for (const item of selected) {
   const temp = path.join(os.tmpdir(), `geomacro-distribution-${alert.alert_id.replace(/[^a-zA-Z0-9_.-]/g, '_')}.json`);
   await fs.writeFile(temp, `${JSON.stringify(alert, null, 2)}\n`, { mode: 0o600 });
   try {
-    const run = spawnSync(
-      process.execPath,
-      [
-        path.join(root, 'scripts/marketing/auto-distribute-alert.mjs'),
-        `--input=${temp}`,
-        `--channels=${channels}`,
-      ],
-      { cwd: root, encoding: 'utf8' },
-    );
+    const workerArgs = [
+      path.join(root, 'scripts/marketing/auto-distribute-alert.mjs'),
+      `--input=${temp}`,
+      `--channels=${channels}`,
+    ];
+    if (requestedLive) workerArgs.push('--canonical-feed-live', '--live');
+
+    const run = spawnSync(process.execPath, workerArgs, { cwd: root, encoding: 'utf8' });
     if (run.status !== 0) {
       throw new Error(`renderer failed for ${alert.alert_id}: ${(run.stderr || run.stdout).trim()}`);
     }
@@ -91,8 +96,8 @@ for (const item of selected) {
 console.log(
   JSON.stringify(
     {
-      mode: 'shadow',
-      live_publish_attempted: false,
+      mode: requestedLive ? 'live' : 'shadow',
+      live_publish_attempted: requestedLive,
       source_feed_schema_version: feed.feed_schema_version,
       source_generated_at_utc: feed.generated_at_utc,
       source_count: feed.count,
