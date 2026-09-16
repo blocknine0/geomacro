@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "src/lib/commercial-launch-gate.server.ts"
+      - "src/lib/commercial-launch-gate.server.test.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "server/routes/api/x402/**"
@@ -27,8 +28,11 @@ jobs:
           bun-version: 1.4.2
       - name: Verify committed lockfile and install dependencies
         run: bun install --frozen-lockfile
-      - name: Verify Coinbase x402 configuration tests
-        run: bunx vitest run src/lib/coinbase-x402.server.test.ts
+      - name: Verify coordinated launch and Coinbase x402 configuration tests
+        run: >-
+          bunx vitest run
+          src/lib/commercial-launch-gate.server.test.ts
+          src/lib/coinbase-x402.server.test.ts
       - name: Verify coordinated real-funds gates remain explicit and inactive in source
         shell: bash
         run: |
