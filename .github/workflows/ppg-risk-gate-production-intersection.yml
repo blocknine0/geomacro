@@ -1,0 +1,85 @@
+name: PPG Risk Gate Production Intersection
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
+      - "scripts/audit-ppg-risk-gate-production-intersection.ts"
+      - "src/lib/risk-gate-v2-world-bank-ppg-sovereign-fiscal.ts"
+      - ".github/workflows/ppg-risk-gate-production-intersection.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-intersection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WORLD_BANK_PPG_RATIO_OUTPUT: world-bank-ppg-debt-stock-ratio.json
+      PPG_PRODUCTION_INTERSECTION_OUTPUT: ppg-risk-gate-production-intersection.json
+      PPG_INTERSECTION_CONCURRENCY: "3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate authoritative production read target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Reproduce current World Bank PPG ratio evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-world-bank-ppg-debt-stock-ratio.mjs | tee world-bank-ppg-debt-stock-ratio.log
+          grep -q 'PASS: WORLD BANK PPG EXTERNAL DEBT STOCK RATIO AUDIT COMPLETE - NO WRITES' world-bank-ppg-debt-stock-ratio.log
+
+      - name: Measure PPG shadow intersection with production modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-ppg-risk-gate-production-intersection.ts | tee ppg-risk-gate-production-intersection.log
+          grep -q 'PASS: PPG SHADOW INTERSECTION AUDIT COMPLETE - NO PRODUCTION CHANGES' ppg-risk-gate-production-intersection.log
+
+      - name: Enforce no-production-change boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.writes_performed == false' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.production_activation_allowed == false' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.scoring_production_changed == false' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.country_payability_changed == false' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.base_mainnet_gate_changed == false' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.claim_boundary.hypothetical_shadow_only == true' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.claim_boundary.not_a_production_country_support_claim == true' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.claim_boundary.missing_or_unverified_still_fails_closed == true' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.claim_boundary.no_threshold_or_freshness_relaxation == true' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.claim_boundary.no_raw_cross_concept_debt_pooling == true' ppg-risk-gate-production-intersection.json >/dev/null
+          jq -e '.denominator.count >= 1' ppg-risk-gate-production-intersection.json >/dev/null
+          jq '{generated_at,denominator,ppg_shadow_source,summary,claim_boundary}' ppg-risk-gate-production-intersection.json
+
+      - name: Upload sanitized intersection evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ppg-risk-gate-production-intersection
+          path: |
+            world-bank-ppg-debt-stock-ratio.json
+            world-bank-ppg-debt-stock-ratio.log
+            ppg-risk-gate-production-intersection.json
+            ppg-risk-gate-production-intersection.log
+          if-no-files-found: warn
+          retention-days: 30
