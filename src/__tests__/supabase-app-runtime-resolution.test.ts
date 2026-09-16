@@ -24,6 +24,20 @@ describe("app Supabase authoritative runtime resolution", () => {
     });
   });
 
+  it("recovers from mixed legacy server naming", () => {
+    const resolved = resolveAppSupabaseConfig({
+      NODE_ENV: "production",
+      APP_SUPABASE_URL: authoritativeUrl,
+      SUPABASE_SERVICE_ROLE_KEY: "trusted-service-key",
+    });
+
+    expect(resolved).toEqual({
+      url: authoritativeUrl,
+      key: "trusted-service-key",
+      source: "app-trusted-service-role",
+    });
+  });
+
   it("falls back to trusted server-only SUPABASE aliases for the same project", () => {
     const resolved = resolveAppSupabaseConfig({
       NODE_ENV: "production",
