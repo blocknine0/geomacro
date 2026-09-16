@@ -54,13 +54,17 @@ describe("million-agent central security architecture", () => {
     expect(readiness).toContain("to service_role");
   });
 
-  it("does not trust generic proxy identity headers unless explicitly enabled", () => {
+  it("rejects oversized proxy identity headers and distrusts generic proxy identity by default", () => {
     const middleware = read("server/middleware/00-central-security.ts");
 
+    expect(middleware).toContain("MAX_PROXY_IDENTITY_HEADER_BYTES = 2048");
+    expect(middleware).toContain("GENERIC_PROXY_IDENTITY_HEADERS");
+    expect(middleware).toContain('"x-forwarded-for"');
+    expect(middleware).toContain('"x-real-ip"');
+    expect(middleware).toContain('"true-client-ip"');
+    expect(middleware).toContain("CENTRAL_SECURITY_HEADERS_TOO_LARGE");
     expect(middleware).toContain("GEOMACRO_TRUST_GENERIC_PROXY_HEADERS");
-    expect(middleware).toContain('headers.delete("x-forwarded-for")');
-    expect(middleware).toContain('headers.delete("x-real-ip")');
-    expect(middleware).toContain('headers.delete("true-client-ip")');
+    expect(middleware).toContain("headers.delete(name)");
     expect(middleware).toContain("cf-connecting-ip");
   });
 });
