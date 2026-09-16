@@ -8,6 +8,8 @@ Geomacro uses three deliberately separated layers:
 2. **External Supabase project `ldpwajisioljyjtojvfx`** is the production application database authority. Lovable Cloud or hosting-injected Supabase projects must never silently replace it.
 3. **Lovable hosting** is the frontend/SSR hosting surface. The existing Lovable project is linked to the Lovable-created GitHub repository `blocknine0/geomacro-160c8e56`, so canonical `main` is mirrored one way into that repository before Lovable picks up the change.
 
+GitHub `main` remains the application source authority; the Lovable-linked repository is a deployment mirror only.
+
 This separation keeps `blocknine0/geomacro` as the permanent engineering source of truth while preserving the existing Lovable-hosted frontend without spending Lovable chat credits for normal product development.
 
 ## Why a mirror is required
