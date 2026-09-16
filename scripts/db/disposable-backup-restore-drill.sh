@@ -79,7 +79,10 @@ if [[ "$DUMP_BYTES" -lt 1024 ]]; then
   exit 1
 fi
 
-psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade; create schema public;'
+# The schema-scoped custom dump contains CREATE SCHEMA public. Drop the local
+# schema completely and let pg_restore recreate it from the backup so the
+# restore exercises the actual schema definition rather than a hand-created shell.
+psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade;'
 
 if [[ "$DUMP_CLIENT" == "host" ]]; then
   pg_restore \
