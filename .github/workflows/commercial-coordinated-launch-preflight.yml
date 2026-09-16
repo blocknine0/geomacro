@@ -6,6 +6,10 @@ on:
       - "config/commercial-launch-manifest.json"
       - "package.json"
       - "bun.lock"
+      - "public/.well-known/geomacro-agent.json"
+      - "public/.well-known/geomacro-commerce.json"
+      - "public/agent-commerce.md"
+      - "public/llms.txt"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
@@ -21,6 +25,7 @@ on:
       - "src/lib/goat-pilot-service.server.ts"
       - "src/__tests__/goat-flow-contract.test.ts"
       - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
+      - "src/__tests__/agent-commerce-discovery-static.test.ts"
       - "src/__tests__/commercial-growth-automation-static.test.ts"
       - "src/__tests__/goat-mainnet-readiness-static.test.ts"
       - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
@@ -48,7 +53,7 @@ jobs:
           bun-version: 1.4.2
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
-      - name: Verify launch, delivery, growth and provider gates
+      - name: Verify launch, delivery, discovery, growth and provider gates
         run: >-
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
@@ -56,6 +61,7 @@ jobs:
           src/lib/nevermined-x402.server.test.ts
           src/__tests__/goat-flow-contract.test.ts
           src/__tests__/agent-commerce-delivery-ledger-static.test.ts
+          src/__tests__/agent-commerce-discovery-static.test.ts
           src/__tests__/commercial-growth-automation-static.test.ts
           src/__tests__/goat-mainnet-readiness-static.test.ts
           src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
@@ -142,6 +148,24 @@ jobs:
           grep -q 'prepareAgentCommerceDelivery' src/routes/api.x402.nevermined_.intelligence.ts
           grep -q 'settleNeverminedPermissions' src/routes/api.x402.nevermined_.intelligence.ts
           grep -q 'manualReview: true' src/routes/api.x402.nevermined_.intelligence.ts
+      - name: Verify agent commerce discovery remains truthful and prelaunch
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const c = await Bun.file("public/.well-known/geomacro-commerce.json").json();
+            if (c.service?.status !== "prelaunch") throw new Error("commerce catalog must remain prelaunch");
+            if (c.service?.execution_authorized !== false) throw new Error("commerce discovery must remain non-executing");
+            if (c.commercial_contract?.production_funds_authorized !== false) throw new Error("discovery cannot authorize production funds");
+            if (c.commercial_contract?.static_catalog_price_authoritative !== false) throw new Error("static catalog cannot become authoritative pricing");
+            const p = c.offers?.[0]?.providers ?? {};
+            if (p.coinbase_x402?.launch_cohort !== true || p.coinbase_x402?.production_enabled !== false) throw new Error("Coinbase discovery cohort mismatch");
+            if (p.nevermined?.launch_cohort !== true || p.nevermined?.production_enabled !== false) throw new Error("Nevermined discovery cohort mismatch");
+            if (p.goat_x402?.launch_cohort !== false || p.goat_x402?.production_enabled !== false) throw new Error("GOAT discovery must remain deferred");
+          '
+          grep -q '/.well-known/geomacro-commerce.json' public/llms.txt
+          grep -q '/.well-known/geomacro-commerce.json' public/agent-commerce.md
+          grep -q 'manual merchant application/approval' public/agent-commerce.md
       - name: Verify marketing automation remains approval-gated and revenue-evidence only
         shell: bash
         run: |
