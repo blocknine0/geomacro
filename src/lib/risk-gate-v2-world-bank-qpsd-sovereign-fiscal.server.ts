@@ -53,7 +53,7 @@ function freshnessStatus(observedAt: string | null, asOf: string) {
   return "STALE" as const;
 }
 
-async function assertSourceRegistration() {
+async function sourceIsEnabledForCommercialScoring() {
   const db = requireRiskSupabase();
   const result = await db
     .from("live_external_sources")
@@ -63,14 +63,20 @@ async function assertSourceRegistration() {
   if (result.error) throw result.error;
   const source = result.data;
   if (!source) throw new Error("World Bank QPSD source is not registered");
+
+  // Rights, ingestion and licence mismatches are integrity failures and remain
+  // fail-closed. Commercial scoring=false is different: the QPSD promotion
+  // workflow deliberately uses that state before promotion and after rollback,
+  // so it means "optional fallback unavailable" rather than "source corrupt".
   if (
     source.commercial_usage_status !== "COMMERCIAL_OK" ||
     source.enabled_for_ingestion !== true ||
-    source.enabled_for_commercial_signals !== true ||
     source.licence_name !== "CC BY 4.0"
   ) {
     throw new Error("World Bank QPSD source-state mismatch for production scoring");
   }
+
+  return source.enabled_for_commercial_signals === true;
 }
 
 type CleanManifest = {
@@ -213,6 +219,9 @@ function sourceProof(metric: WorldBankQpsdMetric, manifest: CleanManifest): Worl
  * as independent source-specific peer universes. A missing country in one
  * concept may fall through to the other; raw values and peer distributions are
  * never combined. The function returns at most one sovereign_fiscal state.
+ * An intentionally non-promoted or rolled-back QPSD source returns null so the
+ * next governed fallback can be evaluated, while rights/integrity mismatches
+ * still throw and fail closed.
  */
 export async function generateRiskGateV2WorldBankQpsdSovereignFiscalModuleState(input: {
   country_iso3: string;
@@ -220,7 +229,9 @@ export async function generateRiskGateV2WorldBankQpsdSovereignFiscalModuleState(
   generated_at?: string;
   risk_object_ids?: string[];
 }) {
-  await assertSourceRegistration();
+  const sourceEnabled = await sourceIsEnabledForCommercialScoring();
+  if (!sourceEnabled) return null;
+
   const manifest = await loadCleanManifest(input.as_of);
   if (!manifest) return null;
 
