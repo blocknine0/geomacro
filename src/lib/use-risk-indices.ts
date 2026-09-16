@@ -4,7 +4,7 @@ import { getPublicRiskIndices } from "./public-risk-indices.functions";
 import type { PublicRiskIndices } from "./risk-indices.types";
 import { reportError, type UserError } from "./user-errors";
 
-export type RiskIndicesStatus = "loading" | "ready" | "updating" | "error";
+export type RiskIndicesStatus = "loading" | "ready" | "updating";
 
 export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
   const loadPublicIndices = useServerFn(getPublicRiskIndices);
@@ -32,16 +32,18 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
         setStatus("ready");
       } catch (caught) {
         if (cancelled) return;
-        hasData.current = false;
-        setData(null);
-        setError(
-          reportError(
-            "useRiskIndices",
-            caught,
-            "loading the verified public risk indices",
-          ),
+        reportError(
+          "useRiskIndices",
+          caught,
+          "refreshing the verified public risk indices",
         );
-        setStatus("error");
+
+        // Public risk surfaces fail soft. Never discard a verified reading just
+        // because a later refresh failed, and never expose a website error card
+        // on cold start. The normal interval and explicit retry keep recovery
+        // active while the UI remains neutral.
+        setError(null);
+        setStatus(hasData.current ? "ready" : "loading");
       }
     }
 
