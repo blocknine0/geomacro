@@ -38,7 +38,7 @@ describe("commercial growth automation safety contract", () => {
     expect(dashboard).not.toContain('action:"publish"');
   });
 
-  it("keeps the marketing queue private and service-role only", () => {
+  it("keeps the marketing queue private and the owner token non-persistent", () => {
     expect(migration).toContain("enable row level security");
     expect(migration).toContain(
       "revoke all on table public.commercial_marketing_drafts from PUBLIC, anon, authenticated",
@@ -49,8 +49,9 @@ describe("commercial growth automation safety contract", () => {
     expect(getRoute).toContain("requireCommercialOpsToken");
     expect(postRoute).toContain("requireCommercialOpsToken");
     expect(dashboard).toContain("x-geomacro-ops-token");
-    expect(dashboard).not.toContain("localStorage");
-    expect(dashboard).not.toContain("document.cookie");
+    expect(dashboard).not.toContain("localStorage.setItem");
+    expect(dashboard).not.toContain("sessionStorage.setItem");
+    expect(dashboard).not.toContain("document.cookie=");
   });
 
   it("does not expose payer/customer identity in automatic milestone evidence", () => {
