@@ -37,8 +37,14 @@ const baseInput = {
   public_url: "https://geomacro.live/intelligence/example",
 };
 
+const driverInput = {
+  ...baseInput,
+  transmission_channels: undefined,
+  market_relevance: undefined,
+};
+
 describe("early warning record builder", () => {
-  it("builds a timestamped auditable public-eligible record", () => {
+  it("builds a timestamped auditable public-eligible legacy record", () => {
     const record = buildEarlyWarningAlertRecord(baseInput);
 
     expect(record.status).toBe("CRITICAL");
@@ -49,6 +55,52 @@ describe("early warning record builder", () => {
     expect(record.public_eligibility_reasons).toEqual(["eligible"]);
     expect(record.evidence_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(record.calculation_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(record.market_impact).toBeNull();
+    expect(record.market_impact_methodology_version).toBeNull();
+    expect(record.market_impact_hash).toBeNull();
+    expect(record.market_impact_calibrated).toBe(false);
+  });
+
+  it("derives a deterministic market-impact map from the structural driver", () => {
+    const record = buildEarlyWarningAlertRecord({
+      ...driverInput,
+      market_impact_driver: "MONETARY_TIGHTENING",
+    });
+
+    expect(record.market_impact).toMatchObject({
+      methodology_version: "early-warning-market-impact-v0.1-provisional",
+      calibrated: false,
+      structural_pressure_only: true,
+      market_price_prediction: false,
+      trading_instruction: false,
+      driver: "MONETARY_TIGHTENING",
+      country_iso3: "IND",
+      assets: {
+        equities: { relevance: "HIGH", pressure_direction: "NEGATIVE" },
+        crypto: { relevance: "HIGH", pressure_direction: "NEGATIVE" },
+        fx: { relevance: "HIGH", pressure_direction: "POSITIVE" },
+        rates: { relevance: "VERY_HIGH", pressure_direction: "POSITIVE" },
+        commodities: { relevance: "MODERATE", pressure_direction: "MIXED" },
+      },
+    });
+    expect(record.market_relevance).toEqual({
+      equities: "HIGH",
+      crypto: "HIGH",
+      fx: "HIGH",
+      rates: "VERY_HIGH",
+      commodities: "MODERATE",
+    });
+    expect(record.transmission_channels).toEqual([
+      "policy_rates",
+      "discount_rates",
+      "financial_conditions",
+      "capital_flows",
+    ]);
+    expect(record.market_impact_methodology_version).toBe(
+      "early-warning-market-impact-v0.1-provisional",
+    );
+    expect(record.market_impact_calibrated).toBe(false);
+    expect(record.market_impact_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("produces stable hashes for the same canonical input", () => {
@@ -56,6 +108,37 @@ describe("early warning record builder", () => {
     const b = buildEarlyWarningAlertRecord(baseInput);
     expect(a.evidence_hash).toBe(b.evidence_hash);
     expect(a.calculation_hash).toBe(b.calculation_hash);
+
+    const c = buildEarlyWarningAlertRecord({
+      ...driverInput,
+      market_impact_driver: "BANKING_STRESS",
+    });
+    const d = buildEarlyWarningAlertRecord({
+      ...driverInput,
+      market_impact_driver: "BANKING_STRESS",
+    });
+    expect(c.market_impact_hash).toBe(d.market_impact_hash);
+  });
+
+  it("keeps different market-impact drivers cryptographically distinct", () => {
+    const tightening = buildEarlyWarningAlertRecord({
+      ...driverInput,
+      market_impact_driver: "MONETARY_TIGHTENING",
+    });
+    const easing = buildEarlyWarningAlertRecord({
+      ...driverInput,
+      market_impact_driver: "MONETARY_EASING",
+    });
+    expect(tightening.market_impact_hash).not.toBe(easing.market_impact_hash);
+  });
+
+  it("rejects conflicting deterministic and caller-supplied market mappings", () => {
+    expect(() =>
+      buildEarlyWarningAlertRecord({
+        ...baseInput,
+        market_impact_driver: "MONETARY_TIGHTENING",
+      }),
+    ).toThrow(/cannot be combined/);
   });
 
   it("keeps lower-confidence records private from automatic distribution", () => {

@@ -9,6 +9,11 @@ import {
   type CewsInputs,
   type MarketRelevanceLevel,
 } from "./early-warning-contract";
+import {
+  buildMarketImpactAssessment,
+  marketRelevanceFromAssessment,
+  type MarketImpactDriver,
+} from "./early-warning-market-impact";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export const EARLY_WARNING_PUBLIC_POLICY_VERSION = "public-alert-policy-v1" as const;
@@ -29,6 +34,7 @@ export type EarlyWarningBuildInput = {
   evidence_refs?: string[];
   transmission_channels?: string[];
   market_relevance?: Record<string, MarketRelevanceLevel>;
+  market_impact_driver?: MarketImpactDriver;
   source_risk_object_id?: string | null;
   source_event_ids?: string[];
   first_source_seen_at_utc?: string | null;
@@ -134,8 +140,29 @@ export function buildEarlyWarningAlertRecord(input: EarlyWarningBuildInput) {
   const result = computeCews(input.cews_inputs);
   const evidenceRefs = boundedStringArray(input.evidence_refs, "evidence_refs");
   const sourceEventIds = boundedStringArray(input.source_event_ids, "source_event_ids");
-  const transmissionChannels = boundedStringArray(input.transmission_channels, "transmission_channels", 20);
-  const marketRelevance = validateMarketRelevance(input.market_relevance);
+
+  const hasLegacyTransmission = Array.isArray(input.transmission_channels) && input.transmission_channels.length > 0;
+  const hasLegacyMarketRelevance = Object.keys(input.market_relevance ?? {}).length > 0;
+  if (input.market_impact_driver && (hasLegacyTransmission || hasLegacyMarketRelevance)) {
+    throw new Error(
+      "market_impact_driver cannot be combined with caller-supplied transmission_channels or market_relevance",
+    );
+  }
+
+  const marketImpact = input.market_impact_driver
+    ? buildMarketImpactAssessment({
+        driver: input.market_impact_driver,
+        country_iso3: countryIso3,
+        confidence,
+      })
+    : null;
+  const transmissionChannels = marketImpact
+    ? [...marketImpact.transmission_channels]
+    : boundedStringArray(input.transmission_channels, "transmission_channels", 20);
+  const marketRelevance = marketImpact
+    ? marketRelevanceFromAssessment(marketImpact)
+    : validateMarketRelevance(input.market_relevance);
+  const marketImpactHash = marketImpact ? sha256(marketImpact) : null;
 
   const publicEligible = publicEarlyWarningEligible({
     visibility,
@@ -184,6 +211,10 @@ export function buildEarlyWarningAlertRecord(input: EarlyWarningBuildInput) {
     evidence_refs: evidenceRefs,
     transmission_channels: transmissionChannels,
     market_relevance: marketRelevance,
+    market_impact: marketImpact,
+    market_impact_methodology_version: marketImpact?.methodology_version ?? null,
+    market_impact_calibrated: marketImpact?.calibrated ?? false,
+    market_impact_hash: marketImpactHash,
     source_risk_object_id: input.source_risk_object_id
       ? boundedText(input.source_risk_object_id, "source_risk_object_id", 200)
       : null,
@@ -213,7 +244,9 @@ export async function persistEarlyWarningAlert(input: EarlyWarningBuildInput) {
   const { data, error } = await db
     .from("early_warning_alerts")
     .insert(record)
-    .select("id,alert_key,evidence_hash,calculation_hash,status,cews_score,detected_at_utc,detected_at_local,public_eligible")
+    .select(
+      "id,alert_key,evidence_hash,calculation_hash,market_impact_hash,status,cews_score,detected_at_utc,detected_at_local,public_eligible",
+    )
     .single();
 
   if (!error) return data;
@@ -221,7 +254,9 @@ export async function persistEarlyWarningAlert(input: EarlyWarningBuildInput) {
 
   const existing = await db
     .from("early_warning_alerts")
-    .select("id,alert_key,evidence_hash,calculation_hash,status,cews_score,detected_at_utc,detected_at_local,public_eligible")
+    .select(
+      "id,alert_key,evidence_hash,calculation_hash,market_impact_hash,status,cews_score,detected_at_utc,detected_at_local,public_eligible",
+    )
     .eq("alert_key", record.alert_key)
     .maybeSingle();
 
@@ -229,9 +264,12 @@ export async function persistEarlyWarningAlert(input: EarlyWarningBuildInput) {
   if (!existing.data) throw error;
   if (
     existing.data.evidence_hash !== record.evidence_hash ||
-    existing.data.calculation_hash !== record.calculation_hash
+    existing.data.calculation_hash !== record.calculation_hash ||
+    existing.data.market_impact_hash !== record.market_impact_hash
   ) {
-    throw new Error("alert_key collision: existing early warning has different evidence or calculation hashes");
+    throw new Error(
+      "alert_key collision: existing early warning has different evidence, calculation, or market-impact hashes",
+    );
   }
 
   return existing.data;
