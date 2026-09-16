@@ -4,11 +4,13 @@ Geomacro is designed as global geopolitical and macro risk intelligence, but dif
 
 ## Public global layer
 
-The Global Risk Index is an aggregate over qualifying evidence in its current three scoring domains. Its coverage field discloses active-domain availability; missing domains are excluded rather than converted into zero risk.
+The public Geopolitical, Macroeconomic and Critical Minerals Risk Indices summarize qualifying evidence within their respective domains. Each domain is presented independently. If a domain has no current verified eligible evidence, it is not converted into a zero-risk reading.
+
+The current public indices preserve the audited GRI v1.2 parent proof lineage, but the historical combined GRI is no longer the public headline product.
 
 ## Subject-specific layer
 
-Country and corridor Risk Objects are currently a **Private Pilot** product wedge. Coverage should be described only for subjects and inputs actually supported by the pilot data path.
+Country and corridor Risk Objects are currently a **Private Pilot** product wedge. Coverage should be described only for subjects and inputs actually supported by the pilot data path. A dated controlled coverage census is evidence about that specific workflow and date, not a promise that every country, product or request shape is commercially deliverable.
 
 ## Historical layer
 
