@@ -1,0 +1,69 @@
+name: Nevermined Transitive Security Fix
+
+on:
+  push:
+    branches:
+      - feat/commercial-distribution-foundation
+    paths:
+      - ".github/workflows/nevermined-security-lockfile-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix-audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/commercial-distribution-foundation
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install canonical graph
+        run: bun install --frozen-lockfile
+      - name: Apply in-range advisory fixes
+        run: bun audit fix
+      - name: Verify no critical, high or moderate advisory remains
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          bun audit 2>&1 | tee /tmp/audit-after-fix.txt
+          audit_code=${PIPESTATUS[0]}
+          set -e
+          if grep -Eqi '(^|[[:space:]])(critical|high|moderate):' /tmp/audit-after-fix.txt; then
+            echo 'ERROR: critical/high/moderate advisory remains after in-range fix.' >&2
+            exit 1
+          fi
+          if [[ "$audit_code" -ne 0 ]] && ! grep -Fq 'elliptic@6.6.1' /tmp/audit-after-fix.txt; then
+            echo 'ERROR: residual audit failure is not the existing documented elliptic exception.' >&2
+            exit 1
+          fi
+      - name: Verify Nevermined remains exactly pinned
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const p = await Bun.file("package.json").json();
+            if (p.dependencies?.["@nevermined-io/payments"] !== "1.13.0") {
+              throw new Error("Nevermined Payments SDK must remain exactly pinned at 1.13.0");
+            }
+          '
+      - name: Commit secured lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json bun.lock
+          if git diff --cached --quiet; then
+            echo 'No dependency changes required.'
+            exit 0
+          fi
+          git commit -m "security: refresh Nevermined transitive dependencies"
+          git push origin HEAD:feat/commercial-distribution-foundation
