@@ -1,4 +1,5 @@
 import type { CoinbaseX402Config } from "./coinbase-x402.server";
+import { commerceReferenceHash } from "./agent-commerce-delivery.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export async function upsertCoinbaseX402ProductAudit(input: {
@@ -17,7 +18,10 @@ export async function upsertCoinbaseX402ProductAudit(input: {
   const now = new Date().toISOString();
   const row = {
     request_id: input.requestId,
-    client_request_id: input.clientRequestId ?? null,
+    // Caller-chosen IDs can contain private workflow names. Keep only a stable
+    // one-way reference so support/reconciliation can correlate without storing
+    // the caller's raw identifier.
+    client_request_id: commerceReferenceHash(input.clientRequestId),
     payment_fingerprint_sha256: input.paymentFingerprint,
     query_plan_hash: input.queryPlanHash,
     product_id: input.productId,
@@ -37,9 +41,6 @@ export async function upsertCoinbaseX402ProductAudit(input: {
     updated_at: now,
   };
 
-  // A payment fingerprint is the durable idempotency key. Retrying the same
-  // verified proof after a safe pre-settlement failure must update the same
-  // audit projection rather than collide with its unique fingerprint.
   const { error } = await db
     .from("coinbase_x402_product_audit")
     .upsert(row, { onConflict: "payment_fingerprint_sha256" });
