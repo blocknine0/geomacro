@@ -10,14 +10,18 @@ const API = "https://api.worldbank.org/v2";
 const SERIES = Object.freeze([
   { id: "GC.DOD.TOTL.GD.ZS", metric: "central_government_debt_pct_gdp", family: "central_government_debt" },
   { id: "GC.REV.XGRT.GD.ZS", metric: "revenue_ex_grants_pct_gdp", family: "fiscal_capacity" },
+  { id: "GC.TAX.TOTL.GD.ZS", metric: "tax_revenue_pct_gdp", family: "fiscal_capacity" },
+  { id: "GC.NLD.TOTL.GD.ZS", metric: "net_lending_borrowing_pct_gdp", family: "fiscal_balance" },
+  { id: "NE.CON.GOVT.ZS", metric: "general_government_consumption_pct_gdp", family: "fiscal_footprint_context" },
   { id: "DT.DOD.DECT.GN.ZS", metric: "external_debt_stocks_pct_gni", family: "external_debt_pressure" },
   { id: "DT.TDS.DECT.EX.ZS", metric: "total_debt_service_pct_exports", family: "debt_service_pressure" },
+  { id: "DT.TDS.DPPG.GN.ZS", metric: "public_guaranteed_debt_service_pct_gni", family: "public_debt_service_pressure" },
 ]);
 
 const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 
 async function fetchJson(url) {
-  const response = await fetch(url, { headers: { accept: "application/json", "user-agent": "Geomacro-WDI-Source2-Fiscal-Audit/1.0 (+https://geomacro.live)" } });
+  const response = await fetch(url, { headers: { accept: "application/json", "user-agent": "Geomacro-WDI-Source2-Fiscal-Audit/1.1 (+https://geomacro.live)" } });
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
   const text = await response.text();
   return { parsed: JSON.parse(text), response_sha256: sha256(text), url };
@@ -92,11 +96,13 @@ async function main() {
   const coverage = new Map(countries.countries.map((iso3) => [iso3, new Set()]));
   for (const result of results) for (const iso3 of result.fresh_iso3) coverage.get(iso3)?.add(result.family);
   const perCountry = [...coverage.entries()].map(([iso3, families]) => ({ iso3, families: [...families].sort() }));
-  const hasDebtPressure = (families) => families.includes("central_government_debt") || families.includes("external_debt_pressure") || families.includes("debt_service_pressure");
-  const hasTwoDebtSignals = (families) => ["central_government_debt", "external_debt_pressure", "debt_service_pressure"].filter((family) => families.includes(family)).length >= 2;
+  const hasDebtPressure = (families) => ["central_government_debt", "external_debt_pressure", "debt_service_pressure", "public_debt_service_pressure"].some((family) => families.includes(family));
+  const hasPublicDebtPressure = (families) => families.includes("central_government_debt") || families.includes("public_debt_service_pressure");
+  const hasTwoDebtSignals = (families) => ["central_government_debt", "external_debt_pressure", "debt_service_pressure", "public_debt_service_pressure"].filter((family) => families.includes(family)).length >= 2;
+  const hasFiscalSignal = (families) => families.includes("fiscal_capacity") || families.includes("fiscal_balance");
 
   const report = {
-    schema_version: "geomacro-wdi-source2-fiscal-expansion-audit-1.0",
+    schema_version: "geomacro-wdi-source2-fiscal-expansion-audit-1.1",
     generated_at: new Date().toISOString(),
     as_of: AS_OF.toISOString(),
     max_age_days: MAX_AGE_DAYS,
@@ -109,10 +115,13 @@ async function main() {
     series: results,
     coverage_summary: {
       countries_with_any_debt_pressure_signal: perCountry.filter((row) => hasDebtPressure(row.families)).length,
+      countries_with_public_or_central_debt_pressure_signal: perCountry.filter((row) => hasPublicDebtPressure(row.families)).length,
       countries_with_two_debt_pressure_signals: perCountry.filter((row) => hasTwoDebtSignals(row.families)).length,
-      countries_with_fiscal_capacity_signal: perCountry.filter((row) => row.families.includes("fiscal_capacity")).length,
-      countries_with_fiscal_capacity_and_any_debt_pressure: perCountry.filter((row) => row.families.includes("fiscal_capacity") && hasDebtPressure(row.families)).length,
-      countries_with_fiscal_capacity_and_two_debt_pressure_signals: perCountry.filter((row) => row.families.includes("fiscal_capacity") && hasTwoDebtSignals(row.families)).length,
+      countries_with_any_fiscal_capacity_or_balance_signal: perCountry.filter((row) => hasFiscalSignal(row.families)).length,
+      countries_with_fiscal_signal_and_any_debt_pressure: perCountry.filter((row) => hasFiscalSignal(row.families) && hasDebtPressure(row.families)).length,
+      countries_with_fiscal_signal_and_public_or_central_debt_pressure: perCountry.filter((row) => hasFiscalSignal(row.families) && hasPublicDebtPressure(row.families)).length,
+      countries_with_fiscal_signal_and_two_debt_pressure_signals: perCountry.filter((row) => hasFiscalSignal(row.families) && hasTwoDebtSignals(row.families)).length,
+      countries_with_general_government_footprint_context: perCountry.filter((row) => row.families.includes("fiscal_footprint_context")).length,
     },
     countries: perCountry,
     methodology_boundary: {
@@ -121,8 +130,10 @@ async function main() {
       source_name: SOURCE_NAME,
       raw_cross_concept_pooling_allowed: false,
       external_debt_is_not_relabelled_as_central_government_debt: true,
+      public_guaranteed_debt_service_is_a_separate_public_external_debt_pressure_concept: true,
       debt_service_is_not_relabelled_as_debt_stock: true,
       fiscal_capacity_is_separate_from_debt_pressure: true,
+      general_government_consumption_is_context_only_not_a_debt_metric: true,
       production_sovereign_fiscal_module_changed: false,
     },
   };
