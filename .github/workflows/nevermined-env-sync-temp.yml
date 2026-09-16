@@ -1,0 +1,66 @@
+name: Nevermined Sandbox Env Template Sync
+
+on:
+  push:
+    branches:
+      - feat/commercial-distribution-foundation
+    paths:
+      - ".github/workflows/nevermined-env-sync-temp.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-env:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/commercial-distribution-foundation
+      - name: Insert Nevermined prelaunch environment contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.env.example')
+          s = p.read_text()
+          anchor = '''COINBASE_X402_MAINNET_ACK=\n\n# ---- GOAT Flow partner pilot (isolated from general billing) ----'''
+          block = '''COINBASE_X402_MAINNET_ACK=\n\n# ---- Nevermined x402 (sandbox first; production gated globally) ----\n# Leave environment blank to disable the rail. Use sandbox only during prelaunch.\n# live is real commercial settlement and is additionally blocked by the global\n# GEOMACRO_COMMERCIAL_LAUNCH_ACK until the coordinated official launch.\nNEVERMINED_X402_ENVIRONMENT=\n# Server-only Nevermined provider credential. Never expose through VITE_ or logs.\nNEVERMINED_NVM_API_KEY=\n# Numeric Nevermined plan identifier configured for this Geomacro paid resource.\nNEVERMINED_PLAN_ID=\n# Supported values: nvm:erc4337 | nvm:card-delegation\nNEVERMINED_X402_SCHEME=nvm:erc4337\n# Used only for nvm:card-delegation. Supported values: stripe | braintree | visa\nNEVERMINED_X402_NETWORK=\n# Provider-enforced maximum amount/credits for a single request, integer units.\nNEVERMINED_X402_MAX_AMOUNT=\n\n# ---- GOAT Flow partner pilot (isolated from general billing) ----'''
+          if 'NEVERMINED_X402_ENVIRONMENT=' in s:
+              raise SystemExit('Nevermined env contract already present; refusing duplicate insertion')
+          if s.count(anchor) != 1:
+              raise SystemExit(f'expected one Coinbase/GOAT anchor, found {s.count(anchor)}')
+          p.write_text(s.replace(anchor, block, 1))
+          PY
+      - name: Verify prelaunch defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+          grep -q '^NEVERMINED_NVM_API_KEY=$' .env.example
+          grep -q '^NEVERMINED_PLAN_ID=$' .env.example
+          grep -q '^NEVERMINED_X402_SCHEME=nvm:erc4337$' .env.example
+          grep -q '^NEVERMINED_X402_MAX_AMOUNT=$' .env.example
+          if grep -Eq '^NEVERMINED_X402_ENVIRONMENT=live$' .env.example; then
+            echo 'ERROR: Nevermined live must not be enabled in .env.example' >&2
+            exit 1
+          fi
+          git diff --check
+          changed="$(git diff --name-only)"
+          if [[ "$changed" != ".env.example" ]]; then
+            echo "ERROR: unexpected changed files: $changed" >&2
+            exit 1
+          fi
+      - name: Commit env template
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .env.example
+          git commit -m "docs: add Nevermined sandbox environment template"
+          git push origin HEAD:feat/commercial-distribution-foundation
