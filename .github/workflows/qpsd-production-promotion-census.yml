@@ -1,0 +1,153 @@
+name: QPSD Production Promotion Census
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs"
+      - "src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.ts"
+      - "src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts"
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - "supabase/migrations/930_world_bank_qpsd_production_source.sql"
+      - "scripts/commercial-source-rights-evidence.mjs"
+      - "scripts/global-risk-gate-country-census.ts"
+      - ".github/workflows/qpsd-production-promotion-census.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qpsd-production-promotion-census-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate fail-closed QPSD production contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s supabase/migrations/930_world_bank_qpsd_production_source.sql
+          test -s scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs
+          test -s src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts
+          grep -q "world_bank_qpsd" scripts/commercial-source-rights-evidence.mjs
+          grep -q "DP.DOD.DECT.CR.GG.Z1" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs
+          grep -q "DP.DOD.DECT.CR.CG.Z1" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs
+          grep -q "cross_concept_peer_pooling_allowed: false" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs
+          grep -q "raw_cross_source_value_pooling_allowed: false" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs
+          grep -q "live_world_bank_qpsd_latest" src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts
+          grep -q "generateRiskGateV2WorldBankQpsdSovereignFiscalModuleState" src/lib/risk-gate-v2-macro-module-state.server.ts
+          if grep -q "I_ACCEPT_REAL_USDC" scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs src/lib/risk-gate-v2-world-bank-qpsd-sovereign-fiscal.server.ts supabase/migrations/930_world_bank_qpsd_production_source.sql; then
+            echo "::error title=Launch-gate boundary violated::QPSD data promotion must not activate Base mainnet payments."
+            exit 1
+          fi
+          echo "PASS: QPSD production contract remains source-specific, governed and payment-gate independent."
+
+  promote-and-census:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    environment: production
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WORLD_BANK_QPSD_BULK_CSV: qpsd-bulk/QPSDCSV.csv
+      WORLD_BANK_QPSD_PRODUCTION_MAX_AGE_DAYS: "550"
+      GLOBAL_RISK_GATE_CENSUS_OUTPUT: qpsd-production-global-country-census.json
+      GLOBAL_RISK_GATE_CENSUS_CONCURRENCY: "3"
+    steps:
+      - name: Checkout exact main candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate authoritative production target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Verify QPSD migration is already applied
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          const source = await db.from('live_external_sources').select('source_id,enabled_for_ingestion,enabled_for_commercial_signals,commercial_usage_status').eq('source_id', 'world_bank_qpsd').maybeSingle();
+          if (source.error) throw source.error;
+          if (!source.data || source.data.enabled_for_ingestion !== true || source.data.enabled_for_commercial_signals !== true || source.data.commercial_usage_status !== 'COMMERCIAL_OK') {
+            throw new Error('Migration 930 is not applied to the authoritative production database. Run the production migration plan/apply workflow first.');
+          }
+          console.log('PASS: QPSD production source registration is active.');
+          NODE
+
+      - name: Download official QPSD bulk CSV
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf qpsd-bulk qpsd-bulk.zip
+          mkdir -p qpsd-bulk
+          curl --fail --show-error --silent --location --retry 3 \
+            'https://databank.worldbank.org/data/download/QPSD_CSV.zip' \
+            --output qpsd-bulk.zip
+          unzip -q qpsd-bulk.zip -d qpsd-bulk
+          test -s "$WORLD_BANK_QPSD_BULK_CSV"
+          sha256sum qpsd-bulk.zip | tee qpsd-bulk-download.sha256
+
+      - name: Run governed QPSD production ingest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-world-bank-qpsd-sovereign-fiscal-live.mjs | tee qpsd-production-ingest.log
+          grep -q 'PASS: WORLD BANK QPSD GOVERNED PRODUCTION INGEST COMPLETE' qpsd-production-ingest.log
+          grep -q '"production_scoring_changed_by_ingest": false' qpsd-production-ingest.log
+          grep -q '"base_mainnet_gate_changed": false' qpsd-production-ingest.log
+
+      - name: Run full four-module production country census
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/global-risk-gate-country-census.ts --require-any-accepted | tee qpsd-production-global-country-census.log
+          test -s "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
+
+      - name: Enforce 100-plus accepted countries and QPSD contribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.denominator.type == "enabled_sovereign_countries"' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '.summary.accepted_country_count >= 100' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '.claim_boundary.missing_or_unverified_input_fails_closed == true' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '.claim_boundary.execution_authorized_is_false == true' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '[.countries[] | select(.status == "ACCEPTED") | .risk_gate.execution_authorized] | all(. == false)' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '[.countries[] | select(.status == "ACCEPTED") | .module_states[] | select(.module == "sovereign_fiscal" and (.methodology_version | startswith("risk-gate-v2-sovereign-fiscal-world-bank-qpsd-source-specific-")))] | length >= 1' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq '{generated_at,denominator,summary,claim_boundary}' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
+          echo 'PASS: QPSD PROMOTION PRESERVES >=100 PRODUCTION-READY COUNTRIES WITH FAIL-CLOSED GATES'
+
+      - name: Upload sanitized QPSD production evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: qpsd-production-promotion-census
+          path: |
+            qpsd-bulk-download.sha256
+            qpsd-production-ingest.log
+            qpsd-production-global-country-census.json
+            qpsd-production-global-country-census.log
+          if-no-files-found: warn
+          retention-days: 30
