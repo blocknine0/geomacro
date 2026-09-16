@@ -1,16 +1,24 @@
 import { createHash } from "node:crypto";
 
 const ECB_HOSTS = new Set(["www.ecb.europa.eu", "ecb.europa.eu"]);
+const XML_ENTITY = /&(amp|lt|gt|quot|#39|apos);/g;
+const XML_ENTITY_VALUE = Object.freeze({
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  "#39": "'",
+  apos: "'",
+});
 
 function decodeXml(value) {
-  return String(value ?? "")
-    .replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/i, "$1")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .trim();
+  const text = String(value ?? "").trim();
+  const cdata = /^<!\[CDATA\[([\s\S]*)\]\]>$/i.exec(text);
+  if (cdata) return cdata[1].trim();
+
+  // Decode predefined XML entities in one pass only. For example, `&amp;lt;`
+  // becomes `&lt;`, not `<`. This prevents double-unescaping untrusted feed text.
+  return text.replace(XML_ENTITY, (_, entity) => XML_ENTITY_VALUE[entity]).trim();
 }
 
 function tag(block, name) {
