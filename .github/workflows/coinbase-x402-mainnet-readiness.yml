@@ -7,6 +7,8 @@ on:
       - "src/lib/commercial-launch-gate.server.test.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
+      - "src/lib/coinbase-x402-readiness.server.ts"
+      - "src/lib/coinbase-x402-readiness.server.test.ts"
       - "server/routes/api/x402/**"
       - "docs/COINBASE_X402_MAINNET_READINESS.md"
       - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
@@ -21,18 +23,21 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - name: Verify committed lockfile and install dependencies
-        run: bun install --frozen-lockfile
-      - name: Verify coordinated launch and Coinbase x402 configuration tests
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify coordinated launch, Coinbase x402 and facilitator capability tests
         run: >-
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
           src/lib/coinbase-x402.server.test.ts
+          src/lib/coinbase-x402-readiness.server.test.ts
       - name: Verify coordinated real-funds gates remain explicit and inactive in source
         shell: bash
         run: |
@@ -44,6 +49,12 @@ jobs:
           grep -q 'I_ACCEPT_REAL_USDC' src/lib/coinbase-x402.server.ts
           grep -q '0.02' src/lib/coinbase-x402.server.test.ts
           grep -q '20000' src/lib/coinbase-x402.server.test.ts
+          grep -q '/platform/v2/x402/supported' src/lib/coinbase-x402-readiness.server.ts
+          grep -q 'x402Version === 2' src/lib/coinbase-x402-readiness.server.ts
+          grep -q 'kind?.scheme === "exact"' src/lib/coinbase-x402-readiness.server.ts
+          grep -q 'extensions.includes("bazaar")' src/lib/coinbase-x402-readiness.server.ts
+          grep -q 'COINBASE_X402_MAINNET_NETWORK' src/lib/coinbase-x402-readiness.server.ts
+          grep -q 'COINBASE_X402_MAINNET_USDC' src/lib/coinbase-x402-readiness.server.ts
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
             echo 'ERROR: .env.example must never activate the coordinated commercial launch gate.' >&2
             exit 1
@@ -52,3 +63,4 @@ jobs:
             echo 'ERROR: .env.example must never activate the Coinbase real-USDC gate.' >&2
             exit 1
           fi
+          echo 'PASS: Coinbase x402 v2 facilitator contract is tested while real-funds gates remain locked.'
