@@ -6,9 +6,10 @@ import type { UserError } from "@/lib/user-errors";
 /**
  * Homepage risk-index surface.
  *
- * The prop signature stays compatible while remaining callers migrate away from
- * the legacy combined GRI hook. The rendered public surface uses only the new
- * three-index contract.
+ * This remains the compact preview; the dedicated /global-risk route is the
+ * full verification workspace. The prop signature stays compatible while
+ * remaining callers migrate away from the legacy combined GRI hook. The
+ * rendered public surface uses only the new three-index contract.
  */
 export function GlobalRiskIndexSection({
   risk: _risk,
