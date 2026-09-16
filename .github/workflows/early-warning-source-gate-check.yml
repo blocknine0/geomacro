@@ -10,7 +10,9 @@ on:
       - "src/lib/early-warning-governed-service.server.ts"
       - "src/lib/early-warning-governed-service.server.test.ts"
       - "config/early-warning-watchers.json"
+      - "scripts/early-warning/**"
       - "docs/EARLY_WARNING_SOURCE_GOVERNANCE.md"
+      - "docs/source-reviews/**"
       - ".github/workflows/early-warning-source-gate-check.yml"
   push:
     branches:
@@ -20,6 +22,8 @@ on:
       - "src/lib/early-warning-event-family.ts"
       - "src/lib/early-warning-governed-service.server.ts"
       - "config/early-warning-watchers.json"
+      - "scripts/early-warning/**"
+      - "docs/source-reviews/**"
       - ".github/workflows/early-warning-source-gate-check.yml"
 
 permissions:
@@ -41,7 +45,7 @@ jobs:
       - name: Install locked dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Run source policy and event-family tests
-        run: bunx vitest run src/lib/early-warning-source-eligibility.server.test.ts src/lib/early-warning-event-family.test.ts src/lib/early-warning-governed-service.server.test.ts
+        run: bunx vitest run src/lib/early-warning-source-eligibility.server.test.ts src/lib/early-warning-event-family.test.ts src/lib/early-warning-governed-service.server.test.ts scripts/early-warning/ecb-rss-core.test.mjs
       - name: Verify watcher registry remains prelaunch and fail-closed
         shell: bash
         run: |
@@ -51,10 +55,15 @@ jobs:
           const config = JSON.parse(fs.readFileSync('config/early-warning-watchers.json', 'utf8'));
           if (config.mode !== 'prelaunch') throw new Error('watcher registry must remain prelaunch');
           if (config.live_watcher_activation !== false) throw new Error('live watcher activation must remain false');
+          const allowedAdapterStates = new Set(['NOT_IMPLEMENTED', 'DRY_RUN_IMPLEMENTED']);
           for (const [id, candidate] of Object.entries(config.official_source_candidates || {})) {
             if (candidate.enabled !== false) throw new Error(`${id} candidate must remain disabled`);
             if (candidate.rights_status !== 'REVIEW_REQUIRED') throw new Error(`${id} candidate must remain review-required`);
-            if (candidate.adapter_status !== 'NOT_IMPLEMENTED') throw new Error(`${id} candidate must remain not implemented until reviewed`);
+            if (!allowedAdapterStates.has(candidate.adapter_status)) throw new Error(`${id} has unsupported prelaunch adapter status`);
+            if (candidate.adapter_status === 'DRY_RUN_IMPLEMENTED') {
+              if (candidate.database_write !== false) throw new Error(`${id} dry-run adapter must not write database`);
+              if (candidate.commercial_signal_activation !== false) throw new Error(`${id} dry-run adapter must not activate commercial signals`);
+            }
           }
           for (const [id, source] of Object.entries(config.governed_existing_sources || {})) {
             if (source.runtime_commercial_signal_activation !== false) throw new Error(`${id} must not be promoted by config`);

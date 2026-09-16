@@ -57,13 +57,33 @@ Important: current runtime policy also keeps `enabled_for_commercial_signals = f
 
 `config/early-warning-watchers.json` records candidate discovery surfaces for future zero-cost official-source adapters, including:
 
-- European Central Bank RSS/MID;
+- European Central Bank press RSS;
 - Bank of England RSS;
 - Bank of Japan RSS;
 - Federal Reserve official releases/data surfaces;
 - U.S. Treasury / OFAC recent sanctions actions.
 
-These candidates are `REVIEW_REQUIRED`, `NOT_IMPLEMENTED` and `enabled=false`. Their presence in the config is discovery metadata only. It is not commercial approval.
+All candidates remain `REVIEW_REQUIRED` and `enabled=false` until their source-specific commercial and operational gates are closed.
+
+### ECB press RSS current state
+
+The first official-source adapter is now implemented as a **dry-run-only** watcher against the exact ECB press RSS feed:
+
+`https://www.ecb.europa.eu/rss/press.html`
+
+The adapter:
+
+- fetches only the official ECB HTTPS feed;
+- accepts only official ECB item URLs;
+- extracts bounded item title, URL, publication timestamp and stable hash ID;
+- assigns an exact rule-based candidate event family or `other`;
+- stores no article body;
+- performs no database write;
+- performs no public publication;
+- cannot be run with `--write` or `--live`;
+- remains commercially inactive.
+
+The preliminary rights/adapter review is recorded in `docs/source-reviews/ECB_PRESS_RSS_REVIEW.md`.
 
 Before any candidate is activated, close all of the following:
 
@@ -113,9 +133,12 @@ The initial operational order is:
 
 1. reuse governed existing ingests;
 2. keep commercial-signal promotion disabled until source-specific proof is complete;
-3. implement official-source adapters one by one;
-4. use free scheduled polling only where the upstream contract supports it;
-5. later move genuinely time-critical sources to a more reliable near-live scheduler without changing the source-rights gate;
-6. never use scraping or unofficial mirrors to manufacture a latency advantage.
+3. implement official-source adapters one by one in dry-run first;
+4. validate exact live source behavior in CI without database/public writes;
+5. close source rights and attribution/disclosure requirements;
+6. promote ingestion separately from commercial-signal activation;
+7. use free scheduled polling only where the upstream contract supports it;
+8. later move genuinely time-critical sources to a more reliable near-live scheduler without changing the source-rights gate;
+9. never use scraping or unofficial mirrors to manufacture a latency advantage.
 
 The goal is not the highest possible alert volume. The goal is a small number of source-backed, auditable signals that can later prove lead time and usefulness.

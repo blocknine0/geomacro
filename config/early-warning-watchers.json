@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "mode": "prelaunch",
   "live_watcher_activation": false,
   "rules": {
@@ -34,16 +34,21 @@
     }
   },
   "official_source_candidates": {
-    "ecb_news_rss": {
+    "ecb_press_rss": {
       "provider": "European Central Bank",
       "scope": "EURO_AREA",
       "country_or_region_timezone": "Europe/Brussels",
       "transport_candidate": "RSS",
       "discovery_url": "https://www.ecb.europa.eu/home/html/rss.en.html",
+      "exact_feed_url": "https://www.ecb.europa.eu/rss/press.html",
       "rights_status": "REVIEW_REQUIRED",
-      "adapter_status": "NOT_IMPLEMENTED",
+      "rights_review": "docs/source-reviews/ECB_PRESS_RSS_REVIEW.md",
+      "adapter_status": "DRY_RUN_IMPLEMENTED",
+      "adapter": "scripts/early-warning/watch-ecb-press-rss.mjs",
       "enabled": false,
-      "event_families": ["monetary_policy", "banking_liquidity", "regulatory_policy"]
+      "database_write": false,
+      "commercial_signal_activation": false,
+      "event_families": ["monetary_policy", "banking_liquidity", "regulatory_policy", "other"]
     },
     "bank_of_england_rss": {
       "provider": "Bank of England",
