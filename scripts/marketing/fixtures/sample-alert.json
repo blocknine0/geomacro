@@ -1,0 +1,24 @@
+{
+  "alert_id": "sample-ind-20260916-001",
+  "content_type": "early_warning",
+  "visibility": "public",
+  "country": "India",
+  "country_iso3": "IND",
+  "status": "WARNING",
+  "confidence": 0.86,
+  "event_title": "Sample policy-sensitive risk event for distribution testing",
+  "primary_cause": "A verified policy development with potential cross-market transmission",
+  "transmission_channels": ["rates", "currency", "capital_flows", "equities"],
+  "market_relevance": {
+    "equities": "high",
+    "crypto": "moderate",
+    "fx": "very_high",
+    "commodities": "low"
+  },
+  "independent_evidence_count": 3,
+  "official_source_present": true,
+  "detected_at_utc": "2026-09-16T08:12:41Z",
+  "country_timezone": "Asia/Kolkata",
+  "detected_at_local": "2026-09-16T13:42:41+05:30",
+  "public_url": "https://geomacro.live"
+}
