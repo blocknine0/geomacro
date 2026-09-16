@@ -1,0 +1,98 @@
+name: Apply Commercial Source Rights 936 Temp
+
+on:
+  push:
+    branches:
+      - ops/apply-commercial-source-rights-936
+    paths:
+      - ".github/workflows/apply-commercial-source-rights-936-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  apply-exact-936:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ops/apply-commercial-source-rights-936
+          persist-credentials: false
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SUPABASE_PROJECT_ID:-}" && -n "${SUPABASE_DB_URL:-}" ]]
+          [[ "$SUPABASE_PROJECT_ID" == "$EXPECTED_SUPABASE_PROJECT_REF" ]]
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const url = new URL(process.env.SUPABASE_DB_URL);
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('invalid DB URL protocol');
+          const direct = url.hostname === `db.${ref}.supabase.co` && url.username === 'postgres';
+          const pooler = url.hostname.endsWith('.pooler.supabase.com') && url.username === `postgres.${ref}`;
+          if (!direct && !pooler) throw new Error('DB URL is not authoritative Geomacro production');
+          if (!url.password || url.pathname !== '/postgres') throw new Error('invalid database target');
+          console.log('PASS: authoritative production database identity confirmed.');
+          NODE
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+        with:
+          version: 2.117.0
+
+      - name: Prove pending set is exactly migration 936
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee /tmp/plan.txt
+          mapfile -t pending < <(sed -n 's/^ • \([0-9][^ ]*\.sql\)$/\1/p' /tmp/plan.txt)
+          printf 'PENDING=%s\n' "${pending[*]:-none}"
+          expected=(936_commercial_source_rights_runtime_parity.sql)
+          if [[ "${pending[*]:-}" != "${expected[*]}" ]]; then
+            echo 'ERROR: refusing apply because pending migration set is not exactly 936' >&2
+            exit 1
+          fi
+
+      - name: Apply migration 936
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Verify no migrations remain pending
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee /tmp/post.txt
+          if grep -Eq '^ • [0-9].*\.sql$|Would push these migrations' /tmp/post.txt; then
+            echo 'ERROR: migrations remain pending after applying 936' >&2
+            exit 1
+          fi
+          echo 'PASS: production database is migration-current through 936.'
+
+      - name: Verify exact source-rights runtime state
+        shell: bash
+        run: |
+          set -euo pipefail
+          wgi="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || raw_redistribution_allowed::text || '|' || attribution_required::text || '|' || enabled_for_ingestion::text from public.live_external_sources where source_id='world_bank_wgi_political_stability';")"
+          usgs="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || raw_redistribution_allowed::text || '|' || attribution_required::text || '|' || enabled_for_ingestion::text from public.live_external_sources where source_id='usgs_mcs';")"
+          [[ "$wgi" == 'COMMERCIAL_OK|true|true|true' ]]
+          [[ "$usgs" == 'COMMERCIAL_OK|false|true|true' ]]
+          echo 'PASS: WGI raw redistribution is enabled only for the reviewed World Bank output contract.'
+          echo 'PASS: USGS MCS raw redistribution is blocked at the paid-delivery boundary.'
+
+      - name: Record non-payment boundary
+        shell: bash
+        run: |
+          echo 'PRODUCTION_PAYMENT_RAIL_ACTIVATED=false'
+          echo 'MAINNET_PAYMENT_PERFORMED=false'
+          echo 'MARKETPLACE_ACTIVATION_PERFORMED=false'
+          echo 'EXECUTION_AUTHORIZATION_CHANGED=false'
+          echo 'SCHEMA_AND_POLICY_REGISTRY_ONLY=true'
