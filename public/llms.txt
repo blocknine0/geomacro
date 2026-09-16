@@ -18,6 +18,7 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - World Bank QPSD governed production source: promotion gate passed and commercial-signal source remains active
 - Paid agent / x402 access: PRE-LAUNCH; non-production acceptance only
 - Coinbase x402: INITIAL LAUNCH COHORT; Base mainnet disabled pending coordinated launch
+- Circle Gateway x402: INITIAL LAUNCH COHORT; dedicated route prepared; Base mainnet disabled pending coordinated launch; Arc mainnet not enabled
 - Nevermined: INITIAL LAUNCH COHORT; production/live disabled pending coordinated launch
 - GOAT Testnet3: TECHNICAL PROOF ONLY
 - GOAT mainnet: DEFERRED pending manual merchant application/approval; not an initial-launch blocker
@@ -47,6 +48,7 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - Commerce discovery: https://geomacro.live/.well-known/geomacro-commerce.json
 - No-charge x402 deliverability check: POST https://geomacro.live/api/x402/risk/availability
 - Coinbase pre-launch adaptive intelligence resource: POST https://geomacro.live/api/x402/intelligence
+- Circle Gateway pre-launch adaptive intelligence resource: POST https://geomacro.live/api/x402/circle/intelligence
 - Nevermined sandbox adaptive intelligence resource: POST https://geomacro.live/api/x402/nevermined/intelligence
 - The payment challenge/provider plan is the authoritative source for price and accepted payment terms; static discovery metadata is not authoritative pricing.
 - The exact requested intelligence must pass deliverability checks before a payment challenge is issued.
@@ -97,7 +99,9 @@ Supported intents include single-subject assessment, comparison, bounded ranking
 
 ## Commercial launch cohort
 
-The initial coordinated commercial launch cohort is Coinbase x402 plus Nevermined. Both remain production-disabled until the frozen release candidate passes required product, security, source-rights, payment, delivery, reconciliation and evidence gates and receives explicit owner authorization.
+The initial coordinated commercial launch cohort is Coinbase x402, Circle Gateway x402 and Nevermined. All three remain production-disabled until the frozen release candidate passes required product, security, source-rights, payment, delivery, reconciliation and evidence gates and receives explicit owner authorization.
+
+Circle production discovery remains hidden unless the dedicated Circle environment, global launch acknowledgement, provider acknowledgement and central real-funds security gate are all satisfied. Arc mainnet is not part of this prepared launch path.
 
 GOAT mainnet is excluded from the initial cohort until manual merchant application/approval is complete. GOAT Testnet3 remains non-revenue technical proof and the mainnet runtime remains fail-closed.
 
