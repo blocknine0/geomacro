@@ -70,6 +70,7 @@ describe("commercial website source-of-truth contract", () => {
       "/intelligence",
       "/global-risk",
       "/ask-geomacro",
+      "/agent-access",
       "/risk-gate",
       "/data-api",
       "/institutional",
@@ -150,10 +151,11 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps the pay-per-call product pre-launch until production funds are authorized", () => {
     const route = read("src/routes/agent-access.tsx");
 
-    expect(route).toContain("MAINNET PAY-PER-CALL · PRE-LAUNCH · REAL FUNDS OFF");
+    expect(route).toContain("ACCESS & PRICING · MAINNET PAY-PER-CALL PRE-LAUNCH · REAL FUNDS OFF");
     expect(route).toContain("0.02 USDC / successful paid call");
     expect(route).toContain("Free deliverability check before payment");
     expect(route).toContain("live HTTP 402 challenge or approved provider plan is the payment authority");
+    expect(route).toContain("Credit pools are usage allowances, not public monetary list prices");
     expect(route).toContain("execution_authorized=false");
     expect(route).not.toContain("Buy now");
     expect(route).not.toContain("Pay now");
