@@ -19,7 +19,6 @@ const envExample = readFileSync(
 
 const workflows = [
   '../../.github/workflows/auto-ingest-news.yml',
-  '../../.github/workflows/dry-run-multisource-news.yml',
   '../../.github/workflows/reclassify-gri-evidence.yml',
 ].map((path) =>
   readFileSync(
@@ -56,7 +55,7 @@ describe('Gemini classifier model resilience', () => {
     );
   });
 
-  it('wires model order through env and workflows', () => {
+  it('wires model order through active ingestion workflows', () => {
     expect(envExample).toContain(
       'GEMINI_MODEL_ORDER='
     );
