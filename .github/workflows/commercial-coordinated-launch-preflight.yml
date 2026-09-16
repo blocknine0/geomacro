@@ -42,6 +42,7 @@ on:
       - ".env.example"
       - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
       - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
+      - ".github/workflows/commercial-release-candidate-freeze.yml"
       - ".github/workflows/commercial-coordinated-launch-preflight.yml"
   push:
     branches:
@@ -86,6 +87,7 @@ on:
       - ".env.example"
       - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
       - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
+      - ".github/workflows/commercial-release-candidate-freeze.yml"
       - ".github/workflows/commercial-coordinated-launch-preflight.yml"
   workflow_dispatch:
 
@@ -203,7 +205,7 @@ jobs:
           grep -q 'usgs_mcs' scripts/commercial-source-rights-evidence.mjs
           grep -q "source_id = 'world_bank_wgi_political_stability'" supabase/migrations/936_commercial_source_rights_runtime_parity.sql
           grep -q "source_id = 'usgs_mcs'" supabase/migrations/936_commercial_source_rights_runtime_parity.sql
-      - name: Verify provider readiness workflows preserve exact-head/static boundaries
+      - name: Verify provider and frozen-RC readiness workflows preserve exact-head boundaries
         shell: bash
         run: |
           set -euo pipefail
@@ -213,6 +215,16 @@ jobs:
           grep -q "github.event_name == 'workflow_dispatch' && inputs.run_provider_settlement == true" .github/workflows/nevermined-x402-sandbox-acceptance.yml
           grep -q 'Real provider settlement is intentionally manual-only' .github/workflows/nevermined-x402-sandbox-acceptance.yml
           grep -q 'no provider settlement executed' .github/workflows/nevermined-x402-sandbox-acceptance.yml
+          grep -q '^  workflow_dispatch:' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q 'FREEZE_GEOMACRO_COMMERCIAL_RC_TESTNET_ACCEPTANCE' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q 'Prove candidate is still exact current main' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q 'COINBASE_X402_BASE_SEPOLIA_USDC' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q 'NEVERMINED_X402_ENVIRONMENT: sandbox' .github/workflows/commercial-release-candidate-freeze.yml
+          grep -q "owner_launch_authorization: 'NOT_GRANTED'" .github/workflows/commercial-release-candidate-freeze.yml
+          if grep -Eq 'COINBASE_X402_MAINNET_ACK:|GEOMACRO_COMMERCIAL_LAUNCH_ACK:|NEVERMINED_X402_ENVIRONMENT: live' .github/workflows/commercial-release-candidate-freeze.yml; then
+            echo 'ERROR: frozen release-candidate evidence workflow must never activate production payment acknowledgements.' >&2
+            exit 1
+          fi
       - name: Verify provider-neutral settlement ordering is locked in source
         shell: bash
         run: |
