@@ -53,6 +53,11 @@ describe("World Bank PPG production sovereign-fiscal fallback", () => {
     expect(adapter).toContain("if (!manifest) return null");
   });
 
+  it("constructs the production proof with the exact validator contract field", () => {
+    expect(adapter).toContain("same_country_same_year_join_required: true,");
+    expect(adapter).not.toMatch(/\bsame_country_same_year_join:\s*true\b/);
+  });
+
   it("keeps source-specific fiscal precedence without raw concept pooling", () => {
     const wdiIndex = macro.indexOf("baseStates.some");
     const eurostatIndex = macro.indexOf("generateRiskGateV2EurostatSovereignFiscalModuleState");
