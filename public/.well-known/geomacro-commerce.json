@@ -9,6 +9,7 @@
     "execution_authorized": false
   },
   "discovery": {
+    "access_pricing": "https://geomacro.live/agent-access",
     "agent_card": "https://geomacro.live/.well-known/geomacro-agent.json",
     "x402": "https://geomacro.live/.well-known/x402",
     "x402_json": "https://geomacro.live/.well-known/x402.json",
