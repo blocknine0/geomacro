@@ -9,6 +9,9 @@ on:
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
       - "src/lib/agent-commerce-delivery.server.ts"
+      - "src/lib/commercial-growth.server.ts"
+      - "server/api/internal/commercial-growth.get.ts"
+      - "server/api/internal/commercial-growth.post.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "src/lib/nevermined-x402.server.ts"
@@ -18,11 +21,13 @@ on:
       - "src/lib/goat-pilot-service.server.ts"
       - "src/__tests__/goat-flow-contract.test.ts"
       - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
+      - "src/__tests__/commercial-growth-automation-static.test.ts"
       - "src/__tests__/goat-mainnet-readiness-static.test.ts"
       - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
       - "src/lib/agent-query-deliverability.server.ts"
       - "supabase/migrations/934_agent_commerce_delivery_ledger.sql"
+      - "supabase/migrations/935_commercial_marketing_draft_queue.sql"
       - ".env.example"
       - ".github/workflows/commercial-coordinated-launch-preflight.yml"
   workflow_dispatch:
@@ -43,7 +48,7 @@ jobs:
           bun-version: 1.4.2
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
-      - name: Verify launch, delivery and provider gates
+      - name: Verify launch, delivery, growth and provider gates
         run: >-
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
@@ -51,6 +56,7 @@ jobs:
           src/lib/nevermined-x402.server.test.ts
           src/__tests__/goat-flow-contract.test.ts
           src/__tests__/agent-commerce-delivery-ledger-static.test.ts
+          src/__tests__/commercial-growth-automation-static.test.ts
           src/__tests__/goat-mainnet-readiness-static.test.ts
           src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
       - name: Verify manifest remains prelaunch
@@ -65,7 +71,12 @@ jobs:
             for (const [name, provider] of Object.entries(manifest.providers ?? {})) {
               if (provider.production_enabled !== false) throw new Error(`${name} production_enabled must remain false`);
             }
-            if (manifest.launch_rule?.allow_partial_provider_launch !== false) throw new Error("partial provider launch must remain disabled");
+            if (manifest.providers?.coinbase_x402?.launch_cohort !== true) throw new Error("Coinbase must remain in the initial launch cohort");
+            if (manifest.providers?.nevermined?.launch_cohort !== true) throw new Error("Nevermined must remain in the initial launch cohort");
+            if (manifest.providers?.goat_x402?.launch_cohort !== false) throw new Error("GOAT mainnet must remain outside the initial cohort until manual merchant onboarding completes");
+            if (manifest.providers?.goat_x402?.status !== "deferred_manual_mainnet_merchant_onboarding") throw new Error("GOAT deferred status must remain explicit");
+            if (manifest.launch_rule?.allow_partial_provider_launch !== false) throw new Error("partial launch inside the approved cohort must remain disabled");
+            if (manifest.launch_rule?.allow_automatic_public_marketing_before_launch !== false) throw new Error("automatic public marketing must remain disabled before launch");
           '
       - name: Verify source and environment defaults cannot silently activate production
         shell: bash
@@ -78,6 +89,7 @@ jobs:
           grep -q 'https://api.sandbox.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'https://api.live.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
+          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
           grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
             echo 'ERROR: global launch authorization must not be committed as active.' >&2
@@ -88,7 +100,7 @@ jobs:
             exit 1
           fi
           if grep -Eq '^GOATX402_MAINNET_COMMERCIAL_ENABLED=true$' .env.example; then
-            echo 'ERROR: GOAT mainnet must remain disabled before coordinated launch.' >&2
+            echo 'ERROR: GOAT mainnet must remain disabled before later manual onboarding and coordinated release.' >&2
             exit 1
           fi
       - name: Verify Nevermined transport stays dependency-free and contract-pinned
@@ -130,3 +142,14 @@ jobs:
           grep -q 'prepareAgentCommerceDelivery' src/routes/api.x402.nevermined_.intelligence.ts
           grep -q 'settleNeverminedPermissions' src/routes/api.x402.nevermined_.intelligence.ts
           grep -q 'manualReview: true' src/routes/api.x402.nevermined_.intelligence.ts
+      - name: Verify marketing automation remains approval-gated and revenue-evidence only
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "new.environment not in ('mainnet', 'fiat')" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q "new.payment_status <> 'settled'" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q "new.reconciliation_status <> 'matched'" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q "new.commercial_revenue is not true" supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q 'check (requires_human_approval = true)' supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q 'check (auto_publish_allowed = false)' supabase/migrations/935_commercial_marketing_draft_queue.sql
+          grep -q 'publication_performed: false' server/api/internal/commercial-growth.post.ts
