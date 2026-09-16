@@ -6,15 +6,19 @@ on:
       - "config/commercial-launch-manifest.json"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/lib/agent-commerce-delivery.server.ts"
       - "src/lib/coinbase-x402.server.ts"
       - "src/lib/coinbase-x402.server.test.ts"
       - "src/lib/nevermined-x402.server.ts"
       - "src/lib/nevermined-x402.server.test.ts"
+      - "src/routes/api.x402.nevermined_.intelligence.ts"
       - "src/lib/goat-pilot-service.server.ts"
+      - "src/__tests__/agent-commerce-delivery-ledger-static.test.ts"
       - "src/__tests__/goat-mainnet-readiness-static.test.ts"
       - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
       - "src/lib/commercial-source-eligibility.server.ts"
       - "src/lib/agent-query-deliverability.server.ts"
+      - "supabase/migrations/934_agent_commerce_delivery_ledger.sql"
       - ".env.example"
       - ".github/workflows/commercial-coordinated-launch-preflight.yml"
   workflow_dispatch:
@@ -35,12 +39,13 @@ jobs:
           bun-version: 1.4.2
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
-      - name: Verify launch and provider gates
+      - name: Verify launch, delivery and provider gates
         run: >-
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
           src/lib/coinbase-x402.server.test.ts
           src/lib/nevermined-x402.server.test.ts
+          src/__tests__/agent-commerce-delivery-ledger-static.test.ts
           src/__tests__/goat-mainnet-readiness-static.test.ts
           src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
       - name: Verify manifest remains prelaunch
@@ -88,3 +93,13 @@ jobs:
           grep -q 'STALE_REQUIRED_DATA' src/lib/agent-query-deliverability.server.ts
           grep -q 'status === "COMMERCIAL_OK"' src/lib/commercial-source-eligibility.server.ts
           grep -q 'raw_redistribution_allowed' src/lib/commercial-source-eligibility.server.ts
+      - name: Verify provider-neutral settlement ordering is locked in source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'claim_agent_commerce_delivery' supabase/migrations/934_agent_commerce_delivery_ledger.sql
+          grep -q 'prepare_agent_commerce_delivery' supabase/migrations/934_agent_commerce_delivery_ledger.sql
+          grep -q 'PREPARED_LEASE_EXPIRED_RECONCILIATION_REQUIRED' supabase/migrations/934_agent_commerce_delivery_ledger.sql
+          grep -q 'prepareAgentCommerceDelivery' src/routes/api.x402.nevermined_.intelligence.ts
+          grep -q 'settleNeverminedPermissions' src/routes/api.x402.nevermined_.intelligence.ts
+          grep -q 'manualReview: true' src/routes/api.x402.nevermined_.intelligence.ts
