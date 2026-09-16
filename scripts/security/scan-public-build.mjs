@@ -23,7 +23,10 @@ const forbiddenFilePatterns = [
   /\.map$/i,
 ];
 
-const forbiddenTextMarkers = [
+// Environment variable names may intentionally appear in public documentation.
+// Names are not credentials, so they are reported only as identifiers. Actual
+// secret values are separately scanned when supplied to this process.
+const sensitiveIdentifierMarkers = [
   "APP_SUPABASE_SERVICE_ROLE_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
   "GEOMACRO_API_CREDENTIAL_PEPPER",
@@ -34,9 +37,13 @@ const forbiddenTextMarkers = [
   "CDP_API_KEY_SECRET",
   "GOATX402_API_KEY",
   "CIRCLE_GATEWAY_API_KEY",
+];
+
+const forbiddenTextMarkers = [
   "-----BEGIN PRIVATE KEY-----",
   "-----BEGIN RSA PRIVATE KEY-----",
   "-----BEGIN EC PRIVATE KEY-----",
+  "-----BEGIN OPENSSH PRIVATE KEY-----",
 ];
 
 const suspiciousSourceMarkers = [
@@ -85,6 +92,7 @@ if (!statSync(ROOT, { throwIfNoEntry: false })?.isDirectory()) {
 
 const files = walk(ROOT);
 const findings = [];
+const observedSensitiveIdentifiers = new Set();
 let totalBytes = 0;
 let textFilesScanned = 0;
 
@@ -122,11 +130,15 @@ for (const absolute of files) {
     });
   }
 
+  for (const marker of sensitiveIdentifierMarkers) {
+    if (lower.includes(marker.toLowerCase())) observedSensitiveIdentifiers.add(marker);
+  }
+
   for (const marker of forbiddenTextMarkers) {
-    if (lower.includes(marker.toLowerCase())) {
+    if (text.includes(marker)) {
       findings.push({
         severity: "critical",
-        code: "SERVER_SECRET_IDENTIFIER_EXPOSED",
+        code: "PRIVATE_KEY_MATERIAL_EXPOSED",
         path: rel,
         marker,
       });
@@ -165,6 +177,7 @@ const evidence = {
     scans_public_build_only: true,
     server_bundle_scanned_as_public: false,
     actual_secret_values_persisted: false,
+    environment_variable_names_treated_as_credentials: false,
     source_maps_forbidden: true,
   },
   inventory: {
@@ -172,6 +185,7 @@ const evidence = {
     text_files_scanned: textFilesScanned,
     total_bytes: totalBytes,
   },
+  observed_sensitive_identifiers: [...observedSensitiveIdentifiers].sort(),
   findings,
   result: findings.length === 0 ? "PASS" : "FAIL",
 };
