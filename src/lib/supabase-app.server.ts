@@ -8,8 +8,10 @@ type AppSupabaseConfig = {
   key: string;
   source:
     | "app-service-role"
+    | "app-trusted-service-role"
     | "app-anon"
     | "trusted-service-role"
+    | "trusted-app-service-role"
     | "trusted-anon";
 };
 
@@ -42,44 +44,39 @@ function isExplicitLocalDevelopmentUrl(url: string, env: NodeJS.ProcessEnv): boo
 /**
  * Resolve the app-owned Supabase runtime without ever trusting hosting/browser
  * VITE_SUPABASE_* injection. APP_* remains the preferred hosted SSR naming.
- * Trusted server/ops aliases are accepted only when they resolve to the same
- * authoritative Geomacro project. Explicit localhost Supabase is allowed only
- * outside production for disposable/local development.
+ * Trusted server/ops aliases are accepted only when the selected URL resolves
+ * to the same authoritative Geomacro project. This also tolerates mixed legacy
+ * server naming such as APP_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
+ * Explicit localhost Supabase is allowed only outside production.
  */
 export function resolveAppSupabaseConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AppSupabaseConfig | null {
   const appUrl = normalized(env.APP_SUPABASE_URL);
   const trustedUrl = normalized(env.SUPABASE_URL);
+  const appService = normalized(env.APP_SUPABASE_SERVICE_ROLE_KEY);
+  const trustedService = normalized(env.SUPABASE_SERVICE_ROLE_KEY);
+  const appAnon = normalized(env.APP_SUPABASE_ANON_KEY);
+  const trustedAnon = normalized(env.SUPABASE_ANON_KEY);
 
   const candidates: Array<AppSupabaseConfig | null> = [
-    appUrl && normalized(env.APP_SUPABASE_SERVICE_ROLE_KEY)
-      ? {
-          url: appUrl,
-          key: normalized(env.APP_SUPABASE_SERVICE_ROLE_KEY) as string,
-          source: "app-service-role",
-        }
+    appUrl && appService
+      ? { url: appUrl, key: appService, source: "app-service-role" }
       : null,
-    appUrl && normalized(env.APP_SUPABASE_ANON_KEY)
-      ? {
-          url: appUrl,
-          key: normalized(env.APP_SUPABASE_ANON_KEY) as string,
-          source: "app-anon",
-        }
+    appUrl && trustedService
+      ? { url: appUrl, key: trustedService, source: "app-trusted-service-role" }
       : null,
-    trustedUrl && normalized(env.SUPABASE_SERVICE_ROLE_KEY)
-      ? {
-          url: trustedUrl,
-          key: normalized(env.SUPABASE_SERVICE_ROLE_KEY) as string,
-          source: "trusted-service-role",
-        }
+    appUrl && appAnon
+      ? { url: appUrl, key: appAnon, source: "app-anon" }
       : null,
-    trustedUrl && normalized(env.SUPABASE_ANON_KEY)
-      ? {
-          url: trustedUrl,
-          key: normalized(env.SUPABASE_ANON_KEY) as string,
-          source: "trusted-anon",
-        }
+    trustedUrl && trustedService
+      ? { url: trustedUrl, key: trustedService, source: "trusted-service-role" }
+      : null,
+    trustedUrl && appService
+      ? { url: trustedUrl, key: appService, source: "trusted-app-service-role" }
+      : null,
+    trustedUrl && trustedAnon
+      ? { url: trustedUrl, key: trustedAnon, source: "trusted-anon" }
       : null,
   ];
 
