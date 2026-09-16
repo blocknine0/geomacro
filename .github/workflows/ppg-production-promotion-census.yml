@@ -1,0 +1,92 @@
+name: PPG Production Promotion Census
+
+on:
+  push:
+    branches:
+      - main
+      - feat/ppg-production-fiscal-fallback
+    paths:
+      - "scripts/ingest-world-bank-ppg-sovereign-fiscal-live.mjs"
+      - "src/lib/risk-gate-v2-world-bank-ppg-sovereign-fiscal.server.ts"
+      - "src/lib/risk-gate-v2-macro-module-state.server.ts"
+      - "scripts/global-risk-gate-country-census.ts"
+      - ".github/workflows/ppg-production-promotion-census.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ppg-production-promotion-census
+  cancel-in-progress: false
+
+jobs:
+  promote-and-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment: production
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GLOBAL_RISK_GATE_CENSUS_OUTPUT: ppg-production-global-country-census.json
+      GLOBAL_RISK_GATE_CENSUS_CONCURRENCY: "3"
+      WORLD_BANK_PPG_PRODUCTION_MAX_AGE_DAYS: "800"
+    steps:
+      - name: Checkout exact promotion candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate authoritative production target
+        run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Run governed World Bank PPG production ingest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-world-bank-ppg-sovereign-fiscal-live.mjs | tee ppg-production-ingest.log
+          grep -q 'PASS: WORLD BANK PPG GOVERNED PRODUCTION INGEST COMPLETE' ppg-production-ingest.log
+          grep -q '"production_scoring_changed_by_ingest": false' ppg-production-ingest.log
+          grep -q '"base_mainnet_gate_changed": false' ppg-production-ingest.log
+
+      - name: Run actual four-module production country census on candidate code
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/global-risk-gate-country-census.ts --require-any-accepted | tee ppg-production-global-country-census.log
+          test -s "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
+
+      - name: Enforce at least 100 production-ready countries on exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '.denominator.type == "enabled_sovereign_countries"' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '.summary.accepted_country_count >= 100' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '.claim_boundary.missing_or_unverified_input_fails_closed == true' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '.claim_boundary.execution_authorized_is_false == true' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '[.countries[] | select(.status == "ACCEPTED") | .risk_gate.execution_authorized] | all(. == false)' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq -e '[.countries[] | select(.status == "ACCEPTED") | .module_states[] | select(.module == "sovereign_fiscal" and .methodology_version == "risk-gate-v2-sovereign-fiscal-world-bank-ppg-external-debt-0.1.0")] | length >= 1' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT" >/dev/null
+          jq '{generated_at,denominator,summary,claim_boundary}' "$GLOBAL_RISK_GATE_CENSUS_OUTPUT"
+          echo 'PASS: PPG PRODUCTION PROMOTION CANDIDATE REACHES >=100 COUNTRIES WITH FAIL-CLOSED GATES'
+
+      - name: Upload sanitized production promotion evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ppg-production-promotion-census
+          path: |
+            ppg-production-ingest.log
+            ppg-production-global-country-census.json
+            ppg-production-global-country-census.log
+          if-no-files-found: warn
+          retention-days: 30
