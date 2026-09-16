@@ -1,7 +1,4 @@
-import {
-  createHmac,
-  randomUUID,
-} from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
 
@@ -108,15 +105,8 @@ const KNOWN_STATUSES = new Set<GoatFlowOrderStatus>([
   "EXPIRED",
   "CANCELLED",
 ]);
-const SUCCESS_STATUSES = new Set<GoatFlowOrderStatus>([
-  "PAYMENT_CONFIRMED",
-  "INVOICED",
-]);
-const FAILURE_STATUSES = new Set<GoatFlowOrderStatus>([
-  "FAILED",
-  "EXPIRED",
-  "CANCELLED",
-]);
+const SUCCESS_STATUSES = new Set<GoatFlowOrderStatus>(["PAYMENT_CONFIRMED", "INVOICED"]);
+const FAILURE_STATUSES = new Set<GoatFlowOrderStatus>(["FAILED", "EXPIRED", "CANCELLED"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -164,10 +154,10 @@ export function requireGoatFlowConfig(): GoatFlowConfig {
   }
 
   if (environment === "mainnet") {
-  assertCommercialLaunchAuthorized("goat_x402");
-}
+    assertCommercialLaunchAuthorized("goat_x402");
+  }
 
-const expected = GOAT_FLOW_ENVIRONMENTS[environment];
+  const expected = GOAT_FLOW_ENVIRONMENTS[environment];
   const configuredApi = process.env.GOATX402_API_URL?.trim() || expected.api_url;
 
   let parsed: URL;
@@ -378,11 +368,7 @@ async function publicRequest(path: string): Promise<Record<string, unknown>> {
   return parsed;
 }
 
-function requiredString(
-  record: Record<string, unknown>,
-  key: string,
-  maxLength = 512,
-): string {
+function requiredString(record: Record<string, unknown>, key: string, maxLength = 512): string {
   const value = record[key];
   if (typeof value !== "string" || !value.trim() || value.length > maxLength) {
     throw new Error(`GOAT Flow response field ${key} is invalid`);
@@ -403,7 +389,8 @@ function parseCaip2ChainId(value: unknown): number {
   const match = value.match(/^eip155:([1-9][0-9]{0,14})$/);
   if (!match) throw new Error("GOAT x402 network is invalid");
   const chainId = Number(match[1]);
-  if (!Number.isSafeInteger(chainId)) throw new Error("GOAT x402 network exceeds safe integer range");
+  if (!Number.isSafeInteger(chainId))
+    throw new Error("GOAT x402 network exceeds safe integer range");
   return chainId;
 }
 
@@ -448,10 +435,14 @@ export async function resolveGoatPilotToken(
   const config = requireGoatFlowConfig();
   const merchant = await getGoatFlowMerchant();
   const matches = merchant.supported_tokens.filter(
-    (token) => token.chain_id === GOAT_FLOW_ENVIRONMENTS[config.environment].chain_id && token.token_symbol === tokenSymbol,
+    (token) =>
+      token.chain_id === GOAT_FLOW_ENVIRONMENTS[config.environment].chain_id &&
+      token.token_symbol === tokenSymbol,
   );
   if (matches.length !== 1) {
-    throw new Error(`GOAT merchant must expose exactly one ${tokenSymbol} token on the selected environment`);
+    throw new Error(
+      `GOAT merchant must expose exactly one ${tokenSymbol} token on the selected environment`,
+    );
   }
   return matches[0];
 }
@@ -462,13 +453,16 @@ function validateCreatedChallenge(
 ): GoatFlowPaymentChallenge {
   if (raw.x402Version !== 2) throw new Error("GOAT Flow returned unsupported x402 version");
   if (!Array.isArray(raw.accepts) || raw.accepts.length !== 1 || !isRecord(raw.accepts[0])) {
-    throw new Error("GOAT Flow payment challenge must contain exactly one payment option for this pilot");
+    throw new Error(
+      "GOAT Flow payment challenge must contain exactly one payment option for this pilot",
+    );
   }
 
   const option = raw.accepts[0];
   const orderId = safeId(requiredString(raw, "order_id", 256), "GOAT order_id");
   const extra = isRecord(option.extra) ? option.extra : {};
-  const flow = typeof raw.flow === "string" ? raw.flow : typeof extra.flow === "string" ? extra.flow : "";
+  const flow =
+    typeof raw.flow === "string" ? raw.flow : typeof extra.flow === "string" ? extra.flow : "";
   if (flow !== "ERC20_DIRECT") throw new Error("GOAT partner pilot supports ERC20_DIRECT only");
 
   const chainId = parseCaip2ChainId(option.network);
@@ -491,7 +485,8 @@ function validateCreatedChallenge(
       : typeof extra.tokenSymbol === "string"
         ? extra.tokenSymbol.trim().toUpperCase()
         : "";
-  if (tokenSymbol !== input.token_symbol) throw new Error("GOAT payment challenge token symbol mismatch");
+  if (tokenSymbol !== input.token_symbol)
+    throw new Error("GOAT payment challenge token symbol mismatch");
 
   const extensions = isRecord(raw.extensions) ? raw.extensions : {};
   const goatExtension = isRecord(extensions.goatx402) ? extensions.goatx402 : {};
@@ -569,18 +564,24 @@ function parseGoatOrder(raw: Record<string, unknown>): GoatFlowOrder {
   }
 
   const txHashRaw = raw.tx_hash;
-  const txHash = txHashRaw === null || txHashRaw === undefined || txHashRaw === ""
-    ? null
-    : typeof txHashRaw === "string" && TX_HASH.test(txHashRaw)
-      ? txHashRaw.toLowerCase()
-      : (() => { throw new Error("GOAT Flow order tx_hash is invalid"); })();
+  const txHash =
+    txHashRaw === null || txHashRaw === undefined || txHashRaw === ""
+      ? null
+      : typeof txHashRaw === "string" && TX_HASH.test(txHashRaw)
+        ? txHashRaw.toLowerCase()
+        : (() => {
+            throw new Error("GOAT Flow order tx_hash is invalid");
+          })();
 
   const confirmedAtRaw = raw.confirmed_at;
-  const confirmedAt = confirmedAtRaw === null || confirmedAtRaw === undefined || confirmedAtRaw === ""
-    ? null
-    : typeof confirmedAtRaw === "string" && Number.isFinite(Date.parse(confirmedAtRaw))
-      ? new Date(confirmedAtRaw).toISOString()
-      : (() => { throw new Error("GOAT Flow order confirmed_at is invalid"); })();
+  const confirmedAt =
+    confirmedAtRaw === null || confirmedAtRaw === undefined || confirmedAtRaw === ""
+      ? null
+      : typeof confirmedAtRaw === "string" && Number.isFinite(Date.parse(confirmedAtRaw))
+        ? new Date(confirmedAtRaw).toISOString()
+        : (() => {
+            throw new Error("GOAT Flow order confirmed_at is invalid");
+          })();
 
   return {
     order_id: orderId,
@@ -631,11 +632,15 @@ export function verifyGoatPaidOrder(
     throw new Error(`GOAT order is not paid: ${order.status}`);
   }
   if (order.order_id !== expected.order_id) throw new Error("GOAT paid order ID mismatch");
-  if (order.dapp_order_id !== expected.dapp_order_id) throw new Error("GOAT paid dapp_order_id mismatch");
-  if (order.from_address !== expected.from_address.toLowerCase()) throw new Error("GOAT paid payer mismatch");
+  if (order.dapp_order_id !== expected.dapp_order_id)
+    throw new Error("GOAT paid dapp_order_id mismatch");
+  if (order.from_address !== expected.from_address.toLowerCase())
+    throw new Error("GOAT paid payer mismatch");
   if (order.chain_id !== expected.chain_id) throw new Error("GOAT paid chain mismatch");
-  if (order.token_contract !== expected.token_contract.toLowerCase()) throw new Error("GOAT paid token contract mismatch");
-  if (order.token_symbol !== expected.token_symbol.toUpperCase()) throw new Error("GOAT paid token symbol mismatch");
+  if (order.token_contract !== expected.token_contract.toLowerCase())
+    throw new Error("GOAT paid token contract mismatch");
+  if (order.token_symbol !== expected.token_symbol.toUpperCase())
+    throw new Error("GOAT paid token symbol mismatch");
   if (order.amount_wei !== expected.amount_wei) throw new Error("GOAT paid amount mismatch");
   if (!order.tx_hash) throw new Error("GOAT paid order has no transaction hash");
   if (!order.confirmed_at) throw new Error("GOAT paid order has no confirmation timestamp");
@@ -656,7 +661,9 @@ export async function waitForGoatPaidOrder(
     if (isGoatTerminalFailureStatus(order.status)) {
       throw new Error(`GOAT order ended without payment: ${order.status}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, Math.min(intervalMs, timeoutMs - (Date.now() - started))));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(intervalMs, timeoutMs - (Date.now() - started))),
+    );
   }
 
   throw new Error("GOAT order confirmation timed out; reconcile before creating another payment");
