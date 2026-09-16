@@ -145,7 +145,7 @@ describe("canonical product architecture alignment", () => {
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(about).toContain("Risk intelligence is the product");
-    expect(about).toContain("separate technical proof");
+    expect(about).toContain("Technical Proof:");
     expect(predictionDocs).toContain("TECHNICAL PROOF · ARC TESTNET");
     expect(predictionDocs).toContain("secondary application and feedback layer");
   });
