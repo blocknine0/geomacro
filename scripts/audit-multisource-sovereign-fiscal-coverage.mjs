@@ -105,13 +105,43 @@ function ageDays(observedAt) {
   return Math.max(0, (AS_OF.getTime() - observedAt.getTime()) / 86_400_000);
 }
 
+function unavailableIndicator(indicator, url, reason, responseSha256 = null) {
+  return {
+    indicator_id: indicator.id,
+    key: indicator.key,
+    family: indicator.family,
+    label: indicator.label,
+    query_url: url,
+    response_sha256: responseSha256,
+    available_from_live_api: false,
+    unavailable_reason: reason,
+    latest_non_null_country_count: 0,
+    fresh_country_count: 0,
+    fresh_iso3: [],
+    fresh_rows: [],
+  };
+}
+
 async function fetchIndicator(indicator, countrySet) {
   const startYear = Math.max(1960, AS_OF.getUTCFullYear() - 6);
   const endYear = AS_OF.getUTCFullYear();
   const params = new URLSearchParams({ format: "json", per_page: "20000", date: `${startYear}:${endYear}` });
   const url = `${WB_API}/country/all/indicator/${indicator.id}?${params.toString()}`;
-  const { parsed, sha256: responseSha256 } = await requestJson(url);
-  if (!Array.isArray(parsed) || !Array.isArray(parsed[1])) throw new Error(`World Bank ${indicator.id} response shape invalid`);
+
+  let response;
+  try {
+    response = await requestJson(url);
+  } catch (error) {
+    return unavailableIndicator(indicator, url, error instanceof Error ? error.message : String(error));
+  }
+
+  const { parsed, sha256: responseSha256 } = response;
+  if (!Array.isArray(parsed) || !Array.isArray(parsed[1])) {
+    const apiMessage = Array.isArray(parsed?.message)
+      ? parsed.message.map((item) => String(item?.value ?? item?.key ?? "")).filter(Boolean).join(" | ")
+      : "invalid response shape";
+    return unavailableIndicator(indicator, url, apiMessage || "invalid response shape", responseSha256);
+  }
 
   const latest = new Map();
   for (const row of parsed[1]) {
@@ -144,6 +174,8 @@ async function fetchIndicator(indicator, countrySet) {
     label: indicator.label,
     query_url: url,
     response_sha256: responseSha256,
+    available_from_live_api: true,
+    unavailable_reason: null,
     latest_non_null_country_count: latest.size,
     fresh_country_count: fresh.length,
     fresh_iso3: fresh.map((row) => row.iso3),
@@ -211,7 +243,7 @@ async function main() {
   for (const candidate of REGIONAL_CANDIDATES) regionalProbes.push(await probeRegionalCandidate(candidate));
 
   const report = {
-    schema_version: "geomacro-multisource-sovereign-fiscal-coverage-1.0",
+    schema_version: "geomacro-multisource-sovereign-fiscal-coverage-1.1",
     generated_at: new Date().toISOString(),
     as_of: AS_OF.toISOString(),
     max_age_days: MAX_AGE_DAYS,
@@ -226,6 +258,7 @@ async function main() {
       raw_cross_source_value_pooling_allowed: false,
       cross_concept_peer_pooling_allowed: false,
       missing_is_zero_risk: false,
+      unavailable_indicators_fail_closed_without_aborting_discovery: true,
       regional_candidates_are_not_automatically_commercially_activated: true,
     },
     world_bank_country_metadata: {
@@ -235,6 +268,8 @@ async function main() {
     },
     world_bank_indicator_coverage: indicatorResults.map(({ fresh_rows, ...result }) => result),
     candidate_coverage_summary: {
+      live_indicator_count: indicatorResults.filter((result) => result.available_from_live_api).length,
+      unavailable_indicator_count: indicatorResults.filter((result) => !result.available_from_live_api).length,
       countries_with_any_fresh_signal: perCountry.filter((row) => row.fresh_metric_count >= 1).length,
       countries_with_two_or_more_fresh_signals: perCountry.filter((row) => row.candidate_two_signal_coverage).length,
       countries_with_fiscal_flow_plus_debt_signal: perCountry.filter((row) => row.candidate_fiscal_plus_debt_coverage).length,
