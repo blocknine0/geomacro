@@ -71,7 +71,7 @@ jobs:
           fi
 
           grep -q 'psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/939_gdelt_native_pipeline_scheduler.sql' "$deploy"
-          if grep -q 'supabase db push' "$deploy"; then
+          if grep -Eq 'supabase[[:space:]]+db[[:space:]]+push' "$deploy"; then
             echo 'ERROR: native scheduler deployment must not broad-push unrelated migrations.' >&2
             exit 1
           fi
@@ -203,7 +203,7 @@ jobs:
           set -euo pipefail
           code="$(curl --silent --show-error \
             --max-time 180 \
-            --output /tmp/gdelt-native-pipeline.json \
+            --output gdelt-native-pipeline-smoke.json \
             --write-out '%{http_code}' \
             --request POST \
             --header "x-geomacro-scheduler-token: ${GDELT_PIPELINE_SCHEDULER_TOKEN}" \
@@ -211,13 +211,13 @@ jobs:
             --data '{"trigger":"deployment_smoke"}' \
             "${APP_SUPABASE_URL}/functions/v1/scheduled-gdelt-pipeline")"
 
-          cat /tmp/gdelt-native-pipeline.json
+          cat gdelt-native-pipeline-smoke.json
           echo
           test "$code" = '200' || { echo "::error::Native scheduler smoke HTTP $code"; exit 1; }
-          jq -e '.ok == true and .status == "completed"' /tmp/gdelt-native-pipeline.json >/dev/null
-          jq -e '.public_alert_activation == false' /tmp/gdelt-native-pipeline.json >/dev/null
-          jq -e '.commercial_signal_activation == false' /tmp/gdelt-native-pipeline.json >/dev/null
-          jq -e '.payment_or_mainnet_activation == false' /tmp/gdelt-native-pipeline.json >/dev/null
+          jq -e '.ok == true and .status == "completed"' gdelt-native-pipeline-smoke.json >/dev/null
+          jq -e '.public_alert_activation == false' gdelt-native-pipeline-smoke.json >/dev/null
+          jq -e '.commercial_signal_activation == false' gdelt-native-pipeline-smoke.json >/dev/null
+          jq -e '.payment_or_mainnet_activation == false' gdelt-native-pipeline-smoke.json >/dev/null
 
           lease_state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select last_status from public.live_pipeline_scheduler_leases where pipeline_key='gdelt_gal_native_pipeline'")"
           test "$lease_state" = 'succeeded' || { echo "::error::Unexpected pipeline lease state: $lease_state"; exit 1; }
@@ -251,7 +251,7 @@ jobs:
         with:
           name: gdelt-native-pipeline-deployment
           path: |
-            /tmp/gdelt-native-pipeline.json
+            gdelt-native-pipeline-smoke.json
             agent-hot-topic-readiness-native-scheduler.json
           if-no-files-found: warn
           retention-days: 30
