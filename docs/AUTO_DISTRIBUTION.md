@@ -31,7 +31,8 @@ By default an alert can be distributed only when all of the following are true:
 - status is `WARNING` or `CRITICAL`;
 - confidence is at least 0.70;
 - the signal has an official source or at least two independent evidence items;
-- required country, cause and timestamp fields are present.
+- required country, cause and timestamp fields are present;
+- the timezone is a valid IANA timezone and the timestamps are valid ISO timestamps.
 
 The policy is versioned in `config/auto-distribution.json`.
 
@@ -39,9 +40,9 @@ The policy is versioned in `config/auto-distribution.json`.
 
 The public renderer emits a bounded teaser, not the full paid intelligence object. Fields listed in `never_publish_fields` must never be emitted. The copy states that the alert is structured risk intelligence rather than a buy/sell signal.
 
-Publishing is dry-run by default. Live publishing requires `--live` and credentials for the relevant channels.
+Publishing is dry-run by default. In prelaunch, `live_publish_enabled` is `false`, so `--live` fails closed even if channel credentials exist. Live distribution should be enabled only after the canonical Early Warning ledger, durable distribution receipt/idempotency ledger and launch checks are ready.
 
-A durable distribution ledger must be connected before production auto-publishing so retries and worker restarts cannot create duplicate public posts. The canonical Early Warning ledger remains the source of truth for alert identity and timestamps.
+The canonical Early Warning ledger remains the source of truth for alert identity and timestamps.
 
 ## Required alert shape
 
@@ -102,13 +103,7 @@ Mastodon:
 - `MASTODON_BASE_URL`
 - `MASTODON_ACCESS_TOKEN`
 
-Live invocation:
-
-```bash
-node scripts/marketing/auto-distribute-alert.mjs \
-  --input=/path/to/verified-public-alert.json \
-  --live
-```
+After the production prerequisites are complete, activation requires an explicit config change to `live_publish_enabled: true`. Only then can `--live` send to enabled free channels.
 
 ## Explicitly out of scope
 
