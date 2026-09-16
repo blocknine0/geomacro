@@ -40,6 +40,11 @@ describe("World Bank PPG production sovereign-fiscal fallback", () => {
   it("requires the exact clean manifest and source proof before producing a fiscal state", () => {
     expect(adapter).toContain('MANIFEST_KIND = "WORLD_BANK_PPG_GNI_DERIVED_V1"');
     expect(adapter).toContain('from("live_source_release_manifests")');
+    expect(adapter).toContain('.contains("metadata", {');
+    expect(adapter).toContain("kind: MANIFEST_KIND");
+    expect(adapter).toContain("metric: WORLD_BANK_PPG_SOVEREIGN_FISCAL_METRIC");
+    expect(adapter).toContain("semantic_boundary: SEMANTIC_BOUNDARY");
+    expect(adapter).not.toContain('.limit(50)');
     expect(adapter).toContain('metadata.numerator_indicator !== "DT.DOD.DPPG.CD"');
     expect(adapter).toContain('metadata.denominator_indicator !== "NY.GNP.MKTP.CD"');
     expect(adapter).toContain("metadata.same_country_same_year_join_required !== true");
