@@ -12,10 +12,13 @@ const trackedFiles = [
   "config/agent-marketplace-distribution.json",
   "public/.well-known/geomacro-agent.json",
   "public/.well-known/geomacro-commerce.json",
+  "public/openapi-x402.json",
   "public/agent-commerce.md",
   "public/llms.txt",
   "src/lib/commercial-launch-gate.server.ts",
   "src/lib/coinbase-x402.server.ts",
+  "src/lib/circle-gateway-x402-production.server.ts",
+  "src/routes/api.x402.circle_.intelligence.ts",
   "src/lib/nevermined-x402.server.ts",
   "src/lib/agent-commerce-delivery.server.ts",
   "src/lib/commercial-growth.server.ts",
@@ -58,6 +61,12 @@ for (const [provider, state] of Object.entries(launch.providers || {})) {
 if (launch.providers?.coinbase_x402?.launch_cohort !== true) {
   throw new Error("Coinbase must remain in the initial payment launch cohort");
 }
+if (launch.providers?.circle_gateway_x402?.launch_cohort !== true) {
+  throw new Error("Circle Gateway must remain in the initial payment launch cohort");
+}
+if (launch.providers?.circle_gateway_x402?.arc_mainnet_enabled !== false) {
+  throw new Error("Arc mainnet must remain disabled in the prepared Circle launch path");
+}
 if (launch.providers?.nevermined?.launch_cohort !== true) {
   throw new Error("Nevermined must remain in the initial payment launch cohort");
 }
@@ -89,7 +98,7 @@ const evidence = {
   production_activation_performed: false,
   production_funds_authorized: false,
   official_launch_announced: false,
-  payment_launch_cohort: ["coinbase_x402", "nevermined"],
+  payment_launch_cohort: ["coinbase_x402", "circle_gateway_x402", "nevermined"],
   deferred_payment_providers: {
     goat_x402_mainnet: "manual_merchant_application_and_approval_required",
   },
