@@ -51,6 +51,25 @@ export default defineEventHandler(async (event) => {
   const method = event.method || "GET";
   const headers = new Headers(getRequestHeaders(event));
 
+  // Generic forwarding headers are client-spoofable unless every ingress edge
+  // is explicitly configured to strip and overwrite them. Geomacro's current
+  // production target is Cloudflare/Nitro, so cf-connecting-ip remains the
+  // preferred edge-authenticated hint. Other proxy identity headers are ignored
+  // by default and may only be enabled after the deployment proxy contract has
+  // been independently verified. Falling back to "unknown" is intentionally
+  // conservative: clients share a tighter bucket instead of gaining an abuse
+  // bypass through forged network identity.
+  const trustGenericProxyHeaders =
+    process.env.GEOMACRO_TRUST_GENERIC_PROXY_HEADERS
+      ?.trim()
+      .toLowerCase() === "true";
+
+  if (!trustGenericProxyHeaders) {
+    headers.delete("x-forwarded-for");
+    headers.delete("x-real-ip");
+    headers.delete("true-client-ip");
+  }
+
   const decision = await enforceCentralRequestSecurity({
     pathname,
     method,
