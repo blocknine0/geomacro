@@ -45,29 +45,6 @@ const htmlPaths = [
   "/onchain",
 ];
 
-const evidence = {
-  schema_version: "geomacro.live-launch-surface-smoke.v1",
-  generated_at: new Date().toISOString(),
-  base_url: baseUrl,
-  payment_performed: false,
-  production_activation_performed: false,
-  routes: [],
-  machine_discovery: {},
-};
-
-for (const path of htmlPaths) {
-  const result = await get(path, "text/html");
-  assert(result.status === 200, `${path} expected 200, got ${result.status}`);
-  assert(result.contentType.includes("text/html"), `${path} did not return HTML`);
-  assert(result.text.length > 500, `${path} returned an unexpectedly small document`);
-  assert(!/Internal Server Error|Application error|ReferenceError:\s|TypeError:\s/i.test(result.text), `${path} exposed an application failure marker`);
-  if (path === "/onchain") {
-    assert(result.text.includes("Arc Testnet"), "/onchain missing Arc Testnet boundary");
-    assert(result.text.includes("Mainnet remains disabled"), "/onchain missing explicit mainnet-disabled boundary");
-  }
-  evidence.routes.push({ path, status: result.status, elapsed_ms: result.elapsedMs });
-}
-
 const discoveryPaths = [
   "/.well-known/x402",
   "/.well-known/x402.json",
@@ -77,37 +54,84 @@ const discoveryPaths = [
   "/llms.txt",
 ];
 
-for (const path of discoveryPaths) {
-  const result = await get(path);
-  assert(result.status === 200, `${path} expected 200, got ${result.status}`);
-  assert(result.text.length > 20, `${path} returned empty discovery content`);
-  evidence.machine_discovery[path] = {
-    status: result.status,
-    content_type: result.contentType,
-    elapsed_ms: result.elapsedMs,
-  };
+const evidence = {
+  schema_version: "geomacro.live-launch-surface-smoke.v1",
+  generated_at: new Date().toISOString(),
+  base_url: baseUrl,
+  payment_performed: false,
+  production_activation_performed: false,
+  routes: [],
+  machine_discovery: {},
+  result: "RUNNING",
+};
+
+function persistEvidence() {
+  fs.mkdirSync("artifacts", { recursive: true });
+  fs.writeFileSync("artifacts/live-launch-surface-smoke.json", `${JSON.stringify(evidence, null, 2)}\n`);
 }
 
-const commerceResponse = await get("/.well-known/geomacro-commerce.json", "application/json");
-const commerce = JSON.parse(commerceResponse.text);
-assert(commerce?.service?.status === "prelaunch", "Commerce discovery must remain prelaunch");
-assert(commerce?.service?.execution_authorized === false, "Commerce discovery must remain non-executing");
-assert(commerce?.commercial_contract?.production_funds_authorized === false, "Commerce discovery must not authorize production funds");
-for (const [name, provider] of Object.entries(commerce?.offers?.[0]?.providers || {})) {
-  assert(provider?.production_enabled === false, `${name} unexpectedly has production_enabled=true`);
+try {
+  for (const path of htmlPaths) {
+    const result = await get(path, "text/html");
+    evidence.routes.push({ path, status: result.status, elapsed_ms: result.elapsedMs });
+    assert(result.status === 200, `${path} expected 200, got ${result.status}`);
+    assert(result.contentType.includes("text/html"), `${path} did not return HTML`);
+    assert(result.text.length > 500, `${path} returned an unexpectedly small document`);
+    assert(!/Internal Server Error|Application error|ReferenceError:\s|TypeError:\s/i.test(result.text), `${path} exposed an application failure marker`);
+    if (path === "/onchain") {
+      assert(result.text.includes("Arc Testnet"), "/onchain missing Arc Testnet boundary");
+      assert(result.text.includes("Mainnet remains disabled"), "/onchain missing explicit mainnet-disabled boundary");
+    }
+  }
+
+  for (const path of discoveryPaths) {
+    const result = await get(path);
+    evidence.machine_discovery[path] = {
+      status: result.status,
+      content_type: result.contentType,
+      elapsed_ms: result.elapsedMs,
+    };
+    assert(result.status === 200, `${path} expected 200, got ${result.status}`);
+    assert(result.text.length > 20, `${path} returned empty discovery content`);
+  }
+
+  for (const path of ["/.well-known/x402", "/.well-known/x402.json"]) {
+    const response = await get(path, "application/json");
+    const discovery = JSON.parse(response.text);
+    assert(discovery?.x402Version === 2, `${path} must advertise x402Version=2`);
+    assert(discovery?.status === "prelaunch", `${path} must remain prelaunch before owner-authorized launch`);
+    assert(discovery?.productionFundsAuthorized === false, `${path} must not authorize production funds`);
+    assert(Array.isArray(discovery?.resources) && discovery.resources.length === 0, `${path} must not advertise paid production resources while prelaunch`);
+    assert(discovery?.boundaries?.execution_authorized === false, `${path} must remain non-executing`);
+  }
+
+  const commerceResponse = await get("/.well-known/geomacro-commerce.json", "application/json");
+  const commerce = JSON.parse(commerceResponse.text);
+  assert(commerce?.service?.status === "prelaunch", "Commerce discovery must remain prelaunch");
+  assert(commerce?.service?.execution_authorized === false, "Commerce discovery must remain non-executing");
+  assert(commerce?.commercial_contract?.production_funds_authorized === false, "Commerce discovery must not authorize production funds");
+  for (const [name, provider] of Object.entries(commerce?.offers?.[0]?.providers || {})) {
+    assert(provider?.production_enabled === false, `${name} unexpectedly has production_enabled=true`);
+  }
+
+  const agentResponse = await get("/.well-known/geomacro-agent.json", "application/json");
+  const agent = JSON.parse(agentResponse.text);
+  assert(JSON.stringify(agent).length > 50, "Agent discovery JSON is unexpectedly empty");
+
+  const openApiResponse = await get("/openapi-x402.json", "application/json");
+  const openapi = JSON.parse(openApiResponse.text);
+  assert(typeof openapi?.openapi === "string", "OpenAPI document missing version");
+  assert(openapi?.paths && Object.keys(openapi.paths).length > 0, "OpenAPI document has no paths");
+
+  evidence.result = "PASS";
+  persistEvidence();
+  console.log(`PASS: live launch surface smoke passed for ${htmlPaths.length} public routes and ${discoveryPaths.length} discovery resources.`);
+  console.log("BOUNDARY: no payment, settlement, mainnet activation, mutation, or load test was performed.");
+} catch (error) {
+  evidence.result = "FAIL";
+  evidence.failure = error instanceof Error ? error.message : String(error);
+  persistEvidence();
+  console.error(`FAIL: ${evidence.failure}`);
+  console.error("BOUNDARY: no payment, settlement, mainnet activation, mutation, or load test was performed.");
+  throw error;
 }
-
-const agentResponse = await get("/.well-known/geomacro-agent.json", "application/json");
-const agent = JSON.parse(agentResponse.text);
-assert(JSON.stringify(agent).length > 50, "Agent discovery JSON is unexpectedly empty");
-
-const openApiResponse = await get("/openapi-x402.json", "application/json");
-const openapi = JSON.parse(openApiResponse.text);
-assert(typeof openapi?.openapi === "string", "OpenAPI document missing version");
-assert(openapi?.paths && Object.keys(openapi.paths).length > 0, "OpenAPI document has no paths");
-
-fs.mkdirSync("artifacts", { recursive: true });
-fs.writeFileSync("artifacts/live-launch-surface-smoke.json", `${JSON.stringify(evidence, null, 2)}\n`);
-
-console.log(`PASS: live launch surface smoke passed for ${htmlPaths.length} public routes and ${discoveryPaths.length} discovery resources.`);
-console.log("BOUNDARY: no payment, settlement, mainnet activation, mutation, or load test was performed.");
