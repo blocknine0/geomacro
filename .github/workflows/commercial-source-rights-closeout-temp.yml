@@ -1,0 +1,98 @@
+name: Commercial Source Rights Closeout Probe
+
+on:
+  push:
+    branches:
+      - feat/commercial-prelaunch-closeout
+    paths:
+      - ".github/workflows/commercial-source-rights-closeout-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/commercial-prelaunch-closeout
+          persist-credentials: false
+      - name: Validate authoritative read-only target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SUPABASE_PROJECT_ID:-}" && -n "${SUPABASE_DB_URL:-}" ]]
+          [[ "$SUPABASE_PROJECT_ID" == "$EXPECTED_SUPABASE_PROJECT_REF" ]]
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const url = new URL(process.env.SUPABASE_DB_URL);
+          const direct = url.hostname === `db.${ref}.supabase.co` && url.username === 'postgres';
+          const pooler = url.hostname.endsWith('.pooler.supabase.com') && url.username === `postgres.${ref}`;
+          if (!direct && !pooler) throw new Error('DB URL is not authoritative Geomacro production');
+          if (!url.password || url.pathname !== '/postgres') throw new Error('invalid database target');
+          NODE
+      - name: Ensure psql client exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client >/dev/null
+          fi
+      - name: Export privacy-safe commercial source registry status
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -A -F $'\t' -c "
+            select source_id,
+                   coalesce(commercial_usage_status,''),
+                   enabled_for_ingestion,
+                   enabled_for_commercial_signals,
+                   raw_redistribution_allowed,
+                   attribution_required,
+                   coalesce(licence_name,'')
+            from public.live_external_sources
+            order by source_id;
+          " > artifacts/commercial-source-rights.tsv
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -A -t -c "
+            select json_build_object(
+              'total_sources', count(*),
+              'commercial_ok', count(*) filter (where commercial_usage_status='COMMERCIAL_OK'),
+              'ingestion_enabled', count(*) filter (where enabled_for_ingestion),
+              'commercial_signals_enabled', count(*) filter (where enabled_for_commercial_signals),
+              'paid_raw_evidence_eligible', count(*) filter (where commercial_usage_status='COMMERCIAL_OK' and enabled_for_ingestion and raw_redistribution_allowed),
+              'enabled_but_raw_redistribution_blocked', count(*) filter (where enabled_for_ingestion and not raw_redistribution_allowed),
+              'review_or_permission_required', count(*) filter (where commercial_usage_status in ('REVIEW_REQUIRED','PERMISSION_REQUIRED'))
+            ) from public.live_external_sources;
+          " > artifacts/commercial-source-rights-summary.json
+      - name: Assert no ingestion-enabled source can silently bypass commercial status
+        shell: bash
+        run: |
+          set -euo pipefail
+          bad="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -A -t -c "
+            select count(*) from public.live_external_sources
+            where enabled_for_commercial_signals
+              and commercial_usage_status <> 'COMMERCIAL_OK';
+          ")"
+          if [[ "$bad" != "0" ]]; then
+            echo "ERROR: commercial-signals-enabled sources exist without COMMERCIAL_OK status" >&2
+            exit 1
+          fi
+          echo 'PASS: no commercial-signals-enabled source bypasses COMMERCIAL_OK.'
+          echo 'READ_ONLY_AUDIT=true'
+          echo 'DATABASE_MUTATION_PERFORMED=false'
+      - name: Upload source-rights evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: commercial-source-rights-closeout-${{ github.sha }}
+          path: artifacts/commercial-source-rights*
+          if-no-files-found: error
+          retention-days: 90
