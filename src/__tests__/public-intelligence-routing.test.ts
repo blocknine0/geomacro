@@ -34,22 +34,30 @@ describe("public intelligence routing contract", () => {
     expect(walletRouteBlock).not.toContain("/tx-history");
   });
 
-  it("keeps GRI and Ask Geomacro truth boundaries explicit", () => {
-    const griWorkspace = read("src/components/gri/global-risk-workspace.tsx");
-    const homeGri = read("src/components/home/gri-section.tsx");
+  it("keeps separate risk-index and Ask Geomacro truth boundaries explicit", () => {
+    const riskRoute = read("src/routes/global-risk.tsx");
+    const riskWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    const homeRisk = read("src/components/home/gri-section.tsx");
     const askEngine = read("src/lib/ask-intelligence.server.ts");
     const askWorkspace = read("src/components/ask/ask-workspace.tsx");
 
-    expect(griWorkspace).toContain("full verification workspace");
-    expect(griWorkspace).toContain("not a market probability");
-    expect(homeGri).toContain("compact preview");
+    expect(riskRoute).toContain("RiskIndicesWorkspace");
+    expect(riskWorkspace).toContain("Three risks. Three separate indices.");
+    expect(riskWorkspace).toContain("not market probabilities");
+    expect(riskWorkspace).toContain("Missing evidence is never displayed as zero risk");
+    expect(homeRisk).toContain("compact preview");
+    expect(homeRisk).toContain("three-index contract");
     expect(askEngine).toContain("No LLM provider, external search or private fallback score");
     expect(askWorkspace).toContain("does not search the open web at question time");
   });
 
-  it("separates broader pipeline streams from the current three-domain GRI", () => {
+  it("keeps the historical v1.2 three-domain calculation separate from broader pipeline streams", () => {
     const pipeline = read("src/routes/pipeline.tsx");
+    const architecture = read("docs/RISK_INDICES_ARCHITECTURE.md");
+
     expect(pipeline).toContain("current public GRI v1.2 score uses three domains only");
     expect(pipeline).toContain("geopolitics, macro and rare-earth / critical-mineral risk");
+    expect(architecture).toContain("Historical GRI v1.2 remains immutable audit evidence");
+    expect(architecture).toContain("three independently presented indices");
   });
 });
