@@ -11,9 +11,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const TITLE = "AI Agent Risk Intelligence & Pay-per-Call Access | Geomacro";
+const TITLE = "Access & Pricing | AI Agent Pay-per-Call Risk Intelligence | Geomacro";
 const DESCRIPTION =
-  "Preview Geomacro's pre-launch pay-per-call AI agent access, free trader research, professional subscriptions, governed API access and Risk Gate plans.";
+  "Compare Geomacro's live free research, founding professional/API access, institutional path and pre-launch 0.02 USDC pay-per-call risk intelligence for AI agents.";
 const URL = "https://geomacro.live/agent-access";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
@@ -22,7 +22,7 @@ const PLANS = [
     status: "LIVE · FREE",
     title: "Free Explorer",
     audience: "Individuals, traders and researchers",
-    price: "Free",
+    commercial: "Cost: Free",
     features: [
       "Public Risk Intelligence",
       "Geopolitical, Macroeconomic and Critical Minerals Risk Indices",
@@ -35,7 +35,7 @@ const PLANS = [
     status: "PRE-LAUNCH · MAINNET",
     title: "Pay per call",
     audience: "AI agents, trading tools and automated workflows",
-    price: "Prepared launch price: 0.02 USDC / successful paid call",
+    commercial: "Prepared launch price: 0.02 USDC / successful paid call",
     features: [
       "Free deliverability check before payment",
       "Exact price presented before settlement",
@@ -48,20 +48,20 @@ const PLANS = [
     status: "FOUNDING PILOT",
     title: "Professional intelligence",
     audience: "Analysts, active traders and small professional teams",
-    price: "5,000 credits / 30 days",
+    commercial: "Allowance: 5,000 credits / 30 days · commercial fee agreed before activation",
     features: [
       "Deeper analytics and historical context",
       "Change attribution and governed country/corridor views",
       "Agreed structured exports where scoped",
       "Professional research workflow without execution custody",
-      "Pilot terms agreed before activation",
+      "Pilot terms and permitted use agreed before activation",
     ],
   },
   {
-    status: "FOUNDING PILOT",
+    status: "FOUNDING / PRIVATE PILOT",
     title: "API + Risk Gate",
     audience: "Developers, fintechs, treasury and agent teams",
-    price: "20,000 credits / 30 days",
+    commercial: "Allowance: 20,000 credits / 30 days · commercial fee agreed before activation",
     features: [
       "Authenticated governed machine-readable data",
       "Country/corridor digests and profiles",
@@ -71,10 +71,10 @@ const PLANS = [
     ],
   },
   {
-    status: "INSTITUTIONAL",
-    title: "Contracted deployment",
+    status: "CONTRACTED / PILOT-LED",
+    title: "Institutional",
     audience: "Financial institutions and larger operating teams",
-    price: "100,000-credit monthly starting pool, then contracted volume",
+    commercial: "Starting pool: 100,000 credits / month · volume and commercial terms contracted",
     features: [
       "Contracted countries, corridors and historical depth",
       "Higher API volume and monitoring cadence",
@@ -118,7 +118,7 @@ function AgentAccessPage() {
       <section className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
         <div>
           <Badge variant="outline" className="border-amber-400/35 bg-amber-400/5 font-mono text-[11px] text-amber-200">
-            MAINNET PAY-PER-CALL · PRE-LAUNCH · REAL FUNDS OFF
+            ACCESS & PRICING · MAINNET PAY-PER-CALL PRE-LAUNCH · REAL FUNDS OFF
           </Badge>
           <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
             One risk question. One priced call. One machine-readable answer.
@@ -127,7 +127,7 @@ function AgentAccessPage() {
             Geomacro is preparing a pay-per-call risk-intelligence service for AI agents and automated financial workflows. A supported request is checked for deliverability first, priced before payment, and answered only after verified settlement.
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            The production payment path is prepared but intentionally locked. No mainnet real-money purchase is enabled until Geomacro's coordinated launch gates and explicit owner authorization are complete.
+            People can evaluate Geomacro free today. Professional, API and institutional access use controlled commercial terms. The production pay-per-call path is prepared but intentionally locked until coordinated launch gates and explicit owner authorization are complete.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" className="gap-2">
@@ -137,7 +137,7 @@ function AgentAccessPage() {
               <Link to="/data-api">See governed API access</Link>
             </Button>
             <Button asChild size="lg" variant="ghost">
-              <Link to="/contact">Discuss a commercial pilot</Link>
+              <Link to="/contact">Discuss commercial access</Link>
             </Button>
           </div>
         </div>
@@ -166,9 +166,9 @@ function AgentAccessPage() {
       <section className="mt-16">
         <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Who gets what</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Start free. Pay only when the workflow needs more.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Start free. Move up only when the workflow needs more.</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Public research stays available for people evaluating Geomacro. Professional subscriptions add depth and workflow capacity. Pay-per-call access is designed for software that needs a governed answer without committing to a monthly plan.
+            Public research stays available for people evaluating Geomacro. Professional and API pilots add depth and workflow capacity. Pay-per-call access is designed for software that needs a governed answer without taking a monthly plan only for occasional requests.
           </p>
         </div>
         <div className="mt-8 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
@@ -177,7 +177,7 @@ function AgentAccessPage() {
               <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-primary">{plan.status}</p>
               <h3 className="mt-3 text-2xl font-semibold">{plan.title}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{plan.audience}</p>
-              <p className="mt-4 font-medium text-foreground">{plan.price}</p>
+              <p className="mt-4 text-sm font-medium leading-relaxed text-foreground">{plan.commercial}</p>
               <ul className="mt-5 space-y-3 text-sm leading-relaxed text-muted-foreground">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex gap-2">
@@ -189,6 +189,9 @@ function AgentAccessPage() {
             </article>
           ))}
         </div>
+        <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+          Credit pools are usage allowances, not public monetary list prices. Professional/API/institutional commercial fees and contractual terms are agreed separately until self-serve pricing is deliberately launched.
+        </p>
       </section>
 
       <section className="mt-16 grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
