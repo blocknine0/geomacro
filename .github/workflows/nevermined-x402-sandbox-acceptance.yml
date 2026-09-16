@@ -9,6 +9,16 @@ on:
       - "scripts/nevermined-sandbox-acceptance.ts"
       - ".env.example"
       - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/lib/nevermined-x402.server.ts"
+      - "src/lib/nevermined-x402.server.test.ts"
+      - "src/routes/api.x402.nevermined_.intelligence.ts"
+      - "scripts/nevermined-sandbox-acceptance.ts"
+      - ".env.example"
+      - ".github/workflows/nevermined-x402-sandbox-acceptance.yml"
   workflow_dispatch:
     inputs:
       run_provider_settlement:
