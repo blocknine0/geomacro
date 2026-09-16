@@ -11,11 +11,14 @@ Geomacro turns real-world geopolitical, macroeconomic and strategic-resource dev
 - Macroeconomic Risk Index: LIVE
 - Critical Minerals Risk Index: LIVE
 - Ask Geomacro: LIVE
+- Free Explorer: LIVE
 - Research and methodology: LIVE
+- Professional intelligence: FOUNDING PILOT
 - Risk API: PRIVATE PILOT
 - Risk Gate: PRIVATE PILOT
 - Signed country and directional-corridor Risk Objects: PRIVATE PILOT
-- Paid agent / x402 access: PRE-LAUNCH; production real-money activation disabled pending coordinated launch gates
+- AI-agent pay per call / x402: MAINNET PRE-LAUNCH; production real-money activation disabled pending coordinated launch gates
+- Institutional deployment: CONTRACTED / PILOT-LED
 - GOAT Testnet3 and Arc Testnet onchain applications: TECHNICAL PROOF
 - Prediction markets: TECHNICAL PROOF; permanent Testnet-only boundary
 - Circle CCTP, Bridge & Swap and programmable-finance surfaces: TECHNICAL PROOF unless a page explicitly states otherwise
@@ -29,14 +32,25 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - Home: https://geomacro.live/
 - Risk Intelligence: https://geomacro.live/intelligence
 - Risk Indices: https://geomacro.live/global-risk
-- Risk Gate: https://geomacro.live/risk-gate
 - Ask Geomacro: https://geomacro.live/ask-geomacro
+- Agent Access & Plans: https://geomacro.live/agent-access
+- Risk Gate: https://geomacro.live/risk-gate
 - Data & API: https://geomacro.live/data-api
 - For Institutions: https://geomacro.live/institutional
 - Research: https://geomacro.live/research
 - Documentation: https://geomacro.live/docs
 - About & Trust: https://geomacro.live/about
 - Contact: https://geomacro.live/contact
+
+## Commercial access ladder
+
+1. **Free Explorer — LIVE**: public Risk Intelligence, three Risk Indices, Ask Geomacro, Research and methodology. This is website/dashboard access, not a free structured API.
+2. **Pay per call — MAINNET PRE-LAUNCH**: occasional governed machine intelligence for AI agents. Prepared production price: **0.02 USDC per successful paid call**. The live HTTP 402 challenge or approved provider plan is authoritative when production is enabled.
+3. **Professional intelligence — FOUNDING PILOT**: starts with **5,000 credits / 30 days** and can include deeper analytics, historical context, attribution, governed views and agreed exports.
+4. **API + Risk Gate — PRIVATE / FOUNDING PILOT**: starts with **20,000 credits / 30 days** and can include authenticated governed data, signed Risk Objects and Risk Gate bundles for an agreed workflow.
+5. **Institutional — CONTRACTED / PILOT-LED**: current starting model uses a **100,000-credit monthly pool**, followed by contracted volume, coverage, controls and support where implemented.
+
+A payment method never expands product entitlement, source rights or execution authority.
 
 ## Public Risk Indices
 
@@ -68,17 +82,23 @@ This is a dated workflow-coverage result, not an all-country product guarantee, 
 
 ## Data, API and agent access
 
-Free Explorer is the public website/dashboard experience, not a free structured API.
-
 Commercial machine access is entitlement-controlled. The paid structured endpoint is:
 
 - `POST https://geomacro.live/api/commercial/structural`
+
+Prepared pay-per-call agent flow:
+
+- Free deliverability check: `POST https://geomacro.live/api/x402/risk/availability`
+- Canonical prepared paid resource: `POST https://geomacro.live/api/x402/intelligence`
+- Canonical product: `geomacro_adaptive_risk_intelligence_v1`
+- Prepared production price: `0.02 USDC` per successful paid call
 
 Machine discovery:
 
 - Agent discovery: https://geomacro.live/.well-known/geomacro-agent.json
 - Commerce discovery: https://geomacro.live/.well-known/geomacro-commerce.json
 - x402 discovery: https://geomacro.live/.well-known/x402
+- Focused x402 OpenAPI: https://geomacro.live/openapi-x402.json
 
 A commercial entitlement defines the permitted capability, subject scope, history depth and response limits. Payment rails do not widen the underlying Geomacro entitlement.
 
@@ -100,29 +120,19 @@ Arc mainnet is not automatically enabled by this prepared architecture.
 
 ## Current machine-readable request scope
 
-Supported Private Pilot subject types include:
+The adaptive agent product can plan supported questions across currently deliverable subjects and topic families. Example request:
 
-- country by ISO3 code;
-- directional corridor by origin ISO3 and destination ISO3.
+```json
+{
+  "question": "What are the current macro, FX and geopolitical risks for India?",
+  "subjects": [{ "type": "country", "country_iso3": "IND" }],
+  "topics": ["macro_risk", "fx_external_risk", "conflict_geopolitics"],
+  "max_age_seconds": 86400,
+  "detail": "standard"
+}
+```
 
-Relevant topic families can include:
-
-- sovereign risk;
-- macroeconomic risk;
-- FX/external risk;
-- sanctions/restrictions context;
-- conflict/geopolitics;
-- trade-corridor context;
-- energy/commodities;
-- critical minerals;
-- political/governance risk;
-- banking/financial-system context;
-- food/agriculture;
-- natural hazards;
-- hot topics;
-- Risk Gate;
-- signed Risk Object;
-- Risk Indices context.
+Private Pilot subject types include country by ISO3 code and directional corridor by origin ISO3 and destination ISO3. Relevant topic families can include sovereign risk, macroeconomic risk, FX/external risk, sanctions/restrictions context, conflict/geopolitics, trade-corridor context, energy/commodities, critical minerals, political/governance risk, banking/financial-system context, food/agriculture, natural hazards, hot topics, Risk Gate, signed Risk Object and Risk Indices context.
 
 The exact deliverable remains subject to current evidence, source rights, entitlement and product support. Corridor composition does not imply full physical-route, vessel, counterparty, correspondent-bank or logistics-path modelling.
 
