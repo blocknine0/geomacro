@@ -30,6 +30,7 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 - Research: https://geomacro.live/research
 - Documentation: https://geomacro.live/docs
 - Agent commerce: https://geomacro.live/agent-commerce.md
+- Nevermined integration: https://geomacro.live/integrations/nevermined.md
 - About & Trust: https://geomacro.live/about
 - Contact: https://geomacro.live/contact
 
@@ -37,7 +38,8 @@ Technical-proof surfaces are secondary to the risk-intelligence product and must
 
 - Machine discovery: https://geomacro.live/.well-known/geomacro-agent.json
 - No-charge x402 deliverability check: POST https://geomacro.live/api/x402/risk/availability
-- Paid adaptive intelligence resource: POST https://geomacro.live/api/x402/intelligence
+- Coinbase pre-launch adaptive intelligence resource: POST https://geomacro.live/api/x402/intelligence
+- Nevermined sandbox adaptive intelligence resource: POST https://geomacro.live/api/x402/nevermined/intelligence
 - The exact requested intelligence must pass deliverability checks before a payment challenge is issued.
 - Requests with unavailable, stale or commercially ineligible required coverage are not chargeable.
 - A successful machine payment unlocks only the bounded requested product; it does not widen the customer's entitlement or expose raw/private warehouse data.
