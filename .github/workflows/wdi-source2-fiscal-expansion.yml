@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "scripts/audit-wdi-source2-fiscal-expansion.mjs"
+      - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
       - ".github/workflows/wdi-source2-fiscal-expansion.yml"
   workflow_dispatch:
   schedule:
@@ -29,6 +30,13 @@ jobs:
           node scripts/audit-wdi-source2-fiscal-expansion.mjs | tee wdi-source2-fiscal-expansion.log
           grep -q 'PASS: WDI SOURCE 2 FISCAL EXPANSION AUDIT COMPLETE - NO WRITES' wdi-source2-fiscal-expansion.log
 
+      - name: Audit PPG external debt stock pressure ratio
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-world-bank-ppg-debt-stock-ratio.mjs | tee world-bank-ppg-debt-stock-ratio.log
+          grep -q 'PASS: WORLD BANK PPG EXTERNAL DEBT STOCK RATIO AUDIT COMPLETE - NO WRITES' world-bank-ppg-debt-stock-ratio.log
+
       - name: Enforce source and methodology boundaries
         shell: bash
         run: |
@@ -44,8 +52,19 @@ jobs:
           jq -e '.methodology_boundary.debt_service_is_not_relabelled_as_debt_stock == true' wdi-source2-fiscal-expansion.json >/dev/null
           jq -e '.methodology_boundary.production_sovereign_fiscal_module_changed == false' wdi-source2-fiscal-expansion.json >/dev/null
 
+          jq -e '.writes_performed == false' world-bank-ppg-debt-stock-ratio.json >/dev/null
+          jq -e '.source_activation_changed == false and .scoring_changed == false and .country_payability_changed == false' world-bank-ppg-debt-stock-ratio.json >/dev/null
+          jq -e '.source.numerator.indicator == "DT.DOD.DPPG.CD" and .source.denominator.indicator == "NY.GNP.MKTP.CD"' world-bank-ppg-debt-stock-ratio.json >/dev/null
+          jq -e '.derived_metric.same_country_same_year_join_required == true' world-bank-ppg-debt-stock-ratio.json >/dev/null
+          jq -e '.derived_metric.raw_cross_concept_peer_pooling_allowed == false' world-bank-ppg-debt-stock-ratio.json >/dev/null
+          jq -e '.coverage_summary.fixed_peer_minimum_satisfied == true' world-bank-ppg-debt-stock-ratio.json >/dev/null
+          jq -e '.activation_boundary.production_activation_allowed == false and .activation_boundary.production_supported_country_count_added == 0' world-bank-ppg-debt-stock-ratio.json >/dev/null
+
       - name: Print live coverage summary
-        run: jq '{generated_at,source,non_aggregate_source_country_count,coverage_summary,series:[.series[]|{id,metric,family,available,fresh_country_count,error}],methodology_boundary}' wdi-source2-fiscal-expansion.json
+        shell: bash
+        run: |
+          jq '{generated_at,source,non_aggregate_source_country_count,coverage_summary,series:[.series[]|{id,metric,family,available,fresh_country_count,error}],methodology_boundary}' wdi-source2-fiscal-expansion.json
+          jq '{generated_at,source,derived_metric,coverage_summary,activation_boundary}' world-bank-ppg-debt-stock-ratio.json
 
       - name: Upload source 2 fiscal evidence
         if: always()
@@ -55,5 +74,7 @@ jobs:
           path: |
             wdi-source2-fiscal-expansion.json
             wdi-source2-fiscal-expansion.log
+            world-bank-ppg-debt-stock-ratio.json
+            world-bank-ppg-debt-stock-ratio.log
           if-no-files-found: warn
           retention-days: 30
