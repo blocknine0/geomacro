@@ -15,13 +15,15 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      WORLD_BANK_QPSD_BULK_CSV: qpsd-bulk/QPSDCSV.csv
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Inspect official QPSD bulk CSV contract
+      - name: Download official QPSD bulk CSV contract
         shell: bash
         run: |
           set -euo pipefail
@@ -33,20 +35,10 @@ jobs:
           sha256sum qpsd-bulk.zip | tee qpsd-bulk-structure.txt
           unzip -l qpsd-bulk.zip | tee -a qpsd-bulk-structure.txt
           unzip -q qpsd-bulk.zip -d qpsd-bulk
-          while IFS= read -r file; do
-            echo "=== ${file} ===" | tee -a qpsd-bulk-structure.txt
-            head -n 4 "$file" | tee -a qpsd-bulk-structure.txt
-          done < <(find qpsd-bulk -type f \( -name '*.csv' -o -name '*.CSV' \) | sort)
-          echo '=== EXACT FISCAL SERIES ===' | tee -a qpsd-bulk-structure.txt
-          grep -m 2 -F '"Gross PSD, General Gov., All maturities, All instruments, Nominal Value, % of GDP"' qpsd-bulk/QPSDCSV.csv | tee -a qpsd-bulk-structure.txt
-          grep -m 2 -F '"Gross PSD, Central Gov., All maturities, All instruments, Nominal Value, % of GDP"' qpsd-bulk/QPSDCSV.csv | tee -a qpsd-bulk-structure.txt
-
-      - name: Use quarterly MRV compatibility mode for legacy API comparison
-        shell: bash
-        run: |
-          set -euo pipefail
-          sed -i 's/mrnev: "1"/mrv: "12"/' scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs
-          grep -q 'mrv: "12"' scripts/audit-world-bank-qpsd-sovereign-fiscal-coverage.mjs
+          test -s "$WORLD_BANK_QPSD_BULK_CSV"
+          head -n 1 "$WORLD_BANK_QPSD_BULK_CSV" | tee -a qpsd-bulk-structure.txt
+          grep -m 1 -F '"Gross PSD, General Gov., All maturities, All instruments, Nominal Value, % of GDP"' "$WORLD_BANK_QPSD_BULK_CSV" | tee -a qpsd-bulk-structure.txt
+          grep -m 1 -F '"Gross PSD, Central Gov., All maturities, All instruments, Nominal Value, % of GDP"' "$WORLD_BANK_QPSD_BULK_CSV" | tee -a qpsd-bulk-structure.txt
 
       - name: Run live World Bank QPSD fiscal coverage audit
         shell: bash
@@ -61,6 +53,8 @@ jobs:
           set -euo pipefail
           test -s world-bank-qpsd-sovereign-fiscal-coverage.json
           jq -e '.writes_performed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.source.transport == "official_databank_bulk_csv"' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.source.exact_dataset_license == "CC BY 4.0"' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.discovery_only == true' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.raw_cross_source_value_pooling_allowed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.methodology_boundary.cross_concept_peer_pooling_allowed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
@@ -70,6 +64,7 @@ jobs:
           jq -e '.activation_boundary.country_payability_changed == false' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.coverage_summary.production_supported_country_count_added == 0' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           jq -e '.series | length == 2' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
+          jq -e '.series[] | .peer_universe_eligible == true' world-bank-qpsd-sovereign-fiscal-coverage.json >/dev/null
           echo 'PASS: QPSD discovery remains no-write and cannot promote countries.'
 
       - name: Upload QPSD source coverage evidence
