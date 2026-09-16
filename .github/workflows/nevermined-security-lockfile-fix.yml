@@ -1,4 +1,4 @@
-name: Nevermined Transitive Security Fix
+name: Nevermined Dependency Removal Lockfile Sync
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  fix-audit:
+  sync-lockfile:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -24,46 +24,60 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
-      - name: Install canonical graph
-        run: bun install --frozen-lockfile
-      - name: Apply in-range advisory fixes
-        run: bun audit fix
-      - name: Verify no critical, high or moderate advisory remains
-        shell: bash
-        run: |
-          set -euo pipefail
-          set +e
-          bun audit 2>&1 | tee /tmp/audit-after-fix.txt
-          audit_code=${PIPESTATUS[0]}
-          set -e
-          if grep -Eqi '(^|[[:space:]])(critical|high|moderate):' /tmp/audit-after-fix.txt; then
-            echo 'ERROR: critical/high/moderate advisory remains after in-range fix.' >&2
-            exit 1
-          fi
-          if [[ "$audit_code" -ne 0 ]] && ! grep -Fq 'elliptic@6.6.1' /tmp/audit-after-fix.txt; then
-            echo 'ERROR: residual audit failure is not the existing documented elliptic exception.' >&2
-            exit 1
-          fi
-      - name: Verify Nevermined remains exactly pinned
+      - name: Regenerate canonical lockfile
+        run: bun install
+      - name: Verify Nevermined SDK dependency is absent
         shell: bash
         run: |
           set -euo pipefail
           bun -e '
             const p = await Bun.file("package.json").json();
-            if (p.dependencies?.["@nevermined-io/payments"] !== "1.13.0") {
-              throw new Error("Nevermined Payments SDK must remain exactly pinned at 1.13.0");
+            if (p.dependencies?.["@nevermined-io/payments"] !== undefined) {
+              throw new Error("@nevermined-io/payments must remain absent while its transitive graph violates the Geomacro advisory policy");
             }
           '
-      - name: Commit secured lockfile
+          if grep -Fq '@nevermined-io/payments' bun.lock; then
+            echo 'ERROR: Nevermined SDK remains in bun.lock after dependency removal.' >&2
+            exit 1
+          fi
+      - name: Verify security advisory policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          bun audit 2>&1 | tee /tmp/audit-after-removal.txt
+          audit_code=${PIPESTATUS[0]}
+          set -e
+          if grep -Eqi '(^|[[:space:]])(critical|high|moderate):' /tmp/audit-after-removal.txt; then
+            echo 'ERROR: critical/high/moderate advisory remains.' >&2
+            exit 1
+          fi
+          if [[ "$audit_code" -ne 0 ]]; then
+            grep -Fq 'elliptic@6.6.1' /tmp/audit-after-removal.txt || {
+              echo 'ERROR: residual audit failure is not the existing documented elliptic exception.' >&2
+              exit 1
+            }
+            grep -Fq 'GHSA-848j-6mx2-7j84' /tmp/audit-after-removal.txt || {
+              echo 'ERROR: expected elliptic advisory identifier is missing.' >&2
+              exit 1
+            }
+            grep -Fq '1 vulnerability (1 low)' /tmp/audit-after-removal.txt || {
+              echo 'ERROR: advisory count changed; review before proceeding.' >&2
+              exit 1
+            }
+          fi
+      - name: Verify Nevermined adapter tests
+        run: bunx vitest run src/lib/nevermined-x402.server.test.ts
+      - name: Commit regenerated lockfile
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json bun.lock
+          git add bun.lock
           if git diff --cached --quiet; then
-            echo 'No dependency changes required.'
+            echo 'No lockfile changes required.'
             exit 0
           fi
-          git commit -m "security: refresh Nevermined transitive dependencies"
+          git commit -m "security: remove Nevermined vulnerable transitive graph"
           git push origin HEAD:feat/commercial-distribution-foundation
