@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "mode": "prelaunch-shadow",
   "default_dry_run": true,
   "live_publish_enabled": false,
@@ -15,9 +15,12 @@
     "max_attempts_per_alert_channel": 5,
     "payload_hash_required": true,
     "ambiguous_outcome_retry": "manual_only",
+    "stale_unfinalized_claim_retry": "manual_only",
     "claim_rpc": "claim_early_warning_distribution",
     "finalize_rpc": "finalize_early_warning_distribution",
-    "live_worker_wired": false
+    "live_worker_wired": true,
+    "owner_launch_ack_env": "GEOMACRO_EARLY_WARNING_DISTRIBUTION_ACK",
+    "owner_launch_ack_value": "I_AUTHORIZE_PUBLIC_EARLY_WARNING_DISTRIBUTION"
   },
   "live_activation_requirements": {
     "durable_distribution_receipt_ledger": true,
