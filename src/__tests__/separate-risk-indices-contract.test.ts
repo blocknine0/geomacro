@@ -74,13 +74,30 @@ describe("separate public risk indices contract", () => {
     expect(edgeReader).not.toContain("VITE_SUPABASE_URL");
   });
 
-  it("switches the public /global-risk workspace away from a combined headline GRI", () => {
+  it("automatically deploys the read-only recovery path from exact main", () => {
+    const workflow = read(".github/workflows/deploy-public-risk-indices-edge.yml");
+
+    expect(workflow).toContain("push:");
+    expect(workflow).toContain("branches:\n      - main");
+    expect(workflow).toContain("github.event_name == 'push'");
+    expect(workflow).toContain("supabase functions deploy public-risk-indices");
+    expect(workflow).toContain("ldpwajisioljyjtojvfx");
+    expect(workflow).not.toContain("supabase db push");
+    expect(workflow).not.toContain("supabase migration");
+  });
+
+  it("switches the public /global-risk workspace and homepage preview away from a combined headline GRI", () => {
     const route = read("src/routes/global-risk.tsx");
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    const home = read("src/components/home/risk-indices-preview.tsx");
+    const commercialHome = read("src/components/home/commercial-home.tsx");
 
     expect(route).toContain("RiskIndicesWorkspace");
     expect(route).toContain("Geopolitical, Macro & Critical Minerals");
     expect(workspace).toContain("Three risks. Three separate indices.");
     expect(workspace).toContain("instead of being compressed into one combined headline score");
+    expect(home).toContain("Three risks. Three separate readings.");
+    expect(commercialHome).toContain("View Risk Indices");
+    expect(commercialHome).not.toContain("View Global Risk Index");
   });
 });
