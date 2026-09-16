@@ -100,4 +100,22 @@ describe("separate public risk indices contract", () => {
     expect(commercialHome).toContain("View Risk Indices");
     expect(commercialHome).not.toContain("View Global Risk Index");
   });
+
+  it("never renders a public risk-index unavailable error on primary or secondary website surfaces", () => {
+    const publicSurfaces = [
+      read("src/components/home/risk-indices-preview.tsx"),
+      read("src/components/risk-indices/risk-indices-workspace.tsx"),
+      read("src/routes/intelligence.tsx"),
+      read("src/routes/institutional.tsx"),
+    ];
+
+    for (const surface of publicSurfaces) {
+      expect(surface).not.toContain("Verified GRI snapshot unavailable");
+      expect(surface).not.toContain("Verified snapshot unavailable");
+      expect(surface).not.toContain("Risk index store unavailable");
+    }
+
+    expect(read("src/routes/intelligence.tsx")).toContain("useRiskIndices");
+    expect(read("src/routes/institutional.tsx")).toContain("useRiskIndices");
+  });
 });
