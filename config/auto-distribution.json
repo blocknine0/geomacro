@@ -1,8 +1,20 @@
 {
-  "version": "1.0.0",
-  "mode": "prelaunch",
+  "version": "1.1.0",
+  "mode": "prelaunch-shadow",
   "default_dry_run": true,
   "live_publish_enabled": false,
+  "canonical_public_feed": {
+    "url": "https://geomacro.live/api/early-warning",
+    "schema_version": "geomacro.public-early-warning-feed.v1",
+    "poll_interval_minutes": 15,
+    "max_items_per_poll": 5
+  },
+  "live_activation_requirements": {
+    "durable_distribution_receipt_ledger": true,
+    "channel_credentials_configured": true,
+    "owner_launch_authorization": true,
+    "source_feed_health_verified": true
+  },
   "public_alert_policy": {
     "allowed_content_types": ["early_warning"],
     "required_visibility": "public",
@@ -17,7 +29,13 @@
       "private_notes",
       "raw_source_content",
       "api_keys",
-      "payment_proof"
+      "payment_proof",
+      "evidence_refs",
+      "source_event_ids",
+      "source_risk_object_id",
+      "cews_inputs",
+      "cews_contributions",
+      "outcome_evidence_refs"
     ]
   },
   "channels": {
@@ -25,6 +43,7 @@
     "discord": {"enabled": true, "cost_class": "free", "max_chars": 1900},
     "bluesky": {"enabled": true, "cost_class": "free", "max_chars": 290},
     "mastodon": {"enabled": true, "cost_class": "free", "max_chars": 450},
+    "rss": {"enabled": true, "cost_class": "free", "publish_mode": "native_public_feed"},
     "linkedin": {
       "enabled": false,
       "cost_class": "approval_required",
