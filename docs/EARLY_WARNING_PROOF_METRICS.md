@@ -2,7 +2,7 @@
 
 Status: PRELAUNCH RESEARCH / EVIDENCE CONTRACT
 
-This layer defines how Geomacro may later measure and publish Early Warning performance. It exists to prevent attractive but statistically invalid claims from being generated from an alerts-only ledger.
+This layer defines how Geomacro may later measure and publish Early Warning performance. It exists to prevent attractive but statistically invalid claims from being generated from an alerts-only ledger or a cherry-picked replay set.
 
 ## Two evidence scopes
 
@@ -48,6 +48,21 @@ This allows an explicit confusion matrix:
 
 Only this scope can support recall or false-positive-rate claims.
 
+## Evaluation-universe evidence
+
+A numerically complete confusion matrix is not enough on its own. A replay can still look unrealistically good if the evaluator only selects events Geomacro already detected or chooses convenient control periods after seeing the result.
+
+Before aggregate proof metrics can be published, the evaluation run must explicitly attest that:
+
+- `material_event_universe_complete = true`: the material-event set was independently enumerated under a documented inclusion rule, so missed events were eligible to appear as false negatives;
+- `control_period_sampling_documented = true`: no-event/control windows were selected under a documented rule rather than after looking at model output.
+
+These flags are evidence assertions, not automatic truths. The historical replay pipeline must later preserve the underlying manifest, inclusion rules, hashes and source references that justify them.
+
+A complete material-event universe does not need to contain an actual false negative. A genuinely perfect-recall sample may have zero false negatives. What matters is that missed events could have been observed by the evaluation design if they existed.
+
+The dataset must still contain no-alert samples and at least one true-negative control observation before the public proof gate can pass.
+
 ## Lead time
 
 For a true positive, lead time is:
@@ -71,11 +86,13 @@ A metric calculation is not automatically a public marketing claim.
 The default publication-readiness contract requires all of the following:
 
 - methodology is explicitly marked calibrated;
+- material-event universe is independently complete under a documented rule;
+- control-period sampling is documented;
 - at least 100 resolved replay samples;
 - at least 30 material events;
 - at least 5 countries;
-- the evaluation universe demonstrates at least one missed-event path, rather than containing alerts only;
-- the evaluation universe contains control/no-alert periods.
+- the replay contains no-alert samples;
+- the replay contains at least one true-negative control observation.
 
 These are conservative initial engineering minimums, not a claim that 100 samples are sufficient for every use case. Final production thresholds should be adjusted based on event-family heterogeneity, country coverage and statistical review.
 
