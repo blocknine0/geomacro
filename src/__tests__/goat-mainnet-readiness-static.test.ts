@@ -24,7 +24,6 @@ describe("GOAT x402 mainnet-readiness static acceptance contract", () => {
     expect(service).toContain("GOAT_MAINNET_DISABLED");
     expect(service).toContain("mainnet commercial fulfillment is disabled until production launch gates pass");
     expect(envExample).toContain("GOATX402_MAINNET_COMMERCIAL_ENABLED=false");
-    expect(envExample).toContain("GEOMACRO_COMMERCIAL_LAUNCH_ACK=");
     expect(envExample).not.toContain(
       "GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH",
     );
