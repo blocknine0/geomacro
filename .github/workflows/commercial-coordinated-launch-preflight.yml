@@ -1,0 +1,84 @@
+name: Commercial Coordinated Launch Preflight
+
+on:
+  pull_request:
+    paths:
+      - "config/commercial-launch-manifest.json"
+      - "src/lib/commercial-launch-gate.server.ts"
+      - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "src/lib/goat-pilot-service.server.ts"
+      - "src/__tests__/goat-mainnet-readiness-static.test.ts"
+      - "src/__tests__/goat-mainnet-revenue-semantics-static.test.ts"
+      - "src/lib/commercial-source-eligibility.server.ts"
+      - "src/lib/agent-query-deliverability.server.ts"
+      - ".env.example"
+      - ".github/workflows/commercial-coordinated-launch-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prelaunch-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify launch and provider gates
+        run: >-
+          bunx vitest run
+          src/lib/commercial-launch-gate.server.test.ts
+          src/lib/coinbase-x402.server.test.ts
+          src/__tests__/goat-mainnet-readiness-static.test.ts
+          src/__tests__/goat-mainnet-revenue-semantics-static.test.ts
+      - name: Verify manifest remains prelaunch
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun -e '
+            const manifest = await Bun.file("config/commercial-launch-manifest.json").json();
+            if (manifest.launch_mode !== "prelaunch") throw new Error("launch_mode must remain prelaunch before owner-authorized launch");
+            if (manifest.production_funds_authorized !== false) throw new Error("production_funds_authorized must remain false");
+            if (manifest.official_launch_announced !== false) throw new Error("official_launch_announced must remain false");
+            for (const [name, provider] of Object.entries(manifest.providers ?? {})) {
+              if (provider.production_enabled !== false) throw new Error(`${name} production_enabled must remain false`);
+            }
+            if (manifest.launch_rule?.allow_partial_provider_launch !== false) throw new Error("partial provider launch must remain disabled");
+          '
+      - name: Verify source and environment defaults cannot silently activate production
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
+          grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
+          grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
+          if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
+            echo 'ERROR: global launch authorization must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
+            echo 'ERROR: Coinbase mainnet acknowledgement must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^GOATX402_MAINNET_COMMERCIAL_ENABLED=true$' .env.example; then
+            echo 'ERROR: GOAT mainnet must remain disabled before coordinated launch.' >&2
+            exit 1
+          fi
+      - name: Verify paid delivery remains source-rights and freshness gated
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'assertCommercialSourcesEligible' src/lib/agent-query-deliverability.server.ts
+          grep -q 'COMMERCIAL_SOURCE_NOT_ELIGIBLE' src/lib/agent-query-deliverability.server.ts
+          grep -q 'STALE_REQUIRED_DATA' src/lib/agent-query-deliverability.server.ts
+          grep -q 'status === "COMMERCIAL_OK"' src/lib/commercial-source-eligibility.server.ts
+          grep -q 'raw_redistribution_allowed' src/lib/commercial-source-eligibility.server.ts
