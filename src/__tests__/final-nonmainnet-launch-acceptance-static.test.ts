@@ -27,6 +27,10 @@ describe("final non-mainnet launch acceptance contract", () => {
     expect(live).toContain("production_activation_performed: false");
     expect(live).toContain('commerce?.service?.status === "prelaunch"');
     expect(live).toContain('commerce?.commercial_contract?.production_funds_authorized === false');
+    expect(live).toContain('discovery?.status === "prelaunch"');
+    expect(live).toContain('discovery?.productionFundsAuthorized === false');
+    expect(live).toContain('evidence.result = "FAIL"');
+    expect(live).toContain("persistEvidence();");
 
     expect(security).toContain("destructive_testing: false");
     expect(security).toContain("payment_performed: false");
@@ -35,6 +39,26 @@ describe("final non-mainnet launch acceptance contract", () => {
     expect(rollback).toContain("NONPRODUCTION_ONLY");
     expect(rollback).toContain('manifest.production_funds_authorized === false');
     expect(rollback).toContain("production_activation_performed: false");
+  });
+
+  it("keeps host-compatible x402 discovery truthful and prelaunch-only", () => {
+    const extensionless = JSON.parse(read("public/.well-known/x402"));
+    const json = JSON.parse(read("public/.well-known/x402.json"));
+
+    expect(extensionless).toEqual(json);
+    expect(json.x402Version).toBe(2);
+    expect(json.status).toBe("prelaunch");
+    expect(json.productionFundsAuthorized).toBe(false);
+    expect(json.resources).toEqual([]);
+    expect(json.boundaries.execution_authorized).toBe(false);
+    expect(json.boundaries.wallet_custody).toBe(false);
+    expect(json.boundaries.transaction_signing).toBe(false);
+    expect(json.plannedResources).toHaveLength(3);
+    for (const resource of json.plannedResources) {
+      expect(resource.production_enabled).toBe(false);
+    }
+    expect(json.hosting_fallback.mode).toBe("static_prelaunch");
+    expect(json.hosting_fallback.production_launch_rule).toContain("must not advertise paid production resources");
   });
 
   it("does not embed production launch acknowledgements or permit production load targeting", () => {
