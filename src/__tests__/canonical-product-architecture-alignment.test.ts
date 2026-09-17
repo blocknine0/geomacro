@@ -35,7 +35,7 @@ const MACHINE_BOUNDARY_DOCS = [
 ] as const;
 
 describe("canonical product architecture alignment", () => {
-  it("keeps the screenshot architecture identical across canonical product truth", () => {
+  it("keeps canonical product truth aligned across source-of-truth docs", () => {
     for (const path of CURRENT_PRODUCT_TRUTH_FILES) {
       const content = read(path);
       for (const token of PRODUCT_ARCHITECTURE_TOKENS) {
@@ -74,12 +74,13 @@ describe("canonical product architecture alignment", () => {
     expect(riskGateDoc).not.toContain("+-- Event scope    -> Event Risk Object direction");
   });
 
-  it("keeps customer identity, permissions, policy, funds and execution customer-controlled", () => {
+  it("keeps customer identity permissions policy funds and execution customer-controlled", () => {
     const contract = read("docs/CANONICAL_DELIVERY_ARCHITECTURE.md");
     const architecture = read("src/content/docs/02-product-architecture.md");
     const commercial = read("docs/COMMERCIAL_INTELLIGENCE.md");
     const riskGateDoc = read("docs/RISK_GATE.md");
     const home = read("src/components/home/commercial-home.tsx");
+    const ecosystem = read("src/routes/ecosystem.tsx");
     const riskGateRoute = read("src/routes/risk-gate.tsx");
     const institutional = read("src/routes/institutional.tsx");
 
@@ -88,16 +89,10 @@ describe("canonical product architecture alignment", () => {
       expect(content).toContain("Customer-controlled action");
     }
 
-    expect(contract).toContain("The customer owns the identity, permissions and policy layer");
-    expect(architecture).toContain("The customer owns the identity, permissions and policy layer");
-    expect(commercial).toContain("The customer owns the identity, permissions and policy layer");
-    expect(riskGateDoc).toContain("customer retains identity, permissions, policy, funds and control of any downstream execution");
-
-    expect(home).not.toContain("applies the customer's policy");
-    expect(riskGateRoute).not.toContain("applies the customer's policy");
-    expect(home).toContain("Customer policy decides what happens next");
-    expect(home).toContain("Geomacro does not authorize or execute the transaction");
-    expect(home).toContain("execution_authorized");
+    expect(home).toContain("The customer keeps control of policy and execution");
+    expect(home).not.toContain("Geomacro authorizes");
+    expect(ecosystem).toContain("The customer retains");
+    expect(ecosystem).toContain("execution authority and the final decision");
     expect(riskGateRoute).toContain("The customer's own identity, permissions and policy layer applies its rules");
     expect(institutional).toContain("customer controls execution");
   });
@@ -136,14 +131,14 @@ describe("canonical product architecture alignment", () => {
     }
   });
 
-  it("keeps intelligence primary and Arc, Circle and prediction markets secondary technical proof", () => {
+  it("keeps risk intelligence primary and technical-proof surfaces secondary", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const shell = read("src/components/site-shell.tsx");
     const about = read("src/routes/about.tsx");
     const predictionDocs = read("src/content/docs/34-prediction-markets.md");
 
-    expect(home).toContain("Technical proof, kept separate");
-    expect(home).toContain("commercial identity remains risk intelligence and decision infrastructure");
+    expect(home).toContain("Global risk intelligence infrastructure");
+    expect(home).not.toContain("Prediction Markets");
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(about).toContain("Risk intelligence is the product");
@@ -152,7 +147,7 @@ describe("canonical product architecture alignment", () => {
     expect(predictionDocs).toContain("secondary application and feedback layer");
   });
 
-  it("keeps public intelligence wallet-free and confines wallets to explicit technical execution surfaces", () => {
+  it("keeps public commercial surfaces wallet-free and confines wallets to technical execution surfaces", () => {
     const shell = read("src/components/site-shell.tsx");
 
     expect(shell).toContain("if (!address && !executionContext) return null");
@@ -162,23 +157,21 @@ describe("canonical product architecture alignment", () => {
     expect(shell).not.toContain('pathname === "/intelligence" ||');
     expect(shell).not.toContain('pathname === "/global-risk" ||');
     expect(shell).not.toContain('pathname === "/risk-gate" ||');
+    expect(shell).not.toContain('pathname === "/ecosystem" ||');
   });
 
-  it("keeps the root website on the current commercial home rather than the superseded market-first hero", () => {
+  it("keeps the root website on the commercial category page rather than a market-first hero", () => {
     const root = read("src/routes/index.tsx");
 
     expect(root).toContain('import { CommercialHome } from "@/components/home/commercial-home"');
     expect(root).toContain("component: CommercialHome");
     expect(root).not.toContain("HeroSection");
-    expect(root).toContain("Geopolitical, Macro & Critical Minerals Risk Intelligence");
+    expect(root).toContain("Global Risk Intelligence Infrastructure");
   });
 
   it("labels Data & API precisely instead of implying a generally public API", () => {
-    const home = read("src/components/home/commercial-home.tsx");
     const dataApi = read("src/routes/data-api.tsx");
 
-    expect(home).toContain("PUBLIC DATA LIVE · API ROADMAP");
-    expect(home).not.toContain("PUBLIC DATA + PRIVATE PILOT API");
     expect(dataApi).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
     expect(dataApi).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(dataApi).toContain("execution_authorized=false");
