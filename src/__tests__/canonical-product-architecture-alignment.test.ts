@@ -69,8 +69,8 @@ describe("canonical product architecture alignment", () => {
     }
 
     expect(commercial).toContain("Current Private Pilot scope is country and directional corridor risk");
-    expect(riskGateRoute).toContain("directional corridors built from their endpoints");
-    expect(riskGateRoute).toContain("does not claim full physical-route or counterparty modelling");
+    expect(riskGateRoute).toContain("directional corridors composed from endpoints plus eligible bilateral evidence");
+    expect(riskGateRoute).toContain("Full physical-route and counterparty modelling are not claimed");
     expect(riskGateDoc).not.toContain("+-- Event scope    -> Event Risk Object direction");
   });
 
