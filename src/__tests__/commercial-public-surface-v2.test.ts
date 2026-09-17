@@ -30,7 +30,7 @@ describe("commercial public surface v2", () => {
 
     expect(read("src/routes/about.tsx")).toContain("Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
     expect(read("src/routes/data-api.tsx")).toContain("Separate geopolitical, macroeconomic and critical-mineral risk indices with methodology context");
-    expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved audited lineage");
+    expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved versioned lineage.");
   });
 
   it("keeps GRI v1.2 as proof lineage rather than a second current headline product", () => {
@@ -39,10 +39,10 @@ describe("commercial public surface v2", () => {
     const docs = read("src/routes/docs.tsx");
     const llms = read("public/llms.txt");
 
-    expect(about).toContain("audited GRI v1.2 proof lineage");
+    expect(about).toContain("versioned GRI v1.2 parent methodology and verified proof lineage");
     expect(about).toContain("not a second live headline index");
     expect(research).toContain("historical combined GRI remains a versioned proof record");
-    expect(docs).toContain("Historical GRI material therefore remains available as a methodology and audit reference");
+    expect(docs).toContain("Historical GRI material therefore remains available as a methodology and proof reference");
     expect(llms).toContain("Historical combined-GRI snapshots remain versioned audit records");
   });
 
