@@ -1,0 +1,8 @@
+{
+  "schema_version": "geomacro.website-lock.v1",
+  "locked": true,
+  "baseline_sha": "77a12a5aacdf8df924b03ebb446cf70835279e17",
+  "published_baseline": "Geomacro public website approved after 2026-09-18 publish",
+  "protect_lock_infrastructure": false,
+  "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update."
+}
