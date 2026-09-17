@@ -8,6 +8,7 @@ on:
       - ".github/workflows/deploy-live-structure-intelligence.yml"
       - "supabase/functions/live-structure-intelligence/**"
       - "scripts/patch-live-structure-private-error-serializer.mjs"
+      - "scripts/patch-live-structure-runtime.mjs"
   workflow_dispatch:
     inputs:
       mode:
@@ -23,6 +24,7 @@ on:
       - ".github/workflows/deploy-live-structure-intelligence.yml"
       - "supabase/functions/live-structure-intelligence/**"
       - "scripts/patch-live-structure-private-error-serializer.mjs"
+      - "scripts/patch-live-structure-runtime.mjs"
 
 permissions:
   contents: read
@@ -38,10 +40,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Apply deterministic runtime hardening patch
-        run: node scripts/patch-live-structure-private-error-serializer.mjs
+      - name: Apply canonical bundler-safe runtime patch
+        run: node scripts/patch-live-structure-runtime.mjs
 
-      - name: Validate deployment, diagnostics and stable identity guardrails
+      - name: Validate deployment, diagnostics, identity and bundler syntax guardrails
         shell: bash
         run: |
           set -euo pipefail
@@ -64,11 +66,23 @@ jobs:
           grep -q '\.eq(' "$function"
           grep -q '"story_key"' "$function"
           grep -q '\.maybeSingle()' "$function"
-          grep -q 'id:' "$function"
           grep -q 'canonicalStory.id' "$function"
+          grep -q 'throw canonicalStoryError;' "$function"
           grep -q 'live-structure-v1.4.8' "$function"
 
-          echo "Live structure deployment, phase-aware diagnostics and stable canonical event identity guardrails are present."
+          node - "$function" <<'NODE'
+          const fs = require("fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          if (/\bthrow[ \t]*\r?\n/.test(source)) {
+            throw new Error("Line terminator after throw is forbidden in generated Edge runtime.");
+          }
+          const count = (source.match(/throw canonicalStoryError;/g) || []).length;
+          if (count !== 1) {
+            throw new Error(`Expected exactly one canonical-story throw, found ${count}.`);
+          }
+          NODE
+
+          echo "Live structure deployment, phase-aware diagnostics, stable canonical event identity and bundler-safe throw syntax are present."
 
   deploy:
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
@@ -89,8 +103,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Apply deterministic runtime hardening patch
-        run: node scripts/patch-live-structure-private-error-serializer.mjs
+      - name: Apply canonical bundler-safe runtime patch
+        run: node scripts/patch-live-structure-runtime.mjs
+
+      - name: Verify generated runtime cannot hit the known bundler parse failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          function="supabase/functions/live-structure-intelligence/index.ts"
+          node - "$function" <<'NODE'
+          const fs = require("fs");
+          const source = fs.readFileSync(process.argv[2], "utf8");
+          if (/\bthrow[ \t]*\r?\n/.test(source)) {
+            throw new Error("Line terminator after throw is forbidden in generated Edge runtime.");
+          }
+          const count = (source.match(/throw canonicalStoryError;/g) || []).length;
+          if (count !== 1) {
+            throw new Error(`Expected exactly one canonical-story throw, found ${count}.`);
+          }
+          NODE
+          echo "PASS: generated Edge runtime is safe from the known throw-linebreak parse failure."
 
       - name: Validate production target
         shell: bash
