@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommercialHome } from "@/components/home/commercial-home";
 
-const TITLE = "Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro";
+const TITLE = "Global Risk Intelligence Infrastructure | Geomacro";
 const DESCRIPTION =
-  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence with separate verified Risk Indices, evidence, confidence, change attribution and machine-readable decision context.";
+  "Geomacro turns geopolitical, macroeconomic and critical-mineral developments into explainable, machine-readable risk context for institutions, operators and AI systems.";
 const URL = "https://geomacro.live/";
 const IMAGE = "https://geomacro.live/og-image-v2.png";
 
@@ -19,12 +19,12 @@ export const Route = createFileRoute("/")({
       { property: "og:url", content: URL },
       { property: "og:image", content: IMAGE },
       { property: "og:image:secure_url", content: IMAGE },
-      { property: "og:image:alt", content: "Geomacro geopolitical, macroeconomic and critical-minerals risk intelligence" },
+      { property: "og:image:alt", content: "Geomacro global risk intelligence infrastructure" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: IMAGE },
-      { name: "twitter:image:alt", content: "Geomacro geopolitical, macroeconomic and critical-minerals risk intelligence" },
+      { name: "twitter:image:alt", content: "Geomacro global risk intelligence infrastructure" },
     ],
     links: [{ rel: "canonical", href: URL }],
     scripts: [
