@@ -22,7 +22,8 @@ export function useAgentCommerceStatus() {
 
     void (async () => {
       try {
-        const response = await fetch("/api/x402/intelligence", {
+        // Payment authority remains /api/x402/intelligence; status probing deliberately uses the 200-only health surface.
+        const response = await fetch("/api/health", {
           method: "GET",
           headers: { Accept: "application/json" },
           cache: "no-store",
@@ -35,11 +36,15 @@ export function useAgentCommerceStatus() {
         }
 
         const payload = (await response.json()) as Record<string, unknown>;
-        const environment = payload.environment === "production" || payload.environment === "testnet"
-          ? payload.environment
+        const x402 = payload.x402 && typeof payload.x402 === "object" && !Array.isArray(payload.x402)
+          ? payload.x402 as Record<string, unknown>
           : null;
-        const priceUsdc = typeof payload.exact_price_usdc === "string" ? payload.exact_price_usdc : null;
-        const network = typeof payload.network === "string" ? payload.network : null;
+        const configured = x402?.configured === true;
+        const environment = configured && (x402?.environment === "production" || x402?.environment === "testnet")
+          ? x402.environment
+          : null;
+        const priceUsdc = configured && typeof x402?.exact_price_usdc === "string" ? x402.exact_price_usdc : null;
+        const network = configured && typeof x402?.network === "string" ? x402.network : null;
 
         setState({
           mode: environment === "production" ? "production" : environment === "testnet" ? "testnet" : "prelaunch",
