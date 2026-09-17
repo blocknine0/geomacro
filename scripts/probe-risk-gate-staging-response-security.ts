@@ -1,4 +1,5 @@
 import process from "node:process";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const PRODUCTION_HOSTS = new Set([
   "geomacro.live",
@@ -182,15 +183,28 @@ async function runProbe() {
       throw new Error("Risk Gate staging response did not explicitly preserve execution_authorized=false");
     }
 
-    console.log(JSON.stringify({
+    const evidence = {
       suite: "risk-gate-staging-response-security-v1",
+      generated_at: new Date().toISOString(),
       host: baseUrl.host,
+      endpoint_path: endpoint.pathname,
       status: response.status,
       api_key_echo: false,
       forbidden_sensitive_key: false,
       execution_authorized: false,
+      production_target: false,
+      response_body_persisted: false,
       pass: true,
-    }, null, 2));
+    };
+
+    mkdirSync("artifacts", { recursive: true });
+    writeFileSync(
+      "artifacts/risk-gate-staging-response-security.json",
+      `${JSON.stringify(evidence, null, 2)}\n`,
+      "utf8",
+    );
+
+    console.log(JSON.stringify(evidence, null, 2));
   } finally {
     clearTimeout(timeout);
   }
