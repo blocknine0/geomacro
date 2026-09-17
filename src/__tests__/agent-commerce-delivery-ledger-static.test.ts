@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const migration = readFileSync("supabase/migrations/934_agent_commerce_delivery_ledger.sql", "utf8");
 const service = readFileSync("src/lib/agent-commerce-delivery.server.ts", "utf8");
 const neverminedRoute = readFileSync("src/routes/api.x402.nevermined_.intelligence.ts", "utf8");
+const coinbaseRoute = readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
+const circleRoute = readFileSync("src/routes/api.x402.circle_.intelligence.ts", "utf8");
 
 describe("provider-neutral agent commerce delivery ledger", () => {
   it("is private, provider-scoped and replay-safe", () => {
@@ -65,6 +67,51 @@ describe("Nevermined settlement ordering", () => {
     expect(neverminedRoute).toContain('manualReview: true');
     expect(neverminedRoute).toContain("NEVERMINED_SETTLEMENT_AMBIGUOUS");
     expect(neverminedRoute).toContain("NEVERMINED_SETTLEMENT_RECONCILIATION_REQUIRED");
+    expect(neverminedRoute).toContain("NEVERMINED_POST_SETTLEMENT_LEDGER_FAILURE");
     expect(neverminedRoute).toContain("POST_SETTLEMENT_RECONCILIATION_REQUIRED");
+  });
+});
+
+describe("cross-provider post-settlement recovery", () => {
+  it("never persists a Circle prepared response as already settled", () => {
+    expect(circleRoute).toContain('settled: false');
+    expect(circleRoute).toContain('accounting_state: "pending_settlement"');
+    expect(circleRoute).toContain('settled: true');
+    expect(circleRoute).toContain(
+      'accounting_state: "commercial_pending_accounting"',
+    );
+
+    const prepare = circleRoute.indexOf("prepareAgentCommerceDelivery({");
+    const settle = circleRoute.indexOf("settleCircleGatewayProduction(");
+    const durableSettled = circleRoute.indexOf(
+      'accounting_state: "commercial_pending_accounting"',
+      prepare,
+    );
+    expect(prepare).toBeGreaterThan(-1);
+    expect(settle).toBeGreaterThan(prepare);
+    expect(durableSettled).toBeGreaterThan(settle);
+  });
+
+  it("returns durable settlement evidence when Circle finalization needs reconciliation", () => {
+    expect(circleRoute).toContain(
+      "CIRCLE_GATEWAY_POST_SETTLEMENT_RECONCILIATION_REQUIRED",
+    );
+    expect(circleRoute).toContain(
+      '"PAYMENT-RESPONSE": encodePaymentHeader({',
+    );
+    expect(circleRoute).toContain(
+      "settlement_reference: settlement.settlement_reference",
+    );
+    expect(circleRoute).toContain('reconciliation_status: "manual_review"');
+  });
+
+  it("moves Coinbase and Nevermined post-settlement finalization ambiguity to manual review", () => {
+    expect(coinbaseRoute).toContain(
+      "COINBASE_POST_SETTLEMENT_LEDGER_FAILURE",
+    );
+    expect(coinbaseRoute).toContain("manualReview: true");
+    expect(neverminedRoute).toContain(
+      "NEVERMINED_POST_SETTLEMENT_LEDGER_FAILURE",
+    );
   });
 });
