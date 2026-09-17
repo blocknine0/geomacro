@@ -29,7 +29,7 @@ describe("commercial public surface v2", () => {
     }
 
     expect(read("src/routes/about.tsx")).toContain("Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
-    expect(read("src/routes/data-api.tsx")).toContain("Current public Risk Indices and methodology context");
+    expect(read("src/routes/data-api.tsx")).toContain("Separate geopolitical, macroeconomic and critical-mineral risk indices with methodology context");
     expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved audited lineage");
   });
 
@@ -68,7 +68,7 @@ describe("commercial public surface v2", () => {
     expect(proof).toContain("Controlled coverage evidence · verified 16 Sep 2026");
     expect(proof).toContain("dated controlled-workflow coverage result");
     expect(proof).not.toContain("Production workflow evidence");
-    expect(shell).toContain("Dated 114-country controlled-workflow evidence");
+    expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
     expect(shell).not.toContain("114-country production-workflow proof");
   });
 

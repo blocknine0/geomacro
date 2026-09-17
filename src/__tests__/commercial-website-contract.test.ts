@@ -116,10 +116,10 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps Risk Gate within the verified Private Pilot scope", () => {
     const route = read("src/routes/risk-gate.tsx");
     expect(route).toContain("PRIVATE PILOT");
-    expect(route).toContain("country or corridor risk");
+    expect(route).toContain("country or corridor Risk Object");
     expect(route).toContain("execution_authorized = false");
-    expect(route).toContain("directional corridors built from their endpoints");
-    expect(route).toContain("does not claim full physical-route or counterparty modelling");
+    expect(route).toContain("directional corridors composed from endpoints plus eligible bilateral evidence");
+    expect(route).toContain("Full physical-route and counterparty modelling are not claimed");
     expect(route).not.toContain("country, corridor and event risk");
   });
 

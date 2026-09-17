@@ -8,10 +8,10 @@ const packageDoc = readFileSync(
 );
 
 describe("structural data commercial surface", () => {
-  it("publishes the paid commercial endpoint and machine discovery without a free API promise", () => {
+  it("keeps commercial machine delivery on the controlled roadmap without a free API promise", () => {
+    expect(page).toContain("ROADMAP · COMMERCIAL DATA & API");
+    expect(page).toContain("not generally available production services yet");
     expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
-    expect(page).toContain('"capability": "structural_country_profile"');
-    expect(page).toContain("/.well-known/geomacro-agent.json");
     expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(page).not.toContain("bounded public structured-data digest");
   });
@@ -30,7 +30,7 @@ describe("structural data commercial surface", () => {
   });
 
   it("preserves the methodology and source-rights boundary", () => {
-    expect(page).toContain("EVIDENCE_ONLY_NOT_IN_GRI_V1_2");
+    expect(page).toContain("Source rights and customer-serving eligibility verified");
     expect(packageDoc).toContain("EVIDENCE_ONLY_NOT_IN_GRO_V02");
     expect(packageDoc).toContain("Unknown or review-required source rights fail closed");
   });
