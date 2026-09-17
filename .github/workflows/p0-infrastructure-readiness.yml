@@ -1,0 +1,144 @@
+name: P0 Infrastructure Readiness
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/p0-infrastructure-readiness.yml"
+      - "docs/P0_INFRASTRUCTURE_READINESS.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-staging-config:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+    env:
+      RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+      RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+    steps:
+      - name: Require bounded staging configuration without printing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${RISK_GATE_STAGING_BASE_URL:-}" ]] || { echo "::error title=Missing staging variable::RISK_GATE_STAGING_BASE_URL is not configured in the staging environment."; exit 1; }
+          [[ -n "${RISK_GATE_STAGING_API_KEY:-}" ]] || { echo "::error title=Missing staging secret::RISK_GATE_STAGING_API_KEY is not configured in the staging environment."; exit 1; }
+
+      - name: Validate bounded staging target is isolated and reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const raw = process.env.RISK_GATE_STAGING_BASE_URL;
+          const url = new URL(raw);
+          if (url.protocol !== 'https:') throw new Error('RISK_GATE_STAGING_BASE_URL must use HTTPS');
+          if (['geomacro.live','www.geomacro.live'].includes(url.hostname.toLowerCase())) throw new Error('Production Geomacro host is forbidden for staging');
+          if (url.username || url.password || url.search || url.hash) throw new Error('Staging URL must not contain credentials/query/fragment');
+          const marker = new URL('/.well-known/geomacro-build.json', url);
+          const response = await fetch(marker, { redirect: 'error', signal: AbortSignal.timeout(10000) });
+          if (!response.ok) throw new Error(`Staging build marker HTTP ${response.status}`);
+          const body = await response.json();
+          const sha = String(body?.canonical_main_sha || '');
+          if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error('Staging build marker does not expose a valid canonical_main_sha');
+          if (String(body?.repository || body?.canonical_repository || '').toLowerCase() && !String(body?.repository || body?.canonical_repository || '').toLowerCase().includes('blocknine0/geomacro')) {
+            throw new Error('Staging build marker repository mismatch');
+          }
+          console.log(`PASS: bounded staging is isolated, reachable, and exposes canonical build marker SHA ${sha.slice(0,12)}…`);
+          NODE
+
+  distributed-capacity-config:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging-capacity
+    env:
+      RISK_GATE_DISTRIBUTED_STAGING_BASE_URL: ${{ vars.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL }}
+      RISK_GATE_DISTRIBUTED_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT: ${{ vars.RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT }}
+      RISK_GATE_DISTRIBUTED_API_KEYS_JSON: ${{ secrets.RISK_GATE_DISTRIBUTED_API_KEYS_JSON }}
+      RISK_GATE_DISTRIBUTED_TELEMETRY_URL: ${{ vars.RISK_GATE_DISTRIBUTED_TELEMETRY_URL }}
+      RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_TELEMETRY_TOKEN: ${{ secrets.RISK_GATE_DISTRIBUTED_TELEMETRY_TOKEN }}
+    steps:
+      - name: Require complete distributed staging and telemetry configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in             RISK_GATE_DISTRIBUTED_STAGING_BASE_URL             RISK_GATE_DISTRIBUTED_EXPECTED_HOST             RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT             RISK_GATE_DISTRIBUTED_API_KEYS_JSON             RISK_GATE_DISTRIBUTED_TELEMETRY_URL             RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST             RISK_GATE_DISTRIBUTED_TELEMETRY_TOKEN
+          do
+            [[ -n "${!name:-}" ]] || { echo "::error title=Missing staging-capacity configuration::${name} is not configured."; exit 1; }
+          done
+
+      - name: Validate distributed target, entitlement pool and telemetry endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const production = new Set(['geomacro.live','www.geomacro.live']);
+
+          const staging = new URL(process.env.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL);
+          const expectedHost = process.env.RISK_GATE_DISTRIBUTED_EXPECTED_HOST.trim().toLowerCase();
+          if (staging.protocol !== 'https:') throw new Error('Distributed staging target must use HTTPS');
+          if (production.has(staging.hostname.toLowerCase())) throw new Error('Production Geomacro host is forbidden for distributed staging');
+          if (staging.host.toLowerCase() !== expectedHost) throw new Error('Distributed expected-host mismatch');
+
+          const telemetry = new URL(process.env.RISK_GATE_DISTRIBUTED_TELEMETRY_URL);
+          const telemetryExpected = process.env.RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST.trim().toLowerCase();
+          if (telemetry.protocol !== 'https:') throw new Error('Telemetry endpoint must use HTTPS');
+          if (production.has(telemetry.hostname.toLowerCase())) throw new Error('Production Geomacro host is forbidden for staging telemetry');
+          if (telemetry.host.toLowerCase() !== telemetryExpected) throw new Error('Telemetry expected-host mismatch');
+
+          let keys;
+          try { keys = JSON.parse(process.env.RISK_GATE_DISTRIBUTED_API_KEYS_JSON); }
+          catch { throw new Error('RISK_GATE_DISTRIBUTED_API_KEYS_JSON must be valid JSON'); }
+          if (!Array.isArray(keys) || keys.length < 1 || keys.some(k => typeof k !== 'string' || !k.trim())) {
+            throw new Error('Distributed staging API key pool must be a non-empty JSON array of strings');
+          }
+
+          const maxRate = Number(process.env.RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT);
+          if (!Number.isInteger(maxRate) || maxRate < 1 || maxRate > 40000) {
+            throw new Error('RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT must be an integer from 1 to 40000');
+          }
+
+          const minimumClients = Math.ceil(40000 / maxRate);
+          if (keys.length < minimumClients) {
+            throw new Error(`API key pool too small for normal per-client controls: need at least ${minimumClients}, found ${keys.length}`);
+          }
+
+          const marker = new URL('/.well-known/geomacro-build.json', staging);
+          const response = await fetch(marker, { redirect: 'error', signal: AbortSignal.timeout(10000) });
+          if (!response.ok) throw new Error(`Distributed staging build marker HTTP ${response.status}`);
+          const body = await response.json();
+          const sha = String(body?.canonical_main_sha || '');
+          if (!/^[0-9a-f]{40}$/i.test(sha)) throw new Error('Distributed staging build marker does not expose a valid canonical_main_sha');
+
+          console.log(`PASS: distributed staging configuration is complete; ${keys.length} API clients satisfy the 40k entitlement-pool contract (minimum ${minimumClients}); build marker ${sha.slice(0,12)}…`);
+          NODE
+
+  no-production-activation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prove P0 readiness probe cannot activate production funds
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const m = JSON.parse(fs.readFileSync('config/commercial-launch-manifest.json','utf8'));
+          if (m.launch_mode !== 'prelaunch') throw new Error('launch_mode must remain prelaunch');
+          if (m.production_funds_authorized !== false) throw new Error('production funds must remain unauthorized');
+          if (m.official_launch_announced !== false) throw new Error('official launch must remain unannounced');
+          for (const [name,p] of Object.entries(m.providers ?? {})) {
+            if (p.production_enabled !== false) throw new Error(`${name} production must remain disabled during P0 readiness`);
+          }
+          console.log('PASS: P0 infrastructure readiness remains non-production and no-real-funds.');
+          NODE
