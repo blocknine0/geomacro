@@ -98,12 +98,12 @@ GEOMACRO_FLASH_CORROBORATE_URL=https://<project>.supabase.co/functions/v1/live-f
 GEOMACRO_FLASH_INGEST_TOKEN=<same value as FLASH_INGEST_TOKEN>
 FLASH_CORROBORATION_INTERVAL_SECONDS=15
 
-TELEGRAM_ENABLED=true
+TELEGRAM_ENABLED=false
 TELEGRAM_API_ID=<telegram api id>
 TELEGRAM_API_HASH=<telegram api hash>
 TELEGRAM_SESSION=<telethon string session>
-TELEGRAM_CHANNELS=@liveuamap,@FinancialJuice,@ReutersWorldChannel
-TELEGRAM_SOURCE_RELIABILITY_JSON={"liveuamap":60,"financialjuice":45,"reutersworldchannel":35}
+TELEGRAM_CHANNELS=
+TELEGRAM_SOURCE_RELIABILITY_JSON={}
 TELEGRAM_MAX_BODY_CHARS=6000
 
 BREAKING_RSS_ENABLED=true
@@ -113,6 +113,8 @@ BREAKING_FEED_USER_AGENT=Geomacro/1.0 (+https://geomacro.live; contact=contact@g
 ```
 
 The worker does not need the Supabase service-role key. Keep that key inside the Supabase Edge Function environment only.
+
+Telegram is intentionally disabled in the example configuration. A worker environment variable is not an authorization mechanism: the ingest edge function separately requires the public channel to be manually approved and enabled in the server-side registry.
 
 ## 5. Telegram session creation
 
@@ -143,10 +145,12 @@ If the StringSession is ever exposed, revoke/replace the Telegram session before
 7. Confirm the worker image is published from `main`.
 8. Start the container in RSS-only mode first with `TELEGRAM_ENABLED=false`.
 9. Verify new RSS records enter `live_flash_events` and remain `UNVERIFIED` until corroborated.
-10. Enable Telegram credentials/session and the channel allowlist.
-11. Verify Telegram records use stable source/message identity and edits update rather than duplicate the same message.
-12. Confirm corroboration edges are being written and no single-source item becomes `VERIFIED` by itself.
-13. Only after this runtime verification should the flash layer be treated as production-active.
+10. Manually review each public Telegram channel and record the decision in `live_telegram_channel_registry`.
+11. Enable only rows with `manual_review_status=APPROVED` and `enabled=true`; keep all others disabled.
+12. Add only those approved public usernames to the worker `TELEGRAM_CHANNELS` deployment configuration, then set `TELEGRAM_ENABLED=true`.
+13. Verify Telegram records use stable source/message identity and edits update rather than duplicate the same message.
+14. Confirm every Telegram item enters as `UNVERIFIED`, corroboration edges are written, and no single-source item becomes `VERIFIED` by itself.
+15. Only after this runtime verification should Telegram raw-signal intake be treated as production-active.
 
 ## 7. Host requirements
 

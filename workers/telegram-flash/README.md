@@ -44,25 +44,22 @@ Existing Geomacro GDELT pipeline -------------------------> |
                                                       GRO / Risk Gate
 ```
 
-## Telegram starter allowlist
+## Telegram manual-review allowlist
 
-The default deployment template includes:
+No Telegram channel is active by default.
 
-- `@liveuamap`
-- `@FinancialJuice`
-- `@ReutersWorldChannel`
+Historical starter rows may exist in `live_telegram_channel_registry`, but migration `946_telegram_manual_review_gate.sql` resets them to `manual_review_status=PENDING` and `enabled=false`.
 
-These usernames are **lead inputs**, not publisher identity assertions.
+A channel can be ingested only when both conditions are true:
 
-The repository records conservative reliability priors in `live_telegram_channel_registry`:
+- the server-side registry row is manually reviewed and marked `APPROVED`;
+- the same public username is deliberately present in the worker's `TELEGRAM_CHANNELS` deployment configuration.
 
-- Liveuamap: 60/100
-- FinancialJuice relay: 45/100
-- Reuters World relay: 35/100
+Environment configuration alone cannot authorize a Telegram source. The ingest function checks the database gate again and rejects unapproved channels.
 
-An unofficial relay is not blocked from ingestion. It simply requires stronger independent corroboration. For example, a Reuters-labelled Telegram relay item can become useful evidence if an independently sourced GDELT structured event and another publisher/feed report the same event within the matching window.
+Every Telegram item is forced to `UNVERIFIED` at ingestion. A high source-reliability prior never bypasses independent corroboration.
 
-Do not expose raw Telegram relay text as a customer-facing Reuters/AP/FinancialJuice product. It is internal lead intelligence unless rights are separately cleared.
+Do not expose raw Telegram text or media as customer-facing publisher content unless rights are separately cleared. Telegram remains internal lead intelligence.
 
 ## Active free-first machine feeds
 
