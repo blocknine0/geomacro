@@ -1,0 +1,194 @@
+name: Converge Early Warning Market Impact Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/ops/converge-early-warning-market-impact.sql'
+      - '.github/workflows/converge-early-warning-market-impact-production.yml'
+      - 'src/__tests__/early-warning-market-impact-convergence-static.test.ts'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/ops/converge-early-warning-market-impact.sql'
+      - '.github/workflows/converge-early-warning-market-impact-production.yml'
+      - 'src/__tests__/early-warning-market-impact-convergence-static.test.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: early-warning-market-impact-production-convergence
+  cancel-in-progress: false
+
+jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate narrow production convergence guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='.github/workflows/converge-early-warning-market-impact-production.yml'
+          sql='scripts/ops/converge-early-warning-market-impact.sql'
+          grep -q 'ldpwajisioljyjtojvfx' "$file"
+          grep -q 'environment: production' "$file"
+          grep -q 'psql "\$SUPABASE_DB_URL"' "$file"
+          grep -q 'converge-early-warning-market-impact.sql' "$file"
+          grep -q 'degraded !== false' "$file"
+          grep -q 'add column if not exists market_impact jsonb' "$sql"
+          grep -q 'revoke all on function public.guard_published_early_warning_core() from PUBLIC, anon, authenticated' "$sql"
+          broad_migration_command='supabase db '"'"'push'
+          if grep -Fq "$broad_migration_command" "$file"; then
+            echo '::error title=Broad migration forbidden::This workflow must never apply the repository migration queue.'
+            exit 1
+          fi
+          if grep -qE 'grant .*early_warning_alerts.*(anon|authenticated|PUBLIC)' "$sql"; then
+            echo '::error title=Public table grant forbidden::Convergence must not weaken Early Warning table access.'
+            exit 1
+          fi
+          echo 'PASS: narrow production convergence guardrails verified.'
+
+  converge:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout exact main candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SUPABASE_PROJECT_ID:-}" ]] || { echo '::error title=Missing production secret::SUPABASE_PROJECT_ID is required.'; exit 1; }
+          [[ -n "${SUPABASE_DB_URL:-}" ]] || { echo '::error title=Missing production secret::SUPABASE_DB_URL is required.'; exit 1; }
+          [[ "$SUPABASE_PROJECT_ID" == "$EXPECTED_SUPABASE_PROJECT_REF" ]] || { echo '::error title=Wrong production target::Refusing non-authoritative Supabase project.'; exit 1; }
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const raw = process.env.SUPABASE_DB_URL;
+          let url;
+          try { url = new URL(raw); } catch { throw new Error('SUPABASE_DB_URL must be a valid percent-encoded postgres URL'); }
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('SUPABASE_DB_URL must use postgres');
+          const direct = url.hostname === `db.${ref}.supabase.co` && url.username === 'postgres';
+          const pooler = url.hostname.endsWith('.pooler.supabase.com') && url.username === `postgres.${ref}`;
+          if (!direct && !pooler) throw new Error('SUPABASE_DB_URL does not identify the authoritative Geomacro project');
+          if (!url.password || url.pathname !== '/postgres') throw new Error('SUPABASE_DB_URL must contain the DB password and target /postgres');
+          console.log('PASS: authoritative production DB identity confirmed without printing credentials.');
+          NODE
+
+      - name: Ensure PostgreSQL client
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+
+      - name: Require existing Early Warning ledger and preserve private access
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          select
+            to_regclass('public.early_warning_alerts') is not null
+            and not has_table_privilege('anon', 'public.early_warning_alerts', 'SELECT')
+            and not has_table_privilege('authenticated', 'public.early_warning_alerts', 'SELECT');
+          SQL
+          )"
+          [[ "$result" == 't' ]] || { echo '::error title=Early Warning access boundary invalid::Ledger missing or public/authenticated SELECT is unexpectedly allowed.'; exit 1; }
+
+      - name: Apply only the idempotent market-impact convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/ops/converge-early-warning-market-impact.sql
+
+      - name: Verify schema convergence and private access boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -At <<'SQL'
+          select
+            (select count(*) = 4 from information_schema.columns
+              where table_schema='public' and table_name='early_warning_alerts'
+                and column_name in ('market_impact','market_impact_methodology_version','market_impact_calibrated','market_impact_hash'))
+            and (select count(*) = 2 from pg_constraint
+              where conrelid='public.early_warning_alerts'::regclass
+                and conname in ('early_warning_market_impact_object_check','early_warning_market_impact_binding_check'))
+            and to_regprocedure('public.guard_published_early_warning_core()') is not null
+            and not has_table_privilege('anon', 'public.early_warning_alerts', 'SELECT')
+            and not has_table_privilege('authenticated', 'public.early_warning_alerts', 'SELECT');
+          SQL
+          )"
+          [[ "$result" == 't' ]] || { echo '::error title=Schema convergence failed::Required market-impact schema or private access boundary is not exact.'; exit 1; }
+          echo 'PASS: market-impact schema converged and Early Warning ledger remains private.'
+
+      - name: Require authoritative public Edge feed to leave degraded mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/public-early-warning?limit=1"
+          code="$(curl --silent --show-error --output /tmp/early-warning.json --write-out '%{http_code}' --header 'Accept: application/json' "$endpoint")"
+          [[ "$code" == '200' ]] || { cat /tmp/early-warning.json; echo; echo '::error title=Early Warning smoke failed::Expected HTTP 200.'; exit 1; }
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const body = JSON.parse(fs.readFileSync('/tmp/early-warning.json', 'utf8'));
+          if (body?.ok !== true) throw new Error('public Early Warning payload is not ok');
+          if (body?.contract_version !== 'public-early-warning-edge-v1') throw new Error('contract version mismatch');
+          if (body?.degraded !== false) throw new Error(`public Early Warning remains degraded: ${body?.degraded_reason || 'unknown'}`);
+          if (!Array.isArray(body?.rows) || body.rows.length > 1) throw new Error('bounded row contract mismatch');
+          const forbidden = ['cews_inputs','cews_contributions','evidence_refs','source_event_ids','outcome_evidence_refs','early_warning_distribution_receipts'];
+          for (const row of body.rows) {
+            if (row.visibility !== 'public' || row.public_eligible !== true) throw new Error('non-public row leaked');
+            if (!['WARNING','CRITICAL'].includes(row.status)) throw new Error('non-distributable status leaked');
+            for (const key of forbidden) if (key in row) throw new Error(`private field leaked: ${key}`);
+          }
+          console.log('PASS: authoritative public Early Warning feed is non-degraded and bounded.');
+          NODE
+
+      - name: Record convergence evidence
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p artifacts
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const evidence = {
+            schema_version: 'geomacro.early-warning-market-impact-convergence.v1',
+            candidate_sha: process.env.CANDIDATE_SHA,
+            authoritative_project_ref: 'ldpwajisioljyjtojvfx',
+            schema_converged: true,
+            public_edge_http_200: true,
+            public_edge_degraded: false,
+            anon_table_select_allowed: false,
+            authenticated_table_select_allowed: false,
+            broad_migration_queue_applied: false,
+            production_payment_or_mainnet_activation: false,
+          };
+          fs.writeFileSync('artifacts/early-warning-market-impact-convergence.json', JSON.stringify(evidence, null, 2) + '\n');
+          NODE
+
+      - name: Upload convergence evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: early-warning-market-impact-convergence-${{ github.run_id }}
+          path: artifacts/early-warning-market-impact-convergence.json
+          if-no-files-found: error
+          retention-days: 90
