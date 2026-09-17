@@ -123,7 +123,7 @@ Professional current-intelligence workspace. Owns current events, highest-risk/m
 
 Canonical public workspace for the separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices. Owns scores, history, evidence counts, change attribution and integrity proof.
 
-Historical combined GRI material remains versioned audit lineage, not a second current headline product.
+Historical combined GRI material remains versioned proof/audit lineage, not a second current headline product. Public wording must distinguish Geomacro's internal/versioned proof system from any independent external audit or certification.
 
 ### `/ask-geomacro` — Ask Geomacro
 
@@ -168,6 +168,8 @@ The detailed 114/194 census banner may appear here and on Risk Gate, but not on 
 
 Deep canonical technical and product reference. Must remain aligned with implemented versions and explicit status boundaries.
 
+Featured documentation entry points must prioritize risk intelligence, source governance, Risk Objects, access and partner architecture. Prediction-market documentation may remain available as Technical Proof reference but must not be a featured commercial starting point.
+
 ### `/about` — About & Trust
 
 Owns company/product identity, transparency standard, privacy, product-use boundaries, security-claim boundaries and trust disclosures.
@@ -189,6 +191,8 @@ Canonical email: `contact@geomacro.live`.
 Prediction markets remain permanently Testnet-only.
 
 Arc public mainnet launched on 16 Sep 2026. This external network fact must not be confused with Geomacro activation: Geomacro onchain transaction features remain on Arc Testnet until a separately approved production configuration is explicitly enabled.
+
+Every Technical Proof surface must make clear that a working implementation is not itself a claim of general production availability, real-money production settlement, customer authorization or a service-level commitment.
 
 ## Commercial conversion paths
 
@@ -232,6 +236,8 @@ Arc public mainnet launched on 16 Sep 2026. This external network fact must not 
 6. Never silently turn missing risk evidence into zero risk or approval.
 7. Runtime commercial-payment status must come from the live endpoint.
 8. Public Arc mainnet availability does not activate Geomacro mainnet features.
+9. Do not call the GRI methodology or proof lineage “audited” in public copy if that wording could be read as an independent external audit. Use precise terms such as versioned methodology, verified proof lineage, reproducible proof package or versioned audit record as appropriate.
+10. A working Technical Proof is evidence of implementation, not evidence of production availability, revenue, security certification or customer adoption.
 
 ## Final release checks
 
@@ -246,6 +252,15 @@ Before every public website release:
 7. no public commercial route requires a wallet;
 8. Risk Gate remains Private Pilot until launch evidence supports a status change;
 9. real-money agent status is runtime-derived and fail-closed;
-10. technical-proof surfaces remain secondary and clearly labelled;
-11. canonical/OG metadata use `https://geomacro.live`;
-12. Product CI, SEO/static contracts and production build pass.
+10. technical-proof surfaces remain secondary, noindex and clearly labelled;
+11. featured docs remain intelligence-first rather than prediction-market-first;
+12. public copy does not imply an independent GRI/security audit, certification, SLA, customer authorization or production settlement without matching evidence;
+13. canonical/OG metadata use `https://geomacro.live`;
+14. legacy `/feed` and `/bridge` resolve to their canonical product routes rather than creating duplicate identities;
+15. Product CI, SEO/static contracts, final commercial closure tests and production build pass on the exact candidate SHA;
+16. after merge, the canonical main SHA must sync to the Lovable mirror and be published once;
+17. after publication, the live build marker must match that exact canonical main SHA before the website is called production-aligned.
+
+## Website freeze principle
+
+After the final release checks pass and the exact candidate SHA is verified live, ordinary fundraising, partnership, customer and demo work should reuse this website rather than trigger ad-hoc positioning edits. Future website changes should be driven by a real product-status change, verified new evidence, a material buyer-learning signal, a legal/compliance requirement or a measured conversion problem. Cosmetic churn alone is not a reason to reopen the commercial architecture.
