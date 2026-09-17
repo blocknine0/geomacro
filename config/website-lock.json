@@ -1,8 +1,10 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "77a12a5aacdf8df924b03ebb446cf70835279e17",
+  "baseline_sha": "daa4f094cca592f0304f2f1bcfdc94dc56deab18",
   "published_baseline": "Geomacro public website approved after 2026-09-18 publish",
-  "protect_lock_infrastructure": false,
-  "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update."
+  "protect_lock_infrastructure": true,
+  "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
+  "locked_at_utc": "2026-09-17T21:43:45Z",
+  "published_source_sha": "77a12a5aacdf8df924b03ebb446cf70835279e17"
 }
