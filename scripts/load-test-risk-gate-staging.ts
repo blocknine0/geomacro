@@ -6,6 +6,8 @@ const MAX_REQUESTS = 2000;
 const MAX_CONCURRENCY = 25;
 const MAX_TIMEOUT_MS = 30000;
 const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_MAX_P95_MS = 3000;
+const DEFAULT_MAX_P99_MS = 8000;
 const FORBIDDEN_RESPONSE_KEYS = new Set([
   "authorization",
   "api_key",
@@ -101,6 +103,19 @@ function executionBoundaryIsExplicitlyFalse(payload: unknown): boolean {
   );
 }
 
+function latencySloPass(
+  latency: { p95: number | null; p99: number | null },
+  maxP95Ms: number,
+  maxP99Ms: number,
+): boolean {
+  return (
+    Number.isFinite(latency.p95) &&
+    Number.isFinite(latency.p99) &&
+    Number(latency.p95) <= maxP95Ms &&
+    Number(latency.p99) <= maxP99Ms
+  );
+}
+
 export type LoadTarget = {
   baseUrl: URL;
   endpoint: URL;
@@ -112,6 +127,8 @@ export type LoadTarget = {
   concurrency: number;
   timeoutMs: number;
   allow429: boolean;
+  maxP95Ms: number;
+  maxP99Ms: number;
 };
 
 export function validateStagingLoadTarget(input: {
@@ -125,6 +142,8 @@ export function validateStagingLoadTarget(input: {
   concurrency: number;
   timeoutMs: number;
   allow429: boolean;
+  maxP95Ms?: number;
+  maxP99Ms?: number;
 }): LoadTarget {
   if (input.acknowledgement !== "STAGING_ONLY") {
     throw new Error("RISK_GATE_LOAD_TEST_ACK must equal STAGING_ONLY");
@@ -164,6 +183,20 @@ export function validateStagingLoadTarget(input: {
     throw new Error(`timeoutMs must be within 1000..${MAX_TIMEOUT_MS}`);
   }
 
+  const maxP95Ms = input.maxP95Ms ?? DEFAULT_MAX_P95_MS;
+  const maxP99Ms = input.maxP99Ms ?? DEFAULT_MAX_P99_MS;
+  if (
+    !Number.isInteger(maxP95Ms) ||
+    !Number.isInteger(maxP99Ms) ||
+    maxP95Ms < 1 ||
+    maxP99Ms < 1 ||
+    maxP95Ms > MAX_TIMEOUT_MS ||
+    maxP99Ms > MAX_TIMEOUT_MS ||
+    maxP95Ms > maxP99Ms
+  ) {
+    throw new Error("Prelaunch latency SLOs must be positive integers, <= timeout ceiling and p95 <= p99");
+  }
+
   const mode = input.mode.trim().toLowerCase();
   if (mode !== "country" && mode !== "corridor" && mode !== "mixed") {
     throw new Error("RISK_GATE_LOAD_TEST_MODE must be country, corridor or mixed");
@@ -198,6 +231,8 @@ export function validateStagingLoadTarget(input: {
     concurrency: input.concurrency,
     timeoutMs: input.timeoutMs,
     allow429: input.allow429,
+    maxP95Ms,
+    maxP99Ms,
   };
 }
 
@@ -267,7 +302,7 @@ async function issueRequest(target: LoadTarget, apiKey: string, index: number): 
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
-        "user-agent": "geomacro-staging-load-harness/1.1",
+        "user-agent": "geomacro-staging-load-harness/1.2",
       },
       body: JSON.stringify(buildRequestBody(target, index)),
       signal: controller.signal,
@@ -357,6 +392,13 @@ async function runLoadTest(target: LoadTarget, apiKey: string) {
   const nonJsonCount = results.filter(
     (result) => result.status !== 0 && !result.parseableJson,
   ).length;
+  const latency = {
+    p50: percentile(latencies, 0.5),
+    p95: percentile(latencies, 0.95),
+    p99: percentile(latencies, 0.99),
+    max: latencies.length ? Number(Math.max(...latencies).toFixed(2)) : null,
+  };
+  const latencyWithinSlo = latencySloPass(latency, target.maxP95Ms, target.maxP99Ms);
 
   const pass =
     successCount > 0 &&
@@ -367,6 +409,7 @@ async function runLoadTest(target: LoadTarget, apiKey: string) {
     boundaryViolationCount === 0 &&
     responseSecurityViolationCount === 0 &&
     nonJsonCount === 0 &&
+    latencyWithinSlo &&
     (target.allow429 || rateLimitedCount === 0);
 
   return {
@@ -387,16 +430,15 @@ async function runLoadTest(target: LoadTarget, apiKey: string) {
       allow_429: target.allow429,
       redirect_policy: "error",
     },
+    prelaunch_slo_ms: {
+      max_p95: target.maxP95Ms,
+      max_p99: target.maxP99Ms,
+    },
     duration_ms: Number(durationMs.toFixed(2)),
     throughput_requests_per_second: Number(
       (target.totalRequests / (durationMs / 1000)).toFixed(2),
     ),
-    latency_ms: {
-      p50: percentile(latencies, 0.5),
-      p95: percentile(latencies, 0.95),
-      p99: percentile(latencies, 0.99),
-      max: latencies.length ? Number(Math.max(...latencies).toFixed(2)) : null,
-    },
+    latency_ms: latency,
     status_counts: statusCounts,
     correctness: {
       successful_200: successCount,
@@ -408,6 +450,7 @@ async function runLoadTest(target: LoadTarget, apiKey: string) {
       non_json_responses: nonJsonCount,
       execution_boundary_violations: boundaryViolationCount,
       response_security_violations: responseSecurityViolationCount,
+      latency_slo_violations: latencyWithinSlo ? 0 : 1,
     },
     exclusions: [
       "production traffic",
@@ -437,9 +480,11 @@ export function runSelfTest() {
   if (
     valid.countryIso3 !== "USA" ||
     valid.corridorOriginIso3 !== "USA" ||
-    valid.corridorDestinationIso3 !== "CHN"
+    valid.corridorDestinationIso3 !== "CHN" ||
+    valid.maxP95Ms !== DEFAULT_MAX_P95_MS ||
+    valid.maxP99Ms !== DEFAULT_MAX_P99_MS
   ) {
-    throw new Error("Self-test normalization failed");
+    throw new Error("Self-test normalization or default SLO failed");
   }
 
   for (const productionUrl of ["https://geomacro.live", "https://www.geomacro.live/"]) {
@@ -472,6 +517,15 @@ export function runSelfTest() {
   if (!findSensitiveResponseKey({ nested: { service_role_key: "never" } })) {
     throw new Error("Self-test failed sensitive response key detection");
   }
+  if (!latencySloPass({ p95: 2500, p99: 7000 }, 3000, 8000)) {
+    throw new Error("Self-test rejected valid prelaunch latency evidence");
+  }
+  if (latencySloPass({ p95: 3500, p99: 7000 }, 3000, 8000)) {
+    throw new Error("Self-test accepted p95 latency above prelaunch SLO");
+  }
+  if (latencySloPass({ p95: 2500, p99: 9000 }, 3000, 8000)) {
+    throw new Error("Self-test accepted p99 latency above prelaunch SLO");
+  }
 
   console.log("PASS: staging load harness self-test");
 }
@@ -501,6 +555,18 @@ async function main() {
       MAX_TIMEOUT_MS,
     ),
     allow429: envBoolean("RISK_GATE_LOAD_TEST_ALLOW_429", false),
+    maxP95Ms: envInteger(
+      "RISK_GATE_LOAD_TEST_MAX_P95_MS",
+      DEFAULT_MAX_P95_MS,
+      1,
+      MAX_TIMEOUT_MS,
+    ),
+    maxP99Ms: envInteger(
+      "RISK_GATE_LOAD_TEST_MAX_P99_MS",
+      DEFAULT_MAX_P99_MS,
+      1,
+      MAX_TIMEOUT_MS,
+    ),
   });
 
   const apiKey = envString("RISK_GATE_STAGING_API_KEY");
