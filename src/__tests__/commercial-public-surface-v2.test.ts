@@ -61,14 +61,17 @@ describe("commercial public surface v2", () => {
     expect(read("public/.well-known/security.txt")).toContain("contact@geomacro.live");
   });
 
-  it("keeps the coverage banner dated and non-production-claiming", () => {
+  it("keeps the coverage proof dated and off the homepage", () => {
     const proof = read("src/components/production-coverage-proof.tsx");
     const shell = read("src/components/site-shell.tsx");
 
     expect(proof).toContain("Controlled coverage evidence · verified 16 Sep 2026");
     expect(proof).toContain("dated controlled-workflow coverage result");
     expect(proof).not.toContain("Production workflow evidence");
-    expect(shell).toContain("Dated 114-country controlled-workflow evidence");
+    expect(shell).not.toContain('  "/",\n  "/risk-gate"');
+    for (const route of ["/risk-gate", "/data-api", "/research", "/institutional", "/about"]) {
+      expect(shell).toContain(`"${route}"`);
+    }
     expect(shell).not.toContain("114-country production-workflow proof");
   });
 
