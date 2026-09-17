@@ -27,7 +27,7 @@ export default defineEventHandler((event) => {
 <main>
   <div class="nav"><div class="brand"><img src="/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/geomacro-logo.png" alt="Geomacro" height="40" /></div><div class="badge">TECHNICAL PROOF · PUBLIC TESTNET</div></div>
   <section class="hero">
-    <div class="eyebrow">TESTNET INTELLIGENCE PIPELINE</div>
+    <div class="eyebrow">CANONICAL INTELLIGENCE PIPELINE · TESTNET TECHNICAL PROOF</div>
     <h1>Test the same governed intelligence foundation used by Geomacro products.</h1>
     <p class="muted">Browser testers do not need private developer credentials. Choose one of the published Testnet client keys, receive an HTTP 402 quote, pay only that Testnet API call, and retry the exact same request with payment proof.</p>
     <div class="notice">Testnet only. No real-money production settlement. This console demonstrates access, entitlement and delivery behavior; it is not general production API availability or a production service commitment.</div>
