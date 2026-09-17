@@ -67,6 +67,30 @@ async function main() {
     corridors.push(result);
   }
 
+  console.error(
+    "PUBLIC_DEMO_PUBLICATION_STATUS " +
+      JSON.stringify({
+        countries: COUNTRY_IDS.map((country) => {
+          const object = countries.get(country)!.object;
+          return {
+            country,
+            object_id: object.object_id,
+            verification_status: object.verification.status,
+            commercial_eligibility_status: object.commercial_eligibility.status,
+            expires_at: object.expires_at,
+          };
+        }),
+        corridors: corridors.map((result) => ({
+          corridor: result.object.subject.id,
+          object_id: result.object.object_id,
+          verification_status: result.object.verification.status,
+          commercial_eligibility_status:
+            result.object.commercial_eligibility.status,
+          expires_at: result.object.expires_at,
+        })),
+      }),
+  );
+
   const scenarios = [
     {
       name: "USA>CHN",
