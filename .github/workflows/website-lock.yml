@@ -28,3 +28,17 @@ jobs:
 
       - name: Verify published website lock
         run: node scripts/ops/verify-website-lock.mjs
+
+      - name: Prove website lock fails closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '\n/* website-lock-negative-self-test */\n' >> src/styles.css
+
+          if node scripts/ops/verify-website-lock.mjs; then
+            echo "::error::Website lock self-test failed: a protected presentation edit was not blocked."
+            exit 1
+          fi
+
+          git checkout -- src/styles.css
+          node scripts/ops/verify-website-lock.mjs
