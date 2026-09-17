@@ -5,6 +5,7 @@ import {
   type AgenticDemoRequest,
 } from "./agentic-demo-contract";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
+import { verifyPublicRiskObjectArtifact } from "./risk-object-verification.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
@@ -75,7 +76,7 @@ function publicRiskObject(object: GeomacroRiskObject) {
   return object;
 }
 
-async function loadRiskObject(objectId: string) {
+async function loadStoredRiskObject(objectId: string) {
   const db = requireRiskSupabase();
   const { data, error } = await db
     .from("geomacro_risk_objects")
@@ -86,7 +87,63 @@ async function loadRiskObject(objectId: string) {
   if (error) throw error;
   if (!data?.payload) throw new Error("Verified Risk Object payload unavailable");
 
-  const object = data.payload as GeomacroRiskObject;
+  return data.payload as GeomacroRiskObject;
+}
+
+async function assertPublicSandboxCorridorDeliverable(
+  object: GeomacroRiskObject,
+) {
+  const publicVerification = verifyPublicRiskObjectArtifact(object);
+  if (!publicVerification.valid || !publicVerification.cryptographic_valid) {
+    throw new Error("PUBLIC_DEMO_RISK_OBJECT_NOT_VERIFIABLE");
+  }
+
+  if (
+    object.subject.type !== "corridor" ||
+    object.verification.status !== "INCOMPLETE" ||
+    object.commercial_eligibility.status !== "UNVERIFIED"
+  ) {
+    throw new Error("PUBLIC_DEMO_CORRIDOR_POLICY_MISMATCH");
+  }
+
+  const verificationReasons = new Set(object.verification.reason_codes);
+  const commercialReasons = new Set(object.commercial_eligibility.reason_codes);
+
+  if (
+    !verificationReasons.has("corridor_methodology_pilot_not_independently_verified") ||
+    !commercialReasons.has("corridor_commercial_eligibility_not_independently_verified")
+  ) {
+    throw new Error("PUBLIC_DEMO_CORRIDOR_PILOT_REASON_MISSING");
+  }
+
+  const sourceObjectIds = object.corridor_context?.source_risk_object_ids ?? [];
+  if (sourceObjectIds.length !== 2) {
+    throw new Error("PUBLIC_DEMO_CORRIDOR_ENDPOINTS_MISSING");
+  }
+
+  const endpointObjects = await Promise.all(
+    sourceObjectIds.map((sourceObjectId) => loadStoredRiskObject(sourceObjectId)),
+  );
+
+  for (const endpointObject of endpointObjects) {
+    const endpointVerification = verifyCommercialRiskObjectArtifact(endpointObject);
+    if (!endpointVerification.deliverable) {
+      throw new Error("PUBLIC_DEMO_CORRIDOR_ENDPOINT_NOT_DELIVERABLE");
+    }
+  }
+}
+
+async function loadRiskObject(
+  objectId: string,
+  mode: AgenticDemoRunOptions["mode"],
+) {
+  const object = await loadStoredRiskObject(objectId);
+
+  if (mode === "PUBLIC_SANDBOX" && object.subject.type === "corridor") {
+    await assertPublicSandboxCorridorDeliverable(object);
+    return publicRiskObject(object);
+  }
+
   const commercialVerification = verifyCommercialRiskObjectArtifact(object);
   if (!commercialVerification.deliverable) {
     throw new Error("COMMERCIAL_RISK_OBJECT_NOT_DELIVERABLE");
@@ -206,7 +263,7 @@ export async function runAgenticPreflightDemo(
     }
 
     const [riskObject, structuralContext, griContext] = await Promise.all([
-      loadRiskObject(result.context.risk_object_id),
+      loadRiskObject(result.context.risk_object_id, mode),
       loadStructuralContext(parsed.subject),
       loadGriContext(),
     ]);
