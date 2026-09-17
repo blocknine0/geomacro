@@ -27,6 +27,12 @@ export type BuildCorridorRiskInput = {
     null;
 
   as_of?: string;
+
+  /**
+   * Optional calculation namespace for an explicitly isolated delivery
+   * profile. Canonical callers omit this, preserving existing hashes.
+   */
+  calculation_namespace?: string;
 };
 
 
@@ -761,6 +767,10 @@ buildCorridorRiskObject(
     await sha256({
       methodology_version:
         CORRIDOR_RISK_METHOD_VERSION,
+
+      calculation_namespace:
+        input.calculation_namespace?.trim() ||
+        undefined,
 
       corridor_id:
         corridorId,
