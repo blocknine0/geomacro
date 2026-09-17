@@ -9,7 +9,7 @@ const PUBLIC_POLICY_VERSION = "public-alert-policy-v1"
 const PUBLIC_STATUSES = ["WARNING", "CRITICAL"]
 const MAX_LIMIT = 25
 
-const PUBLIC_SELECT = [
+const CORE_PUBLIC_FIELDS = [
   "schema_version",
   "content_type",
   "alert_key",
@@ -29,10 +29,6 @@ const PUBLIC_SELECT = [
   "official_source_present",
   "transmission_channels",
   "market_relevance",
-  "market_impact",
-  "market_impact_methodology_version",
-  "market_impact_calibrated",
-  "market_impact_hash",
   "detected_at_utc",
   "detected_at_local",
   "published_at_utc",
@@ -41,6 +37,19 @@ const PUBLIC_SELECT = [
   "public_policy_version",
   "evidence_hash",
   "calculation_hash",
+] as const
+
+const OPTIONAL_MARKET_IMPACT_FIELDS = [
+  "market_impact",
+  "market_impact_methodology_version",
+  "market_impact_calibrated",
+  "market_impact_hash",
+] as const
+
+const CORE_PUBLIC_SELECT = CORE_PUBLIC_FIELDS.join(",")
+const EXTENDED_PUBLIC_SELECT = [
+  ...CORE_PUBLIC_FIELDS,
+  ...OPTIONAL_MARKET_IMPACT_FIELDS,
 ].join(",")
 
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -83,6 +92,35 @@ function normalizeLimit(value: string | null) {
   return parsed
 }
 
+function buildPublicQuery(select: string, country: string | null, limit: number) {
+  let query = db
+    .from("early_warning_alerts")
+    .select(select)
+    .eq("visibility", "public")
+    .eq("public_eligible", true)
+    .eq("content_type", "early_warning")
+    .eq("methodology_version", CEWS_METHOD_VERSION)
+    .eq("methodology_calibrated", false)
+    .eq("public_policy_version", PUBLIC_POLICY_VERSION)
+    .not("published_at_utc", "is", null)
+    .in("status", PUBLIC_STATUSES)
+    .order("published_at_utc", { ascending: false })
+    .limit(limit)
+
+  if (country) query = query.eq("country_iso3", country)
+  return query
+}
+
+function withLegacyMarketImpactDefaults(row: Record<string, unknown>) {
+  return {
+    ...row,
+    market_impact: null,
+    market_impact_methodology_version: null,
+    market_impact_calibrated: false,
+    market_impact_hash: null,
+  }
+}
+
 async function handle(request: Request) {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: headers(false) })
@@ -107,33 +145,40 @@ async function handle(request: Request) {
     })
   }
 
-  let query = db
-    .from("early_warning_alerts")
-    .select(PUBLIC_SELECT)
-    .eq("visibility", "public")
-    .eq("public_eligible", true)
-    .eq("content_type", "early_warning")
-    .eq("methodology_version", CEWS_METHOD_VERSION)
-    .eq("methodology_calibrated", false)
-    .eq("public_policy_version", PUBLIC_POLICY_VERSION)
-    .not("published_at_utc", "is", null)
-    .in("status", PUBLIC_STATUSES)
-    .order("published_at_utc", { ascending: false })
-    .limit(limit)
+  const extended = await buildPublicQuery(EXTENDED_PUBLIC_SELECT, country, limit)
+  if (!extended.error) {
+    return json(200, {
+      ok: true,
+      contract_version: CONTRACT_VERSION,
+      degraded: false,
+      degraded_reason: null,
+      filters: { country, limit },
+      rows: extended.data ?? [],
+    }, true)
+  }
 
-  if (country) query = query.eq("country_iso3", country)
+  console.warn(
+    "[public-early-warning] optional extended feed read failed; retrying core bounded feed",
+    extended.error.message,
+  )
 
-  const { data, error } = await query
-  if (error) {
-    console.error("[public-early-warning] bounded feed read failed", error.message)
+  const core = await buildPublicQuery(CORE_PUBLIC_SELECT, country, limit)
+  if (core.error) {
+    console.error("[public-early-warning] bounded core feed read failed", core.error.message)
     return json(503, { ok: false, code: "feed_unavailable" })
   }
+
+  const rows = (core.data ?? []).map((row) =>
+    withLegacyMarketImpactDefaults(row as Record<string, unknown>)
+  )
 
   return json(200, {
     ok: true,
     contract_version: CONTRACT_VERSION,
+    degraded: true,
+    degraded_reason: "optional_market_impact_extension_unavailable",
     filters: { country, limit },
-    rows: data ?? [],
+    rows,
   }, true)
 }
 
