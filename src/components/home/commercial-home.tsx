@@ -42,17 +42,17 @@ const PRODUCT_CARDS = [
   },
   {
     icon: ShieldCheck,
-    status: "PRIVATE PILOT",
+    status: "ROADMAP · PRIVATE PILOT",
     title: "Risk Gate",
-    body: "Check country or corridor risk before a financial action moves forward. Geomacro returns context; the customer keeps control.",
-    to: "/risk-gate" as const,
-    cta: "See Risk Gate",
+    body: "Planned commercial control layer for checking country or corridor risk before a financial action moves forward. Not generally available today.",
+    to: "/roadmap" as const,
+    cta: "View roadmap status",
   },
   {
     icon: Braces,
-    status: "PUBLIC + PILOT API",
+    status: "PUBLIC DATA LIVE · API ROADMAP",
     title: "Data & API",
-    body: "Use public intelligence now, or test signed Risk Objects and Risk Gate outputs inside a controlled workflow.",
+    body: "Public intelligence is available now. Signed Risk Objects and commercial API delivery remain controlled roadmap capabilities.",
     to: "/data-api" as const,
     cta: "View data access",
   },
@@ -123,13 +123,14 @@ export function CommercialHome() {
                 <Link to="/global-risk">View Risk Indices</Link>
               </Button>
               <Button asChild size="lg" variant="ghost">
-                <Link to="/institutional">For institutions</Link>
+                <Link to="/roadmap">See what is coming next</Link>
               </Button>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-[0.13em] text-muted-foreground">
               <span>Public intelligence · Live</span>
-              <span>Risk Gate · Private Pilot</span>
+              <span>Risk Indices · Live</span>
+              <span>Risk Gate / Commercial API · Roadmap</span>
               <span>Arc / Circle · Technical Proof</span>
             </div>
           </div>
@@ -164,10 +165,13 @@ export function CommercialHome() {
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="max-w-3xl">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">What you can do here</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Start with the question you need answered.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Use what is live. Follow what is next.</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Public intelligence and risk indices are live. Ask Geomacro is available now. Risk Gate and commercial API delivery remain controlled Private Pilot products.
+            Public intelligence, separate Risk Indices and Ask Geomacro are available now. Risk Gate, signed Risk Objects and commercial API delivery are roadmap capabilities under controlled development.
           </p>
+          <Button asChild variant="outline" className="mt-5 gap-2">
+            <Link to="/roadmap">Open product roadmap <ArrowRight className="h-4 w-4" /></Link>
+          </Button>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {PRODUCT_CARDS.map(({ icon: Icon, status, title, body, to, cta }) => (
@@ -189,18 +193,18 @@ export function CommercialHome() {
       <section className="border-y border-border/60 bg-card/20">
         <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Risk Gate · Private Pilot</p>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Roadmap · Risk Gate Private Pilot</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">Check risk before the action, not after.</h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              A treasury system, payment workflow or agent sends the country or corridor context it needs checked. Risk Gate verifies the signed Risk Object and returns bounded external risk context and a recommendation. The customer's own policy still decides what happens next.
+              Risk Gate is the planned commercial control layer for checking country or corridor risk before a treasury, payment or agent action moves forward. The current implementation remains a controlled Private Pilot and is not generally available production service.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild className="gap-2"><Link to="/risk-gate">Open Risk Gate <ArrowRight className="h-4 w-4" /></Link></Button>
-              <Button asChild variant="outline"><Link to="/contact">Discuss a Private Pilot</Link></Button>
+              <Button asChild className="gap-2"><Link to="/roadmap">View roadmap status <ArrowRight className="h-4 w-4" /></Link></Button>
+              <Button asChild variant="outline"><Link to="/contact">Discuss a future pilot</Link></Button>
             </div>
           </div>
           <div className="rounded-2xl border border-border/70 bg-background/40 p-6">
-            <div className="font-mono text-xs text-muted-foreground">Current Private Pilot control flow</div>
+            <div className="font-mono text-xs text-muted-foreground">Planned controlled workflow</div>
             <div className="mt-5 space-y-3 text-sm">
               {[
                 "Action submitted for review",
