@@ -12,6 +12,7 @@ on:
       - ".github/workflows/auto-distribution-shadow.yml"
       - "src/lib/public-early-warning-rss.ts"
       - "src/routes/api.early-warning.ts"
+      - "server/api/early-warning*.ts"
 
 permissions:
   contents: read
