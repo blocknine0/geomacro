@@ -66,7 +66,8 @@ create or replace function public.reconcile_agent_commerce_payment(
   p_reconciliation_reference text,
   p_expected_provider_settlement_id text,
   p_expected_response_sha256 text,
-  p_expected_delivered_product_hash text
+  p_expected_delivered_product_hash text,
+  p_internal_canary boolean
 )
 returns table (
   payment_event_id uuid,
@@ -299,10 +300,18 @@ begin
   end if;
 
   -- Idempotent success is allowed only after the same evidence has just been
-  -- proven again above.
+  -- proven again above and the stored accounting classification matches the
+  -- explicitly requested reconciliation mode.
   if v_payment.reconciliation_status = 'matched'
-     and v_payment.revenue_classification = 'commercial_revenue'
-     and v_payment.commercial_revenue is true then
+     and (
+       (p_internal_canary is true
+        and v_payment.revenue_classification = 'non_revenue_internal'
+        and v_payment.commercial_revenue is false)
+       or
+       (p_internal_canary is false
+        and v_payment.revenue_classification = 'commercial_revenue'
+        and v_payment.commercial_revenue is true)
+     ) then
     return query
       select v_payment.id, v_payment.reconciliation_status,
              v_payment.revenue_classification, v_payment.commercial_revenue,
@@ -322,12 +331,16 @@ begin
   set
     reconciliation_status = 'matched',
     reconciliation_reference = trim(p_reconciliation_reference),
-    revenue_classification = 'commercial_revenue',
-    commercial_revenue = true,
+    revenue_classification = case
+      when p_internal_canary then 'non_revenue_internal'
+      else 'commercial_revenue'
+    end,
+    commercial_revenue = not p_internal_canary,
     metadata = coalesce(p.metadata, '{}'::jsonb) || jsonb_build_object(
       'reconciled_agent_commerce_delivery_id', v_delivery_id,
       'reconciled_response_sha256', v_delivery_response_sha256,
       'reconciled_delivered_product_hash', p_expected_delivered_product_hash,
+      'internal_canary', p_internal_canary,
       'reconciled_at', now(),
       'reconciliation_contract', 'agent-commerce-v1'
     )
@@ -341,9 +354,9 @@ begin
 end;
 $$;
 
-revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text)
+revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
   from PUBLIC, anon, authenticated;
-grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text)
+grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
   to service_role;
 
 -- For the three production agent-commerce rails, direct column promotion is
@@ -389,8 +402,8 @@ execute function public.guard_agent_commerce_revenue_evidence();
 revoke all on function public.guard_agent_commerce_revenue_evidence()
   from PUBLIC, anon, authenticated;
 
-comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text) is
-  'Promotes one settled Coinbase/Circle/Nevermined production payment to commercial revenue only after durable delivery, buyer-observed product identity and successful usage evidence match.';
+comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean) is
+  'Reconciles one settled Coinbase/Circle/Nevermined production payment against durable delivery, buyer-observed product identity and usage evidence; internal canaries remain non-revenue.';
  then
     raise exception 'expected response sha256 is invalid';
   end if;
@@ -619,9 +632,9 @@ comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,
 end;
 $$;
 
-revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text)
+revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
   from PUBLIC, anon, authenticated;
-grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text)
+grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
   to service_role;
 
 -- For the three production agent-commerce rails, direct column promotion is
@@ -667,7 +680,7 @@ execute function public.guard_agent_commerce_revenue_evidence();
 revoke all on function public.guard_agent_commerce_revenue_evidence()
   from PUBLIC, anon, authenticated;
 
-comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text) is
+comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean) is
   'Promotes one settled Coinbase/Circle/Nevermined production payment to commercial revenue only after durable delivery and successful usage evidence match.';
  then
     raise exception 'expected delivered product hash is invalid';
@@ -897,9 +910,9 @@ comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,
 end;
 $$;
 
-revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text)
+revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
   from PUBLIC, anon, authenticated;
-grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text)
+grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
   to service_role;
 
 -- For the three production agent-commerce rails, direct column promotion is
@@ -945,5 +958,5 @@ execute function public.guard_agent_commerce_revenue_evidence();
 revoke all on function public.guard_agent_commerce_revenue_evidence()
   from PUBLIC, anon, authenticated;
 
-comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text) is
+comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean) is
   'Promotes one settled Coinbase/Circle/Nevermined production payment to commercial revenue only after durable delivery and successful usage evidence match.';
