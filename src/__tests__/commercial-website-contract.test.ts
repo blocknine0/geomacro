@@ -145,11 +145,9 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps Data, API and Agent availability explicit without advertising a free API", () => {
     const route = read("src/routes/data-api.tsx");
     expect(route).toContain("GOVERNED DATA · CONTROLLED API · AGENT ACCESS");
-    expect(route).toContain("PUBLIC · FREE");
-    expect(route).toContain("FOUNDING ANALYST PILOT");
-    expect(route).toContain("FOUNDING API + RISK GATE PILOT");
-    expect(route).toContain("INSTITUTIONAL");
-    expect(route).toContain("POST https://geomacro.live/api/commercial/structural");
+    expect(route).toContain("RUNTIME STATUS ABOVE");
+    expect(route).toContain("PRIVATE PILOT");
+    expect(route).toContain("Real-money x402 access stays fail-closed");
     expect(route).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(route).toContain("ENDPOINT_COMPOSED_V0_1");
     expect(route).toContain("route_modeling_status = NOT_MODELED");
