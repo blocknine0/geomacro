@@ -126,8 +126,8 @@ jobs:
           cat /tmp/live-structure-auth-smoke.json
           echo
 
-          if [[ "$code" != "401" ]] || ! grep -q '"error":"unauthorized"' /tmp/live-structure-auth-smoke.json; then
-            echo "::error title=Live structure smoke failed::Expected the deployed function to reject an unauthenticated no-op request with HTTP 401."
+          if [[ "$code" != "401" ]] || ! jq -e '.ok == false and .error == "unauthorized"' /tmp/live-structure-auth-smoke.json >/dev/null; then
+            echo "::error title=Live structure smoke failed::Expected the deployed function to reject an unauthenticated no-op request with HTTP 401 and the canonical unauthorized JSON body."
             exit 1
           fi
 

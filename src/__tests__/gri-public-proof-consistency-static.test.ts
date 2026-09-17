@@ -33,7 +33,7 @@ describe("GRI public proof consistency evidence", () => {
   });
 
   it("runs as a recurring read-only evidence workflow and reuses the independent verifier", () => {
-    expect(workflow).toContain('cron: "23 */6 * * *"');
+    expect(workflow).toContain('cron: "23 */2 * * *"');
     expect(workflow).toContain("workflow_dispatch");
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
