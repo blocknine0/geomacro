@@ -42,6 +42,12 @@ async function main() {
   const provider = required("GEOMACRO_PAYMENT_PROVIDER");
   if (!PROVIDERS.has(provider)) throw new Error("GEOMACRO_PAYMENT_PROVIDER is not an approved production agent-commerce provider");
 
+  const mode = required("GEOMACRO_RECONCILIATION_MODE");
+  if (!["internal_canary", "commercial_revenue"].includes(mode)) {
+    throw new Error("GEOMACRO_RECONCILIATION_MODE must be internal_canary or commercial_revenue");
+  }
+  const internalCanary = mode === "internal_canary";
+
   const expectedSettlement = required("GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE");
   if (expectedSettlement.length > 256) throw new Error("settlement reference is too long");
 
@@ -112,19 +118,24 @@ async function main() {
       p_expected_provider_settlement_id: expectedSettlement,
       p_expected_response_sha256: expectedResponseSha256,
       p_expected_delivered_product_hash: expectedDeliveredProductHash,
+      p_internal_canary: internalCanary,
     },
   );
   if (reconcileError) throw reconcileError;
 
   const result = Array.isArray(reconciled) ? reconciled[0] : reconciled;
+  const expectedClassification = internalCanary
+    ? "non_revenue_internal"
+    : "commercial_revenue";
+  const expectedCommercialRevenue = !internalCanary;
   if (
     !result ||
     result.reconciliation_status !== "matched" ||
-    result.revenue_classification !== "commercial_revenue" ||
-    result.commercial_revenue !== true ||
+    result.revenue_classification !== expectedClassification ||
+    result.commercial_revenue !== expectedCommercialRevenue ||
     String(result.response_sha256 ?? "").toLowerCase() !== expectedResponseSha256
   ) {
-    throw new Error("Production payment did not reach matched commercial-revenue state");
+    throw new Error("Production payment did not reach the expected matched accounting state");
   }
 
   const { data: after, error: afterError } = await db
@@ -148,6 +159,8 @@ async function main() {
     reconciliation_status: after.reconciliation_status,
     revenue_classification: after.revenue_classification,
     commercial_revenue: after.commercial_revenue,
+    reconciliation_mode: mode,
+    internal_canary: internalCanary,
     reconciliation_reference: after.reconciliation_reference,
     settlement_reference_sha256: sha256(expectedSettlement),
     response_sha256: expectedResponseSha256,
@@ -164,7 +177,7 @@ async function main() {
     "artifacts/production-reconciliation/reconciliation.json";
   await mkdir(path.dirname(out), { recursive: true });
   await writeFile(out, JSON.stringify(evidence, null, 2) + "\n", { mode: 0o600 });
-  console.log(`PASS: reconciled production payment ${before.id} for provider ${after.provider}`);
+  console.log(`PASS: reconciled production payment ${before.id} for provider ${after.provider} as ${mode}`);
   console.log(`Evidence: ${out}`);
 }
 
