@@ -31,6 +31,10 @@ import type {
   RiskGateResponse,
 } from "./risk-gate-contract";
 
+import type {
+  RiskObjectDeliveryProfile,
+} from "./public-demo-risk-profile";
+
 
 export type CountryRiskGateServiceInput = {
   request_id: string;
@@ -60,6 +64,11 @@ export type CountryRiskGateServiceInput = {
    * to a small server-clock skew window by the API boundary.
    */
   evaluated_at?: string;
+
+  /**
+   * Server-controlled Risk Object profile. Public callers do not select this.
+   */
+  risk_object_profile?: RiskObjectDeliveryProfile;
 };
 
 
@@ -175,6 +184,8 @@ evaluateCountryRiskGate(
     await getLatestCompatibleCountryRiskObjectAtOrBefore(
       countryIso3,
       evaluatedAt.toISOString(),
+      input.risk_object_profile ??
+        "CANONICAL",
     );
 
   if (!riskObject) {
