@@ -38,6 +38,9 @@ jobs:
         with:
           bun-version: '1.4.2'
 
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
       - name: Validate Python syntax
         run: |
           python -m py_compile \
