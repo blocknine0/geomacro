@@ -1,24 +1,10 @@
 name: P0 Live Alignment Diagnostic
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/p0-live-alignment-diagnostic.yml'
-      - 'scripts/ops/live-build-sha-smoke.mjs'
-      - 'scripts/ops/live-launch-surface-smoke.mjs'
-      - 'src/routes/institutional.tsx'
-      - 'src/routes/global-risk.tsx'
-      - 'src/routes/intelligence.tsx'
-      - 'src/routes/risk-gate.tsx'
-      - 'src/routes/data-api.tsx'
-      - 'src/routes/api.early-warning.ts'
-      - 'public/.well-known/**'
-      - 'public/openapi-x402.json'
   workflow_dispatch:
     inputs:
       expected_sha:
-        description: 'Exact 40-character canonical main SHA expected on geomacro.live'
+        description: 'Exact 40-character canonical main SHA expected on geomacro.live after Publish changes'
         required: true
         type: string
 
@@ -32,10 +18,10 @@ jobs:
     env:
       GEOMACRO_LIVE_BASE_URL: https://geomacro.live
       GEOMACRO_LIVE_EXPECTED_HOST: geomacro.live
-      GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.expected_sha }}
+      GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_sha }}
       GEOMACRO_LIVE_SMOKE_TIMEOUT_MS: '15000'
     steps:
-      - name: Checkout diagnostic candidate
+      - name: Checkout canonical main diagnostic code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -46,6 +32,12 @@ jobs:
           set -euo pipefail
           if [[ ! "${GEOMACRO_EXPECTED_DEPLOYED_SHA}" =~ ^[0-9a-fA-F]{40}$ ]]; then
             echo "::error title=Invalid expected SHA::Expected an exact 40-character commit SHA."
+            exit 1
+          fi
+          if [[ "${GEOMACRO_EXPECTED_DEPLOYED_SHA,,}" != "${GITHUB_SHA,,}" ]]; then
+            echo "::error title=Wrong diagnostic revision::Dispatch this workflow from the exact canonical main SHA that was published."
+            echo "workflow_sha=${GITHUB_SHA}"
+            echo "expected_sha=${GEOMACRO_EXPECTED_DEPLOYED_SHA}"
             exit 1
           fi
           echo "Expected live canonical SHA: ${GEOMACRO_EXPECTED_DEPLOYED_SHA}"
@@ -73,7 +65,9 @@ jobs:
             echo '## P0 live alignment diagnostic'
             echo
             echo "- Expected canonical SHA: ${GEOMACRO_EXPECTED_DEPLOYED_SHA}"
+            echo "- Workflow canonical SHA: ${GITHUB_SHA}"
             echo '- Target: https://geomacro.live'
+            echo '- Post-publish manual gate: true'
             echo '- Build SHA checked before route/API diagnosis: true'
             echo '- Read-only outside-in requests only: true'
             echo '- Production mutation performed: false'
