@@ -61,12 +61,20 @@ function isProtectedWebsitePath(path) {
   return false;
 }
 
-const changed = git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", baseline, "HEAD"])
-  .split("\n")
-  .map((line) => line.trim())
-  .filter(Boolean);
+function lines(value) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
-const violations = changed.filter(isProtectedWebsitePath);
+const changed = new Set([
+  ...lines(git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", baseline, "HEAD"])),
+  ...lines(git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", "HEAD"])),
+  ...lines(git(["diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB"])),
+]);
+
+const violations = [...changed].filter(isProtectedWebsitePath);
 
 if (violations.length > 0) {
   console.error("::error::GEOMACRO WEBSITE LOCK VIOLATION");
