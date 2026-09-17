@@ -57,15 +57,17 @@ Do not market Geomacro as autonomous execution, wallet custody, transaction sign
 
 ### 1. Coinbase Bazaar
 
-No separate public submission is required for the standard discovery path. The resource already emits Bazaar discovery metadata. After owner-authorized production activation, complete the capped smoke purchase and verify that the production resource is indexed with the expected description, schema and price.
+The resource emits Bazaar discovery metadata, but payment success and metadata emission are not treated as proof that the catalog has indexed the resource. After owner-authorized production activation, complete one capped reconciled smoke purchase, then query Coinbase's current Bazaar discovery/search surfaces. Mark the listing verified only when the exact Geomacro resource is actually observed with the expected endpoint, description, schema and payment terms.
+
+If the paid endpoint works but Bazaar visibility is absent, keep the marketplace state unverified and do not publicly claim that Geomacro is listed.
 
 ### 2. Coinbase Agentic.Market
 
-Agentic.Market indexes Bazaar services. Verify the production resource appears after Bazaar propagation and that its live metadata, pricing and activity are correct. Do not create a conflicting second listing with different copy.
+Treat downstream visibility as dependent on observed Bazaar visibility, not as an automatic consequence of a successful payment. Verify the exact production resource and metadata independently before making any listing claim. Do not create a conflicting second listing with different copy.
 
 ### 3. x402.new
 
-x402.new continuously indexes the public x402 discovery network/Bazaar. No separate provider form is expected for the standard path. Verify propagation after the production Bazaar resource is observable.
+Verify propagation only after the production Bazaar resource is actually observable. Do not infer directory presence from a successful payment or from a local discovery document alone.
 
 ### 4. Circle Agent Marketplace
 
