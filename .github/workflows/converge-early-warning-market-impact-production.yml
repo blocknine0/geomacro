@@ -44,7 +44,8 @@ jobs:
           grep -q 'degraded !== false' "$file"
           grep -q 'add column if not exists market_impact jsonb' "$sql"
           grep -q 'revoke all on function public.guard_published_early_warning_core() from PUBLIC, anon, authenticated' "$sql"
-          if grep -q 'supabase db push' "$file"; then
+          broad_migration_command='supabase db '"'"'push'
+          if grep -Fq "$broad_migration_command" "$file"; then
             echo '::error title=Broad migration forbidden::This workflow must never apply the repository migration queue.'
             exit 1
           fi
