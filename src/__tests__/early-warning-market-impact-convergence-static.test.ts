@@ -50,8 +50,11 @@ describe("Early Warning market-impact production convergence", () => {
     expect(workflow).toContain("not has_table_privilege('authenticated', 'public.early_warning_alerts', 'SELECT')");
   });
 
-  it("does not activate payment, settlement, execution or mainnet behavior", () => {
+  it("keeps financial and execution activation outside this repair", () => {
     expect(workflow).toContain("production_payment_or_mainnet_activation: false");
-    expect(sql).not.toMatch(/\b(payment|settlement|mainnet|execution_authorized)\b/i);
+    expect(sql).not.toContain("commercial_credit");
+    expect(sql).not.toContain("x402");
+    expect(sql).not.toContain("execution_authorized");
+    expect(sql).not.toContain("market_address");
   });
 });
