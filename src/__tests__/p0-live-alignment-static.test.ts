@@ -33,12 +33,15 @@ describe("P0 live deployment alignment contract", () => {
     expect(workflow.indexOf("node scripts/ops/live-build-sha-smoke.mjs")).toBeLessThan(
       workflow.indexOf("node scripts/ops/live-launch-surface-smoke.mjs"),
     );
-    expect(workflow).toContain("github.event.pull_request.base.sha");
-    expect(workflow).toContain("expected_sha");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("pull_request:");
+    expect(workflow).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_sha }}");
+    expect(workflow).toContain('"${GEOMACRO_EXPECTED_DEPLOYED_SHA,,}" != "${GITHUB_SHA,,}"');
     expect(workflow).toContain("^[0-9a-fA-F]{40}$");
   });
 
   it("keeps the diagnostic read-only and non-activating", () => {
+    expect(workflow).toContain("Post-publish manual gate: true");
     expect(workflow).toContain("Read-only outside-in requests only: true");
     expect(workflow).toContain("Production mutation performed: false");
     expect(workflow).toContain("Payment or settlement performed: false");
