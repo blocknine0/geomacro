@@ -27,6 +27,7 @@ describe("production agent-commerce reconciliation contract", () => {
     expect(migration).toContain("payment_status <> 'settled'");
     expect(migration).toContain("v_delivery_state <> 'delivered'");
     expect(migration).toContain("v_delivery_response_sha256 <> p_expected_response_sha256");
+    expect(migration).toContain("buyer-observed delivered product hash does not match durable delivery payload");
     expect(migration).toContain("payment amount mismatch");
     expect(migration).toContain("payment recipient mismatch");
     expect(migration).toContain("payment payer mismatch");
@@ -62,7 +63,11 @@ describe("production agent-commerce reconciliation contract", () => {
     expect(reconcile).toContain("I_RECONCILE_VERIFIED_PRODUCTION_DELIVERY");
     expect(reconcile).toContain("ldpwajisioljyjtojvfx");
     expect(reconcile).toContain("reconcile_agent_commerce_payment");
+    expect(reconcile).toContain("GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH");
+    expect(reconcile).toContain("Expected exactly one payment event for the observed settlement");
+    expect(reconcile).toContain("Expected one unambiguous delivered response hash");
     expect(reconcile).toContain("settlement_reference_sha256");
+    expect(reconcile).toContain("delivered_product_hash: expectedDeliveredProductHash");
     expect(reconcile).toContain("raw_settlement_reference_recorded_in_artifact: false");
     expect(reconcile).toContain("payer_identity_recorded_in_artifact: false");
   });
