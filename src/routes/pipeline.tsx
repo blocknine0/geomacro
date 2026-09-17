@@ -9,7 +9,7 @@ export const Route = createFileRoute("/pipeline")({
       {
         name: "description",
         content:
-          "Technical view of how Geomacro turns source evidence into structured intelligence, separate Risk Indices and downstream application artifacts. The audited GRI v1.2 parent methodology uses geopolitics, macro and rare-earth / critical-mineral domains.",
+          "Technical view of how Geomacro turns source evidence into structured intelligence, separate Risk Indices and downstream application artifacts. The versioned GRI v1.2 parent methodology uses geopolitics, macro and rare-earth / critical-mineral domains.",
       },
       { property: "og:title", content: "Intelligence Pipeline · Technical Detail · Geomacro" },
       {
@@ -29,7 +29,7 @@ function PipelineTechnicalPage() {
     <>
       <TechnicalProofBanner
         title="Intelligence Pipeline"
-        description="This page exposes implementation detail behind the broader ingestion and processing system. The public product presents three separate Risk Indices. Their current proof lineage comes from the audited GRI v1.2 three-domain methodology: geopolitics, macro and rare-earth / critical-mineral risk. Other research or technical data streams must not be read as additional v1.2 scoring domains."
+        description="This page exposes implementation detail behind the broader ingestion and processing system. The public product presents three separate Risk Indices. Their current proof lineage comes from the versioned GRI v1.2 three-domain methodology: geopolitics, macro and rare-earth / critical-mineral risk. Other research or technical data streams must not be read as additional v1.2 scoring domains."
       />
       <PipelineSection />
     </>
