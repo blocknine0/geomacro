@@ -312,7 +312,14 @@ async def submit_telegram_message(message: Any) -> None:
 
     chat_id = getattr(entity, "id", None)
     message_id = int(message.id)
-    key = channel_key(entity)
+
+    public_username = getattr(entity, "username", None)
+    if not isinstance(public_username, str) or not public_username.strip():
+        raise RuntimeError(
+            "Telegram raw-signal source must be a public channel with a username"
+        )
+
+    key = public_username.lstrip("@").lower()
 
     message_date = message.date
     if message_date.tzinfo is None:
@@ -325,6 +332,7 @@ async def submit_telegram_message(message: Any) -> None:
         "headline": headline_from_text(text),
         "body": text[:MAX_TELEGRAM_BODY_CHARS],
         "source_channel": channel_label(entity),
+        "source_channel_key": key,
         "source_url": telegram_source_url(entity, message_id),
         "source_reliability": TELEGRAM_SOURCE_RELIABILITY.get(key, 50.0),
         "verification_status": "UNVERIFIED",
@@ -400,6 +408,11 @@ async def run_telegram() -> None:
     resolved = []
     for channel in TELEGRAM_CHANNELS:
         entity = await client.get_entity(channel)
+        username = getattr(entity, "username", None)
+        if not isinstance(username, str) or not username.strip():
+            raise RuntimeError(
+                f"Configured Telegram source {channel!r} is not a public username channel"
+            )
         resolved.append(entity)
         print(
             json.dumps(
