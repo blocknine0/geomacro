@@ -34,6 +34,12 @@ import {
   requireRiskSupabase,
 } from "./risk-supabase.server";
 
+import {
+  riskObjectCalculationNamespace,
+  withPublicDemoProfileReason,
+  type RiskObjectDeliveryProfile,
+} from "./public-demo-risk-profile";
+
 
 export type CountryRiskPublishInput = {
   country_iso3: string;
@@ -43,6 +49,13 @@ export type CountryRiskPublishInput = {
    * Freeze calculation time for deterministic replay.
    */
   as_of?: string;
+
+  /**
+   * Internal delivery profile. Canonical is the default for production/paid
+   * surfaces. PUBLIC_DEMO uses only commercially usable derived evidence and
+   * is explicitly marked inside the signed artifact.
+   */
+  delivery_profile?: RiskObjectDeliveryProfile;
 };
 
 
@@ -459,8 +472,52 @@ async function generateInternal(
       asOf,
     );
 
+  const deliveryProfile =
+    input.delivery_profile ??
+    "CANONICAL";
+
+  const eligibleEventIds =
+    deliveryProfile ===
+      "PUBLIC_DEMO"
+      ? new Set(
+          loaded
+            .commercial_eligibility
+            .filter(
+              item =>
+                item.status ===
+                  "VERIFIED" ||
+                item.status ===
+                  "DERIVED_ONLY",
+            )
+            .map(
+              item =>
+                item.event_id,
+            ),
+        )
+      : null;
+
   const events =
-    loaded.events;
+    eligibleEventIds
+      ? loaded.events.filter(
+          event =>
+            eligibleEventIds.has(
+              event.id,
+            ),
+        )
+      : loaded.events;
+
+  const commercialEligibility =
+    eligibleEventIds
+      ? loaded
+          .commercial_eligibility
+          .filter(
+            item =>
+              eligibleEventIds.has(
+                item.event_id,
+              ),
+          )
+      : loaded
+          .commercial_eligibility;
 
   const countryEvents =
     events.filter(
@@ -475,6 +532,7 @@ async function generateInternal(
     await getLatestCompatibleCountryRiskObject(
       iso3,
       asOf.toISOString(),
+      deliveryProfile,
     );
 
   const baseline =
@@ -498,14 +556,38 @@ async function generateInternal(
 
       as_of:
         asOf.toISOString(),
+
+      calculation_namespace:
+        riskObjectCalculationNamespace(
+          deliveryProfile,
+        ),
     });
 
-  const unsignedObject =
+  const eligibilityAppliedObject =
     applyCountryRiskCommercialEligibility(
       calculatedObject,
-      loaded
-        .commercial_eligibility,
+      commercialEligibility,
     );
+
+  const unsignedObject =
+    deliveryProfile ===
+      "PUBLIC_DEMO"
+      ? {
+          ...eligibilityAppliedObject,
+
+          commercial_eligibility: {
+            ...eligibilityAppliedObject
+              .commercial_eligibility,
+
+            reason_codes:
+              withPublicDemoProfileReason(
+                eligibilityAppliedObject
+                  .commercial_eligibility
+                  .reason_codes,
+              ),
+          },
+        }
+      : eligibilityAppliedObject;
 
   const observationBoundObject =
     withRiskObjectObservationTimestamp(
