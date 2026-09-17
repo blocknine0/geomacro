@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/p0-live-alignment-diagnostic.yml'
+      - 'scripts/ops/live-build-sha-smoke.mjs'
       - 'scripts/ops/live-launch-surface-smoke.mjs'
       - 'src/routes/institutional.tsx'
       - 'src/routes/global-risk.tsx'
@@ -49,6 +50,9 @@ jobs:
           fi
           echo "Expected live canonical SHA: ${GEOMACRO_EXPECTED_DEPLOYED_SHA}"
 
+      - name: Prove live build alignment first
+        run: node scripts/ops/live-build-sha-smoke.mjs
+
       - name: Run read-only outside-in P0 live smoke
         run: node scripts/ops/live-launch-surface-smoke.mjs
 
@@ -70,6 +74,7 @@ jobs:
             echo
             echo "- Expected canonical SHA: ${GEOMACRO_EXPECTED_DEPLOYED_SHA}"
             echo '- Target: https://geomacro.live'
+            echo '- Build SHA checked before route/API diagnosis: true'
             echo '- Read-only outside-in requests only: true'
             echo '- Production mutation performed: false'
             echo '- Payment or settlement performed: false'
