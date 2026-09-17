@@ -17,6 +17,7 @@ const PRIMARY_INDEXABLE_ROUTES = [
   "https://geomacro.live/ask-geomacro",
   "https://geomacro.live/data-api",
   "https://geomacro.live/institutional",
+  "https://geomacro.live/ecosystem",
   "https://geomacro.live/research",
   "https://geomacro.live/docs",
   "https://geomacro.live/about",
@@ -50,15 +51,23 @@ describe("public SEO contract", () => {
     expect(root).not.toContain('{ name: "twitter:title", content: DEFAULT_TITLE }');
   });
 
-  it("keeps the homepage intelligence-first with complete crawl metadata", () => {
+  it("keeps the homepage category clear with complete crawl metadata", () => {
     const home = read("src/routes/index.tsx");
 
-    expect(home).toContain("Geopolitical, Macro & Critical Minerals Risk Intelligence | Geomacro");
-    expect(home).toContain("separate verified Risk Indices");
+    expect(home).toContain("Global Risk Intelligence Infrastructure | Geomacro");
+    expect(home).toContain("institutions, operators and AI systems");
     expect(home).toContain('name: "robots", content: "index, follow');
     expect(home).toContain('rel: "canonical"');
     expect(home).toContain('name: "twitter:title"');
     expect(home).toContain('"@type": "WebApplication"');
+  });
+
+  it("gives the ecosystem page unique indexable metadata", () => {
+    const ecosystem = read("src/routes/ecosystem.tsx");
+    expect(ecosystem).toContain("Ecosystem & Partnerships · Geomacro");
+    expect(ecosystem).toContain('name: "robots", content: "index, follow');
+    expect(ecosystem).toContain('rel: "canonical"');
+    expect(ecosystem).toContain("https://geomacro.live/ecosystem");
   });
 
   it("server-renders unique intelligence event metadata and body data", () => {
