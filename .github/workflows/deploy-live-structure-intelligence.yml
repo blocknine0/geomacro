@@ -38,10 +38,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Apply deterministic private-error hardening patch
+      - name: Apply deterministic runtime hardening patch
         run: node scripts/patch-live-structure-private-error-serializer.mjs
 
-      - name: Validate deployment and private-error guardrails
+      - name: Validate deployment, diagnostics and stable identity guardrails
         shell: bash
         run: |
           set -euo pipefail
@@ -60,9 +60,15 @@ jobs:
           grep -q 'phase=${phase}' "$function"
           grep -q 'event_persistence' "$function"
           grep -q 'evidence_persistence' "$function"
+          grep -q 'canonical_story_lookup' "$function"
+          grep -q '\.eq(' "$function"
+          grep -q '"story_key"' "$function"
+          grep -q '\.maybeSingle()' "$function"
+          grep -q 'id:' "$function"
+          grep -q 'canonicalStory.id' "$function"
           grep -q 'live-structure-v1.4.8' "$function"
 
-          echo "Live structure deployment and phase-aware private-error guardrails are present."
+          echo "Live structure deployment, phase-aware diagnostics and stable canonical event identity guardrails are present."
 
   deploy:
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
@@ -83,7 +89,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Apply deterministic private-error hardening patch
+      - name: Apply deterministic runtime hardening patch
         run: node scripts/patch-live-structure-private-error-serializer.mjs
 
       - name: Validate production target
