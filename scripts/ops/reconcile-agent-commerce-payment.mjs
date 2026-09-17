@@ -5,6 +5,11 @@ import { createClient } from "@supabase/supabase-js";
 
 const REQUIRED_ACK = "I_RECONCILE_VERIFIED_PRODUCTION_DELIVERY";
 const PROD_PROJECT_REF = "ldpwajisioljyjtojvfx";
+const PROVIDERS = new Set([
+  "coinbase_cdp_x402",
+  "circle_gateway_x402",
+  "nevermined_x402",
+]);
 
 function required(name) {
   const value = String(process.env[name] ?? "").trim();
@@ -14,13 +19,6 @@ function required(name) {
 
 function sha256(value) {
   return createHash("sha256").update(String(value), "utf8").digest("hex");
-}
-
-function assertUuid(value, label) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
-    throw new Error(`${label} must be a UUID`);
-  }
-  return value;
 }
 
 function assertSha(value, label) {
@@ -41,13 +39,17 @@ async function main() {
     throw new Error("Production reconciliation must target the authoritative Geomacro Supabase project");
   }
 
-  const paymentEventId = assertUuid(required("GEOMACRO_PAYMENT_EVENT_ID"), "GEOMACRO_PAYMENT_EVENT_ID");
+  const provider = required("GEOMACRO_PAYMENT_PROVIDER");
+  if (!PROVIDERS.has(provider)) throw new Error("GEOMACRO_PAYMENT_PROVIDER is not an approved production agent-commerce provider");
+
   const expectedSettlement = required("GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE");
   if (expectedSettlement.length > 256) throw new Error("settlement reference is too long");
-  const expectedResponseSha256 = assertSha(
-    required("GEOMACRO_EXPECTED_RESPONSE_SHA256"),
-    "GEOMACRO_EXPECTED_RESPONSE_SHA256",
+
+  const expectedDeliveredProductHash = assertSha(
+    required("GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH"),
+    "GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH",
   );
+
   const reconciliationReference = required("GEOMACRO_RECONCILIATION_REFERENCE");
   if (reconciliationReference.length < 8 || reconciliationReference.length > 180) {
     throw new Error("GEOMACRO_RECONCILIATION_REFERENCE must be 8..180 characters");
@@ -57,14 +59,20 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: before, error: beforeError } = await db
+  const { data: payments, error: paymentError } = await db
     .from("commercial_payment_events")
     .select(
       "id,environment,provider,provider_environment,payment_status,revenue_classification,provider_settlement_id,asset_symbol,amount_atomic,reconciliation_status,commercial_revenue",
     )
-    .eq("id", paymentEventId)
-    .single();
-  if (beforeError || !before) throw beforeError ?? new Error("payment event not found");
+    .eq("provider", provider)
+    .eq("provider_settlement_id", expectedSettlement)
+    .order("occurred_at", { ascending: false })
+    .limit(2);
+  if (paymentError) throw paymentError;
+  if (!Array.isArray(payments) || payments.length !== 1) {
+    throw new Error(`Expected exactly one payment event for the observed settlement; found ${payments?.length ?? 0}`);
+  }
+  const before = payments[0];
 
   if (!["mainnet", "fiat"].includes(before.environment)) {
     throw new Error("Only production payment events can be reconciled as revenue");
@@ -74,13 +82,36 @@ async function main() {
     throw new Error("Observed settlement reference does not match the payment ledger");
   }
 
+  const { data: usageRows, error: usageError } = await db
+    .from("commercial_usage_events")
+    .select("response_sha256,success,execution_authorized,access_surface")
+    .eq("payment_event_id", before.id)
+    .eq("success", true)
+    .eq("access_surface", "agent_payment")
+    .eq("execution_authorized", false)
+    .limit(10);
+  if (usageError) throw usageError;
+
+  const responseHashes = [
+    ...new Set(
+      (usageRows ?? [])
+        .map((row) => String(row.response_sha256 ?? "").toLowerCase())
+        .filter((value) => /^[0-9a-f]{64}$/.test(value)),
+    ),
+  ];
+  if (responseHashes.length !== 1) {
+    throw new Error(`Expected one unambiguous delivered response hash; found ${responseHashes.length}`);
+  }
+  const expectedResponseSha256 = responseHashes[0];
+
   const { data: reconciled, error: reconcileError } = await db.rpc(
     "reconcile_agent_commerce_payment",
     {
-      p_payment_event_id: paymentEventId,
+      p_payment_event_id: before.id,
       p_reconciliation_reference: reconciliationReference,
       p_expected_provider_settlement_id: expectedSettlement,
       p_expected_response_sha256: expectedResponseSha256,
+      p_expected_delivered_product_hash: expectedDeliveredProductHash,
     },
   );
   if (reconcileError) throw reconcileError;
@@ -101,7 +132,7 @@ async function main() {
     .select(
       "id,environment,provider,provider_environment,payment_status,revenue_classification,reconciliation_status,reconciliation_reference,commercial_revenue",
     )
-    .eq("id", paymentEventId)
+    .eq("id", before.id)
     .single();
   if (afterError || !after) throw afterError ?? new Error("reconciled payment event disappeared");
 
@@ -109,7 +140,7 @@ async function main() {
     schema_version: "geomacro.production-payment-reconciliation.v1",
     generated_at: new Date().toISOString(),
     project_ref: PROD_PROJECT_REF,
-    payment_event_id: paymentEventId,
+    payment_event_id: before.id,
     provider: after.provider,
     provider_environment: after.provider_environment,
     environment: after.environment,
@@ -120,6 +151,7 @@ async function main() {
     reconciliation_reference: after.reconciliation_reference,
     settlement_reference_sha256: sha256(expectedSettlement),
     response_sha256: expectedResponseSha256,
+    delivered_product_hash: expectedDeliveredProductHash,
     delivery_id: result.delivery_id,
     raw_settlement_reference_recorded_in_artifact: false,
     payer_identity_recorded_in_artifact: false,
@@ -132,7 +164,7 @@ async function main() {
     "artifacts/production-reconciliation/reconciliation.json";
   await mkdir(path.dirname(out), { recursive: true });
   await writeFile(out, JSON.stringify(evidence, null, 2) + "\n", { mode: 0o600 });
-  console.log(`PASS: reconciled production payment ${paymentEventId} for provider ${after.provider}`);
+  console.log(`PASS: reconciled production payment ${before.id} for provider ${after.provider}`);
   console.log(`Evidence: ${out}`);
 }
 
