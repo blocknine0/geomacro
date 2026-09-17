@@ -9,13 +9,16 @@
 -- - support horizontally scaled API instances and high-cardinality agents.
 --
 -- Security model:
--- - a 20-bit client slot is derived only from the server-side HMAC client key;
+-- - a 24-bit client slot is derived only from the server-side HMAC client key;
 -- - a 4-bit global shard is derived from the same HMAC, giving 16 independent
 --   global counters per route class;
 -- - each shard receives ceil(global_limit / 16), so aggregate allowance can
 --   exceed the configured global limit by at most 15 requests per window;
 -- - per-client and per-global-shard updates remain atomic under advisory locks;
--- - browser roles receive no table or RPC access.
+-- - browser roles receive no table or RPC access;
+-- - there is intentionally no delete/prune RPC in this migration. Bucket keys
+--   are bounded and reused across windows, avoiding a destructive maintenance
+--   surface in the security-critical schema.
 -- =============================================================================
 
 create table if not exists public.central_security_request_buckets_v2 (
@@ -46,7 +49,7 @@ create table if not exists public.central_security_request_buckets_v2 (
 
   constraint central_security_request_buckets_v2_key_check
     check (
-      (bucket_kind = 'client' and bucket_key ~ '^[0-9a-f]{5}$')
+      (bucket_kind = 'client' and bucket_key ~ '^[0-9a-f]{6}$')
       or
       (bucket_kind = 'global_shard' and bucket_key ~ '^[0-9a-f]$')
     ),
@@ -125,10 +128,11 @@ begin
     floor(extract(epoch from v_now) / p_window_seconds) * p_window_seconds
   );
 
-  -- Never persist the full client HMAC. Twenty bits gives up to 1,048,576
-  -- bounded client slots per route class, which materially reduces collisions
-  -- for a million-agent population while keeping cardinality finite.
-  v_client_slot := substr(p_client_key, 1, 5);
+  -- Never persist the full client HMAC. Twenty-four bits gives 16,777,216
+  -- bounded client slots per route class, sharply reducing accidental slot
+  -- collisions for a one-million-agent population while keeping cardinality
+  -- finite and privacy-preserving.
+  v_client_slot := substr(p_client_key, 1, 6);
 
   -- Sixteen independently locked global shards remove the v1 single-row lock
   -- bottleneck. HMAC output is uniformly distributed, so legitimate traffic is
@@ -297,40 +301,8 @@ grant execute on function public.consume_central_security_budget_v2(
   integer
 ) to service_role;
 
-create or replace function public.prune_central_security_request_buckets_v2(
-  p_stale_seconds integer default 86400
-)
-returns integer
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_deleted integer := 0;
-begin
-  if p_stale_seconds < 3600 or p_stale_seconds > 604800 then
-    raise exception 'INVALID_STALE_SECONDS';
-  end if;
-
-  delete from public.central_security_request_buckets_v2
-  where updated_at < clock_timestamp() - make_interval(secs => p_stale_seconds);
-
-  get diagnostics v_deleted = row_count;
-  return v_deleted;
-end;
-$$;
-
-revoke all on function public.prune_central_security_request_buckets_v2(integer)
-  from PUBLIC, anon, authenticated;
-
-grant execute on function public.prune_central_security_request_buckets_v2(integer)
-  to service_role;
-
 comment on table public.central_security_request_buckets_v2 is
   'Server-only sharded distributed abuse-control counters for high-cardinality agents. Raw IPs, credentials, signatures, cookies, payment proofs and request bodies are never stored.';
 
 comment on function public.consume_central_security_budget_v2(text, text, integer, integer, integer) is
-  'Atomically consumes per-client and 16-way sharded global request budgets. Service-role only; aggregate global overshoot is bounded to at most 15 requests per window.';
-
-comment on function public.prune_central_security_request_buckets_v2(integer) is
-  'Deletes inactive v2 abuse-control buckets. Service-role only and never executed in the request hot path.';
+  'Atomically consumes privacy-preserving 24-bit per-client slots and 16-way sharded global request budgets. Service-role only; aggregate global overshoot is bounded to at most 15 requests per window.';
