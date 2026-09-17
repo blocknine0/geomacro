@@ -1,0 +1,280 @@
+name: Distributed 40k Evidence Closure
+
+on:
+  workflow_dispatch:
+    inputs:
+      capacity_run_id:
+        description: 'Successful Distributed 40k Staging Execution workflow run ID'
+        required: true
+        type: string
+      candidate_sha:
+        description: 'Exact canonical main SHA used by the capacity run and isolated staging deployment'
+        required: true
+        type: string
+      deployment_id:
+        description: 'Immutable isolated staging deployment ID used by the capacity run'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: distributed-40k-evidence-closure
+  cancel-in-progress: false
+
+jobs:
+  bind-capacity-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      burst_run_group_id: ${{ steps.bind.outputs.burst_run_group_id }}
+      soak_run_group_id: ${{ steps.bind.outputs.soak_run_group_id }}
+      target_host: ${{ steps.bind.outputs.target_host }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Require closure dispatch from the exact main candidate
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+          CAPACITY_RUN_ID: ${{ inputs.capacity_run_id }}
+          DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+        run: |
+          set -euo pipefail
+          [[ "$DISPATCH_REF" == 'refs/heads/main' ]] || { echo '::error title=Wrong dispatch ref::Evidence closure must run from main.'; exit 1; }
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo '::error title=Invalid candidate SHA::Full SHA required.'; exit 1; }
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]] || { echo '::error title=Candidate mismatch::Closure input must equal workflow dispatch SHA.'; exit 1; }
+          [[ "$CAPACITY_RUN_ID" =~ ^[0-9]+$ ]] || { echo '::error title=Invalid capacity run ID::Numeric GitHub Actions run ID required.'; exit 1; }
+          [[ -n "$DEPLOYMENT_ID" ]] || { echo '::error title=Missing deployment ID::Immutable staging deployment ID required.'; exit 1; }
+      - name: Verify referenced real capacity workflow run
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CAPACITY_RUN_ID: ${{ inputs.capacity_run_id }}
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+        with:
+          script: |
+            const runId = Number(process.env.CAPACITY_RUN_ID);
+            const expectedSha = String(process.env.EXPECTED_SHA).toLowerCase();
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.path !== '.github/workflows/million-agent-distributed-staging-execution.yml') core.setFailed(`Unexpected capacity workflow path: ${run.path}`);
+            if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Capacity run must be a manual main-branch execution');
+            if (String(run.head_sha || '').toLowerCase() !== expectedSha) core.setFailed('Capacity run SHA does not match exact candidate');
+            if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`Capacity run is not successful: ${run.status}/${run.conclusion}`);
+      - name: Download exact burst and soak validation artifacts from referenced capacity run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.capacity_run_id }}
+          pattern: distributed-validation-*
+          path: artifacts/capacity-validation
+          merge-multiple: true
+      - name: Download referenced capacity-pass artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.capacity_run_id }}
+          name: distributed-40k-capacity-pass-${{ inputs.capacity_run_id }}
+          path: artifacts/capacity-pass
+      - name: Bind exact capacity evidence and expose immutable run groups
+        id: bind
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          EXPECTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const expectedSha = process.env.EXPECTED_SHA.toLowerCase();
+          const expectedDeployment = process.env.EXPECTED_DEPLOYMENT_ID;
+          const burst = JSON.parse(fs.readFileSync('artifacts/capacity-validation/distributed-40k-validation-million_burst_40k.json','utf8'));
+          const soak = JSON.parse(fs.readFileSync('artifacts/capacity-validation/distributed-40k-validation-soak_40k_5m.json','utf8'));
+          const final = JSON.parse(fs.readFileSync('artifacts/capacity-pass/distributed-40k-capacity-pass.json','utf8'));
+          for (const [name, evidence] of [['burst',burst],['soak',soak]]) {
+            if (evidence?.pass !== true) throw new Error(`${name} validation is not PASS`);
+            if (evidence?.candidate_sha !== expectedSha || evidence?.verified_staging_sha !== expectedSha) throw new Error(`${name} SHA binding mismatch`);
+            if (evidence?.deployment_id !== expectedDeployment) throw new Error(`${name} deployment binding mismatch`);
+            if (evidence?.aggregate_rate_per_second !== 40000 || evidence?.generator_count !== 40 || evidence?.shard_count !== 40) throw new Error(`${name} distributed shape mismatch`);
+            for (const field of ['zero_failed_http_requests','zero_server_5xx_responses','zero_transport_errors_or_timeouts','zero_auth_failures','zero_rate_limit_responses','zero_dropped_iterations','zero_response_security_violations','zero_execution_boundary_violations','zero_response_header_violations','zero_oversized_responses']) {
+              if (evidence?.[field] !== true) throw new Error(`${name} missing required zero-error evidence: ${field}`);
+            }
+            if (evidence?.maximum_first_request_start_offset_ms > 3000 || evidence?.maximum_generator_launch_skew_ms > 2000) throw new Error(`${name} synchronization evidence failed`);
+          }
+          if (burst.total_requests !== 1000000 || burst.duration_seconds !== 25) throw new Error('Burst shape is not exact 1M/25s');
+          if (soak.total_requests !== 12000000 || soak.duration_seconds !== 300) throw new Error('Soak shape is not exact 12M/300s');
+          if (burst.target_host !== soak.target_host) throw new Error('Burst/soak target host mismatch');
+          if (final?.pass !== true || final?.candidate_sha !== expectedSha || final?.operator_deployment_id !== expectedDeployment) throw new Error('Capacity-pass artifact binding mismatch');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `burst_run_group_id=${burst.run_group_id}\nsoak_run_group_id=${soak.run_group_id}\ntarget_host=${burst.target_host}\n`);
+          const bound = { schema_version:'geomacro.distributed-40k-bound-capacity.v1', candidate_sha:expectedSha, deployment_id:expectedDeployment, target_host:burst.target_host, burst, soak, source_capacity_pass:final, pass:true };
+          fs.writeFileSync('artifacts/distributed-40k-bound-capacity.json', JSON.stringify(bound,null,2)+'\n');
+          NODE
+      - name: Upload exact bound capacity evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-40k-bound-capacity-${{ github.run_id }}
+          path: artifacts/distributed-40k-bound-capacity.json
+          if-no-files-found: error
+          retention-days: 90
+
+  post-load-control-and-telemetry:
+    needs: bind-capacity-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging-capacity
+    env:
+      RISK_GATE_DISTRIBUTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+      RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+      RISK_GATE_DISTRIBUTED_RUN_GROUP_ID: closure-${{ inputs.capacity_run_id }}
+      RISK_GATE_DISTRIBUTED_STAGING_BASE_URL: ${{ vars.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL }}
+      RISK_GATE_DISTRIBUTED_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_API_KEYS_JSON: ${{ secrets.RISK_GATE_DISTRIBUTED_API_KEYS_JSON }}
+      RISK_GATE_DISTRIBUTED_TELEMETRY_URL: ${{ vars.RISK_GATE_DISTRIBUTED_TELEMETRY_URL }}
+      RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_TELEMETRY_TOKEN: ${{ secrets.RISK_GATE_DISTRIBUTED_TELEMETRY_TOKEN }}
+      RISK_GATE_DISTRIBUTED_BURST_RUN_GROUP_ID: ${{ needs.bind-capacity-run.outputs.burst_run_group_id }}
+      RISK_GATE_DISTRIBUTED_SOAK_RUN_GROUP_ID: ${{ needs.bind-capacity-run.outputs.soak_run_group_id }}
+      RISK_GATE_DISTRIBUTED_TARGET_HOST: ${{ needs.bind-capacity-run.outputs.target_host }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Require complete fail-closed staging observability configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in RISK_GATE_DISTRIBUTED_STAGING_BASE_URL RISK_GATE_DISTRIBUTED_EXPECTED_HOST RISK_GATE_DISTRIBUTED_API_KEYS_JSON RISK_GATE_DISTRIBUTED_TELEMETRY_URL RISK_GATE_DISTRIBUTED_TELEMETRY_EXPECTED_HOST RISK_GATE_DISTRIBUTED_TELEMETRY_TOKEN; do
+            [[ -n "${!name:-}" ]] || { echo "::error title=Missing staging-capacity evidence configuration::$name is required; no inferred capacity pass is allowed."; exit 1; }
+          done
+      - name: Audit synchronous Risk Gate provider path
+        run: node scripts/scale/audit-risk-gate-provider-path.mjs
+      - name: Prove post-load auth, replay, conflict and response-security controls
+        run: node scripts/scale/probe-distributed-staging-control-plane.mjs
+      - name: Retrieve authenticated full-window infrastructure telemetry
+        run: node scripts/scale/fetch-distributed-capacity-telemetry.mjs
+      - name: Validate DB pool, edge/runtime, auth/rate-limit, security and idempotency telemetry
+        env:
+          RISK_GATE_DISTRIBUTED_TELEMETRY_PATH: artifacts/distributed-40k-infra-telemetry.json
+          RISK_GATE_DISTRIBUTED_EXPECTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_BURST_RUN_GROUP_ID: ${{ needs.bind-capacity-run.outputs.burst_run_group_id }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_SOAK_RUN_GROUP_ID: ${{ needs.bind-capacity-run.outputs.soak_run_group_id }}
+        run: node scripts/scale/validate-distributed-capacity-telemetry.mjs
+      - name: Upload post-load control and infrastructure evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-40k-post-load-evidence-${{ github.run_id }}
+          path: |
+            artifacts/risk-gate-provider-path-audit.json
+            artifacts/distributed-40k-control-plane-proof.json
+            artifacts/distributed-40k-infra-telemetry.json
+            artifacts/distributed-40k-infra-telemetry-validation.json
+          if-no-files-found: error
+          retention-days: 90
+
+  closure:
+    needs: [bind-capacity-run, post-load-control-and-telemetry]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download current-run bound capacity evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distributed-40k-bound-capacity-${{ github.run_id }}
+          path: artifacts/final
+      - name: Download current-run post-load evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distributed-40k-post-load-evidence-${{ github.run_id }}
+          path: artifacts/final
+      - name: Create exact-candidate full 40k launch evidence closure
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          EXPECTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          CAPACITY_RUN_ID: ${{ inputs.capacity_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read = (name) => JSON.parse(fs.readFileSync(`artifacts/final/${name}`,'utf8'));
+          const load = read('distributed-40k-bound-capacity.json');
+          const telemetry = read('distributed-40k-infra-telemetry-validation.json');
+          const control = read('distributed-40k-control-plane-proof.json');
+          const provider = read('risk-gate-provider-path-audit.json');
+          const sha = process.env.EXPECTED_SHA.toLowerCase();
+          const deployment = process.env.EXPECTED_DEPLOYMENT_ID;
+          for (const [name,e] of [['load',load],['telemetry',telemetry],['control',control]]) {
+            const candidate = String(e?.candidate_sha || '').toLowerCase();
+            const boundDeployment = String(e?.deployment_id || e?.operator_deployment_id || '');
+            if (e?.pass !== true || candidate !== sha || boundDeployment !== deployment) throw new Error(`${name} evidence is not bound PASS evidence`);
+          }
+          if (provider?.pass !== true || String(provider?.candidate_sha || '').toLowerCase() !== sha || provider?.external_model_provider_in_synchronous_request_path !== false || provider?.external_model_provider_saturation?.status !== 'not_applicable_to_synchronous_risk_gate_request_path') throw new Error('provider-path evidence is incomplete');
+          if (control?.exact_replay_http_200 !== true || control?.mutated_replay_http_409 !== true || control?.missing_auth_rejected !== true || control?.invalid_auth_rejected !== true) throw new Error('post-load control-plane proof incomplete');
+          if (telemetry?.db_pool?.connection_errors !== 0 || telemetry?.db_pool?.exhausted_events !== 0 || telemetry?.edge_runtime?.saturation_events !== 0 || telemetry?.edge_runtime?.runtime_errors !== 0) throw new Error('infrastructure telemetry has unresolved errors/saturation');
+          const evidence = {
+            schema_version:'geomacro.distributed-40k-launch-evidence-closure.v1',
+            generated_at:new Date().toISOString(),
+            candidate_sha:sha,
+            verified_staging_sha:sha,
+            deployment_id:deployment,
+            capacity_workflow_run_id:Number(process.env.CAPACITY_RUN_ID),
+            target_host:load.target_host,
+            real_staging_load:{
+              burst:{requests:1000000,rps:40000,duration_seconds:25,p95_ms:load.burst.worst_shard_latency_ms.p95,p99_ms:load.burst.worst_shard_latency_ms.p99},
+              soak:{requests:12000000,rps:40000,duration_seconds:300,p95_ms:load.soak.worst_shard_latency_ms.p95,p99_ms:load.soak.worst_shard_latency_ms.p99},
+              zero_5xx:true,zero_timeouts_transport_errors:true,zero_unexpected_auth_failures:true,zero_rate_limits:true,zero_data_leak_response_violations:true,
+            },
+            db_pool:telemetry.db_pool,
+            edge_runtime:telemetry.edge_runtime,
+            auth_rate_limit:telemetry.auth_rate_limit,
+            idempotency_replay:{...telemetry.idempotency_replay,post_load_control_plane_pass:true},
+            provider_saturation:provider.external_model_provider_saturation,
+            observation_windows:telemetry.observation_windows,
+            authenticated_telemetry_collector:telemetry.collector,
+            production_load:false,
+            real_payment:false,
+            mainnet_activation:false,
+            first_party_evidence:true,
+            pass:true,
+            limitation:'This proves the recorded isolated-staging 40,000 requests/second arrival-rate burst and five-minute soak under the bound first-party telemetry/security conditions. It does not prove 40,000 simultaneous open connections, unlimited production capacity, or third-party certification.',
+          };
+          fs.writeFileSync('artifacts/distributed-40k-launch-evidence-closure.json',JSON.stringify(evidence,null,2)+'\n');
+          console.log('PASS: real 40k load, DB/edge telemetry, auth, leakage, replay/idempotency, and provider-path evidence are bound to one exact candidate/deployment.');
+          NODE
+      - name: Upload final exact-candidate 40k evidence closure
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-40k-launch-evidence-closure-${{ github.run_id }}
+          path: artifacts/distributed-40k-launch-evidence-closure.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record evidence boundary
+        shell: bash
+        run: |
+          {
+            echo '## Distributed 40k Evidence Closure'
+            echo
+            echo '- 1M @ 40k RPS burst: PASS'
+            echo '- 12M / 5-minute @ 40k RPS soak: PASS'
+            echo '- p95/p99 + 5xx + timeout/transport gates: PASS'
+            echo '- DB pool + edge/runtime full-window telemetry: PASS'
+            echo '- Auth/rate-limit + response leakage: PASS'
+            echo '- Post-load idempotency/replay/conflict: PASS'
+            echo '- External model-provider saturation: N/A to synchronous Risk Gate path, source-audited'
+            echo '- Exact candidate/deployment binding: PASS'
+            echo '- Production load / payment / mainnet activation: false'
+          } >> "$GITHUB_STEP_SUMMARY"
