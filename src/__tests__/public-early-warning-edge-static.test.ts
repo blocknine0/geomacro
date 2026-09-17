@@ -44,6 +44,19 @@ describe("public Early Warning production read boundary", () => {
     }
   });
 
+  it("keeps the core public feed available when the optional market-impact schema extension is unavailable", () => {
+    expect(edge).toContain("CORE_PUBLIC_SELECT");
+    expect(edge).toContain("EXTENDED_PUBLIC_SELECT");
+    expect(edge).toContain("optional extended feed read failed; retrying core bounded feed");
+    expect(edge).toContain('degraded_reason: "optional_market_impact_extension_unavailable"');
+    expect(edge).toContain("market_impact: null");
+    expect(edge).toContain("market_impact_methodology_version: null");
+    expect(edge).toContain("market_impact_calibrated: false");
+    expect(edge).toContain("market_impact_hash: null");
+    expect(edge).toContain("if (core.error)");
+    expect(edge).toContain('return json(503, { ok: false, code: "feed_unavailable" })');
+  });
+
   it("preserves service-role-only table access instead of opening anon RLS", () => {
     expect(ledgerMigration).toContain(
       "revoke all on table public.early_warning_alerts from PUBLIC, anon, authenticated;",
