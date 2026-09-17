@@ -46,7 +46,8 @@ describe("P0 exact-candidate launch closure", () => {
     expect(controlProbe).toContain("IDEMPOTENCY_CONFLICT");
     expect(controlProbe).toContain("missing_auth_rejected");
     expect(controlProbe).toContain("execution_authorized: false");
-    expect(evidenceClosure).toContain("post-load idempotency/replay/conflict");
+    expect(evidenceClosure).toContain("Prove post-load auth, replay, conflict and response-security controls");
+    expect(evidenceClosure).toContain("post_load_control_plane_pass:true");
   });
 
   it("treats external model-provider saturation as N/A only after a source-bound request-path audit", () => {
