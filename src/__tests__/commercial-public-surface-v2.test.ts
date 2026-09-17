@@ -55,7 +55,7 @@ describe("commercial public surface v2", () => {
     expect(home).toContain("Why adopt Geomacro");
     expect(home).toContain("Who it is for");
     expect(home).toContain("Ecosystem & partnership");
-    expect(home).toContain("Why partner");
+    expect(home).toContain("Discuss a partnership");
     expect(home).not.toContain("AskGeomacroSection");
     expect(home).not.toContain("RiskIndicesSection");
     expect(home).not.toContain("eventCount");
