@@ -27,6 +27,12 @@ function hash(value) {
   return crypto.createHash("sha256").update(String(value ?? "")).digest("hex").slice(0, 16);
 }
 
+function privateField(detail, field) {
+  const raw = String(detail ?? "").trim();
+  const match = raw.match(new RegExp(`(?:^|;\\s*)${field}=([^;]+)`, "i"));
+  return match ? match[1].trim().slice(0, 120) : null;
+}
+
 function classify(detail) {
   const raw = String(detail ?? "").trim();
   const lower = raw.toLowerCase();
@@ -73,6 +79,7 @@ const countryRows = await readJson(
 
 const latest = failedRuns[0] ?? null;
 const classified = latest ? classify(latest.error_detail) : { category: "no_failed_run", sqlstate: null };
+const phase = latest ? privateField(latest.error_detail, "phase") : null;
 const recurring = latest
   ? failedRuns.filter((run) => hash(run.error_detail) === hash(latest.error_detail)).length
   : 0;
@@ -83,7 +90,9 @@ const summary = {
   latest_failure: latest
     ? {
         category: classified.category,
+        phase,
         sqlstate: classified.sqlstate,
+        private_error_code: latest.error_code,
         detail_fingerprint: hash(latest.error_detail),
         recurrence_in_last_20_failures: recurring,
         started_at: latest.started_at,
@@ -103,7 +112,7 @@ const summary = {
 
 console.log(JSON.stringify(summary, null, 2));
 
-if (classified.category === "opaque_object" || classified.category === "unclassified_private_error") {
+if (classified.category === "opaque_object" || (classified.category === "unclassified_private_error" && !phase)) {
   console.error(
     "Private diagnostics are not specific enough to identify the failing database/storage phase. " +
       "The runtime error serializer must be hardened before treating the structuring incident as resolved.",
