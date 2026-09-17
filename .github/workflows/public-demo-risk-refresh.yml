@@ -1,0 +1,115 @@
+name: Public Demo Risk Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */2 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/public-demo-risk-refresh.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-demo-risk-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production signing configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('Risk Object signing key must be Ed25519');
+          }
+
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n',
+          );
+          NODE
+
+      - name: Verify signer matches deployed public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/keys.json
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/keys.json', 'utf8'));
+          const key = Array.isArray(body?.keys)
+            ? body.keys.find((item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID)
+            : null;
+
+          if (!key || key.status !== 'active') {
+            throw new Error('Configured Risk Object signing key is not the deployed active key');
+          }
+
+          if (key.public_key_spki_b64 !== process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
+            throw new Error('Configured private key does not match deployed public verification key');
+          }
+          NODE
+
+      - name: Refresh all visible public demo subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/refresh-public-demo-risk-objects.ts | tee /tmp/public-demo-refresh.json
+          jq -e '.ok == true and (.demo_results | length) == 4' /tmp/public-demo-refresh.json >/dev/null
+
+      - name: Publish sanitized health summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -s /tmp/public-demo-refresh.json ]; then
+            {
+              echo "## Public demo refresh"
+              echo
+              jq '{ok, refreshed_at, countries, corridors, demo_results}' /tmp/public-demo-refresh.json
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Public demo refresh did not produce a JSON summary." >> "$GITHUB_STEP_SUMMARY"
+          fi
