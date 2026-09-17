@@ -630,6 +630,14 @@ export const Route = createFileRoute("/api/x402/nevermined/intelligence")({
             settlementNetwork,
           });
         } catch (error) {
+          await releaseAgentCommerceDelivery({
+            provider: "nevermined",
+            providerEnvironment: config.environment,
+            paymentFingerprint,
+            claimToken,
+            failureCode: "NEVERMINED_POST_SETTLEMENT_LEDGER_FAILURE",
+            manualReview: true,
+          }).catch(() => undefined);
           console.error("[nevermined-x402] post-settlement durable finalization failed", error);
           return json(
             {

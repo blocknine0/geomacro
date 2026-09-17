@@ -80,6 +80,15 @@ describe("agent commerce machine discovery contract", () => {
       expect(target.production_enabled).toBe(false);
     }
     expect(distribution.launch_rules.verify_live_402_before_manual_submission).toBe(true);
+    expect(distribution.launch_rules.never_claim_listing_from_payment_success_alone).toBe(true);
+    expect(distribution.launch_rules.require_observed_registry_visibility_before_public_listing_claim).toBe(true);
+    expect(distribution.launch_rules.quarantine_provider_on_runtime_or_listing_metadata_mismatch).toBe(true);
+    expect(distribution.targets.coinbase_bazaar.status).toBe(
+      "prelaunch_indexing_candidate_verify_after_settlement",
+    );
+    expect(distribution.targets.coinbase_agentic_market.status).toBe(
+      "hold_until_bazaar_visibility_is_observed",
+    );
     expect(distribution.launch_rules.automatic_public_social_posting).toBe(false);
     expect(launchPackage).toContain("PRE-LAUNCH HOLD");
   });

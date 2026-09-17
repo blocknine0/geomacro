@@ -413,6 +413,15 @@ export const Route = createFileRoute("/api/x402/intelligence")({
           await completeCoinbaseX402Delivery({ paymentFingerprint, claimToken, payer: settlement.payer ?? verified.payer ?? null, settlementTx: settlement.transaction, settlementNetwork: settlement.network ?? config.networkName });
           if (usageReservation.enforced) await finalizeCoinbaseX402AgentUsage(paymentFingerprint);
         } catch (error) {
+          await releaseCoinbaseX402DeliveryForRetry({
+            paymentFingerprint,
+            claimToken,
+            failureCode: "COINBASE_POST_SETTLEMENT_LEDGER_FAILURE",
+            manualReview: true,
+          }).catch(() => undefined);
+          if (usageReservation.enforced) {
+            await releaseCoinbaseX402AgentUsage(paymentFingerprint, true).catch(() => undefined);
+          }
           console.error("[x402-adaptive] post-settlement durable finalization failed", error);
           return json({ ok: false, error: { code: "X402_POST_SETTLEMENT_RECONCILIATION_REQUIRED", message: "Payment settled but durable finalization requires reconciliation. Automatic re-charge remains blocked." }, settlement_reference: settlement.transaction, execution_authorized: false }, 503, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
         }

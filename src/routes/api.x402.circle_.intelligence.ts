@@ -569,14 +569,14 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             ...assembled,
             payment: {
               provider: "circle_gateway_x402",
-              settled: true,
+              settled: false,
               amount_atomic: requirement.amount,
               amount_usdc: config.priceUsdc,
               asset: "USDC",
               asset_contract: CIRCLE_X402_BASE_MAINNET_USDC,
               network: requirement.network,
               recipient: requirement.payTo,
-              accounting_state: "commercial_pending_accounting",
+              accounting_state: "pending_settlement",
               reconciliation_required: true,
               idempotent_replay: false,
             },
@@ -707,16 +707,32 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
               ok: false,
               error: {
                 code: "CIRCLE_GATEWAY_POST_SETTLEMENT_RECONCILIATION_REQUIRED",
-                message: "Payment settled but delivery accounting requires manual reconciliation.",
+                message:
+                  "Payment settled but delivery accounting requires manual reconciliation. Automatic re-charge remains blocked.",
               },
+              settlement_reference: settlement.settlement_reference,
               execution_authorized: false,
             },
             503,
+            {
+              "PAYMENT-RESPONSE": encodePaymentHeader({
+                success: true,
+                provider: "circle_gateway_x402",
+                payer: settlement.payer,
+                settlement_reference: settlement.settlement_reference,
+                network: settlement.network,
+                amount_atomic: requirement.amount,
+                asset: "USDC",
+                reconciliation_status: "manual_review",
+              }),
+            },
           );
         }
 
         responsePayload.payment = {
           ...(responsePayload.payment as Record<string, unknown>),
+          settled: true,
+          accounting_state: "commercial_pending_accounting",
           settlement_reference: settlement.settlement_reference,
           settlement_network: settlement.network,
           payer: settlement.payer,

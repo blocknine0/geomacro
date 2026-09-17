@@ -16,6 +16,8 @@ on:
       - "public/llms.txt"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/__tests__/production-launch-safety-static.test.ts"
+      - "docs/PRODUCTION_LAUNCH_ACCEPTANCE.md"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/lib/commercial-growth.server.ts"
       - "server/api/internal/commercial-growth.get.ts"
@@ -61,6 +63,8 @@ on:
       - "public/llms.txt"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/__tests__/production-launch-safety-static.test.ts"
+      - "docs/PRODUCTION_LAUNCH_ACCEPTANCE.md"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/lib/commercial-growth.server.ts"
       - "server/api/internal/commercial-growth.get.ts"
@@ -111,6 +115,7 @@ jobs:
         run: >-
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
+          src/__tests__/production-launch-safety-static.test.ts
           src/lib/coinbase-x402.server.test.ts
           src/lib/nevermined-x402.server.test.ts
           src/__tests__/goat-flow-contract.test.ts
@@ -134,6 +139,7 @@ jobs:
               if (provider.production_enabled !== false) throw new Error(`${name} production_enabled must remain false`);
             }
             if (manifest.providers?.coinbase_x402?.launch_cohort !== true) throw new Error("Coinbase must remain in the initial launch cohort");
+            if (manifest.providers?.circle_gateway_x402?.launch_cohort !== true) throw new Error("Circle must remain in the initial launch cohort");
             if (manifest.providers?.nevermined?.launch_cohort !== true) throw new Error("Nevermined must remain in the initial launch cohort");
             if (manifest.providers?.goat_x402?.launch_cohort !== false) throw new Error("GOAT mainnet must remain outside the initial cohort until manual merchant onboarding completes");
             if (manifest.providers?.goat_x402?.status !== "deferred_manual_mainnet_merchant_onboarding") throw new Error("GOAT deferred status must remain explicit");
@@ -145,6 +151,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'assertCommercialLaunchAuthorized("coinbase_x402")' src/lib/coinbase-x402.server.ts
+          grep -q 'assertCommercialLaunchAuthorized("circle_gateway_x402")' src/lib/circle-gateway-x402-production.server.ts
           grep -q 'assertCommercialLaunchAuthorized("nevermined")' src/lib/nevermined-x402.server.ts
           grep -q 'assertCommercialLaunchAuthorized("goat_x402")' src/lib/goat-flow.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED' src/lib/goat-pilot-service.server.ts
@@ -152,8 +159,13 @@ jobs:
           grep -q 'https://api.live.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
           grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
+          grep -q '^GEOMACRO_COMMERCE_EMERGENCY_FREEZE=false$' .env.example
+          grep -q '^GEOMACRO_COMMERCE_DISABLED_PROVIDERS=$' .env.example
           grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
           grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+          grep -q '^CIRCLE_X402_MAINNET_ACK=$' config/prelaunch-mainnet-x402.env.example
+          grep -q '^GEOMACRO_COMMERCE_EMERGENCY_FREEZE=false$' config/prelaunch-mainnet-x402.env.example
+          grep -q '^GEOMACRO_COMMERCE_DISABLED_PROVIDERS=$' config/prelaunch-mainnet-x402.env.example
           grep -q '^NEVERMINED_NVM_API_KEY=$' .env.example
           grep -q '^NEVERMINED_PLAN_ID=$' .env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
@@ -162,6 +174,10 @@ jobs:
           fi
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
             echo 'ERROR: Coinbase mainnet acknowledgement must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^CIRCLE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' config/prelaunch-mainnet-x402.env.example; then
+            echo 'ERROR: Circle mainnet acknowledgement must not be committed as active.' >&2
             exit 1
           fi
           if grep -Eq '^NEVERMINED_X402_ENVIRONMENT=live$' .env.example; then
@@ -247,6 +263,7 @@ jobs:
             if (c.commercial_contract?.static_catalog_price_authoritative !== false) throw new Error("static catalog cannot become authoritative pricing");
             const p = c.offers?.[0]?.providers ?? {};
             if (p.coinbase_x402?.launch_cohort !== true || p.coinbase_x402?.production_enabled !== false) throw new Error("Coinbase discovery cohort mismatch");
+            if (p.circle_gateway?.launch_cohort !== true || p.circle_gateway?.production_enabled !== false) throw new Error("Circle discovery cohort mismatch");
             if (p.nevermined?.launch_cohort !== true || p.nevermined?.production_enabled !== false) throw new Error("Nevermined discovery cohort mismatch");
             if (p.goat_x402?.launch_cohort !== false || p.goat_x402?.production_enabled !== false) throw new Error("GOAT discovery must remain deferred");
           '

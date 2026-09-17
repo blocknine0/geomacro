@@ -22,21 +22,25 @@
     "nevermined_registry",
     "true402"
   ],
-  "parallel_onboarding_cohort": ["goat_mainnet"],
-  "secondary_after_launch": ["402bazaar"],
+  "parallel_onboarding_cohort": [
+    "goat_mainnet"
+  ],
+  "secondary_after_launch": [
+    "402bazaar"
+  ],
   "targets": {
     "coinbase_bazaar": {
-      "status": "prelaunch_ready_auto_discovery",
-      "listing_mode": "automatic_from_valid_x402_payment_and_bazaar_extension",
+      "status": "prelaunch_indexing_candidate_verify_after_settlement",
+      "listing_mode": "bazaar_extension_plus_cdp_facilitator_indexing_then_observed_catalog_verification",
       "public_submission_required": false,
-      "launch_action": "enable approved Coinbase production rail, complete one capped smoke purchase, then verify Bazaar indexing and extension echo",
+      "launch_action": "enable the approved Coinbase production rail only after P0 and canary gates, complete one capped reconciled smoke purchase, then query the official CDP Bazaar discovery/search surfaces; do not claim Geomacro is listed until the exact resource is actually observed",
       "production_enabled": false
     },
     "coinbase_agentic_market": {
-      "status": "prelaunch_ready_auto_index",
-      "listing_mode": "automatic_index_of_bazaar_services",
+      "status": "hold_until_bazaar_visibility_is_observed",
+      "listing_mode": "downstream_discovery_only_after_observed_bazaar_visibility",
       "public_submission_required": false,
-      "launch_action": "verify the Bazaar-indexed Geomacro resource appears with truthful metadata and live activity",
+      "launch_action": "after the exact Geomacro resource is observed in Bazaar, verify any downstream Agentic Market visibility and metadata independently; do not infer listing from payment success alone",
       "production_enabled": false
     },
     "circle_agent_marketplace": {
@@ -130,8 +134,12 @@
       "/api/x402/intelligence",
       "/api/x402/circle/intelligence"
     ],
-    "nevermined_endpoint_paths": ["/api/x402/nevermined/intelligence"],
-    "free_preflight_endpoint_paths": ["/api/x402/risk/availability"],
+    "nevermined_endpoint_paths": [
+      "/api/x402/nevermined/intelligence"
+    ],
+    "free_preflight_endpoint_paths": [
+      "/api/x402/risk/availability"
+    ],
     "discovery_paths": [
       "/.well-known/x402.json",
       "/.well-known/x402",
@@ -161,6 +169,9 @@
     "record_listing_evidence_in_growth_queue": true,
     "automatic_public_social_posting": false,
     "mainnet_activation_requires_explicit_owner_authorization": true,
-    "all_targets_default_production_enabled_false": true
+    "all_targets_default_production_enabled_false": true,
+    "never_claim_listing_from_payment_success_alone": true,
+    "require_observed_registry_visibility_before_public_listing_claim": true,
+    "quarantine_provider_on_runtime_or_listing_metadata_mismatch": true
   }
 }
