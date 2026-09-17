@@ -17,10 +17,10 @@ import { RiskIndicesSection } from "@/components/home/gri-section";
 import { GRI_METHOD_VERSION } from "@/lib/gri-current-contract";
 
 const FLOW = [
-  ["1", "Observe", "We collect current geopolitical, macro and critical-mineral developments from governed sources."],
-  ["2", "Structure", "Each development is classified, time-stamped and linked to the evidence behind it."],
-  ["3", "Score & explain", "Separate risk indices and country or corridor views show the current risk level, what changed and how confident the evidence is."],
-  ["4", "Deliver", "Analysts and software systems can use that context in their own review and approval process."],
+  ["1", "Watch", "Geomacro monitors geopolitical, macro and critical-mineral developments from governed sources."],
+  ["2", "Verify", "Accepted developments are time-stamped, structured and linked back to their evidence."],
+  ["3", "Explain", "Risk readings show what changed, why it changed and how confident the evidence is."],
+  ["4", "Use", "People can review the result directly, while software can consume the same bounded risk context."],
 ] as const;
 
 const PRODUCT_CARDS = [
@@ -28,15 +28,15 @@ const PRODUCT_CARDS = [
     icon: Radio,
     status: "LIVE",
     title: "Risk Intelligence",
-    body: "See current geopolitical, macro and critical-mineral developments with severity, confidence, evidence and context.",
+    body: "See current geopolitical, macro and critical-mineral developments with severity, confidence and source evidence.",
     to: "/intelligence" as const,
-    cta: "Explore intelligence",
+    cta: "Explore live intelligence",
   },
   {
     icon: Bot,
     status: "LIVE",
     title: "Ask Geomacro",
-    body: "Ask about Geomacro's recorded evidence and current risk indices. Answers stay within evidence Geomacro can cite.",
+    body: "Ask a risk question and get an answer grounded in Geomacro's recorded evidence and current risk data.",
     to: "/ask-geomacro" as const,
     cta: "Ask a risk question",
   },
@@ -44,15 +44,15 @@ const PRODUCT_CARDS = [
     icon: ShieldCheck,
     status: "PRIVATE PILOT",
     title: "Risk Gate",
-    body: "Check country or corridor risk before a payment or other financial action moves forward. The customer's own policy still decides what happens next.",
+    body: "Check country or corridor risk before a financial action moves forward. Geomacro returns context; the customer keeps control.",
     to: "/risk-gate" as const,
     cta: "See Risk Gate",
   },
   {
     icon: Braces,
-    status: "PUBLIC DATA + PRIVATE PILOT API",
+    status: "PUBLIC + PILOT API",
     title: "Data & API",
-    body: "Use public intelligence now, or request pilot access to signed Risk Objects and Risk Gate outputs for software workflows.",
+    body: "Use public intelligence now, or test signed Risk Objects and Risk Gate outputs inside a controlled workflow.",
     to: "/data-api" as const,
     cta: "View data access",
   },
@@ -62,7 +62,7 @@ const BUYER_USE_CASES = [
   {
     icon: Landmark,
     title: "Treasury & payments",
-    body: "Check country and corridor risk before changing limits, releasing a payment or escalating an approval.",
+    body: "Add country and corridor risk context before releasing a cross-border payment, changing limits or escalating an approval.",
   },
   {
     icon: Building2,
@@ -81,56 +81,68 @@ const BUYER_USE_CASES = [
   },
 ] as const;
 
+const QUESTIONS = [
+  "Why did geopolitical risk move today?",
+  "Which countries now need closer review?",
+  "What evidence is driving the change?",
+] as const;
+
 export function CommercialHome() {
   return (
     <>
-      <section className="mx-auto w-full max-w-7xl px-4 pb-10 pt-10 sm:px-6 sm:pt-14 lg:pb-14 lg:pt-16">
-        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:gap-14">
+      <section className="mx-auto w-full max-w-7xl px-4 pb-10 pt-10 sm:px-6 sm:pt-14 lg:pb-16 lg:pt-16">
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:gap-14">
           <div className="min-w-0">
-            <Badge
-              variant="outline"
-              className="gap-2 border-primary/40 bg-primary/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-primary"
-            >
+            <Badge variant="outline" className="gap-2 border-primary/40 bg-primary/5 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-primary">
               <Radio className="h-3 w-3" /> Live geopolitical + macro + critical-mineral intelligence
             </Badge>
-            <h1 className="mt-6 max-w-4xl text-[clamp(2.4rem,6vw,5.4rem)] font-semibold leading-[0.98] tracking-tight">
-              Know what changed. <span className="text-primary">Know why it matters.</span>
+            <h1 className="mt-6 max-w-4xl text-[clamp(2.55rem,6vw,5.5rem)] font-semibold leading-[0.97] tracking-tight">
+              See what changed in global risk. <span className="text-primary">Then see why.</span>
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Geomacro tracks geopolitical, macro and critical-mineral developments, shows how risk is changing, and links each view back to evidence. Analysts can review it directly, while software systems can use the same context without handing execution control to Geomacro.
+              Geomacro turns current geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence for treasury, risk, supply-chain and software teams.
             </p>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Every reading is designed to lead back to evidence, confidence and change attribution, so a score is not the end of the answer.
+            </p>
+
+            <div className="mt-6 grid max-w-3xl gap-2 sm:grid-cols-3">
+              {QUESTIONS.map((question) => (
+                <Link key={question} to="/ask-geomacro" className="group rounded-xl border border-border/70 bg-card/35 px-4 py-3 text-sm leading-relaxed transition hover:border-primary/40 hover:bg-card/60">
+                  <span>{question}</span>
+                  <ArrowRight className="mt-2 h-3.5 w-3.5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                </Link>
+              ))}
+            </div>
+
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="gap-2">
-                <Link to="/intelligence">Explore intelligence <ArrowRight className="h-4 w-4" /></Link>
+                <Link to="/intelligence">Explore live intelligence <ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link to="/global-risk">View Risk Indices</Link>
               </Button>
               <Button asChild size="lg" variant="ghost">
-                <Link to="/institutional">Discuss a pilot</Link>
+                <Link to="/institutional">For institutions</Link>
               </Button>
             </div>
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-[0.13em] text-muted-foreground">
               <span>Public intelligence · Live</span>
               <span>Risk Gate · Private Pilot</span>
               <span>Arc / Circle · Technical Proof</span>
             </div>
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Public intelligence and research work without a wallet. Prediction markets, Arc and Circle flows are kept in a separate technical-proof area.
-            </p>
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-card/55 p-6 backdrop-blur-sm sm:p-7">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">How Geomacro works</p>
-              <span className="font-mono text-[10px] text-muted-foreground">Verified proof lineage · {GRI_METHOD_VERSION}</span>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">From event to decision context</p>
+              <span className="font-mono text-[10px] text-muted-foreground">{GRI_METHOD_VERSION}</span>
             </div>
             <ol className="mt-6 space-y-5">
               {FLOW.map(([step, title, body]) => (
                 <li key={step} className="grid grid-cols-[32px_minmax(0,1fr)] gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary/10 font-mono text-xs text-primary">
-                    {step}
-                  </span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary/10 font-mono text-xs text-primary">{step}</span>
                   <div>
                     <p className="font-medium text-foreground">{title}</p>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
@@ -138,6 +150,11 @@ export function CommercialHome() {
                 </li>
               ))}
             </ol>
+            <div className="mt-6 border-t border-border/60 pt-5">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Geomacro provides external risk context. It does not custody funds, replace compliance screening or authorize customer transactions.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -146,18 +163,18 @@ export function CommercialHome() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="max-w-3xl">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Product surfaces</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Choose the part of Geomacro that fits the job.</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">What you can do here</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Start with the question you need answered.</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            Public intelligence and the separate risk indices are live now. Ask Geomacro works from stored evidence. Risk Gate and commercial API access are available only through a controlled Private Pilot.
+            Public intelligence and risk indices are live. Ask Geomacro is available now. Risk Gate and commercial API delivery remain controlled Private Pilot products.
           </p>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {PRODUCT_CARDS.map(({ icon: Icon, status, title, body, to, cta }) => (
-            <article key={title} className="flex min-h-[260px] flex-col rounded-2xl border border-border/70 bg-card/50 p-6">
+            <article key={title} className="flex min-h-[250px] flex-col rounded-2xl border border-border/70 bg-card/50 p-6">
               <div className="flex items-center justify-between gap-3">
                 <Icon className="h-5 w-5 text-primary" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{status}</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.13em] text-muted-foreground">{status}</span>
               </div>
               <h3 className="mt-5 text-xl font-semibold">{title}</h3>
               <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
@@ -175,11 +192,11 @@ export function CommercialHome() {
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Risk Gate · Private Pilot</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">Check risk before the action, not after.</h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              A treasury system, payment workflow or agent sends the country or corridor context it needs checked. Risk Gate verifies the signed Risk Object and returns bounded external risk context and a recommendation. The customer's own identity, permissions and policy layer decides what happens next.
+              A treasury system, payment workflow or agent sends the country or corridor context it needs checked. Risk Gate verifies the signed Risk Object and returns bounded external risk context and a recommendation. The customer's own policy still decides what happens next.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild className="gap-2"><Link to="/risk-gate">Open Risk Gate <ArrowRight className="h-4 w-4" /></Link></Button>
-              <Button asChild variant="outline"><Link to="/institutional">Discuss a Private Pilot</Link></Button>
+              <Button asChild variant="outline"><Link to="/contact">Discuss a Private Pilot</Link></Button>
             </div>
           </div>
           <div className="rounded-2xl border border-border/70 bg-background/40 p-6">
@@ -189,9 +206,8 @@ export function CommercialHome() {
                 "Action submitted for review",
                 "Country / corridor Risk Object verified",
                 "Evidence, confidence and freshness checked",
-                "Risk Gate recommendation returned to the customer's system",
-                "Customer-owned policy applied by the customer system",
-                "Any downstream execution remains customer-controlled",
+                "Risk Gate recommendation returned",
+                "Customer policy decides what happens next",
               ].map((text) => (
                 <div key={text} className="flex items-start gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {text}
@@ -199,7 +215,7 @@ export function CommercialHome() {
               ))}
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              Geomacro does not authorize or execute the transaction. `execution_authorized` remains false, and the customer decides what happens next.
+              Geomacro does not authorize or execute the transaction. `execution_authorized` remains false.
             </p>
           </div>
         </div>
@@ -209,7 +225,7 @@ export function CommercialHome() {
         <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr]">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Who Geomacro is for</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight">Built for teams that already have a decision process.</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight">Built for teams that already make risk-sensitive decisions.</h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
               Geomacro adds a documented external-risk view to research, review, approval and monitoring workflows. It supports the decision; it does not replace the decision-maker.
             </p>
@@ -235,10 +251,10 @@ export function CommercialHome() {
         <div className="rounded-2xl border border-border/70 bg-card/45 p-6 sm:p-8">
           <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">Secondary technical proof</p>
-              <h2 className="mt-3 text-2xl font-semibold">Arc, Circle and prediction markets remain available as technical proof.</h2>
+              <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">Technical proof, kept separate</p>
+              <h2 className="mt-3 text-2xl font-semibold">Arc, Circle and prediction-market work remain available without defining the commercial product.</h2>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                They show the onchain and programmable-finance work already implemented on testnet. They are not the main commercial product.
+                These surfaces show testnet and programmable-finance implementation work. Geomacro's commercial identity remains risk intelligence and decision infrastructure.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -249,7 +265,7 @@ export function CommercialHome() {
             </div>
           </div>
           <div className="mt-6 border-t border-border/60 pt-5 text-sm text-muted-foreground">
-            For methodology and implementation details, use <Link to="/research" className="text-primary hover:underline">Research</Link>, <Link to="/docs" className="text-primary hover:underline">Documentation</Link> or <Link to="/about" className="text-primary hover:underline">About & Trust</Link>.
+            For deeper proof, use <Link to="/research" className="text-primary hover:underline">Research</Link>, <Link to="/docs" className="text-primary hover:underline">Documentation</Link> or <Link to="/about" className="text-primary hover:underline">About & Trust</Link>.
           </div>
         </div>
       </section>
