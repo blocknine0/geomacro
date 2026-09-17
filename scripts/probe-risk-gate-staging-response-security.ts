@@ -148,10 +148,11 @@ async function runProbe() {
   try {
     const response = await fetch(endpoint, {
       method: "POST",
+      redirect: "error",
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
-        "user-agent": "geomacro-staging-security-probe/1.0",
+        "user-agent": "geomacro-staging-security-probe/1.1",
       },
       body: JSON.stringify(syntheticRequestBody()),
       signal: controller.signal,
@@ -189,6 +190,7 @@ async function runProbe() {
       host: baseUrl.host,
       endpoint_path: endpoint.pathname,
       status: response.status,
+      redirect_policy: "error",
       api_key_echo: false,
       forbidden_sensitive_key: false,
       execution_authorized: false,
