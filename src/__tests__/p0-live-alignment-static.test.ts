@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => fs.readFileSync(path, "utf8");
 
 const smoke = read("scripts/ops/live-launch-surface-smoke.mjs");
+const buildSmoke = read("scripts/ops/live-build-sha-smoke.mjs");
 const workflow = read(".github/workflows/p0-live-alignment-diagnostic.yml");
 
 describe("P0 live deployment alignment contract", () => {
@@ -23,9 +24,15 @@ describe("P0 live deployment alignment contract", () => {
     expect(smoke).toContain('geomacro.public-early-warning-feed.v1');
   });
 
-  it("requires the exact published canonical SHA", () => {
-    expect(smoke).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA");
-    expect(smoke).toContain("deployedSha === expectedDeployedSha");
+  it("requires the exact published canonical SHA before diagnosing route failures", () => {
+    expect(buildSmoke).toContain("GEOMACRO_EXPECTED_DEPLOYED_SHA");
+    expect(buildSmoke).toContain("deployedSha === expectedSha");
+    expect(buildSmoke).toContain("/.well-known/geomacro-build.json");
+    expect(workflow).toContain("node scripts/ops/live-build-sha-smoke.mjs");
+    expect(workflow).toContain("node scripts/ops/live-launch-surface-smoke.mjs");
+    expect(workflow.indexOf("node scripts/ops/live-build-sha-smoke.mjs")).toBeLessThan(
+      workflow.indexOf("node scripts/ops/live-launch-surface-smoke.mjs"),
+    );
     expect(workflow).toContain("github.event.pull_request.base.sha");
     expect(workflow).toContain("expected_sha");
     expect(workflow).toContain("^[0-9a-fA-F]{40}$");
