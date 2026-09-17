@@ -90,6 +90,21 @@ The public naming for the third standalone index is **Critical Minerals Risk Ind
 
 If an eligible domain has no verified evidence, missing evidence is not converted into zero risk. Public risk-index presentation is fail-soft: a previously verified reading may remain visible during a refresh problem, while a cold read uses a neutral loading/refreshing state rather than fabricating a replacement score.
 
+```mermaid
+graph TD;
+    EV["Eligible observation i"] --> CW["confidenceWeight = confidence_i / 100"];
+    EV --> DW["decayWeight = 2^(-ageHours_i / 24)"];
+    CW --> RW["rawWeight_i = confidenceWeight * decayWeight"];
+    DW --> RW;
+    RW --> SCAP["Per-source evidence concentration cap"];
+    SCAP --> STCAP["Story-level evidence concentration cap"];
+    STCAP --> DOMAIN["Domain aggregation: geopolitics / macro / rare_earth, 1/3 each"];
+    DOMAIN --> COMPUTE["gri-v1.2.0 deterministic compute"];
+    COMPUTE --> PROOF["gri-proof-v1.2.0 lineage: methodology, input, calculation and proof hashes"];
+    PROOF --> LIVE["Published: Geopolitical / Macroeconomic / Critical Minerals Risk Index"];
+    PROOF --> AUDIT["Historical combined-GRI snapshot: audit record only"];
+```
+
 ### Evidence weighting
 
 For eligible observation `i`:
@@ -144,6 +159,16 @@ See [docs/RISK_INDICES_ARCHITECTURE.md](docs/RISK_INDICES_ARCHITECTURE.md), [doc
 ## Ask Geomacro
 
 Ask Geomacro is a public grounded-research interface over Geomacro's stored intelligence.
+
+```mermaid
+graph LR;
+    Q["User or agent query"] --> RET["Retrieve from stored event intelligence set"];
+    RET --> RANK["Bounded deterministic relevance ranking"];
+    RANK --> THRESH{"Evidence clears<br/>relevance threshold?"};
+    THRESH -->|No| WITHHOLD["Withhold interpretation"];
+    THRESH -->|Yes| CONTEXT["Use verified current risk context;<br/>historical GRI lineage kept explicit"];
+    CONTEXT --> ANSWER["Grounded answer"];
+```
 
 The current answer engine:
 
