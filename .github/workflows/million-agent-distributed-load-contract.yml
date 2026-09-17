@@ -4,28 +4,28 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'scripts/scale/generate-million-agent-load-plan.mjs'
-      - 'scripts/scale/risk-gate-million-agent.k6.js'
-      - 'scripts/scale/validate-million-agent-distributed-results.mjs'
-      - 'scripts/scale/run-million-agent-distributed-shard.mjs'
-      - 'scripts/scale/wait-for-distributed-generator-fleet.mjs'
+      - 'scripts/scale/**'
+      - 'scripts/ops/live-data-reliability-smoke.mjs'
       - 'src/__tests__/million-agent-distributed-load-static.test.ts'
+      - 'src/__tests__/p0-launch-closure-static.test.ts'
       - 'docs/MILLION_AGENT_DISTRIBUTED_LOAD.md'
       - '.github/workflows/million-agent-distributed-load-contract.yml'
       - '.github/workflows/million-agent-distributed-staging-execution.yml'
+      - '.github/workflows/distributed-40k-evidence-closure.yml'
+      - '.github/workflows/strict-commercial-launch-closure.yml'
       - '.github/workflows/commercial-launch-strict-evidence.yml'
   push:
     branches: [main]
     paths:
-      - 'scripts/scale/generate-million-agent-load-plan.mjs'
-      - 'scripts/scale/risk-gate-million-agent.k6.js'
-      - 'scripts/scale/validate-million-agent-distributed-results.mjs'
-      - 'scripts/scale/run-million-agent-distributed-shard.mjs'
-      - 'scripts/scale/wait-for-distributed-generator-fleet.mjs'
+      - 'scripts/scale/**'
+      - 'scripts/ops/live-data-reliability-smoke.mjs'
       - 'src/__tests__/million-agent-distributed-load-static.test.ts'
+      - 'src/__tests__/p0-launch-closure-static.test.ts'
       - 'docs/MILLION_AGENT_DISTRIBUTED_LOAD.md'
       - '.github/workflows/million-agent-distributed-load-contract.yml'
       - '.github/workflows/million-agent-distributed-staging-execution.yml'
+      - '.github/workflows/distributed-40k-evidence-closure.yml'
+      - '.github/workflows/strict-commercial-launch-closure.yml'
       - '.github/workflows/commercial-launch-strict-evidence.yml'
   workflow_dispatch:
 
@@ -49,11 +49,20 @@ jobs:
         run: node scripts/scale/generate-million-agent-load-plan.mjs --self-test
       - name: Verify synchronized same-release 40k result aggregator
         run: node scripts/scale/validate-million-agent-distributed-results.mjs --self-test
+      - name: Verify infrastructure telemetry fails closed
+        run: node scripts/scale/validate-distributed-capacity-telemetry.mjs --self-test
+      - name: Verify telemetry collector production-host guard
+        run: node scripts/scale/fetch-distributed-capacity-telemetry.mjs --self-test
+      - name: Verify idempotency proof production-host guard
+        run: node scripts/scale/probe-distributed-risk-gate-idempotency.mjs --self-test
       - name: Syntax-check load and orchestration scripts without sending traffic
         run: |
           node --check scripts/scale/risk-gate-million-agent.k6.js
           node --check scripts/scale/run-million-agent-distributed-shard.mjs
           node --check scripts/scale/wait-for-distributed-generator-fleet.mjs
+          node --check scripts/scale/probe-distributed-staging-control-plane.mjs
+          node --check scripts/scale/audit-risk-gate-provider-path.mjs
+          node --check scripts/ops/live-data-reliability-smoke.mjs
       - name: Generate canonical no-traffic 1M-at-40k plan
         env:
           RISK_GATE_DISTRIBUTED_PROFILE: million_burst_40k
@@ -75,22 +84,12 @@ jobs:
             if (p.production_target_allowed !== false) throw new Error('production target must remain forbidden');
             if (p.workload?.aggregate_arrival_rate_per_second !== 40000) throw new Error('expected exact 40k aggregate rate');
             if (p.workload?.shards !== 40) throw new Error('expected 40 shards');
-            if (p.latency_objective_ms?.p95_max !== 1500 || p.latency_objective_ms?.p99_max !== 3000) {
-              throw new Error('expected pinned 40k latency objectives');
-            }
+            if (p.latency_objective_ms?.p95_max !== 1500 || p.latency_objective_ms?.p99_max !== 3000) throw new Error('expected pinned 40k latency objectives');
           }
-          if (burst.workload?.total_requests !== 1000000 || burst.workload?.duration_seconds !== 25) {
-            throw new Error('1M-at-40k profile mismatch');
-          }
-          if (soak.workload?.total_requests !== 12000000 || soak.workload?.duration_seconds !== 300) {
-            throw new Error('40k five-minute soak profile mismatch');
-          }
-          if (burst.shards?.reduce((sum, s) => sum + Number(s.request_budget || 0), 0) !== 1000000) {
-            throw new Error('burst shard budgets must total 1M');
-          }
-          if (soak.shards?.reduce((sum, s) => sum + Number(s.request_budget || 0), 0) !== 12000000) {
-            throw new Error('soak shard budgets must total 12M');
-          }
+          if (burst.workload?.total_requests !== 1000000 || burst.workload?.duration_seconds !== 25) throw new Error('1M-at-40k profile mismatch');
+          if (soak.workload?.total_requests !== 12000000 || soak.workload?.duration_seconds !== 300) throw new Error('40k five-minute soak profile mismatch');
+          if (burst.shards?.reduce((sum, s) => sum + Number(s.request_budget || 0), 0) !== 1000000) throw new Error('burst shard budgets must total 1M');
+          if (soak.shards?.reduce((sum, s) => sum + Number(s.request_budget || 0), 0) !== 12000000) throw new Error('soak shard budgets must total 12M');
           NODE
       - name: Upload no-traffic 40k capacity plans
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -110,11 +109,12 @@ jobs:
             echo '- Production host guard: PASS'
             echo '- Same-release SHA + synchronized generator result contract: PASS'
             echo '- 40-runner occupied-fleet barrier contract: PASS'
-            echo '- Normal auth/abuse-control preservation contract: PASS'
-            echo '- Zero-leak/header/body-bound result validation contract: PASS'
-            echo '- p95 < 1500 ms and p99 < 3000 ms validation contract: PASS'
-            echo '- Orchestration/k6 syntax contract: PASS'
+            echo '- Explicit 5xx/timeout/auth/429 counters: PASS'
+            echo '- Full-window DB pool + edge/runtime telemetry contract: PASS'
+            echo '- Post-load replay/idempotency/control-plane contract: PASS'
+            echo '- External model-provider request-path audit contract: PASS'
+            echo '- Strict same-SHA launch closure contract: PASS'
             echo '- Network load performed by this workflow: false'
             echo '- Production/mainnet/payment activation performed: false'
-            echo '- 40k simultaneous-open-connection claim: false'
+            echo '- Capacity proven by this no-traffic workflow: false'
           } >> "$GITHUB_STEP_SUMMARY"
