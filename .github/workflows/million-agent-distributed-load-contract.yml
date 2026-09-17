@@ -1,0 +1,107 @@
+name: Distributed 40k Load Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/scale/generate-million-agent-load-plan.mjs'
+      - 'scripts/scale/risk-gate-million-agent.k6.js'
+      - 'scripts/scale/validate-million-agent-distributed-results.mjs'
+      - 'src/__tests__/million-agent-distributed-load-static.test.ts'
+      - 'docs/MILLION_AGENT_DISTRIBUTED_LOAD.md'
+      - '.github/workflows/million-agent-distributed-load-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/scale/generate-million-agent-load-plan.mjs'
+      - 'scripts/scale/risk-gate-million-agent.k6.js'
+      - 'scripts/scale/validate-million-agent-distributed-results.mjs'
+      - 'src/__tests__/million-agent-distributed-load-static.test.ts'
+      - 'docs/MILLION_AGENT_DISTRIBUTED_LOAD.md'
+      - '.github/workflows/million-agent-distributed-load-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Verify 40k plan generator and production-host guard
+        run: node scripts/scale/generate-million-agent-load-plan.mjs --self-test
+      - name: Verify strict 40k result aggregator
+        run: node scripts/scale/validate-million-agent-distributed-results.mjs --self-test
+      - name: Syntax-check k6 workload without sending traffic
+        run: node --check scripts/scale/risk-gate-million-agent.k6.js
+      - name: Generate canonical no-traffic 1M-at-40k plan
+        env:
+          RISK_GATE_DISTRIBUTED_PROFILE: million_burst_40k
+        run: node scripts/scale/generate-million-agent-load-plan.mjs
+      - name: Generate canonical no-traffic 40k five-minute soak plan
+        env:
+          RISK_GATE_DISTRIBUTED_PROFILE: soak_40k_5m
+        run: node scripts/scale/generate-million-agent-load-plan.mjs
+      - name: Prove generated plans remain non-executing and exact
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const burst = JSON.parse(fs.readFileSync('artifacts/distributed-load-plan-million_burst_40k.json', 'utf8'));
+          const soak = JSON.parse(fs.readFileSync('artifacts/distributed-load-plan-soak_40k_5m.json', 'utf8'));
+          for (const p of [burst, soak]) {
+            if (p.execution_performed !== false) throw new Error('contract workflow must never execute load');
+            if (p.production_target_allowed !== false) throw new Error('production target must remain forbidden');
+            if (p.workload?.aggregate_arrival_rate_per_second !== 40000) throw new Error('expected exact 40k aggregate rate');
+            if (p.workload?.shards !== 40) throw new Error('expected 40 shards');
+            if (p.latency_objective_ms?.p95_max !== 1500 || p.latency_objective_ms?.p99_max !== 3000) {
+              throw new Error('expected pinned 40k latency objectives');
+            }
+          }
+          if (burst.workload?.total_requests !== 1000000 || burst.workload?.duration_seconds !== 25) {
+            throw new Error('1M-at-40k profile mismatch');
+          }
+          if (soak.workload?.total_requests !== 12000000 || soak.workload?.duration_seconds !== 300) {
+            throw new Error('40k five-minute soak profile mismatch');
+          }
+          if (burst.shards?.reduce((sum, s) => sum + Number(s.request_budget || 0), 0) !== 1000000) {
+            throw new Error('burst shard budgets must total 1M');
+          }
+          if (soak.shards?.reduce((sum, s) => sum + Number(s.request_budget || 0), 0) !== 12000000) {
+            throw new Error('soak shard budgets must total 12M');
+          }
+          NODE
+      - name: Upload no-traffic 40k capacity plans
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-40k-load-plans-${{ github.run_id }}
+          path: artifacts/distributed-load-plan-*.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record evidence boundary
+        shell: bash
+        run: |
+          {
+            echo '## Distributed 40k load contract'
+            echo
+            echo '- Exact 1,000,000 requests at 40,000 req/s for 25 seconds: PLAN PASS'
+            echo '- Exact 12,000,000 requests at 40,000 req/s for 5 minutes: PLAN PASS'
+            echo '- Production host guard: PASS'
+            echo '- Normal auth/abuse-control preservation contract: PASS'
+            echo '- Zero-leak/header/body-bound result validation contract: PASS'
+            echo '- p95 < 1500 ms and p99 < 3000 ms validation contract: PASS'
+            echo '- k6 syntax contract: PASS'
+            echo '- Network load performed by this workflow: false'
+            echo '- Production/mainnet/payment activation performed: false'
+            echo '- 40k simultaneous-open-connection claim: false'
+          } >> "$GITHUB_STEP_SUMMARY"
