@@ -72,6 +72,7 @@ type FlashPayload = {
   headline?: string
   body?: string | null
   source_channel?: string | null
+  source_channel_key?: string | null
   source_url?: string | null
   event_type?: string | null
   severity?: number | null
@@ -196,6 +197,71 @@ function cleanString(
     0,
     maxLength,
   )
+}
+
+type ApprovedTelegramChannel = {
+  channel_key: string
+  display_name: string
+  official_status: string
+  rights_status: string
+  source_reliability: number
+  enabled: boolean
+  manual_review_status: string
+}
+
+function normalizeTelegramChannelKey(
+  value: unknown,
+) {
+  const cleaned =
+    cleanString(value, 64)
+      ?.replace(/^@+/, "")
+      .toLowerCase() ??
+    null
+
+  if (
+    !cleaned ||
+    !/^[a-z0-9_]{5,32}$/.test(cleaned)
+  ) {
+    return null
+  }
+
+  return cleaned
+}
+
+async function loadApprovedTelegramChannel(
+  channelKey: string,
+) {
+  const result =
+    await db
+      .from("live_telegram_channel_registry")
+      .select(
+        "channel_key,display_name,official_status,rights_status,source_reliability,enabled,manual_review_status"
+      )
+      .eq(
+        "channel_key",
+        channelKey,
+      )
+      .maybeSingle()
+
+  if (result.error) {
+    throw result.error
+  }
+
+  const channel =
+    result.data as
+      | ApprovedTelegramChannel
+      | null
+
+  if (
+    !channel ||
+    channel.enabled !== true ||
+    channel.manual_review_status !==
+      "APPROVED"
+  ) {
+    return null
+  }
+
+  return channel
 }
 
 async function sha256Hex(
@@ -592,6 +658,70 @@ Deno.serve(async request => {
       2000,
     )
 
+  let telegramChannel:
+    | ApprovedTelegramChannel
+    | null = null
+
+  if (
+    sourceId ===
+      "telegram_mtproto_flash"
+  ) {
+    const channelKey =
+      normalizeTelegramChannelKey(
+        payload.source_channel_key
+      )
+
+    if (!channelKey) {
+      return jsonResponse(
+        400,
+        {
+          ok: false,
+          error:
+            "telegram_public_channel_key_required",
+        },
+      )
+    }
+
+    const expectedPrefix =
+      `https://t.me/${channelKey}/`
+
+    if (
+      !sourceUrl ||
+      !sourceUrl
+        .toLowerCase()
+        .startsWith(
+          expectedPrefix
+        )
+    ) {
+      return jsonResponse(
+        400,
+        {
+          ok: false,
+          error:
+            "telegram_public_source_url_required",
+        },
+      )
+    }
+
+    telegramChannel =
+      await loadApprovedTelegramChannel(
+        channelKey
+      )
+
+    if (!telegramChannel) {
+      return jsonResponse(
+        403,
+        {
+          ok: false,
+          error:
+            "telegram_channel_not_approved",
+          channel_key:
+            channelKey,
+        },
+      )
+    }
+  }
+
   const publishedAt =
     cleanString(
       payload.published_at,
@@ -619,11 +749,14 @@ Deno.serve(async request => {
     "UNVERIFIED"
 
   const verificationStatus =
-    ALLOWED_VERIFICATION_STATUSES.has(
-      requestedVerification
-    )
-      ? requestedVerification
-      : "UNVERIFIED"
+    sourceId ===
+      "telegram_mtproto_flash"
+      ? "UNVERIFIED"
+      : ALLOWED_VERIFICATION_STATUSES.has(
+            requestedVerification
+          )
+        ? requestedVerification
+        : "UNVERIFIED"
 
   const countries =
     await loadCountries()
@@ -701,9 +834,14 @@ Deno.serve(async request => {
         payload.severity
       ),
     source_reliability:
-      clampScore(
-        payload.source_reliability
-      ),
+      telegramChannel
+        ? clampScore(
+            telegramChannel
+              .source_reliability
+          )
+        : clampScore(
+            payload.source_reliability
+          ),
     verification_status:
       verificationStatus,
     latitude:
