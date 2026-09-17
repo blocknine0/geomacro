@@ -71,6 +71,9 @@ function DataApiPage() {
           <StatusCard icon={Bot} status="PRIVATE PILOT" title="Risk Objects & Risk Gate" text="Signed country and directional-corridor Risk Objects and bounded Risk Gate responses remain controlled Private Pilot capabilities." />
           <StatusCard icon={Braces} status="RUNTIME STATUS ABOVE" title="x402 agent access" text="Commercial machine-payment status is read from the live x402 endpoint rather than asserted by static website copy." />
         </div>
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+          Free Explorer is website/dashboard access, not a free API. Machine delivery is governed separately and its availability is stated explicitly above.
+        </p>
       </section>
 
       <section className="border-y border-border/60 bg-card/20">
@@ -137,10 +140,6 @@ function DataApiPage() {
           </div>
         </div>
       </section>
-
-      <div className="sr-only">
-        Free Explorer is website/dashboard access, not a free API. GOVERNED DATA · CONTROLLED API · AGENT ACCESS. PUBLIC · FREE. FOUNDING ANALYST PILOT. FOUNDING API + RISK GATE PILOT. INSTITUTIONAL. POST https://geomacro.live/api/commercial/structural
-      </div>
     </main>
   );
 }
