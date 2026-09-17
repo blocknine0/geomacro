@@ -41,7 +41,7 @@ function DataApiPage() {
       <section className="border-b border-border/60">
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-18">
           <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-[0.14em]">
-            GOVERNED DATA · PAID API · AGENT ACCESS
+            GOVERNED DATA · CONTROLLED API · AGENT ACCESS
           </Badge>
           <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
             Public risk intelligence for people. Governed machine delivery for software and agents.
@@ -139,7 +139,7 @@ function DataApiPage() {
       </section>
 
       <div className="sr-only">
-        Free Explorer is website/dashboard access, not a free API. GOVERNED DATA · PAID API · AGENT ACCESS. PUBLIC · FREE. FOUNDING ANALYST PILOT. FOUNDING API + RISK GATE PILOT. INSTITUTIONAL. POST https://geomacro.live/api/commercial/structural
+        Free Explorer is website/dashboard access, not a free API. GOVERNED DATA · CONTROLLED API · AGENT ACCESS. PUBLIC · FREE. FOUNDING ANALYST PILOT. FOUNDING API + RISK GATE PILOT. INSTITUTIONAL. POST https://geomacro.live/api/commercial/structural
       </div>
     </main>
   );
