@@ -144,7 +144,7 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps Data, API and Agent availability explicit without advertising a free API", () => {
     const route = read("src/routes/data-api.tsx");
-    expect(route).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
+    expect(route).toContain("GOVERNED DATA · CONTROLLED API · AGENT ACCESS");
     expect(route).toContain("PUBLIC · FREE");
     expect(route).toContain("FOUNDING ANALYST PILOT");
     expect(route).toContain("FOUNDING API + RISK GATE PILOT");
