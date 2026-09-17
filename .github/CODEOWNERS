@@ -1,0 +1,16 @@
+# Geomacro published website ownership
+/public/ @blocknine0
+/src/assets/ @blocknine0
+/src/components/ @blocknine0
+/src/content/ @blocknine0
+/src/hooks/ @blocknine0
+/src/routes/ @blocknine0
+/src/router.tsx @blocknine0
+/src/styles.css @blocknine0
+/styles.css @blocknine0
+/vite.config.ts @blocknine0
+/components.json @blocknine0
+/config/website-lock.json @blocknine0
+/scripts/ops/verify-website-lock.mjs @blocknine0
+/.github/workflows/website-lock.yml @blocknine0
+/.github/workflows/sync-lovable-main.yml @blocknine0
