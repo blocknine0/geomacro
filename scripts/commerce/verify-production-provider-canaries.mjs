@@ -107,7 +107,8 @@ function verifyReconciliation(e, provider, canary) {
     e.revenue_classification !== "non_revenue_internal" ||
     e.commercial_revenue !== false ||
     e.reconciliation_mode !== "internal_canary" ||
-    e.internal_canary !== true
+    e.internal_canary !== true ||
+    e.purchase_classification !== "internal_canary"
   ) {
     fail(`${provider.key} canary reconciliation did not reach matched non-revenue internal state`);
   }
