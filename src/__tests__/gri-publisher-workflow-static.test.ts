@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 const workflow = readFileSync(".github/workflows/publish-gri.yml", "utf8");
 
 describe("scheduled GRI publisher workflow", () => {
+  it("publishes often enough to stay inside the three-hour public proof freshness SLO", () => {
+    expect(workflow).toContain('cron: "50 */2 * * *"');
+  });
+
   it("uses the committed Bun lockfile instead of mutating dependencies with npm", () => {
     expect(workflow).toContain("oven-sh/setup-bun@v2");
     expect(workflow).toContain('bun-version: "1.4.2"');
