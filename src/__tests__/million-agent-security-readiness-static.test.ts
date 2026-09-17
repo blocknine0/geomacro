@@ -19,7 +19,13 @@ describe("million-agent central security architecture", () => {
     expect(migration).toContain("enable row level security");
     expect(migration).toContain("from PUBLIC, anon, authenticated");
     expect(migration).toContain("to service_role");
-    expect(migration).toContain("prune_central_security_request_buckets_v2");
+    expect(migration).toContain("24-bit client slot");
+    expect(migration).toContain("bucket_key ~ '^[0-9a-f]{6}$'");
+    expect(migration).toContain("substr(p_client_key, 1, 6)");
+    expect(migration).not.toContain("prune_central_security_request_buckets_v2");
+    expect(migration.toLowerCase()).not.toContain(
+      "delete from public.central_security_request_buckets_v2",
+    );
 
     expect(migration).not.toMatch(/\bip_address\b/i);
     expect(migration).not.toMatch(/\bbearer_token\b/i);
@@ -105,9 +111,11 @@ describe("million-agent and data-leak evidence harnesses", () => {
     expect(scan).toContain("PRIVATE_KEY_MATERIAL_EXPOSED");
     expect(scan).toContain("SERVER_SOURCE_MARKER_EXPOSED");
     expect(scan).toContain("PUBLIC_SOURCEMAP_REFERENCE");
-    expect(scan).toContain("-----BEGIN PRIVATE KEY-----");
-    expect(scan).toContain("supabase\\/migrations");
+    expect(scan).toContain('pemBegin("PRIVATE KEY")');
+    expect(scan).toContain("supabase");
+    expect(scan).toContain("migrations");
     expect(scan).toContain("source_maps_forbidden: true");
+    expect(scan).toContain("pem_private_key_material_forbidden: true");
     expect(scan).toContain("actual_secret_values_persisted: false");
   });
 });
