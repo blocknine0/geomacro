@@ -18,7 +18,7 @@ const RESEARCH_AREAS = [
   {
     icon: Gauge,
     title: "Risk Indices methodology",
-    body: "Understand how geopolitical, macroeconomic and critical-mineral risk are presented separately while preserving the audited GRI v1.2 evidence controls and proof lineage behind the current readings.",
+    body: "Understand how geopolitical, macroeconomic and critical-mineral risk are presented separately while preserving the versioned GRI v1.2 evidence controls and verified proof lineage behind the current readings.",
     to: "/docs/gri-architecture" as const,
     cta: "Open methodology & proof",
   },
@@ -74,7 +74,7 @@ function ResearchPage() {
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Research & methodology</p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">See how each risk reading is built, changed and checked.</h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Geomacro publishes geopolitical, macroeconomic and critical-mineral risk separately. This research layer explains the evidence rules, proof lineage, change attribution and validation limits behind those readings without presenting methodology proof as predictive validation.
+          Geomacro publishes geopolitical, macroeconomic and critical-mineral risk separately. This research layer explains the evidence rules, proof lineage, change attribution and validation limits behind those readings without presenting methodology proof as predictive validation or external certification.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2"><Link to="/global-risk">Verify current Risk Indices <ArrowRight className="h-4 w-4" /></Link></Button>
@@ -86,11 +86,11 @@ function ResearchPage() {
         <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Current methodology boundary</p>
-            <h2 className="mt-3 text-2xl font-semibold">Separate public indices, preserved audited lineage.</h2>
+            <h2 className="mt-3 text-2xl font-semibold">Separate public indices, preserved versioned lineage.</h2>
           </div>
           <div className="space-y-3 text-sm leading-7 text-muted-foreground">
             <p>
-              The current public Risk Indices project the verified geopolitical, macroeconomic and critical-mineral domain scores from the existing <span className="font-mono text-foreground">gri-v1.2.0</span> audit package.
+              The current public Risk Indices project the verified geopolitical, macroeconomic and critical-mineral domain scores from the existing <span className="font-mono text-foreground">gri-v1.2.0</span> versioned proof package.
             </p>
             <p>
               The historical combined GRI remains a versioned proof record. It is not presented as a second live headline score, and the public split does not rewrite historical snapshots or invent a parallel browser calculation.
@@ -137,7 +137,7 @@ function ResearchPage() {
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="mt-3 text-lg font-semibold">What research evidence does not prove</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Reproducible methodology does not automatically prove commercial source rights, production security, predictive performance or customer demand. Those require separate evidence.
+            Reproducible methodology does not automatically prove commercial source rights, production security, predictive performance, independent certification or customer demand. Those require separate evidence.
           </p>
           <Button asChild variant="link" className="mt-3 h-auto p-0"><Link to="/about">About & Trust <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
         </article>
@@ -152,7 +152,7 @@ function ResearchPage() {
           <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p><span className="font-medium text-foreground">Observed evidence:</span> source material, timestamps and provenance stay distinguishable from model-derived interpretation.</p>
             <p><span className="font-medium text-foreground">Model interpretation:</span> severity, confidence, classification and story-correlation decisions carry their own versioned provenance.</p>
-            <p><span className="font-medium text-foreground">Deterministic aggregation:</span> once eligible inputs are fixed, the audited v1.2 numerical aggregation does not use an LLM call or discretionary manual adjustment.</p>
+            <p><span className="font-medium text-foreground">Deterministic aggregation:</span> once eligible inputs are fixed, the versioned v1.2 numerical aggregation does not use an LLM call or discretionary manual adjustment.</p>
             <p><span className="font-medium text-foreground">Validation limits:</span> correlation is not causation. Predictive, audit, certification or institutional-validation claims are made only when the specific preserved evidence supports them.</p>
           </div>
         </div>
@@ -162,7 +162,7 @@ function ResearchPage() {
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-xl font-semibold">Need the exact calculation and proof fields?</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Use the technical documentation for the audited GRI v1.2 parent methodology, then inspect the current separate Risk Indices and their retained proof fingerprints.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Use the technical documentation for the versioned GRI v1.2 parent methodology, then inspect the current separate Risk Indices and their retained proof fingerprints.</p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">
             <Button asChild><Link to="/global-risk">Risk Indices</Link></Button>
