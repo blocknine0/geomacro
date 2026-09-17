@@ -36,9 +36,10 @@ describe("public intelligence routing contract", () => {
     expect(walletRouteBlock).not.toContain("/tx-history");
   });
 
-  it("keeps separate risk-index and Ask Geomacro truth boundaries explicit", () => {
+  it("keeps separate risk-index and Ask Geomacro truth boundaries explicit while the homepage stays lightweight", () => {
     const riskRoute = read("src/routes/global-risk.tsx");
     const riskWorkspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
+    const home = read("src/components/home/commercial-home.tsx");
     const homeRisk = read("src/components/home/gri-section.tsx");
     const askEngine = read("src/lib/ask-intelligence.server.ts");
     const askWorkspace = read("src/components/ask/ask-workspace.tsx");
@@ -47,8 +48,10 @@ describe("public intelligence routing contract", () => {
     expect(riskWorkspace).toContain("Three risks. Three separate indices.");
     expect(riskWorkspace).toContain("not market probabilities");
     expect(riskWorkspace).toContain("does not substitute zero or a synthetic estimate");
-    expect(homeRisk).toContain("compact preview");
-    expect(homeRisk).toContain("three-index contract");
+    expect(home).toContain('to="/global-risk"');
+    expect(home).not.toContain("RiskIndicesSection");
+    expect(homeRisk).toContain("Lightweight homepage introduction");
+    expect(homeRisk).toContain("three public Risk Indices");
     expect(askEngine).toContain("No LLM provider, external search or private fallback score");
     expect(askWorkspace).toContain("does not search the open web at question time");
     expect(askWorkspace).toContain("Current verified Risk Indices context");
@@ -59,7 +62,7 @@ describe("public intelligence routing contract", () => {
     const pipeline = read("src/routes/pipeline.tsx");
     const architecture = read("docs/RISK_INDICES_ARCHITECTURE.md");
 
-    expect(pipeline).toContain("audited GRI v1.2 three-domain methodology");
+    expect(pipeline).toContain("versioned GRI v1.2 three-domain methodology");
     expect(pipeline).toContain("geopolitics, macro and rare-earth / critical-mineral risk");
     expect(pipeline).toContain("public product presents three separate Risk Indices");
     expect(architecture).toContain("Historical GRI v1.2 remains immutable audit evidence");

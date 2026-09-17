@@ -11,7 +11,7 @@ Geomacro uses one intelligence architecture but different products have differen
 | Research | LIVE / evolving | Public methodology and analysis | Human research |
 | Prediction / onchain | TECHNICAL PROOF | Arc Testnet application layer | Experimental execution |
 
-The public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current product.
+The public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current product.
 
 Neither a public Risk Index nor the historical combined GRI is used as a universal allow/deny rule for a country or corridor transaction.
 

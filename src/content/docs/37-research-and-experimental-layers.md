@@ -24,6 +24,6 @@ Examples:
 | Arc / CCTP / Bridge & Swap | TECHNICAL PROOF |
 | Broad professional/enterprise packaging | PLANNED |
 
-The current public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current headline product.
+The current public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current headline product.
 
 A roadmap item or experimental implementation must never be presented as generally available solely because code exists.

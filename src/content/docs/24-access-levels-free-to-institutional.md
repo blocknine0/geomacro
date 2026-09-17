@@ -12,7 +12,7 @@ Current public surfaces include:
 - public research and methodology
 - technical-proof surfaces clearly labelled as Testnet/secondary
 
-The public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain audit records rather than a second live headline product.
+The public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline product.
 
 ## Private Pilot
 

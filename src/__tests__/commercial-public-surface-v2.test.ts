@@ -30,7 +30,7 @@ describe("commercial public surface v2", () => {
 
     expect(read("src/routes/about.tsx")).toContain("Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
     expect(read("src/routes/data-api.tsx")).toContain("Separate geopolitical, macroeconomic and critical-mineral risk indices with methodology context");
-    expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved audited lineage");
+    expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved versioned lineage.");
   });
 
   it("keeps GRI v1.2 as proof lineage rather than a second current headline product", () => {
@@ -39,11 +39,28 @@ describe("commercial public surface v2", () => {
     const docs = read("src/routes/docs.tsx");
     const llms = read("public/llms.txt");
 
-    expect(about).toContain("audited GRI v1.2 proof lineage");
+    expect(about).toContain("versioned GRI v1.2 parent methodology and verified proof lineage");
     expect(about).toContain("not a second live headline index");
     expect(research).toContain("historical combined GRI remains a versioned proof record");
-    expect(docs).toContain("Historical GRI material therefore remains available as a methodology and audit reference");
+    expect(docs).toContain("Historical GRI material therefore remains available as a methodology and proof reference");
     expect(llms).toContain("Historical combined-GRI snapshots remain versioned audit records");
+  });
+
+  it("makes the homepage a commercial explanation surface rather than a data dashboard", () => {
+    const home = read("src/components/home/commercial-home.tsx");
+    const shell = read("src/components/site-shell.tsx");
+
+    expect(home).toContain("Global risk intelligence infrastructure");
+    expect(home).toContain("Turn world events into");
+    expect(home).toContain("Why adopt Geomacro");
+    expect(home).toContain("Who it is for");
+    expect(home).toContain("Ecosystem & partnership");
+    expect(home).toContain("Discuss a partnership");
+    expect(home).not.toContain("AskGeomacroSection");
+    expect(home).not.toContain("RiskIndicesSection");
+    expect(home).not.toContain("eventCount");
+    expect(home).not.toContain("114 sovereign countries");
+    expect(shell).toContain('const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);');
   });
 
   it("exposes buyer-ready trust, privacy, product-use and security-contact boundaries", () => {
@@ -61,15 +78,27 @@ describe("commercial public surface v2", () => {
     expect(read("public/.well-known/security.txt")).toContain("contact@geomacro.live");
   });
 
-  it("keeps the coverage banner dated and non-production-claiming", () => {
-    const proof = read("src/components/production-coverage-proof.tsx");
-    const shell = read("src/components/site-shell.tsx");
+  it("keeps the Circle Alliance claim verifiable and explicitly non-endorsing", () => {
+    const ecosystem = read("src/routes/ecosystem.tsx");
+    const home = read("src/components/home/commercial-home.tsx");
 
-    expect(proof).toContain("Controlled coverage evidence · verified 16 Sep 2026");
-    expect(proof).toContain("dated controlled-workflow coverage result");
-    expect(proof).not.toContain("Production workflow evidence");
-    expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
-    expect(shell).not.toContain("114-country production-workflow proof");
+    for (const surface of [ecosystem, home]) {
+      expect(surface).toContain("https://partners.circle.com/partner/geomacro");
+      expect(surface).toContain("Circle Alliance");
+    }
+    expect(ecosystem).toContain("does not mean Circle endorses Geomacro's risk methodology");
+    expect(ecosystem).not.toContain("Official Circle Partner");
+  });
+
+  it("keeps runtime agent-commerce status truthful across pre-launch and production", () => {
+    const status = read("src/components/agent-commerce-status.tsx");
+    const home = read("src/components/home/commercial-home.tsx");
+
+    expect(status).toContain('/api/x402/intelligence');
+    expect(status).toContain('environment === "production"');
+    expect(status).toContain("controlled pre-launch");
+    expect(status).toContain("Testnet settlement is not commercial revenue");
+    expect(home).toContain("AgentCommerceStatus compact");
   });
 
   it("qualifies commercial conversations before sensitive pilot work", () => {

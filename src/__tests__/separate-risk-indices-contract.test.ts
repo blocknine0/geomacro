@@ -86,10 +86,9 @@ describe("separate public risk indices contract", () => {
     expect(workflow).not.toContain("supabase migration");
   });
 
-  it("switches the public /global-risk workspace and homepage preview away from a combined headline GRI", () => {
+  it("keeps /global-risk as the detailed three-index workspace while the homepage links to it without rendering live index data", () => {
     const route = read("src/routes/global-risk.tsx");
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
-    const home = read("src/components/home/risk-indices-preview.tsx");
     const commercialHome = read("src/components/home/commercial-home.tsx");
     const homeSection = read("src/components/home/gri-section.tsx");
 
@@ -97,10 +96,11 @@ describe("separate public risk indices contract", () => {
     expect(route).toContain("Geopolitical, Macro & Critical Minerals");
     expect(workspace).toContain("Three risks. Three separate indices.");
     expect(workspace).toContain("instead of being compressed into one combined headline score");
-    expect(home).toContain("Three risks. Three separate readings.");
-    expect(commercialHome).toContain("View Risk Indices");
+    expect(commercialHome).toContain('to="/global-risk"');
+    expect(commercialHome).toContain("Separate Risk Indices");
     expect(commercialHome).not.toContain("View Global Risk Index");
     expect(commercialHome).not.toContain("useGlobalRisk");
+    expect(commercialHome).not.toContain("RiskIndicesSection");
     expect(homeSection).toContain("RiskIndicesSection");
     expect(homeSection).not.toContain("GlobalRiskIndexSection");
   });

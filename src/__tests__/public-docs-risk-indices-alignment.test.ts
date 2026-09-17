@@ -62,10 +62,11 @@ describe("public documentation risk-indices alignment", () => {
     expect(riskGate).toContain("execution_authorized=false");
   });
 
-  it("keeps commercialization roadmap terminology on Risk Indices while retaining GRI audit lineage", () => {
+  it("keeps commercialization roadmap terminology on Risk Indices while retaining versioned GRI proof lineage", () => {
     const roadmap = read("src/content/docs/45-current-development-roadmap.md");
 
-    expect(roadmap).toContain("Risk Indices/data reliability, audited GRI v1.2 lineage and provenance controls");
+    expect(roadmap).toContain("Risk Indices/data reliability, versioned GRI v1.2 proof lineage and provenance controls");
     expect(roadmap).not.toContain("complete GRI/data reliability and provenance controls");
+    expect(roadmap).not.toContain("audited GRI v1.2");
   });
 });

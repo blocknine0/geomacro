@@ -65,7 +65,7 @@ export function RiskIndicesWorkspace() {
             Three risks. Three separate indices.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Geopolitical, macroeconomic and critical-mineral risk are presented separately instead of being compressed into one combined headline score. Each index remains tied to the verified evidence, source controls and proof lineage behind the current audited methodology.
+            Geopolitical, macroeconomic and critical-mineral risk are presented separately instead of being compressed into one combined headline score. Each index remains tied to the verified evidence, source controls and proof lineage behind the current versioned methodology.
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export function RiskIndicesWorkspace() {
       <Section
         eyebrow="Methodology boundary"
         title="Separated presentation, preserved proof"
-        copy="This public split is a verified category projection of the existing v1.2 audit package. It does not rewrite historical snapshots or invent a second calculation path."
+        copy="This public split is a verified category projection of the existing v1.2 versioned proof package. It does not rewrite historical snapshots or invent a second calculation path."
       >
         <div className="grid gap-4 md:grid-cols-3">
           <MethodCard title="Independent domain score" body="Each domain score is calculated inside its own evidence pool after confidence, recency, source-cap and story-cap controls." />
@@ -138,14 +138,14 @@ export function RiskIndicesWorkspace() {
           <MethodCard title="No zero fallback" body="If a domain has no current verified reading, Geomacro does not manufacture a zero or synthetic estimate." />
         </div>
         <div className="mt-5 rounded-2xl border border-border/70 bg-muted/15 p-5 text-sm leading-7 text-muted-foreground">
-          Parent audited methodology: <span className="font-mono text-foreground">{data.parentMethodologyVersion}</span>. Proof scope: <span className="font-mono text-foreground">{data.proofScope}</span>. The next methodology generation can persist fully independent per-index proof objects without mutating the historical GRI v1.2 record.
+          Parent versioned methodology: <span className="font-mono text-foreground">{data.parentMethodologyVersion}</span>. Proof scope: <span className="font-mono text-foreground">{data.proofScope}</span>. The next methodology generation can persist fully independent per-index proof objects without mutating the historical GRI v1.2 record.
         </div>
       </Section>
 
       <Section
         eyebrow="Integrity"
         title="One verified package, traceable to the exact source snapshot"
-        copy="The three public indices retain the parent snapshot fingerprints so the projection remains reproducible and auditable during the migration from the historical combined GRI surface."
+        copy="The three public indices retain the parent snapshot fingerprints so the projection remains reproducible and traceable during the migration from the historical combined GRI surface."
       >
         <div className="grid gap-4 md:grid-cols-2">
           <HashCard label="Proof hash" value={data.proofHash} />

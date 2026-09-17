@@ -51,7 +51,7 @@ function AboutPage() {
             <li><span className="font-medium text-foreground">Technical Proof:</span> Arc Testnet, USDC, prediction-market and programmable-finance implementation.</li>
           </ul>
           <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-            The separate public indices currently preserve the audited GRI v1.2 proof lineage. Historical GRI references describe that versioned methodology and are not a second live headline index.
+            The separate public indices currently preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical GRI references describe that versioned methodology and are not a second live headline index.
           </p>
         </article>
 

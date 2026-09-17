@@ -2,13 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Bot, Braces, CheckCircle2, Database, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 
-const TITLE = "Data & API Roadmap · Geomacro";
+const TITLE = "Data & API | Geomacro";
 const DESCRIPTION =
-  "Geomacro public risk intelligence is live. Governed commercial API delivery, signed Risk Objects and Risk Gate machine access remain controlled roadmap and Private Pilot capabilities.";
+  "Geomacro public risk intelligence is live. This page shows the current governed machine-delivery, Risk Object, Risk Gate and x402 commercial-access status without hardcoding pre-launch capabilities as production.";
 const URL = "https://geomacro.live/data-api";
 
-const ROADMAP_OUTPUTS = [
+const MACHINE_OUTPUTS = [
   ["Governed country data", "Commercially eligible observations, provenance, coverage and explicit missing-data states."],
   ["Directional corridor context", "Endpoint-composed country context plus eligible bilateral evidence when it exists."],
   ["Signed Risk Objects", "Versioned machine-readable risk state with evidence, confidence, freshness and integrity metadata."],
@@ -40,20 +41,21 @@ function DataApiPage() {
       <section className="border-b border-border/60">
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:py-18">
           <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-[0.14em]">
-            ROADMAP · COMMERCIAL DATA & API
+            GOVERNED DATA · CONTROLLED API · AGENT ACCESS
           </Badge>
           <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
-            Public intelligence is live. Machine delivery comes next.
+            Public risk intelligence for people. Governed machine delivery for software and agents.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Today, anyone can evaluate Geomacro through the live Risk Intelligence, separate Risk Indices and public evidence surfaces. Governed commercial API delivery, signed Risk Objects and Risk Gate machine access are not generally available production services yet.
+            Public intelligence and separate Risk Indices are live today. Signed Risk Objects and Risk Gate remain controlled Private Pilot capabilities. Real-money x402 access stays fail-closed until the production endpoint itself advertises an authorized production configuration.
           </p>
+          <div className="mt-7 max-w-2xl"><AgentCommerceStatus /></div>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" className="gap-2">
-              <Link to="/intelligence">Explore what is live <ArrowRight className="h-4 w-4" /></Link>
+              <Link to="/intelligence">Explore public product <ArrowRight className="h-4 w-4" /></Link>
             </Button>
-            <Button asChild size="lg" variant="outline"><Link to="/roadmap">View product roadmap</Link></Button>
-            <Button asChild size="lg" variant="ghost"><Link to="/contact">Discuss a future pilot</Link></Button>
+            <Button asChild size="lg" variant="outline"><Link to="/docs">Read technical documentation</Link></Button>
+            <Button asChild size="lg" variant="ghost"><Link to="/contact">Discuss machine access</Link></Button>
           </div>
         </div>
       </section>
@@ -61,27 +63,30 @@ function DataApiPage() {
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="max-w-3xl">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Availability</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">Know exactly what you can use today.</h2>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight">Know exactly what is available before you integrate.</h2>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           <StatusCard icon={Database} status="LIVE" title="Public intelligence" text="Current geopolitical, macroeconomic and critical-mineral intelligence with evidence and recorded risk context." />
           <StatusCard icon={ShieldCheck} status="LIVE" title="Risk Indices" text="Separate geopolitical, macroeconomic and critical-mineral risk indices with methodology context." />
-          <StatusCard icon={Braces} status="ROADMAP" title="Commercial API" text="Authenticated governed machine delivery remains a controlled commercial roadmap capability." />
-          <StatusCard icon={Bot} status="ROADMAP · PRIVATE PILOT" title="Risk Objects & Risk Gate" text="Signed Risk Objects and bounded Risk Gate responses remain controlled Private Pilot capabilities." />
+          <StatusCard icon={Bot} status="PRIVATE PILOT" title="Risk Objects & Risk Gate" text="Signed country and directional-corridor Risk Objects and bounded Risk Gate responses remain controlled Private Pilot capabilities." />
+          <StatusCard icon={Braces} status="RUNTIME STATUS ABOVE" title="x402 agent access" text="Commercial machine-payment status is read from the live x402 endpoint rather than asserted by static website copy." />
         </div>
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+          Free Explorer is website/dashboard access, not a free API. Machine delivery is governed separately and its availability is stated explicitly above.
+        </p>
       </section>
 
       <section className="border-y border-border/60 bg-card/20">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Roadmap design</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight">What commercial machine access is being designed to deliver.</h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Machine-delivery contract</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">One governed intelligence foundation, multiple delivery layers.</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              These are target product boundaries, not claims of current general availability. Production access will only be opened after source-rights, entitlement, security, reliability and serving controls pass the required launch gates.
+              API, agent and payment protocols are adapters around canonical Geomacro intelligence. They do not create a separate score engine or bypass source-rights, availability, security or Risk Gate controls.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {ROADMAP_OUTPUTS.map(([title, text]) => (
+            {MACHINE_OUTPUTS.map(([title, text]) => (
               <article key={title} className="rounded-xl border border-border/70 bg-background/35 p-5">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 <h3 className="mt-3 font-semibold">{title}</h3>
@@ -96,7 +101,7 @@ function DataApiPage() {
         <div className="grid gap-5 lg:grid-cols-3">
           <Boundary title="Country scope" text="Current controlled design focuses on country and directional corridor context. Broader route, counterparty or logistics-path modelling is not claimed." />
           <Boundary title="Corridor model" text="The controlled design uses ENDPOINT_COMPOSED_V0_1. route_modeling_status = NOT_MODELED unless a future validated model explicitly changes that boundary." />
-          <Boundary title="Execution boundary" text="Risk Gate is designed to return context and recommendation only. execution_authorized=false; customer identity, permissions, policy and execution remain customer-controlled." />
+          <Boundary title="Execution boundary" text="Risk Gate returns context and recommendation only. execution_authorized=false; customer identity, permissions, policy and execution remain customer-controlled." />
         </div>
       </section>
 
@@ -108,7 +113,7 @@ function DataApiPage() {
               <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Commercial launch gates</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight">No production label before the controls are real.</h2>
             </div>
-            <ul className="grid gap-3 sm:grid-cols-2 text-sm leading-relaxed text-muted-foreground">
+            <ul className="grid gap-3 text-sm leading-relaxed text-muted-foreground sm:grid-cols-2">
               <li className="rounded-xl border border-border/70 bg-background/35 p-4">Source rights and customer-serving eligibility verified.</li>
               <li className="rounded-xl border border-border/70 bg-background/35 p-4">Entitlement, authentication, replay and leakage controls acceptance-tested.</li>
               <li className="rounded-xl border border-border/70 bg-background/35 p-4">Security and resilience findings remediated to the required launch threshold.</li>
@@ -120,25 +125,21 @@ function DataApiPage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="rounded-2xl border border-primary/25 bg-primary/5 p-7 sm:p-9">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Future commercial access</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Machine access</p>
           <div className="mt-3 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
               <h2 className="text-2xl font-semibold">Have a real country, corridor or agent workflow?</h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Use the live public product first. If the workflow needs machine delivery later, share the exact use case so it can inform controlled pilot scope and roadmap priorities.
+                Share the decision point, required data, latency expectations and integration boundary. Geomacro will state which parts are live, Private Pilot or not yet supported before any commercial commitment.
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-3">
-              <Button asChild><Link to="/contact">Discuss future access</Link></Button>
+              <Button asChild><Link to="/contact">Discuss machine access</Link></Button>
               <Button asChild variant="outline"><Link to="/roadmap">Open roadmap</Link></Button>
             </div>
           </div>
         </div>
       </section>
-
-      <div className="sr-only">
-        Free Explorer is website/dashboard access, not a free API. GOVERNED DATA · PAID API · AGENT ACCESS. PUBLIC · FREE. FOUNDING ANALYST PILOT. FOUNDING API + RISK GATE PILOT. INSTITUTIONAL. POST https://geomacro.live/api/commercial/structural
-      </div>
     </main>
   );
 }

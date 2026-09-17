@@ -1,14 +1,11 @@
 import { RiskIndicesPreview } from "@/components/home/risk-indices-preview";
-import { useRiskIndices } from "@/lib/use-risk-indices";
 
 /**
- * Homepage risk-index surface.
+ * Lightweight homepage introduction to the three public Risk Indices.
  *
- * This remains the compact preview; the dedicated /global-risk route is the
- * full verification workspace. The rendered public surface uses only the
- * current three-index contract and does not make a legacy combined-GRI read.
+ * Live scores, history, evidence counts and integrity details belong on the
+ * dedicated /global-risk workspace so the homepage stays commercially clear.
  */
 export function RiskIndicesSection() {
-  const indices = useRiskIndices();
-  return <RiskIndicesPreview data={indices.data} status={indices.status} />;
+  return <RiskIndicesPreview />;
 }

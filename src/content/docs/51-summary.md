@@ -20,10 +20,10 @@ human or customer-controlled machine decision
 
 The current public product includes Risk Intelligence, separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro.
 
-The public indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline score.
+The public indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline score.
 
 Country/corridor Risk Objects and Risk Gate are **Private Pilot** infrastructure.
 
 Prediction markets, Arc Testnet, USDC/Circle/CCTP and Bridge & Swap remain valuable **Technical Proof**, but they are not the primary company identity.
 
-Geomacro's commercial thesis is to make geopolitical, macroeconomic and critical-mineral risk explainable, auditable and usable by professionals, APIs and autonomous systems before consequential actions are taken, while leaving authorization and execution under customer control.
+Geomacro's commercial thesis is to make geopolitical, macroeconomic and critical-mineral risk explainable, reproducible and usable by professionals, APIs and autonomous systems before consequential actions are taken, while leaving authorization and execution under customer control.

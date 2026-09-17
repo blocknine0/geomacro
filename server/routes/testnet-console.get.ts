@@ -14,8 +14,9 @@ export default defineEventHandler((event) => {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex,nofollow,noarchive" />
 <title>Geomacro Public Testnet Intelligence Console</title>
-<meta name="description" content="Test Geomacro's canonical geopolitical and macro intelligence capabilities with network-specific public Testnet API keys and pay-per-call Testnet USDC." />
+<meta name="description" content="Technical-proof console for testing Geomacro's canonical geopolitical and macro intelligence capabilities with network-specific public Testnet API keys and pay-per-call Testnet USDC." />
 <style>
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#080d16;color:#f4f2ea;--line:rgba(255,255,255,.08);--card:rgba(255,255,255,.035);--amber:#ff9d19;--muted:#979fab}*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 460px at 10% -10%,rgba(255,157,25,.09) 0,rgba(8,13,22,0) 60%),#080d16}main{max-width:980px;margin:auto;padding:36px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:48px}.brand img{display:block;height:40px;width:auto}.badge{font:12px ui-monospace,monospace;padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--card)}.hero h1{font-size:42px;margin:10px 0 14px;letter-spacing:-.02em}.muted{color:var(--muted);line-height:1.55;font-size:14px}.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:22px}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.12em;color:var(--amber)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:var(--muted)}input,select,textarea,button{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.02);color:#f4f2ea;border-radius:10px;padding:11px 12px;font:14px inherit}textarea{min-height:88px;resize:vertical}button{cursor:pointer;font-weight:700;background:var(--amber);color:#0d1117;border-color:transparent}button:hover{filter:brightness(1.06)}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.actions button{width:auto}.secondary{background:rgba(255,255,255,.04);color:#f4f2ea;border:1px solid var(--line)}.notice{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--muted);font-size:13px;line-height:1.55}.okline{min-height:22px;margin-top:10px;color:var(--muted);font-size:13px}a{color:var(--amber)}@media(max-width:720px){.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.hero h1{font-size:34px}}
 </style>
@@ -24,12 +25,13 @@ export default defineEventHandler((event) => {
 </head>
 <body>
 <main>
-  <div class="nav"><div class="brand"><img src="/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/geomacro-logo.png" alt="Geomacro" height="40" /></div><div class="badge">PUBLIC TESTNET · PAY PER CALL</div></div>
+  <div class="nav"><div class="brand"><img src="/__l5e/assets-v1/9118c3e7-7750-4173-90cc-dd0445585e92/geomacro-logo.png" alt="Geomacro" height="40" /></div><div class="badge">TECHNICAL PROOF · PUBLIC TESTNET</div></div>
   <section class="hero">
-    <div class="eyebrow">CANONICAL INTELLIGENCE PIPELINE</div>
-    <h1>Test the same intelligence layer used by Geomacro products.</h1>
-    <p class="muted">Browser testers do not need private developer credentials. Choose one of the three published Testnet client keys, receive an HTTP 402 quote, pay only that API call, and retry the exact same request with payment proof.</p>
-    <p class="muted"><a href="/testnet-access">Back to Testnet access</a></p>
+    <div class="eyebrow">CANONICAL INTELLIGENCE PIPELINE · TESTNET TECHNICAL PROOF</div>
+    <h1>Test the same governed intelligence foundation used by Geomacro products.</h1>
+    <p class="muted">Browser testers do not need private developer credentials. Choose one of the published Testnet client keys, receive an HTTP 402 quote, pay only that Testnet API call, and retry the exact same request with payment proof.</p>
+    <div class="notice">Testnet only. No real-money production settlement. This console demonstrates access, entitlement and delivery behavior; it is not general production API availability or a production service commitment.</div>
+    <p class="muted"><a href="/testnet-access">Back to Testnet access</a> · <a href="/data-api">Commercial Data & API status</a></p>
   </section>
   <section id="consoleAnchor" class="panel">
     <div class="eyebrow">ACCOUNT CHECK</div>

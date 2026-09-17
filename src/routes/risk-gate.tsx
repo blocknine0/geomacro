@@ -3,9 +3,9 @@ import { ArrowRight, CheckCircle2, KeyRound, Route as RouteIcon, ShieldCheck } f
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const TITLE = "Risk Gate Roadmap & Private Pilot · Geomacro";
+const TITLE = "Risk Gate Private Pilot · Geomacro";
 const DESCRIPTION =
-  "Geomacro's controlled roadmap for country and corridor risk checks before treasury, payment and agent actions. Private Pilot validation exists, but Risk Gate is not generally available production software.";
+  "Geomacro's controlled Private Pilot for country and directional-corridor risk checks before treasury, payment and agent actions. Risk Gate is not generally available production software.";
 const OUTPUTS = ["CONTINUE", "REDUCE_LIMIT", "REQUIRE_APPROVAL", "PAUSE"] as const;
 
 export const Route = createFileRoute("/risk-gate")({
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/risk-gate")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebPage",
-          name: "Geomacro Risk Gate roadmap",
+          name: "Geomacro Risk Gate Private Pilot",
           url: "https://geomacro.live/risk-gate",
           description: DESCRIPTION,
           isPartOf: { "@type": "WebSite", name: "Geomacro", url: "https://geomacro.live/" },
@@ -45,13 +45,13 @@ function RiskGatePage() {
     <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <section className="max-w-4xl">
         <Badge variant="outline" className="border-amber-400/40 bg-amber-400/5 font-mono text-[11px] text-amber-300">
-          ROADMAP · PRIVATE PILOT
+          PRIVATE PILOT
         </Badge>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
           Check external risk before a financial action moves forward.
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-relaxed text-muted-foreground">
-          Risk Gate is the planned decision layer around Geomacro intelligence. The controlled Private Pilot verifies a signed country or corridor Risk Object and returns bounded risk context. The customer's own identity, permissions and policy layer decides what happens next, and the customer keeps control of execution.
+          Risk Gate is Geomacro's controlled decision-context layer. The Private Pilot verifies a signed country or corridor Risk Object and returns bounded risk context. The customer's own identity, permissions and policy layer decides what happens next, and the customer keeps control of execution.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="gap-2">
@@ -68,11 +68,11 @@ function RiskGatePage() {
       <section className="mt-12 grid gap-4 md:grid-cols-3">
         <StatusCard label="LIVE NOW" title="Risk Intelligence" body="Public event intelligence, evidence and current risk context can be evaluated today." to="/intelligence" />
         <StatusCard label="LIVE NOW" title="Separate Risk Indices" body="Geopolitical, macroeconomic and critical-mineral risk are published separately." to="/global-risk" />
-        <StatusCard label="ROADMAP · PRIVATE PILOT" title="Risk Gate" body="Controlled validation exists, but production commercial availability remains gated." to="/roadmap" />
+        <StatusCard label="PRIVATE PILOT" title="Risk Gate" body="Controlled validation exists, while general production availability remains gated." to="/roadmap" />
       </section>
 
       <section className="mt-14">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Planned workflow</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">Private Pilot workflow</p>
         <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">Risk context in. Customer decision out.</h2>
         <div className="mt-7 grid gap-5 lg:grid-cols-3">
           {[

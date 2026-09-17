@@ -16,6 +16,9 @@ export function TechnicalProofBanner({
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">TECHNICAL PROOF · SECONDARY APPLICATION LAYER</p>
             <h1 className="mt-1 text-lg font-semibold text-foreground">{title}</h1>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+              A working technical proof is not a claim of general production availability, production settlement, customer authorization or a service-level commitment.
+            </p>
           </div>
           <Link to="/intelligence" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline">
             Primary intelligence product <ArrowRight className="h-4 w-4" />

@@ -19,6 +19,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DataApiRouteImport } from './routes/data-api'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as EcosystemRouteImport } from './routes/ecosystem'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as GlobalRiskRouteImport } from './routes/global-risk'
 import { Route as InstitutionalRouteImport } from './routes/institutional'
@@ -101,6 +102,11 @@ const DemoRoute = DemoRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EcosystemRoute = EcosystemRouteImport.update({
+  id: '/ecosystem',
+  path: '/ecosystem',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedRoute = FeedRouteImport.update({
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
+  '/ecosystem': typeof EcosystemRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
   '/institutional': typeof InstitutionalRoute
@@ -327,6 +334,7 @@ export interface FileRoutesByTo {
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
+  '/ecosystem': typeof EcosystemRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
   '/institutional': typeof InstitutionalRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
+  '/ecosystem': typeof EcosystemRoute
   '/feed': typeof FeedRoute
   '/global-risk': typeof GlobalRiskRoute
   '/institutional': typeof InstitutionalRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/data-api'
     | '/demo'
     | '/docs'
+    | '/ecosystem'
     | '/feed'
     | '/global-risk'
     | '/institutional'
@@ -465,6 +475,7 @@ export interface FileRouteTypes {
     | '/data-api'
     | '/demo'
     | '/docs'
+    | '/ecosystem'
     | '/feed'
     | '/global-risk'
     | '/institutional'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/data-api'
     | '/demo'
     | '/docs'
+    | '/ecosystem'
     | '/feed'
     | '/global-risk'
     | '/institutional'
@@ -556,6 +568,7 @@ export interface RootRouteChildren {
   DataApiRoute: typeof DataApiRoute
   DemoRoute: typeof DemoRoute
   DocsRoute: typeof DocsRoute
+  EcosystemRoute: typeof EcosystemRoute
   FeedRoute: typeof FeedRoute
   GlobalRiskRoute: typeof GlobalRiskRoute
   InstitutionalRoute: typeof InstitutionalRoute
@@ -661,6 +674,13 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ecosystem': {
+      id: '/ecosystem'
+      path: '/ecosystem'
+      fullPath: '/ecosystem'
+      preLoaderRoute: typeof EcosystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feed': {
@@ -908,6 +928,7 @@ const rootRouteChildren: RootRouteChildren = {
   DataApiRoute: DataApiRoute,
   DemoRoute: DemoRoute,
   DocsRoute: DocsRoute,
+  EcosystemRoute: EcosystemRoute,
   FeedRoute: FeedRoute,
   GlobalRiskRoute: GlobalRiskRoute,
   InstitutionalRoute: InstitutionalRoute,

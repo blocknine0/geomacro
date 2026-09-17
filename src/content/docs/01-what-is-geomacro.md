@@ -23,7 +23,7 @@ flowchart TD
     STATE --> TECH["Arc / Circle / prediction-market technical proof"]
 ```
 
-The current public product is Risk Intelligence, the separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro. The indices preserve the audited GRI v1.2 parent methodology and proof lineage without presenting the historical combined GRI as a second live headline score.
+The current public product is Risk Intelligence, the separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices, and Ask Geomacro. The indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage without presenting the historical combined GRI as a second live headline score.
 
 Country and directional corridor Risk Objects plus Risk Gate are Private Pilot capabilities. Geomacro supplies external risk context; the customer retains identity, permissions, policy, funds and final execution control, and the current Risk Gate boundary remains `execution_authorized=false`.
 
