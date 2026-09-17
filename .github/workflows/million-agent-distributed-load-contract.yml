@@ -7,18 +7,26 @@ on:
       - 'scripts/scale/generate-million-agent-load-plan.mjs'
       - 'scripts/scale/risk-gate-million-agent.k6.js'
       - 'scripts/scale/validate-million-agent-distributed-results.mjs'
+      - 'scripts/scale/run-million-agent-distributed-shard.mjs'
+      - 'scripts/scale/wait-for-distributed-generator-fleet.mjs'
       - 'src/__tests__/million-agent-distributed-load-static.test.ts'
       - 'docs/MILLION_AGENT_DISTRIBUTED_LOAD.md'
       - '.github/workflows/million-agent-distributed-load-contract.yml'
+      - '.github/workflows/million-agent-distributed-staging-execution.yml'
+      - '.github/workflows/commercial-launch-strict-evidence.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/scale/generate-million-agent-load-plan.mjs'
       - 'scripts/scale/risk-gate-million-agent.k6.js'
       - 'scripts/scale/validate-million-agent-distributed-results.mjs'
+      - 'scripts/scale/run-million-agent-distributed-shard.mjs'
+      - 'scripts/scale/wait-for-distributed-generator-fleet.mjs'
       - 'src/__tests__/million-agent-distributed-load-static.test.ts'
       - 'docs/MILLION_AGENT_DISTRIBUTED_LOAD.md'
       - '.github/workflows/million-agent-distributed-load-contract.yml'
+      - '.github/workflows/million-agent-distributed-staging-execution.yml'
+      - '.github/workflows/commercial-launch-strict-evidence.yml'
   workflow_dispatch:
 
 permissions:
@@ -34,15 +42,18 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
       - name: Verify 40k plan generator and production-host guard
         run: node scripts/scale/generate-million-agent-load-plan.mjs --self-test
-      - name: Verify strict 40k result aggregator
+      - name: Verify synchronized same-release 40k result aggregator
         run: node scripts/scale/validate-million-agent-distributed-results.mjs --self-test
-      - name: Syntax-check k6 workload without sending traffic
-        run: node --check scripts/scale/risk-gate-million-agent.k6.js
+      - name: Syntax-check load and orchestration scripts without sending traffic
+        run: |
+          node --check scripts/scale/risk-gate-million-agent.k6.js
+          node --check scripts/scale/run-million-agent-distributed-shard.mjs
+          node --check scripts/scale/wait-for-distributed-generator-fleet.mjs
       - name: Generate canonical no-traffic 1M-at-40k plan
         env:
           RISK_GATE_DISTRIBUTED_PROFILE: million_burst_40k
@@ -97,10 +108,12 @@ jobs:
             echo '- Exact 1,000,000 requests at 40,000 req/s for 25 seconds: PLAN PASS'
             echo '- Exact 12,000,000 requests at 40,000 req/s for 5 minutes: PLAN PASS'
             echo '- Production host guard: PASS'
+            echo '- Same-release SHA + synchronized generator result contract: PASS'
+            echo '- 40-runner occupied-fleet barrier contract: PASS'
             echo '- Normal auth/abuse-control preservation contract: PASS'
             echo '- Zero-leak/header/body-bound result validation contract: PASS'
             echo '- p95 < 1500 ms and p99 < 3000 ms validation contract: PASS'
-            echo '- k6 syntax contract: PASS'
+            echo '- Orchestration/k6 syntax contract: PASS'
             echo '- Network load performed by this workflow: false'
             echo '- Production/mainnet/payment activation performed: false'
             echo '- 40k simultaneous-open-connection claim: false'
