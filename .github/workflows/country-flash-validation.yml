@@ -72,3 +72,7 @@ jobs:
           test -f supabase/migrations/039_flash_corroboration_graph.sql
           test -f supabase/migrations/040_critical_minerals_news_candidates.sql
           test -f supabase/migrations/041_country_flash_live_smoke_hardening.sql
+          test -f supabase/migrations/946_telegram_manual_review_gate.sql
+
+      - name: Verify Telegram manual-review contract
+        run: bunx vitest run src/__tests__/telegram-raw-signal-manual-review.test.ts
