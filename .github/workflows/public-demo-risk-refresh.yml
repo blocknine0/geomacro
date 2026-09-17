@@ -107,6 +107,71 @@ jobs:
           bun scripts/refresh-public-demo-risk-objects.ts | tee /tmp/public-demo-refresh.json
           jq -e '.ok == true and (.demo_results | length) == 4' /tmp/public-demo-refresh.json >/dev/null
 
+      - name: Diagnose commercial blockers
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
+
+            const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+            const { data: events, error: eventsError } = await db
+              .from('live_structured_events')
+              .select('id,primary_country,countries,last_seen_at,commercial_eligibility_status,commercial_eligibility_reason_codes')
+              .gte('last_seen_at', cutoff)
+              .order('last_seen_at', { ascending: false });
+
+            if (eventsError) throw eventsError;
+
+            const usaEvents = (events ?? []).filter((event) =>
+              event.primary_country === 'USA' ||
+              (Array.isArray(event.countries) && event.countries.includes('USA'))
+            );
+
+            const ids = usaEvents.map((event) => event.id).filter(Boolean);
+            const { data: rights, error: rightsError } = ids.length > 0
+              ? await db
+                  .from('live_structured_event_commercial_rights_evaluation')
+                  .select('event_id,evaluated_status,reason_codes,source_keys')
+                  .in('event_id', ids)
+              : { data: [], error: null };
+
+            if (rightsError) throw rightsError;
+
+            const rightsById = new Map((rights ?? []).map((row) => [row.event_id, row]));
+
+            console.log('PUBLIC_DEMO_USA_COMMERCIAL_BLOCKERS');
+            console.log(JSON.stringify(
+              usaEvents.map((event) => {
+                const resolved = rightsById.get(event.id) ?? null;
+                return {
+                  event_id: event.id,
+                  last_seen_at: event.last_seen_at,
+                  stored_status: event.commercial_eligibility_status,
+                  stored_reason_codes: event.commercial_eligibility_reason_codes,
+                  evaluated_status: resolved?.evaluated_status ?? null,
+                  evaluated_reason_codes: resolved?.reason_codes ?? [],
+                  source_keys: resolved?.source_keys ?? [],
+                };
+              }),
+              null,
+              2,
+            ));
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
       - name: Publish sanitized health summary
         if: always()
         shell: bash
