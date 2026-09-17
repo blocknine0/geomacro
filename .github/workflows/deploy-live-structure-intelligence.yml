@@ -1,0 +1,134 @@
+name: Deploy live structure intelligence edge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-live-structure-intelligence.yml"
+      - "supabase/functions/live-structure-intelligence/**"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan validates the authoritative target only; apply deploys the live structure Edge Function and runs a non-mutating auth smoke check."
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-live-structure-intelligence.yml"
+      - "supabase/functions/live-structure-intelligence/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate deployment and private-error guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/deploy-live-structure-intelligence.yml"
+          function="supabase/functions/live-structure-intelligence/index.ts"
+
+          grep -q 'push:' "$file"
+          grep -q 'workflow_dispatch:' "$file"
+          grep -q "github.ref == 'refs/heads/main'" "$file"
+          grep -q 'ldpwajisioljyjtojvfx' "$file"
+          grep -q 'supabase functions deploy live-structure-intelligence' "$file"
+          grep -q -- '--no-verify-jwt' "$file"
+          grep -q 'version: 2.117.0' "$file"
+          grep -q 'x-geomacro-structure-token' "$function"
+          grep -q 'Internal structuring failure. See private run diagnostics.' "$function"
+          grep -q 'live-structure-v1.4.8' "$function"
+
+          echo "Live structure deployment guardrails are present."
+
+  deploy:
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: deploy-live-structure-intelligence-production
+      cancel-in-progress: false
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" || -z "${SUPABASE_PROJECT_ID:-}" ]]; then
+            echo "::error title=Missing production secret::SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_ID are required."
+            exit 1
+          fi
+          if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
+            echo "::error title=Wrong production target::Refusing to deploy outside the authoritative Geomacro Supabase project."
+            exit 1
+          fi
+          echo "PASS: authoritative production project confirmed."
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+
+      - name: Stop after manual deployment plan
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
+        shell: bash
+        run: |
+          echo "Plan completed. No production function was deployed."
+
+      - name: Deploy live structure intelligence function
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy live-structure-intelligence \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --no-verify-jwt
+
+      - name: Smoke-check custom authentication boundary without mutating data
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-structure-intelligence"
+          code="$(curl --silent --show-error \
+            --output /tmp/live-structure-auth-smoke.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "$endpoint")"
+
+          cat /tmp/live-structure-auth-smoke.json
+          echo
+
+          if [[ "$code" != "401" ]] || ! grep -q '"error":"unauthorized"' /tmp/live-structure-auth-smoke.json; then
+            echo "::error title=Live structure smoke failed::Expected the deployed function to reject an unauthenticated no-op request with HTTP 401."
+            exit 1
+          fi
+
+          echo "PASS: deployed live structure endpoint is reachable and its custom authentication boundary is active."
