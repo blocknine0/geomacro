@@ -39,11 +39,18 @@ const sensitiveIdentifierMarkers = [
   "CIRCLE_GATEWAY_API_KEY",
 ];
 
+// Build PEM sentinels at runtime so this security scanner does not itself embed
+// tracked private-key-looking material. The resulting strings are identical to
+// real PEM begin markers and are used only to scan generated public output.
+function pemBegin(label) {
+  return ["-----", "BEGIN", " ", label, "-----"].join("");
+}
+
 const forbiddenTextMarkers = [
-  "-----BEGIN PRIVATE KEY-----",
-  "-----BEGIN RSA PRIVATE KEY-----",
-  "-----BEGIN EC PRIVATE KEY-----",
-  "-----BEGIN OPENSSH PRIVATE KEY-----",
+  pemBegin("PRIVATE KEY"),
+  pemBegin("RSA PRIVATE KEY"),
+  pemBegin("EC PRIVATE KEY"),
+  pemBegin("OPENSSH PRIVATE KEY"),
 ];
 
 const suspiciousSourceMarkers = [
@@ -140,7 +147,7 @@ for (const absolute of files) {
         severity: "critical",
         code: "PRIVATE_KEY_MATERIAL_EXPOSED",
         path: rel,
-        marker,
+        marker_type: "pem_private_key_begin_boundary",
       });
     }
   }
@@ -179,6 +186,7 @@ const evidence = {
     actual_secret_values_persisted: false,
     environment_variable_names_treated_as_credentials: false,
     source_maps_forbidden: true,
+    pem_private_key_material_forbidden: true,
   },
   inventory: {
     files: files.length,
