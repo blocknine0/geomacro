@@ -29,6 +29,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: commercial-launch-strict-evidence-${{ github.ref }}
@@ -63,6 +64,7 @@ jobs:
           bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
           bun x tsx scripts/probe-risk-gate-staging-response-security.ts --self-test
           node scripts/validate-risk-gate-staging-load-report.mjs --self-test
+          node scripts/scale/validate-million-agent-distributed-results.mjs --self-test
       - name: Build production boundaries
         run: bun run build
       - name: Audit privileged source and browser bundle boundaries
@@ -77,6 +79,53 @@ jobs:
           path: artifacts/p0-secret-boundary-audit.json
           if-no-files-found: error
           retention-days: 90
+
+  distributed-capacity-proof:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Require a successful real 40k burst+soak run on this exact candidate SHA
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EXPECTED_SHA: ${{ inputs.published_sha }}
+        with:
+          script: |
+            const expectedSha = String(process.env.EXPECTED_SHA || '').trim().toLowerCase();
+            if (!/^[0-9a-f]{40}$/.test(expectedSha)) {
+              core.setFailed('published_sha must be a full 40-character SHA');
+              return;
+            }
+            const { owner, repo } = context.repo;
+            const response = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'million-agent-distributed-staging-execution.yml',
+              branch: 'main',
+              event: 'workflow_dispatch',
+              status: 'success',
+              per_page: 100,
+            });
+            const candidates = response.data.workflow_runs
+              .filter((run) => String(run.head_sha || '').toLowerCase() === expectedSha && run.conclusion === 'success')
+              .sort((a, b) => Number(b.id) - Number(a.id));
+            for (const run of candidates) {
+              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({ owner, repo, run_id: run.id, per_page: 100 });
+              const expectedArtifact = `distributed-40k-capacity-pass-${run.id}`;
+              const finalEvidence = artifacts.data.artifacts.find((artifact) => artifact.name === expectedArtifact && artifact.expired === false);
+              if (finalEvidence) {
+                core.info(`PASS: same-SHA real 40k capacity workflow run ${run.id} with final evidence artifact ${expectedArtifact}.`);
+                core.summary
+                  .addHeading('Same-SHA real distributed capacity proof', 3)
+                  .addRaw(`Workflow run: ${run.id}\n`)
+                  .addRaw(`Candidate SHA: ${expectedSha}\n`)
+                  .addRaw(`Evidence artifact: ${expectedArtifact}\n`)
+                  .addRaw('Scope: isolated staging 40k arrival-rate burst + five-minute soak; no production load or mainnet activation.\n');
+                await core.summary.write();
+                return;
+              }
+            }
+            core.setFailed(`No successful Distributed 40k Staging Execution run with a non-expired final capacity artifact exists for exact candidate SHA ${expectedSha}. Strict commercial launch closure remains blocked.`);
 
   staging-risk-gate:
     needs: contract
@@ -151,7 +200,7 @@ jobs:
           [[ "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           [[ "${PUBLISHED_SHA,,}" == "${GITHUB_SHA,,}" ]]
       - name: Setup Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
       - name: Verify exact published live surface
@@ -180,6 +229,7 @@ jobs:
     if: always()
     needs:
       - contract
+      - distributed-capacity-proof
       - staging-risk-gate
       - published-live-surface
     runs-on: ubuntu-latest
@@ -191,9 +241,11 @@ jobs:
             echo '## Commercial Launch Strict Evidence'
             echo
             echo '- Exact candidate + build/secret-boundary contract: ${{ needs.contract.result }}'
-            echo '- Isolated staging Risk Gate security/load/SLO: ${{ needs.staging-risk-gate.result }}'
+            echo '- Same-SHA real 40k isolated-staging burst+soak proof: ${{ needs.distributed-capacity-proof.result }}'
+            echo '- Isolated staging Risk Gate security/bounded-load/SLO: ${{ needs.staging-risk-gate.result }}'
             echo '- Exact published SHA + outside-in live security: ${{ needs.published-live-surface.result }}'
             echo
             echo 'This workflow never performs production load, payment settlement, mainnet activation, real-funds authorization or public Early Warning activation.'
-            echo 'Passing this workflow is prelaunch evidence, not a third-party penetration-test certification or a guarantee of one-million simultaneous production HTTP users.'
+            echo 'A successful same-SHA 40k evidence run proves only the recorded isolated-staging arrival-rate profiles under their stated SLO/security conditions, not 40,000 simultaneous open connections or unlimited production capacity.'
+            echo 'Passing this workflow is first-party launch evidence, not a third-party penetration-test certification.'
           } >> "$GITHUB_STEP_SUMMARY"
