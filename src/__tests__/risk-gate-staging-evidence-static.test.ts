@@ -5,6 +5,10 @@ const workflow = readFileSync(
   ".github/workflows/risk-gate-staging-load.yml",
   "utf8",
 );
+const finalAcceptanceWorkflow = readFileSync(
+  ".github/workflows/final-nonmainnet-launch-acceptance.yml",
+  "utf8",
+);
 const p0Workflow = readFileSync(
   ".github/workflows/p0-security-resilience-evidence.yml",
   "utf8",
@@ -47,14 +51,27 @@ describe("Risk Gate staging evidence contract", () => {
     expect(workflow).toContain("risk-gate-staging-http-load-validation.json");
   });
 
-  it("refuses HTTP redirects and requires explicit execution plus response security on every load response", () => {
+  it("refuses redirects and requires explicit execution, response security and latency SLOs on every load run", () => {
     expect(loadHarness).toContain('redirect: "error"');
     expect(responseProbe).toContain('redirect: "error"');
     expect(loadHarness).toContain("executionBoundaryIsExplicitlyFalse(payload)");
     expect(loadHarness).toContain("response_security_violations");
+    expect(loadHarness).toContain("latency_slo_violations");
+    expect(loadHarness).toContain("DEFAULT_MAX_P95_MS = 3000");
+    expect(loadHarness).toContain("DEFAULT_MAX_P99_MS = 8000");
     expect(loadHarness).toContain("raw.includes(apiKey)");
     expect(reportValidator).toContain("'response_security_violations'");
+    expect(reportValidator).toContain("'latency_slo_violations'");
     expect(reportValidator).toContain("redirect_policy !== 'error'");
+  });
+
+  it("keeps Final Non-Mainnet staging evidence on the same fail-closed harness", () => {
+    expect(finalAcceptanceWorkflow).toContain("RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY");
+    expect(finalAcceptanceWorkflow).toContain(
+      "bun x tsx scripts/load-test-risk-gate-staging.ts",
+    );
+    expect(finalAcceptanceWorkflow).toContain("environment: staging");
+    expect(finalAcceptanceWorkflow).toContain("RISK_GATE_LOAD_TEST_ALLOW_429: 'false'");
   });
 
   it("keeps the new staging evidence contracts inside the P0 security gate", () => {
