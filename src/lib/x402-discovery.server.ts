@@ -7,15 +7,22 @@ import {
   getCircleGatewayProductionRequirement,
 } from "./circle-gateway-x402-production.server";
 import { providerRealFundsSecurityState } from "./provider-real-funds-security.server";
+import { getCommercialLaunchState } from "./commercial-launch-gate.server";
 
 const CANONICAL_PRODUCT = "geomacro_adaptive_risk_intelligence_v1" as const;
 
 export async function buildX402DiscoveryDocument(originInput: string) {
   const origin = originInput.replace(/\/$/, "");
   const state = providerRealFundsSecurityState();
+  const launch = getCommercialLaunchState();
+  const providerAvailable = (provider: string, configured: boolean) =>
+    configured &&
+    state.ready &&
+    launch.authorized &&
+    !launch.disabledProviders.includes(provider);
   const resources: Array<Record<string, unknown>> = [];
 
-  if (state.providers.coinbase_mainnet && state.ready) {
+  if (providerAvailable("coinbase_x402", state.providers.coinbase_mainnet)) {
     try {
       const config = getCoinbaseX402Config();
       if (config?.environment === "production") {
@@ -44,7 +51,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     }
   }
 
-  if (state.providers.circle_gateway_mainnet && state.ready) {
+  if (providerAvailable("circle_gateway_x402", state.providers.circle_gateway_mainnet)) {
     try {
       const config = getCircleGatewayProductionConfig();
       if (config?.environment === "production") {
@@ -99,7 +106,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
         product: CANONICAL_PRODUCT,
         provider: "coinbase_x402",
         pricing: "runtime_402_challenge_only",
-        production_enabled: state.providers.coinbase_mainnet && state.ready,
+        production_enabled: providerAvailable("coinbase_x402", state.providers.coinbase_mainnet),
       },
       {
         resource: `${origin}/api/x402/circle/intelligence`,
@@ -107,7 +114,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
         product: CANONICAL_PRODUCT,
         provider: "circle_gateway_x402",
         pricing: "runtime_402_challenge_only",
-        production_enabled: state.providers.circle_gateway_mainnet && state.ready,
+        production_enabled: providerAvailable("circle_gateway_x402", state.providers.circle_gateway_mainnet),
         approved_initial_mainnet_network: "eip155:8453",
         arc_mainnet_enabled: false,
       },
@@ -117,7 +124,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
         product: CANONICAL_PRODUCT,
         provider: "nevermined",
         pricing: "provider_plan_runtime_only",
-        production_enabled: state.providers.nevermined_live && state.ready,
+        production_enabled: providerAvailable("nevermined", state.providers.nevermined_live),
       },
     ],
     discovery: {
@@ -125,6 +132,11 @@ export async function buildX402DiscoveryDocument(originInput: string) {
       commerce: `${origin}/.well-known/geomacro-commerce.json`,
       agent: `${origin}/.well-known/geomacro-agent.json`,
       llms: `${origin}/llms.txt`,
+    },
+    runtimeSafety: {
+      coordinated_launch_authorized: launch.authorized,
+      emergency_freeze_active: launch.emergencyFrozen,
+      quarantined_providers: launch.disabledProviders,
     },
     boundaries: {
       execution_authorized: false,
