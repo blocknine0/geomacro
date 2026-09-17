@@ -104,10 +104,12 @@ function verifyReconciliation(e, provider, canary) {
   if (
     e.payment_status !== "settled" ||
     e.reconciliation_status !== "matched" ||
-    e.revenue_classification !== "commercial_revenue" ||
-    e.commercial_revenue !== true
+    e.revenue_classification !== "non_revenue_internal" ||
+    e.commercial_revenue !== false ||
+    e.reconciliation_mode !== "internal_canary" ||
+    e.internal_canary !== true
   ) {
-    fail(`${provider.key} reconciliation did not reach matched commercial revenue`);
+    fail(`${provider.key} canary reconciliation did not reach matched non-revenue internal state`);
   }
   if (e.execution_authorized !== false) fail(`${provider.key} reconciliation violated non-execution boundary`);
   if (e.raw_settlement_reference_recorded_in_artifact !== false) {
@@ -160,7 +162,8 @@ async function main() {
       replay_status: 200,
       replay_no_second_charge: true,
       reconciliation_status: "matched",
-      commercial_revenue: true,
+      revenue_classification: "non_revenue_internal",
+      commercial_revenue: false,
       execution_authorized: false,
     });
   }
@@ -180,6 +183,7 @@ async function main() {
       exact_intelligence_delivery_proven: true,
       same_proof_replay_zero_second_charge: true,
       accounting_reconciled: true,
+      canaries_excluded_from_revenue: true,
       no_public_production_host_used_for_canary: true,
       execution_authorized: false,
     },
