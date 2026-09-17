@@ -27,8 +27,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 0
           path: canonical
+
+      - name: Verify published website lock before mirror sync
+        shell: bash
+        working-directory: canonical
+        run: node scripts/ops/verify-website-lock.mjs
 
       - name: Detect mirror credential
         id: mirror-token
