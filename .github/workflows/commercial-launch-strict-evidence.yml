@@ -7,6 +7,10 @@ on:
         description: 'Exact canonical main SHA already published through Lovable Publish changes'
         required: true
         type: string
+      capacity_closure_run_id:
+        description: 'Successful Distributed 40k Observability Closure workflow run ID for this exact candidate'
+        required: true
+        type: string
       staging_requests:
         description: 'Bounded isolated staging requests (max 2000)'
         required: true
@@ -29,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: commercial-launch-strict-evidence-${{ github.ref }}
@@ -48,21 +53,25 @@ jobs:
         env:
           PUBLISHED_SHA: ${{ inputs.published_sha }}
           GITHUB_SHA: ${{ github.sha }}
+          CAPACITY_CLOSURE_RUN_ID: ${{ inputs.capacity_closure_run_id }}
         run: |
           set -euo pipefail
           [[ "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           [[ "${PUBLISHED_SHA,,}" == "${GITHUB_SHA,,}" ]]
+          [[ "$CAPACITY_CLOSURE_RUN_ID" =~ ^[0-9]+$ ]]
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: '1.4.2'
       - name: Install locked dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify staging safety contracts
+      - name: Verify staging and 40k evidence validators
         run: |
           bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
           bun x tsx scripts/probe-risk-gate-staging-response-security.ts --self-test
           node scripts/validate-risk-gate-staging-load-report.mjs --self-test
+          node scripts/scale/validate-million-agent-distributed-results.mjs --self-test
+          node scripts/scale/validate-distributed-capacity-telemetry.mjs --self-test
       - name: Build production boundaries
         run: bun run build
       - name: Audit privileged source and browser bundle boundaries
@@ -75,6 +84,85 @@ jobs:
         with:
           name: commercial-launch-strict-contract-${{ github.run_id }}
           path: artifacts/p0-secret-boundary-audit.json
+          if-no-files-found: error
+          retention-days: 90
+
+  distributed-capacity-proof:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require specified run is a successful observability closure
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CLOSURE_RUN_ID: ${{ inputs.capacity_closure_run_id }}
+        with:
+          script: |
+            const runId = Number(process.env.CLOSURE_RUN_ID);
+            if (!Number.isSafeInteger(runId) || runId <= 0) {
+              core.setFailed('capacity_closure_run_id must be a positive workflow run ID');
+              return;
+            }
+            const { owner, repo } = context.repo;
+            const run = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.data.name !== 'Distributed 40k Observability Closure') {
+              core.setFailed(`Run ${runId} is not Distributed 40k Observability Closure`);
+              return;
+            }
+            if (run.data.conclusion !== 'success') {
+              core.setFailed(`Observability closure run ${runId} conclusion is ${run.data.conclusion}`);
+              return;
+            }
+            core.info(`PASS: observability closure workflow run ${runId} completed successfully.`);
+      - name: Download exact observability-closed 40k artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: distributed-40k-capacity-closure-*
+          path: artifacts/distributed-capacity-closure
+          merge-multiple: true
+          run-id: ${{ inputs.capacity_closure_run_id }}
+          github-token: ${{ github.token }}
+      - name: Require closure JSON to match exact published candidate and every P0 capacity gate
+        env:
+          EXPECTED_SHA: ${{ inputs.published_sha }}
+          CLOSURE_RUN_ID: ${{ inputs.capacity_closure_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'artifacts/distributed-capacity-closure/distributed-40k-capacity-closure.json';
+          const evidence = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const sha = process.env.EXPECTED_SHA.toLowerCase();
+          if (evidence?.schema_version !== 'geomacro.distributed-40k-capacity-closure.v1') throw new Error('capacity closure schema mismatch');
+          if (evidence?.pass !== true || evidence?.candidate_sha !== sha) throw new Error('capacity closure is not PASS on exact published SHA');
+          for (const gate of [
+            'exact_1m_burst_40k_rps',
+            'exact_12m_five_minute_soak_40k_rps',
+            'latency_slo_pass',
+            'zero_5xx_timeouts_drops',
+            'db_pool_capacity_pass',
+            'edge_runtime_capacity_pass',
+            'auth_rate_limit_boundary_pass',
+            'provider_saturation_pass',
+            'data_leakage_gate_pass',
+            'idempotency_replay_conflict_pass',
+          ]) {
+            if (evidence?.[gate] !== true) throw new Error(`capacity closure gate is not PASS: ${gate}`);
+          }
+          if (evidence?.production_load !== false || evidence?.real_payment !== false || evidence?.mainnet_activation !== false) {
+            throw new Error('capacity closure crossed a forbidden activation boundary');
+          }
+          if (!evidence?.evidence_sha256?.capacity_pass || !evidence?.evidence_sha256?.control_plane || !evidence?.evidence_sha256?.infrastructure_telemetry) {
+            throw new Error('capacity closure evidence digests are incomplete');
+          }
+          console.log(`PASS: observability-closed 40k evidence from run ${process.env.CLOSURE_RUN_ID} is bound to exact candidate ${sha}.`);
+          NODE
+      - name: Re-upload strict closure copy of capacity evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: commercial-launch-strict-40k-capacity-${{ github.run_id }}
+          path: artifacts/distributed-capacity-closure/distributed-40k-capacity-closure.json
           if-no-files-found: error
           retention-days: 90
 
@@ -151,7 +239,7 @@ jobs:
           [[ "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           [[ "${PUBLISHED_SHA,,}" == "${GITHUB_SHA,,}" ]]
       - name: Setup Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
       - name: Verify exact published live surface
@@ -180,6 +268,7 @@ jobs:
     if: always()
     needs:
       - contract
+      - distributed-capacity-proof
       - staging-risk-gate
       - published-live-surface
     runs-on: ubuntu-latest
@@ -191,9 +280,11 @@ jobs:
             echo '## Commercial Launch Strict Evidence'
             echo
             echo '- Exact candidate + build/secret-boundary contract: ${{ needs.contract.result }}'
-            echo '- Isolated staging Risk Gate security/load/SLO: ${{ needs.staging-risk-gate.result }}'
+            echo '- Same-SHA observability-closed real 40k capacity proof: ${{ needs.distributed-capacity-proof.result }}'
+            echo '- Isolated staging Risk Gate security/bounded-load/SLO: ${{ needs.staging-risk-gate.result }}'
             echo '- Exact published SHA + outside-in live security: ${{ needs.published-live-surface.result }}'
             echo
             echo 'This workflow never performs production load, payment settlement, mainnet activation, real-funds authorization or public Early Warning activation.'
-            echo 'Passing this workflow is prelaunch evidence, not a third-party penetration-test certification or a guarantee of one-million simultaneous production HTTP users.'
+            echo 'The 40k proof covers exact isolated-staging arrival-rate burst/soak plus DB pool, edge/runtime, auth/rate-limit, provider saturation, data-leakage, and replay/idempotency evidence for the same release.'
+            echo 'Passing this workflow is first-party launch evidence, not a third-party penetration-test certification or a claim of 40,000 simultaneous open connections.'
           } >> "$GITHUB_STEP_SUMMARY"

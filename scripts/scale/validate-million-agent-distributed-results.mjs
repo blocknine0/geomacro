@@ -8,11 +8,26 @@ const PROFILES = {
 };
 const DEFAULT_MAX_P95_MS = 1_500;
 const DEFAULT_MAX_P99_MS = 3_000;
+const DEFAULT_MAX_LAUNCH_SKEW_MS = 2_000;
+const DEFAULT_MAX_FIRST_REQUEST_START_LATE_MS = 3_000;
+const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 
 function finite(value, field) {
   const number = Number(value);
   if (!Number.isFinite(number)) throw new Error(`${field} must be finite`);
   return number;
+}
+
+function nonEmpty(value, field) {
+  const string = String(value || '').trim();
+  if (!string) throw new Error(`${field} must be non-empty`);
+  return string;
+}
+
+function fullSha(value, field) {
+  const sha = nonEmpty(value, field).toLowerCase();
+  if (!SHA_PATTERN.test(sha)) throw new Error(`${field} must be a full 40-character git SHA`);
+  return sha;
 }
 
 export function validateSummaries(summaries, options = {}) {
@@ -25,20 +40,34 @@ export function validateSummaries(summaries, options = {}) {
   const expectedDuration = options.expectedDuration ?? canonical.expectedDuration;
   const maxP95Ms = options.maxP95Ms ?? DEFAULT_MAX_P95_MS;
   const maxP99Ms = options.maxP99Ms ?? DEFAULT_MAX_P99_MS;
+  const maxLaunchSkewMs = options.maxLaunchSkewMs ?? DEFAULT_MAX_LAUNCH_SKEW_MS;
+  const maxFirstRequestStartLateMs = options.maxFirstRequestStartLateMs ?? DEFAULT_MAX_FIRST_REQUEST_START_LATE_MS;
+  const expectedCandidateSha = options.expectedCandidateSha ? fullSha(options.expectedCandidateSha, 'expectedCandidateSha') : null;
+  const expectedDeploymentId = options.expectedDeploymentId ? nonEmpty(options.expectedDeploymentId, 'expectedDeploymentId') : null;
+  const expectedRunGroupId = options.expectedRunGroupId ? nonEmpty(options.expectedRunGroupId, 'expectedRunGroupId') : null;
 
   if (!Array.isArray(summaries) || summaries.length !== expectedShards) {
     throw new Error(`Expected exactly ${expectedShards} shard summaries`);
   }
 
   const indexes = new Set();
+  const generatorIds = new Set();
   let totalRequests = 0;
   let totalExpected = 0;
   let worstP95 = 0;
   let worstP99 = 0;
   let minClientCount = Infinity;
+  let candidateSha = null;
+  let deploymentId = null;
+  let runGroupId = null;
+  let targetHost = null;
+  let barrierEpochMs = null;
+  let minLaunchEpochMs = Infinity;
+  let maxLaunchEpochMs = -Infinity;
+  let maxFirstRequestOffsetMs = 0;
 
   for (const summary of summaries) {
-    if (summary?.suite !== 'geomacro-distributed-40k-load-v2' || summary.profile !== profile) {
+    if (summary?.suite !== 'geomacro-distributed-40k-load-v3' || summary.profile !== profile) {
       throw new Error('Unexpected distributed 40k load suite/profile');
     }
     if (summary.production_target !== false || summary.execution_authorized !== false) {
@@ -47,6 +76,45 @@ export function validateSummaries(summaries, options = {}) {
     if (summary.auth_and_abuse_controls_bypassed !== false || summary.capacity_and_quota_acknowledged !== true) {
       throw new Error('Authentication/abuse controls or capacity acknowledgement boundary violated');
     }
+
+    const shardCandidateSha = fullSha(summary.candidate_sha, 'candidate_sha');
+    const verifiedStagingSha = fullSha(summary.verified_staging_sha, 'verified_staging_sha');
+    if (verifiedStagingSha !== shardCandidateSha) throw new Error('Shard staging SHA is not bound to candidate SHA');
+    if (candidateSha === null) candidateSha = shardCandidateSha;
+    if (shardCandidateSha !== candidateSha) throw new Error('Shard candidate SHA mismatch');
+    if (expectedCandidateSha && shardCandidateSha !== expectedCandidateSha) throw new Error('Candidate SHA does not match expected release');
+
+    const shardDeploymentId = nonEmpty(summary.deployment_id, 'deployment_id');
+    if (deploymentId === null) deploymentId = shardDeploymentId;
+    if (shardDeploymentId !== deploymentId) throw new Error('Shard deployment ID mismatch');
+    if (expectedDeploymentId && shardDeploymentId !== expectedDeploymentId) throw new Error('Deployment ID does not match expected deployment');
+
+    const shardRunGroupId = nonEmpty(summary.run_group_id, 'run_group_id');
+    if (runGroupId === null) runGroupId = shardRunGroupId;
+    if (shardRunGroupId !== runGroupId) throw new Error('Shard run-group ID mismatch');
+    if (expectedRunGroupId && shardRunGroupId !== expectedRunGroupId) throw new Error('Run-group ID does not match expected run');
+
+    const generatorId = nonEmpty(summary.generator_id, 'generator_id');
+    if (generatorIds.has(generatorId)) throw new Error(`Duplicate generator ID ${generatorId}`);
+    generatorIds.add(generatorId);
+
+    const shardTargetHost = nonEmpty(summary.target_host, 'target_host').toLowerCase();
+    if (targetHost === null) targetHost = shardTargetHost;
+    if (shardTargetHost !== targetHost) throw new Error('Shard target host mismatch');
+
+    const shardBarrier = finite(summary.orchestrator_barrier_epoch_ms, 'orchestrator_barrier_epoch_ms');
+    const launchEpoch = finite(summary.generator_launch_epoch_ms, 'generator_launch_epoch_ms');
+    const reportedOffset = finite(summary.generator_launch_offset_ms, 'generator_launch_offset_ms');
+    if (!Number.isSafeInteger(shardBarrier) || !Number.isSafeInteger(launchEpoch)) throw new Error('Barrier/launch epoch must be safe integers');
+    if (barrierEpochMs === null) barrierEpochMs = shardBarrier;
+    if (shardBarrier !== barrierEpochMs) throw new Error('Shard barrier timestamp mismatch');
+    const computedOffset = launchEpoch - shardBarrier;
+    if (reportedOffset !== computedOffset || computedOffset < 0 || computedOffset > maxLaunchSkewMs) {
+      throw new Error(`Generator launch offset ${computedOffset}ms violates synchronized barrier tolerance`);
+    }
+    minLaunchEpochMs = Math.min(minLaunchEpochMs, launchEpoch);
+    maxLaunchEpochMs = Math.max(maxLaunchEpochMs, launchEpoch);
+
     if (finite(summary.aggregate_rate_per_second, 'aggregate_rate_per_second') !== expectedRate) {
       throw new Error('Shard reports unexpected aggregate request rate');
     }
@@ -84,6 +152,10 @@ export function validateSummaries(summaries, options = {}) {
       'non_json_responses',
       'response_header_violations',
       'oversized_responses',
+      'server_5xx_responses',
+      'transport_errors',
+      'auth_failures',
+      'rate_limit_responses',
     ];
     for (const field of requiredZero) {
       if (finite(summary.metrics?.[field], `shard ${index}.metrics.${field}`) !== 0) {
@@ -94,6 +166,12 @@ export function validateSummaries(summaries, options = {}) {
       throw new Error(`Shard ${index} has failed HTTP requests`);
     }
 
+    const firstRequestOffset = finite(summary.metrics?.first_request_start_offset_ms, `shard ${index}.metrics.first_request_start_offset_ms`);
+    if (firstRequestOffset < 0 || firstRequestOffset > maxFirstRequestStartLateMs) {
+      throw new Error(`Shard ${index} first request started ${firstRequestOffset}ms from barrier; max is ${maxFirstRequestStartLateMs}ms`);
+    }
+    maxFirstRequestOffsetMs = Math.max(maxFirstRequestOffsetMs, firstRequestOffset);
+
     const p95 = finite(summary.metrics?.http_req_duration_p95_ms, `shard ${index}.p95`);
     const p99 = finite(summary.metrics?.http_req_duration_p99_ms, `shard ${index}.p99`);
     if (p95 >= maxP95Ms) throw new Error(`Shard ${index} p95 ${p95}ms does not meet < ${maxP95Ms}ms`);
@@ -102,14 +180,25 @@ export function validateSummaries(summaries, options = {}) {
     worstP99 = Math.max(worstP99, p99);
   }
 
-  if (indexes.size !== expectedShards) throw new Error('Shard index coverage is incomplete');
+  if (indexes.size !== expectedShards || generatorIds.size !== expectedShards) throw new Error('Shard/generator coverage is incomplete');
+  const launchSkewMs = maxLaunchEpochMs - minLaunchEpochMs;
+  if (launchSkewMs > maxLaunchSkewMs) throw new Error(`Generator launch skew ${launchSkewMs}ms exceeds ${maxLaunchSkewMs}ms`);
   if (totalExpected !== expectedAgents || totalRequests !== expectedAgents) {
     throw new Error(`Expected exactly ${expectedAgents} total agents/requests, got ${totalRequests}`);
   }
 
   return {
-    suite: 'geomacro-distributed-40k-load-validation-v2',
+    suite: 'geomacro-distributed-40k-load-validation-v3',
     profile,
+    candidate_sha: candidateSha,
+    verified_staging_sha: candidateSha,
+    deployment_id: deploymentId,
+    run_group_id: runGroupId,
+    target_host: targetHost,
+    orchestrator_barrier_epoch_ms: barrierEpochMs,
+    maximum_generator_launch_skew_ms: launchSkewMs,
+    maximum_first_request_start_offset_ms: maxFirstRequestOffsetMs,
+    generator_count: generatorIds.size,
     distinct_synthetic_agents: expectedAgents,
     total_requests: totalRequests,
     aggregate_rate_per_second: expectedRate,
@@ -118,7 +207,12 @@ export function validateSummaries(summaries, options = {}) {
     minimum_api_client_pool_seen: minClientCount,
     auth_and_abuse_controls_bypassed: false,
     all_shards_exact_budget: true,
+    synchronized_generator_barrier: true,
     zero_failed_http_requests: true,
+    zero_server_5xx_responses: true,
+    zero_transport_errors_or_timeouts: true,
+    zero_auth_failures: true,
+    zero_rate_limit_responses: true,
     zero_dropped_iterations: true,
     zero_response_security_violations: true,
     zero_execution_boundary_violations: true,
@@ -130,16 +224,26 @@ export function validateSummaries(summaries, options = {}) {
     real_payment: false,
     mainnet_activation: false,
     pass: true,
-    limitation: 'This proves the tested 40,000 requests/second isolated-staging arrival profile, not 40,000 simultaneous open connections or unlimited production capacity.',
+    limitation: 'This proves the tested 40,000 requests/second isolated-staging arrival profile on the recorded release/deployment, not 40,000 simultaneous open connections or unlimited production capacity.',
   };
 }
 
 function syntheticSummary(index, profile) {
   const config = PROFILES[profile];
   const expectedPerShard = config.expectedAgents / config.expectedShards;
+  const barrier = 1_800_000_000_000;
+  const candidateSha = 'a'.repeat(40);
   return {
-    suite: 'geomacro-distributed-40k-load-v2',
+    suite: 'geomacro-distributed-40k-load-v3',
     profile,
+    candidate_sha: candidateSha,
+    verified_staging_sha: candidateSha,
+    deployment_id: 'staging-deployment-123',
+    run_group_id: `self-test-${profile}`,
+    generator_id: `generator-${index}`,
+    orchestrator_barrier_epoch_ms: barrier,
+    generator_launch_epoch_ms: barrier + index,
+    generator_launch_offset_ms: index,
     shard_index: index,
     shard_count: config.expectedShards,
     expected_request_budget: expectedPerShard,
@@ -164,6 +268,11 @@ function syntheticSummary(index, profile) {
       non_json_responses: 0,
       response_header_violations: 0,
       oversized_responses: 0,
+      server_5xx_responses: 0,
+      transport_errors: 0,
+      auth_failures: 0,
+      rate_limit_responses: 0,
+      first_request_start_offset_ms: 100 + index,
     },
   };
 }
@@ -171,8 +280,13 @@ function syntheticSummary(index, profile) {
 export function runSelfTest() {
   for (const profile of Object.keys(PROFILES)) {
     const summaries = Array.from({ length: 40 }, (_, index) => syntheticSummary(index, profile));
-    const evidence = validateSummaries(summaries, { profile });
-    if (evidence.aggregate_rate_per_second !== 40_000 || evidence.pass !== true) {
+    const evidence = validateSummaries(summaries, {
+      profile,
+      expectedCandidateSha: 'a'.repeat(40),
+      expectedDeploymentId: 'staging-deployment-123',
+      expectedRunGroupId: `self-test-${profile}`,
+    });
+    if (evidence.aggregate_rate_per_second !== 40_000 || evidence.pass !== true || evidence.generator_count !== 40) {
       throw new Error(`40k result validator happy-path failed for ${profile}`);
     }
 
@@ -180,12 +294,25 @@ export function runSelfTest() {
       (items) => { items[0].metrics.response_security_violations = 1; },
       (items) => { items[0].metrics.response_header_violations = 1; },
       (items) => { items[0].metrics.oversized_responses = 1; },
+      (items) => { items[0].metrics.server_5xx_responses = 1; },
+      (items) => { items[0].metrics.transport_errors = 1; },
+      (items) => { items[0].metrics.auth_failures = 1; },
+      (items) => { items[0].metrics.rate_limit_responses = 1; },
+      (items) => { items[0].metrics.first_request_start_offset_ms = 3001; },
       (items) => { items[0].metrics.http_reqs -= 1; },
       (items) => { items[0].metrics.http_req_duration_p99_ms = 3000; },
       (items) => { items[1].shard_index = 0; },
       (items) => { items[0].production_target = true; },
       (items) => { items[0].auth_and_abuse_controls_bypassed = true; },
       (items) => { items[0].api_client_count = 399; },
+      (items) => { items[0].candidate_sha = 'b'.repeat(40); },
+      (items) => { items[0].verified_staging_sha = 'b'.repeat(40); },
+      (items) => { items[0].deployment_id = 'other-deployment'; },
+      (items) => { items[0].run_group_id = 'other-run'; },
+      (items) => { items[1].generator_id = items[0].generator_id; },
+      (items) => { items[0].target_host = 'other-staging.example.test'; },
+      (items) => { items[0].orchestrator_barrier_epoch_ms += 1; },
+      (items) => { items[39].generator_launch_epoch_ms += 3000; items[39].generator_launch_offset_ms += 3000; },
     ]) {
       const candidate = structuredClone(summaries);
       mutation(candidate);
@@ -198,7 +325,7 @@ export function runSelfTest() {
       if (!rejected) throw new Error(`Validator self-test expected mutated ${profile} evidence to fail`);
     }
   }
-  console.log('PASS: 40k distributed result validator self-test');
+  console.log('PASS: synchronized same-release 40k distributed result validator self-test');
 }
 
 if (process.argv.includes('--self-test')) {
@@ -213,7 +340,12 @@ if (process.argv.includes('--self-test')) {
     .filter((name) => matcher.test(name))
     .sort((a, b) => Number(a.match(/shard-(\d+)/)?.[1]) - Number(b.match(/shard-(\d+)/)?.[1]));
   const summaries = files.map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
-  const evidence = validateSummaries(summaries, { profile });
+  const evidence = validateSummaries(summaries, {
+    profile,
+    expectedCandidateSha: process.env.RISK_GATE_DISTRIBUTED_EXPECTED_CANDIDATE_SHA,
+    expectedDeploymentId: process.env.RISK_GATE_DISTRIBUTED_EXPECTED_DEPLOYMENT_ID,
+    expectedRunGroupId: process.env.RISK_GATE_DISTRIBUTED_EXPECTED_RUN_GROUP_ID,
+  });
   fs.mkdirSync('artifacts', { recursive: true });
   fs.writeFileSync(`artifacts/distributed-40k-validation-${profile}.json`, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify(evidence, null, 2));

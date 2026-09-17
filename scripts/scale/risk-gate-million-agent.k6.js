@@ -1,12 +1,15 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import exec from 'k6/execution';
-import { Counter } from 'k6/metrics';
+import { Counter, Trend } from 'k6/metrics';
 
 const PRODUCTION_HOSTS = new Set(['geomacro.live', 'www.geomacro.live']);
 const ACK = 'I_AUTHORIZE_DISTRIBUTED_ISOLATED_STAGING_LOAD';
 const CAPACITY_ACK = 'I_CONFIRMED_STAGING_CAPACITY_AND_QUOTAS';
 const SENSITIVE_KEY_PATTERN = /(authorization|api[_-]?key|api[_-]?secret|private[_-]?key|service[_-]?role|payment[_-]?signature|bearer[_-]?token)/i;
+const SHA_PATTERN = /^[0-9a-f]{40}$/i;
+const MAX_GENERATOR_START_LATE_MS = 2_000;
+const MAX_FIRST_REQUEST_START_LATE_MS = 3_000;
 
 function required(name) {
   const value = (__ENV[name] || '').trim();
@@ -20,6 +23,20 @@ function boundedInteger(name, min, max) {
   if (!Number.isInteger(value) || value < min || value > max) {
     throw new Error(`${name} must be an integer within ${min}..${max}`);
   }
+  return value;
+}
+
+function epochInteger(name) {
+  const value = Number(required(name));
+  if (!Number.isSafeInteger(value) || value < 1_600_000_000_000 || value > 4_000_000_000_000) {
+    throw new Error(`${name} must be a valid millisecond epoch`);
+  }
+  return value;
+}
+
+function fullSha(name) {
+  const value = required(name).toLowerCase();
+  if (!SHA_PATTERN.test(value)) throw new Error(`${name} must be a full 40-character git SHA`);
   return value;
 }
 
@@ -63,6 +80,18 @@ function parseApiKeys() {
 const target = parseTarget();
 const profile = required('RISK_GATE_DISTRIBUTED_PROFILE');
 const apiKeys = parseApiKeys();
+const candidateSha = fullSha('RISK_GATE_DISTRIBUTED_CANDIDATE_SHA');
+const verifiedStagingSha = fullSha('RISK_GATE_DISTRIBUTED_VERIFIED_STAGING_SHA');
+if (candidateSha !== verifiedStagingSha) throw new Error('Verified staging SHA does not match candidate SHA');
+const deploymentId = required('RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID');
+const runGroupId = required('RISK_GATE_DISTRIBUTED_RUN_GROUP_ID');
+const generatorId = required('RISK_GATE_DISTRIBUTED_GENERATOR_ID');
+const barrierEpochMs = epochInteger('RISK_GATE_DISTRIBUTED_BARRIER_EPOCH_MS');
+const generatorLaunchEpochMs = epochInteger('RISK_GATE_DISTRIBUTED_GENERATOR_LAUNCH_EPOCH_MS');
+const launchOffsetMs = generatorLaunchEpochMs - barrierEpochMs;
+if (launchOffsetMs < 0 || launchOffsetMs > MAX_GENERATOR_START_LATE_MS) {
+  throw new Error(`Generator launch offset ${launchOffsetMs}ms is outside synchronized barrier tolerance`);
+}
 const shardIndex = boundedInteger('RISK_GATE_DISTRIBUTED_SHARD_INDEX', 0, 99);
 const shardCount = boundedInteger('RISK_GATE_DISTRIBUTED_SHARD_COUNT', 1, 100);
 if (shardIndex >= shardCount) throw new Error('Shard index must be smaller than shard count');
@@ -90,6 +119,11 @@ const unexpectedStatus = new Counter('unexpected_status');
 const nonJsonResponses = new Counter('non_json_responses');
 const responseHeaderViolations = new Counter('response_header_violations');
 const oversizedResponses = new Counter('oversized_responses');
+const server5xxResponses = new Counter('server_5xx_responses');
+const transportErrors = new Counter('transport_errors');
+const authFailures = new Counter('auth_failures');
+const rateLimitResponses = new Counter('rate_limit_responses');
+const firstRequestStartOffsetMs = new Trend('first_request_start_offset_ms');
 
 export const options = {
   maxRedirects: 0,
@@ -115,6 +149,11 @@ export const options = {
     non_json_responses: ['count==0'],
     response_header_violations: ['count==0'],
     oversized_responses: ['count==0'],
+    server_5xx_responses: ['count==0'],
+    transport_errors: ['count==0'],
+    auth_failures: ['count==0'],
+    rate_limit_responses: ['count==0'],
+    first_request_start_offset_ms: [`max<${MAX_FIRST_REQUEST_START_LATE_MS + 1}`],
   },
 };
 
@@ -137,7 +176,7 @@ function executionAuthorizedIsFalse(payload) {
 
 function requestBody(iteration) {
   const iso3 = ['USA', 'IND', 'CHN', 'DEU', 'JPN', 'BRA', 'GBR', 'FRA'][iteration % 8];
-  const unique = `${shardIndex}-${iteration}`;
+  const unique = `${runGroupId}-${shardIndex}-${iteration}`;
   return {
     request_id: `distributed_staging_${unique}`,
     subject: { type: 'country', country_iso3: iso3 },
@@ -168,20 +207,31 @@ function header(response, name) {
 
 export default function () {
   const iteration = exec.scenario.iterationInTest;
+  if (iteration === 0) {
+    const firstOffset = Date.now() - barrierEpochMs;
+    firstRequestStartOffsetMs.add(firstOffset);
+    if (firstOffset < 0 || firstOffset > MAX_FIRST_REQUEST_START_LATE_MS) executionBoundaryViolations.add(1);
+  }
+
   const apiKey = apiKeys[(iteration + shardIndex) % apiKeys.length];
   const body = JSON.stringify(requestBody(iteration));
   const response = http.post(target.endpoint, body, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': `geomacro-distributed-staging-load/2.0 profile/${profile} shard/${shardIndex}`,
+      'User-Agent': `geomacro-distributed-staging-load/3.1 profile/${profile} shard/${shardIndex}`,
     },
     redirects: 0,
     timeout: '10s',
-    tags: { suite: 'geomacro-distributed-40k-load-v2', profile, shard: String(shardIndex) },
+    tags: { suite: 'geomacro-distributed-40k-load-v3', profile, shard: String(shardIndex) },
   });
 
   if (response.status !== 200) unexpectedStatus.add(1);
+  if (response.status === 0) transportErrors.add(1);
+  if (response.status >= 500 && response.status <= 599) server5xxResponses.add(1);
+  if (response.status === 401 || response.status === 403) authFailures.add(1);
+  if (response.status === 429) rateLimitResponses.add(1);
+
   const raw = response.body || '';
   if (raw.length > maxResponseBytes) oversizedResponses.add(1);
   if (raw.includes(apiKey)) responseSecurityViolations.add(1);
@@ -215,8 +265,16 @@ export default function () {
 
 export function handleSummary(data) {
   const safeSummary = {
-    suite: 'geomacro-distributed-40k-load-v2',
+    suite: 'geomacro-distributed-40k-load-v3',
     profile,
+    candidate_sha: candidateSha,
+    verified_staging_sha: verifiedStagingSha,
+    deployment_id: deploymentId,
+    run_group_id: runGroupId,
+    generator_id: generatorId,
+    orchestrator_barrier_epoch_ms: barrierEpochMs,
+    generator_launch_epoch_ms: generatorLaunchEpochMs,
+    generator_launch_offset_ms: launchOffsetMs,
     shard_index: shardIndex,
     shard_count: shardCount,
     expected_request_budget: requestBudget,
@@ -241,6 +299,11 @@ export function handleSummary(data) {
       non_json_responses: data.metrics.non_json_responses?.values?.count ?? 0,
       response_header_violations: data.metrics.response_header_violations?.values?.count ?? 0,
       oversized_responses: data.metrics.oversized_responses?.values?.count ?? 0,
+      server_5xx_responses: data.metrics.server_5xx_responses?.values?.count ?? 0,
+      transport_errors: data.metrics.transport_errors?.values?.count ?? 0,
+      auth_failures: data.metrics.auth_failures?.values?.count ?? 0,
+      rate_limit_responses: data.metrics.rate_limit_responses?.values?.count ?? 0,
+      first_request_start_offset_ms: data.metrics.first_request_start_offset_ms?.values?.max ?? null,
     },
     latency_objective_ms: { p95_max: maxP95Ms, p99_max: maxP99Ms },
     limitations: [
