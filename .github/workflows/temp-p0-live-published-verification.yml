@@ -1,0 +1,49 @@
+name: Temp P0 Published Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-p0-live-published-verification.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEOMACRO_LIVE_BASE_URL: https://geomacro.live
+      GEOMACRO_LIVE_EXPECTED_HOST: geomacro.live
+      GEOMACRO_EXPECTED_DEPLOYED_SHA: 4024ded2c55da31f61cfaf385b2ea2c26eb9c5c5
+      GEOMACRO_LIVE_SMOKE_TIMEOUT_MS: '15000'
+    steps:
+      - name: Checkout exact canonical published main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 4024ded2c55da31f61cfaf385b2ea2c26eb9c5c5
+          persist-credentials: false
+
+      - name: Prove checkout is exact published candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "${actual,,}" = "${GEOMACRO_EXPECTED_DEPLOYED_SHA,,}"
+          echo "canonical_sha=${actual}"
+
+      - name: Prove live build alignment first
+        run: node scripts/ops/live-build-sha-smoke.mjs
+
+      - name: Run read-only outside-in P0 live smoke
+        run: node scripts/ops/live-launch-surface-smoke.mjs
+
+      - name: Upload outside-in evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: temp-p0-published-${{ github.run_id }}
+          path: artifacts/live-launch-surface-smoke.json
+          if-no-files-found: warn
+          retention-days: 7
