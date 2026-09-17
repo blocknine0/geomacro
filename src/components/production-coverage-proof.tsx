@@ -11,73 +11,51 @@ const PPG_ACCEPTED_FISCAL_COUNT = 57;
 
 export function ProductionCoverageProof() {
   return (
-    <section className="border-b border-border/60 bg-primary/[0.025]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-7">
-        <div className="rounded-2xl border border-primary/20 bg-card/55 p-5 shadow-sm backdrop-blur-sm sm:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
+    <section className="border-b border-border/60 bg-card/20">
+      <div className="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6">
+        <div className="flex flex-col gap-4 rounded-xl border border-border/70 bg-background/55 px-4 py-4 backdrop-blur-sm lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"
-                className="border-primary/35 bg-primary/5 font-mono text-[10px] uppercase tracking-[0.15em] text-primary"
+                className="border-primary/35 bg-primary/5 font-mono text-[9px] uppercase tracking-[0.14em] text-primary"
               >
                 Controlled coverage evidence · verified 16 Sep 2026
               </Badge>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
-                114 sovereign countries passed the current four-module Risk Gate review census.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                A controlled workflow evaluated all 194 enabled sovereign countries under the current review contract. 114 had every required module verified and 80 remained fail-closed. Missing or unverified inputs are not converted into approval.
-              </p>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {VERIFIED_COUNTRY_COUNT}/{ENABLED_SOVEREIGN_DENOMINATOR} accepted · {FAIL_CLOSED_COUNTRY_COUNT} fail-closed
+              </span>
             </div>
-
-            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[470px] lg:grid-cols-2">
-              <Metric value={String(VERIFIED_COUNTRY_COUNT)} label="Accepted in census" />
-              <Metric value={String(FAIL_CLOSED_COUNTRY_COUNT)} label="Fail-closed in census" />
-              <Metric value={String(ENABLED_SOVEREIGN_DENOMINATOR)} label="Evaluated" />
-              <Metric value={`${QPSD_ACCEPTED_FISCAL_COUNT} + ${PPG_ACCEPTED_FISCAL_COUNT}`} label="QPSD + PPG accepted fiscal paths" />
+            <div className="mt-2 flex items-start gap-2.5">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  114 sovereign countries passed the current four-module Risk Gate review census.
+                </p>
+                <p className="mt-1 max-w-4xl text-xs leading-relaxed text-muted-foreground">
+                  A controlled workflow evaluated all 194 enabled sovereign countries; 80 remained fail-closed. Missing or unverified inputs are not converted into approval, and every accepted result keeps execution_authorized=false.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <ProofPoint text="All 114 accepted census results keep execution_authorized=false." />
-            <ProofPoint text="QPSD passed the governed promotion gate; governed PPG fallback remains available where the current contract supports it." />
-            <ProofPoint text="This evidence did not activate x402, real-money payments, Base mainnet or autonomous execution." />
-          </div>
-
-          <div className="mt-5 flex flex-col justify-between gap-4 border-t border-border/60 pt-5 sm:flex-row sm:items-center">
-            <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              Claim boundary: this is a dated controlled-workflow coverage result for the current Risk Gate methodology. It is not an all-country product guarantee, transaction authorization, production SLA, independent security audit or mainnet-launch claim, and it does not imply that every product is deliverable for every accepted country or request shape.
-            </p>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link to="/risk-gate">Risk Gate</Link>
-              </Button>
-              <Button asChild size="sm" variant="ghost" className="gap-1.5">
-                <Link to="/research">Methodology <ArrowRight className="h-3.5 w-3.5" /></Link>
-              </Button>
-            </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <span className="hidden font-mono text-[10px] text-muted-foreground xl:inline">
+              Fiscal paths: {QPSD_ACCEPTED_FISCAL_COUNT} QPSD + {PPG_ACCEPTED_FISCAL_COUNT} PPG
+            </span>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/risk-gate">Review Risk Gate</Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost" className="gap-1.5">
+              <Link to="/research">Evidence & limits <ArrowRight className="h-3.5 w-3.5" /></Link>
+            </Button>
           </div>
         </div>
+        <p className="sr-only">
+          Claim boundary: this is a dated controlled-workflow coverage result for the current Risk Gate methodology. It is not an all-country product guarantee, transaction authorization, production SLA, independent security audit or mainnet-launch claim, and it does not imply that every product is deliverable for every accepted country or request shape.
+        </p>
       </div>
     </section>
-  );
-}
-
-function Metric({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl border border-border/70 bg-background/40 px-4 py-3">
-      <div className="font-mono text-xl font-semibold text-foreground">{value}</div>
-      <div className="mt-1 text-[11px] leading-snug text-muted-foreground">{label}</div>
-    </div>
-  );
-}
-
-function ProofPoint({ text }: { text: string }) {
-  return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-background/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-      <span>{text}</span>
-    </div>
   );
 }
 
