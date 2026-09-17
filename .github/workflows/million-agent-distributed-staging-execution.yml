@@ -1,0 +1,452 @@
+name: Distributed 40k Staging Execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: 'Exact canonical main SHA deployed to isolated staging'
+        required: true
+        type: string
+      deployment_id:
+        description: 'Operator-recorded immutable staging deployment ID for this candidate'
+        required: true
+        type: string
+      capacity_ack:
+        description: 'Must equal I_CONFIRMED_STAGING_CAPACITY_AND_QUOTAS after edge/app/DB/provider capacity is reserved'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: distributed-40k-staging-execution
+  cancel-in-progress: false
+
+env:
+  RISK_GATE_DISTRIBUTED_ACK: I_AUTHORIZE_DISTRIBUTED_ISOLATED_STAGING_LOAD
+  RISK_GATE_DISTRIBUTED_CAPACITY_ACK: ${{ inputs.capacity_ack }}
+  RISK_GATE_DISTRIBUTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+  RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+
+jobs:
+  burst-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: staging-capacity
+    outputs:
+      barrier_epoch_ms: ${{ steps.metadata.outputs.barrier_epoch_ms }}
+      run_group_id: ${{ steps.metadata.outputs.run_group_id }}
+    env:
+      RISK_GATE_DISTRIBUTED_STAGING_BASE_URL: ${{ vars.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL }}
+      RISK_GATE_DISTRIBUTED_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_API_KEYS_JSON: ${{ secrets.RISK_GATE_DISTRIBUTED_API_KEYS_JSON }}
+      RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT: ${{ vars.RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Require exact main candidate and explicit capacity reservation
+        shell: bash
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$DISPATCH_REF" == 'refs/heads/main' ]] || { echo '::error title=Wrong dispatch ref::Run the real capacity proof from main only.'; exit 1; }
+          [[ "$RISK_GATE_DISTRIBUTED_CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo '::error title=Invalid candidate SHA::Full SHA required.'; exit 1; }
+          [[ "${RISK_GATE_DISTRIBUTED_CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]] || { echo '::error title=Candidate mismatch::Input candidate must equal workflow dispatch SHA.'; exit 1; }
+          [[ "$RISK_GATE_DISTRIBUTED_CAPACITY_ACK" == 'I_CONFIRMED_STAGING_CAPACITY_AND_QUOTAS' ]] || { echo '::error title=Capacity not acknowledged::Reserve edge/app/DB/provider capacity before load.'; exit 1; }
+          [[ -n "$RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID" ]] || { echo '::error title=Missing deployment ID::Immutable staging deployment identifier required.'; exit 1; }
+          [[ -n "${RISK_GATE_DISTRIBUTED_STAGING_BASE_URL:-}" && -n "${RISK_GATE_DISTRIBUTED_EXPECTED_HOST:-}" && -n "${RISK_GATE_DISTRIBUTED_API_KEYS_JSON:-}" && -n "${RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT:-}" ]] || { echo '::error title=Missing staging-capacity configuration::Configure the isolated staging-capacity environment first.'; exit 1; }
+      - name: Validate isolated staging target and API-client entitlement pool without traffic
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const raw = process.env.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL;
+          const expectedHost = process.env.RISK_GATE_DISTRIBUTED_EXPECTED_HOST;
+          const url = new URL(raw);
+          if (url.protocol !== 'https:') throw new Error('isolated staging target must use HTTPS');
+          if (['geomacro.live','www.geomacro.live'].includes(url.hostname.toLowerCase())) throw new Error('production Geomacro host is forbidden');
+          if (url.host.toLowerCase() !== expectedHost.toLowerCase()) throw new Error('staging expected-host mismatch');
+          let keys;
+          try { keys = JSON.parse(process.env.RISK_GATE_DISTRIBUTED_API_KEYS_JSON); } catch { throw new Error('API key pool must be JSON'); }
+          const maxRate = Number(process.env.RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT);
+          if (!Array.isArray(keys) || !Number.isInteger(maxRate) || maxRate < 1 || maxRate > 40000) throw new Error('invalid API client capacity configuration');
+          if (keys.length < Math.ceil(40000 / maxRate)) throw new Error('API key pool cannot preserve normal per-client rate controls at 40k aggregate');
+          console.log(`PASS: isolated staging target and ${keys.length}-client entitlement pool preflight validated without sending load.`);
+          NODE
+      - name: Generate synchronized burst metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          barrier="$(( $(date +%s%3N) + 300000 ))"
+          group="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-burst"
+          echo "barrier_epoch_ms=$barrier" >> "$GITHUB_OUTPUT"
+          echo "run_group_id=$group" >> "$GITHUB_OUTPUT"
+          echo "Burst barrier armed for a future synchronized fire time. No traffic sent by preflight."
+
+  burst-shards:
+    needs: burst-preflight
+    runs-on: [self-hosted, linux, x64, geomacro-load-generator]
+    timeout-minutes: 15
+    environment: staging-capacity
+    strategy:
+      fail-fast: true
+      max-parallel: 40
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    env:
+      RISK_GATE_DISTRIBUTED_PROFILE: million_burst_40k
+      RISK_GATE_DISTRIBUTED_SHARD_INDEX: ${{ matrix.shard }}
+      RISK_GATE_DISTRIBUTED_BARRIER_EPOCH_MS: ${{ needs.burst-preflight.outputs.barrier_epoch_ms }}
+      RISK_GATE_DISTRIBUTED_RUN_GROUP_ID: ${{ needs.burst-preflight.outputs.run_group_id }}
+      RISK_GATE_DISTRIBUTED_STAGING_BASE_URL: ${{ vars.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL }}
+      RISK_GATE_DISTRIBUTED_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_API_KEYS_JSON: ${{ secrets.RISK_GATE_DISTRIBUTED_API_KEYS_JSON }}
+      RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT: ${{ vars.RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Prove this generator is load-ready without traffic
+        env:
+          RISK_GATE_DISTRIBUTED_GENERATOR_ID: ${{ runner.name }}
+        run: node scripts/scale/run-million-agent-distributed-shard.mjs --preflight-only
+      - name: Publish occupied generator readiness
+        env:
+          GENERATOR_ID: ${{ runner.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/readiness
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const record = {
+            suite: 'geomacro-distributed-generator-readiness-v1',
+            candidate_sha: process.env.RISK_GATE_DISTRIBUTED_CANDIDATE_SHA,
+            deployment_id: process.env.RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID,
+            run_group_id: process.env.RISK_GATE_DISTRIBUTED_RUN_GROUP_ID,
+            profile: process.env.RISK_GATE_DISTRIBUTED_PROFILE,
+            shard_index: Number(process.env.RISK_GATE_DISTRIBUTED_SHARD_INDEX),
+            generator_id: process.env.GENERATOR_ID,
+            ready_at: new Date().toISOString(),
+            traffic_sent: false,
+          };
+          fs.writeFileSync(`artifacts/readiness/ready-${record.shard_index}.json`, JSON.stringify(record, null, 2) + '\n');
+          NODE
+      - name: Upload readiness while keeping runner occupied
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-ready-${{ needs.burst-preflight.outputs.run_group_id }}-${{ matrix.shard }}
+          path: artifacts/readiness/ready-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Require all 40 generator slots ready before fire window
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RISK_GATE_DISTRIBUTED_READINESS_PREFIX: distributed-ready-${{ needs.burst-preflight.outputs.run_group_id }}-
+        run: node scripts/scale/wait-for-distributed-generator-fleet.mjs
+      - name: Execute synchronized authenticated 1M burst shard
+        env:
+          RISK_GATE_DISTRIBUTED_GENERATOR_ID: ${{ runner.name }}
+        run: node scripts/scale/run-million-agent-distributed-shard.mjs
+      - name: Upload burst shard evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-result-${{ needs.burst-preflight.outputs.run_group_id }}-${{ matrix.shard }}
+          path: artifacts/distributed-40k-million_burst_40k-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  validate-burst:
+    needs: [burst-preflight, burst-shards]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Download all 40 burst shard summaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: distributed-result-${{ needs.burst-preflight.outputs.run_group_id }}-*
+          path: artifacts/distributed-million_burst_40k
+          merge-multiple: true
+      - name: Enforce exact synchronized same-release burst evidence
+        env:
+          RISK_GATE_DISTRIBUTED_PROFILE: million_burst_40k
+          RISK_GATE_DISTRIBUTED_RESULTS_DIR: artifacts/distributed-million_burst_40k
+          RISK_GATE_DISTRIBUTED_EXPECTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_RUN_GROUP_ID: ${{ needs.burst-preflight.outputs.run_group_id }}
+        run: node scripts/scale/validate-million-agent-distributed-results.mjs
+      - name: Upload validated burst evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-validation-${{ needs.burst-preflight.outputs.run_group_id }}
+          path: artifacts/distributed-40k-validation-million_burst_40k.json
+          if-no-files-found: error
+          retention-days: 90
+
+  soak-preflight:
+    needs: validate-burst
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: staging-capacity
+    outputs:
+      barrier_epoch_ms: ${{ steps.metadata.outputs.barrier_epoch_ms }}
+      run_group_id: ${{ steps.metadata.outputs.run_group_id }}
+    env:
+      RISK_GATE_DISTRIBUTED_STAGING_BASE_URL: ${{ vars.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL }}
+      RISK_GATE_DISTRIBUTED_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_EXPECTED_HOST }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Re-verify staging still serves the exact candidate before soak
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const base = new URL(process.env.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL);
+          if (['geomacro.live','www.geomacro.live'].includes(base.hostname.toLowerCase())) throw new Error('production host forbidden');
+          if (base.host.toLowerCase() !== process.env.RISK_GATE_DISTRIBUTED_EXPECTED_HOST.toLowerCase()) throw new Error('expected host mismatch');
+          const response = await fetch(new URL('/.well-known/geomacro-build.json', base), { redirect: 'error', signal: AbortSignal.timeout(10000) });
+          if (!response.ok) throw new Error(`build marker HTTP ${response.status}`);
+          const body = await response.json();
+          if (String(body?.canonical_main_sha || '').toLowerCase() !== process.env.RISK_GATE_DISTRIBUTED_CANDIDATE_SHA.toLowerCase()) throw new Error('staging candidate changed after burst');
+          console.log('PASS: staging candidate remained exact after burst.');
+          NODE
+      - name: Generate synchronized soak metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          barrier="$(( $(date +%s%3N) + 300000 ))"
+          group="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-soak"
+          echo "barrier_epoch_ms=$barrier" >> "$GITHUB_OUTPUT"
+          echo "run_group_id=$group" >> "$GITHUB_OUTPUT"
+
+  soak-shards:
+    needs: [validate-burst, soak-preflight]
+    runs-on: [self-hosted, linux, x64, geomacro-load-generator]
+    timeout-minutes: 20
+    environment: staging-capacity
+    strategy:
+      fail-fast: true
+      max-parallel: 40
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    env:
+      RISK_GATE_DISTRIBUTED_PROFILE: soak_40k_5m
+      RISK_GATE_DISTRIBUTED_SHARD_INDEX: ${{ matrix.shard }}
+      RISK_GATE_DISTRIBUTED_BARRIER_EPOCH_MS: ${{ needs.soak-preflight.outputs.barrier_epoch_ms }}
+      RISK_GATE_DISTRIBUTED_RUN_GROUP_ID: ${{ needs.soak-preflight.outputs.run_group_id }}
+      RISK_GATE_DISTRIBUTED_STAGING_BASE_URL: ${{ vars.RISK_GATE_DISTRIBUTED_STAGING_BASE_URL }}
+      RISK_GATE_DISTRIBUTED_EXPECTED_HOST: ${{ vars.RISK_GATE_DISTRIBUTED_EXPECTED_HOST }}
+      RISK_GATE_DISTRIBUTED_API_KEYS_JSON: ${{ secrets.RISK_GATE_DISTRIBUTED_API_KEYS_JSON }}
+      RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT: ${{ vars.RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Prove this generator is load-ready without traffic
+        env:
+          RISK_GATE_DISTRIBUTED_GENERATOR_ID: ${{ runner.name }}
+        run: node scripts/scale/run-million-agent-distributed-shard.mjs --preflight-only
+      - name: Publish occupied generator readiness
+        env:
+          GENERATOR_ID: ${{ runner.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/readiness
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const record = {
+            suite: 'geomacro-distributed-generator-readiness-v1',
+            candidate_sha: process.env.RISK_GATE_DISTRIBUTED_CANDIDATE_SHA,
+            deployment_id: process.env.RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID,
+            run_group_id: process.env.RISK_GATE_DISTRIBUTED_RUN_GROUP_ID,
+            profile: process.env.RISK_GATE_DISTRIBUTED_PROFILE,
+            shard_index: Number(process.env.RISK_GATE_DISTRIBUTED_SHARD_INDEX),
+            generator_id: process.env.GENERATOR_ID,
+            ready_at: new Date().toISOString(),
+            traffic_sent: false,
+          };
+          fs.writeFileSync(`artifacts/readiness/ready-${record.shard_index}.json`, JSON.stringify(record, null, 2) + '\n');
+          NODE
+      - name: Upload readiness while keeping runner occupied
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-ready-${{ needs.soak-preflight.outputs.run_group_id }}-${{ matrix.shard }}
+          path: artifacts/readiness/ready-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Require all 40 generator slots ready before fire window
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RISK_GATE_DISTRIBUTED_READINESS_PREFIX: distributed-ready-${{ needs.soak-preflight.outputs.run_group_id }}-
+        run: node scripts/scale/wait-for-distributed-generator-fleet.mjs
+      - name: Execute synchronized authenticated five-minute 40k soak shard
+        env:
+          RISK_GATE_DISTRIBUTED_GENERATOR_ID: ${{ runner.name }}
+        run: node scripts/scale/run-million-agent-distributed-shard.mjs
+      - name: Upload soak shard evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-result-${{ needs.soak-preflight.outputs.run_group_id }}-${{ matrix.shard }}
+          path: artifacts/distributed-40k-soak_40k_5m-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+  validate-soak:
+    needs: [soak-preflight, soak-shards]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Download all 40 soak shard summaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: distributed-result-${{ needs.soak-preflight.outputs.run_group_id }}-*
+          path: artifacts/distributed-soak_40k_5m
+          merge-multiple: true
+      - name: Enforce exact synchronized same-release soak evidence
+        env:
+          RISK_GATE_DISTRIBUTED_PROFILE: soak_40k_5m
+          RISK_GATE_DISTRIBUTED_RESULTS_DIR: artifacts/distributed-soak_40k_5m
+          RISK_GATE_DISTRIBUTED_EXPECTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          RISK_GATE_DISTRIBUTED_EXPECTED_RUN_GROUP_ID: ${{ needs.soak-preflight.outputs.run_group_id }}
+        run: node scripts/scale/validate-million-agent-distributed-results.mjs
+      - name: Upload validated soak evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-validation-${{ needs.soak-preflight.outputs.run_group_id }}
+          path: artifacts/distributed-40k-validation-soak_40k_5m.json
+          if-no-files-found: error
+          retention-days: 90
+
+  capacity-pass:
+    needs: [burst-preflight, validate-burst, soak-preflight, validate-soak]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download validated burst and soak evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: distributed-validation-*
+          path: artifacts/validated
+          merge-multiple: true
+      - name: Require both profiles pass on the same candidate and staging deployment
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          EXPECTED_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const burst = JSON.parse(fs.readFileSync('artifacts/validated/distributed-40k-validation-million_burst_40k.json', 'utf8'));
+          const soak = JSON.parse(fs.readFileSync('artifacts/validated/distributed-40k-validation-soak_40k_5m.json', 'utf8'));
+          for (const [name, evidence] of [['burst', burst], ['soak', soak]]) {
+            if (evidence?.pass !== true) throw new Error(`${name} evidence is not PASS`);
+            if (evidence?.candidate_sha !== process.env.EXPECTED_SHA.toLowerCase()) throw new Error(`${name} candidate SHA mismatch`);
+            if (evidence?.verified_staging_sha !== process.env.EXPECTED_SHA.toLowerCase()) throw new Error(`${name} verified staging SHA mismatch`);
+            if (evidence?.deployment_id !== process.env.EXPECTED_DEPLOYMENT_ID) throw new Error(`${name} deployment ID mismatch`);
+            if (evidence?.aggregate_rate_per_second !== 40000 || evidence?.generator_count !== 40 || evidence?.shard_count !== 40) throw new Error(`${name} distributed shape mismatch`);
+            if (evidence?.synchronized_generator_barrier !== true || evidence?.maximum_generator_launch_skew_ms > 2000) throw new Error(`${name} synchronization proof missing`);
+          }
+          if (burst.target_host !== soak.target_host) throw new Error('burst and soak targeted different staging hosts');
+          if (burst.total_requests !== 1000000 || soak.total_requests !== 12000000) throw new Error('canonical request totals mismatch');
+          const finalEvidence = {
+            schema_version: 'geomacro.distributed-40k-capacity-pass.v1',
+            generated_at: new Date().toISOString(),
+            candidate_sha: process.env.EXPECTED_SHA.toLowerCase(),
+            verified_staging_sha: process.env.EXPECTED_SHA.toLowerCase(),
+            operator_deployment_id: process.env.EXPECTED_DEPLOYMENT_ID,
+            target_host: burst.target_host,
+            burst: {
+              total_requests: burst.total_requests,
+              aggregate_rate_per_second: burst.aggregate_rate_per_second,
+              duration_seconds: burst.duration_seconds,
+              maximum_generator_launch_skew_ms: burst.maximum_generator_launch_skew_ms,
+              worst_shard_latency_ms: burst.worst_shard_latency_ms,
+            },
+            soak: {
+              total_requests: soak.total_requests,
+              aggregate_rate_per_second: soak.aggregate_rate_per_second,
+              duration_seconds: soak.duration_seconds,
+              maximum_generator_launch_skew_ms: soak.maximum_generator_launch_skew_ms,
+              worst_shard_latency_ms: soak.worst_shard_latency_ms,
+            },
+            authentication_and_abuse_controls_preserved: true,
+            zero_error_and_response_security_gates_passed: true,
+            production_load: false,
+            real_payment: false,
+            mainnet_activation: false,
+            capacity_claim_scope: 'The recorded isolated staging release passed the exact 40,000 requests/second burst and five-minute soak profiles under the recorded SLO/security conditions. This is not a claim of 40,000 simultaneous open connections or unlimited production capacity.',
+            pass: true,
+          };
+          fs.writeFileSync('artifacts/distributed-40k-capacity-pass.json', JSON.stringify(finalEvidence, null, 2) + '\n');
+          console.log('PASS: exact same-release 40k burst and five-minute soak capacity evidence closed.');
+          NODE
+      - name: Upload final 40k capacity evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: distributed-40k-capacity-pass-${{ github.run_id }}
+          path: artifacts/distributed-40k-capacity-pass.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record truthful capacity boundary
+        shell: bash
+        run: |
+          {
+            echo '## Real Distributed 40k Staging Capacity Evidence'
+            echo
+            echo '- Exact candidate SHA served by staging build marker: PASS'
+            echo '- 40 occupied dedicated generator runner slots before traffic: PASS'
+            echo '- 1,000,000 authenticated requests at 40,000 req/s for 25 seconds: PASS'
+            echo '- 12,000,000 authenticated requests at 40,000 req/s for 5 minutes: PASS'
+            echo '- Zero failed/dropped/security-boundary violations: PASS'
+            echo '- p95 < 1500 ms and p99 < 3000 ms gates: PASS'
+            echo '- Production load / real payment / mainnet activation: false'
+            echo '- 40,000 simultaneous-open-connection claim: false'
+          } >> "$GITHUB_STEP_SUMMARY"
