@@ -6,7 +6,7 @@ Geomacro is designed as global geopolitical and macro risk intelligence, but dif
 
 The public Geopolitical, Macroeconomic and Critical Minerals Risk Indices summarize qualifying evidence within their respective domains. Each domain is presented independently. If a domain has no current verified eligible evidence, it is not converted into a zero-risk reading.
 
-The current public indices preserve the audited GRI v1.2 parent proof lineage, but the historical combined GRI is no longer the public headline product.
+The current public indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage, but the historical combined GRI is no longer the public headline product.
 
 ## Subject-specific layer
 
