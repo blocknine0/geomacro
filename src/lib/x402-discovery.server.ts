@@ -21,6 +21,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
     launch.authorized &&
     !launch.disabledProviders.includes(provider);
   const resources: Array<Record<string, unknown>> = [];
+  const activeProviders = new Set<string>();
 
   if (providerAvailable("coinbase_x402", state.providers.coinbase_mainnet)) {
     try {
@@ -45,6 +46,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
           availability: `${origin}/api/x402/risk/availability`,
           execution_authorized: false,
         });
+        activeProviders.add("coinbase_x402");
       }
     } catch {
       // Fail closed. A half-configured production rail must never be advertised.
@@ -76,6 +78,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
           availability: `${origin}/api/x402/risk/availability`,
           execution_authorized: false,
         });
+        activeProviders.add("circle_gateway_x402");
       }
     } catch {
       // Fail closed if Circle support/config cannot be proven at request time.
@@ -106,7 +109,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
         product: CANONICAL_PRODUCT,
         provider: "coinbase_x402",
         pricing: "runtime_402_challenge_only",
-        production_enabled: providerAvailable("coinbase_x402", state.providers.coinbase_mainnet),
+        production_enabled: activeProviders.has("coinbase_x402"),
       },
       {
         resource: `${origin}/api/x402/circle/intelligence`,
@@ -114,7 +117,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
         product: CANONICAL_PRODUCT,
         provider: "circle_gateway_x402",
         pricing: "runtime_402_challenge_only",
-        production_enabled: providerAvailable("circle_gateway_x402", state.providers.circle_gateway_mainnet),
+        production_enabled: activeProviders.has("circle_gateway_x402"),
         approved_initial_mainnet_network: "eip155:8453",
         arc_mainnet_enabled: false,
       },
@@ -124,7 +127,7 @@ export async function buildX402DiscoveryDocument(originInput: string) {
         product: CANONICAL_PRODUCT,
         provider: "nevermined",
         pricing: "provider_plan_runtime_only",
-        production_enabled: providerAvailable("nevermined", state.providers.nevermined_live),
+        production_enabled: activeProviders.has("nevermined"),
       },
     ],
     discovery: {
