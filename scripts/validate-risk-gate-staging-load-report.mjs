@@ -48,6 +48,10 @@ export function validateReport(report, { maxP95Ms, maxP99Ms }) {
     throw new Error('Production Geomacro host is forbidden in staging load evidence');
   }
 
+  if (report.workload?.redirect_policy !== 'error') {
+    throw new Error('Staging load evidence must prove redirects were refused');
+  }
+
   const correctness = report.correctness;
   if (!correctness || typeof correctness !== 'object') {
     throw new Error('Staging load correctness block is missing');
@@ -60,6 +64,7 @@ export function validateReport(report, { maxP95Ms, maxP99Ms }) {
     'network_errors',
     'non_json_responses',
     'execution_boundary_violations',
+    'response_security_violations',
   ];
 
   for (const field of requiredZero) {
@@ -101,8 +106,10 @@ export function validateReport(report, { maxP95Ms, maxP99Ms }) {
       max_p95: maxP95Ms,
       max_p99: maxP99Ms,
     },
+    redirect_refusal_gate: true,
     correctness_zero_error_gate: true,
     execution_boundary_gate: true,
+    response_security_gate: true,
     pass: true,
   };
 }
@@ -111,7 +118,7 @@ export function runSelfTest() {
   const good = {
     suite: 'risk-gate-staging-http-load-v1',
     target: { host: 'staging.example.test' },
-    workload: { allow_429: false },
+    workload: { allow_429: false, redirect_policy: 'error' },
     latency_ms: { p95: 900, p99: 1500 },
     correctness: {
       successful_200: 100,
@@ -122,6 +129,7 @@ export function runSelfTest() {
       network_errors: 0,
       non_json_responses: 0,
       execution_boundary_violations: 0,
+      response_security_violations: 0,
     },
     pass: true,
   };
@@ -130,8 +138,10 @@ export function runSelfTest() {
 
   for (const mutation of [
     (value) => { value.target.host = 'geomacro.live'; },
+    (value) => { value.workload.redirect_policy = 'follow'; },
     (value) => { value.correctness.server_errors_5xx = 1; },
     (value) => { value.correctness.execution_boundary_violations = 1; },
+    (value) => { value.correctness.response_security_violations = 1; },
     (value) => { value.latency_ms.p99 = 9000; },
   ]) {
     const candidate = structuredClone(good);
