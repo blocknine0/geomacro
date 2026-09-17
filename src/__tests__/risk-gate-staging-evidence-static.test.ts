@@ -9,6 +9,18 @@ const p0Workflow = readFileSync(
   ".github/workflows/p0-security-resilience-evidence.yml",
   "utf8",
 );
+const loadHarness = readFileSync(
+  "scripts/load-test-risk-gate-staging.ts",
+  "utf8",
+);
+const responseProbe = readFileSync(
+  "scripts/probe-risk-gate-staging-response-security.ts",
+  "utf8",
+);
+const reportValidator = readFileSync(
+  "scripts/validate-risk-gate-staging-load-report.mjs",
+  "utf8",
+);
 const docs = readFileSync(
   "docs/RISK_GATE_STAGING_LOAD_TEST.md",
   "utf8",
@@ -33,6 +45,16 @@ describe("Risk Gate staging evidence contract", () => {
     expect(workflow).toContain("Enforce prelaunch staging SLO and zero-error gates");
     expect(workflow).toContain("risk-gate-staging-response-security.json");
     expect(workflow).toContain("risk-gate-staging-http-load-validation.json");
+  });
+
+  it("refuses HTTP redirects and requires explicit execution plus response security on every load response", () => {
+    expect(loadHarness).toContain('redirect: "error"');
+    expect(responseProbe).toContain('redirect: "error"');
+    expect(loadHarness).toContain("executionBoundaryIsExplicitlyFalse(payload)");
+    expect(loadHarness).toContain("response_security_violations");
+    expect(loadHarness).toContain("raw.includes(apiKey)");
+    expect(reportValidator).toContain("'response_security_violations'");
+    expect(reportValidator).toContain("redirect_policy !== 'error'");
   });
 
   it("keeps the new staging evidence contracts inside the P0 security gate", () => {
