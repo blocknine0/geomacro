@@ -30,6 +30,6 @@ Geomacro intelligence
       └─ Prediction market application — permanent Testnet technical proof
 ```
 
-The public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Prediction-market probabilities are a different technical-proof signal and must not be presented as Geomacro risk-index values.
+The public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Prediction-market probabilities are a different technical-proof signal and must not be presented as Geomacro risk-index values.
 
 Current market flows are Testnet only and must not be represented as real-money, mainnet or production-market deployment.
