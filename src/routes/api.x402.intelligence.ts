@@ -347,6 +347,7 @@ export const Route = createFileRoute("/api/x402/intelligence")({
 
         const requestId = randomUUID();
         let prepared: Record<string, unknown>;
+        let preparedResponseSha256: string;
         try {
           const intelligence = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null });
           if (intelligence.execution_authorized !== false) throw new Error("EXECUTION_BOUNDARY_VIOLATION");
@@ -367,7 +368,12 @@ export const Route = createFileRoute("/api/x402/intelligence")({
               query_plan_bound: true,
             },
           };
-          await prepareCoinbaseX402Delivery({ paymentFingerprint, claimToken, responsePayload: prepared });
+          const preparedResult = await prepareCoinbaseX402Delivery({
+            paymentFingerprint,
+            claimToken,
+            responsePayload: prepared,
+          });
+          preparedResponseSha256 = preparedResult.responseSha256;
           await upsertCoinbaseX402ProductAudit({
             requestId,
             clientRequestId: parsed.client_request_id ?? null,
@@ -427,7 +433,19 @@ export const Route = createFileRoute("/api/x402/intelligence")({
         }
 
         const bazaar = bazaarExtensionOutcome(verified, settlement);
-        await persistCoinbaseSettlementTelemetry({ requestId, payer: settlement.payer ?? verified.payer ?? null, settlementTx: settlement.transaction, settlementNetwork: settlement.network ?? config.networkName, config, paymentFingerprint, bazaarExtensionEchoed: paymentPayloadEchoesBazaar(paymentPayload), bazaarStatus: bazaar.status, bazaarRejectedReason: bazaar.rejectedReason });
+        await persistCoinbaseSettlementTelemetry({
+          requestId,
+          payer: settlement.payer ?? verified.payer ?? null,
+          settlementTx: settlement.transaction,
+          settlementNetwork: settlement.network ?? config.networkName,
+          config,
+          paymentFingerprint,
+          responseSha256: preparedResponseSha256,
+          capability: "adaptive_risk_intelligence_coinbase_x402",
+          bazaarExtensionEchoed: paymentPayloadEchoesBazaar(paymentPayload),
+          bazaarStatus: bazaar.status,
+          bazaarRejectedReason: bazaar.rejectedReason,
+        });
         try {
           await upsertCoinbaseX402ProductAudit({ requestId, clientRequestId: parsed.client_request_id ?? null, paymentFingerprint, queryPlanHash: plan.query_plan_hash, productId: PRODUCT_ID, deliveredProductHash: String(prepared.delivered_product_hash ?? ""), settlementTx: settlement.transaction, status: "delivered", config });
         } catch (error) {
