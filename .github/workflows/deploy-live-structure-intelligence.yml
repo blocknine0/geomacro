@@ -8,6 +8,7 @@ on:
       - ".github/workflows/deploy-live-structure-intelligence.yml"
       - "supabase/functions/live-structure-intelligence/**"
       - "scripts/patch-live-structure-private-error-serializer.mjs"
+      - "scripts/patch-live-structure-runtime.mjs"
   workflow_dispatch:
     inputs:
       mode:
@@ -23,6 +24,7 @@ on:
       - ".github/workflows/deploy-live-structure-intelligence.yml"
       - "supabase/functions/live-structure-intelligence/**"
       - "scripts/patch-live-structure-private-error-serializer.mjs"
+      - "scripts/patch-live-structure-runtime.mjs"
 
 permissions:
   contents: read
@@ -38,8 +40,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Apply deterministic runtime hardening patch
-        run: node scripts/patch-live-structure-private-error-serializer.mjs
+      - name: Apply canonical bundler-safe runtime patch
+        run: node scripts/patch-live-structure-runtime.mjs
 
       - name: Validate deployment, diagnostics and stable identity guardrails
         shell: bash
@@ -64,11 +66,12 @@ jobs:
           grep -q '\.eq(' "$function"
           grep -q '"story_key"' "$function"
           grep -q '\.maybeSingle()' "$function"
-          grep -q 'id:' "$function"
           grep -q 'canonicalStory.id' "$function"
+          grep -q 'throw canonicalStoryError;' "$function"
           grep -q 'live-structure-v1.4.8' "$function"
+          node -e 'const fs=require("fs"); const s=fs.readFileSync(process.argv[1],"utf8"); if (/\bthrow\s*\n/.test(s)) { console.error("Line break after throw is forbidden in generated Edge runtime"); process.exit(1); }' "$function"
 
-          echo "Live structure deployment, phase-aware diagnostics and stable canonical event identity guardrails are present."
+          echo "Live structure deployment, phase-aware diagnostics, stable canonical event identity and bundler-safe throw syntax are present."
 
   deploy:
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
@@ -89,8 +92,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Apply deterministic runtime hardening patch
-        run: node scripts/patch-live-structure-private-error-serializer.mjs
+      - name: Apply canonical bundler-safe runtime patch
+        run: node scripts/patch-live-structure-runtime.mjs
 
       - name: Validate production target
         shell: bash
