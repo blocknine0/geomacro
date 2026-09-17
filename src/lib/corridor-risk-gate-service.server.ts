@@ -20,6 +20,10 @@ import type {
   RiskGateResponse,
 } from "./risk-gate-contract";
 
+import type {
+  RiskObjectDeliveryProfile,
+} from "./public-demo-risk-profile";
+
 
 export type CorridorRiskGateServiceInput = {
   request_id: string;
@@ -46,6 +50,11 @@ export type CorridorRiskGateServiceInput = {
     RiskGatePolicy;
 
   evaluated_at?: string;
+
+  /**
+   * Server-controlled Risk Object profile. Public callers do not select this.
+   */
+  risk_object_profile?: RiskObjectDeliveryProfile;
 };
 
 
@@ -154,6 +163,8 @@ evaluateCorridorRiskGate(
     await getLatestCompatibleCorridorRiskObjectAtOrBefore(
       corridorId,
       evaluatedAt.toISOString(),
+      input.risk_object_profile ??
+        "CANONICAL",
     );
 
   if (!riskObject) {
