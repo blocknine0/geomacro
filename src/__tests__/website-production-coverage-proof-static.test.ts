@@ -33,7 +33,7 @@ describe("public production coverage proof", () => {
       expect(shell).toContain(`"${route}"`);
     }
     expect(shell).toContain("showProductionEvidence ? <ProductionCoverageProof /> : null");
-    expect(shell).toContain("Dated 114-country controlled-workflow evidence · Private Pilot Risk Gate · Mainnet pre-launch");
+    expect(shell).toContain("Public intelligence live · Commercial Risk Gate / API roadmap · Mainnet pre-launch");
   });
 
   it("keeps machine-readable website context aligned with the same measured claim", () => {
