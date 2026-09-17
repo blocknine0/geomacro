@@ -8,10 +8,10 @@ const HOME = readFileSync(
 
 function currentPilotFlow(source: string): string {
   const start = source.indexOf(
-    "Current Private Pilot control flow",
+    "Planned controlled workflow",
   );
   const end = source.indexOf(
-    "Geomacro does not authorize or execute the transaction",
+    "Who Geomacro is for",
     start,
   );
 
@@ -22,29 +22,42 @@ function currentPilotFlow(source: string): string {
 }
 
 describe("homepage Risk Gate control ordering", () => {
-  it("keeps Risk Gate response before customer policy and customer execution", () => {
+  it("keeps Risk Gate response before customer policy and preserves non-authorization", () => {
     const flow = currentPilotFlow(HOME);
 
     const recommendation = flow.indexOf(
-      "Risk Gate recommendation returned to the customer's system",
+      "Risk Gate recommendation returned",
     );
     const policy = flow.indexOf(
-      "Customer-owned policy applied by the customer system",
+      "Customer policy decides what happens next",
     );
-    const execution = flow.indexOf(
-      "Any downstream execution remains customer-controlled",
+    const nonAuthorization = flow.indexOf(
+      "Geomacro does not authorize or execute the transaction",
+    );
+    const executionAuthorized = flow.indexOf(
+      "execution_authorized",
     );
 
     expect(recommendation).toBeGreaterThanOrEqual(0);
     expect(policy).toBeGreaterThan(recommendation);
-    expect(execution).toBeGreaterThan(policy);
+    expect(nonAuthorization).toBeGreaterThan(policy);
+    expect(executionAuthorized).toBeGreaterThan(nonAuthorization);
   });
 
-  it("does not reintroduce the old policy-before-recommendation sequence", () => {
+  it("does not reintroduce policy-before-recommendation ordering", () => {
     const flow = currentPilotFlow(HOME);
 
+    const recommendation = flow.indexOf(
+      "Risk Gate recommendation returned",
+    );
+    const policy = flow.indexOf(
+      "Customer policy decides what happens next",
+    );
+
+    expect(recommendation).toBeGreaterThanOrEqual(0);
+    expect(policy).toBeGreaterThan(recommendation);
     expect(flow).not.toContain(
-      '"Customer-owned policy applied by the customer system",\n                "Recommendation returned to the customer\'s system"',
+      '"Customer policy decides what happens next",\n                 "Risk Gate recommendation returned"',
     );
   });
 });

@@ -95,7 +95,9 @@ describe("canonical product architecture alignment", () => {
 
     expect(home).not.toContain("applies the customer's policy");
     expect(riskGateRoute).not.toContain("applies the customer's policy");
-    expect(home).toContain("Customer-owned policy applied by the customer system");
+    expect(home).toContain("Customer policy decides what happens next");
+    expect(home).toContain("Geomacro does not authorize or execute the transaction");
+    expect(home).toContain("execution_authorized");
     expect(riskGateRoute).toContain("The customer's own identity, permissions and policy layer applies its rules");
     expect(institutional).toContain("customer controls execution");
   });
@@ -140,8 +142,8 @@ describe("canonical product architecture alignment", () => {
     const about = read("src/routes/about.tsx");
     const predictionDocs = read("src/content/docs/34-prediction-markets.md");
 
-    expect(home).toContain("Secondary technical proof");
-    expect(home).toContain("They are not the main commercial product");
+    expect(home).toContain("Technical proof, kept separate");
+    expect(home).toContain("commercial identity remains risk intelligence and decision infrastructure");
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(about).toContain("Risk intelligence is the product");
@@ -175,7 +177,8 @@ describe("canonical product architecture alignment", () => {
     const home = read("src/components/home/commercial-home.tsx");
     const dataApi = read("src/routes/data-api.tsx");
 
-    expect(home).toContain("PUBLIC DATA + PRIVATE PILOT API");
+    expect(home).toContain("PUBLIC DATA LIVE · API ROADMAP");
+    expect(home).not.toContain("PUBLIC DATA + PRIVATE PILOT API");
     expect(dataApi).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
     expect(dataApi).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(dataApi).toContain("execution_authorized=false");
