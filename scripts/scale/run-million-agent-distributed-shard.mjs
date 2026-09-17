@@ -87,6 +87,7 @@ async function waitForBarrier(barrierEpochMs) {
 }
 
 async function main() {
+  const preflightOnly = process.argv.includes('--preflight-only');
   if (required('RISK_GATE_DISTRIBUTED_ACK') !== ACK) throw new Error(`RISK_GATE_DISTRIBUTED_ACK must equal ${ACK}`);
   if (required('RISK_GATE_DISTRIBUTED_CAPACITY_ACK') !== CAPACITY_ACK) throw new Error(`RISK_GATE_DISTRIBUTED_CAPACITY_ACK must equal ${CAPACITY_ACK}`);
 
@@ -114,6 +115,11 @@ async function main() {
   if (!Array.isArray(apiKeys) || apiKeys.length < 1) throw new Error('Distributed API-key pool must be a non-empty array');
   const maxRatePerClient = int('RISK_GATE_DISTRIBUTED_MAX_RATE_PER_CLIENT', 1, AGGREGATE_RATE);
   if (apiKeys.length < Math.ceil(AGGREGATE_RATE / maxRatePerClient)) throw new Error('API-key pool is too small for normal per-client rate controls');
+
+  if (preflightOnly) {
+    console.log(`PASS: generator ${generatorId} is ready for ${profile} shard ${shardIndex}; staging SHA ${candidateSha.slice(0, 12)} verified; no traffic sent.`);
+    return;
+  }
 
   const launchedAt = await waitForBarrier(barrierEpochMs);
   const env = {
