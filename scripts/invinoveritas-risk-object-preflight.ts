@@ -142,7 +142,7 @@ if (invinoApiKey) {
   }
 
   const verdict = String(body?.verdict ?? "");
-  if (!["approve", "concerns", "reject"].includes(verdict)) {
+  if (!["approve", "approve_with_concerns", "concerns", "reject"].includes(verdict)) {
     throw new Error(
       `invinoveritas /review returned an unexpected verdict contract: ${JSON.stringify(body)}`,
     );
