@@ -1,0 +1,206 @@
+name: invinoveritas Partner Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      iso3:
+        description: "ISO3 country code for a fresh production-signed Geomacro Risk Object"
+        required: true
+        default: "CHN"
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/invinoveritas-partner-preflight.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: invinoveritas-partner-preflight
+  cancel-in-progress: false
+
+jobs:
+  live-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production signing configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('Risk Object signing key must be Ed25519');
+          }
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n',
+          );
+          NODE
+
+      - name: Verify production signer matches deployed public trust registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/geomacro-keys.json', 'utf8'));
+          if (body?.ok !== true || !Array.isArray(body?.keys)) {
+            throw new Error('Deployed Geomacro public key registry is unavailable');
+          }
+          const key = body.keys.find((item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID);
+          if (!key) {
+            throw new Error('Production signing key id is not published');
+          }
+          if (key.status !== 'active') {
+            throw new Error('Production signing key is not active');
+          }
+          if (key.public_key_spki_b64 !== process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
+            throw new Error('Production private key does not match deployed public verification key');
+          }
+          console.log('PASS: production signer matches deployed active public key');
+          NODE
+
+      - name: Normalize requested country
+        id: country
+        shell: bash
+        env:
+          RAW_ISO3: ${{ github.event_name == 'workflow_dispatch' && inputs.iso3 || 'CHN' }}
+        run: |
+          set -euo pipefail
+          ISO3="$(printf '%s' "$RAW_ISO3" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          if ! [[ "$ISO3" =~ ^[A-Z]{3}$ ]]; then
+            echo "::error::iso3 must be exactly three letters"
+            exit 1
+          fi
+          echo "iso3=$ISO3" >> "$GITHUB_OUTPUT"
+
+      - name: Publish fresh production-signed Risk Object
+        shell: bash
+        env:
+          ISO3: ${{ steps.country.outputs.iso3 }}
+        run: |
+          set -euo pipefail
+          bun scripts/publish-country-risk-object.ts "$ISO3" | tee /tmp/publish.json
+          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+            .published == true and
+            .schema_version == "gro-1.1" and
+            .commercial_eligibility.status == "VERIFIED" and
+            .verification.status == "VERIFIED" and
+            .integrity.signature_present == true and
+            .integrity.signature_valid == true and
+            .integrity.signing_key_id == $key_id
+          ' /tmp/publish.json >/dev/null
+
+      - name: Export exact persisted signed payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          OBJECT_ID="$(jq -r '.object_id' /tmp/publish.json)"
+          export OBJECT_ID
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { createClient } = require('@supabase/supabase-js');
+          const db = createClient(
+            process.env.APP_SUPABASE_URL,
+            process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false, autoRefreshToken: false } },
+          );
+          const { data, error } = await db
+            .from('geomacro_risk_objects')
+            .select('payload')
+            .eq('object_id', process.env.OBJECT_ID)
+            .maybeSingle();
+          if (error) throw error;
+          if (!data?.payload) throw new Error('Persisted Risk Object payload unavailable');
+          fs.writeFileSync('/tmp/risk-object.json', JSON.stringify(data.payload, null, 2) + '\n', { mode: 0o600 });
+          NODE
+
+      - name: Register isolated invinoveritas evaluation identity
+        id: invino
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTER_RESPONSE="$(
+            curl --fail --silent --show-error               -X POST https://api.babyblueviper.com/register               -H 'content-type: application/json'               -d '{}'
+          )"
+          API_KEY="$(printf '%s' "$REGISTER_RESPONSE" | jq -r '.api_key // empty')"
+          if [ -z "$API_KEY" ]; then
+            echo "::error::invinoveritas registration returned no api_key"
+            exit 1
+          fi
+          echo "::add-mask::$API_KEY"
+          {
+            echo "api_key<<EOF"
+            echo "$API_KEY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run full Geomacro to invinoveritas live preflight
+        shell: bash
+        env:
+          INVINO_API_KEY: ${{ steps.invino.outputs.api_key }}
+          INVINO_REQUEST_OUT: /tmp/invinoveritas-review-request.json
+        run: |
+          set -euo pipefail
+          bun scripts/invinoveritas-risk-object-preflight.ts /tmp/risk-object.json             | tee /tmp/invinoveritas-preflight.json
+          jq -e '
+            .ok == true and
+            .gates.deployed_original_verification == "PASS" and
+            .gates.tampered_payload_rejected == "PASS" and
+            .gates.freshness == "PASS" and
+            .gates.partner_request_contract == "PASS" and
+            .gates.live_partner_review == "PASS" and
+            .live_review.attempted == true and
+            .live_review.proof_present == true and
+            (.live_review.verdict == "approve" or .live_review.verdict == "concerns" or .live_review.verdict == "reject")
+          ' /tmp/invinoveritas-preflight.json >/dev/null
+
+      - name: Publish sanitized evidence summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq '{ok, gates, object, live_review}' /tmp/invinoveritas-preflight.json             | tee /tmp/invinoveritas-preflight-summary.json
+          {
+            echo "## Geomacro x invinoveritas live preflight"
+            echo
+            cat /tmp/invinoveritas-preflight-summary.json
+            echo
+            echo "Raw Risk Object, API key and full review request are intentionally not published in the job summary."
+          } >> "$GITHUB_STEP_SUMMARY"
