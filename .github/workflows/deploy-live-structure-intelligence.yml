@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/deploy-live-structure-intelligence.yml"
       - "supabase/functions/live-structure-intelligence/**"
+      - "scripts/patch-live-structure-private-error-serializer.mjs"
   workflow_dispatch:
     inputs:
       mode:
@@ -21,6 +22,7 @@ on:
     paths:
       - ".github/workflows/deploy-live-structure-intelligence.yml"
       - "supabase/functions/live-structure-intelligence/**"
+      - "scripts/patch-live-structure-private-error-serializer.mjs"
 
 permissions:
   contents: read
@@ -35,6 +37,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Apply deterministic private-error hardening patch
+        run: node scripts/patch-live-structure-private-error-serializer.mjs
 
       - name: Validate deployment and private-error guardrails
         shell: bash
@@ -52,9 +57,12 @@ jobs:
           grep -q 'version: 2.117.0' "$file"
           grep -q 'x-geomacro-structure-token' "$function"
           grep -q 'Internal structuring failure. See private run diagnostics.' "$function"
+          grep -q 'phase=${phase}' "$function"
+          grep -q 'event_persistence' "$function"
+          grep -q 'evidence_persistence' "$function"
           grep -q 'live-structure-v1.4.8' "$function"
 
-          echo "Live structure deployment guardrails are present."
+          echo "Live structure deployment and phase-aware private-error guardrails are present."
 
   deploy:
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
@@ -74,6 +82,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Apply deterministic private-error hardening patch
+        run: node scripts/patch-live-structure-private-error-serializer.mjs
 
       - name: Validate production target
         shell: bash
