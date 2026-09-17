@@ -69,13 +69,30 @@
     "launch_cohort_nonproduction_acceptance",
     "security_and_resilience",
     "frozen_release_candidate_manifest",
-    "owner_launch_authorization"
+    "owner_launch_authorization",
+    "strict_p0_capacity_closure",
+    "provider_capped_paid_smoke_reconciled",
+    "marketplace_post_listing_verification",
+    "emergency_freeze_and_provider_quarantine",
+    "support_and_incident_ownership"
   ],
   "launch_rule": {
     "allow_partial_provider_launch": false,
     "partial_launch_scope": "approved_launch_cohort_only",
     "allow_testnet_as_revenue": false,
     "allow_unreconciled_settlement_as_revenue": false,
-    "allow_automatic_public_marketing_before_launch": false
+    "allow_automatic_public_marketing_before_launch": false,
+    "allow_post_launch_incident_quarantine": true,
+    "require_reconciled_capped_real_purchase_before_marketplace_promotion": true,
+    "require_post_listing_endpoint_probe": true,
+    "require_truthful_runtime_price_and_network_metadata": true
+  },
+  "emergency_controls": {
+    "global_freeze_env": "GEOMACRO_COMMERCE_EMERGENCY_FREEZE",
+    "provider_quarantine_env": "GEOMACRO_COMMERCE_DISABLED_PROVIDERS",
+    "global_freeze_blocks_all_production_rails": true,
+    "provider_quarantine_allowed_after_launch_for_incident_containment": true,
+    "provider_quarantine_does_not_count_as_approved_partial_launch": true,
+    "public_marketing_must_pause_for_quarantined_or_unhealthy_provider": true
   }
 }
