@@ -19,7 +19,7 @@ jobs:
   ingest-news:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -115,27 +115,20 @@ jobs:
           done
 
       - name: Structure fresh Geomacro intelligence
+        id: structure
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-        shell: bash
-        run: |
-          if [ -z "${LIVE_STRUCTURE_TOKEN:-}" ]; then
-            echo "::error::LIVE_STRUCTURE_TOKEN is required for the structured-intelligence handoff."
-            exit 1
-          fi
+          LIVE_STRUCTURE_MAX_ATTEMPTS: "4"
+          LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: "90000"
+        run: node scripts/invoke-live-structure-with-retry.mjs
 
-          curl --fail-with-body -sS \
-            --retry 3 \
-            --retry-all-errors \
-            --retry-delay 2 \
-            --retry-max-time 60 \
-            -X POST \
-            "${SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
-            -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
-            -H "Content-Type: application/json"
-
-          echo
+      - name: Diagnose structured-intelligence failure safely
+        if: ${{ always() && steps.structure.outcome == 'failure' }}
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/diagnose-live-structure-runtime.mjs
 
       - name: Check whether canonical GRI inputs changed
         id: gri_change
