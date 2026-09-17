@@ -63,6 +63,8 @@ on:
       - "public/llms.txt"
       - "src/lib/commercial-launch-gate.server.ts"
       - "src/lib/commercial-launch-gate.server.test.ts"
+      - "src/__tests__/production-launch-safety-static.test.ts"
+      - "docs/PRODUCTION_LAUNCH_ACCEPTANCE.md"
       - "src/lib/agent-commerce-delivery.server.ts"
       - "src/lib/commercial-growth.server.ts"
       - "server/api/internal/commercial-growth.get.ts"
