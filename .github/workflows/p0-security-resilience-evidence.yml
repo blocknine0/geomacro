@@ -19,6 +19,9 @@ on:
       - 'scripts/audit-p0-secret-boundaries.mjs'
       - 'scripts/p0-risk-object-key-drill.ts'
       - 'scripts/load-test-risk-gate-staging.ts'
+      - 'scripts/probe-risk-gate-staging-response-security.ts'
+      - 'scripts/validate-risk-gate-staging-load-report.mjs'
+      - 'docs/RISK_GATE_STAGING_LOAD_TEST.md'
       - 'docs/SECURITY_RESILIENCE_EVIDENCE.md'
       - 'docs/SECURITY_OPERATIONS_BASELINE.md'
       - 'docs/MAINNET_PRODUCTION_READINESS.md'
@@ -42,6 +45,9 @@ on:
       - 'scripts/audit-p0-secret-boundaries.mjs'
       - 'scripts/p0-risk-object-key-drill.ts'
       - 'scripts/load-test-risk-gate-staging.ts'
+      - 'scripts/probe-risk-gate-staging-response-security.ts'
+      - 'scripts/validate-risk-gate-staging-load-report.mjs'
+      - 'docs/RISK_GATE_STAGING_LOAD_TEST.md'
       - 'docs/SECURITY_RESILIENCE_EVIDENCE.md'
       - 'docs/SECURITY_OPERATIONS_BASELINE.md'
       - 'docs/MAINNET_PRODUCTION_READINESS.md'
@@ -98,6 +104,12 @@ jobs:
       - name: Verify staging load harness cannot target production
         run: bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
 
+      - name: Verify staging response security probe contract
+        run: bun x tsx scripts/probe-risk-gate-staging-response-security.ts --self-test
+
+      - name: Verify staging SLO evidence validator contract
+        run: node scripts/validate-risk-gate-staging-load-report.mjs --self-test
+
       - name: Record evidence boundary
         shell: bash
         run: |
@@ -109,6 +121,8 @@ jobs:
             echo '- Privileged source + compiled browser boundary audit: PASS'
             echo '- Ephemeral Risk Object key rotation/revocation drill: PASS'
             echo '- Staging-load production-host guard: PASS'
+            echo '- Staging response secret/non-leak probe contract: PASS'
+            echo '- Staging HTTP SLO + zero-error evidence validator contract: PASS'
             echo '- Production/customer load test performed here: false'
             echo '- Production edge/WAF/DDoS control verified here: false'
             echo '- Production signing key rotated here: false'

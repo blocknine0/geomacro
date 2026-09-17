@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/load-test-risk-gate-staging.ts'
+      - 'scripts/probe-risk-gate-staging-response-security.ts'
+      - 'scripts/validate-risk-gate-staging-load-report.mjs'
       - 'docs/RISK_GATE_STAGING_LOAD_TEST.md'
       - '.github/workflows/risk-gate-staging-load.yml'
   workflow_dispatch:
@@ -73,6 +75,12 @@ jobs:
       - name: Verify production guard and bounded configuration
         run: bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
 
+      - name: Verify staging response security probe contract
+        run: bun x tsx scripts/probe-risk-gate-staging-response-security.ts --self-test
+
+      - name: Verify staging load evidence validator contract
+        run: node scripts/validate-risk-gate-staging-load-report.mjs --self-test
+
   staging-load:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -91,6 +99,8 @@ jobs:
       RISK_GATE_LOAD_TEST_CORRIDOR_DESTINATION_ISO3: ${{ inputs.corridor_destination_iso3 }}
       RISK_GATE_LOAD_TEST_ALLOW_429: ${{ inputs.allow_429 }}
       RISK_GATE_LOAD_TEST_TIMEOUT_MS: '10000'
+      RISK_GATE_LOAD_TEST_MAX_P95_MS: '3000'
+      RISK_GATE_LOAD_TEST_MAX_P99_MS: '8000'
 
     steps:
       - name: Checkout
@@ -104,14 +114,23 @@ jobs:
       - name: Verify committed lockfile and install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Probe staging response security boundary
+        run: bun x tsx scripts/probe-risk-gate-staging-response-security.ts
+
       - name: Run bounded staging HTTP load
         run: bun x tsx scripts/load-test-risk-gate-staging.ts
+
+      - name: Enforce prelaunch staging SLO and zero-error gates
+        run: node scripts/validate-risk-gate-staging-load-report.mjs
 
       - name: Upload staging resilience evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: risk-gate-staging-http-load
-          path: artifacts/risk-gate-staging-http-load.json
+          path: |
+            artifacts/risk-gate-staging-response-security.json
+            artifacts/risk-gate-staging-http-load.json
+            artifacts/risk-gate-staging-http-load-validation.json
           if-no-files-found: warn
           retention-days: 30
