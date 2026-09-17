@@ -94,6 +94,25 @@ describe("Agentic Commerce public demo contract", () => {
     expect(service).toContain('["USA>CHN", "CHN>USA"]');
   });
 
+  it("isolates the permanent public demo profile from canonical paid delivery", () => {
+    const profile = read("src/lib/public-demo-risk-profile.ts");
+    const service = read("src/lib/agentic-demo-service.server.ts");
+    const store = read("src/lib/risk-object-store.server.ts");
+    const refresh = read("scripts/refresh-public-demo-risk-objects.ts");
+    const workflow = read(".github/workflows/public-demo-risk-refresh.yml");
+
+    expect(profile).toContain('"public_demo_commercial_subset"');
+    expect(profile).toContain('"public_demo_commercial_subset_v1"');
+    expect(service).toContain('mode === "PUBLIC_SANDBOX"');
+    expect(service).toContain('"PUBLIC_DEMO" as const');
+    expect(service).toContain('"CANONICAL" as const');
+    expect(service).toContain("PUBLIC_DEMO_RISK_PROFILE_NOT_ALLOWED_FOR_PAID_DELIVERY");
+    expect(store).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
+    expect(store).toContain('profile === "PUBLIC_DEMO"');
+    expect(refresh).toContain('delivery_profile: "PUBLIC_DEMO"');
+    expect(workflow).toContain('cron: "17 * * * *"');
+  });
+
   it("protects TanStack server functions with CSRF middleware", () => {
     const start = read("src/start.ts");
     expect(start).toContain("createCsrfMiddleware");

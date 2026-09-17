@@ -63,6 +63,12 @@ export type BuildCountryRiskInput = {
    * Defaults to current wall-clock time.
    */
   as_of?: string;
+
+  /**
+   * Optional calculation namespace for an explicitly isolated delivery
+   * profile. Canonical callers omit this, preserving existing hashes.
+   */
+  calculation_namespace?: string;
 };
 
 type WeightedEvent = {
@@ -826,6 +832,10 @@ export async function buildCountryRiskObject(
   const calculationInput = {
     methodology_version:
       COUNTRY_RISK_METHOD_VERSION,
+
+    calculation_namespace:
+      input.calculation_namespace?.trim() ||
+      undefined,
 
     country_iso3:
       countryIso3,

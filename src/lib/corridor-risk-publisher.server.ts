@@ -23,12 +23,23 @@ import type {
   GeomacroRiskObject,
 } from "./risk-object-contract";
 
+import {
+  riskObjectCalculationNamespace,
+  withPublicDemoProfileReason,
+  type RiskObjectDeliveryProfile,
+} from "./public-demo-risk-profile";
+
 
 export type CorridorRiskPublishInput = {
   origin_country_iso3: string;
   destination_country_iso3: string;
 
   as_of?: string;
+
+  /**
+   * Internal delivery profile. Canonical is the production default.
+   */
+  delivery_profile?: RiskObjectDeliveryProfile;
 };
 
 
@@ -131,6 +142,10 @@ generateInternal(
   const boundary =
     asOf.toISOString();
 
+  const deliveryProfile =
+    input.delivery_profile ??
+    "CANONICAL";
+
   const [
     origin,
     destination,
@@ -139,11 +154,13 @@ generateInternal(
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         originIso3,
         boundary,
+        deliveryProfile,
       ),
 
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         destinationIso3,
         boundary,
+        deliveryProfile,
       ),
     ]);
 
@@ -189,6 +206,7 @@ generateInternal(
     await getLatestCompatibleCorridorRiskObject(
       corridorId,
       boundary,
+      deliveryProfile,
     );
 
   const unsignedObject =
@@ -207,11 +225,36 @@ generateInternal(
 
       as_of:
         boundary,
+
+      calculation_namespace:
+        riskObjectCalculationNamespace(
+          deliveryProfile,
+        ),
     });
+
+  const profileBoundObject =
+    deliveryProfile ===
+      "PUBLIC_DEMO"
+      ? {
+          ...unsignedObject,
+
+          commercial_eligibility: {
+            ...unsignedObject
+              .commercial_eligibility,
+
+            reason_codes:
+              withPublicDemoProfileReason(
+                unsignedObject
+                  .commercial_eligibility
+                  .reason_codes,
+              ),
+          },
+        }
+      : unsignedObject;
 
   const observationBoundObject =
     withRiskObjectObservationTimestamp(
-      unsignedObject,
+      profileBoundObject,
       boundary,
     );
 

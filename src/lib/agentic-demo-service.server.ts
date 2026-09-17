@@ -13,6 +13,7 @@ import { loadStructuralContext } from "./structural-context.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { publicRiskObjectTrustDiscovery } from "./risk-object-trust-discovery.server";
 import type { GeomacroRiskObject } from "./risk-object-contract";
+import { PUBLIC_DEMO_RISK_PROFILE_REASON } from "./public-demo-risk-profile";
 
 export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
 export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
@@ -139,6 +140,22 @@ async function loadRiskObject(
 ) {
   const object = await loadStoredRiskObject(objectId);
 
+  const isPublicDemoProfile =
+    object
+      .commercial_eligibility
+      .reason_codes
+      .includes(
+        PUBLIC_DEMO_RISK_PROFILE_REASON,
+      );
+
+  if (mode === "PUBLIC_SANDBOX") {
+    if (!isPublicDemoProfile) {
+      throw new Error("PUBLIC_DEMO_RISK_PROFILE_REQUIRED");
+    }
+  } else if (isPublicDemoProfile) {
+    throw new Error("PUBLIC_DEMO_RISK_PROFILE_NOT_ALLOWED_FOR_PAID_DELIVERY");
+  }
+
   if (mode === "PUBLIC_SANDBOX" && object.subject.type === "corridor") {
     await assertPublicSandboxCorridorDeliverable(object);
     return publicRiskObject(object);
@@ -228,6 +245,10 @@ export async function runAgenticPreflightDemo(
 
   const policy = demoPolicyFromPreset(parsed.policy_preset);
   const mode = options.mode ?? "PUBLIC_SANDBOX";
+  const riskObjectProfile =
+    mode === "PUBLIC_SANDBOX"
+      ? "PUBLIC_DEMO" as const
+      : "CANONICAL" as const;
   const shouldRecordTelemetry = options.recordTelemetry ?? true;
   const actionContext: {
     action_type: string;
@@ -250,12 +271,16 @@ export async function runAgenticPreflightDemo(
             destination_country_iso3: parsed.subject.destination_country_iso3,
             action_context: actionContext,
             policy,
+            risk_object_profile:
+              riskObjectProfile,
           })
         : await evaluateCountryRiskGate({
             request_id: requestId,
             country_iso3: parsed.subject.country_iso3,
             action_context: actionContext,
             policy,
+            risk_object_profile:
+              riskObjectProfile,
           });
 
     if (result.response.execution_authorized !== false) {

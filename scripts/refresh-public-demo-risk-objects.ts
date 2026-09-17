@@ -46,6 +46,7 @@ async function main() {
     const result = await publishCountryRiskObject({
       country_iso3: country,
       as_of: asOfIso,
+      delivery_profile: "PUBLIC_DEMO",
     });
 
     assertSignature(result.object);
@@ -60,6 +61,7 @@ async function main() {
       origin_country_iso3: origin,
       destination_country_iso3: destination,
       as_of: asOfIso,
+      delivery_profile: "PUBLIC_DEMO",
     });
 
     assertSignature(result.object);
