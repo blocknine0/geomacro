@@ -65,6 +65,7 @@ export function validateReport(report, { maxP95Ms, maxP99Ms }) {
     'non_json_responses',
     'execution_boundary_violations',
     'response_security_violations',
+    'latency_slo_violations',
   ];
 
   for (const field of requiredZero) {
@@ -92,6 +93,10 @@ export function validateReport(report, { maxP95Ms, maxP99Ms }) {
     throw new Error(`Staging Risk Gate p99 ${p99}ms exceeds prelaunch SLO ${maxP99Ms}ms`);
   }
 
+  if (report.prelaunch_slo_ms?.max_p95 !== maxP95Ms || report.prelaunch_slo_ms?.max_p99 !== maxP99Ms) {
+    throw new Error('Staging load artifact SLO contract does not match the validator contract');
+  }
+
   if (report.pass !== true) {
     throw new Error('Underlying staging load harness did not pass');
   }
@@ -110,6 +115,7 @@ export function validateReport(report, { maxP95Ms, maxP99Ms }) {
     correctness_zero_error_gate: true,
     execution_boundary_gate: true,
     response_security_gate: true,
+    harness_latency_slo_gate: true,
     pass: true,
   };
 }
@@ -119,6 +125,7 @@ export function runSelfTest() {
     suite: 'risk-gate-staging-http-load-v1',
     target: { host: 'staging.example.test' },
     workload: { allow_429: false, redirect_policy: 'error' },
+    prelaunch_slo_ms: { max_p95: 3000, max_p99: 8000 },
     latency_ms: { p95: 900, p99: 1500 },
     correctness: {
       successful_200: 100,
@@ -130,6 +137,7 @@ export function runSelfTest() {
       non_json_responses: 0,
       execution_boundary_violations: 0,
       response_security_violations: 0,
+      latency_slo_violations: 0,
     },
     pass: true,
   };
@@ -142,6 +150,8 @@ export function runSelfTest() {
     (value) => { value.correctness.server_errors_5xx = 1; },
     (value) => { value.correctness.execution_boundary_violations = 1; },
     (value) => { value.correctness.response_security_violations = 1; },
+    (value) => { value.correctness.latency_slo_violations = 1; },
+    (value) => { value.prelaunch_slo_ms.max_p99 = 9000; },
     (value) => { value.latency_ms.p99 = 9000; },
   ]) {
     const candidate = structuredClone(good);
