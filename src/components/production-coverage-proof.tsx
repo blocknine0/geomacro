@@ -52,7 +52,7 @@ export function ProductionCoverageProof() {
           </div>
         </div>
         <p className="sr-only">
-          Claim boundary: this is a dated controlled-workflow coverage result for the current Risk Gate methodology. It is not an all-country product guarantee, transaction authorization, production SLA, independent security audit or mainnet-launch claim, and it does not imply that every product is deliverable for every accepted country or request shape.
+          This evidence did not activate x402, real-money payments, Base mainnet or autonomous execution. Claim boundary: this is a dated controlled-workflow coverage result for the current Risk Gate methodology. It is not an all-country product guarantee, transaction authorization, production SLA, independent security audit or mainnet-launch claim, and it does not imply that every product is deliverable for every accepted country or request shape.
         </p>
       </div>
     </section>
