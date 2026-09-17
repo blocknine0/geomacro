@@ -14,9 +14,9 @@ Geomacro is currently in an early commercialization stage.
 | Prediction markets / Arc / CCTP / Bridge & Swap | TECHNICAL PROOF |
 | Controlled founding-pilot commercial package | INTERNAL / PILOT-LED |
 | Professional subscription packaging | PLANNED |
-| Broad institutional/enterprise service | PLANNED / pilot-led |
+| Broad institutional/enterprise service | PLANNED / PILOT-LED |
 
-The current public Risk Indices preserve the audited GRI v1.2 parent methodology and proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current headline product.
+The current public Risk Indices preserve the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second current headline product.
 
 Geomacro has internally defined controlled founding-pilot pricing, support, incident and customer-use boundaries for Early Access. Those internal terms are not public list pricing, a production uptime/latency SLA, general availability or evidence of paying customers. Customer-specific quotas and contractual service commitments are agreed only through an appropriate SOW/agreement and only where current operational evidence supports them.
 
