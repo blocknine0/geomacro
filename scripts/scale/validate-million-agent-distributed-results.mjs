@@ -9,6 +9,7 @@ const PROFILES = {
 const DEFAULT_MAX_P95_MS = 1_500;
 const DEFAULT_MAX_P99_MS = 3_000;
 const DEFAULT_MAX_LAUNCH_SKEW_MS = 2_000;
+const DEFAULT_MAX_FIRST_REQUEST_START_LATE_MS = 3_000;
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 
 function finite(value, field) {
@@ -40,6 +41,7 @@ export function validateSummaries(summaries, options = {}) {
   const maxP95Ms = options.maxP95Ms ?? DEFAULT_MAX_P95_MS;
   const maxP99Ms = options.maxP99Ms ?? DEFAULT_MAX_P99_MS;
   const maxLaunchSkewMs = options.maxLaunchSkewMs ?? DEFAULT_MAX_LAUNCH_SKEW_MS;
+  const maxFirstRequestStartLateMs = options.maxFirstRequestStartLateMs ?? DEFAULT_MAX_FIRST_REQUEST_START_LATE_MS;
   const expectedCandidateSha = options.expectedCandidateSha ? fullSha(options.expectedCandidateSha, 'expectedCandidateSha') : null;
   const expectedDeploymentId = options.expectedDeploymentId ? nonEmpty(options.expectedDeploymentId, 'expectedDeploymentId') : null;
   const expectedRunGroupId = options.expectedRunGroupId ? nonEmpty(options.expectedRunGroupId, 'expectedRunGroupId') : null;
@@ -62,6 +64,7 @@ export function validateSummaries(summaries, options = {}) {
   let barrierEpochMs = null;
   let minLaunchEpochMs = Infinity;
   let maxLaunchEpochMs = -Infinity;
+  let maxFirstRequestOffsetMs = 0;
 
   for (const summary of summaries) {
     if (summary?.suite !== 'geomacro-distributed-40k-load-v3' || summary.profile !== profile) {
@@ -149,6 +152,10 @@ export function validateSummaries(summaries, options = {}) {
       'non_json_responses',
       'response_header_violations',
       'oversized_responses',
+      'server_5xx_responses',
+      'transport_errors',
+      'auth_failures',
+      'rate_limit_responses',
     ];
     for (const field of requiredZero) {
       if (finite(summary.metrics?.[field], `shard ${index}.metrics.${field}`) !== 0) {
@@ -158,6 +165,12 @@ export function validateSummaries(summaries, options = {}) {
     if (finite(summary.metrics?.http_req_failed_rate, `shard ${index}.metrics.http_req_failed_rate`) !== 0) {
       throw new Error(`Shard ${index} has failed HTTP requests`);
     }
+
+    const firstRequestOffset = finite(summary.metrics?.first_request_start_offset_ms, `shard ${index}.metrics.first_request_start_offset_ms`);
+    if (firstRequestOffset < 0 || firstRequestOffset > maxFirstRequestStartLateMs) {
+      throw new Error(`Shard ${index} first request started ${firstRequestOffset}ms from barrier; max is ${maxFirstRequestStartLateMs}ms`);
+    }
+    maxFirstRequestOffsetMs = Math.max(maxFirstRequestOffsetMs, firstRequestOffset);
 
     const p95 = finite(summary.metrics?.http_req_duration_p95_ms, `shard ${index}.p95`);
     const p99 = finite(summary.metrics?.http_req_duration_p99_ms, `shard ${index}.p99`);
@@ -184,6 +197,7 @@ export function validateSummaries(summaries, options = {}) {
     target_host: targetHost,
     orchestrator_barrier_epoch_ms: barrierEpochMs,
     maximum_generator_launch_skew_ms: launchSkewMs,
+    maximum_first_request_start_offset_ms: maxFirstRequestOffsetMs,
     generator_count: generatorIds.size,
     distinct_synthetic_agents: expectedAgents,
     total_requests: totalRequests,
@@ -195,6 +209,10 @@ export function validateSummaries(summaries, options = {}) {
     all_shards_exact_budget: true,
     synchronized_generator_barrier: true,
     zero_failed_http_requests: true,
+    zero_server_5xx_responses: true,
+    zero_transport_errors_or_timeouts: true,
+    zero_auth_failures: true,
+    zero_rate_limit_responses: true,
     zero_dropped_iterations: true,
     zero_response_security_violations: true,
     zero_execution_boundary_violations: true,
@@ -250,6 +268,11 @@ function syntheticSummary(index, profile) {
       non_json_responses: 0,
       response_header_violations: 0,
       oversized_responses: 0,
+      server_5xx_responses: 0,
+      transport_errors: 0,
+      auth_failures: 0,
+      rate_limit_responses: 0,
+      first_request_start_offset_ms: 100 + index,
     },
   };
 }
@@ -271,6 +294,11 @@ export function runSelfTest() {
       (items) => { items[0].metrics.response_security_violations = 1; },
       (items) => { items[0].metrics.response_header_violations = 1; },
       (items) => { items[0].metrics.oversized_responses = 1; },
+      (items) => { items[0].metrics.server_5xx_responses = 1; },
+      (items) => { items[0].metrics.transport_errors = 1; },
+      (items) => { items[0].metrics.auth_failures = 1; },
+      (items) => { items[0].metrics.rate_limit_responses = 1; },
+      (items) => { items[0].metrics.first_request_start_offset_ms = 3001; },
       (items) => { items[0].metrics.http_reqs -= 1; },
       (items) => { items[0].metrics.http_req_duration_p99_ms = 3000; },
       (items) => { items[1].shard_index = 0; },
