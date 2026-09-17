@@ -177,7 +177,7 @@ export function CommercialHome() {
               Geomacro is open to infrastructure, data, distribution, financial-services and AI partnerships that bring verifiable external-risk context closer to real customer workflows.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild className="gap-2"><Link to="/contact">Explore a partnership <ArrowRight className="h-4 w-4" /></Link></Button>
+              <Button asChild className="gap-2"><Link to="/contact">Discuss a partnership <ArrowRight className="h-4 w-4" /></Link></Button>
               <Button asChild variant="outline"><a href="/ecosystem">View ecosystem</a></Button>
             </div>
           </div>
