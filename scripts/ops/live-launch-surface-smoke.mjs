@@ -24,7 +24,7 @@ async function get(path, accept = "*/*") {
     redirect: "follow",
     headers: {
       accept,
-      "user-agent": "GeomacroLaunchAcceptance/1.1",
+      "user-agent": "GeomacroLaunchAcceptance/1.2",
     },
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -41,10 +41,12 @@ async function get(path, accept = "*/*") {
 
 const htmlPaths = [
   "/",
+  "/institutional",
+  "/global-risk",
+  "/intelligence",
   "/risk-gate",
   "/data-api",
   "/research",
-  "/institutional",
   "/about",
   "/onchain",
 ];
@@ -61,7 +63,7 @@ const requiredDiscoveryPaths = [
 const optionalCompatibilityAliases = ["/.well-known/x402"];
 
 const evidence = {
-  schema_version: "geomacro.live-launch-surface-smoke.v2",
+  schema_version: "geomacro.live-launch-surface-smoke.v3",
   generated_at: new Date().toISOString(),
   base_url: baseUrl,
   expected_deployed_sha: expectedDeployedSha || null,
@@ -69,6 +71,7 @@ const evidence = {
   payment_performed: false,
   production_activation_performed: false,
   routes: [],
+  api_surfaces: {},
   machine_discovery: {},
   compatibility_aliases: {},
   result: "RUNNING",
@@ -100,6 +103,22 @@ try {
       assert(result.text.includes("Mainnet remains disabled"), "/onchain missing explicit mainnet-disabled boundary");
     }
   }
+
+  const earlyWarningResponse = await get("/api/early-warning?limit=1", "application/json");
+  evidence.api_surfaces["/api/early-warning"] = {
+    status: earlyWarningResponse.status,
+    content_type: earlyWarningResponse.contentType,
+    elapsed_ms: earlyWarningResponse.elapsedMs,
+  };
+  assert(earlyWarningResponse.status === 200, `/api/early-warning expected 200, got ${earlyWarningResponse.status}`);
+  assert(earlyWarningResponse.contentType.includes("application/json"), "/api/early-warning did not return JSON");
+  const earlyWarning = JSON.parse(earlyWarningResponse.text);
+  assert(
+    earlyWarning?.feed_schema_version === "geomacro.public-early-warning-feed.v1",
+    "/api/early-warning feed schema mismatch",
+  );
+  assert(Array.isArray(earlyWarning?.items), "/api/early-warning missing items array");
+  assert(earlyWarning?.boundaries?.trading_instruction === false, "/api/early-warning must remain non-trading decision support");
 
   for (const path of requiredDiscoveryPaths) {
     const result = await get(path);
@@ -168,7 +187,7 @@ try {
 
   evidence.result = "PASS";
   persistEvidence();
-  console.log(`PASS: live launch surface smoke passed for ${htmlPaths.length} public routes and ${requiredDiscoveryPaths.length} required discovery resources.`);
+  console.log(`PASS: live launch surface smoke passed for ${htmlPaths.length} public routes, 1 public API surface and ${requiredDiscoveryPaths.length} required discovery resources.`);
   console.log(`DEPLOYED_SHA: ${deployedSha}`);
   console.log("BOUNDARY: no payment, settlement, mainnet activation, mutation, or load test was performed.");
 } catch (error) {
