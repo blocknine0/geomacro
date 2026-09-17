@@ -12,7 +12,7 @@ describe("structural data commercial surface", () => {
     expect(page).toContain("GOVERNED DATA · CONTROLLED API · AGENT ACCESS");
     expect(page).toContain("Real-money x402 access stays fail-closed");
     expect(page).toContain("AgentCommerceStatus");
-    expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
+    expect(page).toContain("RUNTIME STATUS ABOVE");
     expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(page).not.toContain("bounded public structured-data digest");
   });
