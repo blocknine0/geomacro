@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import exec from 'k6/execution';
-import { Counter } from 'k6/metrics';
+import { Counter, Trend } from 'k6/metrics';
 
 const PRODUCTION_HOSTS = new Set(['geomacro.live', 'www.geomacro.live']);
 const ACK = 'I_AUTHORIZE_DISTRIBUTED_ISOLATED_STAGING_LOAD';
@@ -9,6 +9,7 @@ const CAPACITY_ACK = 'I_CONFIRMED_STAGING_CAPACITY_AND_QUOTAS';
 const SENSITIVE_KEY_PATTERN = /(authorization|api[_-]?key|api[_-]?secret|private[_-]?key|service[_-]?role|payment[_-]?signature|bearer[_-]?token)/i;
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
 const MAX_GENERATOR_START_LATE_MS = 2_000;
+const MAX_FIRST_REQUEST_START_LATE_MS = 3_000;
 
 function required(name) {
   const value = (__ENV[name] || '').trim();
@@ -118,6 +119,11 @@ const unexpectedStatus = new Counter('unexpected_status');
 const nonJsonResponses = new Counter('non_json_responses');
 const responseHeaderViolations = new Counter('response_header_violations');
 const oversizedResponses = new Counter('oversized_responses');
+const server5xxResponses = new Counter('server_5xx_responses');
+const transportErrors = new Counter('transport_errors');
+const authFailures = new Counter('auth_failures');
+const rateLimitResponses = new Counter('rate_limit_responses');
+const firstRequestStartOffsetMs = new Trend('first_request_start_offset_ms');
 
 export const options = {
   maxRedirects: 0,
@@ -143,6 +149,11 @@ export const options = {
     non_json_responses: ['count==0'],
     response_header_violations: ['count==0'],
     oversized_responses: ['count==0'],
+    server_5xx_responses: ['count==0'],
+    transport_errors: ['count==0'],
+    auth_failures: ['count==0'],
+    rate_limit_responses: ['count==0'],
+    first_request_start_offset_ms: [`max<${MAX_FIRST_REQUEST_START_LATE_MS + 1}`],
   },
 };
 
@@ -196,13 +207,19 @@ function header(response, name) {
 
 export default function () {
   const iteration = exec.scenario.iterationInTest;
+  if (iteration === 0) {
+    const firstOffset = Date.now() - barrierEpochMs;
+    firstRequestStartOffsetMs.add(firstOffset);
+    if (firstOffset < 0 || firstOffset > MAX_FIRST_REQUEST_START_LATE_MS) executionBoundaryViolations.add(1);
+  }
+
   const apiKey = apiKeys[(iteration + shardIndex) % apiKeys.length];
   const body = JSON.stringify(requestBody(iteration));
   const response = http.post(target.endpoint, body, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': `geomacro-distributed-staging-load/3.0 profile/${profile} shard/${shardIndex}`,
+      'User-Agent': `geomacro-distributed-staging-load/3.1 profile/${profile} shard/${shardIndex}`,
     },
     redirects: 0,
     timeout: '10s',
@@ -210,6 +227,11 @@ export default function () {
   });
 
   if (response.status !== 200) unexpectedStatus.add(1);
+  if (response.status === 0) transportErrors.add(1);
+  if (response.status >= 500 && response.status <= 599) server5xxResponses.add(1);
+  if (response.status === 401 || response.status === 403) authFailures.add(1);
+  if (response.status === 429) rateLimitResponses.add(1);
+
   const raw = response.body || '';
   if (raw.length > maxResponseBytes) oversizedResponses.add(1);
   if (raw.includes(apiKey)) responseSecurityViolations.add(1);
@@ -277,6 +299,11 @@ export function handleSummary(data) {
       non_json_responses: data.metrics.non_json_responses?.values?.count ?? 0,
       response_header_violations: data.metrics.response_header_violations?.values?.count ?? 0,
       oversized_responses: data.metrics.oversized_responses?.values?.count ?? 0,
+      server_5xx_responses: data.metrics.server_5xx_responses?.values?.count ?? 0,
+      transport_errors: data.metrics.transport_errors?.values?.count ?? 0,
+      auth_failures: data.metrics.auth_failures?.values?.count ?? 0,
+      rate_limit_responses: data.metrics.rate_limit_responses?.values?.count ?? 0,
+      first_request_start_offset_ms: data.metrics.first_request_start_offset_ms?.values?.max ?? null,
     },
     latency_objective_ms: { p95_max: maxP95Ms, p99_max: maxP99Ms },
     limitations: [
