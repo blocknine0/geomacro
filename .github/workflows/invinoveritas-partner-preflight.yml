@@ -137,19 +137,25 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const { createClient } = require('@supabase/supabase-js');
-          const db = createClient(
-            process.env.APP_SUPABASE_URL,
-            process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
-            { auth: { persistSession: false, autoRefreshToken: false } },
-          );
-          const { data, error } = await db
-            .from('geomacro_risk_objects')
-            .select('payload')
-            .eq('object_id', process.env.OBJECT_ID)
-            .maybeSingle();
-          if (error) throw error;
-          if (!data?.payload) throw new Error('Persisted Risk Object payload unavailable');
-          fs.writeFileSync('/tmp/risk-object.json', JSON.stringify(data.payload, null, 2) + '\n', { mode: 0o600 });
+
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
+            const { data, error } = await db
+              .from('geomacro_risk_objects')
+              .select('payload')
+              .eq('object_id', process.env.OBJECT_ID)
+              .maybeSingle();
+            if (error) throw error;
+            if (!data?.payload) throw new Error('Persisted Risk Object payload unavailable');
+            fs.writeFileSync('/tmp/risk-object.json', JSON.stringify(data.payload, null, 2) + '\n', { mode: 0o600 });
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
           NODE
 
       - name: Register isolated invinoveritas evaluation identity
