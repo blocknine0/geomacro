@@ -3,6 +3,11 @@ import {
 } from "./risk-supabase.server";
 
 import {
+  PUBLIC_DEMO_RISK_PROFILE_REASON,
+  type RiskObjectDeliveryProfile,
+} from "./public-demo-risk-profile";
+
+import {
   GRO_SCHEMA_VERSION,
   LEGACY_GRO_SCHEMA_VERSION,
   COUNTRY_RISK_METHOD_VERSION,
@@ -16,6 +21,26 @@ type RiskObjectRow = {
   generated_at: string;
   expires_at: string;
 };
+
+function applyDeliveryProfileFilter(
+  query: any,
+  profile: RiskObjectDeliveryProfile,
+) {
+  if (profile === "PUBLIC_DEMO") {
+    return query.contains(
+      "commercial_eligibility_reason_codes",
+      [PUBLIC_DEMO_RISK_PROFILE_REASON],
+    );
+  }
+
+  return query.not(
+    "commercial_eligibility_reason_codes",
+    "cs",
+    JSON.stringify([
+      PUBLIC_DEMO_RISK_PROFILE_REASON,
+    ]),
+  );
+}
 
 function isCompatibleCountryRiskObject(
   value: unknown,
@@ -224,6 +249,7 @@ export async function
 getLatestCompatibleCountryRiskObject(
   countryIso3: string,
   before?: string,
+  deliveryProfile: RiskObjectDeliveryProfile = "CANONICAL",
 ): Promise<
   GeomacroRiskObject | null
 > {
@@ -269,7 +295,13 @@ getLatestCompatibleCountryRiskObject(
       .eq(
         "methodology_version",
         COUNTRY_RISK_METHOD_VERSION,
-      )
+      );
+
+  query =
+    applyDeliveryProfileFilter(
+      query,
+      deliveryProfile,
+    )
       .order(
         "generated_at",
         {
@@ -320,6 +352,7 @@ export async function
 getLatestCompatibleCountryRiskObjectAtOrBefore(
   countryIso3: string,
   atOrBefore: string,
+  deliveryProfile: RiskObjectDeliveryProfile = "CANONICAL",
 ): Promise<
   GeomacroRiskObject | null
 > {
@@ -354,8 +387,8 @@ getLatestCompatibleCountryRiskObjectAtOrBefore(
     );
   }
 
-  const result =
-    await db
+  let query =
+    db
       .from(
         "geomacro_risk_objects",
       )
@@ -384,14 +417,23 @@ getLatestCompatibleCountryRiskObjectAtOrBefore(
       .lte(
         "generated_at",
         boundary.toISOString(),
-      )
+      );
+
+  query =
+    applyDeliveryProfileFilter(
+      query,
+      deliveryProfile,
+    )
       .order(
         "generated_at",
         {
           ascending: false,
         },
       )
-      .limit(1)
+      .limit(1);
+
+  const result =
+    await query
       .maybeSingle();
 
   if (result.error) {
@@ -490,6 +532,7 @@ export async function
 getLatestCompatibleCorridorRiskObject(
   corridorId: string,
   before?: string,
+  deliveryProfile: RiskObjectDeliveryProfile = "CANONICAL",
 ): Promise<
   GeomacroRiskObject | null
 > {
@@ -528,7 +571,13 @@ getLatestCompatibleCorridorRiskObject(
       .eq(
         "methodology_version",
         CORRIDOR_RISK_METHOD_VERSION,
-      )
+      );
+
+  query =
+    applyDeliveryProfileFilter(
+      query,
+      deliveryProfile,
+    )
       .order(
         "generated_at",
         {
@@ -580,6 +629,7 @@ export async function
 getLatestCompatibleCorridorRiskObjectAtOrBefore(
   corridorId: string,
   atOrBefore: string,
+  deliveryProfile: RiskObjectDeliveryProfile = "CANONICAL",
 ): Promise<
   GeomacroRiskObject | null
 > {
@@ -610,8 +660,8 @@ getLatestCompatibleCorridorRiskObjectAtOrBefore(
     );
   }
 
-  const result =
-    await db
+  let query =
+    db
       .from(
         "geomacro_risk_objects",
       )
@@ -637,14 +687,23 @@ getLatestCompatibleCorridorRiskObjectAtOrBefore(
       .lte(
         "generated_at",
         boundary.toISOString(),
-      )
+      );
+
+  query =
+    applyDeliveryProfileFilter(
+      query,
+      deliveryProfile,
+    )
       .order(
         "generated_at",
         {
           ascending: false,
         },
       )
-      .limit(1)
+      .limit(1);
+
+  const result =
+    await query
       .maybeSingle();
 
   if (result.error) {
