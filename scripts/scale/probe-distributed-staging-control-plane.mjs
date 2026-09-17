@@ -58,7 +58,7 @@ function body(requestId, continueMax = 35) {
 }
 
 async function call(endpoint, requestBody, authorization) {
-  const headers = { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'GeomacroCapacityControlPlane/1.0' };
+  const headers = { 'content-type': 'application/json', accept: 'application/json', 'user-agent': 'GeomacroCapacityControlPlane/1.1' };
   if (authorization) headers.authorization = authorization;
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -67,9 +67,20 @@ async function call(endpoint, requestBody, authorization) {
     redirect: 'error',
     signal: AbortSignal.timeout(15_000),
   });
+  const raw = await response.text();
   let json = null;
-  try { json = await response.json(); } catch { /* fail below where JSON is required */ }
-  return { response, json };
+  try { json = JSON.parse(raw); } catch { /* caller enforces JSON where required */ }
+  return { response, raw, json };
+}
+
+function requireSecureHeaders(response, label) {
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  const cacheControl = String(response.headers.get('cache-control') || '').toLowerCase();
+  const nosniff = String(response.headers.get('x-content-type-options') || '').toLowerCase();
+  if (!contentType.includes('application/json')) throw new Error(`${label} missing JSON content type`);
+  if (!cacheControl.includes('no-store')) throw new Error(`${label} missing Cache-Control: no-store`);
+  if (response.headers.get('set-cookie')) throw new Error(`${label} unexpectedly set a cookie`);
+  if (nosniff !== 'nosniff') throw new Error(`${label} missing X-Content-Type-Options: nosniff`);
 }
 
 const base = parseTarget();
@@ -79,22 +90,25 @@ const deploymentId = required('RISK_GATE_DISTRIBUTED_DEPLOYMENT_ID');
 const apiKey = parseFirstKey();
 
 const markerResponse = await fetch(new URL('/.well-known/geomacro-build.json', base), {
-  headers: { accept: 'application/json', 'cache-control': 'no-cache', 'user-agent': 'GeomacroCapacityControlPlane/1.0' },
+  headers: { accept: 'application/json', 'cache-control': 'no-cache', 'user-agent': 'GeomacroCapacityControlPlane/1.1' },
   redirect: 'error',
   signal: AbortSignal.timeout(10_000),
 });
 if (markerResponse.status !== 200) throw new Error(`staging build marker HTTP ${markerResponse.status}`);
 const marker = await markerResponse.json();
 if (marker?.schema_version !== 'geomacro.deployment-build.v1') throw new Error('staging build marker schema mismatch');
-if (String(marker?.canonical_main_sha || '').toLowerCase() !== candidateSha) throw new Error('staging SHA changed before control-plane proof');
+if (marker?.canonical_repository !== 'blocknine0/geomacro') throw new Error('staging build marker repository mismatch');
+if (marker?.production_activation_performed !== false) throw new Error('staging build marker unexpectedly authorizes production activation');
+if (String(marker?.canonical_main_sha || '').toLowerCase() !== candidateSha) throw new Error('staging SHA changed before post-load control-plane proof');
 
 const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const unauthBody = body(`capacity-auth-${suffix}`);
-const unauth = await call(endpoint, unauthBody, null);
+const unauth = await call(endpoint, body(`capacity-auth-${suffix}`), null);
 if (![401, 403].includes(unauth.response.status)) throw new Error(`missing-auth request expected 401/403, got ${unauth.response.status}`);
+requireSecureHeaders(unauth.response, 'missing-auth response');
 
 const badAuth = await call(endpoint, body(`capacity-badauth-${suffix}`), `Bearer invalid-${'x'.repeat(48)}`);
 if (![401, 403].includes(badAuth.response.status)) throw new Error(`invalid-auth request expected 401/403, got ${badAuth.response.status}`);
+requireSecureHeaders(badAuth.response, 'invalid-auth response');
 
 const requestId = `capacity-replay-${suffix}`;
 const originalBody = body(requestId, 35);
@@ -102,6 +116,7 @@ const first = await call(endpoint, originalBody, `Bearer ${apiKey}`);
 if (first.response.status !== 200 || first.json?.ok !== true || first.json?.risk_gate?.execution_authorized !== false) {
   throw new Error(`authenticated control request failed: HTTP ${first.response.status}`);
 }
+requireSecureHeaders(first.response, 'authenticated response');
 const auditId = String(first.json?.audit_id || '').trim();
 if (!auditId) throw new Error('authenticated control request did not return audit_id');
 
@@ -109,6 +124,7 @@ const replay = await call(endpoint, originalBody, `Bearer ${apiKey}`);
 if (replay.response.status !== 200 || replay.json?.ok !== true || replay.json?.risk_gate?.execution_authorized !== false) {
   throw new Error(`exact replay failed: HTTP ${replay.response.status}`);
 }
+requireSecureHeaders(replay.response, 'exact replay response');
 if (String(replay.json?.audit_id || '') !== auditId) throw new Error('exact replay returned a different audit_id');
 if (String(replay.response.headers.get('x-geomacro-idempotent-replay') || '').toLowerCase() !== 'true') {
   throw new Error('exact replay did not carry X-Geomacro-Idempotent-Replay: true');
@@ -118,13 +134,19 @@ const conflict = await call(endpoint, body(requestId, 34), `Bearer ${apiKey}`);
 if (conflict.response.status !== 409 || conflict.json?.ok !== false || conflict.json?.error?.code !== 'IDEMPOTENCY_CONFLICT') {
   throw new Error(`mutated replay did not fail closed with IDEMPOTENCY_CONFLICT: HTTP ${conflict.response.status}`);
 }
+requireSecureHeaders(conflict.response, 'mutated replay response');
 if (conflict.json?.execution_authorized !== false) throw new Error('mutated replay conflict did not preserve execution_authorized=false');
 
+for (const [label, raw] of [['authenticated', first.raw], ['replay', replay.raw], ['conflict', conflict.raw]]) {
+  if (raw.includes(apiKey)) throw new Error(`${label} response echoed the staging API key`);
+}
+
 const evidence = {
-  schema_version: 'geomacro.distributed-capacity-control-plane.v1',
+  schema_version: 'geomacro.distributed-capacity-control-plane.v2',
   generated_at: new Date().toISOString(),
   candidate_sha: candidateSha,
-  deployment_id: deploymentId,
+  verified_staging_sha: candidateSha,
+  operator_deployment_id: deploymentId,
   target_host: base.host,
   missing_auth_rejected: true,
   invalid_auth_rejected: true,
@@ -134,6 +156,7 @@ const evidence = {
   exact_replay_marker: true,
   mutated_replay_http_409: true,
   mutated_replay_error_code: 'IDEMPOTENCY_CONFLICT',
+  secure_response_headers_preserved: true,
   execution_authorized: false,
   api_key_echoed: false,
   production_target: false,
@@ -143,4 +166,4 @@ const evidence = {
 };
 fs.mkdirSync('artifacts', { recursive: true });
 fs.writeFileSync('artifacts/distributed-40k-control-plane-proof.json', `${JSON.stringify(evidence, null, 2)}\n`);
-console.log('PASS: staging auth, exact replay, and mutated replay conflict boundaries verified after capacity load.');
+console.log('PASS: post-load staging auth, replay/idempotency, response-security, and execution boundaries verified.');
