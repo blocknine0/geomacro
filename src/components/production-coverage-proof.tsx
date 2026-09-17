@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,12 @@ const QPSD_ACCEPTED_FISCAL_COUNT = 57;
 const PPG_ACCEPTED_FISCAL_COUNT = 57;
 
 export function ProductionCoverageProof() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  // Keep the homepage focused on product comprehension and curiosity.
+  // This dated methodology evidence belongs on deeper trust / product surfaces.
+  if (pathname === "/") return null;
+
   return (
     <section className="border-b border-border/60 bg-card/20">
       <div className="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6">
