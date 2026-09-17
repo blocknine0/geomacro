@@ -8,7 +8,7 @@ describe("Telegram raw-signal manual-review contract", () => {
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
 
     expect(ingest).toContain('from("live_telegram_channel_registry")');
-    expect(ingest).toContain('"manual_review_status"');
+    expect(ingest).toContain("manual_review_status");
     expect(ingest).toContain('"APPROVED"');
     expect(ingest).toContain('"telegram_channel_not_approved"');
     expect(ingest).toContain('"telegram_public_channel_key_required"');
