@@ -67,7 +67,8 @@ create or replace function public.reconcile_agent_commerce_payment(
   p_expected_provider_settlement_id text,
   p_expected_response_sha256 text,
   p_expected_delivered_product_hash text,
-  p_internal_canary boolean
+  p_internal_canary boolean,
+  p_purchase_classification text
 )
 returns table (
   payment_event_id uuid,
@@ -341,6 +342,7 @@ begin
       'reconciled_response_sha256', v_delivery_response_sha256,
       'reconciled_delivered_product_hash', p_expected_delivered_product_hash,
       'internal_canary', p_internal_canary,
+      'purchase_classification', p_purchase_classification,
       'reconciled_at', now(),
       'reconciliation_contract', 'agent-commerce-v1'
     )
@@ -354,9 +356,9 @@ begin
 end;
 $$;
 
-revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
+revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text)
   from PUBLIC, anon, authenticated;
-grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
+grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text)
   to service_role;
 
 -- For the three production agent-commerce rails, direct column promotion is
@@ -402,7 +404,7 @@ execute function public.guard_agent_commerce_revenue_evidence();
 revoke all on function public.guard_agent_commerce_revenue_evidence()
   from PUBLIC, anon, authenticated;
 
-comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean) is
+comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text) is
   'Reconciles one settled Coinbase/Circle/Nevermined production payment against durable delivery, buyer-observed product identity and usage evidence; internal canaries remain non-revenue.';
  then
     raise exception 'expected response sha256 is invalid';
@@ -632,9 +634,9 @@ comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,
 end;
 $$;
 
-revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
+revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text)
   from PUBLIC, anon, authenticated;
-grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
+grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text)
   to service_role;
 
 -- For the three production agent-commerce rails, direct column promotion is
@@ -680,7 +682,7 @@ execute function public.guard_agent_commerce_revenue_evidence();
 revoke all on function public.guard_agent_commerce_revenue_evidence()
   from PUBLIC, anon, authenticated;
 
-comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean) is
+comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text) is
   'Promotes one settled Coinbase/Circle/Nevermined production payment to commercial revenue only after durable delivery and successful usage evidence match.';
  then
     raise exception 'expected delivered product hash is invalid';
@@ -910,9 +912,9 @@ comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,
 end;
 $$;
 
-revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
+revoke all on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text)
   from PUBLIC, anon, authenticated;
-grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean)
+grant execute on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text)
   to service_role;
 
 -- For the three production agent-commerce rails, direct column promotion is
@@ -958,5 +960,5 @@ execute function public.guard_agent_commerce_revenue_evidence();
 revoke all on function public.guard_agent_commerce_revenue_evidence()
   from PUBLIC, anon, authenticated;
 
-comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean) is
+comment on function public.reconcile_agent_commerce_payment(uuid,text,text,text,text,boolean,text) is
   'Promotes one settled Coinbase/Circle/Nevermined production payment to commercial revenue only after durable delivery and successful usage evidence match.';
