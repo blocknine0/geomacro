@@ -8,9 +8,10 @@ const packageDoc = readFileSync(
 );
 
 describe("structural data commercial surface", () => {
-  it("keeps commercial machine delivery on the controlled roadmap without a free API promise", () => {
-    expect(page).toContain("ROADMAP · COMMERCIAL DATA & API");
-    expect(page).toContain("not generally available production services yet");
+  it("keeps commercial machine delivery governed and runtime-status driven without a free API promise", () => {
+    expect(page).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
+    expect(page).toContain("Real-money x402 access stays fail-closed");
+    expect(page).toContain("AgentCommerceStatus");
     expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
     expect(page).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(page).not.toContain("bounded public structured-data digest");
