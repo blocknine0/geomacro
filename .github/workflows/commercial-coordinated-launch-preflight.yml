@@ -158,15 +158,26 @@ jobs:
           grep -q 'https://api.sandbox.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'https://api.live.nevermined.app/' src/lib/nevermined-x402.server.ts
           grep -q 'GOATX402_MAINNET_COMMERCIAL_ENABLED=false' .env.example
-          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
+          grep -q '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=$' .env.example
+          grep -q '^GEOMACRO_COMMERCE_EMERGENCY_FREEZE=false$' .env.example
+          grep -q '^GEOMACRO_COMMERCE_DISABLED_PROVIDERS=$' .env.example
+          grep -q '^COINBASE_X402_MAINNET_ACK=$' .env.example
+          grep -q '^NEVERMINED_X402_ENVIRONMENT=$' .env.example
           grep -q '^NEVERMINED_NVM_API_KEY=$' .env.example
           grep -q '^NEVERMINED_PLAN_ID=$' .env.example
+          grep -q '^CIRCLE_X402_MAINNET_ACK=$' config/prelaunch-mainnet-x402.env.example
+          grep -q '^GEOMACRO_COMMERCE_EMERGENCY_FREEZE=false$' config/prelaunch-mainnet-x402.env.example
+          grep -q '^GEOMACRO_COMMERCE_DISABLED_PROVIDERS=$' config/prelaunch-mainnet-x402.env.example
           if grep -Eq '^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$' .env.example; then
             echo 'ERROR: global launch authorization must not be committed as active.' >&2
             exit 1
           fi
           if grep -Eq '^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' .env.example; then
             echo 'ERROR: Coinbase mainnet acknowledgement must not be committed as active.' >&2
+            exit 1
+          fi
+          if grep -Eq '^CIRCLE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$' config/prelaunch-mainnet-x402.env.example; then
+            echo 'ERROR: Circle mainnet acknowledgement must not be committed as active.' >&2
             exit 1
           fi
           if grep -Eq '^NEVERMINED_X402_ENVIRONMENT=live$' .env.example; then
