@@ -15,6 +15,8 @@ on:
       - "supabase/migrations/039_flash_corroboration_graph.sql"
       - "supabase/migrations/040_critical_minerals_news_candidates.sql"
       - "supabase/migrations/041_country_flash_live_smoke_hardening.sql"
+      - "supabase/migrations/946_telegram_manual_review_gate.sql"
+      - "src/__tests__/telegram-raw-signal-manual-review.test.ts"
       - ".github/workflows/country-flash-validation.yml"
 
 permissions:
