@@ -798,6 +798,9 @@ Deno.serve(async request => {
         body,
         source_channel:
           sourceChannel,
+        source_channel_key:
+          telegramChannel?.channel_key ??
+          null,
         source_url:
           sourceUrl,
       })
