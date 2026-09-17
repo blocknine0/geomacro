@@ -62,7 +62,7 @@ describe("public intelligence routing contract", () => {
     const pipeline = read("src/routes/pipeline.tsx");
     const architecture = read("docs/RISK_INDICES_ARCHITECTURE.md");
 
-    expect(pipeline).toContain("audited GRI v1.2 three-domain methodology");
+    expect(pipeline).toContain("versioned GRI v1.2 three-domain methodology");
     expect(pipeline).toContain("geopolitics, macro and rare-earth / critical-mineral risk");
     expect(pipeline).toContain("public product presents three separate Risk Indices");
     expect(architecture).toContain("Historical GRI v1.2 remains immutable audit evidence");
