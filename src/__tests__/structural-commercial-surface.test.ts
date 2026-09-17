@@ -9,7 +9,7 @@ const packageDoc = readFileSync(
 
 describe("structural data commercial surface", () => {
   it("keeps commercial machine delivery governed and runtime-status driven without a free API promise", () => {
-    expect(page).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
+    expect(page).toContain("GOVERNED DATA · CONTROLLED API · AGENT ACCESS");
     expect(page).toContain("Real-money x402 access stays fail-closed");
     expect(page).toContain("AgentCommerceStatus");
     expect(page).toContain("POST https://geomacro.live/api/commercial/structural");
