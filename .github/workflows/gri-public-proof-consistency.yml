@@ -3,7 +3,8 @@ name: GRI Public Proof Consistency
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "23 */6 * * *"
+    # Run after the two-hour publisher slot so the 3-hour freshness SLO is continuously enforced.
+    - cron: "23 */2 * * *"
   push:
     branches: [main]
     paths:

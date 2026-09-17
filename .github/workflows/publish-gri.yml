@@ -2,7 +2,8 @@ name: Publish GRI Proof Snapshot
 
 on:
   schedule:
-    - cron: "50 */4 * * *"
+    # Keep the publisher comfortably inside the 3-hour public-proof freshness SLO.
+    - cron: "50 */2 * * *"
   workflow_dispatch: {}
 
 permissions:
