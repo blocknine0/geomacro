@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedBackground } from "@/components/animated-background";
 import { ProductionCoverageProof } from "@/components/production-coverage-proof";
+import { AgentCommerceStatus } from "@/components/agent-commerce-status";
 import {
   Sheet,
   SheetContent,
@@ -120,40 +121,34 @@ function ConnectButton() {
 const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/global-risk", label: "Risk Indices" },
-  { to: "/ask-geomacro", label: "Ask Geomacro" },
   { to: "/institutional", label: "For Institutions" },
+  { to: "/ecosystem", label: "Ecosystem" },
 ] as const;
 
 const EXPLORE_NAV = [
-  { to: "/research", label: "Research", description: "Public research, evidence and methodology context" },
+  { to: "/ask-geomacro", label: "Ask Geomacro", description: "Grounded questions over recorded risk evidence" },
+  { to: "/risk-gate", label: "Risk Gate · Private Pilot", description: "Controlled country and corridor decision context" },
+  { to: "/data-api", label: "Data & API", description: "Public data plus controlled machine-delivery status" },
+  { to: "/research", label: "Research & Evidence", description: "Methodology, coverage evidence and limitations" },
   { to: "/docs", label: "Documentation", description: "Product architecture, methodology and technical reference" },
   { to: "/about", label: "About & Trust", description: "Product boundaries, privacy and trust disclosures" },
-  { to: "/roadmap", label: "Roadmap", description: "Private Pilot and planned commercial capabilities" },
-  { to: "/risk-gate", label: "Risk Gate · Roadmap", description: "Controlled Private Pilot decision-context capability" },
-  { to: "/data-api", label: "Data & API · Roadmap", description: "Commercial machine delivery remains controlled Private Pilot" },
+  { to: "/roadmap", label: "Roadmap", description: "Live, Private Pilot and future capabilities" },
 ] as const;
 
 const TECHNICAL_NAV = [
   { to: "/testnet-access", label: "Testnet API", description: "Wallet-first developer API and pay-per-call Testnet USDC access" },
-  { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and Circle x402 access" },
+  { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and x402 proof" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
-  { to: "/arena", label: "Prediction Markets", description: "Testnet application and feedback layer" },
+  { to: "/arena", label: "Prediction Markets", description: "Permanently Testnet-only application and feedback layer" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
-  { to: "/bridge-swap", label: "Bridge & Swap", description: "Circle / Arc testnet implementation" },
+  { to: "/bridge-swap", label: "Bridge & Swap", description: "Circle / Arc Testnet implementation" },
 ] as const;
 
 const REFERENCE_NAV = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
-const PRODUCTION_EVIDENCE_ROUTES = new Set([
-  "/",
-  "/risk-gate",
-  "/data-api",
-  "/research",
-  "/institutional",
-  "/about",
-]);
+const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);
 
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 
@@ -167,7 +162,7 @@ function ExploreMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          Reference and roadmap
+          Product, evidence and roadmap
         </DropdownMenuLabel>
         {EXPLORE_NAV.map((item) => (
           <DropdownMenuItem key={item.to} asChild>
@@ -269,8 +264,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     <SheetTitle><Wordmark height={26} /></SheetTitle>
                   </SheetHeader>
                   <nav className="mt-7 space-y-6" aria-label="Mobile navigation">
-                    <MobileGroup title="Live product" items={PRIMARY_NAV} />
-                    <MobileGroup title="Explore & roadmap" items={exploreMobile} />
+                    <MobileGroup title="Product & buyers" items={PRIMARY_NAV} />
+                    <MobileGroup title="Explore" items={exploreMobile} />
                     <MobileGroup title="Reference" items={REFERENCE_NAV} />
                     <MobileGroup title="Technical proof" items={technicalMobile} />
                     {accountMobile.length > 0 ? <MobileGroup title="Account" items={accountMobile} /> : null}
@@ -328,25 +323,26 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <p className="mt-3 max-w-sm text-sm leading-relaxed">
                 Explainable geopolitical, macroeconomic and critical-mineral risk intelligence for human and machine decisions.
               </p>
+              <div className="mt-4"><AgentCommerceStatus compact /></div>
               <p className="mt-3 font-mono text-xs">© 2026 Geomacro</p>
             </div>
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
               <div>
-                <p className="font-medium text-foreground">Live Product</p>
+                <p className="font-medium text-foreground">Product</p>
                 <div className="mt-3 flex flex-col gap-2">
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
-                  <Link to="/research" className="hover:text-foreground">Research</Link>
+                  <Link to="/risk-gate" className="hover:text-foreground">Risk Gate · Private Pilot</Link>
                 </div>
               </div>
               <div>
-                <p className="font-medium text-foreground">Commercial Roadmap</p>
+                <p className="font-medium text-foreground">For Buyers</p>
                 <div className="mt-3 flex flex-col gap-2">
                   <Link to="/institutional" className="hover:text-foreground">For Institutions</Link>
-                  <Link to="/risk-gate" className="hover:text-foreground">Risk Gate · Private Pilot</Link>
-                  <Link to="/data-api" className="hover:text-foreground">Data & API · Private Pilot</Link>
-                  <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
+                  <Link to="/data-api" className="hover:text-foreground">Data & API</Link>
+                  <Link to="/ecosystem" className="hover:text-foreground">Ecosystem & Partnerships</Link>
+                  <Link to="/contact" className="hover:text-foreground">Contact</Link>
                 </div>
               </div>
               <div>
@@ -366,9 +362,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <div>
                 <p className="font-medium text-foreground">Company & Trust</p>
                 <div className="mt-3 flex flex-col gap-2">
+                  <Link to="/research" className="hover:text-foreground">Research & Evidence</Link>
                   <Link to="/docs" className="hover:text-foreground">Documentation</Link>
                   <Link to="/about" className="hover:text-foreground">About & Trust</Link>
-                  <Link to="/contact" className="hover:text-foreground">Contact</Link>
+                  <Link to="/roadmap" className="hover:text-foreground">Roadmap</Link>
                   <a href="/about#privacy" className="hover:text-foreground">Privacy</a>
                   <a href="/about#product-use" className="hover:text-foreground">Product Use</a>
                   <a href="https://x.com/GeomacroLive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
@@ -380,7 +377,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-border/50">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 font-mono text-[10px] text-muted-foreground sm:px-6">
-              <span>Public intelligence live · Commercial Risk Gate / API roadmap · Mainnet pre-launch</span>
+              <span>Public product live · Risk Gate controlled Private Pilot · real-money agent access fail-closed until production activation</span>
               <details>
                 <summary className="cursor-pointer">Arc technical context</summary>
                 <span className="mt-1 block">{activeNet.chainName} · Chain {activeNet.chainIdDec}</span>
