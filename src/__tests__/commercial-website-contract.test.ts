@@ -119,12 +119,13 @@ describe("commercial website source-of-truth contract", () => {
     const home = read("src/components/home/commercial-home.tsx");
 
     expect(home).toContain("Live geopolitical + macro + critical-mineral intelligence");
-    expect(home).toContain("Risk Gate · Private Pilot");
+    expect(home).toContain("Risk Gate / Commercial API · Roadmap");
+    expect(home).toContain("ROADMAP · PRIVATE PILOT");
     expect(home).toContain("Arc / Circle · Technical Proof");
     expect(home).toContain("Country / corridor Risk Object verified");
     expect(home).toContain("execution_authorized");
-    expect(home).toContain("Secondary technical proof");
-    expect(home).toContain("They are not the main commercial product");
+    expect(home).toContain("Technical proof, kept separate");
+    expect(home).toContain("commercial identity remains risk intelligence and decision infrastructure");
   });
 
   it("keeps public intelligence surfaces wallet-free by default", () => {
@@ -196,10 +197,12 @@ describe("commercial website source-of-truth contract", () => {
   it("keeps the active roadmap intelligence-first and removes the stale market-first source of truth", () => {
     const roadmap = read("src/components/sections/roadmap-section.tsx");
 
-    expect(roadmap).toContain("Intelligence foundation");
+    expect(roadmap).toContain("Public risk intelligence");
     expect(roadmap).toContain("Commercial hardening");
     expect(roadmap).toContain("Institutional Early Access");
     expect(roadmap).toContain("Production expansion");
+    expect(roadmap).toContain("What works today, and what comes next.");
+    expect(roadmap).toContain("Risk Gate, signed Risk Objects and commercial API delivery remain roadmap / controlled Private Pilot capabilities");
     expect(roadmap).not.toContain("Autonomous Market Factory");
     expect(roadmap).not.toContain("Mainnet Deployment");
     expect(existsSync(join(ROOT, "src/lib/roadmap.ts"))).toBe(false);
