@@ -26,19 +26,23 @@ function applyDeliveryProfileFilter(
   query: any,
   profile: RiskObjectDeliveryProfile,
 ) {
+  const profileJson =
+    JSON.stringify([
+      PUBLIC_DEMO_RISK_PROFILE_REASON,
+    ]);
+
   if (profile === "PUBLIC_DEMO") {
-    return query.contains(
+    return query.filter(
       "commercial_eligibility_reason_codes",
-      [PUBLIC_DEMO_RISK_PROFILE_REASON],
+      "cs",
+      profileJson,
     );
   }
 
-  return query.not(
+  return query.filter(
     "commercial_eligibility_reason_codes",
-    "cs",
-    JSON.stringify([
-      PUBLIC_DEMO_RISK_PROFILE_REASON,
-    ]),
+    "not.cs",
+    profileJson,
   );
 }
 
