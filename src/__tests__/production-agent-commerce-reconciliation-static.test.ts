@@ -34,8 +34,9 @@ describe("production agent-commerce reconciliation contract", () => {
     expect(migration).toContain("payment network mismatch");
     expect(migration).toContain("successful delivery usage evidence is missing");
     expect(migration).toContain("reconciliation_status = 'matched'");
-    expect(migration).toContain("revenue_classification = 'commercial_revenue'");
-    expect(migration).toContain("commercial_revenue = true");
+    expect(migration).toContain("p_internal_canary boolean");
+    expect(migration).toContain("when p_internal_canary then 'non_revenue_internal'");
+    expect(migration).toContain("commercial_revenue = not p_internal_canary");
   });
 
   it("prevents the application service role from directly flipping revenue columns", () => {
@@ -61,6 +62,8 @@ describe("production agent-commerce reconciliation contract", () => {
 
   it("keeps reconciliation a deliberate authoritative-production operation", () => {
     expect(reconcile).toContain("I_RECONCILE_VERIFIED_PRODUCTION_DELIVERY");
+    expect(reconcile).toContain("GEOMACRO_RECONCILIATION_MODE");
+    expect(reconcile).toContain('"internal_canary", "commercial_revenue"');
     expect(reconcile).toContain("ldpwajisioljyjtojvfx");
     expect(reconcile).toContain("reconcile_agent_commerce_payment");
     expect(reconcile).toContain("GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH");
