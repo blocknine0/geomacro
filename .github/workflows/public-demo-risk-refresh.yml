@@ -9,6 +9,13 @@ on:
       - main
     paths:
       - ".github/workflows/public-demo-risk-refresh.yml"
+      - "scripts/refresh-public-demo-risk-objects.ts"
+      - "src/lib/agentic-demo-service.server.ts"
+      - "src/lib/country-risk-publisher.server.ts"
+      - "src/lib/corridor-risk-publisher.server.ts"
+      - "src/lib/risk-object-contract.ts"
+      - "src/lib/risk-object-verification.server.ts"
+      - "src/lib/commercial-risk-object-policy.ts"
 
 permissions:
   contents: read
