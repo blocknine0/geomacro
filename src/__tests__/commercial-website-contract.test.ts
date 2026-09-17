@@ -60,30 +60,10 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps a centralized architecture classification for every major surface family", () => {
     const canonical = read("docs/CANONICAL_DELIVERY_ARCHITECTURE.md");
-
-    for (const token of CANONICAL_ARCHITECTURE_TOKENS) {
-      expect(canonical, `canonical contract is missing architecture node: ${token}`).toContain(token);
+    for (const token of CANONICAL_ARCHITECTURE_TOKENS) expect(canonical).toContain(token);
+    for (const route of ["/intelligence", "/global-risk", "/ask-geomacro", "/risk-gate", "/data-api", "/institutional", "/research", "/docs", "/about", "/testnet-access", "/arena", "/onchain", "/bridge-swap", "/pipeline"]) {
+      expect(canonical).toContain(`\`${route}\``);
     }
-
-    for (const route of [
-      "/intelligence",
-      "/global-risk",
-      "/ask-geomacro",
-      "/risk-gate",
-      "/data-api",
-      "/institutional",
-      "/research",
-      "/docs",
-      "/about",
-      "/testnet-access",
-      "/arena",
-      "/onchain",
-      "/bridge-swap",
-      "/pipeline",
-    ]) {
-      expect(canonical, `canonical surface matrix is missing ${route}`).toContain(`\`${route}\``);
-    }
-
     expect(canonical).toContain("Data/API, institutional packaging, agent protocols and payment rails are **delivery or presentation layers around this hierarchy**");
     expect(canonical).toContain("never a parallel risk engine");
     expect(canonical).toContain("Permanent Arc Testnet technical proof");
@@ -92,32 +72,28 @@ describe("commercial website source-of-truth contract", () => {
   it("blocks stale market-first positioning from primary commercial surfaces", () => {
     for (const path of COMMERCIAL_PUBLIC_SURFACES) {
       const normalized = read(path).toLowerCase();
-      for (const phrase of STALE_PRIMARY_POSITIONING) {
-        expect(normalized, `${path} reintroduced stale primary positioning: ${phrase}`).not.toContain(phrase.toLowerCase());
-      }
+      for (const phrase of STALE_PRIMARY_POSITIONING) expect(normalized).not.toContain(phrase.toLowerCase());
     }
   });
 
-  it("keeps intelligence products primary and technical proof secondary", () => {
+  it("keeps the desktop decision path short and moves non-live commercial capabilities to roadmap", () => {
     const shell = read("src/components/site-shell.tsx");
-
+    expect(shell).toContain('const PRIMARY_NAV = [');
     expect(shell).toContain('label: "Intelligence"');
     expect(shell).toContain('label: "Risk Indices"');
-    expect(shell).toContain('label: "Risk Gate"');
     expect(shell).toContain('label: "Ask Geomacro"');
-    expect(shell).toContain('label: "Data & API"');
-    expect(shell).toContain('label: "Research"');
     expect(shell).toContain('label: "For Institutions"');
+    expect(shell).toContain('Risk Gate · Roadmap');
+    expect(shell).toContain('Data & API · Roadmap');
+    expect(shell).toContain("Explore & roadmap");
     expect(shell).toContain("Technical Proof");
     expect(shell).toContain('label: "Prediction Markets"');
     expect(shell).toContain('label: "Bridge & Swap"');
-    expect(shell).toContain('title="Intelligence products"');
-    expect(shell).toContain('title="Technical proof"');
+    expect(shell).toContain("Public intelligence live · Commercial Risk Gate / API roadmap · Mainnet pre-launch");
   });
 
   it("keeps the homepage on the same architecture and status boundaries", () => {
     const home = read("src/components/home/commercial-home.tsx");
-
     expect(home).toContain("Live geopolitical + macro + critical-mineral intelligence");
     expect(home).toContain("Risk Gate / Commercial API · Roadmap");
     expect(home).toContain("ROADMAP · PRIVATE PILOT");
@@ -130,7 +106,6 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps public intelligence surfaces wallet-free by default", () => {
     const shell = read("src/components/site-shell.tsx");
-
     expect(shell).toContain("if (!address && !executionContext) return null");
     expect(shell).toContain('pathname === "/arena"');
     expect(shell).toContain('pathname === "/onchain"');
@@ -140,7 +115,6 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps Risk Gate within the verified Private Pilot scope", () => {
     const route = read("src/routes/risk-gate.tsx");
-
     expect(route).toContain("PRIVATE PILOT");
     expect(route).toContain("country or corridor risk");
     expect(route).toContain("execution_authorized = false");
@@ -151,14 +125,11 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps institutional workflow in Risk Gate -> customer policy -> customer action order", () => {
     const route = read("src/routes/institutional.tsx");
-
     expect(route).not.toContain("Risk Gate combines a verified country or corridor Risk Object with the customer's own policy");
     expect(route).toContain("Risk Gate verifies the country or corridor Risk Object and returns bounded external risk context and a recommendation");
-
     const gate = route.indexOf("Risk Gate returns bounded decision context");
     const policy = route.indexOf("The customer's own identity, permissions and policy layer applies its rules after the Risk Gate response");
     const execution = route.indexOf("Any execution after that remains under the customer's control");
-
     expect(gate).toBeGreaterThanOrEqual(0);
     expect(policy).toBeGreaterThan(gate);
     expect(execution).toBeGreaterThan(policy);
@@ -166,7 +137,6 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps Data, API and Agent availability explicit without advertising a free API", () => {
     const route = read("src/routes/data-api.tsx");
-
     expect(route).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
     expect(route).toContain("PUBLIC · FREE");
     expect(route).toContain("FOUNDING ANALYST PILOT");
@@ -181,14 +151,7 @@ describe("commercial website source-of-truth contract", () => {
   });
 
   it("keeps Arc, Circle and market routes explicitly technical proof", () => {
-    for (const path of [
-      "src/routes/arena.tsx",
-      "src/routes/onchain.tsx",
-      "src/routes/bridge-swap.tsx",
-    ]) {
-      expect(read(path)).toContain("TechnicalProofBanner");
-    }
-
+    for (const path of ["src/routes/arena.tsx", "src/routes/onchain.tsx", "src/routes/bridge-swap.tsx"]) expect(read(path)).toContain("TechnicalProofBanner");
     const arena = read("src/routes/arena.tsx");
     expect(arena).toContain("permanently locked to Arc Testnet as secondary technical proof");
     expect(arena).toContain("not planning a prediction-market mainnet or real-money launch");
@@ -196,7 +159,6 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps the active roadmap intelligence-first and removes the stale market-first source of truth", () => {
     const roadmap = read("src/components/sections/roadmap-section.tsx");
-
     expect(roadmap).toContain("Public risk intelligence");
     expect(roadmap).toContain("Commercial hardening");
     expect(roadmap).toContain("Institutional Early Access");
@@ -211,7 +173,6 @@ describe("commercial website source-of-truth contract", () => {
   it("redirects superseded public routes to the canonical product surface", () => {
     const feed = read("src/routes/feed.tsx");
     const bridge = read("src/routes/bridge.tsx");
-
     expect(feed).toContain('to: "/intelligence"');
     expect(feed).toContain("replace: true");
     expect(bridge).toContain('to: "/bridge-swap"');
@@ -220,7 +181,6 @@ describe("commercial website source-of-truth contract", () => {
 
   it("keeps the audited GRI lineage on the three-domain v1.2 contract", () => {
     const gri = read("src/routes/docs_.gri-architecture.tsx");
-
     expect(gri).toContain('["Geopolitics", "1/3"]');
     expect(gri).toContain('["Macro", "1/3"]');
     expect(gri).toContain('["Rare earth / critical minerals", "1/3"]');
@@ -232,7 +192,6 @@ describe("commercial website source-of-truth contract", () => {
     const contact = read("src/routes/contact.tsx");
     const robots = read("public/robots.txt");
     const sitemap = read("public/sitemap.xml");
-
     expect(contact).toContain("contact@geomacro.live");
     expect(robots).toContain("https://geomacro.live/sitemap.xml");
     expect(robots).not.toContain("https://www.geomacro.live/sitemap.xml");
