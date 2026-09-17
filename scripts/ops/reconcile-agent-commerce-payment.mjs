@@ -47,6 +47,26 @@ async function main() {
     throw new Error("GEOMACRO_RECONCILIATION_MODE must be internal_canary or commercial_revenue");
   }
   const internalCanary = mode === "internal_canary";
+  const purchaseClassification = required("GEOMACRO_PURCHASE_CLASSIFICATION");
+  const allowedClassifications = new Set([
+    "internal_canary",
+    "external_customer",
+    "independent_production_buyer",
+  ]);
+  if (!allowedClassifications.has(purchaseClassification)) {
+    throw new Error("Unsupported GEOMACRO_PURCHASE_CLASSIFICATION");
+  }
+  if (internalCanary && purchaseClassification !== "internal_canary") {
+    throw new Error("internal_canary reconciliation requires purchase classification internal_canary");
+  }
+  if (
+    !internalCanary &&
+    !["external_customer", "independent_production_buyer"].includes(
+      purchaseClassification,
+    )
+  ) {
+    throw new Error("commercial_revenue reconciliation requires an external or independent production buyer");
+  }
 
   const expectedSettlement = required("GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE");
   if (expectedSettlement.length > 256) throw new Error("settlement reference is too long");
@@ -119,6 +139,7 @@ async function main() {
       p_expected_response_sha256: expectedResponseSha256,
       p_expected_delivered_product_hash: expectedDeliveredProductHash,
       p_internal_canary: internalCanary,
+      p_purchase_classification: purchaseClassification,
     },
   );
   if (reconcileError) throw reconcileError;
@@ -161,6 +182,7 @@ async function main() {
     commercial_revenue: after.commercial_revenue,
     reconciliation_mode: mode,
     internal_canary: internalCanary,
+    purchase_classification: purchaseClassification,
     reconciliation_reference: after.reconciliation_reference,
     settlement_reference_sha256: sha256(expectedSettlement),
     response_sha256: expectedResponseSha256,
