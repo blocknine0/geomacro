@@ -195,7 +195,7 @@ jobs:
             .gates.live_partner_review == "PASS" and
             .live_review.attempted == true and
             .live_review.proof_present == true and
-            (.live_review.verdict == "approve" or .live_review.verdict == "concerns" or .live_review.verdict == "reject")
+            (.live_review.verdict == "approve" or .live_review.verdict == "approve_with_concerns" or .live_review.verdict == "concerns" or .live_review.verdict == "reject")
           ' /tmp/invinoveritas-preflight.json >/dev/null
 
       - name: Publish sanitized evidence summary
