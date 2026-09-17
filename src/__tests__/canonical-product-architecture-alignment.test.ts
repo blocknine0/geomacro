@@ -172,7 +172,7 @@ describe("canonical product architecture alignment", () => {
   it("labels Data & API precisely instead of implying a generally public API", () => {
     const dataApi = read("src/routes/data-api.tsx");
 
-    expect(dataApi).toContain("GOVERNED DATA · PAID API · AGENT ACCESS");
+    expect(dataApi).toContain("GOVERNED DATA · CONTROLLED API · AGENT ACCESS");
     expect(dataApi).toContain("Free Explorer is website/dashboard access, not a free API");
     expect(dataApi).toContain("execution_authorized=false");
   });
