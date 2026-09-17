@@ -20,6 +20,14 @@ import {
 } from "../../src/lib/real-funds-security-readiness.server";
 
 
+const MAX_PROXY_IDENTITY_HEADER_BYTES = 2048;
+const GENERIC_PROXY_IDENTITY_HEADERS = [
+  "x-forwarded-for",
+  "x-real-ip",
+  "true-client-ip",
+] as const;
+
+
 /**
  * Geomacro-wide HTTP security boundary.
  *
@@ -50,6 +58,48 @@ export default defineEventHandler(async (event) => {
   const pathname = getRequestURL(event).pathname;
   const method = event.method || "GET";
   const headers = new Headers(getRequestHeaders(event));
+
+  // Reject oversized proxy identity material before potentially removing it.
+  // This preserves the request-envelope size invariant even when untrusted
+  // forwarding headers are ignored for client identity.
+  const oversizedProxyHeader = GENERIC_PROXY_IDENTITY_HEADERS.find(
+    (name) => (headers.get(name)?.length ?? 0) > MAX_PROXY_IDENTITY_HEADER_BYTES,
+  );
+
+  if (oversizedProxyHeader) {
+    setResponseHeader(event, "Cache-Control", "no-store");
+    throw createError({
+      statusCode: 431,
+      statusMessage: "Request headers are too large",
+      data: {
+        ok: false,
+        error: {
+          code: "CENTRAL_SECURITY_HEADERS_TOO_LARGE",
+          message: "This request cannot be processed safely at this time.",
+        },
+        execution_authorized: false,
+      },
+    });
+  }
+
+  // Generic forwarding headers are client-spoofable unless every ingress edge
+  // is explicitly configured to strip and overwrite them. Geomacro's current
+  // production target is Cloudflare/Nitro, so cf-connecting-ip remains the
+  // preferred edge-authenticated hint. Other proxy identity headers are ignored
+  // by default and may only be enabled after the deployment proxy contract has
+  // been independently verified. Falling back to "unknown" is intentionally
+  // conservative: clients share a tighter bucket instead of gaining an abuse
+  // bypass through forged network identity.
+  const trustGenericProxyHeaders =
+    process.env.GEOMACRO_TRUST_GENERIC_PROXY_HEADERS
+      ?.trim()
+      .toLowerCase() === "true";
+
+  if (!trustGenericProxyHeaders) {
+    for (const name of GENERIC_PROXY_IDENTITY_HEADERS) {
+      headers.delete(name);
+    }
+  }
 
   const decision = await enforceCentralRequestSecurity({
     pathname,
