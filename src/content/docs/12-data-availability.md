@@ -13,7 +13,7 @@ Public presentation is fail-soft:
 - a domain without a current verified score does not receive a synthetic or zero-risk substitute;
 - recovery continues through the verified read path rather than falling back to a browser-side recalculation.
 
-The current public split preserves the audited GRI v1.2 parent proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline score.
+The current public split preserves the versioned GRI v1.2 parent methodology and verified proof lineage. Historical combined-GRI snapshots remain versioned audit records rather than a second live headline score.
 
 ## Risk Gate availability
 
