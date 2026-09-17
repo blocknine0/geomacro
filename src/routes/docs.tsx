@@ -76,11 +76,11 @@ export const Route = createFileRoute("/docs")({
 
 const ENTRY_SLUGS = [
   "01-what-is-geomacro",
+  "09-source-governance",
   "16-double-counting-protection",
   "22-machine-readable-risk-objects",
   "24-access-levels-free-to-institutional",
   "28-partner-architecture",
-  "34-prediction-markets",
 ] as const;
 
 function DocsIndexPage() {
@@ -97,7 +97,7 @@ function DocsIndexPage() {
             Geomacro is geopolitical and macro risk intelligence infrastructure. These documents explain how evidence becomes structured intelligence, how the separate public Risk Indices are produced and verified, how machine-readable Risk Objects and Risk Gate work, and which product surfaces are live, Private Pilot, technical proof or planned.
           </p>
           <p className="mt-4 leading-7 text-muted-foreground">
-            The current public indices preserve the audited <span className="font-mono text-foreground">gri-v1.2.0</span> parent proof lineage. Historical GRI material therefore remains available as a methodology and audit reference rather than a second live headline product. Prediction markets, Arc Testnet, CCTP, Bridge & Swap and smart-contract execution remain secondary technical-proof layers.
+            The current public indices preserve the versioned <span className="font-mono text-foreground">gri-v1.2.0</span> parent methodology and verified proof lineage. Historical GRI material therefore remains available as a methodology and proof reference rather than a second live headline product. Prediction markets, Arc Testnet, CCTP, Bridge & Swap and smart-contract execution remain secondary technical-proof layers.
           </p>
 
           <div className="mt-8 rounded-lg border border-border bg-card/30 p-4">
@@ -126,7 +126,7 @@ function DocsIndexPage() {
           </Link>
 
           <p className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
-            The audited GRI v1.2 parent methodology and proof reference remains available at <a href="/docs/gri-architecture" className="text-primary underline underline-offset-4 hover:no-underline">GRI Architecture & Proof System</a>.
+            The versioned GRI v1.2 parent methodology and proof reference remains available at <a href="/docs/gri-architecture" className="text-primary underline underline-offset-4 hover:no-underline">GRI Architecture & Proof System</a>.
           </p>
         </main>
 
