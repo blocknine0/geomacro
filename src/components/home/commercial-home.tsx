@@ -2,9 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AgentCommerceStatus } from "@/components/agent-commerce-status";
-import { GlobalSignalMap } from "@/components/home/global-signal-map";
-
-const HERO_HEADLINE = "Turn world events into decision-ready risk context.";
 
 const VALUE_PILLARS = [
   {
@@ -62,41 +59,34 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function CommercialHome() {
   return (
     <>
-      <section className="mx-auto w-full max-w-[90rem] px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24 lg:pt-24">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.16fr)_minmax(22rem,0.84fr)] lg:gap-8 xl:gap-12">
-          <div className="min-w-0">
-            <SectionLabel>Global risk intelligence infrastructure</SectionLabel>
-            <h1
-              aria-label={HERO_HEADLINE}
-              className="mt-5 max-w-[52rem] text-[clamp(2.7rem,5.2vw,4.9rem)] font-semibold leading-[0.98] tracking-[-0.035em]"
-            >
-              Turn world events into{" "}
-              <span className="whitespace-nowrap text-primary">decision-ready</span>{" "}
-              risk context.
-            </h1>
-            <p className="mt-7 max-w-3xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Geomacro converts geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence for institutions, operators and AI systems.
-            </p>
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              The focus is simple: show what changed, why it matters, how confident the evidence is, and what a team or system should review next.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="gap-2">
-                <Link to="/institutional">See how teams use Geomacro <ArrowRight className="h-4 w-4" /></Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/global-risk">Explore the product</Link>
-              </Button>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-5">
-              <AgentCommerceStatus compact />
-              <span className="text-xs text-muted-foreground">Risk Gate · controlled Private Pilot</span>
-            </div>
+      <section className="mx-auto w-full max-w-7xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24 lg:pt-24">
+        <div className="max-w-5xl">
+          <SectionLabel>Global risk intelligence infrastructure</SectionLabel>
+          <h1
+            aria-label="Turn world events into decision-ready risk context."
+            className="mt-5 max-w-5xl text-[clamp(2.7rem,6vw,5.6rem)] font-semibold leading-[0.98] tracking-[-0.035em]"
+          >
+            Turn world events into{" "}
+            <span className="whitespace-nowrap text-primary">decision-ready</span>{" "}
+            risk context.
+          </h1>
+          <p className="mt-7 max-w-3xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            Geomacro converts geopolitical, macroeconomic and critical-mineral developments into explainable risk intelligence for institutions, operators and AI systems.
+          </p>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            The focus is simple: show what changed, why it matters, how confident the evidence is, and what a team or system should review next.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg" className="gap-2">
+              <Link to="/institutional">See how teams use Geomacro <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/global-risk">Explore the product</Link>
+            </Button>
           </div>
-
-          <div className="relative -mx-3 mt-1 sm:mx-0 lg:mt-0">
-            <div className="absolute inset-y-[13%] left-[18%] right-[8%] rounded-full bg-primary/[0.025] blur-3xl" />
-            <GlobalSignalMap />
+          <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-5">
+            <AgentCommerceStatus compact />
+            <span className="text-xs text-muted-foreground">Risk Gate · controlled Private Pilot</span>
           </div>
         </div>
       </section>
