@@ -204,27 +204,59 @@ def telegram_source_url(entity: Any, message_id: int) -> str | None:
 
 
 def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
-    request = urllib.request.Request(
-        INGEST_URL,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": USER_AGENT,
-            "x-geomacro-flash-token": INGEST_TOKEN,
-        },
-        method="POST",
-    )
+    encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            body = response.read().decode("utf-8", errors="replace")
-            return json.loads(body)
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"Geomacro flash ingest HTTP {exc.code}: {detail[:1000]}"
-        ) from exc
+    last_error: Exception | None = None
+    for attempt in range(4):
+        request = urllib.request.Request(
+            INGEST_URL,
+            data=encoded,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+                "x-geomacro-flash-token": INGEST_TOKEN,
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                body = response.read().decode("utf-8", errors="replace")
+                parsed = json.loads(body)
+                if not isinstance(parsed, dict):
+                    raise RuntimeError("Geomacro flash ingest returned a non-object JSON payload")
+                return parsed
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            last_error = RuntimeError(
+                f"Geomacro flash ingest HTTP {exc.code}: {detail[:1000]}"
+            )
+            if exc.code < 500 or attempt == 3:
+                raise last_error from exc
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+            last_error = RuntimeError(
+                f"Geomacro flash ingest transport failure: {str(exc)[:500]}"
+            )
+            if attempt == 3:
+                raise last_error from exc
+
+        delay = 2**attempt
+        print(
+            json.dumps(
+                {
+                    "kind": "telegram",
+                    "retrying_ingest": True,
+                    "attempt": attempt + 1,
+                    "next_retry_seconds": delay,
+                }
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
+        time.sleep(delay)
+
+    raise last_error or RuntimeError("Geomacro flash ingest failed")
 
 
 def fetch_feed_sync(
