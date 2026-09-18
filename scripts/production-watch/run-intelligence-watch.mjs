@@ -103,6 +103,8 @@ const ANGLES = [
   "resilience and concentration",
 ];
 
+const HISTORICAL_OFFSETS_DAYS = [14, 30, 60, 90, 180, 365, 730];
+
 const FRAMES = [
   "a buyer's risk review",
   "a treasury risk review",
@@ -147,16 +149,23 @@ function makeQuestion(watchDate, probeIndex) {
     return {
       category,
       mode,
+      as_of: null,
       question:
         `For ${frame}, what does Geomacro's stored intelligence indicate about ${topic}, especially ${angle}, in the ${watchDate} monitoring cycle?`,
     };
   }
 
+  const offsetDays = HISTORICAL_OFFSETS_DAYS[pairIndex % HISTORICAL_OFFSETS_DAYS.length];
+  const historical = new Date(Date.parse(`${watchDate}T12:00:00Z`) - offsetDays * 86_400_000);
+  historical.setUTCHours((pairIndex * 5 + probeIndex) % 24, (pairIndex * 11) % 60, 0, 0);
+  const asOf = historical.toISOString();
+
   return {
     category,
     mode,
+    as_of: asOf,
     question:
-      `For ${frame}, what does Geomacro's stored recent history show about ${topic}, especially ${angle}, and how did the recorded risk context develop in the ${watchDate} monitoring cycle?`,
+      `As of ${asOf.slice(0, 10)}, for ${frame}, what did Geomacro's stored intelligence show about ${topic}, especially ${angle}, and what was the recorded risk context?`,
   };
 }
 
@@ -237,6 +246,7 @@ async function probe(probe) {
     probe_index: probe.probeIndex,
     category: probe.category,
     mode: probe.mode,
+    as_of: probe.as_of,
     question: probe.question,
   };
   const startedAt = Date.now();
@@ -286,6 +296,8 @@ async function probe(probe) {
         probe_index: probe.probeIndex,
         category: probe.category,
         mode: probe.mode,
+        as_of: probe.as_of,
+        build_verified: Boolean(probe.build.schema === "geomacro.deployment-build.v1" && probe.build.sha),
         question: probe.question,
         question_sha256: sha256(probe.question),
         request_id: json?.request_id ? String(json.request_id) : null,
@@ -331,6 +343,8 @@ async function probe(probe) {
         probe_index: probe.probeIndex,
         category: probe.category,
         mode: probe.mode,
+        as_of: probe.as_of,
+        build_verified: Boolean(probe.build.schema === "geomacro.deployment-build.v1" && probe.build.sha),
         question: probe.question,
         question_sha256: sha256(probe.question),
         request_id: null,
