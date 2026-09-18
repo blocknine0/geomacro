@@ -1044,6 +1044,90 @@
       "source_category": "independent_osint_candidate",
       "identity_basis": "Public channel identifies GeopoliticalCenter as an independent strategic, political and economic analysis group based in Italy.",
       "independent_corroboration_required": true
+    },
+    {
+      "handle": "@TheStraitsTimes",
+      "country": "Singapore",
+      "region": "southeast_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "The Straits Times Telegram channel; current public page identifies the publisher and carries Singapore/world news.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@thestar_official",
+      "country": "Malaysia",
+      "region": "southeast_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "The Star's Telegram page explicitly calls itself the official account for TheStar.com.my.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@africanewsofficial",
+      "country": "Africa",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "Africanews English public Telegram channel; publisher site identifies Africanews as a pan-African newsroom.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@BBCWorld",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "role": "news_channel",
+      "identity_basis": "BBC News World mirror; channel explicitly states it is not an official BBC channel.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@reutersnews_bot",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "role": "news_channel",
+      "identity_basis": "Telegram bot explicitly describes itself as an unofficial Reuters news bot.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@france24english",
+      "country": "Global / France",
+      "region": "western_central_europe",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "role": "news_channel",
+      "identity_basis": "Smaller France 24 English mirror; retained only as lead/duplicate-monitoring source, not first-party.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@TheStraitsTimes",
+      "country": "Singapore",
+      "region": "southeast_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "The Straits Times public Telegram channel carries Singapore and international news.",
+      "independent_corroboration_required": false
     }
   ],
   "country_source_sweep": {
@@ -2142,6 +2226,29 @@
       ],
       "runtime_effect": false,
       "auto_approval": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "global_news_channel_crosscheck_three_categories",
+      "added": [
+        "@TheStraitsTimes",
+        "@thestar_official",
+        "@africanewsofficial",
+        "@France24_en",
+        "@France24_ar",
+        "@AJENews_Official",
+        "@DWNewsEnglish",
+        "@cnalatest",
+        "@ReutersWorldChannel",
+        "@BBCWorld",
+        "@BBCWorldoffl",
+        "@reutersnews_bot",
+        "@france24english",
+        "@AlJazeeraEnglish",
+        "@TheStraitsTimes"
+      ],
+      "runtime_effect": false,
+      "auto_approval": false
     }
   ],
   "unofficial_source_policy": {
@@ -2181,5 +2288,31 @@
       "no candidate is runtime-approved by this file"
     ],
     "coverage_note": "The global Telegram ecosystem is too large to enumerate exhaustively; this is the cross-checked Geomacro discovery universe, not a claim that every public channel on Telegram is listed."
+  },
+  "news_source_crosscheck": {
+    "date": "2026-09-18",
+    "purpose": "Cross-check news-channel coverage across official, independent/OSINT, and unofficial high-signal categories and merge prior lists.",
+    "verified_official_examples": [
+      "@cnalatest",
+      "@France24_en",
+      "@France24_ar",
+      "@AJENews_Official",
+      "@DWNewsEnglish",
+      "@TheStraitsTimes",
+      "@thestar_official",
+      "@africanewsofficial"
+    ],
+    "explicit_unofficial_examples": [
+      "@ReutersWorldChannel",
+      "@BBCWorld",
+      "@BBCWorldoffl",
+      "@reutersnews_bot"
+    ],
+    "rules": [
+      "Official candidates still require first-party operator approval and commercial-rights review.",
+      "Independent/OSINT news candidates require corroboration before production use.",
+      "Unofficial mirrors are lead-only and cannot be treated as publisher-authoritative.",
+      "Duplicate handles are not duplicated in the registry."
+    ]
   }
 }
