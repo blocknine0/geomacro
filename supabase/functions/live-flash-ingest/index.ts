@@ -923,6 +923,21 @@ Deno.serve(async request => {
       ? explicit
       : inferred
 
+  const existingResult =
+    await db
+      .from("live_flash_events")
+      .select("flash_id,content_hash,source_version,first_seen_at,last_material_update_at,event_family_id,headline")
+      .eq("source_id", sourceId)
+      .eq("source_record_id", sourceRecordId)
+      .maybeSingle()
+
+  if (existingResult.error) {
+    console.error("existing flash lookup failed", existingResult.error)
+    return jsonResponse(500, {
+      ok: false,
+      error: "flash_existing_lookup_failed",
+    })
+  }
   const stableIdentityHash =
     await sha256Hex(
       `${sourceId}:${sourceRecordId}`
