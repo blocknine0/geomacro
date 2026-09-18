@@ -266,15 +266,7 @@ function buildCurrentState(
       risk_calculation_hash: risk?.integrity.calculation_hash ?? null,
       structural_observation_hashes:
         (structuralRow?.intelligence
-          ? Object.values(structuralRow.intelligence)
-              .flatMap((value) =>
-                value && typeof value === "object" && "observations" in value &&
-                Array.isArray((value as { observations?: unknown[] }).observations)
-                  ? (value as { observations: Array<{ normalized_hash?: string }> }).observations
-                      .map((row) => row.normalized_hash)
-                      .filter((hash): hash is string => typeof hash === "string")
-                  : [],
-              )
+          ? [hash(structuralRow.intelligence)]
           : []),
       structural_coverage: structuralRow
         ? Object.values(structuralRow.intelligence).flatMap((value) =>
@@ -498,6 +490,25 @@ export async function assembleAgentQueryResponse(input: {
     : [];
 
   const gri = plan.required_modules.includes("gri_context") ? publicGri(await readPublicGlobalRisk()) : null;
+  const publicHotTopics = hotTopics.map((result) => ({
+    deliverable: result.deliverable,
+    code: result.code,
+    checked_at: result.checked_at,
+    requested_families: result.requested_families,
+    matched_families: result.matched_families,
+    live_pipeline: {
+      status: result.source_pipeline.status,
+      last_success_at: result.source_pipeline.last_success_at,
+      lag_seconds: result.source_pipeline.lag_seconds,
+    },
+    subject: result.subject,
+    current_event_signal: result.current_event_signal,
+    commercially_deliverable_event_count: result.commercially_deliverable_event_count,
+    excluded_non_deliverable_event_count: result.excluded_non_deliverable_event_count,
+    events: result.events,
+    limitations: result.limitations,
+  }));
+  const currentStates = buildCurrentState(plan, structural, riskObjects, hotTopics);
   const adaptiveAnalysis = intentAnalysis(plan, riskObjects);
 
   const core = {
@@ -518,14 +529,14 @@ export async function assembleAgentQueryResponse(input: {
     as_of: plan.as_of ?? new Date().toISOString(),
     analysis: adaptiveAnalysis,
     structural,
-    hot_topics: hotTopics,
+    hot_topics: publicHotTopics,
     risk_gate: riskGates,
     signed_risk_objects: riskObjects,
     gri_context: gri,
-    current_state: buildCurrentState(plan, structural, riskObjects, hotTopics),
+    current_state: currentStates,
     answer: buildDirectAnswer(
       plan,
-      buildCurrentState(plan, structural, riskObjects, hotTopics),
+      currentStates,
     ),
     methodology: {
       query_schema_version: plan.schema_version,
