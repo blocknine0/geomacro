@@ -85,6 +85,17 @@ Deno.serve(async (request) => {
   });
   if (uploadError) return new Response(JSON.stringify({ ok: false, error: uploadError.message }), { status: 500 });
 
+  const { data: readback } = await db.storage.from(BUCKET).download(path);
+  if (!readback) {
+    await db.storage.from(BUCKET).remove([path]);
+    return new Response(JSON.stringify({ ok: false, error: "archive_readback_failed" }), { status: 500 });
+  }
+  const readbackSha = await sha256Hex(new Uint8Array(await readback.arrayBuffer()));
+  if (readbackSha !== compressedSha) {
+    await db.storage.from(BUCKET).remove([path]);
+    return new Response(JSON.stringify({ ok: false, error: "archive_readback_sha_mismatch" }), { status: 500 });
+  }
+
   const { data: manifest, error: manifestError } = await db
     .from("live_signal_fragment_manifest")
     .insert({
@@ -123,13 +134,6 @@ Deno.serve(async (request) => {
 
   if (markError) {
     return new Response(JSON.stringify({ ok: false, error: markError.message, manifest_id: manifest.id }), { status: 500 });
-  }
-
-  const { data: readback } = await db.storage.from(BUCKET).download(path);
-  if (!readback) return new Response(JSON.stringify({ ok: false, error: "archive_readback_failed", manifest_id: manifest.id }), { status: 500 });
-  const readbackSha = await sha256Hex(new Uint8Array(await readback.arrayBuffer()));
-  if (readbackSha !== compressedSha) {
-    return new Response(JSON.stringify({ ok: false, error: "archive_readback_sha_mismatch", manifest_id: manifest.id }), { status: 500 });
   }
 
   return new Response(JSON.stringify({
