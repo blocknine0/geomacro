@@ -13,22 +13,43 @@ This runbook activates the low-latency country-level breaking-news layer introdu
 
 ## 1. Required GitHub production secrets
 
-Configure these as GitHub Actions secrets before running the Supabase deployment workflow:
+For the authoritative country-flash project:
 
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_ID`
 - `SUPABASE_DB_PASSWORD`
 - `FLASH_INGEST_TOKEN`
 
-`FLASH_INGEST_TOKEN` should be a long random secret generated specifically for the country-flash worker/function boundary. Do not reuse a user password, Telegram credential, Supabase service-role key, or wallet secret.
+For the isolated Telegram-signal project:
 
-The workflow intentionally does not print secret values.
+- `TELEGRAM_SIGNAL_SUPABASE_ACCESS_TOKEN`
+- `TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID`
+- `TELEGRAM_SIGNAL_SUPABASE_DB_PASSWORD`
+- `TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN`
 
-## 2. Supabase deployment workflow
+The isolated workflow hard-fails unless the target project ref is `qogpagklwbfdmrgnrhzi`.
+
+`FLASH_INGEST_TOKEN` and `TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN` are separate boundaries. Do not reuse a user password, Telegram credential, Supabase service-role key, or wallet secret.
+
+The workflows intentionally do not print secret values.
+
+## 2. Supabase deployment workflows
+
+**Authoritative country-flash project**
 
 Workflow:
 
 `.github/workflows/deploy-country-flash-supabase.yml`
+
+This project is the production intelligence environment.
+
+**Isolated Telegram-signal project**
+
+Workflow:
+
+`.github/workflows/deploy-telegram-signal-supabase.yml`
+
+This project is deliberately separate from authoritative production. It contains compact Telegram/RSS lead signals, corroboration state, event-family lifecycle/version records, and private archived evidence. It must never receive the authoritative production Supabase project ref.
 
 It is manual-only and has two modes.
 
@@ -178,6 +199,8 @@ Healthy behavior should show:
 - country relations in `live_flash_event_countries`;
 - corroboration evidence in `live_flash_corroborations`;
 - `UNVERIFIED -> CORROBORATING -> VERIFIED` transitions only when independent evidence satisfies the verifier;
+- one canonical event family per real-world event across sources;
+- material developments append family versions;
 - no direct raw-flash mutation of GRI/Risk Gate merely because a headline arrived.
 
 Do not describe these timing targets as guaranteed source-publication latency.
