@@ -16,6 +16,8 @@ describe("production launch safety contract", () => {
     expect(manifest.providers.goat_x402.launch_cohort).toBe(false);
     expect(manifest.launch_rule.allow_partial_provider_launch).toBe(false);
     expect(manifest.initial_payment_provider_cohort).toEqual(["coinbase_x402"]);
+    expect(manifest.providers.circle_gateway_x402.status).toBe("deferred_additive_provider");
+    expect(manifest.providers.nevermined.status).toBe("deferred_additive_provider");
   });
 
   it("requires the lean initial pay-per-call gate and separates post-launch/scale evidence", () => {
