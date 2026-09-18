@@ -6,7 +6,7 @@ Status: PREPARED, REAL-FUNDS GATE LOCKED.
 
 - Network: Base mainnet (`eip155:8453`)
 - Settlement asset: canonical USDC on Base
-- Launch price: `0.02 USDC` per paid intelligence call (`20000` atomic units)
+- Launch price: `0.05 USDC` per successful paid intelligence delivery for the first 10,000 deliveries (`50000` atomic units); later reference price `0.10 USDC` after adoption evidence
 - Risk Gate output never authorizes execution: `execution_authorized=false`
 
 ## Activation boundary
