@@ -75,7 +75,7 @@ describe("Testnet Developer API funnel telemetry", () => {
     }
     expect(route).toContain("const attemptId = randomUUID()");
     expect(route).toContain("recordTestnetDeveloperApiFunnelEvent");
-    expect(route).toContain('outcome: "failed"');
+    expect(route).toContain('recordStage(stage, "failed"');
     expect(route).toContain("http_status: result.status");
   });
 
