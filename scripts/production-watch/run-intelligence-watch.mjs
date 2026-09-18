@@ -377,7 +377,56 @@ async function probe(probe) {
   throw new Error("Unreachable");
 }
 
+function validateCorpus() {
+  const hashes = new Set();
+  const categoryCounts = { geopolitics: 0, macro: 0, critical_minerals: 0 };
+  const modeCounts = { current: 0, historical: 0 };
+
+  for (let day = 0; day < 7; day += 1) {
+    const date = new Date(Date.UTC(2026, 0, 1 + day));
+    const watchDate = isoDateUTC(date);
+
+    for (let probeIndex = 0; probeIndex < 1000; probeIndex += 1) {
+      const generated = makeQuestion(watchDate, probeIndex);
+      assert(generated.question.length >= 4 && generated.question.length <= 300, "Generated question length is invalid");
+      const hash = sha256(generated.question);
+      assert(!hashes.has(hash), "Duplicate question generated across the seven-day corpus");
+      hashes.add(hash);
+
+      categoryCounts[generated.category] += 1;
+      modeCounts[generated.mode] += 1;
+
+      if (generated.mode === "current") {
+        assert(generated.as_of === null, "Current probe unexpectedly has an as_of anchor");
+      } else {
+        assert(Boolean(generated.as_of), "Historical probe is missing an as_of anchor");
+        assert(Date.parse(generated.as_of) < date.getTime(), "Historical as_of is not in the past");
+      }
+    }
+  }
+
+  assert(hashes.size === 7000, "Seven-day corpus must contain exactly 7000 unique questions");
+  assert(modeCounts.current === 3500 && modeCounts.historical === 3500, "Corpus must split current/historical 50/50");
+  assert(categoryCounts.geopolitics === 2334, "Unexpected geopolitics corpus count");
+  assert(categoryCounts.macro === 2334, "Unexpected macro corpus count");
+  assert(categoryCounts.critical_minerals === 2332, "Unexpected critical-minerals corpus count");
+
+  console.log(JSON.stringify({
+    ok: true,
+    validation: "production-intelligence-watch",
+    unique_questions: hashes.size,
+    days: 7,
+    probes_per_day: 1000,
+    category_counts: categoryCounts,
+    mode_counts: modeCounts,
+  }, null, 2));
+}
+
 async function main() {
+  if (process.env.WATCH_VALIDATE_ONLY === "1") {
+    validateCorpus();
+    return;
+  }
   assert(Number.isInteger(SLOT) && SLOT >= 0 && SLOT <= 3, "WATCH_SLOT must be 0..3");
   assert(BATCH_SIZE === 250, "Production watch batch size is fixed at 250 probes");
   assert(WATCH_TOKEN.length >= 32, "GEOMACRO_PRODUCTION_WATCH_TOKEN must be at least 32 characters");
