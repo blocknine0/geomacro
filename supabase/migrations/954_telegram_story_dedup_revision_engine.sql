@@ -25,23 +25,6 @@ alter table public.live_flash_story_revisions
 alter table public.live_flash_story_revisions
   alter column normalized_headline set not null;
 
-do $$
-begin
-  if exists (
-    select 1
-    from pg_constraint
-    where conrelid = 'public.live_flash_story_revisions'::regclass
-      and conname = 'live_flash_story_revisions_source_id_source_message_id_key'
-  ) then
-    alter table public.live_flash_story_revisions
-      drop constraint live_flash_story_revisions_source_id_source_message_id_key;
-  end if;
-end $$;
-
-create unique index if not exists live_flash_story_revisions_source_message_content_uidx
-  on public.live_flash_story_revisions(source_id, source_message_id, content_sha256)
-  where source_message_id is not null;
-
 create or replace function public.prevent_flash_story_revision_mutation()
 returns trigger
 language plpgsql
