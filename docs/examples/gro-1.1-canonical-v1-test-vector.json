@@ -1,0 +1,11 @@
+{
+  "specification": "geomacro-canonical-json-v1",
+  "purpose": "Independent verification test vector. Test-only key; historical timestamps.",
+  "canonical_signable_json": "{\"attribution\":[],\"commercial_eligibility\":{\"reason_codes\":[\"canonicalization_test_vector\"],\"status\":\"UNVERIFIED\"},\"confidence\":0.88,\"evidence\":[],\"evidence_coverage\":null,\"evidence_summary\":{\"event_count\":0,\"evidence_count\":0,\"independent_source_count\":0},\"expires_at\":\"2026-09-07T21:30:37.459Z\",\"generated_at\":\"2026-09-07T18:30:37.459Z\",\"integrity\":{\"calculation_hash\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"canonicalization\":\"geomacro-canonical-json-v1\",\"data_hash\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"input_hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"payload_hash\":null,\"signature\":null,\"signature_scheme\":\"Ed25519\",\"signing_key_id\":\"canonical-test-key-1\"},\"issuer\":\"Geomacro\",\"methodology_version\":\"country-risk-v0.1.0-pilot\",\"object_id\":\"gro_country_USA_canonical_v1_test\",\"provenance\":{\"country_versions\":[],\"relevance_versions\":[],\"scoring_versions\":[],\"story_versions\":[],\"structure_versions\":[]},\"risk\":{\"delta\":3,\"direction\":\"escalating\",\"label\":\"ELEVATED\",\"previous_score\":58,\"score\":61},\"schema_version\":\"gro-1.1\",\"subject\":{\"id\":\"USA\",\"name\":\"United States\",\"type\":\"country\"},\"verification\":{\"last_verified_at\":null,\"reason_codes\":[\"canonicalization_test_vector\"],\"status\":\"INCOMPLETE\"}}",
+  "payload_hash": "cd1b162452fbcb78d599a2ea6e1b00eabda7276807d5b1e7b78134f46acead39",
+  "signing_key_id": "canonical-test-key-1",
+  "public_key_spki_b64": "MCowBQYDK2VwAyEArohhRClqSxPytzpxWfkm6Z8saeVaMgHCMrkzHLgYl9c=",
+  "signature_b64": "fouBZKL1Uvycse8PVa+a4OOa0I4YziQBaINXpX9dfg+g3x486pGboqVqQX3NNH/Q8Yr+yrJ8GYj3PouJPPRyDw==",
+  "expected_payload_hash": "cd1b162452fbcb78d599a2ea6e1b00eabda7276807d5b1e7b78134f46acead39",
+  "expected_signature_verifies": true
+}
