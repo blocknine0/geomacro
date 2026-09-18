@@ -72,6 +72,6 @@ A well-formed but tampered, unknown-key, revoked-key, unsupported-methodology, m
 
 ## Canonical gro-1.1 JSON Schema
 
-- `GET https://geomacro.live/schemas/gro-1.1.schema.json`
+Repository source: `schemas/gro-1.1.schema.json`.
 
 The JSON Schema mirrors the canonical TypeScript contract in `src/lib/risk-object-contract.ts`. Complete signed Risk Objects must still be transported unchanged for payload-hash and Ed25519 verification.
