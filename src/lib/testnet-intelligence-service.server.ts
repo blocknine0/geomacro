@@ -9,6 +9,7 @@ import {
   type CommercialPrincipal,
 } from "./commercial-access.server";
 import { recordCommercialUsageEvent } from "./commercial-ops.server";
+import { recordTestnetDeveloperApiFunnelEvent } from "./testnet-api-funnel-telemetry.server";
 import { structuredDeliveryPolicy } from "./structured-data-entitlement-registry";
 import { settleTestnetApiCall } from "./testnet-api-payment.server";
 import { loadTestnetAssistiveContext } from "./testnet-assistive-context.server";
@@ -57,6 +58,7 @@ export async function deliverTestnetIntelligence(input: {
   principal: CommercialPrincipal;
   request: TestnetIntelligenceRequest;
   access_surface: TestnetAccessSurface;
+  funnel_attempt_id?: string;
 }): Promise<TestnetIntelligenceServiceResult> {
   const { principal, request } = input;
   const entitlement = await resolveCommercialEntitlementForCapability({
@@ -89,15 +91,71 @@ export async function deliverTestnetIntelligence(input: {
     );
   }
 
-  const settlement = await settleTestnetApiCall({
-    principal,
-    entitlement,
-    request_id: request.request_id,
-    capability: request.capability,
-    payment: request.payment,
-  });
+  if (input.funnel_attempt_id) {
+    await recordTestnetDeveloperApiFunnelEvent({
+      attempt_id: input.funnel_attempt_id,
+      principal_id: principal.principal_id,
+      key_id: principal.key_id,
+      request_id: request.request_id,
+      capability: request.capability,
+      subject_type: subjectType,
+      subject_key: request.subject
+        ? `${request.subject.type}:${request.subject.id}`
+        : null,
+      stage: "payment",
+      outcome: "started",
+    });
+  }
+
+  let settlement;
+  try {
+    settlement = await settleTestnetApiCall({
+      principal,
+      entitlement,
+      request_id: request.request_id,
+      capability: request.capability,
+      payment: request.payment,
+    });
+  } catch (error) {
+    if (input.funnel_attempt_id) {
+      await recordTestnetDeveloperApiFunnelEvent({
+        attempt_id: input.funnel_attempt_id,
+        principal_id: principal.principal_id,
+        key_id: principal.key_id,
+        request_id: request.request_id,
+        capability: request.capability,
+        subject_type: subjectType,
+        subject_key: request.subject
+          ? `${request.subject.type}:${request.subject.id}`
+          : null,
+        stage: "payment",
+        outcome: "failed",
+        http_status: error instanceof CommercialAccessError ? error.status : 503,
+        error_code:
+          error instanceof CommercialAccessError ? error.code : "TESTNET_PAYMENT_UNAVAILABLE",
+      });
+    }
+    throw error;
+  }
 
   if (settlement.status === "payment_required") {
+    if (input.funnel_attempt_id) {
+      await recordTestnetDeveloperApiFunnelEvent({
+        attempt_id: input.funnel_attempt_id,
+        principal_id: principal.principal_id,
+        key_id: principal.key_id,
+        request_id: request.request_id,
+        capability: request.capability,
+        subject_type: subjectType,
+        subject_key: request.subject
+          ? `${request.subject.type}:${request.subject.id}`
+          : null,
+        stage: "payment",
+        outcome: "required",
+        http_status: 402,
+        error_code: "TESTNET_PAYMENT_REQUIRED",
+      });
+    }
     return {
       status: 402,
       body: {
@@ -116,6 +174,37 @@ export async function deliverTestnetIntelligence(input: {
         },
       },
     };
+  }
+
+  if (input.funnel_attempt_id) {
+    await recordTestnetDeveloperApiFunnelEvent({
+      attempt_id: input.funnel_attempt_id,
+      principal_id: principal.principal_id,
+      key_id: principal.key_id,
+      request_id: request.request_id,
+      capability: request.capability,
+      subject_type: subjectType,
+      subject_key: request.subject
+        ? `${request.subject.type}:${request.subject.id}`
+        : null,
+      stage: "payment",
+      outcome: "passed",
+      http_status: 200,
+      metadata: { payment_settled: true },
+    });
+    await recordTestnetDeveloperApiFunnelEvent({
+      attempt_id: input.funnel_attempt_id,
+      principal_id: principal.principal_id,
+      key_id: principal.key_id,
+      request_id: request.request_id,
+      capability: request.capability,
+      subject_type: subjectType,
+      subject_key: request.subject
+        ? `${request.subject.type}:${request.subject.id}`
+        : null,
+      stage: "intelligence_delivery",
+      outcome: "started",
+    });
   }
 
   let delivery;
@@ -142,6 +231,30 @@ export async function deliverTestnetIntelligence(input: {
     };
   } catch (error) {
     const code = error instanceof Error ? error.message : "TESTNET_INTELLIGENCE_UNAVAILABLE";
+    const failureStatus =
+      code === "STRUCTURAL_DATA_UNAVAILABLE" ||
+      code === "SIGNED_RISK_OBJECT_UNAVAILABLE"
+        ? 404
+        : code === "SUBJECT_REQUIRED"
+          ? 400
+          : 503;
+    if (input.funnel_attempt_id) {
+      await recordTestnetDeveloperApiFunnelEvent({
+        attempt_id: input.funnel_attempt_id,
+        principal_id: principal.principal_id,
+        key_id: principal.key_id,
+        request_id: request.request_id,
+        capability: request.capability,
+        subject_type: subjectType,
+        subject_key: request.subject
+          ? `${request.subject.type}:${request.subject.id}`
+          : null,
+        stage: "intelligence_delivery",
+        outcome: "failed",
+        http_status: failureStatus,
+        error_code: code.slice(0, 120),
+      });
+    }
     if (
       code === "STRUCTURAL_DATA_UNAVAILABLE" ||
       code === "SIGNED_RISK_OBJECT_UNAVAILABLE"
@@ -162,6 +275,25 @@ export async function deliverTestnetIntelligence(input: {
       throw new CommercialAccessError(400, code, "A compatible subject is required for this capability.");
     }
     throw error;
+  }
+
+  if (input.funnel_attempt_id) {
+    await recordTestnetDeveloperApiFunnelEvent({
+      attempt_id: input.funnel_attempt_id,
+      principal_id: principal.principal_id,
+      key_id: principal.key_id,
+      request_id: request.request_id,
+      capability: request.capability,
+      subject_type: delivery.subject_type,
+      subject_key: delivery.subject_key,
+      stage: "intelligence_delivery",
+      outcome: "passed",
+      http_status: 200,
+      metadata: {
+        structural_observation_count: delivery.structural_observation_count,
+        evidence_reference_count: delivery.evidence_reference_count,
+      },
+    });
   }
 
   const deliveryId = randomUUID();
