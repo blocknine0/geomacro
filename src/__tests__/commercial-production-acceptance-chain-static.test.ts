@@ -35,7 +35,7 @@ describe("commercial production acceptance ordered chain", () => {
   it("binds real-money canaries to successful same-SHA P0 and keeps one-provider capped execution", () => {
     expect(canary).toContain(".github/workflows/p0-strict-prepublic-closure.yml");
     expect(canary).toContain("I_AUTHORIZE_ONE_CAPPED_INTERNAL_REAL_MONEY_CANARY");
-    expect(canary).toContain("max_usdc must be >0 and <=1 USDC");
+    expect(canary).toContain("max_usdc must be >0 and <=0.05 USDC");
     expect(canary).toContain("environment: production-canary");
     expect(canary).toContain("GEOMACRO_RECONCILIATION_MODE: internal_canary");
     expect(canary).toContain("GEOMACRO_PURCHASE_CLASSIFICATION: internal_canary");
