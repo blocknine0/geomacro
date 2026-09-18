@@ -1,0 +1,250 @@
+name: Federico 7-Day Risk Object Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */2 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/federico-seven-day-risk-refresh.yml"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: federico-seven-day-risk-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      FEDERICO_REFRESH_UNTIL: "2026-09-25T00:30:00Z"
+
+    steps:
+      - name: Stop after seven-day window
+        id: window
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOW_EPOCH="$(date -u +%s)"
+          END_EPOCH="$(date -u -d "$FEDERICO_REFRESH_UNTIL" +%s)"
+
+          if [ "$NOW_EPOCH" -ge "$END_EPOCH" ]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Federico refresh window ended at $FEDERICO_REFRESH_UNTIL."
+            curl -L --silent --show-error --fail               -X PUT               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/federico-seven-day-risk-refresh.yml/disable"               || echo "::warning::Could not self-disable workflow; future runs will still exit before publishing."
+            exit 0
+          fi
+
+          echo "active=true" >> "$GITHUB_OUTPUT"
+          echo "Refresh window active until $FEDERICO_REFRESH_UNTIL."
+
+      - name: Checkout
+        if: steps.window.outputs.active == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Bun 1.4.2
+        if: steps.window.outputs.active == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        if: steps.window.outputs.active == 'true'
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate production signing configuration
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
+            format: 'der',
+            type: 'pkcs8',
+          });
+
+          if (privateKey.asymmetricKeyType !== 'ed25519') {
+            throw new Error('Risk Object signing key must be Ed25519');
+          }
+
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
+          ).toString('base64');
+
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n',
+          );
+          NODE
+
+      - name: Verify signer matches deployed trust registry
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/geomacro-keys.json', 'utf8'));
+
+          if (body?.ok !== true || !Array.isArray(body?.keys)) {
+            throw new Error('Deployed Geomacro trust registry unavailable');
+          }
+
+          const key = body.keys.find(
+            (item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID,
+          );
+
+          if (!key || key.status !== 'active') {
+            throw new Error('Configured production signing key is not active in the deployed registry');
+          }
+
+          if (key.public_key_spki_b64 !== process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
+            throw new Error('Configured production private key does not match deployed public key');
+          }
+
+          console.log('PASS: production signer matches deployed active trust key');
+          NODE
+
+      - name: Publish fresh production-signed CHN Risk Object
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/publish-country-risk-object.ts CHN | tee /tmp/publish.json
+
+          jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
+            .published == true and
+            .schema_version == "gro-1.1" and
+            .commercial_eligibility.status == "VERIFIED" and
+            .verification.status == "VERIFIED" and
+            .integrity.signature_present == true and
+            .integrity.signature_valid == true and
+            .integrity.signing_key_id == $key_id
+          ' /tmp/publish.json >/dev/null
+
+      - name: Export exact persisted signed payload
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          OBJECT_ID="$(jq -r '.object_id' /tmp/publish.json)"
+          export OBJECT_ID
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { createClient } = require('@supabase/supabase-js');
+
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
+
+            const { data, error } = await db
+              .from('geomacro_risk_objects')
+              .select('payload')
+              .eq('object_id', process.env.OBJECT_ID)
+              .maybeSingle();
+
+            if (error) throw error;
+            if (!data?.payload) throw new Error('Persisted Risk Object payload unavailable');
+
+            fs.writeFileSync(
+              '/tmp/federico-risk-object.json',
+              JSON.stringify(data.payload, null, 2) + '\n',
+              { mode: 0o600 },
+            );
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Verify freshness, signature and tamper rejection
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/invinoveritas-risk-object-preflight.ts /tmp/federico-risk-object.json             | tee /tmp/federico-preflight.json
+
+          jq -e '
+            .ok == true and
+            .gates.deployed_original_verification == "PASS" and
+            .gates.tampered_payload_rejected == "PASS" and
+            .gates.freshness == "PASS" and
+            .gates.partner_request_contract == "PASS"
+          ' /tmp/federico-preflight.json >/dev/null
+
+      - name: Build handoff artifact
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/federico-handoff
+          cp /tmp/federico-risk-object.json /tmp/federico-handoff/federico-risk-object.json
+          cp schemas/gro-1.1.schema.json /tmp/federico-handoff/gro-1.1.schema.json
+
+          (
+            cd /tmp/federico-handoff
+            sha256sum gro-1.1.schema.json federico-risk-object.json > SHA256SUMS.txt
+          )
+
+          jq '{
+            ok,
+            gates,
+            object
+          }' /tmp/federico-preflight.json > /tmp/federico-handoff/verification-summary.json
+
+      - name: Upload latest Federico handoff
+        if: steps.window.outputs.active == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: federico-risk-object-${{ github.run_id }}
+          path: /tmp/federico-handoff/
+          if-no-files-found: error
+          retention-days: 8
+
+      - name: Publish sanitized summary
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Federico 7-day Risk Object refresh"
+            echo
+            echo "Window ends: $FEDERICO_REFRESH_UNTIL"
+            echo
+            jq '{
+              object_id: .object.object_id,
+              schema_version: .object.schema_version,
+              expires_at: .object.expires_at,
+              signing_key_id: .object.signing_key_id,
+              gates
+            }' /tmp/federico-preflight.json
+            echo
+            echo "Artifact: federico-risk-object-${{ github.run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"
