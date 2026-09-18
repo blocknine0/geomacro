@@ -564,12 +564,16 @@ Deno.serve(async request => {
       let family = flash.event_family_id ? familyById.get(flash.event_family_id) : undefined
 
       if (!family && candidates.length) {
-        family = candidates.reduce((best, candidate) => {
+        let bestCandidate: EventFamily | undefined
+        let bestScore = -1
+        for (const candidate of candidates) {
           const score = similarity(flash.headline, candidate.canonical_headline)
-          if (!best) return { candidate, score } as unknown as EventFamily
-          const bestScore = similarity(flash.headline, best.canonical_headline)
-          return score > bestScore ? candidate : best
-        }, undefined as EventFamily | undefined)
+          if (score > bestScore) {
+            bestCandidate = candidate
+            bestScore = score
+          }
+        }
+        family = bestCandidate
       }
 
       if (!family) {
@@ -598,6 +602,22 @@ Deno.serve(async request => {
         }
 
         family = createFamily.data as EventFamily
+        const initialVersion = await db
+          .from("live_flash_event_family_versions")
+          .upsert({
+            family_id: family.family_id,
+            version: 1,
+            captured_at: new Date().toISOString(),
+            trigger_flash_id: flash.flash_id,
+            canonical_headline: family.canonical_headline,
+            signal_category: family.signal_category,
+            material_update_reason: "initial_event_family",
+            content_hash: flash.content_hash,
+          }, { onConflict: "family_id,version" })
+        if (initialVersion.error) {
+          console.error(initialVersion.error)
+          return jsonResponse(500, { ok: false, error: "family_version_create_failed" })
+        }
         familyById.set(family.family_id, family)
         familyMemberIds.set(family.family_id, new Set<string>())
         familySourceFamilies.set(family.family_id, new Set<string>())
@@ -675,6 +695,25 @@ Deno.serve(async request => {
       if (familyUpdate.error) {
         console.error(familyUpdate.error)
         return jsonResponse(500, { ok: false, error: "family_update_failed" })
+      }
+
+      if (isMaterialFamilyUpdate) {
+        const familyVersionInsert = await db
+          .from("live_flash_event_family_versions")
+          .upsert({
+            family_id: family.family_id,
+            version: nextVersion,
+            captured_at: new Date().toISOString(),
+            trigger_flash_id: flash.flash_id,
+            canonical_headline: flash.headline,
+            signal_category: flash.signal_category,
+            material_update_reason: flash.material_update_reason,
+            content_hash: flash.content_hash,
+          }, { onConflict: "family_id,version" })
+        if (familyVersionInsert.error) {
+          console.error(familyVersionInsert.error)
+          return jsonResponse(500, { ok: false, error: "family_version_store_failed" })
+        }
       }
 
       const flashFamilyUpdate = await db
