@@ -219,6 +219,48 @@ jobs:
             object
           }' /tmp/federico-preflight.json > /tmp/federico-handoff/verification-summary.json
 
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+
+          root = Path("/tmp/federico-handoff")
+          package = root / "Geomacro_Federico_Latest_Handoff.zip"
+          files = [
+              "gro-1.1.schema.json",
+              "federico-risk-object.json",
+              "SHA256SUMS.txt",
+              "verification-summary.json",
+          ]
+
+          with ZipFile(package, "w", ZIP_DEFLATED) as archive:
+              for name in files:
+                  archive.write(root / name, arcname=name)
+          PY
+
+          (
+            cd /tmp/federico-handoff
+            sha256sum Geomacro_Federico_Latest_Handoff.zip > PACKAGE_SHA256.txt
+          )
+
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          package = "/tmp/federico-handoff/Geomacro_Federico_Latest_Handoff.zip"
+          with ZipFile(package) as archive:
+              bad = archive.testzip()
+              if bad is not None:
+                  raise SystemExit(f"ZIP integrity failure: {bad}")
+              expected = {
+                  "gro-1.1.schema.json",
+                  "federico-risk-object.json",
+                  "SHA256SUMS.txt",
+                  "verification-summary.json",
+              }
+              actual = set(archive.namelist())
+              if actual != expected:
+                  raise SystemExit(f"Unexpected ZIP contents: {sorted(actual)}")
+          print("PASS: fixed Federico handoff ZIP is valid")
+          PY
+
       - name: Upload fixed latest Federico handoff
         if: steps.window.outputs.active == 'true'
         uses: actions/upload-artifact@v4
@@ -282,5 +324,6 @@ jobs:
             }' /tmp/federico-preflight.json
             echo
             echo "Artifact: federico-latest-handoff"
+            echo "Package: Geomacro_Federico_Latest_Handoff.zip"
             echo "Run ID: ${{ github.run_id }}"
           } >> "$GITHUB_STEP_SUMMARY"
