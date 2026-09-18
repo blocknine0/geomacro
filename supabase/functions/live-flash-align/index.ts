@@ -8,8 +8,8 @@ const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
 
-function jsonResponse(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), {
+function jsonResponse(status: number, payload: unknown) {
+  return new Response(JSON.stringify(payload), {
     status,
     headers: {
       "Content-Type": "application/json",
