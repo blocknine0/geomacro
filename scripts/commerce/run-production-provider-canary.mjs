@@ -46,10 +46,6 @@ function exactAck(provider) {
   }
 }
 
-function base64Json(value) {
-  return Buffer.from(JSON.stringify(value), "utf8").toString("base64");
-}
-
 function challengeFrom(response, body) {
   const header = response.headers.get("PAYMENT-REQUIRED");
   if (!header) fail("Production canary 402 is missing PAYMENT-REQUIRED");
