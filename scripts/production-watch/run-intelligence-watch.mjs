@@ -287,9 +287,9 @@ async function probe(probe) {
         response.ok && answer
           ? answer.insufficient_evidence
             ? "insufficient_evidence"
-            : watch?.current_evidence_count === 0 && watch?.historical_evidence_count === 0
-              ? "build_unverified"
-              : "success"
+            : probe.build.verified
+              ? "success"
+              : "build_unverified"
           : response.status >= 500 || response.status === 0
             ? "production_error"
             : "invalid_response";
@@ -348,7 +348,7 @@ async function probe(probe) {
         category: probe.category,
         mode: probe.mode,
         as_of: probe.as_of,
-        build_verified: Boolean(probe.build.schema === "geomacro.deployment-build.v1" && probe.build.sha),
+        build_verified: Boolean(probe.build.verified),
         question: probe.question,
         question_sha256: sha256(probe.question),
         request_id: null,
