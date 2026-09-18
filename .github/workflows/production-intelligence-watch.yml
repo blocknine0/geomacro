@@ -18,6 +18,7 @@ on:
           - "1"
           - "2"
           - "3"
+          - "report"
 
 permissions:
   contents: read
@@ -148,5 +149,33 @@ jobs:
         with:
           name: production-watch-slot-3-${{ github.run_id }}
           path: production-watch-artifacts/*.jsonl
+          retention-days: 30
+          if-no-files-found: ignore
+  report:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '47 23 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.slot == 'report')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WATCH_REPORT_DAYS: "7"
+      WATCH_REPORT_OUTPUT: production-watch-report.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v24
+        with:
+          node-version: "22"
+      - name: Generate seven-day watch report
+        run: |
+          node scripts/production-watch/report-intelligence-watch.mjs | tee /tmp/watch-report.txt
+          cat production-watch-report.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload watch report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-watch-report-${{ github.run_id }}
+          path: production-watch-report.json
           retention-days: 30
           if-no-files-found: ignore
