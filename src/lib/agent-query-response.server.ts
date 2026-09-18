@@ -7,6 +7,14 @@ import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { loadStructuralContext, type StructuralObservation } from "./structural-context.server";
+import {
+  GEOMACRO_INTELLIGENCE_PRODUCT_ID,
+  GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
+  intelligenceStateVersion,
+  publicStructuralCoverage,
+  publicStructuralDevelopment,
+  publicStructuralObservation,
+} from "./geomacro-intelligence-contract";
 
 const MODULE_ALIASES: Record<string, readonly string[]> = {
   sovereign_fiscal: ["sovereign_fiscal", "fiscal", "sovereign", "debt"],
@@ -85,40 +93,37 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
     throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
   }
   const intelligence: Record<string, unknown> = {};
-  const sourceIds = new Set<string>();
   const limit = perModuleLimit(plan.detail);
 
   for (const module of structuralModules) {
     const observations = context.observations
       .filter((row) => moduleMatches(module, row.dimension))
       .slice(0, limit)
-      .map((row) => {
-        sourceIds.add(row.source_id);
-        return observation(row);
-      });
+      .map((row) => publicStructuralObservation(row, plan.as_of ?? new Date().toISOString()));
     const coverage = context.metadata.coverage
       .filter((row) => moduleMatches(module, row.dimension))
       .slice(0, limit)
-      .map((row) => {
-        sourceIds.add(row.source_id);
-        return {
-          source_id: row.source_id,
-          dimension: row.dimension,
-          country_iso3: row.country_iso3,
-          coverage_year: row.coverage_year,
-          coverage_status: row.coverage_status,
-          observation_count: row.observation_count,
-          latest_observed_at: row.latest_observed_at,
-          updated_at: row.updated_at,
-        };
-      });
+      .map((row) => publicStructuralCoverage(row));
     intelligence[module] = { observations, coverage };
   }
+
+  const allObservations = context.observations
+    .slice(0, Math.max(limit, 12))
+    .map((row) => publicStructuralObservation(row, plan.as_of ?? new Date().toISOString()));
 
   return {
     subject,
     intelligence,
-    source_ids: [...sourceIds].sort(),
+    evidence_summary: {
+      observation_count: allObservations.length,
+      available_dimensions: [...new Set(allObservations.map((row) => row.dimension))].sort(),
+      latest_observed_at:
+        allObservations
+          .map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at)
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1) ?? null,
+    },
     serving: {
       layer: context.metadata.serving_layer,
       warehouse_methodology_status: context.metadata.warehouse_methodology_status,
@@ -186,6 +191,168 @@ function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
     change_hash: risk.changeHash,
     change_attribution: risk.drivers,
   };
+}
+
+function publicRiskState(object: LoadedRiskObject["object"]) {
+  return {
+    risk: object.risk,
+    confidence: object.confidence,
+    attribution: [...object.attribution]
+      .sort((a, b) => Math.abs(b.delta_contribution ?? 0) - Math.abs(a.delta_contribution ?? 0))
+      .slice(0, 5)
+      .map((row) => ({
+        driver: row.driver,
+        score_contribution: row.score_contribution,
+        delta_contribution: row.delta_contribution,
+        event_count: row.event_count,
+        weight: row.weight,
+      })),
+    evidence_summary: object.evidence_summary,
+    methodology_version: object.methodology_version,
+    observed_at: object.observed_at ?? object.generated_at,
+    generated_at: object.generated_at,
+    expires_at: object.expires_at,
+    verification: {
+      status: object.verification.status,
+      last_verified_at: object.verification.last_verified_at,
+    },
+    integrity: {
+      calculation_hash: object.integrity.calculation_hash,
+      payload_hash: object.integrity.payload_hash,
+      signature_scheme: object.integrity.signature_scheme,
+      signing_key_id: object.integrity.signing_key_id,
+    },
+  };
+}
+
+function buildCurrentState(
+  plan: AgentQueryPlan,
+  structural: Awaited<ReturnType<typeof structuralSubject>>[],
+  riskObjects: LoadedRiskObject[],
+  hotTopics: Awaited<ReturnType<typeof loadAgentHotTopics>>[],
+) {
+  const riskBySubject = new Map(riskObjects.map((entry) => [subjectKey(entry.subject), entry.object]));
+  const hotBySubject = new Map(
+    hotTopics.map((result) => [subjectKey(result.subject), result]),
+  );
+
+  return plan.subjects.map((subject) => {
+    const key = subjectKey(subject);
+    const structuralRow = structural.find((item) => subjectKey(item.subject) === key);
+    const risk = riskBySubject.get(key);
+    const hot = hotBySubject.get(key);
+    const developmentInputs = (hot?.events ?? []).map((event) => publicStructuralDevelopment({
+      event_id: event.event_id,
+      story_key: event.story_key,
+      event_type: event.event_type,
+      families: event.families,
+      primary_country: event.primary_country,
+      countries: event.countries,
+      severity: event.severity,
+      confidence: event.confidence,
+      direction: event.direction,
+      status: event.status,
+      first_seen_at: event.first_seen_at,
+      last_seen_at: event.last_seen_at,
+      evidence_count: event.evidence_count,
+      independent_source_count: event.independent_source_count,
+      structure_version: event.structure_version,
+      classification_version: event.classification_version,
+    }));
+
+    const stateVersion = intelligenceStateVersion({
+      subject,
+      as_of: plan.as_of ?? new Date().toISOString(),
+      risk_calculation_hash: risk?.integrity.calculation_hash ?? null,
+      structural_observation_hashes:
+        (structuralRow?.intelligence
+          ? Object.values(structuralRow.intelligence)
+              .flatMap((value) =>
+                value && typeof value === "object" && "observations" in value &&
+                Array.isArray((value as { observations?: unknown[] }).observations)
+                  ? (value as { observations: Array<{ normalized_hash?: string }> }).observations
+                      .map((row) => row.normalized_hash)
+                      .filter((hash): hash is string => typeof hash === "string")
+                  : [],
+              )
+          : []),
+      structural_coverage: structuralRow
+        ? Object.values(structuralRow.intelligence).flatMap((value) =>
+            value && typeof value === "object" && "coverage" in value &&
+            Array.isArray((value as { coverage?: unknown[] }).coverage)
+              ? (value as { coverage: ReturnType<typeof publicStructuralCoverage>[] }).coverage
+              : [],
+          )
+        : [],
+      event_versions: developmentInputs.map((event) => event.event_version),
+    });
+
+    return {
+      subject,
+      state_version: stateVersion,
+      risk: risk ? publicRiskState(risk) : null,
+      structural: structuralRow?.evidence_summary ?? null,
+      live: {
+        current_event_signal: hot?.current_event_signal ?? false,
+        event_count: hot?.commercially_deliverable_event_count ?? 0,
+        pipeline_lag_seconds: hot?.source_pipeline.lag_seconds ?? null,
+        checked_at: hot?.checked_at ?? null,
+      },
+      developments: developmentInputs,
+    };
+  });
+}
+
+function buildDirectAnswer(
+  plan: AgentQueryPlan,
+  states: ReturnType<typeof buildCurrentState>,
+) {
+  const supported = states.filter((state) => state.risk !== null);
+  if (!supported.length) {
+    return {
+      status: "INSUFFICIENT_STATE",
+      headline: "Geomacro could not establish a current verified risk state for this request.",
+      what_changed: [],
+      why_it_matters: "The response contains only data modules that passed the commercial delivery contract.",
+    } as const;
+  }
+
+  if (plan.intent === "comparison" || plan.intent === "ranking_filter") {
+    return {
+      status: "SUPPORTED",
+      headline: `${supported.length} subjects have current verified Geomacro risk states.`,
+      what_changed: supported.map((state) => ({
+        subject: state.subject,
+        score: state.risk!.risk.score,
+        delta: state.risk!.risk.delta,
+        direction: state.risk!.risk.direction,
+      })),
+      why_it_matters: "Scores, movements and structural developments are returned as versioned state rather than raw news.",
+    } as const;
+  }
+
+  const state = supported[0];
+  const risk = state.risk!;
+  const deltaText =
+    typeof risk.risk.delta === "number"
+      ? `, ${risk.risk.delta >= 0 ? "up" : "down"} ${Math.abs(risk.risk.delta).toFixed(2)} points from the previous published state`
+      : "";
+  const driverText = risk.attribution
+    .slice(0, 3)
+    .map((driver) => `${driver.driver} ${driver.delta_contribution === null ? "no comparable delta" : `${driver.delta_contribution >= 0 ? "+" : ""}${driver.delta_contribution.toFixed(2)}`}`)
+    .join(", ");
+
+  return {
+    status: "SUPPORTED",
+    headline: `${state.subject.type === "country" ? state.subject.country_iso3 : `${state.subject.origin_country_iso3} → ${state.subject.destination_country_iso3}`} is ${risk.risk.label} at ${risk.risk.score.toFixed(2)}/100${deltaText}.`,
+    what_changed: [
+      driverText ? `Largest attributed movements: ${driverText}.` : "No compatible driver delta is available.",
+      state.developments.length
+        ? `${state.developments.length} canonical material development(s) are currently linked to this state.`
+        : "No current material development passed the commercial live-event contract.",
+    ],
+    why_it_matters: "Geomacro combines historical structural context with current verified developments and exposes the resulting state as versioned derived intelligence.",
+  } as const;
 }
 
 function intentAnalysis(plan: AgentQueryPlan, riskObjects: LoadedRiskObject[]) {
@@ -334,8 +501,8 @@ export async function assembleAgentQueryResponse(input: {
   const adaptiveAnalysis = intentAnalysis(plan, riskObjects);
 
   const core = {
-    schema_version: "geomacro.adaptive-intelligence-response.v1",
-    product: "geomacro_adaptive_risk_intelligence_v1",
+    schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
+    product: GEOMACRO_INTELLIGENCE_PRODUCT_ID,
     request_id: input.requestId,
     client_request_id: input.clientRequestId ?? null,
     query_plan_hash: plan.query_plan_hash,
@@ -355,9 +522,17 @@ export async function assembleAgentQueryResponse(input: {
     risk_gate: riskGates,
     signed_risk_objects: riskObjects,
     gri_context: gri,
+    current_state: buildCurrentState(plan, structural, riskObjects, hotTopics),
+    answer: buildDirectAnswer(
+      plan,
+      buildCurrentState(plan, structural, riskObjects, hotTopics),
+    ),
     methodology: {
       query_schema_version: plan.schema_version,
-      response_schema_version: "geomacro.adaptive-intelligence-response.v1",
+      response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
+      product_contract_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
+      pricing_phase: "EARLY_ADOPTION_10K",
+      price_usdc: "0.05",
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
       intent_method: "deterministic-governed-v1",
       ranking_metric: plan.ranking?.metric ?? null,
