@@ -655,6 +655,60 @@
       "status": "PENDING",
       "identity_basis": "public Telegram channel describes itself as Al Jazeera English and links aljazeera.com; first-party ownership still requires operator review",
       "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@MIB_India",
+      "country": "India",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Official Government of India Ministry of Information & Broadcasting Telegram page; operator/source-rights review still required."
+    },
+    {
+      "handle": "@timesofindia",
+      "country": "India",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Telegram page identifies Times of India and explicitly calls it official; operator/source-rights review still required."
+    },
+    {
+      "handle": "@DaryoUz",
+      "country": "Uzbekistan",
+      "region": "central_asia_caucasus",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public directory identifies Daryo as an official Uzbek news outlet Telegram channel; first-party ownership review required."
+    },
+    {
+      "handle": "@sputnik_africa",
+      "country": "Africa",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Telegram page identifies Sputnik Africa; publisher identity is visible but commercial/rightsholder review remains required."
+    },
+    {
+      "handle": "@sputnik_ethiopia",
+      "country": "Ethiopia",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Sputnik Africa page links the Amharic regional channel; first-party ownership/operator review required."
+    },
+    {
+      "handle": "@sputnik_afrique",
+      "country": "Africa / Francophone",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Sputnik Africa page links the French regional channel; first-party ownership/operator review required."
     }
   ],
   "country_source_sweep": {
@@ -1673,5 +1727,21 @@
       "northern_europe"
     ],
     "note": "No automatic runtime activation. Candidate registry remains PENDING/HOLD until manual approval."
-  }
+  },
+  "source_expansion_log": [
+    {
+      "date": "2026-09-18",
+      "action": "country_zone_discovery_sweep",
+      "added": [
+        "@MIB_India",
+        "@timesofindia",
+        "@DaryoUz",
+        "@sputnik_africa",
+        "@sputnik_ethiopia",
+        "@sputnik_afrique"
+      ],
+      "runtime_effect": false,
+      "approval_required": true
+    }
+  ]
 }
