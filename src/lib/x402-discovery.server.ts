@@ -6,6 +6,10 @@ import {
   getCircleGatewayProductionConfig,
   getCircleGatewayProductionRequirement,
 } from "./circle-gateway-x402-production.server";
+import {
+  getNeverminedX402Config,
+  neverminedPaymentRequired,
+} from "./nevermined-x402.server";
 import { providerRealFundsSecurityState } from "./provider-real-funds-security.server";
 import { getCommercialLaunchState } from "./commercial-launch-gate.server";
 
@@ -82,6 +86,39 @@ export async function buildX402DiscoveryDocument(originInput: string) {
       }
     } catch {
       // Fail closed if Circle support/config cannot be proven at request time.
+    }
+  }
+
+
+  if (providerAvailable("nevermined", state.providers.nevermined_live)) {
+    try {
+      const config = getNeverminedX402Config();
+      if (config?.environment === "live") {
+        const endpoint = `${origin}/api/x402/nevermined/intelligence`;
+        resources.push({
+          resource: endpoint,
+          method: "POST",
+          provider: "nevermined",
+          product: CANONICAL_PRODUCT,
+          description:
+            "Adaptive source-governed geopolitical and macro risk intelligence paid through an approved Nevermined live plan.",
+          tags: [
+            "geopolitical-risk",
+            "macro-risk",
+            "country-risk",
+            "corridor-risk",
+            "risk-gate",
+            "nevermined",
+            "ai-agents",
+          ],
+          accepts: neverminedPaymentRequired(config, endpoint).accepts,
+          availability: `${origin}/api/x402/risk/availability`,
+          execution_authorized: false,
+        });
+        activeProviders.add("nevermined");
+      }
+    } catch {
+      // Fail closed if live Nevermined config cannot be proven at request time.
     }
   }
 
