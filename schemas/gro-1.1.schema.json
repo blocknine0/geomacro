@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://geomacro.live/schemas/gro-1.1.schema.json",
+  "$id": "https://raw.githubusercontent.com/blocknine0/geomacro/main/schemas/gro-1.1.schema.json",
   "title": "Geomacro Risk Object gro-1.1",
   "description": "Canonical JSON Schema for Geomacro signed Risk Objects. Complete signed objects must be transported unchanged for independent payload-hash and Ed25519 verification.",
   "type": "object",
