@@ -67,6 +67,14 @@ const privateRevenueLedgerExport = readFileSync(
   join(process.cwd(), "scripts/ops/export-private-commercial-revenue-ledger.mjs"),
   "utf8",
 );
+const privateRevenueLedgerReadinessMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/949_private_revenue_ledger_readiness.sql"),
+  "utf8",
+);
+const privateRevenueLedgerReadinessVerifier = readFileSync(
+  join(process.cwd(), "scripts/ops/verify-private-revenue-ledger-production-readiness.mjs"),
+  "utf8",
+);
 
 describe("commercial production acceptance tooling", () => {
   it("pins provisioning to the authoritative production project and never logs the raw API key", () => {
@@ -297,6 +305,87 @@ describe("private real-earning delivery ledger", () => {
     expect(privateRevenueLedgerExport).toContain("/tmp/geomacro-private-revenue-ledger-");
     expect(privateRevenueLedgerExport).toContain(
       "no export was uploaded or published by this script",
+    );
+  });
+});
+
+
+describe("private revenue ledger production runtime gate", () => {
+  it("proves the production ledger exists with private immutable access boundaries", () => {
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "private_commercial_revenue_delivery_ledger_readiness",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "capture_private_commercial_revenue_delivery_proof",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "private_commercial_revenue_delivery_ledger_immutable",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "verify_private_commercial_revenue_delivery_ledger",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "has_table_privilege",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "'service_role_select_allowed', v_service_select",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "'service_role_insert_allowed', v_service_insert",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "'invalid_hash_chain_rows', v_invalid_chain_rows",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "grant execute on function public.private_commercial_revenue_delivery_ledger_readiness()",
+    );
+    expect(privateRevenueLedgerReadinessMigration).toContain(
+      "to service_role",
+    );
+  });
+
+  it("verifies only the authoritative production project and emits sanitized readiness evidence", () => {
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      'PROD_PROJECT_REF = "ldpwajisioljyjtojvfx"',
+    );
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      "GEOMACRO_PRODUCTION_ACCEPTANCE_SHA",
+    );
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      "private_commercial_revenue_delivery_ledger_readiness",
+    );
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      "invalid_hash_chain_rows: 0",
+    );
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      "private_delivery_payload_included: false",
+    );
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      "raw_payment_signature_included: false",
+    );
+    expect(privateRevenueLedgerReadinessVerifier).toContain(
+      "public_distribution_authorized: false",
+    );
+  });
+
+  it("blocks final launch acceptance until same-SHA production ledger readiness is proven", () => {
+    expect(finalProductionAcceptance).toContain(
+      "GEOMACRO_PRIVATE_REVENUE_LEDGER_READINESS_EVIDENCE",
+    );
+    expect(finalProductionAcceptance).toContain(
+      "geomacro.private-revenue-ledger-production-readiness.v1",
+    );
+    expect(finalProductionAcceptance).toContain(
+      'privateRevenueLedger.project_ref !== "ldpwajisioljyjtojvfx"',
+    );
+    expect(finalProductionAcceptance).toContain(
+      'sameSha(privateRevenueLedger, expectedSha, "Private revenue ledger readiness")',
+    );
+    expect(finalProductionAcceptance).toContain(
+      "private_real_revenue_delivery_ledger_runtime_ready: true",
+    );
+    expect(finalProductionAcceptance).toContain(
+      "private_revenue_ledger_append_only_and_hash_chain_verified: true",
     );
   });
 });

@@ -71,6 +71,29 @@ async function main() {
   if (!RUN_ID.test(strictRunId)) fail("GEOMACRO_STRICT_CLOSURE_RUN_ID must be numeric");
   const p0 = await strictClosureRun(strictRunId, expectedSha);
 
+  const privateRevenueLedger = await load(
+    required("GEOMACRO_PRIVATE_REVENUE_LEDGER_READINESS_EVIDENCE"),
+    "Private revenue ledger production readiness",
+  );
+  if (
+    privateRevenueLedger.schema_version !==
+      "geomacro.private-revenue-ledger-production-readiness.v1" ||
+    privateRevenueLedger.result !== "PASS" ||
+    privateRevenueLedger.ready !== true ||
+    privateRevenueLedger.project_ref !== "ldpwajisioljyjtojvfx" ||
+    privateRevenueLedger.invalid_hash_chain_rows !== 0 ||
+    privateRevenueLedger.access_boundaries?.public_select_allowed !== false ||
+    privateRevenueLedger.access_boundaries?.anon_select_allowed !== false ||
+    privateRevenueLedger.access_boundaries?.authenticated_select_allowed !== false ||
+    privateRevenueLedger.access_boundaries?.service_role_select_allowed !== true ||
+    privateRevenueLedger.access_boundaries?.service_role_insert_allowed !== false ||
+    privateRevenueLedger.access_boundaries?.service_role_update_allowed !== false ||
+    privateRevenueLedger.access_boundaries?.service_role_delete_allowed !== false
+  ) {
+    fail("Private real-revenue delivery ledger is not proven ready in production");
+  }
+  sameSha(privateRevenueLedger, expectedSha, "Private revenue ledger readiness");
+
   const canary = await load(
     required("GEOMACRO_CANARY_ACCEPTANCE_EVIDENCE"),
     "Provider canary acceptance",
@@ -146,12 +169,17 @@ async function main() {
     generated_at: new Date().toISOString(),
     canonical_sha: expectedSha,
     strict_p0: p0,
+    private_revenue_ledger_readiness_schema: privateRevenueLedger.schema_version,
+    private_revenue_ledger_row_count: privateRevenueLedger.row_count,
+    private_revenue_ledger_head_entry_sha256: privateRevenueLedger.head_entry_sha256,
     canary_acceptance_schema: canary.schema_version,
     commerce_safety_drill_schema: safety.schema_version,
     marketplace_observation_schema: marketplace.schema_version,
     post_listing_health_schema: health.schema_version,
     gates: {
       strict_p0_closure: true,
+      private_real_revenue_delivery_ledger_runtime_ready: true,
+      private_revenue_ledger_append_only_and_hash_chain_verified: true,
       isolated_three_provider_real_money_canaries: true,
       payment_settlement_delivery_proven: true,
       exact_same_proof_replay_zero_second_charge: true,
