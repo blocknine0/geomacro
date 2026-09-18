@@ -1,0 +1,69 @@
+name: External Production Readiness Probe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/external-production-readiness-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  production-canary-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production-canary
+    env:
+      CANARY_BASE_URL: ${{ vars.GEOMACRO_PRODUCTION_CANARY_BASE_URL }}
+      CANARY_EXPECTED_HOST: ${{ vars.GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      COINBASE_BUYER_KEY: ${{ secrets.GEOMACRO_COINBASE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY }}
+      COINBASE_RPC: ${{ secrets.GEOMACRO_COINBASE_MAINNET_RPC_URL }}
+      CIRCLE_BUYER_KEY: ${{ secrets.GEOMACRO_CIRCLE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY }}
+      NEVERMINED_PROOF: ${{ secrets.GEOMACRO_NEVERMINED_PRODUCTION_CANARY_PAYMENT_SIGNATURE }}
+    steps:
+      - name: Check protected production-canary configuration without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for name in CANARY_BASE_URL CANARY_EXPECTED_HOST APP_SUPABASE_URL SERVICE_ROLE COINBASE_BUYER_KEY COINBASE_RPC CIRCLE_BUYER_KEY NEVERMINED_PROOF; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing production-canary configuration::${name} is not configured."
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+  marketplace-observation-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: marketplace-observation
+    env:
+      COINBASE_URL: ${{ vars.GEOMACRO_COINBASE_BAZAAR_OBSERVATION_URL }}
+      CIRCLE_URL: ${{ vars.GEOMACRO_CIRCLE_MARKETPLACE_OBSERVATION_URL }}
+      NEVERMINED_URL: ${{ vars.GEOMACRO_NEVERMINED_REGISTRY_OBSERVATION_URL }}
+    steps:
+      - name: Check independent observation URLs without making provider requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for name in COINBASE_URL CIRCLE_URL NEVERMINED_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing marketplace-observation configuration::${name} is not configured."
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+  no-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm probe has no load, payment, settlement or publish command
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PASS: configuration-presence probe only; no load, payment, settlement, marketplace submission, or public publish."
