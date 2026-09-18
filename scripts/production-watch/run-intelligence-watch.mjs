@@ -12,6 +12,7 @@ const SLOT = Number(process.env.WATCH_SLOT || 0);
 const BATCH_SIZE = Number(process.env.WATCH_BATCH_SIZE || 250);
 const WINDOW_DAYS = Number(process.env.WATCH_WINDOW_DAYS || 7);
 const OUTPUT_DIR = String(process.env.WATCH_OUTPUT_DIR || "production-watch-artifacts");
+const EXPECTED_PRODUCTION_SHA = String(process.env.GEOMACRO_EXPECTED_PRODUCTION_SHA || "").trim().toLowerCase();
 
 const CATEGORIES = ["geopolitics", "macro", "critical_minerals"];
 
@@ -222,21 +223,24 @@ async function fetchBuildMarker() {
       signal: AbortSignal.timeout(15_000),
     });
     const raw = await response.text();
-    if (!response.ok) return { status: response.status, raw, sha: null, schema: null };
+    if (!response.ok) return { status: response.status, raw, sha: null, schema: null, verified: false };
     let body = null;
     try {
       body = JSON.parse(raw);
     } catch {
-      return { status: response.status, raw, sha: null, schema: null };
+      return { status: response.status, raw, sha: null, schema: null, verified: false };
     }
     return {
       status: response.status,
       raw,
       sha: String(body?.canonical_main_sha || "").trim().toLowerCase() || null,
       schema: String(body?.schema_version || "").trim() || null,
+      verified: String(body?.schema_version || "").trim() === "geomacro.deployment-build.v1" &&
+        /^[0-9a-f]{40}$/.test(String(body?.canonical_main_sha || "").trim().toLowerCase()) &&
+        String(body?.canonical_main_sha || "").trim().toLowerCase() === EXPECTED_PRODUCTION_SHA,
     };
   } catch (error) {
-    return { status: 0, raw: String(error), sha: null, schema: null };
+    return { status: 0, raw: String(error), sha: null, schema: null, verified: false };
   }
 }
 
@@ -377,6 +381,7 @@ async function main() {
   assert(Number.isInteger(SLOT) && SLOT >= 0 && SLOT <= 3, "WATCH_SLOT must be 0..3");
   assert(BATCH_SIZE === 250, "Production watch batch size is fixed at 250 probes");
   assert(WATCH_TOKEN.length >= 32, "GEOMACRO_PRODUCTION_WATCH_TOKEN must be at least 32 characters");
+  assert(/^[0-9a-f]{40}$/.test(EXPECTED_PRODUCTION_SHA), "GEOMACRO_EXPECTED_PRODUCTION_SHA must be the 40-char canonical main SHA");
 
   const watchDate = isoDateUTC();
   const windowStart = await findWindowStart();
