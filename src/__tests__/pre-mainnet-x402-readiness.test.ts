@@ -86,7 +86,7 @@ describe("pre-mainnet x402 readiness", () => {
     const config = getCircleGatewayProductionConfig();
     expect(config?.environment).toBe("production");
     expect(config?.networks).toEqual(["eip155:8453"]);
-    expect(config?.amountAtomic).toBe("50000");
+    expect(config?.amountAtomic).toBe("20000");
   });
 
   it("never advertises a production paid resource while launch flags are off", async () => {
