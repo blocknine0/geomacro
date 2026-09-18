@@ -105,7 +105,7 @@ jobs:
           bun-version: '1.4.2'
 
       - name: Install pinned dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Reconcile independently originating production purchase
         run: node scripts/ops/reconcile-agent-commerce-payment.mjs
