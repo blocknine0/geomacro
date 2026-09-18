@@ -143,7 +143,7 @@ Do not switch to Base mainnet until all testnet acceptance evidence is preserved
 - commercial source/data licensing permits the paid response
 - monitoring and settlement reconciliation ownership are assigned
 
-Only then configure production environment, the explicit mainnet acknowledgement, the production CDP credentials, dedicated Base receiver, and the approved 0.05 USDC production price.
+Only then configure production environment, the explicit mainnet acknowledgement, the production CDP credentials, dedicated Base receiver, and the approved 0.02 USDC production price.
 
 ## Mainnet accounting boundary
 
