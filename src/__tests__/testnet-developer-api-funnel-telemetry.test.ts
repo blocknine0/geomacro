@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/950_testnet_developer_api_funnel_telemetry.sql"),
+  join(process.cwd(), "supabase/migrations/951_testnet_developer_api_funnel_telemetry.sql"),
   "utf8",
 );
 const recorder = readFileSync(
