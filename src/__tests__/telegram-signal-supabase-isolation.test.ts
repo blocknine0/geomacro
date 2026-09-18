@@ -76,6 +76,13 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(lifecycle).toContain("live_flash_event_versions");
     expect(familyVersions).toContain("live_flash_event_family_versions");
     expect(familyVersions).toContain("unique (family_id, version)");
+    const latency = read("supabase/migrations/955_realtime_detection_latency.sql");
+    expect(latency).toContain("source_updated_at_utc timestamptz");
+    expect(latency).toContain("detection_latency_ms bigint");
+    expect(latency).toContain("detection_latency_ms >= 0");
+    expect(ingest).toContain("const sourceUpdatedAtUtc");
+    expect(ingest).toContain("const detectionLatencyMs");
+    expect(archive).toContain("detection_latency_ms");
     expect(ingest).toContain("const signalCategory = classifySignalCategory(");
     expect(ingest).toContain("const existingResult =");
     expect(ingest).toContain("live_flash_event_versions");
