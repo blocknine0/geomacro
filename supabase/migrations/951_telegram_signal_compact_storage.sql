@@ -10,9 +10,21 @@
 
 create extension if not exists pgcrypto;
 
+-- Private compressed evidence bucket. The database remains the compact hot index.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'geomacro-telegram-signal',
+  'geomacro-telegram-signal',
+  false,
+  26214400,
+  array['application/gzip', 'application/x-gzip', 'application/octet-stream']
+)
+on conflict (id) do nothing;
+
 create table if not exists public.live_signal_fragment_manifest (
   id uuid primary key default gen_random_uuid(),
   stream_key text not null,
+  storage_bucket text not null default 'geomacro-telegram-signal',
   object_path text not null unique,
   compression text not null default 'gzip'
     check (compression in ('gzip')),
@@ -101,5 +113,8 @@ comment on column public.live_flash_events.longitude_e6 is
 -- Keep columns for backward-compatible migration shape, but prohibit payload
 -- retention at the ingest boundary. Canonical evidence belongs in compressed
 -- fragments represented by live_signal_fragment_manifest.
+comment on table public.live_signal_fragment_manifest is
+  'Immutable catalog for private compressed Telegram signal fragments. Evidence bytes live in private Supabase Storage.';
+
 comment on table public.live_flash_events is
   'Compact hot signal index only. Raw body/payload retention is prohibited at ingest; canonical evidence is compressed and manifest-addressed.';
