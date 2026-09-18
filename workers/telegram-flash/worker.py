@@ -361,6 +361,11 @@ async def submit_telegram_message(message: Any) -> None:
         "source_id": "telegram_mtproto_flash",
         "source_record_id": f"{chat_id}:{message_id}",
         "published_at": message_date.astimezone(timezone.utc).isoformat(),
+        "source_updated_at_utc": (
+            message.edit_date.astimezone(timezone.utc).isoformat()
+            if message.edit_date is not None
+            else message_date.astimezone(timezone.utc).isoformat()
+        ),
         "headline": headline_from_text(text),
         "body": text[:MAX_TELEGRAM_BODY_CHARS],
         "source_channel": channel_label(entity),
