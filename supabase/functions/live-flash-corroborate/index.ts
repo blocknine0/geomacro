@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 const FLASH_INGEST_TOKEN = Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
+const SIGNAL_DB_MODE = Deno.env.get("SIGNAL_DB_MODE") === "true"
 
 const db = createClient(
   SUPABASE_URL,
@@ -215,21 +216,28 @@ Deno.serve(async request => {
     }
   }
 
-  const structuredResult = await db
-    .from("live_structured_events")
-    .select(
-      "id,title,summary,primary_country,countries,last_seen_at,first_seen_at,independent_source_count",
-    )
-    .gte("last_seen_at", cutoff)
-    .order("last_seen_at", { ascending: false })
-    .limit(500)
+  // The isolated signal project intentionally has no customer-facing
+  // structured-intelligence table. Main production intelligence remains in
+  // the authoritative project and is aligned through a controlled handoff.
+  let structuredEvents: StructuredEvent[] = []
 
-  if (structuredResult.error) {
-    console.error(structuredResult.error)
-    return jsonResponse(500, { ok: false, error: "structured_query_failed" })
+  if (!SIGNAL_DB_MODE) {
+    const structuredResult = await db
+      .from("live_structured_events")
+      .select(
+        "id,title,summary,primary_country,countries,last_seen_at,first_seen_at,independent_source_count",
+      )
+      .gte("last_seen_at", cutoff)
+      .order("last_seen_at", { ascending: false })
+      .limit(500)
+
+    if (structuredResult.error) {
+      console.error(structuredResult.error)
+      return jsonResponse(500, { ok: false, error: "structured_query_failed" })
+    }
+
+    structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
   }
-
-  const structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
 
   let verified = 0
   let corroborating = 0
