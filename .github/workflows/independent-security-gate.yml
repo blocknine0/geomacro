@@ -1,0 +1,71 @@
+name: Independent Security Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+concurrency:
+  group: independent-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: Secret Leak Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+  osv:
+    name: Dependency Vulnerability Scan
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
+    with:
+      fail-on-vuln: true
+      upload-sarif: true
+      export-results: false
+
+  independent-security-gate:
+    name: Independent Security Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - gitleaks
+      - osv
+    if: ${{ always() }}
+    steps:
+      - name: Require independent scanners to pass
+        env:
+          GITLEAKS_RESULT: ${{ needs.gitleaks.result }}
+          OSV_RESULT: ${{ needs.osv.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Secret Leak Scan: ${GITLEAKS_RESULT}"
+          echo "Dependency Vulnerability Scan: ${OSV_RESULT}"
+
+          if [[ "${GITLEAKS_RESULT}" != "success" || "${OSV_RESULT}" != "success" ]]; then
+            echo "::error title=Independent security gate failed::A required independent security scanner did not pass."
+            exit 1
+          fi
+
+          echo "PASS: independent security scanners completed successfully."
