@@ -17,7 +17,7 @@ on:
         type: choice
         options: [coinbase, circle, nevermined]
       max_usdc:
-        description: "Hard owner-approved USDC cap for Coinbase/Circle; must be <= 1"
+        description: "Hard owner-approved USDC cap for Coinbase/Circle; must be <= 0.05"
         required: true
         default: "0.05"
         type: string
@@ -87,7 +87,7 @@ jobs:
           if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(max)) throw new Error("max_usdc format invalid");
           const [w,f=""] = max.split(".");
           const atomic = BigInt(w) * 1000000n + BigInt((f+"000000").slice(0,6));
-          if (atomic <= 0n || atomic > 1000000n) throw new Error("max_usdc must be >0 and <=1 USDC");
+          if (atomic <= 0n || atomic > 50000n) throw new Error("max_usdc must be >0 and <=0.05 USDC");
           if (!/^[1-9]\d*$/.test(String(process.env.NEVERMINED_MAX || ""))) throw new Error("nevermined_max_amount must be positive integer units");
           NODE
 
