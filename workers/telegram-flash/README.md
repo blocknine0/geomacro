@@ -134,6 +134,7 @@ Apply in repository numeric order. The current isolated signal baseline addition
 - `951_telegram_signal_compact_storage.sql`
 - `952_realtime_flash_event_lifecycle.sql`
 - `953_event_family_version_ledger.sql`
+- `954_telegram_coverage_candidates.sql` (candidate sources remain `PENDING`/disabled until manual review)
 
 ## Supabase functions
 

@@ -14,6 +14,8 @@ on:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
       - "supabase/functions/live-flash-archive/**"
       - "supabase/migrations/953_event_family_version_ledger.sql"
+      - "supabase/migrations/954_telegram_coverage_candidates.sql"
+      - "supabase/migrations/955_realtime_detection_latency.sql"
       - "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
       - "supabase/migrations/951_telegram_signal_compact_storage.sql"
       - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"

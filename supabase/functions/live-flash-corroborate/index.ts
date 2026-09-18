@@ -45,6 +45,8 @@ type Flash = {
   content_hash: string
   first_seen_at: string | null
   last_seen_at: string | null
+  source_updated_at_utc: string | null
+  detection_latency_ms: number | null
 }
 
 type EventFamily = {
@@ -204,7 +206,7 @@ Deno.serve(async request => {
   const flashResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,source_updated_at_utc,detection_latency_ms",
     )
     .gte("ingested_at", cutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
@@ -561,7 +563,7 @@ Deno.serve(async request => {
           flash.headline,
           family.canonical_headline,
         )
-        return (countryOverlap && score >= 0.30) || score >= 0.58
+        return (countryOverlap && score >= 0.40) || score >= 0.58
       })
 
       let family = flash.event_family_id ? familyById.get(flash.event_family_id) : undefined
@@ -607,17 +609,19 @@ Deno.serve(async request => {
         family = createFamily.data as EventFamily
         const initialVersion = await db
           .from("live_flash_event_family_versions")
-          .upsert({
+          .insert({
             family_id: family.family_id,
             version: 1,
             captured_at: new Date().toISOString(),
+            source_updated_at_utc: flash.source_updated_at_utc,
+            detection_latency_ms: flash.detection_latency_ms,
             trigger_flash_id: flash.flash_id,
             canonical_headline: family.canonical_headline,
             signal_category: family.signal_category,
             material_update_reason: "initial_event_family",
             content_hash: flash.content_hash,
-          }, { onConflict: "family_id,version" })
-        if (initialVersion.error) {
+          })
+        if (initialVersion.error && initialVersion.error.code !== "23505") {
           console.error(initialVersion.error)
           return jsonResponse(500, { ok: false, error: "family_version_create_failed" })
         }
@@ -630,6 +634,7 @@ Deno.serve(async request => {
       const sources = familySourceFamilies.get(family.family_id) ?? new Set<string>()
       const sourceFamily = flashFamily(flash)
       const isNewMember = !members.has(flash.flash_id)
+      const isIndependentNewSource = !sources.has(sourceFamily)
 
       if (isNewMember) {
         const memberInsert = await db
@@ -657,12 +662,35 @@ Deno.serve(async request => {
       const familyCountries = new Set(
         (family.country_isos ?? []).map((value) => String(value).toUpperCase()),
       )
+      const familyCountryOverlap = overlaps(sourceCountries, familyCountries)
       for (const country of sourceCountries) familyCountries.add(country)
 
-      const isMaterialFamilyUpdate = Boolean(
-        flash.material_update &&
-        family.latest_content_hash !== flash.content_hash,
+      const familyHeadlineSimilarity = similarity(
+        flash.headline,
+        family.canonical_headline,
       )
+      const sourceTime = flash.last_seen_at ?? flash.ingested_at
+      const familyAgeSeconds = secondsBetween(sourceTime, family.last_seen_at)
+      const newSourceMaterialDevelopment = Boolean(
+        !flash.material_update &&
+        isIndependentNewSource &&
+        family.latest_flash_id !== flash.flash_id &&
+        family.latest_content_hash !== flash.content_hash &&
+        familyCountryOverlap &&
+        familyHeadlineSimilarity >= 0.40 &&
+        familyHeadlineSimilarity < 0.52 &&
+        familyAgeSeconds !== null &&
+        new Date(sourceTime).getTime() >= new Date(family.last_seen_at).getTime()
+      )
+      const isMaterialFamilyUpdate = Boolean(
+        family.latest_content_hash !== flash.content_hash &&
+        (flash.material_update || newSourceMaterialDevelopment),
+      )
+      const familyUpdateReason = flash.material_update
+        ? (flash.material_update_reason ?? "material_source_update")
+        : newSourceMaterialDevelopment
+          ? "new_source_potential_material_development"
+          : family.latest_update_reason
       const nextVersion = isMaterialFamilyUpdate
         ? family.current_version + 1
         : family.current_version
@@ -687,7 +715,7 @@ Deno.serve(async request => {
             ? (flash.last_seen_at ?? flash.ingested_at)
             : family.last_material_update_at,
           latest_update_reason: isMaterialFamilyUpdate
-            ? flash.material_update_reason
+            ? familyUpdateReason
             : family.latest_update_reason,
           latest_flash_id: flash.flash_id,
           latest_content_hash: flash.content_hash,
@@ -703,17 +731,19 @@ Deno.serve(async request => {
       if (isMaterialFamilyUpdate) {
         const familyVersionInsert = await db
           .from("live_flash_event_family_versions")
-          .upsert({
+          .insert({
             family_id: family.family_id,
             version: nextVersion,
             captured_at: new Date().toISOString(),
+            source_updated_at_utc: flash.source_updated_at_utc,
+            detection_latency_ms: flash.detection_latency_ms,
             trigger_flash_id: flash.flash_id,
             canonical_headline: flash.headline,
             signal_category: flash.signal_category,
-            material_update_reason: flash.material_update_reason,
+            material_update_reason: familyUpdateReason,
             content_hash: flash.content_hash,
-          }, { onConflict: "family_id,version" })
-        if (familyVersionInsert.error) {
+          })
+        if (familyVersionInsert.error && familyVersionInsert.error.code !== "23505") {
           console.error(familyVersionInsert.error)
           return jsonResponse(500, { ok: false, error: "family_version_store_failed" })
         }
@@ -763,7 +793,7 @@ Deno.serve(async request => {
           ? (flash.last_seen_at ?? flash.ingested_at)
           : family.last_material_update_at,
         latest_update_reason: isMaterialFamilyUpdate
-          ? flash.material_update_reason
+          ? familyUpdateReason
           : family.latest_update_reason,
         latest_flash_id: flash.flash_id,
         latest_content_hash: flash.content_hash,

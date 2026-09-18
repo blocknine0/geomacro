@@ -47,6 +47,15 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(migration).toContain("prevent_live_signal_fragment_mutation");
   });
 
+  it("keeps additional Telegram coverage candidates disabled until manual approval", () => {
+    const migration = read("supabase/migrations/954_telegram_coverage_candidates.sql");
+    expect(migration).toContain("'bricsnews'");
+    expect(migration).toContain("'uztmk_official'");
+    expect(migration).toContain("'INTERNAL_RESEARCH_ONLY'");
+    expect(migration).toContain("enabled,");
+    expect(migration).toContain("false,");
+    expect(migration).toContain("pending manual approval");
+  });
   it("defines a canonical event-family lifecycle and material-update ledger", () => {
     const lifecycle = read(
       "supabase/migrations/952_realtime_flash_event_lifecycle.sql",
@@ -58,6 +67,7 @@ describe("Telegram signal Supabase isolation contract", () => {
     const corroborate = read(
       "supabase/functions/live-flash-corroborate/index.ts",
     );
+    const archive = read("supabase/functions/live-flash-archive/index.ts");
 
     expect(lifecycle).toContain("signal_category text not null default 'UNCLASSIFIED'");
     expect(lifecycle).toContain("source_version integer not null default 1");
@@ -67,6 +77,13 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(lifecycle).toContain("live_flash_event_versions");
     expect(familyVersions).toContain("live_flash_event_family_versions");
     expect(familyVersions).toContain("unique (family_id, version)");
+    const latency = read("supabase/migrations/955_realtime_detection_latency.sql");
+    expect(latency).toContain("source_updated_at_utc timestamptz");
+    expect(latency).toContain("detection_latency_ms bigint");
+    expect(latency).toContain("detection_latency_ms >= 0");
+    expect(ingest).toContain("const sourceUpdatedAtUtc");
+    expect(ingest).toContain("const detectionLatencyMs");
+    expect(archive).toContain("detection_latency_ms");
     expect(ingest).toContain("const signalCategory = classifySignalCategory(");
     expect(ingest).toContain("const existingResult =");
     expect(ingest).toContain("live_flash_event_versions");
