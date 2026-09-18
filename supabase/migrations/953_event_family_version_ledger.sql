@@ -30,6 +30,29 @@ create index if not exists live_flash_family_versions_family_idx
 
 alter table public.live_flash_event_family_versions enable row level security;
 
+create or replace function public.prevent_live_flash_event_family_version_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  raise exception 'live flash event family versions are append-only';
+end;
+$;
+
+revoke all on function public.prevent_live_flash_event_family_version_mutation() from PUBLIC, anon, authenticated;
+grant execute on function public.prevent_live_flash_event_family_version_mutation() to service_role;
+
+drop trigger if exists prevent_live_flash_event_family_version_mutation
+  on public.live_flash_event_family_versions;
+
+create trigger prevent_live_flash_event_family_version_mutation
+before update or delete
+on public.live_flash_event_family_versions
+for each row
+execute function public.prevent_live_flash_event_family_version_mutation();
+
 insert into public.live_flash_event_family_versions (
   family_id, version, captured_at, trigger_flash_id, canonical_headline,
   signal_category, material_update_reason, content_hash
@@ -52,7 +75,7 @@ where not exists (
 );
 
 comment on table public.live_flash_event_family_versions is
-  'Immutable audit ledger for material developments of a canonical real-world event family.';
+  'Append-only audit ledger for material developments of a canonical real-world event family. UPDATE and DELETE are rejected at database level.';
 
 comment on column public.live_flash_event_family_versions.version is
   'Material-development version. Additional independent source reports do not increment this value.';
