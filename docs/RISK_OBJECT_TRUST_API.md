@@ -69,3 +69,9 @@ A well-formed but tampered, unknown-key, revoked-key, unsupported-methodology, m
 - verification responses are not cached;
 - the endpoint does not submit transactions, sign customer actions, or authorize execution;
 - Geomacro Risk Gate retains `execution_authorized=false`.
+
+## Canonical gro-1.1 JSON Schema
+
+- `GET https://geomacro.live/schemas/gro-1.1.schema.json`
+
+The JSON Schema mirrors the canonical TypeScript contract in `src/lib/risk-object-contract.ts`. Complete signed Risk Objects must still be transported unchanged for payload-hash and Ed25519 verification.
