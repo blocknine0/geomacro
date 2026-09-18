@@ -115,9 +115,14 @@ jobs:
         run: |
           set -euo pipefail
           file=".github/workflows/production-provider-canary.yml"
-          for forbidden in             "GEOMACRO_COMMERCIAL_LAUNCH_ACK:"             "GEOMACRO_REAL_FUNDS_SECURITY_ACK:"             "COINBASE_X402_MAINNET_ACK:"             "CIRCLE_X402_MAINNET_ACK:"             "NEVERMINED_X402_ENVIRONMENT:"; do
+          global_launch='GEOMACRO_COMMERCIAL_LAUNCH_'"ACK:"
+          security_ack='GEOMACRO_REAL_FUNDS_SECURITY_'"ACK:"
+          coinbase_ack='COINBASE_X402_MAINNET_'"ACK:"
+          circle_ack='CIRCLE_X402_MAINNET_'"ACK:"
+          nevermined_live='NEVERMINED_X402_'"ENVIRONMENT:"
+          for forbidden in "$global_launch" "$security_ack" "$coinbase_ack" "$circle_ack" "$nevermined_live"; do
             if grep -Fq "$forbidden" "$file"; then
-              echo "::error::Canary workflow must not assign production activation flags: $forbidden"
+              echo "::error::Canary workflow must not assign server production activation flags."
               exit 1
             fi
           done
