@@ -30,7 +30,7 @@ Deno.serve(async (request) => {
 
   const { data: events, error } = await db
     .from("live_flash_events")
-    .select("flash_id,source_record_id,published_at,headline,source_channel,source_url,event_type,signal_category,source_version,material_update,verification_status,severity_bps,source_reliability_bps,verification_score_bps,latitude_e6,longitude_e6,content_hash,created_at")
+    .select("flash_id,source_record_id,published_at,source_updated_at_utc,headline,source_channel,source_url,event_type,signal_category,source_version,material_update,verification_status,severity_bps,source_reliability_bps,verification_score_bps,latitude_e6,longitude_e6,content_hash,created_at")
     .is("archived_at", null)
     .order("created_at", { ascending: true })
     .limit(MAX_ITEMS);
@@ -43,6 +43,7 @@ Deno.serve(async (request) => {
     flash_id: event.flash_id,
     source_record_id: event.source_record_id,
     published_at: event.published_at,
+    source_updated_at_utc: event.source_updated_at_utc,
     headline: event.headline,
     source_channel: event.source_channel,
     source_url: event.source_url,
