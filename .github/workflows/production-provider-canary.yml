@@ -1,0 +1,249 @@
+name: Production Provider Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA already closed by Strict Commercial Launch Closure"
+        required: true
+        type: string
+      strict_closure_run_id:
+        description: "Successful Strict Commercial Launch Closure run ID for this exact SHA"
+        required: true
+        type: string
+      provider:
+        description: "One provider only"
+        required: true
+        type: choice
+        options: [coinbase, circle, nevermined]
+      max_usdc:
+        description: "Hard owner-approved USDC cap for Coinbase/Circle; must be <= 1"
+        required: true
+        default: "0.05"
+        type: string
+      nevermined_max_amount:
+        description: "Maximum approved Nevermined request amount/credit units"
+        required: true
+        default: "1"
+        type: string
+      owner_ack:
+        description: "Must equal I_AUTHORIZE_ONE_CAPPED_INTERNAL_REAL_MONEY_CANARY"
+        required: true
+        type: string
+      provider_ack:
+        description: "Exact provider-specific acknowledgement required by canary runner"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-provider-canary
+  cancel-in-progress: false
+
+jobs:
+  exact-sha-p0-gate:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      provider: ${{ steps.contract.outputs.provider }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact current main SHA and explicit capped-canary acknowledgement
+        id: contract
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          OWNER_ACK: ${{ inputs.owner_ack }}
+          PROVIDER: ${{ inputs.provider }}
+          PROVIDER_ACK: ${{ inputs.provider_ack }}
+          MAX_USDC: ${{ inputs.max_usdc }}
+          NEVERMINED_MAX: ${{ inputs.nevermined_max_amount }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::Full candidate SHA required."; exit 1; }
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]] || { echo "::error::Canary candidate must equal workflow dispatch SHA."; exit 1; }
+          [[ "$OWNER_ACK" == "I_AUTHORIZE_ONE_CAPPED_INTERNAL_REAL_MONEY_CANARY" ]] || { echo "::error::Owner capped-canary acknowledgement is missing."; exit 1; }
+
+          case "$PROVIDER" in
+            coinbase) expected="I_AUTHORIZE_COINBASE_CAPPED_CANARY" ;;
+            circle) expected="I_AUTHORIZE_CIRCLE_CAPPED_CANARY" ;;
+            nevermined) expected="I_AUTHORIZE_NEVERMINED_CAPPED_CANARY" ;;
+            *) echo "::error::Unsupported provider"; exit 1 ;;
+          esac
+          [[ "$PROVIDER_ACK" == "$expected" ]] || { echo "::error::Provider-specific acknowledgement mismatch."; exit 1; }
+
+          MAX_USDC="$MAX_USDC" NEVERMINED_MAX="$NEVERMINED_MAX" node - <<'NODE'
+          const max = String(process.env.MAX_USDC || "");
+          if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(max)) throw new Error("max_usdc format invalid");
+          const [w,f=""] = max.split(".");
+          const atomic = BigInt(w) * 1000000n + BigInt((f+"000000").slice(0,6));
+          if (atomic <= 0n || atomic > 1000000n) throw new Error("max_usdc must be >0 and <=1 USDC");
+          if (!/^[1-9]\d*$/.test(String(process.env.NEVERMINED_MAX || ""))) throw new Error("nevermined_max_amount must be positive integer units");
+          NODE
+
+          echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
+
+      - name: Verify referenced Strict Commercial Launch Closure run
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          STRICT_RUN_ID: ${{ inputs.strict_closure_run_id }}
+        with:
+          script: |
+            const runId = Number(process.env.STRICT_RUN_ID);
+            if (!Number.isInteger(runId) || runId <= 0) core.setFailed('strict_closure_run_id must be numeric');
+            const expectedSha = String(process.env.EXPECTED_SHA).toLowerCase();
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.path !== '.github/workflows/strict-commercial-launch-closure.yml') core.setFailed('Referenced run is not Strict Commercial Launch Closure');
+            if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Strict closure must be a manual main-branch run');
+            if (String(run.head_sha || '').toLowerCase() !== expectedSha) core.setFailed('Strict closure SHA mismatch');
+            if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`Strict closure is not successful: ${run.status}/${run.conclusion}`);
+
+      - name: Prove workflow cannot activate server production flags itself
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/production-provider-canary.yml"
+          for forbidden in             "GEOMACRO_COMMERCIAL_LAUNCH_ACK:"             "GEOMACRO_REAL_FUNDS_SECURITY_ACK:"             "COINBASE_X402_MAINNET_ACK:"             "CIRCLE_X402_MAINNET_ACK:"             "NEVERMINED_X402_ENVIRONMENT:"; do
+            if grep -Fq "$forbidden" "$file"; then
+              echo "::error::Canary workflow must not assign production activation flags: $forbidden"
+              exit 1
+            fi
+          done
+          node --check scripts/commerce/run-production-provider-canary.mjs
+
+  bounded-real-money-canary:
+    needs: exact-sha-p0-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production-canary
+    env:
+      GEOMACRO_PRODUCTION_CANARY_PROVIDER: ${{ inputs.provider }}
+      GEOMACRO_REAL_MONEY_CANARY_ACK: ${{ inputs.owner_ack }}
+      GEOMACRO_PRODUCTION_CANARY_PROVIDER_ACK: ${{ inputs.provider_ack }}
+      GEOMACRO_PRODUCTION_CANARY_MAX_USDC: ${{ inputs.max_usdc }}
+      GEOMACRO_NEVERMINED_CANARY_MAX_AMOUNT: ${{ inputs.nevermined_max_amount }}
+      GEOMACRO_PRODUCTION_CANARY_BASE_URL: ${{ vars.GEOMACRO_PRODUCTION_CANARY_BASE_URL }}
+      GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST: ${{ vars.GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST }}
+      GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ inputs.candidate_sha }}
+      GEOMACRO_PRODUCTION_CANARY_ARTIFACT_DIR: /tmp/geomacro-production-canary-public
+      GEOMACRO_PRODUCTION_CANARY_HANDOFF_PATH: /tmp/geomacro-production-canary-private-handoff.json
+      GEOMACRO_COINBASE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY: ${{ secrets.GEOMACRO_COINBASE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY }}
+      GEOMACRO_COINBASE_MAINNET_RPC_URL: ${{ secrets.GEOMACRO_COINBASE_MAINNET_RPC_URL }}
+      GEOMACRO_CIRCLE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY: ${{ secrets.GEOMACRO_CIRCLE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY }}
+      GEOMACRO_NEVERMINED_PRODUCTION_CANARY_PAYMENT_SIGNATURE: ${{ secrets.GEOMACRO_NEVERMINED_PRODUCTION_CANARY_PAYMENT_SIGNATURE }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout exact canary candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Require isolated canary runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${GEOMACRO_PRODUCTION_CANARY_BASE_URL:-}" && -n "${GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST:-}" ]] || { echo "::error::Isolated canary host configuration is missing."; exit 1; }
+          case "${GEOMACRO_PRODUCTION_CANARY_PROVIDER}" in
+            coinbase)
+              [[ -n "${GEOMACRO_COINBASE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY:-}" && -n "${GEOMACRO_COINBASE_MAINNET_RPC_URL:-}" ]] || { echo "::error::Coinbase canary buyer/RPC secret missing."; exit 1; }
+              ;;
+            circle)
+              [[ -n "${GEOMACRO_CIRCLE_PRODUCTION_CANARY_BUYER_PRIVATE_KEY:-}" ]] || { echo "::error::Circle canary buyer secret missing."; exit 1; }
+              ;;
+            nevermined)
+              [[ -n "${GEOMACRO_NEVERMINED_PRODUCTION_CANARY_PAYMENT_SIGNATURE:-}" ]] || { echo "::error::Nevermined canary payment proof missing."; exit 1; }
+              ;;
+          esac
+          [[ -n "${APP_SUPABASE_URL:-}" && -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]] || { echo "::error::Authoritative reconciliation credentials missing."; exit 1; }
+
+      - name: Execute exactly one capped internal production canary
+        run: node scripts/commerce/run-production-provider-canary.mjs
+
+      - name: Prepare private reconciliation environment without logging raw settlement
+        shell: bash
+        env:
+          PROVIDER: ${{ inputs.provider }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = '/tmp/geomacro-production-canary-private-handoff.json';
+          const h = JSON.parse(fs.readFileSync(p,'utf8'));
+          if (h?.schema_version !== 'geomacro.production-provider-canary-private-handoff.v1') throw new Error('private handoff schema mismatch');
+          if (h?.payment_signature_included !== false || h?.private_key_included !== false) throw new Error('private handoff secret boundary failed');
+          const settlement = String(h.settlement_reference || '');
+          const productHash = String(h.delivered_product_hash || '').toLowerCase();
+          if (!settlement || settlement.length > 256) throw new Error('settlement reference missing/invalid');
+          if (!/^[0-9a-f]{64}$/.test(productHash)) throw new Error('delivered product hash invalid');
+          console.log('::add-mask::' + settlement);
+          fs.appendFileSync(process.env.GITHUB_ENV, `GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE=${settlement}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH=${productHash}\n`);
+          NODE
+
+          case "$PROVIDER" in
+            coinbase) echo "GEOMACRO_PAYMENT_PROVIDER=coinbase_cdp_x402" >> "$GITHUB_ENV" ;;
+            circle) echo "GEOMACRO_PAYMENT_PROVIDER=circle_gateway_x402" >> "$GITHUB_ENV" ;;
+            nevermined) echo "GEOMACRO_PAYMENT_PROVIDER=nevermined_x402" >> "$GITHUB_ENV" ;;
+          esac
+
+      - name: Reconcile canary as non-revenue internal
+        env:
+          GEOMACRO_PRODUCTION_RECONCILIATION_ACK: I_RECONCILE_VERIFIED_PRODUCTION_DELIVERY
+          GEOMACRO_RECONCILIATION_MODE: internal_canary
+          GEOMACRO_PURCHASE_CLASSIFICATION: internal_canary
+          GEOMACRO_RECONCILIATION_REFERENCE: internal-canary:${{ github.run_id }}:${{ inputs.provider }}
+          GEOMACRO_RECONCILIATION_EVIDENCE_PATH: /tmp/geomacro-production-canary-public/${{ inputs.provider }}-reconciliation.json
+        run: node scripts/ops/reconcile-agent-commerce-payment.mjs
+
+      - name: Prove sanitized artifact boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f /tmp/geomacro-production-canary-private-handoff.json
+          test -d /tmp/geomacro-production-canary-public
+          node - <<'NODE'
+          const fs = require('fs');
+          const dir = '/tmp/geomacro-production-canary-public';
+          const files = fs.readdirSync(dir).filter(v => v.endsWith('.json'));
+          if (files.length < 2) throw new Error('expected sanitized canary + reconciliation evidence');
+          for (const name of files) {
+            const value = JSON.parse(fs.readFileSync(`${dir}/${name}`,'utf8'));
+            const text = JSON.stringify(value);
+            if (/private[_-]?key|payment[_-]?signature/i.test(text) && !/false/.test(text)) {
+              throw new Error(`possible secret-bearing public evidence: ${name}`);
+            }
+            if (value.raw_settlement_reference_recorded_in_artifact === true || value.raw_settlement_reference_persisted_in_public_evidence === true) {
+              throw new Error(`raw settlement reference boundary failed: ${name}`);
+            }
+          }
+          NODE
+
+      - name: Upload sanitized canary and reconciliation evidence only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: production-provider-canary-${{ inputs.provider }}-${{ github.run_id }}
+          path: /tmp/geomacro-production-canary-public/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Destroy private handoff
+        if: always()
+        shell: bash
+        run: rm -f /tmp/geomacro-production-canary-private-handoff.json
