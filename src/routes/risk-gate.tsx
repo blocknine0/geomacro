@@ -144,13 +144,13 @@ function RiskGatePage() {
           </ul>
         </article>
         <article className="rounded-2xl border border-primary/25 bg-primary/[0.04] p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">RISK GATE EXPANSION GATES</p>
-          <h2 className="mt-2 text-xl font-semibold">What must be completed before Risk Gate expands</h2>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">PRODUCTION LAUNCH GATES</p>
+          <h2 className="mt-2 text-xl font-semibold">What must be completed before launch</h2>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
             <li>• independent security review of externally reachable surfaces</li>
-            <li>• isolated staging HTTP/database resilience evidence for Risk Gate</li>
+            <li>• real staging HTTP/database load and resilience evidence</li>
             <li>• final commercial source-rights clearance for paid delivery</li>
-            <li>• broader corridor-methodology validation for the Private Pilot</li>
+            <li>• broader corridor-methodology validation</li>
             <li>• design-partner and willingness-to-pay validation</li>
             <li>• production operations and SLA evidence before any SLA claim</li>
           </ul>
