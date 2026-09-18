@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       candidate_sha:
-        description: "Exact canonical main SHA already closed by Strict Commercial Launch Closure"
+        description: "Exact canonical main SHA already closed by P0 Strict Prepublic Closure"
         required: true
         type: string
       strict_closure_run_id:
-        description: "Successful Strict Commercial Launch Closure run ID for this exact SHA"
+        description: "Successful P0 Strict Prepublic Closure run ID for this exact SHA"
         required: true
         type: string
       provider:
@@ -93,7 +93,7 @@ jobs:
 
           echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
 
-      - name: Verify referenced Strict Commercial Launch Closure run
+      - name: Verify referenced P0 Strict Prepublic Closure run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           EXPECTED_SHA: ${{ inputs.candidate_sha }}
@@ -105,7 +105,7 @@ jobs:
             const expectedSha = String(process.env.EXPECTED_SHA).toLowerCase();
             const { owner, repo } = context.repo;
             const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
-            if (run.path !== '.github/workflows/strict-commercial-launch-closure.yml') core.setFailed('Referenced run is not Strict Commercial Launch Closure');
+            if (run.path !== '.github/workflows/p0-strict-prepublic-closure.yml') core.setFailed('Referenced run is not P0 Strict Prepublic Closure');
             if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Strict closure must be a manual main-branch run');
             if (String(run.head_sha || '').toLowerCase() !== expectedSha) core.setFailed('Strict closure SHA mismatch');
             if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`Strict closure is not successful: ${run.status}/${run.conclusion}`);
