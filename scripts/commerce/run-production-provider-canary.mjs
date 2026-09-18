@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
 import {
   assertAdaptiveProduct,
   assertAvailability,
@@ -335,6 +336,50 @@ async function main() {
   }
   await payment.assertReplayNoCharge();
 
+  // Provider SDKs do not all expose a buyer balance after replay. The authoritative
+  // production payment ledger therefore supplies the cross-provider zero-second-charge
+  // proof: the exact settlement reference must map to exactly one settled payment event
+  // after the replay has completed.
+  const reconciliationUrl = required("APP_SUPABASE_URL");
+  const reconciliationKey = required("APP_SUPABASE_SERVICE_ROLE_KEY");
+  const reconciliationProjectRef = new URL(reconciliationUrl).hostname.split(".")[0];
+  if (reconciliationProjectRef !== "ldpwajisioljyjtojvfx") {
+    fail("Production canary replay proof must use the authoritative production Supabase project");
+  }
+  const db = createClient(reconciliationUrl, reconciliationKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const evidenceProvider = EVIDENCE_PROVIDERS[provider];
+  const { data: replayPaymentEvents, error: replayPaymentError } = await db
+    .from("commercial_payment_events")
+    .select("id,payment_status,provider,provider_settlement_id")
+    .eq("provider", evidenceProvider)
+    .eq("provider_settlement_id", paidSettlement)
+    .limit(2);
+  if (replayPaymentError) fail(`Replay payment-ledger lookup failed: ${replayPaymentError.message}`);
+  if (!Array.isArray(replayPaymentEvents) || replayPaymentEvents.length !== 1) {
+    fail(`Replay created an ambiguous/non-single payment event state: expected 1, found ${replayPaymentEvents?.length ?? 0}`);
+  }
+  if (replayPaymentEvents[0]?.payment_status !== "settled") {
+    fail("Replay payment-ledger event is not settled");
+  }
+
+  const { data: replayUsageEvents, error: replayUsageError } = await db
+    .from("commercial_usage_events")
+    .select("id,response_sha256,success,execution_authorized,access_surface")
+    .eq("payment_event_id", replayPaymentEvents[0].id)
+    .eq("success", true)
+    .eq("execution_authorized", false)
+    .eq("access_surface", "agent_payment")
+    .limit(10);
+  if (replayUsageError) fail(`Replay usage-ledger lookup failed: ${replayUsageError.message}`);
+  const replayResponseHashes = [...new Set((replayUsageEvents ?? [])
+    .map((row) => String(row.response_sha256 ?? "").toLowerCase())
+    .filter((value) => /^[0-9a-f]{64}$/.test(value)))];
+  if (replayResponseHashes.length !== 1 || replayResponseHashes[0] !== hashes.deliveredProductHash) {
+    fail("Replay ledger does not prove one unambiguous exact delivered response");
+  }
+
   const changed = structuredClone(request);
   changed.client_request_id = clientRequestId;
   changed.question = `${request.question} [changed replay must fail]`;
@@ -367,6 +412,8 @@ async function main() {
       buyer_balance_check_performed: provider === "coinbase",
       buyer_balance_unchanged_after_replay: provider === "coinbase" ? true : null,
       reconciliation_single_payment_event_required: true,
+      authoritative_ledger_single_payment_event_after_replay: true,
+      authoritative_ledger_single_settled_usage_response_after_replay: true,
     },
     changed_request_replay_failed_closed: true,
     execution_authorized: false,
