@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 
 export const GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA =
-  "geomacro.intelligence.v1" as const;
+  "geomacro.adaptive-intelligence-response.v1" as const;
+
+export const GEOMACRO_INTELLIGENCE_CONTRACT_VERSION =
+  "geomacro.intelligence-contract.v1" as const;
 
 export const GEOMACRO_INTELLIGENCE_PRODUCT_ID =
-  "geomacro_structural_intelligence_v1" as const;
+  "geomacro_adaptive_risk_intelligence_v1" as const;
 
 export const GEOMACRO_INTELLIGENCE_PRICE_USDC =
   "0.05" as const;
