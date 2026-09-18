@@ -68,7 +68,7 @@ describe("Coinbase x402 configuration", () => {
     expect(config?.networkName).toBe("Base");
     expect(config?.asset).toBe(COINBASE_X402_MAINNET_USDC);
     expect(config?.priceUsdc).toBe("0.05");
-    expect(config?.amountAtomic).toBe("20000");
+    expect(config?.amountAtomic).toBe("50000");
     expect(config?.commercialEnvironment).toBe("mainnet");
   });
 
