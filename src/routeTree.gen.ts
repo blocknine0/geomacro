@@ -181,7 +181,8 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIntelligenceCapabilitiesRoute = ApiIntelligenceCapabilitiesRouteImport.update({
+const ApiIntelligenceCapabilitiesRoute =
+  ApiIntelligenceCapabilitiesRouteImport.update({
   id: '/api/intelligence/capabilities',
   path: '/api/intelligence/capabilities',
   getParentRoute: () => rootRouteImport,
