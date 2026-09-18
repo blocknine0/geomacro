@@ -12,6 +12,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
+      - "supabase/functions/live-flash-archive/**"
+      - "supabase/migrations/951_telegram_signal_compact_storage.sql"
       - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
@@ -108,6 +110,9 @@ jobs:
       - name: Deploy isolated live flash corroboration function
         if: ${{ inputs.mode == 'apply' }}
         run: supabase functions deploy live-flash-corroborate --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      - name: Deploy isolated live flash archive function
+        if: ${{ inputs.mode == 'apply' }}
+        run: supabase functions deploy live-flash-archive --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
       - name: Smoke-check isolated endpoints without synthetic inserts
         if: ${{ inputs.mode == 'apply' }}
         shell: bash
