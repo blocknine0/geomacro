@@ -279,7 +279,7 @@ describe("private real-earning delivery ledger", () => {
 
   it("never records payment secrets and keeps full exports local-only by default", () => {
     expect(privateRevenueLedgerMigration).toContain(
-      "never raw payment tokens/signatures",
+      "never stores raw payment signatures/tokens",
     );
     expect(privateRevenueLedgerExport).toContain(
       "verify_private_commercial_revenue_delivery_ledger",
