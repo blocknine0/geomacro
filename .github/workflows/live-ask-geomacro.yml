@@ -1,6 +1,9 @@
 name: Live Ask Geomacro Smoke
 
 on:
+  push:
+    branches:
+      - "ops/live-ask-geomacro-e2e"
   workflow_dispatch:
     inputs:
       live_url:
