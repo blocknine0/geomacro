@@ -631,6 +631,30 @@
       "status": "HOLD",
       "identity_basis": "prior review identified automated relay/no affiliation",
       "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@RFI_En",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "public Telegram page identifies RFI English and links rfi.fr; first-party ownership still requires operator review",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@DWNewsEnglish",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "public Telegram page identifies Deutsche Welle English branding and links dw.com; first-party ownership still requires operator review",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@aljazeeraglobal",
+      "region": "global",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "public Telegram channel describes itself as Al Jazeera English and links aljazeera.com; first-party ownership still requires operator review",
+      "rights": "INTERNAL_RESEARCH_ONLY"
     }
   ]
 }
