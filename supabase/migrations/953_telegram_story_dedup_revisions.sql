@@ -29,9 +29,11 @@ create table if not exists public.live_flash_story_revisions (
   change_fields jsonb not null default '{}'::jsonb,
   compact_snapshot jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  unique(story_id, revision_no),
-  unique(source_id, source_message_id)
+  unique(story_id, revision_no)
 );
+create unique index if not exists live_flash_story_revisions_source_message_content_uidx
+  on public.live_flash_story_revisions(source_id, source_message_id, content_sha256)
+  where source_message_id is not null;
 create index if not exists live_flash_story_revisions_story_idx on public.live_flash_story_revisions(story_id, revision_no desc);
 create index if not exists live_flash_story_revisions_fingerprint_idx on public.live_flash_story_revisions(normalized_fingerprint);
 alter table public.live_flash_stories enable row level security;
