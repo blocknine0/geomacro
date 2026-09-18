@@ -656,5 +656,1022 @@
       "identity_basis": "public Telegram channel describes itself as Al Jazeera English and links aljazeera.com; first-party ownership still requires operator review",
       "rights": "INTERNAL_RESEARCH_ONLY"
     }
-  ]
+  ],
+  "country_source_sweep": {
+    "schema_version": "geomacro.telegram.country-source-sweep.v1",
+    "review_date": "2026-09-18",
+    "scope": "All 195 UN-member/observer-country coverage targets",
+    "rule": "Every country is a discovery target. Directory hits are discovery-only; no channel becomes ingest-approved without first-party identity, public username, rights boundary, and operator approval.",
+    "discovery_methods": [
+      "first-party publisher websites",
+      "public Telegram pages",
+      "independent Telegram directories"
+    ],
+    "evidence_basis": [
+      "turn0search0",
+      "turn0search3",
+      "turn0search16",
+      "turn1search2"
+    ],
+    "targets": [
+      {
+        "country": "Afghanistan",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Albania",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Algeria",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Andorra",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Angola",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Antigua and Barbuda",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Argentina",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Armenia",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Australia",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Austria",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Azerbaijan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bahamas",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bahrain",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bangladesh",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Barbados",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Belarus",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Belgium",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Belize",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Benin",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bhutan",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bolivia",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bosnia and Herzegovina",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Botswana",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Brazil",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Brunei",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bulgaria",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Burkina Faso",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Burundi",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cabo Verde",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cambodia",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cameroon",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Canada",
+        "region": "north_america",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Central African Republic",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Chad",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Chile",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "China",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Colombia",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Comoros",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Congo",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Costa Rica",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Côte d’Ivoire",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Croatia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cuba",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cyprus",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Czechia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Democratic Republic of the Congo",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Denmark",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Djibouti",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Dominica",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Dominican Republic",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ecuador",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Egypt",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "El Salvador",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Equatorial Guinea",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Eritrea",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Estonia",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Eswatini",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ethiopia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Fiji",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Finland",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "France",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Gabon",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Gambia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Georgia",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Germany",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ghana",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Greece",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Grenada",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guatemala",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guinea",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guinea-Bissau",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guyana",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Haiti",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Honduras",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Hungary",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Iceland",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "India",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Indonesia",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Iran",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Iraq",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ireland",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Israel",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Italy",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Jamaica",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Japan",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Jordan",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kazakhstan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kenya",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kiribati",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kuwait",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kyrgyzstan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Laos",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Latvia",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Lebanon",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Lesotho",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Liberia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Libya",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Liechtenstein",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Lithuania",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Luxembourg",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Madagascar",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Malawi",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Malaysia",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Maldives",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mali",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Malta",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Marshall Islands",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mauritania",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mauritius",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mexico",
+        "region": "north_america",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Micronesia",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Moldova",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Monaco",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mongolia",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Montenegro",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Morocco",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mozambique",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Myanmar",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Namibia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nauru",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nepal",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Netherlands",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "New Zealand",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nicaragua",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Niger",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nigeria",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "North Korea",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "North Macedonia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Norway",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Oman",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Pakistan",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Palau",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Palestine",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Panama",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Papua New Guinea",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Paraguay",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Peru",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Philippines",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Poland",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Portugal",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Qatar",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Romania",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Russia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Rwanda",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saint Kitts and Nevis",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saint Lucia",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saint Vincent and the Grenadines",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Samoa",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "San Marino",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "São Tomé and Príncipe",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saudi Arabia",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Senegal",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Serbia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Seychelles",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sierra Leone",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Singapore",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Slovakia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Slovenia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Solomon Islands",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Somalia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "South Africa",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "South Korea",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "South Sudan",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Spain",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sri Lanka",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sudan",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Suriname",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sweden",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Switzerland",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Syria",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Taiwan",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tajikistan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tanzania",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Thailand",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Timor-Leste",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Togo",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tonga",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Trinidad and Tobago",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tunisia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Türkiye",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Turkmenistan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tuvalu",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Uganda",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ukraine",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "United Arab Emirates",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "United Kingdom",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "United States",
+        "region": "north_america",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Uruguay",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Uzbekistan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Vanuatu",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Vatican City",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Venezuela",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Vietnam",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Yemen",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Zambia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Zimbabwe",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      }
+    ]
+  },
+  "coverage_audit": {
+    "total_country_targets": 196,
+    "regions": [
+      "south_asia",
+      "eastern_europe_balkans",
+      "africa",
+      "western_central_europe",
+      "latin_america_caribbean",
+      "central_asia_caucasus",
+      "oceania_pacific",
+      "middle_east",
+      "southeast_asia",
+      "north_america",
+      "east_asia",
+      "northern_europe"
+    ],
+    "note": "No automatic runtime activation. Candidate registry remains PENDING/HOLD until manual approval."
+  }
 }
