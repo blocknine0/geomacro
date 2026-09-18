@@ -6,7 +6,7 @@ Status: PRE-LAUNCH BUILD. **ALL MAINNET / REAL-MONEY ACTIVATION IS LOCKED UNTIL 
 
 Turn the existing Geomacro Risk Object / Risk Gate and x402 technical proof into a measurable commercial service that autonomous agents can discover, purchase, receive, verify, and reuse without weakening Geomacro's source-rights, proof, or execution boundaries.
 
-The immediate milestone is launch readiness, not revenue activation. Coinbase, GOAT, Nevermined and any other real-money rail remain sandbox/testnet/disabled while all common production gates, discovery surfaces, adapters, observability, reconciliation and launch evidence are completed. Real-money services are activated together only after a final owner-approved launch decision.
+The immediate milestone is the initial commercial pay-per-call readiness path at 0.05 USDC per successful paid intelligence delivery, with the first 10,000 successful deliveries tracked as the adoption milestone. The 10,000-delivery target is post-launch customer demand, not founder-funded traffic. Production rails remain disabled until their required runtime configuration and explicit owner authorization are in place. Marketplace promotion and the optional 40k capacity-certification track remain separate evidence stages.
 
 ## Global launch lock
 
