@@ -709,6 +709,33 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "identity_basis": "Public Sputnik Africa page links the French regional channel; first-party ownership/operator review required."
+    },
+    {
+      "handle": "@unopsuzbekistan",
+      "country": "Uzbekistan",
+      "region": "central_asia_caucasus",
+      "basis": "UNOPS official social-media directory lists Telegram for Uzbekistan; first-party operator and rights review required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@TIKVAH_ETH",
+      "country": "Ethiopia",
+      "region": "africa",
+      "basis": "Public regional-news listing identifies TIKVAH-ETHIOPIA; first-party publisher ownership and rights review required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@QORAXABAR",
+      "country": "Uzbekistan",
+      "region": "central_asia_caucasus",
+      "basis": "Public regional-news listing identifies QORAXABAR as an Official Channel; first-party publisher ownership and rights review required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY"
     }
   ],
   "country_source_sweep": {
@@ -1742,6 +1769,16 @@
       ],
       "runtime_effect": false,
       "approval_required": true
+    },
+    {
+      "date": "2026-09-18",
+      "action": "verified_public_discovery_sweep",
+      "added": [
+        "@unopsuzbekistan",
+        "@TIKVAH_ETH",
+        "@QORAXABAR"
+      ],
+      "runtime_effect": false
     }
   ]
 }
