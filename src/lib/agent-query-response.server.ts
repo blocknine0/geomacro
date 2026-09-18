@@ -169,6 +169,52 @@ function publicGri(risk: Awaited<ReturnType<typeof readPublicGlobalRisk>>) {
   };
 }
 
+function publicRiskObjectAttestation(
+  entry: LoadedRiskObject,
+) {
+  const { subject, object } = entry;
+  return {
+    subject,
+    risk_object_id: object.object_id,
+    schema_version: object.schema_version,
+    risk: {
+      score: object.risk.score,
+      label: object.risk.label,
+      previous_score: object.risk.previous_score ?? null,
+      delta: object.risk.delta ?? null,
+      direction: object.risk.direction,
+    },
+    confidence: object.confidence,
+    attribution: [...object.attribution]
+      .sort((a, b) => Math.abs(b.delta_contribution ?? 0) - Math.abs(a.delta_contribution ?? 0))
+      .slice(0, 5)
+      .map((row) => ({
+        driver: row.driver,
+        score_contribution: row.score_contribution,
+        delta_contribution: row.delta_contribution,
+        event_count: row.event_count,
+        weight: row.weight,
+      })),
+    methodology_version: object.methodology_version,
+    generated_at: object.generated_at,
+    expires_at: object.expires_at,
+    verification: {
+      status: object.verification.status,
+      last_verified_at: object.verification.last_verified_at,
+    },
+    commercial_eligibility_status: object.commercial_eligibility.status,
+    integrity: {
+      input_hash: object.integrity.input_hash,
+      data_hash: object.integrity.data_hash,
+      calculation_hash: object.integrity.calculation_hash,
+      payload_hash: object.integrity.payload_hash,
+      signature_scheme: object.integrity.signature_scheme,
+      signing_key_id: object.integrity.signing_key_id,
+    },
+    delivery_boundary: "SIGNED_RISK_OBJECT_ATTESTATION_ONLY",
+  } as const;
+}
+
 function publicRiskState(object: LoadedRiskObject["object"]) {
   return {
     risk: object.risk,
@@ -440,7 +486,7 @@ function intentAnalysis(plan: AgentQueryPlan, riskObjects: LoadedRiskObject[]) {
         signing_key_id: object.integrity.signing_key_id,
         verification_status: object.verification.status,
         commercial_eligibility_status: object.commercial_eligibility.status,
-        provenance: object.provenance,
+        ...publicRiskObjectAttestation({ subject, object }),
       })),
     };
   }
@@ -564,7 +610,7 @@ export async function assembleAgentQueryResponse(input: {
     structural,
     hot_topics: publicHotTopics,
     risk_gate: riskGates,
-    signed_risk_objects: riskObjects,
+    signed_risk_objects: riskObjects.map(publicRiskObjectAttestation),
     gri_context: gri,
     current_state: currentStates,
     answer: buildDirectAnswer(
