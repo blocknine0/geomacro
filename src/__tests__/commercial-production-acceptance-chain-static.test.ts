@@ -9,6 +9,8 @@ const cohort = read(".github/workflows/production-canary-cohort-acceptance.yml")
 const drill = read(".github/workflows/commerce-freeze-quarantine-drill.yml");
 const drillAcceptance = read(".github/workflows/commerce-safety-drill-acceptance.yml");
 const prelisting = read(".github/workflows/public-production-prelisting-health.yml");
+const submission = read(".github/workflows/marketplace-submission-evidence.yml");
+const submissionVerifier = read("scripts/commerce/verify-marketplace-submission-evidence.mjs");
 const marketplace = read(".github/workflows/marketplace-listing-observation.yml");
 const postlisting = read(".github/workflows/post-listing-health.yml");
 const finalWorkflow = read(".github/workflows/final-production-acceptance.yml");
@@ -73,8 +75,16 @@ describe("commercial production acceptance ordered chain", () => {
     expect(prelistingVerifier).toContain("nevermined_unpaid_402_passed: true");
   });
 
-  it("requires independent marketplace observation after public health and post-listing health after observation", () => {
+  it("requires evidence-bound marketplace submission/indexing after public health, then independent observation", () => {
+    expect(submission).toContain("public_prelisting_run_id:");
+    expect(submission).toContain("I_CONFIRM_MARKETPLACE_SUBMISSIONS_COMPLETED");
+    expect(submissionVerifier).toContain("circle_submission_evidenced: true");
+    expect(submissionVerifier).toContain("nevermined_submission_evidenced: true");
+    expect(submissionVerifier).toContain("coinbase_indexing_requires_observation: true");
+    expect(submissionVerifier).toContain("listing_not_inferred_from_submission: true");
     expect(marketplace).toContain("public_prelisting_run_id:");
+    expect(marketplace).toContain("marketplace_submission_run_id:");
+    expect(marketplace).toContain("Marketplace observation predates marketplace submission evidence");
     expect(marketplace).toContain("observe-marketplace-listings.mjs");
     expect(marketplace).toContain("GEOMACRO_COINBASE_BAZAAR_OBSERVATION_URL");
     expect(marketplace).toContain("GEOMACRO_CIRCLE_MARKETPLACE_OBSERVATION_URL");
@@ -90,12 +100,14 @@ describe("commercial production acceptance ordered chain", () => {
       "canary_cohort_run_id:",
       "safety_acceptance_run_id:",
       "public_prelisting_run_id:",
+      "marketplace_submission_run_id:",
       "marketplace_observation_run_id:",
       "post_listing_health_run_id:",
     ]) expect(finalWorkflow).toContain(key);
     expect(finalWorkflow).toContain("Canary cohort predates P0 closure");
     expect(finalWorkflow).toContain("Safety drill predates canary cohort");
-    expect(finalWorkflow).toContain("Marketplace observation predates public production prelisting proof");
+    expect(finalWorkflow).toContain("Marketplace submission evidence predates public production prelisting proof");
+    expect(finalWorkflow).toContain("Marketplace observation predates marketplace submission evidence");
     expect(finalWorkflow).toContain("Post-listing health predates marketplace observation");
     expect(finalVerifier).toContain(".github/workflows/p0-strict-prepublic-closure.yml");
     expect(finalVerifier).toContain("GEOMACRO_PUBLIC_PRELISTING_HEALTH_EVIDENCE");
@@ -117,6 +129,7 @@ describe("commercial production acceptance ordered chain", () => {
       drill,
       drillAcceptance,
       prelisting,
+      submission,
       marketplace,
       postlisting,
       finalWorkflow,
