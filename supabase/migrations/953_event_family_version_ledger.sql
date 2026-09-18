@@ -35,11 +35,11 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 begin
   raise exception 'live flash event family versions are append-only';
 end;
-$;
+$$;
 
 revoke all on function public.prevent_live_flash_event_family_version_mutation() from PUBLIC, anon, authenticated;
 grant execute on function public.prevent_live_flash_event_family_version_mutation() to service_role;
