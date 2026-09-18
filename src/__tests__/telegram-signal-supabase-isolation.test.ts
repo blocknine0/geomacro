@@ -39,6 +39,9 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(migration).toContain("verification_score_bps smallint");
     expect(migration).toContain("latitude_e6 integer");
     expect(migration).toContain("longitude_e6 integer");
+    expect(migration).toContain("geomacro-telegram-signal");
+    expect(migration).toContain("storage.buckets");
+    expect(migration).toContain("storage_bucket text not null default 'geomacro-telegram-signal'");
     expect(migration).toContain("compression text not null default 'gzip'");
     expect(migration).toContain("live_signal_fragment_manifest");
     expect(migration).toContain("prevent_live_signal_fragment_mutation");
