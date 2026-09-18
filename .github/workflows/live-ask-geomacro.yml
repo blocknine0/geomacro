@@ -1,0 +1,40 @@
+name: Live Ask Geomacro Smoke
+
+on:
+  pull_request:
+    branches:
+      - "main"
+  push:
+    branches:
+      - "ops/live-ask-geomacro-e2e"
+  workflow_dispatch:
+    inputs:
+      live_url:
+        description: "Live Geomacro base URL"
+        required: false
+        default: "https://geomacro.live"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-ask-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEOMACRO_LIVE_URL: ${{ inputs.live_url || 'https://geomacro.live' }}
+    steps:
+      - name: Checkout canonical repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright test runner
+        run: npx --yes playwright@latest install --with-deps chromium
+
+      - name: Execute live Rare Earth question
+        run: npx --yes playwright@latest test scripts/ops/live-ask-geomacro.spec.mjs --reporter=list
