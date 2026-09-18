@@ -50,6 +50,12 @@ async function main() {
   if (!EXTERNAL_CLASSES.has(String(evidence.purchase_classification ?? ""))) {
     fail("Revenue evidence is not classified as an external/independent production purchase");
   }
+  if (
+    evidence.single_payment_event_for_settlement !== true ||
+    Number(evidence.payment_event_count_for_settlement) !== 1
+  ) {
+    fail("Revenue evidence does not prove one unique payment event for the settlement");
+  }
   if (!HASH.test(String(evidence.settlement_reference_sha256 ?? ""))) {
     fail("Revenue evidence settlement reference hash is invalid");
   }
@@ -77,6 +83,8 @@ async function main() {
     reconciliation_status: "matched",
     purchase_classification: evidence.purchase_classification,
     commercial_revenue: true,
+    single_payment_event_for_settlement: true,
+    payment_event_count_for_settlement: 1,
     settlement_reference_sha256: evidence.settlement_reference_sha256,
     response_sha256: evidence.response_sha256,
     delivered_product_hash: evidence.delivered_product_hash,
