@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://geomacro.live/schemas/adaptive-intelligence-response-v1.schema.json",
   "title": "Geomacro Adaptive Intelligence Response v1",
-  "description": "Stable outer response contract for adaptive Geomacro intelligence. Inner modules are selected by the governed query plan and are delivered only after full required-module availability checks.",
+  "description": "Stable outer response contract for adaptive Geomacro intelligence. Inner modules are selected by the governed query plan and are delivered only after full required-module availability checks. Current natural-language requests return versioned current state and redacted structural developments; source identity and raw article material are not part of the commercial payload.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,6 +15,8 @@
     "subjects",
     "as_of",
     "analysis",
+    "answer",
+    "current_state",
     "structural",
     "hot_topics",
     "risk_gate",
@@ -34,41 +36,88 @@
       "type": "string",
       "const": "geomacro_adaptive_risk_intelligence_v1"
     },
-    "request_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
     "client_request_id": {
       "anyOf": [
-        { "type": "null" },
-        { "type": "string", "minLength": 4, "maxLength": 128 }
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128
+        }
       ]
     },
-    "query_plan_hash": { "$ref": "#/$defs/sha256" },
+    "query_plan_hash": {
+      "$ref": "#/$defs/sha256"
+    },
     "question_interpretation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["normalized_question", "intent", "topics", "required_modules", "ranking", "change"],
+      "required": [
+        "normalized_question",
+        "intent",
+        "topics",
+        "required_modules",
+        "ranking",
+        "change"
+      ],
       "properties": {
-        "normalized_question": { "type": ["string", "null"] },
-        "intent": { "$ref": "#/$defs/intent" },
+        "normalized_question": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "intent": {
+          "$ref": "#/$defs/intent"
+        },
         "topics": {
           "type": "array",
-          "items": { "$ref": "#/$defs/topic" },
+          "items": {
+            "$ref": "#/$defs/topic"
+          },
           "uniqueItems": true
         },
         "required_modules": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "uniqueItems": true
         },
         "ranking": {
           "anyOf": [
-            { "type": "null" },
+            {
+              "type": "null"
+            },
             {
               "type": "object",
-              "required": ["metric", "order"],
+              "required": [
+                "metric",
+                "order"
+              ],
               "properties": {
-                "metric": { "const": "risk_object_score" },
-                "order": { "enum": ["high_to_low", "low_to_high"] },
-                "limit": { "type": "integer", "minimum": 1, "maximum": 25 }
+                "metric": {
+                  "const": "risk_object_score"
+                },
+                "order": {
+                  "enum": [
+                    "high_to_low",
+                    "low_to_high"
+                  ]
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 25
+                }
               },
               "additionalProperties": false
             }
@@ -76,11 +125,19 @@
         },
         "change": {
           "anyOf": [
-            { "type": "null" },
+            {
+              "type": "null"
+            },
             {
               "type": "object",
-              "required": ["baseline"],
-              "properties": { "baseline": { "const": "previous_published" } },
+              "required": [
+                "baseline"
+              ],
+              "properties": {
+                "baseline": {
+                  "const": "previous_published"
+                }
+              },
               "additionalProperties": false
             }
           ]
@@ -91,37 +148,98 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 25,
-      "items": { "$ref": "#/$defs/subject" }
+      "items": {
+        "$ref": "#/$defs/subject"
+      }
     },
-    "as_of": { "type": "string", "format": "date-time" },
-    "analysis": { "$ref": "#/$defs/analysis" },
+    "as_of": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "analysis": {
+      "$ref": "#/$defs/analysis"
+    },
     "structural": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["subject", "intelligence", "source_ids", "serving"],
+        "required": [
+          "subject",
+          "intelligence",
+          "evidence_summary",
+          "serving"
+        ],
         "properties": {
-          "subject": { "$ref": "#/$defs/subject" },
-          "intelligence": { "type": "object" },
-          "source_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "subject": {
+            "$ref": "#/$defs/subject"
+          },
+          "intelligence": {
+            "type": "object"
+          },
           "serving": {
             "type": "object",
-            "required": ["layer", "warehouse_methodology_status", "composition_method", "route_modeling_status", "direct_evidence_status"],
+            "required": [
+              "layer",
+              "warehouse_methodology_status",
+              "composition_method",
+              "route_modeling_status",
+              "direct_evidence_status"
+            ],
             "additionalProperties": true
+          },
+          "evidence_summary": {
+            "type": "object",
+            "required": [
+              "observation_count",
+              "available_dimensions",
+              "latest_observed_at"
+            ],
+            "properties": {
+              "observation_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "available_dimensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "latest_observed_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
       }
     },
-    "hot_topics": { "type": "array", "items": { "type": "object" } },
+    "hot_topics": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
     "risk_gate": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["subject", "result"],
+        "required": [
+          "subject",
+          "result"
+        ],
         "properties": {
-          "subject": { "$ref": "#/$defs/subject" },
-          "result": { "type": "object" }
+          "subject": {
+            "$ref": "#/$defs/subject"
+          },
+          "result": {
+            "type": "object"
+          }
         },
         "additionalProperties": false
       }
@@ -130,33 +248,82 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["subject", "object"],
+        "required": [
+          "subject",
+          "object"
+        ],
         "properties": {
-          "subject": { "$ref": "#/$defs/subject" },
-          "object": { "type": "object" }
+          "subject": {
+            "$ref": "#/$defs/subject"
+          },
+          "object": {
+            "type": "object"
+          }
         },
         "additionalProperties": false
       }
     },
-    "gri_context": { "type": ["object", "null"] },
+    "gri_context": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
     "methodology": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "query_schema_version",
         "response_schema_version",
+        "product_contract_version",
         "current_event_delivery",
         "intent_method",
         "ranking_metric",
-        "change_baseline"
+        "change_baseline",
+        "pricing_phase",
+        "price_usdc"
       ],
       "properties": {
-        "query_schema_version": { "const": "geomacro.agent-query.v1" },
-        "response_schema_version": { "const": "geomacro.adaptive-intelligence-response.v1" },
-        "current_event_delivery": { "type": ["string", "null"] },
-        "intent_method": { "const": "deterministic-governed-v1" },
-        "ranking_metric": { "enum": ["risk_object_score", null] },
-        "change_baseline": { "enum": ["previous_published", null] }
+        "query_schema_version": {
+          "const": "geomacro.agent-query.v1"
+        },
+        "response_schema_version": {
+          "const": "geomacro.adaptive-intelligence-response.v1"
+        },
+        "current_event_delivery": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "intent_method": {
+          "const": "deterministic-governed-v1"
+        },
+        "ranking_metric": {
+          "enum": [
+            "risk_object_score",
+            null
+          ]
+        },
+        "change_baseline": {
+          "enum": [
+            "previous_published",
+            null
+          ]
+        },
+        "product_contract_version": {
+          "const": "geomacro.intelligence-contract.v1"
+        },
+        "pricing_phase": {
+          "const": "EARLY_ADOPTION_10K"
+        },
+        "price_usdc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$"
+        }
       }
     },
     "limitations": {
@@ -170,33 +337,104 @@
         "corridor_route_modeling_may_be_unavailable"
       ],
       "properties": {
-        "execution_authorized": { "const": false },
-        "missing_is_never_zero_risk": { "const": true },
-        "only_prechecked_required_modules_delivered": { "const": true },
-        "current_event_raw_source_material_redistributed": { "const": false },
-        "corridor_route_modeling_may_be_unavailable": { "type": "boolean" }
+        "execution_authorized": {
+          "const": false
+        },
+        "missing_is_never_zero_risk": {
+          "const": true
+        },
+        "only_prechecked_required_modules_delivered": {
+          "const": true
+        },
+        "current_event_raw_source_material_redistributed": {
+          "const": false
+        },
+        "corridor_route_modeling_may_be_unavailable": {
+          "type": "boolean"
+        }
       }
     },
-    "execution_authorized": { "const": false },
-    "delivered_product_hash": { "$ref": "#/$defs/sha256" },
+    "execution_authorized": {
+      "const": false
+    },
+    "delivered_product_hash": {
+      "$ref": "#/$defs/sha256"
+    },
     "payment": {
       "type": "object",
       "additionalProperties": true,
       "properties": {
-        "required": { "const": true },
-        "provider": { "const": "coinbase_cdp_x402" },
-        "asset": { "const": "USDC" },
-        "amount_atomic": { "type": "string", "pattern": "^[0-9]+$" },
-        "amount_usdc": { "type": "string" },
-        "network": { "type": "string" },
-        "settlement_reference": { "type": ["string", "null"] },
-        "idempotent_replay": { "type": "boolean" }
+        "required": {
+          "const": true
+        },
+        "provider": {
+          "const": "coinbase_cdp_x402"
+        },
+        "asset": {
+          "const": "USDC"
+        },
+        "amount_atomic": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "amount_usdc": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "settlement_reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "idempotent_replay": {
+          "type": "boolean"
+        }
       }
+    },
+    "current_state": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "answer": {
+      "type": "object",
+      "required": [
+        "status",
+        "headline",
+        "what_changed",
+        "why_it_matters"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "what_changed": {
+          "type": "array"
+        },
+        "why_it_matters": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
     }
   },
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-    "iso3": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "iso3": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
     "topic": {
       "type": "string",
       "enum": [
@@ -220,27 +458,52 @@
     },
     "intent": {
       "type": "string",
-      "enum": ["single_subject", "comparison", "ranking_filter", "corridor", "change_since", "audit", "risk_gate"]
+      "enum": [
+        "single_subject",
+        "comparison",
+        "ranking_filter",
+        "corridor",
+        "change_since",
+        "audit",
+        "risk_gate"
+      ]
     },
     "subject": {
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "country_iso3"],
+          "required": [
+            "type",
+            "country_iso3"
+          ],
           "properties": {
-            "type": { "const": "country" },
-            "country_iso3": { "$ref": "#/$defs/iso3" }
+            "type": {
+              "const": "country"
+            },
+            "country_iso3": {
+              "$ref": "#/$defs/iso3"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "origin_country_iso3", "destination_country_iso3"],
+          "required": [
+            "type",
+            "origin_country_iso3",
+            "destination_country_iso3"
+          ],
           "properties": {
-            "type": { "const": "corridor" },
-            "origin_country_iso3": { "$ref": "#/$defs/iso3" },
-            "destination_country_iso3": { "$ref": "#/$defs/iso3" }
+            "type": {
+              "const": "corridor"
+            },
+            "origin_country_iso3": {
+              "$ref": "#/$defs/iso3"
+            },
+            "destination_country_iso3": {
+              "$ref": "#/$defs/iso3"
+            }
           }
         }
       ]
@@ -250,50 +513,131 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "subject"],
+          "required": [
+            "type",
+            "subject"
+          ],
           "properties": {
-            "type": { "const": "single_subject" },
-            "subject": { "$ref": "#/$defs/subject" }
+            "type": {
+              "const": "single_subject"
+            },
+            "subject": {
+              "$ref": "#/$defs/subject"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "atomic_subject_coverage", "compared_subject_count", "compared_modules", "missing_subjects"],
+          "required": [
+            "type",
+            "atomic_subject_coverage",
+            "compared_subject_count",
+            "compared_modules",
+            "missing_subjects"
+          ],
           "properties": {
-            "type": { "const": "comparison" },
-            "atomic_subject_coverage": { "const": true },
-            "compared_subject_count": { "type": "integer", "minimum": 2 },
-            "compared_modules": { "type": "array", "items": { "type": "string" } },
-            "missing_subjects": { "type": "array", "maxItems": 0 }
+            "type": {
+              "const": "comparison"
+            },
+            "atomic_subject_coverage": {
+              "const": true
+            },
+            "compared_subject_count": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "compared_modules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "missing_subjects": {
+              "type": "array",
+              "maxItems": 0
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "metric", "order", "complete_subject_coverage", "evaluated_subject_count", "rows"],
+          "required": [
+            "type",
+            "metric",
+            "order",
+            "complete_subject_coverage",
+            "evaluated_subject_count",
+            "rows"
+          ],
           "properties": {
-            "type": { "const": "ranking_filter" },
-            "metric": { "const": "risk_object_score" },
-            "order": { "enum": ["high_to_low", "low_to_high"] },
-            "complete_subject_coverage": { "const": true },
-            "evaluated_subject_count": { "type": "integer", "minimum": 2 },
+            "type": {
+              "const": "ranking_filter"
+            },
+            "metric": {
+              "const": "risk_object_score"
+            },
+            "order": {
+              "enum": [
+                "high_to_low",
+                "low_to_high"
+              ]
+            },
+            "complete_subject_coverage": {
+              "const": true
+            },
+            "evaluated_subject_count": {
+              "type": "integer",
+              "minimum": 2
+            },
             "rows": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["rank", "subject", "risk_object_id", "score", "label", "confidence", "delta", "methodology_version", "verification_status"],
+                "required": [
+                  "rank",
+                  "subject",
+                  "risk_object_id",
+                  "score",
+                  "label",
+                  "confidence",
+                  "delta",
+                  "methodology_version",
+                  "verification_status"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "rank": { "type": "integer", "minimum": 1 },
-                  "subject": { "$ref": "#/$defs/subject" },
-                  "risk_object_id": { "type": "string" },
-                  "score": { "type": "number" },
-                  "label": { "type": "string" },
-                  "confidence": { "type": "number" },
-                  "delta": { "type": ["number", "null"] },
-                  "methodology_version": { "type": "string" },
-                  "verification_status": { "type": "string" }
+                  "rank": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "subject": {
+                    "$ref": "#/$defs/subject"
+                  },
+                  "risk_object_id": {
+                    "type": "string"
+                  },
+                  "score": {
+                    "type": "number"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "confidence": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "methodology_version": {
+                    "type": "string"
+                  },
+                  "verification_status": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -302,50 +646,125 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "baseline", "subject", "risk_object_id", "previous_score", "current_score", "delta", "direction", "drivers", "methodology_version"],
+          "required": [
+            "type",
+            "baseline",
+            "subject",
+            "risk_object_id",
+            "previous_score",
+            "current_score",
+            "delta",
+            "direction",
+            "drivers",
+            "methodology_version"
+          ],
           "properties": {
-            "type": { "const": "change_since" },
-            "baseline": { "const": "previous_published" },
-            "subject": { "$ref": "#/$defs/subject" },
-            "risk_object_id": { "type": "string" },
-            "previous_score": { "type": "number" },
-            "current_score": { "type": "number" },
-            "delta": { "type": "number" },
-            "direction": { "type": "string" },
-            "drivers": { "type": "array", "items": { "type": "object" } },
-            "methodology_version": { "type": "string" }
+            "type": {
+              "const": "change_since"
+            },
+            "baseline": {
+              "const": "previous_published"
+            },
+            "subject": {
+              "$ref": "#/$defs/subject"
+            },
+            "risk_object_id": {
+              "type": "string"
+            },
+            "previous_score": {
+              "type": "number"
+            },
+            "current_score": {
+              "type": "number"
+            },
+            "delta": {
+              "type": "number"
+            },
+            "direction": {
+              "type": "string"
+            },
+            "drivers": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "methodology_version": {
+              "type": "string"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "independently_verifiable", "signed_object_count", "objects"],
+          "required": [
+            "type",
+            "independently_verifiable",
+            "signed_object_count",
+            "objects"
+          ],
           "properties": {
-            "type": { "const": "audit" },
-            "independently_verifiable": { "const": true },
-            "signed_object_count": { "type": "integer", "minimum": 1 },
-            "objects": { "type": "array", "minItems": 1, "items": { "type": "object" } }
+            "type": {
+              "const": "audit"
+            },
+            "independently_verifiable": {
+              "const": true
+            },
+            "signed_object_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "objects": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object"
+              }
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "directional", "subject"],
+          "required": [
+            "type",
+            "directional",
+            "subject"
+          ],
           "properties": {
-            "type": { "const": "corridor" },
-            "directional": { "const": true },
-            "subject": { "$ref": "#/$defs/subject" }
+            "type": {
+              "const": "corridor"
+            },
+            "directional": {
+              "const": true
+            },
+            "subject": {
+              "$ref": "#/$defs/subject"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["type", "advisory_only", "execution_authorized", "action_context"],
+          "required": [
+            "type",
+            "advisory_only",
+            "execution_authorized",
+            "action_context"
+          ],
           "properties": {
-            "type": { "const": "risk_gate" },
-            "advisory_only": { "const": true },
-            "execution_authorized": { "const": false },
-            "action_context": { "type": "object" }
+            "type": {
+              "const": "risk_gate"
+            },
+            "advisory_only": {
+              "const": true
+            },
+            "execution_authorized": {
+              "const": false
+            },
+            "action_context": {
+              "type": "object"
+            }
           }
         }
       ]
