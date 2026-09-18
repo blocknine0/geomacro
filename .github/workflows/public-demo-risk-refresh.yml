@@ -108,6 +108,182 @@ jobs:
           bun scripts/refresh-public-demo-risk-objects.ts | tee /tmp/public-demo-refresh.json
           jq -e '.ok == true and (.demo_results | length) == 4' /tmp/public-demo-refresh.json >/dev/null
 
+      - name: Verify live public demo endpoint for all four scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node <<'NODE'
+          const scenarios = [
+            {
+              name: "USA>CHN",
+              expectedSubject: "USA>CHN",
+              body: {
+                subject: {
+                  type: "corridor",
+                  origin_country_iso3: "USA",
+                  destination_country_iso3: "CHN",
+                },
+                policy_preset: "cautious",
+                action_type: "agent_payment",
+                amount_usdc: 10000,
+              },
+            },
+            {
+              name: "CHN>USA",
+              expectedSubject: "CHN>USA",
+              body: {
+                subject: {
+                  type: "corridor",
+                  origin_country_iso3: "CHN",
+                  destination_country_iso3: "USA",
+                },
+                policy_preset: "cautious",
+                action_type: "agent_payment",
+                amount_usdc: 10000,
+              },
+            },
+            {
+              name: "USA",
+              expectedSubject: "USA",
+              body: {
+                subject: {
+                  type: "country",
+                  country_iso3: "USA",
+                },
+                policy_preset: "cautious",
+                action_type: "agent_payment",
+                amount_usdc: 10000,
+              },
+            },
+            {
+              name: "CHN",
+              expectedSubject: "CHN",
+              body: {
+                subject: {
+                  type: "country",
+                  country_iso3: "CHN",
+                },
+                policy_preset: "cautious",
+                action_type: "agent_payment",
+                amount_usdc: 10000,
+              },
+            },
+          ];
+
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function probe(scenario) {
+            let lastFailure = null;
+
+            for (let attempt = 1; attempt <= 8; attempt += 1) {
+              try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 20000);
+
+                const response = await fetch(
+                  "https://geomacro.live/api/demo/preflight",
+                  {
+                    method: "POST",
+                    headers: {
+                      "content-type": "application/json",
+                      "user-agent": "geomacro-public-demo-health/1.0",
+                    },
+                    body: JSON.stringify(scenario.body),
+                    signal: controller.signal,
+                  },
+                );
+                clearTimeout(timeout);
+
+                let payload = null;
+                try {
+                  payload = await response.json();
+                } catch {
+                  payload = null;
+                }
+
+                const subjectId = payload?.risk_object?.subject?.id ?? null;
+                const executionAuthorized =
+                  payload?.risk_gate?.execution_authorized ??
+                  payload?.boundaries?.execution_authorized ??
+                  null;
+
+                if (
+                  response.status === 200 &&
+                  payload?.ok === true &&
+                  payload?.mode === "PUBLIC_SANDBOX" &&
+                  subjectId === scenario.expectedSubject &&
+                  executionAuthorized === false
+                ) {
+                  return {
+                    scenario: scenario.name,
+                    status: response.status,
+                    object_id: payload.risk_object?.object_id ?? null,
+                    expires_at: payload.risk_object?.expires_at ?? null,
+                    verification_status:
+                      payload.risk_object?.verification?.status ?? null,
+                    commercial_eligibility_status:
+                      payload.risk_object?.commercial_eligibility?.status ?? null,
+                    decision: payload.risk_gate?.decision ?? null,
+                    execution_authorized: executionAuthorized,
+                    attempt,
+                  };
+                }
+
+                lastFailure = {
+                  attempt,
+                  status: response.status,
+                  ok: payload?.ok ?? null,
+                  mode: payload?.mode ?? null,
+                  subject_id: subjectId,
+                  execution_authorized: executionAuthorized,
+                  code: payload?.code ?? payload?.error ?? null,
+                };
+              } catch (error) {
+                lastFailure = {
+                  attempt,
+                  error: error instanceof Error ? error.message : String(error),
+                };
+              }
+
+              if (attempt < 8) {
+                await sleep(15000);
+              }
+            }
+
+            throw new Error(
+              `Live public demo failed for ${scenario.name}: ${JSON.stringify(lastFailure)}`,
+            );
+          }
+
+          (async () => {
+            const results = [];
+            for (const scenario of scenarios) {
+              results.push(await probe(scenario));
+            }
+
+            const output = {
+              ok: true,
+              checked_at: new Date().toISOString(),
+              endpoint: "https://geomacro.live/api/demo/preflight",
+              scenario_count: results.length,
+              results,
+            };
+
+            require("node:fs").writeFileSync(
+              "/tmp/public-demo-live-http.json",
+              JSON.stringify(output, null, 2) + "\n",
+            );
+
+            console.log("PUBLIC_DEMO_LIVE_HTTP_PASS");
+            console.log(JSON.stringify(output, null, 2));
+          })().catch((error) => {
+            console.error("PUBLIC_DEMO_LIVE_HTTP_FAILED");
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
       - name: Diagnose commercial blockers
         if: failure()
         shell: bash
@@ -185,4 +361,13 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Public demo refresh did not produce a JSON summary." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -s /tmp/public-demo-live-http.json ]; then
+            {
+              echo
+              echo "## Live HTTP gate"
+              echo
+              jq '{ok, checked_at, endpoint, scenario_count, results}' /tmp/public-demo-live-http.json
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
