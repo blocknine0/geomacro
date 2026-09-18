@@ -45,6 +45,8 @@ type Flash = {
   content_hash: string
   first_seen_at: string | null
   last_seen_at: string | null
+  source_updated_at_utc: string | null
+  detection_latency_ms: number | null
 }
 
 type EventFamily = {
@@ -204,7 +206,7 @@ Deno.serve(async request => {
   const flashResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,source_updated_at_utc,detection_latency_ms",
     )
     .gte("ingested_at", cutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
@@ -611,6 +613,8 @@ Deno.serve(async request => {
             family_id: family.family_id,
             version: 1,
             captured_at: new Date().toISOString(),
+            source_updated_at_utc: flash.source_updated_at_utc,
+            detection_latency_ms: flash.detection_latency_ms,
             trigger_flash_id: flash.flash_id,
             canonical_headline: family.canonical_headline,
             signal_category: family.signal_category,
