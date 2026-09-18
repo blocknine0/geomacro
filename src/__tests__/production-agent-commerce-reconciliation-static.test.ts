@@ -44,7 +44,7 @@ describe("production agent-commerce reconciliation contract", () => {
       "revoke update (\n  reconciliation_status,\n  reconciliation_reference,\n  revenue_classification,\n  commercial_revenue\n) on table public.commercial_payment_events from service_role",
     );
     expect(migration).toContain("guard_agent_commerce_revenue_evidence");
-    expect(migration).toContain("agent-commerce revenue promotion requires matched delivery evidence");
+    expect(migration).toContain("agent-commerce revenue promotion requires matched external delivery evidence");
   });
 
   it("persists Coinbase response hashes before settlement and links payment to usage", () => {
