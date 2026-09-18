@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geomacro.live/schemas/gro-1.1.schema.json",
+  "title": "Geomacro Risk Object gro-1.1",
+  "description": "Canonical JSON Schema for Geomacro signed Risk Objects. Complete signed objects must be transported unchanged for independent payload-hash and Ed25519 verification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "object_id",
+    "subject",
+    "risk",
+    "attribution",
+    "confidence",
+    "evidence",
+    "evidence_coverage",
+    "evidence_summary",
+    "methodology_version",
+    "generated_at",
+    "expires_at",
+    "issuer",
+    "commercial_eligibility",
+    "verification",
+    "integrity",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": { "const": "gro-1.1" },
+    "object_id": { "type": "string", "minLength": 1 },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "name"],
+      "properties": {
+        "type": { "enum": ["country", "corridor", "event"] },
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": ["string", "null"] }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "label", "previous_score", "delta", "direction"],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "label": { "enum": ["CALM", "STABLE", "WATCH", "ELEVATED", "CRITICAL"] },
+        "previous_score": { "type": ["number", "null"] },
+        "delta": { "type": ["number", "null"] },
+        "direction": { "enum": ["escalating", "cooling", "steady", "unknown"] }
+      }
+    },
+    "attribution": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["driver", "score_contribution", "delta_contribution", "event_count", "weight"],
+        "properties": {
+          "driver": {
+            "enum": [
+              "conflict",
+              "sanctions",
+              "political_instability",
+              "trade_policy",
+              "monetary_policy",
+              "inflation",
+              "labor_market",
+              "currency_fx",
+              "macro_stress",
+              "rare_earth_supply",
+              "critical_minerals",
+              "shipping_logistics",
+              "other"
+            ]
+          },
+          "score_contribution": { "type": "number" },
+          "delta_contribution": { "type": ["number", "null"] },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "weight": { "type": "number" }
+        }
+      }
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "title",
+          "event_type",
+          "severity",
+          "confidence",
+          "direction",
+          "last_seen_at",
+          "evidence_count",
+          "independent_source_count",
+          "evidence_refs",
+          "source_families"
+        ],
+        "properties": {
+          "event_id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string" },
+          "event_type": { "type": ["string", "null"] },
+          "severity": { "type": "number" },
+          "confidence": { "type": "number" },
+          "direction": { "enum": ["escalating", "cooling", "steady", "unknown"] },
+          "last_seen_at": { "type": "string", "format": "date-time" },
+          "evidence_count": { "type": "integer", "minimum": 0 },
+          "independent_source_count": { "type": "integer", "minimum": 0 },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } },
+          "source_families": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "evidence_coverage": { "type": ["number", "null"] },
+    "evidence_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_count", "evidence_count", "independent_source_count"],
+      "properties": {
+        "event_count": { "type": "integer", "minimum": 0 },
+        "evidence_count": { "type": "integer", "minimum": 0 },
+        "independent_source_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "methodology_version": {
+      "enum": ["country-risk-v0.1.0-pilot", "corridor-endpoint-max-v0.1.0-pilot"]
+    },
+    "corridor_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin_country_iso3",
+        "destination_country_iso3",
+        "composition",
+        "dominant_endpoint",
+        "source_risk_object_ids",
+        "source_calculation_hashes"
+      ],
+      "properties": {
+        "origin_country_iso3": { "type": "string" },
+        "destination_country_iso3": { "type": "string" },
+        "composition": { "const": "max_endpoint_score_v1" },
+        "dominant_endpoint": { "enum": ["origin", "destination"] },
+        "source_risk_object_ids": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string" }
+        },
+        "source_calculation_hashes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "issuer": { "const": "Geomacro" },
+    "commercial_eligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason_codes"],
+      "properties": {
+        "status": { "enum": ["VERIFIED", "UNVERIFIED", "INELIGIBLE"] },
+        "reason_codes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason_codes", "last_verified_at"],
+      "properties": {
+        "status": { "enum": ["VERIFIED", "STALE", "EXPIRED", "INCOMPLETE", "UNVERIFIABLE"] },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "last_verified_at": {
+          "oneOf": [
+            { "type": "string", "format": "date-time" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_hash",
+        "data_hash",
+        "calculation_hash",
+        "payload_hash",
+        "canonicalization",
+        "signature",
+        "signature_scheme",
+        "signing_key_id"
+      ],
+      "properties": {
+        "input_hash": { "type": "string" },
+        "data_hash": { "type": "string" },
+        "calculation_hash": { "type": "string" },
+        "payload_hash": { "type": ["string", "null"] },
+        "canonicalization": {
+          "enum": ["geomacro-canonical-json-v1", null]
+        },
+        "signature": { "type": ["string", "null"] },
+        "signature_scheme": { "enum": ["Ed25519", null] },
+        "signing_key_id": { "type": ["string", "null"] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structure_versions",
+        "scoring_versions",
+        "relevance_versions",
+        "country_versions",
+        "story_versions"
+      ],
+      "properties": {
+        "structure_versions": { "type": "array", "items": { "type": "string" } },
+        "scoring_versions": { "type": "array", "items": { "type": "string" } },
+        "relevance_versions": { "type": "array", "items": { "type": "string" } },
+        "country_versions": { "type": "array", "items": { "type": "string" } },
+        "story_versions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
