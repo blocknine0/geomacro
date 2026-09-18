@@ -10,7 +10,7 @@ export const GEOMACRO_INTELLIGENCE_PRODUCT_ID =
   "geomacro_adaptive_risk_intelligence_v1" as const;
 
 export const GEOMACRO_INTELLIGENCE_PRICE_USDC =
-  "0.02" as const;
+  "0.05" as const;
 
 export const GEOMACRO_INTELLIGENCE_LAUNCH_DELIVERY_TARGET =
   10_000 as const;

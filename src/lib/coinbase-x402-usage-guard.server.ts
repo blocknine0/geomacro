@@ -3,7 +3,7 @@ import process from "node:process";
 import type { CoinbaseX402Config } from "./coinbase-x402.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
-const DEFAULT_MAINNET_MAX_PRICE_USDC = "0.02";
+const DEFAULT_MAINNET_MAX_PRICE_USDC = "0.05";
 const DEFAULT_DAILY_SPEND_USDC = "1.00";
 const DEFAULT_DAILY_REQUEST_LIMIT = 50;
 

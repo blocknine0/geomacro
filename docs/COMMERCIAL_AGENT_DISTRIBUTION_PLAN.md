@@ -72,7 +72,7 @@ Initial prices are controlled launch experiments, not claims about market-cleari
 
 | Product | Resource purpose | Initial launch-test price |
 | --- | --- | ---: |
-| Discovery Signal | bounded current country signal for agent discovery | $0.02 |
+| Discovery Signal | bounded current country signal for agent discovery | $0.05 |
 | Signed Risk Object | signed machine-readable country intelligence | $0.10 |
 | Event Risk Intelligence | bounded event-specific risk context | $0.10 |
 | Macro + Geopolitical Assessment | combined bounded assessment | $0.15 |

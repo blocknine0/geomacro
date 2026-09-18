@@ -61,21 +61,21 @@ describe("Coinbase x402 configuration", () => {
     process.env.COINBASE_X402_MAINNET_ACK = COINBASE_X402_MAINNET_ACK;
     expect(() => getCoinbaseX402Config()).toThrow("COINBASE_X402_PRICE_USDC is required");
 
-    process.env.COINBASE_X402_PRICE_USDC = "0.02";
+    process.env.COINBASE_X402_PRICE_USDC = "0.05";
     const config = getCoinbaseX402Config();
     expect(config?.network).toBe(COINBASE_X402_MAINNET_NETWORK);
     expect(config?.chainId).toBe("8453");
     expect(config?.networkName).toBe("Base");
     expect(config?.asset).toBe(COINBASE_X402_MAINNET_USDC);
-    expect(config?.priceUsdc).toBe("0.02");
-    expect(config?.amountAtomic).toBe("20000");
+    expect(config?.priceUsdc).toBe("0.05");
+    expect(config?.amountAtomic).toBe("50000");
     expect(config?.commercialEnvironment).toBe("mainnet");
   });
 
   it("does not allow a Coinbase-specific acknowledgement to bypass the global launch lock", () => {
     process.env.COINBASE_X402_ENVIRONMENT = "production";
     process.env.COINBASE_X402_PAY_TO = PAY_TO;
-    process.env.COINBASE_X402_PRICE_USDC = "0.02";
+    process.env.COINBASE_X402_PRICE_USDC = "0.05";
     process.env.COINBASE_X402_MAINNET_ACK = COINBASE_X402_MAINNET_ACK;
     expect(() => getCoinbaseX402Config()).toThrow(
       "COINBASE_X402_PRODUCTION_LOCKED_UNTIL_COORDINATED_GEOMACRO_LAUNCH",
@@ -85,7 +85,7 @@ describe("Coinbase x402 configuration", () => {
   it("does not allow the global launch acknowledgement to bypass the Coinbase-specific lock", () => {
     process.env.COINBASE_X402_ENVIRONMENT = "production";
     process.env.COINBASE_X402_PAY_TO = PAY_TO;
-    process.env.COINBASE_X402_PRICE_USDC = "0.02";
+    process.env.COINBASE_X402_PRICE_USDC = "0.05";
     process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK = COMMERCIAL_LAUNCH_ACK;
     expect(() => getCoinbaseX402Config()).toThrow("Production x402 is locked");
     process.env.COINBASE_X402_MAINNET_ACK = "NOT_AUTHORIZED";

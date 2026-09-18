@@ -24,13 +24,13 @@ CDP_API_KEY_SECRET=...
 
 The CDP secret may be either a PKCS#8 ES256 PEM private key or a 64-byte base64 Ed25519 key. It must remain server-only.
 
-The coordinated production launch price is **0.02 USDC per successful paid x402 intelligence delivery for the first 10,000 deliveries**. After adoption evidence supports the transition, the reference price is **0.10 USDC**. The successful Base Sepolia acceptance evidence remains historical testnet evidence and does not define production pricing.
+The coordinated production launch price is **0.05 USDC per successful paid x402 intelligence delivery for the first 10,000 deliveries**. After adoption evidence supports the transition, the reference price is **0.10 USDC**. The successful Base Sepolia acceptance evidence remains historical testnet evidence and does not define production pricing.
 
 Production additionally requires:
 
 ```text
 COINBASE_X402_ENVIRONMENT=production
-COINBASE_X402_PRICE_USDC=0.02
+COINBASE_X402_PRICE_USDC=0.05
 COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC
 ```
 
@@ -139,11 +139,11 @@ Do not switch to Base mainnet until all testnet acceptance evidence is preserved
 - repeated paid E2E tests show zero duplicate charges
 - replay/conflict/ambiguous-settlement tests pass
 - receiver wallet ownership and operational backup are confirmed
-- production per-call price is explicitly approved at 0.02 USDC
+- production per-call price is explicitly approved at 0.05 USDC
 - commercial source/data licensing permits the paid response
 - monitoring and settlement reconciliation ownership are assigned
 
-Only then configure production environment, the explicit mainnet acknowledgement, the production CDP credentials, dedicated Base receiver, and the approved 0.02 USDC production price.
+Only then configure production environment, the explicit mainnet acknowledgement, the production CDP credentials, dedicated Base receiver, and the approved 0.05 USDC production price.
 
 ## Mainnet accounting boundary
 

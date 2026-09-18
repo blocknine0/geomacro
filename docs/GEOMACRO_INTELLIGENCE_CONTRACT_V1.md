@@ -121,7 +121,7 @@ These identifiers allow a machine to persist the exact Geomacro state it last co
 
 Early-adoption price:
 
-**0.02 USDC per successful paid intelligence delivery for the first 10,000 deliveries**
+**0.05 USDC per successful paid intelligence delivery for the first 10,000 deliveries**
 
 Initial launch target:
 
