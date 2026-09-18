@@ -9,6 +9,9 @@ const SERVICE_ROLE_KEY =
 const FLASH_INGEST_TOKEN =
   Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
 
+const SIGNAL_DB_MODE =
+  Deno.env.get("SIGNAL_DB_MODE") === "true"
+
 const ALLOWED_SOURCE_IDS =
   new Set([
     "telegram_mtproto_flash",
@@ -299,6 +302,10 @@ async function loadCountries() {
     return countryCache.rows
   }
 
+  if (SIGNAL_DB_MODE) {
+    return []
+  }
+
   const result =
     await db
       .from("live_country_registry")
@@ -328,9 +335,11 @@ function explicitIsoMatches(
   rows: CountryRow[],
 ) {
   const allowed =
-    new Set(
-      rows.map(row => row.iso3)
-    )
+    SIGNAL_DB_MODE
+      ? null
+      : new Set(
+          rows.map(row => row.iso3)
+        )
 
   const values = [
     payload.country_iso3,
@@ -357,7 +366,7 @@ function explicitIsoMatches(
 
     if (
       !/^[A-Z]{3}$/.test(iso3) ||
-      !allowed.has(iso3) ||
+      (!SIGNAL_DB_MODE && !allowed?.has(iso3)) ||
       seen.has(iso3)
     ) {
       continue
