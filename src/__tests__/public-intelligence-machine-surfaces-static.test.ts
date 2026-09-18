@@ -25,7 +25,7 @@ describe("public intelligence machine surfaces", () => {
 
   it("locks the early-adoption price and delivery target in one contract", () => {
     expect(contract).toContain('GEOMACRO_INTELLIGENCE_PRICE_USDC');
-    expect(contract).toContain('"0.02"');
+    expect(contract).toContain('"0.05"');
     expect(contract).toContain("10_000");
   });
 });
