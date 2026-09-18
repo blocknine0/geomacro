@@ -57,4 +57,47 @@ describe("Telegram raw-signal manual-review contract", () => {
       "TELEGRAM_CHANNELS=@liveuamap,@FinancialJuice,@ReutersWorldChannel",
     );
   });
+
+  it("keeps the global coverage matrix discovery-only and fail-closed", () => {
+    const matrix = JSON.parse(read("config/telegram-global-coverage-matrix.json"));
+
+    expect(matrix.schema_version).toBe("geomacro.telegram.global-coverage.v1");
+    expect(matrix.runtime_effect).toBe(false);
+    expect(matrix.approval_policy).toContain("PENDING");
+    expect(matrix.coverage_goal).toContain("Global geographic and linguistic coverage");
+
+    expect(matrix.regions.length).toBeGreaterThanOrEqual(13);
+    expect(matrix.regions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "north_america" }),
+        expect.objectContaining({ id: "latin_america_caribbean" }),
+        expect.objectContaining({ id: "eastern_europe_balkans" }),
+        expect.objectContaining({ id: "middle_east" }),
+        expect.objectContaining({ id: "africa" }),
+        expect.objectContaining({ id: "south_asia" }),
+        expect.objectContaining({ id: "east_asia" }),
+        expect.objectContaining({ id: "southeast_asia" }),
+        expect.objectContaining({ id: "central_asia_caucasus" }),
+        expect.objectContaining({ id: "oceania_pacific" }),
+      ]),
+    );
+
+    for (const candidate of matrix.reviewed_candidates) {
+      expect(["PENDING", "HOLD"]).toContain(candidate.status);
+      expect(candidate.rights).toBe("INTERNAL_RESEARCH_ONLY");
+    }
+
+    expect(matrix.reviewed_candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          handle: "@ReutersWorldChannel",
+          status: "HOLD",
+        }),
+        expect.objectContaining({
+          handle: "@bbcworld",
+          status: "HOLD",
+        }),
+      ]),
+    );
+  });
 });
