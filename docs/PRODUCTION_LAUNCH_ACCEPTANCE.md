@@ -1,143 +1,129 @@
-# Production Launch Acceptance
+# Initial Commercial Pay-Per-Call Launch Acceptance
 
-Status: **PRELAUNCH · REAL FUNDS DISABLED · MARKETPLACE PROMOTION ON HOLD**
+Status: **PRELAUNCH · REAL FUNDS DISABLED · INITIAL PAY-PER-CALL PATH**
 
-This is the release policy for avoiding a technically successful but operationally embarrassing commercial launch.
+This is the authoritative acceptance policy for Geomacro's initial commercial pay-per-call release.
 
-A provider integration is not launch-ready merely because one payment succeeds. Geomacro does not publicly promote, submit or announce a paid production service until payment, delivery, reconciliation, failure handling and incident controls are all proven for the exact release candidate.
+The initial commercial product is the bounded machine-readable intelligence service at the canonical launch price of **0.05 USDC per successful paid intelligence delivery for the first 10,000 deliveries**.
 
-## Required sequence
+The first 10,000 deliveries are an adoption and revenue milestone. They are **not** a requirement to pre-fund 500 USDC. At the launch price, 10,000 successful customer-paid deliveries would represent 500 USDC gross receipts before provider/network costs and any applicable commercial adjustments.
 
-1. **P0 strict closure**
-   - exact release candidate frozen;
-   - isolated non-production staging;
-   - real distributed 40k burst and five-minute soak evidence;
-   - authenticated full-window telemetry closure;
-   - same-SHA published-surface verification;
-   - Strict Commercial Launch Closure PASS.
+The separate 40,000 requests/second staging workflows remain useful as future scalability certification. They are not required to activate the initial commercial pay-per-call path.
 
-2. **Production credentials loaded with launch gates still closed**
-   - dedicated production receiving wallets;
-   - production provider credentials;
-   - exact prices/plans;
-   - no public production resource advertised yet;
-   - no marketplace submission yet.
+## Initial launch sequence
 
-3. **Isolated real-money canary**
-   - same exact release candidate deployed to a non-public canary/staging host;
-   - owner explicitly authorizes only the controlled canary window;
-   - one bounded real-money purchase per initial-cohort provider;
-   - internal buyer identity/wallet only;
-   - no public marketplace promotion during the canary.
+1. **Freeze one exact release candidate**
+   - current canonical `main` SHA is frozen;
+   - product, security, database, source-rights and payment-contract checks pass on that SHA;
+   - production acknowledgements remain disabled.
 
-4. **Every canary must reconcile end to end**
-   - unpaid request returns correct 402/payment requirement;
-   - exact runtime price, network, asset and payTo/merchant recipient match policy;
-   - payment verification succeeds;
-   - settlement succeeds exactly once;
-   - the paid resource is delivered for the same request/order identity;
-   - delivery ledger records the provider settlement reference;
-   - replay/idempotent retry does not charge twice;
-   - conflicting proof, wrong amount, wrong asset/network and expired proof fail closed;
-   - ambiguous settlement enters manual review and is not counted as revenue;
-   - accounting reconciliation matches payment amount, recipient, provider receipt/transaction and delivered product.
+2. **Run Initial Commercial Pay-Per-Call Acceptance**
+   - exact candidate SHA is verified against `main`;
+   - production build succeeds;
+   - canonical intelligence contract is `0.05 USDC`;
+   - launch target is 10,000 successful paid deliveries;
+   - production atomic amount for six-decimal USDC is 50,000;
+   - payment delivery ledger, replay/idempotency and fail-closed tests pass;
+   - no real-money payment is performed by this acceptance workflow.
 
-5. **Incident controls are exercised before public launch**
-   - `GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true` blocks every real-funds provider immediately;
-   - `GEOMACRO_COMMERCE_DISABLED_PROVIDERS` can quarantine one unhealthy provider without waiting for a deploy;
-   - provider quarantine pauses promotion/listing verification for that provider;
-   - disabling/quarantining a provider after launch is incident containment, not an approved partial launch strategy.
+3. **Prepare the production runtime without spending founder capital**
+   - dedicated receiving address;
+   - provider credentials;
+   - exact price/network/asset configuration;
+   - production source/freshness controls;
+   - monitoring and reconciliation access;
+   - all real-funds launch acknowledgements remain off until final owner authorization.
 
-6. **Public production deployment**
-   - exact canary-tested release candidate only;
-   - production build marker verified;
-   - public discovery is checked before marketplace submission;
-   - runtime payment metadata must match provider/network/price/recipient policy.
+4. **Owner-authorized production activation**
+   - activate only the provider rails that are actually configured and approved for launch;
+   - preserve `execution_authorized=false`;
+   - do not expose paid intelligence before payment verification;
+   - do not treat testnet or sandbox payments as revenue.
 
-7. **Marketplace promotion only after production smoke is clean**
-   - Coinbase: verify live x402 challenge/settlement and then verify Bazaar discovery/indexing separately; payment success is not treated as proof of Bazaar visibility.
-   - Circle: submit only after the live service is production-ready, then independently verify the resource through Circle's discovery surface.
-   - Nevermined: publish only after the live plan and production settlement path are verified and the first real purchase is reconciled.
-   - GOAT: remains outside the initial cohort until merchant approval and its own mainnet acceptance are complete.
+5. **First production buyer**
+   - an external buyer pays the configured price;
+   - payment is verified and settled exactly once;
+   - the corresponding intelligence is delivered for the same request/order identity;
+   - the delivery ledger reconciles payment and delivery;
+   - replay cannot create a second charge;
+   - ambiguous settlement enters manual review;
+   - this first independently originating production purchase becomes the first commercial revenue evidence.
 
-8. **Post-listing verification**
-   - confirm the marketplace entry points to the exact canonical endpoint;
-   - compare listed price/network/asset/capability metadata to runtime-authoritative values;
-   - run an unpaid 402 challenge probe;
-   - run a bounded paid smoke when required by the provider/listing flow;
-   - confirm the resulting delivery and settlement reconcile;
-   - do not announce revenue until reconciliation is matched.
+6. **Marketplace promotion is a separate step**
+   - only after production smoke and reconciliation are clean;
+   - verify marketplace endpoint, price, network, asset and capability metadata;
+   - marketplace visibility is external and is never inferred from payment success alone.
 
-## Hard launch blockers
+## No-funds rule
 
-Any one of these blocks or freezes public paid operation:
+The founder does not need to purchase 10,000 calls in order to reach the 10,000-delivery milestone.
 
-- P0 strict closure absent or stale;
+The acceptance work before launch is designed to be non-revenue and non-prefunded. Customer payments are the source of commercial receipts after the production route is genuinely enabled.
+
+An internal real-money canary is therefore not a prerequisite for this initial no-funds acceptance path. When an internal canary cannot be funded, the first independent production purchase is the authoritative commercial purchase/reconciliation event.
+
+## Hard blockers for initial paid operation
+
 - exact release SHA mismatch;
-- provider production credentials missing or invalid;
-- stale or commercially ineligible intelligence dependency;
-- wrong price/network/asset/recipient;
-- 5xx, timeouts or transport instability in paid path;
-- replay/double-charge risk;
+- required product/security/source-rights/database checks failing;
+- production payment credentials or receiving configuration missing;
+- runtime price/network/asset/recipient mismatch;
+- paid response available without verified payment;
+- payment verification or settlement failure;
 - payment settled but delivery missing;
-- delivery returned without verified payment;
-- ambiguous or unreconciled settlement;
-- discovery/listing metadata mismatch;
-- marketplace listing points at an old/testnet/sandbox endpoint;
-- emergency freeze active;
+- replay or double-charge protection failure;
+- ambiguous settlement without manual-review handling;
+- stale or commercially ineligible intelligence dependency;
+- production emergency freeze active;
 - provider explicitly quarantined;
-- no clear support/incident owner.
+- no clear incident/support owner.
 
-## Provider-specific external realities
+The following are **not** initial launch blockers:
 
-Marketplace visibility is an external provider decision and cannot be guaranteed by Geomacro code.
+- the 40k distributed staging capacity certification;
+- 12M-request five-minute stress evidence;
+- marketplace listing approval;
+- an internal founder-funded real-money canary.
 
-The safe operating rule is therefore:
+They remain separate operational or post-launch evidence tracks.
 
-**healthy payable service first → reconciled canary → public production smoke → marketplace submission/indexing → independent listing verification → public promotion.**
+## Optional scale certification
 
-Never reverse that sequence.
+The existing:
+
+- `Distributed 40k Staging Execution`;
+- `Distributed 40k Evidence Closure`;
+- `P0 Strict Prepublic Closure`
+
+workflows are retained for future high-scale capacity certification.
+
+Passing or failing those workflows does not change the canonical 0.05 USDC commercial price and does not create revenue evidence.
 
 ## Revenue semantics
 
-A payment is not commercial revenue merely because the provider says "settled".
+A commercial revenue event requires:
 
-Geomacro may classify a transaction as reconciled commercial revenue only when:
+- approved production/mainnet environment;
+- successful payment settlement;
+- matched reconciliation;
+- completed delivery for the same request/order identity;
+- source-rights and freshness eligibility;
+- amount, asset, network and recipient matching the authoritative contract.
 
-- environment is an approved production/mainnet/fiat environment;
-- payment status is settled;
-- reconciliation status is matched;
-- delivery completed for the same request/order identity;
-- source-rights and freshness gates passed;
-- amount, asset, network, recipient and provider settlement proof match the ledger.
+Testnet, sandbox and controlled internal evidence are never counted as commercial revenue.
 
 ## Emergency response
 
-For a global commerce incident:
+Global freeze:
 
-```text
-GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true
-```
+`GEOMACRO_COMMERCE_EMERGENCY_FREEZE=true`
 
-For a single provider incident:
+Provider quarantine:
 
-```text
-GEOMACRO_COMMERCE_DISABLED_PROVIDERS=provider_id
-```
+`GEOMACRO_COMMERCE_DISABLED_PROVIDERS=provider_id`
 
-Examples of provider ids:
-
-```text
-coinbase_x402
-circle_gateway_x402
-nevermined
-goat_x402
-```
-
-After an incident, do not re-enable the provider until a bounded canary plus reconciliation passes again.
+After an incident, do not re-enable the affected production rail until the bounded remediation and reconciliation checks pass.
 
 ## Public communication
 
-Do not announce "live", "production", "available in marketplace", "revenue", or a provider relationship beyond its documented scope until the corresponding evidence exists.
-
-Automatic social publication remains disabled.
+Do not announce "live", "production", "revenue", or marketplace availability until the corresponding evidence exists.

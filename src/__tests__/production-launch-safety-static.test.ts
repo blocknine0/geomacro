@@ -16,24 +16,29 @@ describe("production launch safety contract", () => {
     expect(manifest.launch_rule.allow_partial_provider_launch).toBe(false);
   });
 
-  it("requires strict P0, reconciled provider canaries and marketplace verification before promotion", () => {
+  it("requires the lean initial pay-per-call gate and separates post-launch/scale evidence", () => {
     const manifest = JSON.parse(read("config/commercial-launch-manifest.json"));
 
-    for (const gate of [
-      "strict_p0_capacity_closure",
+    expect(manifest.required_gates).toContain("initial_commercial_pay_per_call_acceptance");
+    expect(manifest.required_gates).not.toContain("strict_p0_capacity_closure");
+    expect(manifest.required_gates).not.toContain("provider_capped_paid_smoke_reconciled");
+    expect(manifest.required_gates).not.toContain("marketplace_post_listing_verification");
+
+    expect(manifest.post_launch_promotion_gates).toEqual([
       "provider_capped_paid_smoke_reconciled",
       "marketplace_post_listing_verification",
-      "emergency_freeze_and_provider_quarantine",
-      "support_and_incident_ownership",
-    ]) {
-      expect(manifest.required_gates).toContain(gate);
-    }
-
-    expect(
-      manifest.launch_rule.require_reconciled_capped_real_purchase_before_marketplace_promotion,
-    ).toBe(true);
-    expect(manifest.launch_rule.require_post_listing_endpoint_probe).toBe(true);
-    expect(manifest.launch_rule.require_truthful_runtime_price_and_network_metadata).toBe(true);
+    ]);
+    expect(manifest.optional_scale_gates).toEqual([
+      "strict_p0_capacity_closure",
+      "distributed_40k_observability_closure",
+    ]);
+    expect(manifest.commercial_milestone.launch_price_usdc).toBe("0.05");
+    expect(manifest.commercial_milestone.early_adoption_delivery_target).toBe(10000);
+    expect(manifest.commercial_milestone.pre_funding_required).toBe(false);
+    expect(manifest.launch_rule.scale_certification_required_before_initial_launch).toBe(false);
+    expect(manifest.launch_rule.require_internal_real_money_canary_before_initial_launch).toBe(false);
+    expect(manifest.launch_rule.require_external_first_purchase_before_revenue_claim).toBe(true);
+    expect(manifest.launch_rule.require_marketplace_verification_before_initial_launch).toBe(false);
   });
 
   it("ships global freeze and provider quarantine controls disabled by default", () => {
@@ -48,13 +53,12 @@ describe("production launch safety contract", () => {
     expect(gate).toContain("_PRODUCTION_QUARANTINED");
   });
 
-  it("documents canary-before-listing and reconciliation-before-revenue", () => {
+  it("documents the no-funds initial pay-per-call path and post-launch reconciliation", () => {
     const doc = read("docs/PRODUCTION_LAUNCH_ACCEPTANCE.md");
 
-    expect(doc).toContain("Isolated real-money canary");
-    expect(doc).toContain("payment success is not treated as proof of Bazaar visibility");
-    expect(doc).toContain("Marketplace promotion only after production smoke is clean");
-    expect(doc).toContain("A payment is not commercial revenue merely because the provider says");
-    expect(doc).toContain("Automatic social publication remains disabled");
+    expect(doc).toContain("Initial Commercial Pay-Per-Call Launch Acceptance");
+    expect(doc).toContain("The first 10,000 deliveries are an adoption and revenue milestone");
+    expect(doc).toContain("The founder does not need to purchase 10,000 calls");
+    expect(doc).toContain("Optional scale certification");
   });
 });
