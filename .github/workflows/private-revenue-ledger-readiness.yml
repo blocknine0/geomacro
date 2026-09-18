@@ -1,0 +1,74 @@
+name: Private Revenue Ledger Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA being accepted"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-revenue-ledger-readiness
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ inputs.candidate_sha }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GEOMACRO_PRIVATE_REVENUE_LEDGER_READINESS_OUTPUT: /tmp/private-ledger-readiness.json
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact current main SHA
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]]
+          [[ -n "${APP_SUPABASE_URL:-}" && -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" ]] || {
+            echo "::error::Production Supabase credentials are missing."; exit 1;
+          }
+
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify production private ledger installation, access boundaries and hash chain
+        run: node scripts/ops/verify-private-revenue-ledger-production-readiness.mjs
+
+      - name: Prove sanitized evidence contains no private delivery body
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/private-ledger-readiness.json','utf8'));
+          if(e?.private_delivery_payload_included!==false) throw new Error('private delivery payload boundary failed');
+          if(e?.raw_payment_signature_included!==false) throw new Error('raw payment proof boundary failed');
+          if(e?.private_key_included!==false || e?.credential_included!==false) throw new Error('secret boundary failed');
+          if(e?.public_distribution_authorized!==false) throw new Error('public distribution boundary failed');
+          NODE
+
+      - name: Upload sanitized readiness evidence only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: private-revenue-ledger-readiness-${{ github.run_id }}
+          path: /tmp/private-ledger-readiness.json
+          if-no-files-found: error
+          retention-days: 14
