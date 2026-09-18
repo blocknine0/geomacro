@@ -59,6 +59,14 @@ const x402Discovery = readFileSync(
   join(process.cwd(), "src/lib/x402-discovery.server.ts"),
   "utf8",
 );
+const privateRevenueLedgerMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/948_private_commercial_revenue_delivery_ledger.sql"),
+  "utf8",
+);
+const privateRevenueLedgerExport = readFileSync(
+  join(process.cwd(), "scripts/ops/export-private-commercial-revenue-ledger.mjs"),
+  "utf8",
+);
 
 describe("commercial production acceptance tooling", () => {
   it("pins provisioning to the authoritative production project and never logs the raw API key", () => {
@@ -192,6 +200,103 @@ describe("end-to-end paid production acceptance evidence chain", () => {
     expect(finalProductionAcceptance).toContain("revenue_claim_ready: false");
     expect(finalProductionAcceptance).toContain(
       "automatic_public_marketing_authorized: false",
+    );
+  });
+});
+
+
+describe("private real-earning delivery ledger", () => {
+  it("captures every commercial-revenue transition automatically and excludes canaries", () => {
+    expect(privateRevenueLedgerMigration).toContain(
+      "create table if not exists public.private_commercial_revenue_delivery_ledger",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "after insert or update of commercial_revenue,reconciliation_status,revenue_classification,metadata",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "when (new.commercial_revenue is true)",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "internal canary cannot enter private commercial revenue delivery ledger",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "purchase_classification in ('external_customer','independent_production_buyer')",
+    );
+  });
+
+  it("stores detailed payment, settlement, usage and exact delivered-intelligence proof", () => {
+    for (const field of [
+      "payment_event_id",
+      "usage_event_id",
+      "provider_settlement_id",
+      "settlement_reference_sha256",
+      "tx_hash",
+      "payment_fingerprint_sha256",
+      "request_fingerprint_sha256",
+      "request_id",
+      "client_request_id",
+      "product_id",
+      "capability",
+      "query_plan_hash",
+      "delivered_product_hash",
+      "response_sha256",
+      "risk_object_id",
+      "risk_object_version",
+      "risk_gate_included",
+      "risk_gate_decision",
+      "private_delivery_snapshot",
+      "proof_document",
+    ]) {
+      expect(privateRevenueLedgerMigration).toContain(field);
+    }
+    expect(privateRevenueLedgerMigration).toContain(
+      "v_delivery_response ->> 'delivered_product_hash'",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "u.response_sha256 = v_response_sha256",
+    );
+  });
+
+  it("is private, append-only and hash-chain verified", () => {
+    expect(privateRevenueLedgerMigration).toContain(
+      "revoke all on table public.private_commercial_revenue_delivery_ledger",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "grant select on table public.private_commercial_revenue_delivery_ledger",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "private commercial revenue delivery ledger is append-only",
+    );
+    expect(privateRevenueLedgerMigration).toContain(
+      "pg_advisory_xact_lock(hashtext('geomacro_private_commercial_revenue_delivery_ledger_v1'))",
+    );
+    expect(privateRevenueLedgerMigration).toContain("previous_entry_sha256");
+    expect(privateRevenueLedgerMigration).toContain("entry_sha256");
+    expect(privateRevenueLedgerMigration).toContain(
+      "verify_private_commercial_revenue_delivery_ledger",
+    );
+  });
+
+  it("never records payment secrets and keeps full exports local-only by default", () => {
+    expect(privateRevenueLedgerMigration).toContain(
+      "never raw payment tokens/signatures",
+    );
+    expect(privateRevenueLedgerExport).toContain(
+      "verify_private_commercial_revenue_delivery_ledger",
+    );
+    expect(privateRevenueLedgerExport).toContain("hash_chain_verified");
+    expect(privateRevenueLedgerExport).toContain(
+      "contains_private_delivery_snapshots: true",
+    );
+    expect(privateRevenueLedgerExport).toContain(
+      "contains_raw_payment_signatures: false",
+    );
+    expect(privateRevenueLedgerExport).toContain(
+      "intended_for_public_sharing: false",
+    );
+    expect(privateRevenueLedgerExport).toContain("/tmp/geomacro-private-revenue-ledger-");
+    expect(privateRevenueLedgerExport).toContain(
+      "no export was uploaded or published by this script",
     );
   });
 });
