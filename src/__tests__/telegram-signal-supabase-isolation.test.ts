@@ -47,6 +47,44 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(migration).toContain("prevent_live_signal_fragment_mutation");
   });
 
+  it("defines a canonical event-family lifecycle and material-update ledger", () => {
+    const lifecycle = read(
+      "supabase/migrations/952_realtime_flash_event_lifecycle.sql",
+    );
+    const familyVersions = read(
+      "supabase/migrations/953_event_family_version_ledger.sql",
+    );
+    const ingest = read("supabase/functions/live-flash-ingest/index.ts");
+    const corroborate = read(
+      "supabase/functions/live-flash-corroborate/index.ts",
+    );
+
+    expect(lifecycle).toContain("signal_category text not null default 'UNCLASSIFIED'");
+    expect(lifecycle).toContain("source_version integer not null default 1");
+    expect(lifecycle).toContain("material_update boolean not null default false");
+    expect(lifecycle).toContain("live_flash_event_families");
+    expect(lifecycle).toContain("live_flash_event_family_members");
+    expect(lifecycle).toContain("live_flash_event_versions");
+    expect(familyVersions).toContain("live_flash_event_family_versions");
+    expect(familyVersions).toContain("unique (family_id, version)");
+    expect(ingest).toContain("const signalCategory = classifySignalCategory(");
+    expect(ingest).toContain("const existingResult =");
+    expect(ingest).toContain("live_flash_event_versions");
+    expect(corroborate).toContain("live_flash_event_families");
+    expect(corroborate).toContain("live_flash_event_family_versions");
+  });
+
+  it("keeps the compact archive aligned with the actual flash primary key", () => {
+    const archive = read("supabase/functions/live-flash-archive/index.ts");
+
+    expect(archive).toContain("select(\"flash_id,source_record_id");
+    expect(archive).toContain("flash_id: event.flash_id");
+    expect(archive).toContain(".in(\"flash_id\", ids)");
+    expect(archive).not.toContain("event.id");
+    expect(archive).not.toContain("source_channel_key: event.source_channel_key");
+    expect(archive).toContain("telegram-flash|${periodStart}|${periodEnd}");
+    expect(archive).not.toContain("\\${periodStart}");
+  });
   it("archives compact signal records as private gzip evidence with readback verification", () => {
     const archive = read("supabase/functions/live-flash-archive/index.ts");
 
