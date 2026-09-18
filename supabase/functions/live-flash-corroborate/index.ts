@@ -711,6 +711,8 @@ Deno.serve(async request => {
             family_id: family.family_id,
             version: nextVersion,
             captured_at: new Date().toISOString(),
+            source_updated_at_utc: flash.source_updated_at_utc,
+            detection_latency_ms: flash.detection_latency_ms,
             trigger_flash_id: flash.flash_id,
             canonical_headline: flash.headline,
             signal_category: flash.signal_category,
