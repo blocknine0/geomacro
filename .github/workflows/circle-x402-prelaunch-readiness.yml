@@ -66,7 +66,7 @@ jobs:
             const launch = await Bun.file("config/commercial-launch-manifest.json").json();
             const provider = launch.providers?.circle_gateway_x402;
             if (!provider) throw new Error("Circle launch provider missing");
-            if (provider.launch_cohort !== true) throw new Error("Circle must remain in the prepared initial cohort");
+            if (provider.launch_cohort !== false) throw new Error("Circle must remain outside the initial Coinbase cohort");
             if (provider.production_enabled !== false) throw new Error("Circle production must remain disabled");
             if (provider.arc_mainnet_enabled !== false) throw new Error("Arc mainnet must remain disabled");
             const commerce = await Bun.file("public/.well-known/geomacro-commerce.json").json();
