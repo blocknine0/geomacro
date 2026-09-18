@@ -12,6 +12,11 @@ on:
       - "src/routes/api.x402.intelligence.ts"
       - "src/__tests__/coinbase-x402-adaptive-availability-static.test.ts"
       - "src/__tests__/agent-query-hot-topics-static.test.ts"
+      - "src/lib/geomacro-intelligence-contract.ts"
+      - "src/lib/geomacro-intelligence-contract.test.ts"
+      - "src/routes/api.intelligence.capabilities.ts"
+      - "src/routes/api.intelligence.state.ts"
+      - "src/__tests__/public-intelligence-machine-surfaces-static.test.ts"
       - "supabase/migrations/932_coinbase_x402_agent_usage_guard.sql"
       - "supabase/migrations/933_coinbase_x402_product_audit.sql"
       - ".github/workflows/agent-query-production-readiness.yml"
@@ -34,7 +39,7 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       - name: Query planner, deliverability and hot-topic tests
-        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/__tests__/coinbase-x402-adaptive-availability-static.test.ts src/__tests__/agent-query-hot-topics-static.test.ts
+        run: bunx vitest run src/lib/agent-query-plan.test.ts src/lib/agent-query-deliverability.server.test.ts src/lib/geomacro-intelligence-contract.test.ts src/__tests__/public-intelligence-machine-surfaces-static.test.ts src/__tests__/coinbase-x402-adaptive-availability-static.test.ts src/__tests__/agent-query-hot-topics-static.test.ts
       - name: Database migration safety
         run: bun run db:safety
       - name: Verify no-charge and mainnet safety invariants
