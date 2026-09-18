@@ -127,14 +127,16 @@ export function publicStructuralObservation(
     signal_type: string | null;
     retrieved_at: string | null;
   },
+  asOf: string,
 ): PublicStructuralObservation & {
   freshness: {
     age_seconds: number | null;
     status: "CURRENT" | "AGING" | "STALE" | "UNKNOWN";
   };
 } {
-  const asOf = row.observed_at ?? row.published_at ?? row.retrieved_at ?? new Date().toISOString();
-  const age = ageSeconds(asOf, new Date().toISOString());
+  const observationTimestamp =
+    row.observed_at ?? row.published_at ?? row.retrieved_at;
+  const age = ageSeconds(observationTimestamp, asOf);
   return {
     observation_id: row.observation_id,
     dimension: row.dimension,
