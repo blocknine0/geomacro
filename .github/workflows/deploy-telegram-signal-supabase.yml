@@ -17,6 +17,7 @@ on:
       - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
+      - "supabase/functions/live-flash-alignment-export/**"
 
 permissions:
   contents: read
@@ -110,6 +111,9 @@ jobs:
       - name: Deploy isolated live flash corroboration function
         if: ${{ inputs.mode == 'apply' }}
         run: supabase functions deploy live-flash-corroborate --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      - name: Deploy isolated verified alignment export function
+        if: ${{ inputs.mode == 'apply' }}
+        run: supabase functions deploy live-flash-alignment-export --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
       - name: Deploy isolated live flash archive function
         if: ${{ inputs.mode == 'apply' }}
         run: supabase functions deploy live-flash-archive --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
@@ -122,6 +126,9 @@ jobs:
           ingest_code="$(curl --silent --show-error --output /tmp/flash-ingest.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-ingest")"
           cat /tmp/flash-ingest.json
           [[ "$ingest_code" == "400" ]] && grep -q 'source_record_id_and_headline_required' /tmp/flash-ingest.json
+          export_code="$(curl --silent --show-error --output /tmp/flash-export.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-alignment-export")"
+          cat /tmp/flash-export.json
+          [[ "$export_code" == "200" ]] && grep -q '"ok":true' /tmp/flash-export.json
           corroborate_code="$(curl --silent --show-error --output /tmp/flash-corroborate.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-corroborate")"
           cat /tmp/flash-corroborate.json
           [[ "$corroborate_code" == "200" ]] && grep -q '"ok":true' /tmp/flash-corroborate.json
