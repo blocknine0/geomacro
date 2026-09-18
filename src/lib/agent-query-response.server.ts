@@ -6,9 +6,10 @@ import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
-import { loadStructuralContext, type StructuralObservation } from "./structural-context.server";
+import { loadStructuralContext } from "./structural-context.server";
 import {
   GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
+  GEOMACRO_INTELLIGENCE_PRICE_USDC,
   GEOMACRO_INTELLIGENCE_PRODUCT_ID,
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
   intelligenceStateVersion,
@@ -538,7 +539,10 @@ export async function assembleAgentQueryResponse(input: {
       response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
       product_contract_version: GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
       pricing_phase: "EARLY_ADOPTION_10K",
-      price_usdc: input.priceUsdc ?? "0.05",
+      price_usdc:
+        input.priceUsdc === undefined
+          ? GEOMACRO_INTELLIGENCE_PRICE_USDC
+          : input.priceUsdc,
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
       intent_method: "deterministic-governed-v1",
       ranking_metric: plan.ranking?.metric ?? null,
