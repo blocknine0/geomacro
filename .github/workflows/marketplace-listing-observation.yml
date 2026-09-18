@@ -11,6 +11,10 @@ on:
         description: "Successful Public Production Prelisting Health run ID"
         required: true
         type: string
+      marketplace_submission_run_id:
+        description: "Successful Marketplace Submission Evidence run ID"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -70,6 +74,33 @@ jobs:
             if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Public prelisting health must be a manual main run');
             if (String(run.head_sha || '').toLowerCase() !== String(process.env.EXPECTED_SHA).toLowerCase()) core.setFailed('Public prelisting health SHA mismatch');
             if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed('Public prelisting health is not successful');
+
+      - name: Verify marketplace submission/indexing handoff happened first
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          PRELISTING_RUN: ${{ inputs.public_prelisting_run_id }}
+          SUBMISSION_RUN: ${{ inputs.marketplace_submission_run_id }}
+        with:
+          script: |
+            const submissionId = Number(process.env.SUBMISSION_RUN);
+            const prelistingId = Number(process.env.PRELISTING_RUN);
+            if (!Number.isInteger(submissionId) || submissionId <= 0) {
+              core.setFailed('marketplace_submission_run_id must be numeric');
+              return;
+            }
+            const { owner, repo } = context.repo;
+            const [{ data: submission }, { data: prelisting }] = await Promise.all([
+              github.rest.actions.getWorkflowRun({ owner, repo, run_id: submissionId }),
+              github.rest.actions.getWorkflowRun({ owner, repo, run_id: prelistingId }),
+            ]);
+            if (submission.path !== '.github/workflows/marketplace-submission-evidence.yml') core.setFailed('Referenced run is not Marketplace Submission Evidence');
+            if (submission.event !== 'workflow_dispatch' || submission.head_branch !== 'main') core.setFailed('Marketplace submission evidence must be a manual main run');
+            if (String(submission.head_sha || '').toLowerCase() !== String(process.env.EXPECTED_SHA).toLowerCase()) core.setFailed('Marketplace submission evidence SHA mismatch');
+            if (submission.status !== 'completed' || submission.conclusion !== 'success') core.setFailed('Marketplace submission evidence is not successful');
+            if (new Date(submission.created_at).getTime() < new Date(prelisting.created_at).getTime()) {
+              core.setFailed('Marketplace submission evidence predates public prelisting health');
+            }
 
       - name: Independently observe all three provider listings
         run: node scripts/commerce/observe-marketplace-listings.mjs
