@@ -74,6 +74,7 @@ function verifyCanary(e, provider) {
   if (!host || PUBLIC_HOSTS.has(host)) fail(`${provider.key} canary must use a non-public host`);
   if (e.public_production_host_used !== false) fail(`${provider.key} canary must prove public production host was not used`);
   if (e.paid_status !== 200 || e.replay_status !== 200) fail(`${provider.key} canary paid/replay status must both be 200`);
+  if (e.payment_verified !== true) fail(`${provider.key} canary payment verification is not proven`);
   if (e.settlement_proven !== true) fail(`${provider.key} canary settlement is not proven`);
   if (e.replay_no_second_charge !== true) fail(`${provider.key} canary did not prove zero second charge`);
   if (
@@ -175,6 +176,7 @@ async function main() {
       settlement_reference_sha256: canary.settlementHash,
       paid_status: 200,
       replay_status: 200,
+      payment_verified: true,
       replay_no_second_charge: true,
       replay_same_settlement_reference: true,
       single_payment_event_for_settlement: true,
