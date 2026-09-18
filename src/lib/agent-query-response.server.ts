@@ -57,32 +57,6 @@ function hash(value: unknown) {
   return createHash("sha256").update(stableJson(value)).digest("hex");
 }
 
-function observation(row: StructuralObservation) {
-  return {
-    observation_id: row.observation_id,
-    source_id: row.source_id,
-    source_record_id: row.source_record_id,
-    source_url: row.source_url,
-    dimension: row.dimension,
-    country_iso3: row.country_iso3,
-    partner_country_iso3: row.partner_country_iso3,
-    observed_at: row.observed_at,
-    published_at: row.published_at,
-    metric: row.metric,
-    value_numeric: row.value_numeric,
-    value_text: row.value_text,
-    unit: row.unit,
-    event_type: row.event_type,
-    signal_type: row.signal_type,
-    parser_version: row.parser_version,
-    methodology_status: row.methodology_status,
-    quality_status: row.quality_status,
-    provenance: row.provenance,
-    normalized_hash: row.normalized_hash,
-    retrieved_at: row.retrieved_at,
-  };
-}
-
 function perModuleLimit(detail: AgentQueryPlan["detail"]) {
   return detail === "compact" ? 2 : detail === "full" ? 12 : 5;
 }
@@ -463,6 +437,7 @@ export async function assembleAgentQueryResponse(input: {
   plan: AgentQueryPlan;
   requestId: string;
   clientRequestId?: string | null;
+  priceUsdc?: string | null;
 }) {
   const { plan } = input;
   const structural = await Promise.all(plan.subjects.map((subject) => structuralSubject(plan, subject)));
@@ -563,7 +538,7 @@ export async function assembleAgentQueryResponse(input: {
       response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
       product_contract_version: GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
       pricing_phase: "EARLY_ADOPTION_10K",
-      price_usdc: "0.05",
+      price_usdc: input.priceUsdc ?? "0.05",
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
       intent_method: "deterministic-governed-v1",
       ranking_metric: plan.ranking?.metric ?? null,
