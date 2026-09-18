@@ -8,6 +8,7 @@ import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { loadStructuralContext, type StructuralObservation } from "./structural-context.server";
 import {
+  GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
   GEOMACRO_INTELLIGENCE_PRODUCT_ID,
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
   intelligenceStateVersion,
@@ -541,7 +542,7 @@ export async function assembleAgentQueryResponse(input: {
     methodology: {
       query_schema_version: plan.schema_version,
       response_schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
-      product_contract_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
+      product_contract_version: GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
       pricing_phase: "EARLY_ADOPTION_10K",
       price_usdc: "0.05",
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
