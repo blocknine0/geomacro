@@ -3,7 +3,7 @@ import process from "node:process";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { SignJWT, importJWK, importPKCS8 } from "jose";
 import { assertCommercialLaunchAuthorized } from "./commercial-launch-gate.server";
-import { recordCommercialPaymentEvent } from "./commercial-ops.server";
+import { recordCommercialPaymentEvent, recordCommercialUsageEvent } from "./commercial-ops.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 const CDP_HOST = "api.cdp.coinbase.com" as const;
@@ -540,13 +540,16 @@ export async function prepareCoinbaseX402Delivery(input: {
   responsePayload: unknown;
 }) {
   const db = requireRiskSupabase();
+  const responseSha256 = sha256(stableJson(input.responsePayload));
   const { data, error } = await db.rpc("prepare_coinbase_x402_delivery", {
     p_payment_fingerprint: input.paymentFingerprint,
     p_claim_token: input.claimToken,
     p_response_payload: input.responsePayload,
+    p_response_sha256: responseSha256,
   });
   if (error) throw error;
   if (data !== true) throw new Error("COINBASE_X402_DELIVERY_PREPARE_LOST_CLAIM");
+  return { responseSha256 };
 }
 
 export async function completeCoinbaseX402Delivery(input: {
@@ -591,6 +594,8 @@ export async function persistCoinbaseSettlementTelemetry(input: {
   settlementNetwork: string | null;
   config: CoinbaseX402Config;
   paymentFingerprint: string;
+  responseSha256: string;
+  capability: string;
   bazaarExtensionEchoed: boolean;
   bazaarStatus: string | null;
   bazaarRejectedReason: string | null;
@@ -637,7 +642,7 @@ export async function persistCoinbaseSettlementTelemetry(input: {
 
     await db.from("agent_api_requests").update({ payment_id: paymentRow.id }).eq("id", requestRow.id);
 
-    await recordCommercialPaymentEvent({
+    const paymentEventId = await recordCommercialPaymentEvent({
       environment: input.config.commercialEnvironment,
       network_family: "evm",
       network_name: input.config.networkName,
@@ -672,6 +677,27 @@ export async function persistCoinbaseSettlementTelemetry(input: {
         execution_authorized: false,
         requires_mainnet_reconciliation_before_revenue_classification:
           input.config.commercialEnvironment === "mainnet",
+      },
+    });
+
+    await recordCommercialUsageEvent({
+      environment: input.config.commercialEnvironment,
+      access_surface: "agent_payment",
+      payment_event_id: paymentEventId,
+      request_id: input.requestId,
+      capability: input.capability,
+      success: true,
+      response_sha256: input.responseSha256,
+      execution_authorized: false,
+      shareable: false,
+      metadata: {
+        provider: "coinbase_cdp_x402",
+        provider_environment: input.config.environment,
+        payment_fingerprint: input.paymentFingerprint,
+        settlement_reference_present: Boolean(input.settlementTx),
+        reconciliation_status:
+          input.config.commercialEnvironment === "testnet" ? "not_applicable" : "pending",
+        execution_authorized: false,
       },
     });
   } catch (error) {
