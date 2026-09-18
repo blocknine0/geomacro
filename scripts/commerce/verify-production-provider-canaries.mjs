@@ -81,7 +81,9 @@ function verifyCanary(e, provider) {
     e.replay_same_settlement_reference !== true ||
     e.zero_second_charge_proof?.server_idempotent_replay !== true ||
     e.zero_second_charge_proof?.same_settlement_reference !== true ||
-    e.zero_second_charge_proof?.reconciliation_single_payment_event_required !== true
+    e.zero_second_charge_proof?.reconciliation_single_payment_event_required !== true ||
+    e.zero_second_charge_proof?.authoritative_ledger_single_payment_event_after_replay !== true ||
+    e.zero_second_charge_proof?.authoritative_ledger_single_settled_usage_response_after_replay !== true
   ) {
     fail(`${provider.key} canary replay proof is incomplete`);
   }
