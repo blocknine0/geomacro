@@ -728,6 +728,19 @@ Deno.serve(async request => {
         return jsonResponse(500, { ok: false, error: "flash_family_link_failed" })
       }
 
+      const sourceVersionFamilyUpdate = await db
+        .from("live_flash_event_versions")
+        .update({
+          event_family_id: family.family_id,
+        })
+        .eq("flash_id", flash.flash_id)
+        .eq("source_version", flash.source_version)
+
+      if (sourceVersionFamilyUpdate.error) {
+        console.error(sourceVersionFamilyUpdate.error)
+        return jsonResponse(500, { ok: false, error: "flash_version_family_link_failed" })
+      }
+
       family = {
         ...family,
         canonical_headline: isMaterialFamilyUpdate ? flash.headline : family.canonical_headline,
