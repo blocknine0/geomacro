@@ -34,8 +34,6 @@ import { Route as TestnetAccessRouteImport } from './routes/testnet-access'
 import { Route as TestnetConsoleRouteImport } from './routes/testnet-console'
 import { Route as ApiEarlyWarningRouteImport } from './routes/api.early-warning'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
-import { Route as ApiIntelligenceCapabilitiesRouteImport } from './routes/api.intelligence.capabilities'
-import { Route as ApiIntelligenceStateRouteImport } from './routes/api.intelligence.state'
 import { Route as ApiPublicDataProxyRouteImport } from './routes/api.public-data-proxy'
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
 import { Route as ApiRiskGateReadinessRouteImport } from './routes/api.risk-gate-readiness'
@@ -46,6 +44,8 @@ import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
 import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
+import { Route as ApiIntelligenceCapabilitiesRouteImport } from './routes/api.intelligence.capabilities'
+import { Route as ApiIntelligenceStateRouteImport } from './routes/api.intelligence.state'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
@@ -181,17 +181,6 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIntelligenceCapabilitiesRoute =
-  ApiIntelligenceCapabilitiesRouteImport.update({
-  id: '/api/intelligence/capabilities',
-  path: '/api/intelligence/capabilities',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiIntelligenceStateRoute = ApiIntelligenceStateRouteImport.update({
-  id: '/api/intelligence/state',
-  path: '/api/intelligence/state',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicDataProxyRoute = ApiPublicDataProxyRouteImport.update({
   id: '/api/public-data-proxy',
   path: '/api/public-data-proxy',
@@ -240,6 +229,17 @@ const ApiDemoFeedbackRoute = ApiDemoFeedbackRouteImport.update({
 const ApiDemoPreflightRoute = ApiDemoPreflightRouteImport.update({
   id: '/api/demo/preflight',
   path: '/api/demo/preflight',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntelligenceCapabilitiesRoute =
+  ApiIntelligenceCapabilitiesRouteImport.update({
+    id: '/api/intelligence/capabilities',
+    path: '/api/intelligence/capabilities',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntelligenceStateRoute = ApiIntelligenceStateRouteImport.update({
+  id: '/api/intelligence/state',
+  path: '/api/intelligence/state',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
@@ -316,8 +316,6 @@ export interface FileRoutesByFullPath {
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
-  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
@@ -328,6 +326,8 @@ export interface FileRoutesByFullPath {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
+  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -364,8 +364,6 @@ export interface FileRoutesByTo {
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
-  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
@@ -376,6 +374,8 @@ export interface FileRoutesByTo {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
+  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -413,8 +413,6 @@ export interface FileRoutesById {
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
-  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
@@ -425,6 +423,8 @@ export interface FileRoutesById {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
+  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -473,6 +473,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/intelligence/capabilities'
+    | '/api/intelligence/state'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -519,6 +521,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/intelligence/capabilities'
+    | '/api/intelligence/state'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -565,6 +569,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/intelligence/capabilities'
+    | '/api/intelligence/state'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -602,8 +608,6 @@ export interface RootRouteChildren {
   TestnetConsoleRoute: typeof TestnetConsoleRoute
   ApiEarlyWarningRoute: typeof ApiEarlyWarningRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiIntelligenceCapabilitiesRoute: typeof ApiIntelligenceCapabilitiesRoute
-  ApiIntelligenceStateRoute: typeof ApiIntelligenceStateRoute
   ApiPublicDataProxyRoute: typeof ApiPublicDataProxyRoute
   ApiRiskGateRoute: typeof ApiRiskGateRoute
   ApiRiskGateReadinessRoute: typeof ApiRiskGateReadinessRoute
@@ -614,6 +618,8 @@ export interface RootRouteChildren {
   ApiAgentRiskRoute: typeof ApiAgentRiskRoute
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
+  ApiIntelligenceCapabilitiesRoute: typeof ApiIntelligenceCapabilitiesRoute
+  ApiIntelligenceStateRoute: typeof ApiIntelligenceStateRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
@@ -802,20 +808,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/intelligence/capabilities': {
-      id: '/api/intelligence/capabilities'
-      path: '/api/intelligence/capabilities'
-      fullPath: '/api/intelligence/capabilities'
-      preLoaderRoute: typeof ApiIntelligenceCapabilitiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/intelligence/state': {
-      id: '/api/intelligence/state'
-      path: '/api/intelligence/state'
-      fullPath: '/api/intelligence/state'
-      preLoaderRoute: typeof ApiIntelligenceStateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public-data-proxy': {
       id: '/api/public-data-proxy'
       path: '/api/public-data-proxy'
@@ -884,6 +876,20 @@ declare module '@tanstack/react-router' {
       path: '/api/demo/preflight'
       fullPath: '/api/demo/preflight'
       preLoaderRoute: typeof ApiDemoPreflightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/intelligence/capabilities': {
+      id: '/api/intelligence/capabilities'
+      path: '/api/intelligence/capabilities'
+      fullPath: '/api/intelligence/capabilities'
+      preLoaderRoute: typeof ApiIntelligenceCapabilitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/intelligence/state': {
+      id: '/api/intelligence/state'
+      path: '/api/intelligence/state'
+      fullPath: '/api/intelligence/state'
+      preLoaderRoute: typeof ApiIntelligenceStateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/testnet-tester/$': {
@@ -978,8 +984,6 @@ const rootRouteChildren: RootRouteChildren = {
   TestnetConsoleRoute: TestnetConsoleRoute,
   ApiEarlyWarningRoute: ApiEarlyWarningRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiIntelligenceCapabilitiesRoute: ApiIntelligenceCapabilitiesRoute,
-  ApiIntelligenceStateRoute: ApiIntelligenceStateRoute,
   ApiPublicDataProxyRoute: ApiPublicDataProxyRoute,
   ApiRiskGateRoute: ApiRiskGateRoute,
   ApiRiskGateReadinessRoute: ApiRiskGateReadinessRoute,
@@ -990,6 +994,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRiskRoute: ApiAgentRiskRoute,
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
+  ApiIntelligenceCapabilitiesRoute: ApiIntelligenceCapabilitiesRoute,
+  ApiIntelligenceStateRoute: ApiIntelligenceStateRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
