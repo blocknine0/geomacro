@@ -28,8 +28,11 @@ describe("external-only production revenue proof", () => {
     expect(verifier).toContain('evidence.reconciliation_status !== "matched"');
     expect(verifier).toContain('evidence.internal_canary !== false');
     expect(verifier).toContain("EXTERNAL_CLASSES");
+    expect(verifier).toContain("single_payment_event_for_settlement");
+    expect(verifier).toContain("payment_event_count_for_settlement");
     expect(verifier).toContain("customer_identity_disclosed: false");
     expect(verifier).toContain("raw_payment_or_settlement_proof_disclosed: false");
+    expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(workflow).toContain("Upload sanitized revenue proof only");
     expect(workflow).not.toContain("path: /tmp/revenue/reconciliation.json");
   });
