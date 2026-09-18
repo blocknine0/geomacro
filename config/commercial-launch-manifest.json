@@ -4,7 +4,7 @@
   "production_funds_authorized": false,
   "official_launch_announced": false,
   "global_launch_ack_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
-  "policy": "The initial commercial launch is the bounded Geomacro pay-per-call product at the canonical launch price. The first 10,000 successful paid deliveries are an adoption milestone, not a pre-funded requirement. High-scale capacity certification and marketplace promotion remain separate evidence tracks.",
+  "policy": "The initial commercial launch is the bounded Geomacro pay-per-call product on the Coinbase x402 production rail at the canonical launch price. The first 10,000 successful paid deliveries are an adoption milestone, not a pre-funded requirement. Circle Gateway and Nevermined remain additive later-provider tracks. High-scale capacity certification and marketplace promotion remain separate evidence tracks.",
   "providers": {
     "coinbase_x402": {
       "status": "prelaunch_acceptance",
@@ -16,15 +16,16 @@
       "provider_gate_env": "COINBASE_X402_MAINNET_ACK"
     },
     "circle_gateway_x402": {
-      "status": "prelaunch_acceptance",
-      "launch_cohort": true,
+      "status": "deferred_additive_provider",
+      "launch_cohort": false,
       "production_enabled": false,
       "test_network": "Arc Testnet technical proof remains separate",
       "production_network": "Base",
       "asset": "USDC",
       "provider_gate_env": "CIRCLE_X402_MAINNET_ACK",
       "production_endpoint": "/api/x402/circle/intelligence",
-      "arc_mainnet_enabled": false
+      "arc_mainnet_enabled": false,
+      "deferred_reason": "Prepared production adapter retained for later additive launch; it is not required for the initial Coinbase pay-per-call cohort."
     },
     "goat_x402": {
       "status": "deferred_manual_mainnet_merchant_onboarding",
@@ -37,13 +38,14 @@
       "deferred_reason": "GOAT mainnet merchant access requires manual provider application/approval. Testnet3 remains technical proof only and GOAT mainnet cannot block the initial commercial launch cohort."
     },
     "nevermined": {
-      "status": "prelaunch_acceptance",
-      "launch_cohort": true,
+      "status": "deferred_additive_provider",
+      "launch_cohort": false,
       "production_enabled": false,
       "test_network": "sandbox",
       "production_network": "production",
       "asset": "plan_or_x402_contract",
-      "provider_gate_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK"
+      "provider_gate_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK",
+      "deferred_reason": "Sandbox/code-ready provider retained for later additive launch; live plan and production settlement are not required for the initial Coinbase pay-per-call cohort."
     }
   },
   "distribution": {
@@ -112,5 +114,13 @@
     "gross_usdc_if_10000_successful_deliveries": "500.00",
     "pre_funding_required": false,
     "milestone_is_post_launch_adoption_target": true
-  }
+  },
+  "initial_payment_provider_cohort": [
+    "coinbase_x402"
+  ],
+  "later_payment_provider_tracks": [
+    "circle_gateway_x402",
+    "nevermined",
+    "goat_x402"
+  ]
 }
