@@ -5,7 +5,7 @@ import {
   setResponseHeaders,
   setResponseStatus,
 } from "h3";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { answerQuestion } from "../../../src/lib/ask-intelligence.server";
 import { getAppSupabase } from "../../../src/lib/supabase-app.server";
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
   requireWatchToken(getRequestHeader(event, "x-geomacro-production-watch-token"));
 
   const startedAt = Date.now();
-  const requestId = crypto.randomUUID();
+  const requestId = randomUUID();
 
   const rawBody = (await readRawBody(event)) ?? "";
   if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
