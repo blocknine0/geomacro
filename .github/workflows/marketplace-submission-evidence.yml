@@ -1,0 +1,111 @@
+name: Marketplace Submission Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA already healthy on public production"
+        required: true
+        type: string
+      public_prelisting_run_id:
+        description: "Successful Public Production Prelisting Health run ID"
+        required: true
+        type: string
+      circle_submission_receipt_sha256:
+        description: "SHA-256 of retained Circle marketplace submission confirmation/receipt"
+        required: true
+        type: string
+      circle_submitted_at:
+        description: "ISO timestamp of completed Circle marketplace submission"
+        required: true
+        type: string
+      nevermined_submission_receipt_sha256:
+        description: "SHA-256 of retained Nevermined registry publish/submission confirmation"
+        required: true
+        type: string
+      nevermined_submitted_at:
+        description: "ISO timestamp of completed Nevermined registry publication/submission"
+        required: true
+        type: string
+      owner_ack:
+        description: "Must equal I_CONFIRM_MARKETPLACE_SUBMISSIONS_COMPLETED"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: marketplace-submission-evidence
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: marketplace-submission
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact current main SHA and bounded evidence inputs
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          OWNER_ACK: ${{ inputs.owner_ack }}
+          CIRCLE_RECEIPT: ${{ inputs.circle_submission_receipt_sha256 }}
+          NEVERMINED_RECEIPT: ${{ inputs.nevermined_submission_receipt_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::Full candidate SHA required."; exit 1; }
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]] || { echo "::error::Candidate must equal workflow dispatch SHA."; exit 1; }
+          [[ "$OWNER_ACK" == "I_CONFIRM_MARKETPLACE_SUBMISSIONS_COMPLETED" ]] || { echo "::error::Marketplace submission acknowledgement missing."; exit 1; }
+          [[ "$CIRCLE_RECEIPT" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "::error::Circle receipt SHA-256 required."; exit 1; }
+          [[ "$NEVERMINED_RECEIPT" =~ ^[0-9a-fA-F]{64}$ ]] || { echo "::error::Nevermined receipt SHA-256 required."; exit 1; }
+
+      - name: Verify exact-SHA public prelisting health happened first
+        id: prelisting
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          PRELISTING_RUN: ${{ inputs.public_prelisting_run_id }}
+        with:
+          script: |
+            const runId = Number(process.env.PRELISTING_RUN);
+            if (!Number.isInteger(runId) || runId <= 0) {
+              core.setFailed('public_prelisting_run_id must be numeric');
+              return;
+            }
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.path !== '.github/workflows/public-production-prelisting-health.yml') core.setFailed('Referenced run is not Public Production Prelisting Health');
+            if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Public prelisting health must be a manual main run');
+            if (String(run.head_sha || '').toLowerCase() !== String(process.env.EXPECTED_SHA).toLowerCase()) core.setFailed('Public prelisting health SHA mismatch');
+            if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed('Public prelisting health is not successful');
+            core.setOutput('completed_at', run.updated_at || run.created_at);
+
+      - name: Build sanitized marketplace submission evidence
+        env:
+          GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ inputs.candidate_sha }}
+          GEOMACRO_MARKETPLACE_SUBMISSION_ACK: ${{ inputs.owner_ack }}
+          GEOMACRO_PUBLIC_PRELISTING_COMPLETED_AT: ${{ steps.prelisting.outputs.completed_at }}
+          GEOMACRO_CIRCLE_MARKETPLACE_SUBMISSION_RECEIPT_SHA256: ${{ inputs.circle_submission_receipt_sha256 }}
+          GEOMACRO_CIRCLE_MARKETPLACE_SUBMITTED_AT: ${{ inputs.circle_submitted_at }}
+          GEOMACRO_NEVERMINED_REGISTRY_SUBMISSION_RECEIPT_SHA256: ${{ inputs.nevermined_submission_receipt_sha256 }}
+          GEOMACRO_NEVERMINED_REGISTRY_SUBMITTED_AT: ${{ inputs.nevermined_submitted_at }}
+          GEOMACRO_MARKETPLACE_SUBMISSION_OUTPUT: /tmp/marketplace-submission-acceptance.json
+        run: node scripts/commerce/verify-marketplace-submission-evidence.mjs
+
+      - name: Upload sanitized submission evidence only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: marketplace-submission-evidence-${{ github.run_id }}
+          path: /tmp/marketplace-submission-acceptance.json
+          if-no-files-found: error
+          retention-days: 14
