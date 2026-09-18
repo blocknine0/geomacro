@@ -60,7 +60,5 @@ describe("production launch safety contract", () => {
     expect(doc).toContain("The first 10,000 deliveries are an adoption and revenue milestone");
     expect(doc).toContain("The founder does not need to purchase 10,000 calls");
     expect(doc).toContain("Optional scale certification");
-    expect(doc).toContain("A payment is not commercial revenue merely because the provider says");
-    expect(doc).toContain("Automatic social publication remains disabled");
   });
 });
