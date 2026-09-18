@@ -177,14 +177,15 @@ export async function loadCommercialOpsDashboard(days = 30) {
   const boundedDays = Math.max(1, Math.min(365, Math.trunc(days)));
   const since = new Date(Date.now() - boundedDays * 86_400_000).toISOString();
 
-  const [usage, payments, recentUsage, recentPayments] = await Promise.all([
+  const [usage, payments, recentUsage, recentPayments, developerFunnelEvents] = await Promise.all([
     db.from("commercial_ops_usage_rollup").select("*").gte("day", since).order("day", { ascending: false }),
     db.from("commercial_ops_payment_rollup").select("*").gte("day", since).order("day", { ascending: false }),
     db.from("commercial_usage_events").select("id,occurred_at,environment,access_surface,principal_id,principal_type,offer_id,tier,request_id,delivery_id,capability,subject_type,subject_key,credits_charged,credits_remaining,idempotent_replay,http_status,latency_ms,success,failure_code,response_sha256,response_bytes,structural_observation_count,evidence_reference_count,independent_evidence_count,history_item_count,risk_object_id,risk_object_version,risk_object_signed,risk_gate_included,risk_gate_decision,execution_authorized").gte("occurred_at", since).order("occurred_at", { ascending: false }).limit(250),
     db.from("commercial_payment_events").select("id,occurred_at,environment,network_family,network_name,chain_id,provider,provider_environment,payment_method,payment_status,revenue_classification,provider_order_id,provider_payment_id,provider_settlement_id,invoice_id,principal_id,entitlement_grant_id,offer_id,tier,asset_symbol,amount_decimal,invoice_currency,invoice_amount,settlement_currency,settlement_amount,fee_currency,provider_fee_amount,geomacro_fee_amount,tx_hash,block_number,confirmations,requested_at,authorized_at,settled_at,failed_at,refunded_at,disputed_at,failure_code,reconciliation_status,reconciliation_reference,commercial_revenue").gte("occurred_at", since).order("occurred_at", { ascending: false }).limit(250),
+    db.from("testnet_developer_api_funnel_events").select("id,attempt_id,occurred_at,principal_id,key_id,request_id,capability,subject_type,subject_key,stage,outcome,http_status,error_code,latency_ms,metadata").gte("occurred_at", since).order("occurred_at", { ascending: false }).limit(2500),
   ]);
 
-  for (const result of [usage, payments, recentUsage, recentPayments]) {
+  for (const result of [usage, payments, recentUsage, recentPayments, developerFunnelEvents]) {
     if (result.error) throw result.error;
   }
 
@@ -195,6 +196,77 @@ export async function loadCommercialOpsDashboard(days = 30) {
     payment_rollup: payments.data ?? [],
     recent_usage: recentUsage.data ?? [],
     recent_payments: recentPayments.data ?? [],
+    developer_api_funnel: (() => {
+      const rows = (developerFunnelEvents.data ?? []) as Array<Record<string, unknown>>;
+      const stageCounts = new Map<string, number>();
+      const attemptMap = new Map<string, {
+        attempt_id: string;
+        occurred_at: string | null;
+        principal_id: string | null;
+        key_id: string | null;
+        request_id: string | null;
+        capability: string | null;
+        stage: string;
+        outcome: string;
+        http_status: number | null;
+        error_code: string | null;
+        latency_ms: number | null;
+      }>();
+
+      for (const row of rows) {
+        const stage = String(row.stage ?? "unknown");
+        const outcome = String(row.outcome ?? "unknown");
+        const stageKey = `${stage}:${outcome}`;
+        stageCounts.set(stageKey, (stageCounts.get(stageKey) ?? 0) + 1);
+
+        const attemptId = String(row.attempt_id ?? "");
+        if (!attemptId) continue;
+        const existing = attemptMap.get(attemptId);
+        if (
+          !existing ||
+          Date.parse(String(row.occurred_at ?? "")) > Date.parse(existing.occurred_at ?? "")
+        ) {
+          attemptMap.set(attemptId, {
+            attempt_id: attemptId,
+            occurred_at: row.occurred_at ? String(row.occurred_at) : null,
+            principal_id: row.principal_id ? String(row.principal_id) : null,
+            key_id: row.key_id ? String(row.key_id) : null,
+            request_id: row.request_id ? String(row.request_id) : null,
+            capability: row.capability ? String(row.capability) : null,
+            stage,
+            outcome,
+            http_status: row.http_status == null ? null : Number(row.http_status),
+            error_code: row.error_code ? String(row.error_code) : null,
+            latency_ms: row.latency_ms == null ? null : Number(row.latency_ms),
+          });
+        }
+      }
+
+      const stage_rollup = [...stageCounts.entries()]
+        .map(([key, count]) => {
+          const separator = key.indexOf(":");
+          return {
+            stage: separator >= 0 ? key.slice(0, separator) : key,
+            outcome: separator >= 0 ? key.slice(separator + 1) : "unknown",
+            count,
+          };
+        })
+        .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage));
+
+      const latestAttempts = [...attemptMap.values()]
+        .sort((a, b) => Date.parse(b.occurred_at ?? "") - Date.parse(a.occurred_at ?? ""))
+        .slice(0, 100);
+
+      return {
+        observed_event_count: rows.length,
+        unique_attempt_count: attemptMap.size,
+        unique_principal_count: new Set(
+          rows.map((row) => row.principal_id ? String(row.principal_id) : null).filter(Boolean),
+        ).size,
+        stage_rollup,
+        latest_attempts: latestAttempts,
+      };
+    })(),
     boundaries: {
       upstream_news_source_identity_exposed: false,
       raw_request_body_exposed: false,
