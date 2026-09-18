@@ -46,6 +46,11 @@ create table if not exists public.live_signal_fragment_manifest (
   created_at timestamptz not null default now()
 );
 
+alter table public.live_flash_events
+  add column if not exists archived_fragment_id uuid
+    references public.live_signal_fragment_manifest(id),
+  add column if not exists archived_at timestamptz;
+
 create index if not exists live_signal_fragment_time_idx
   on public.live_signal_fragment_manifest(stream_key, period_end desc);
 
