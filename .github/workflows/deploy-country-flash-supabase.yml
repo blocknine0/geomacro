@@ -39,6 +39,7 @@ jobs:
           grep -q 'workflow_dispatch:' "$file"
           grep -q 'supabase db push --dry-run' "$file"
           grep -q 'FLASH_INGEST_TOKEN' "$file"
+          grep -q 'live-flash-align' "$file"
           grep -q -- '--no-verify-jwt' "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
@@ -195,4 +196,21 @@ jobs:
             exit 1
           fi
 
-          echo "Country flash Supabase deployment smoke checks passed."
+          align_code="$(curl --silent --show-error \\
+            --output /tmp/flash-align.json \\
+            --write-out '%{http_code}' \\
+            --request POST \\
+            --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \\
+            --header 'Content-Type: application/json' \\
+            --data '{}' \\
+            "${base}/live-flash-align")"
+
+          cat /tmp/flash-align.json
+          echo
+
+          if [[ "$align_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-align.json; then
+            echo "::error title=Alignment smoke check failed::live-flash-align did not return a successful response."
+            exit 1
+          fi
+
+          echo "Country flash and controlled Telegram alignment smoke checks passed."
