@@ -230,6 +230,14 @@ export async function deliverTestnetIntelligence(input: {
         assistiveContext.supplemental_counts.evidence_reference_count,
     };
   } catch (error) {
+    const code = error instanceof Error ? error.message : "TESTNET_INTELLIGENCE_UNAVAILABLE";
+    const failureStatus =
+      code === "STRUCTURAL_DATA_UNAVAILABLE" ||
+      code === "SIGNED_RISK_OBJECT_UNAVAILABLE"
+        ? 404
+        : code === "SUBJECT_REQUIRED"
+          ? 400
+          : 503;
     if (input.funnel_attempt_id) {
       await recordTestnetDeveloperApiFunnelEvent({
         attempt_id: input.funnel_attempt_id,
@@ -243,14 +251,10 @@ export async function deliverTestnetIntelligence(input: {
           : null,
         stage: "intelligence_delivery",
         outcome: "failed",
-        http_status: 503,
-        error_code:
-          error instanceof Error
-            ? error.message.slice(0, 120)
-            : "TESTNET_INTELLIGENCE_UNAVAILABLE",
+        http_status: failureStatus,
+        error_code: code.slice(0, 120),
       });
     }
-    const code = error instanceof Error ? error.message : "TESTNET_INTELLIGENCE_UNAVAILABLE";
     if (
       code === "STRUCTURAL_DATA_UNAVAILABLE" ||
       code === "SIGNED_RISK_OBJECT_UNAVAILABLE"
