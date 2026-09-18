@@ -54,6 +54,7 @@ async def main() -> None:
     commands = [
         ("intake", sys.executable, "production_entrypoint.py"),
         ("corroboration", sys.executable, "corroboration_loop.py"),
+        ("archive", sys.executable, "archive_loop.py"),
     ]
 
     tasks = {
