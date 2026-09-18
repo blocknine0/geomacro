@@ -70,6 +70,6 @@ describe("commercial growth automation safety contract", () => {
       "deferred_manual_mainnet_merchant_onboarding",
     );
     expect(manifest.providers.coinbase_x402.launch_cohort).toBe(true);
-    expect(manifest.providers.nevermined.launch_cohort).toBe(true);
+    expect(manifest.providers.nevermined.launch_cohort).toBe(false);
   });
 });
