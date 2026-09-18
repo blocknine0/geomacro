@@ -1,0 +1,50 @@
+name: Telegram free polling
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: telegram-free-poll
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    env:
+      GEOMACRO_FLASH_INGEST_URL: https://qogpagklwbfdmrgnrhzi.supabase.co/functions/v1/live-flash-ingest
+      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
+      TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
+      TELEGRAM_CHANNELS: ${{ secrets.TELEGRAM_CHANNELS }}
+      TELEGRAM_SOURCE_RELIABILITY_JSON: ${{ secrets.TELEGRAM_SOURCE_RELIABILITY_JSON }}
+      TELEGRAM_POLL_LIMIT: "200"
+      TELEGRAM_LOOKBACK_MINUTES: "30"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: workers/telegram-flash/requirements.txt
+
+      - name: Install Telegram client
+        run: python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt
+
+      - name: Poll subscribed public channels
+        run: python scripts/telegram-github-poll.py
+
+      - name: Emit non-secret completion marker
+        if: ${{ success() }}
+        run: echo "Telegram polling run completed"
