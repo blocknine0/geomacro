@@ -62,7 +62,7 @@ The delivery claim is the application-level replay/idempotency boundary. It bind
 ```bash
 curl -X POST https://api.cdp.coinbase.com/platform/v2/x402/validate \
   -H "Content-Type: application/json" \
-  -d '{"resource":"https://geomacro.live/api/x402/risk","method":"POST"}'
+  -d '{"resource":"https://geomacro.live/api/x402/intelligence","method":"POST"}'
 ```
 
 Acceptance requires `valid: true` and `simulation.outcome: "accepted"`.
