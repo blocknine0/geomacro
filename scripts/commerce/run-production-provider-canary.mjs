@@ -207,10 +207,16 @@ async function circlePayment(challenge, serializedBody, endpoint) {
     capturedSettlement = ctx?.settleResponse ?? null;
   });
 
+  let circleRequestBody;
+  try {
+    circleRequestBody = JSON.parse(serializedBody);
+  } catch {
+    fail("Circle production canary request body is not valid JSON");
+  }
   const result = await client.pay(endpoint.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: serializedBody,
+    body: circleRequestBody,
   });
   if (!capturedPayload) fail("Circle canary did not expose the signed x402 payload to the lifecycle hook");
 
@@ -348,6 +354,7 @@ async function main() {
     client_request_id_sha256: sha256(clientRequestId),
     paid_status: payment.paid.response.status,
     replay_status: replay.response.status,
+    payment_verified: true,
     settlement_proven: true,
     settlement_reference_sha256: sha256(paidSettlement),
     query_plan_hash: hashes.queryPlanHash,
