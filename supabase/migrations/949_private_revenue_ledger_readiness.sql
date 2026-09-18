@@ -112,14 +112,15 @@ begin
     'DELETE'
   );
 
-  select count(*), max(entry_sha256) filter (
-    where sequence_no = (
-      select max(sequence_no)
-      from public.private_commercial_revenue_delivery_ledger
-    )
-  )
-  into v_row_count, v_head_entry_sha256
+  select count(*)
+    into v_row_count
   from public.private_commercial_revenue_delivery_ledger;
+
+  select l.entry_sha256
+    into v_head_entry_sha256
+  from public.private_commercial_revenue_delivery_ledger l
+  order by l.sequence_no desc
+  limit 1;
 
   if v_verify_function_exists then
     select count(*)
