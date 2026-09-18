@@ -422,7 +422,8 @@
       "role": "independent OSINT publisher",
       "status": "PENDING",
       "identity_basis": "publisher-linked Telegram handle from prior manual review",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@KyivIndependent_official",
@@ -430,7 +431,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "channel identifies as official publisher channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@bbcrussian",
@@ -438,7 +440,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified official BBC Russian service",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@anadoluagency_en",
@@ -446,7 +449,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page states official Anadolu Agency English account",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@euronews_eng",
@@ -454,7 +458,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified verified Euronews English channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@nikkeiasia",
@@ -462,7 +467,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Nikkei Asia channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@rbc_news",
@@ -470,7 +476,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified official RBC channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@THnewsupdates",
@@ -478,7 +485,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified The Hindu feed",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@SCMP_News",
@@ -486,7 +494,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified South China Morning Post channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@hongkongfp",
@@ -494,7 +503,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Hong Kong Free Press channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@cnalatest",
@@ -502,7 +512,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified CNA channel linking cna.asia",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@AddisstandardEng",
@@ -510,7 +521,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Addis Standard channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@MiddleEastEye_TG",
@@ -518,7 +530,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Middle East Eye channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@trtworld",
@@ -526,7 +539,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified TRT World channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@the_jerusalem_post",
@@ -534,7 +548,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Jerusalem Post channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@listadapublica",
@@ -542,7 +557,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Agência Pública channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@BBCArabic",
@@ -550,7 +566,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page labels itself official BBC Arabic",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@France24_en",
@@ -558,7 +575,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page identifies FRANCE 24 English",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@France24_fr",
@@ -566,7 +584,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page identifies FRANCE 24 French",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@hindustantimes",
@@ -574,7 +593,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page labels channel official and links hindustantimes.com",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@thedailystar",
@@ -582,7 +602,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page identifies The Daily Star Bangladesh",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@AJENews_Official",
@@ -590,7 +611,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page uses Al Jazeera English branding and official-style handle; first-party ownership still required",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@AlJazeeraEnglish",
@@ -598,7 +620,8 @@
       "role": "publisher",
       "status": "HOLD",
       "identity_basis": "public channel exists but exact first-party ownership is not established by current evidence",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@ReutersWorldChannel",
@@ -606,7 +629,8 @@
       "role": "unofficial relay",
       "status": "HOLD",
       "identity_basis": "channel explicitly states it is not an official Reuters channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@bbcworld",
@@ -614,7 +638,8 @@
       "role": "unofficial relay",
       "status": "HOLD",
       "identity_basis": "Telegram page explicitly says not an official channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@BBCWorldoffl",
@@ -622,7 +647,8 @@
       "role": "unofficial relay",
       "status": "HOLD",
       "identity_basis": "claims BBC feed but is an independent aggregator, not first-party BBC",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@FinancialJuice",
@@ -630,7 +656,8 @@
       "role": "aggregator",
       "status": "HOLD",
       "identity_basis": "prior review identified automated relay/no affiliation",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@RFI_En",
@@ -638,7 +665,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "public Telegram page identifies RFI English and links rfi.fr; first-party ownership still requires operator review",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@DWNewsEnglish",
@@ -646,7 +674,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "public Telegram page identifies Deutsche Welle English branding and links dw.com; first-party ownership still requires operator review",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@aljazeeraglobal",
@@ -654,7 +683,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "public Telegram channel describes itself as Al Jazeera English and links aljazeera.com; first-party ownership still requires operator review",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@MIB_India",
@@ -663,7 +693,8 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
-      "identity_basis": "Official Government of India Ministry of Information & Broadcasting Telegram page; operator/source-rights review still required."
+      "identity_basis": "Official Government of India Ministry of Information & Broadcasting Telegram page; operator/source-rights review still required.",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@timesofindia",
@@ -672,7 +703,8 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
-      "identity_basis": "Public Telegram page identifies Times of India and explicitly calls it official; operator/source-rights review still required."
+      "identity_basis": "Public Telegram page identifies Times of India and explicitly calls it official; operator/source-rights review still required.",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@DaryoUz",
@@ -681,7 +713,8 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
-      "identity_basis": "Public directory identifies Daryo as an official Uzbek news outlet Telegram channel; first-party ownership review required."
+      "identity_basis": "Public directory identifies Daryo as an official Uzbek news outlet Telegram channel; first-party ownership review required.",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@sputnik_africa",
@@ -690,7 +723,8 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
-      "identity_basis": "Public Telegram page identifies Sputnik Africa; publisher identity is visible but commercial/rightsholder review remains required."
+      "identity_basis": "Public Telegram page identifies Sputnik Africa; publisher identity is visible but commercial/rightsholder review remains required.",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@sputnik_ethiopia",
@@ -699,7 +733,8 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
-      "identity_basis": "Public Sputnik Africa page links the Amharic regional channel; first-party ownership/operator review required."
+      "identity_basis": "Public Sputnik Africa page links the Amharic regional channel; first-party ownership/operator review required.",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@sputnik_afrique",
@@ -708,7 +743,8 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
-      "identity_basis": "Public Sputnik Africa page links the French regional channel; first-party ownership/operator review required."
+      "identity_basis": "Public Sputnik Africa page links the French regional channel; first-party ownership/operator review required.",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@unopsuzbekistan",
@@ -717,7 +753,8 @@
       "basis": "UNOPS official social-media directory lists Telegram for Uzbekistan; first-party operator and rights review required.",
       "status": "PENDING",
       "enabled": false,
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@TIKVAH_ETH",
@@ -726,7 +763,8 @@
       "basis": "Public regional-news listing identifies TIKVAH-ETHIOPIA; first-party publisher ownership and rights review required.",
       "status": "PENDING",
       "enabled": false,
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@QORAXABAR",
@@ -735,7 +773,8 @@
       "basis": "Public regional-news listing identifies QORAXABAR as an Official Channel; first-party publisher ownership and rights review required.",
       "status": "PENDING",
       "enabled": false,
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@Europeancommission",
@@ -744,7 +783,8 @@
       "basis": "Public Telegram channel identifies European Commission and links ec.europa.eu; first-party institutional identity is evident, but source-rights/operator approval remains required.",
       "status": "PENDING",
       "enabled": false,
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@BBCNewsAsia",
@@ -753,7 +793,8 @@
       "basis": "Public Telegram channel identifies itself as BBC Asia; first-party ownership should still be confirmed from BBC's official web/social footprint before approval.",
       "status": "PENDING",
       "enabled": false,
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@GeoPWatch",
@@ -764,7 +805,8 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
-      "independent_corroboration_required": true
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
     },
     {
       "handle": "@conflictarchive",
@@ -775,7 +817,8 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
-      "independent_corroboration_required": true
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
     },
     {
       "handle": "@ourwarstoday",
@@ -786,7 +829,8 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
-      "independent_corroboration_required": true
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
     },
     {
       "handle": "@intelslava",
@@ -797,7 +841,8 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
-      "independent_corroboration_required": true
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
     },
     {
       "handle": "@MaxOsintIntel",
@@ -808,7 +853,8 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
-      "independent_corroboration_required": true
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
     },
     {
       "handle": "@isnreport",
@@ -819,7 +865,8 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
-      "independent_corroboration_required": true
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
     },
     {
       "handle": "@CIG_telegram",
@@ -830,6 +877,172 @@
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY",
       "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@France24_ar",
+      "country": "Middle East / Arabic",
+      "region": "middle_east",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "identity_basis": "FRANCE 24 Arabic public Telegram channel explicitly describes itself as the official international news channel account and links france24.com/ar.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@AuroraIntel",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public Telegram channel identifies itself as the official channel of Aurora Intel and links its publisher site; useful OSINT/IMINT source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@GeopoliticalCenter",
+      "country": "Europe / Global",
+      "region": "western_central_europe",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public Telegram channel identifies itself as the official GeopoliticalCenter channel; Italian strategic/political/economic analysis.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@bnonews",
+      "country": "Global / United States",
+      "region": "north_america",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public Telegram channel identifies BNO News and describes breaking/developing stories from the U.S. and around the world.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@ClashReport",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public Telegram channel publishes breaking news, reports and opinions on ongoing global clashes; independent/non-first-party lead source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@warmonitors",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "High-volume public channel branded Global News Monitor, focused on breaking news and geopolitics; third-party source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@Middle_East_Spectator",
+      "country": "Middle East",
+      "region": "middle_east",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public channel states it is independent but not unbiased and focuses on Iran and Resistance Axis; high-frequency regional lead source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINTdefender",
+      "country": "Global / Europe / Middle East",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public OSINT channel covering breaking news and engineering analysis; linked social footprint identifies it as an open-source intelligence monitor.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@DeepStateUA",
+      "country": "Ukraine / Eastern Europe",
+      "region": "eastern_europe_balkans",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Large public Ukrainian analytical channel covering Ukraine and world events; map/OSINT-oriented source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@nexta_tv",
+      "country": "Belarus / Eastern Europe",
+      "region": "eastern_europe_balkans",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel identifies NEXTA and provides Belarus news, analysis and investigations; cross-linked English/world feeds.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINTLive",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public channel aggregates feeds from prominent OSINT accounts; useful as discovery/lead layer, not primary authority.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINTIndustries",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel belongs to OSINT Industries and publishes investigation/verification material; relevant to source validation and threat intelligence.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OsintTv",
+      "country": "India / Global",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel identifies itself as an India-based channel covering foreign affairs, geopolitics and aviation.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINT_updates",
+      "country": "India / Pakistan",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public channel covers OSINT, India-Pakistan and breaking updates; low-trust lead source requiring independent corroboration.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@geopoliticalcenterfb",
+      "country": "Europe / Global",
+      "region": "western_central_europe",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel identifies GeopoliticalCenter as an independent strategic, political and economic analysis group based in Italy.",
       "independent_corroboration_required": true
     }
   ],
@@ -1906,6 +2119,29 @@
         "@CIG_telegram"
       ],
       "runtime_effect": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "full_three_category_crosscheck_and_merge",
+      "added": [
+        "@France24_ar",
+        "@AuroraIntel",
+        "@GeopoliticalCenter",
+        "@bnonews",
+        "@ClashReport",
+        "@warmonitors",
+        "@Middle_East_Spectator",
+        "@OSINTdefender",
+        "@DeepStateUA",
+        "@nexta_tv",
+        "@OSINTLive",
+        "@OSINTIndustries",
+        "@OsintTv",
+        "@OSINT_updates",
+        "@geopoliticalcenterfb"
+      ],
+      "runtime_effect": false,
+      "auto_approval": false
     }
   ],
   "unofficial_source_policy": {
@@ -1913,5 +2149,37 @@
     "runtime_effect": false,
     "rule": "Unofficial channels may be ingested only as UNVERIFIED lead intelligence after manual approval; they can never directly publish GRI/Risk Gate/Risk Object or customer intelligence; independent corroboration is mandatory.",
     "no_auto_approval": true
+  },
+  "source_categories": {
+    "official_first_party_candidate": {
+      "description": "First-party publisher/government/institutional candidates; still require operator approval and commercial-rights review.",
+      "auto_approve": false
+    },
+    "independent_osint_candidate": {
+      "description": "Independent OSINT/research/publisher sources; useful for discovery and corroboration, never sole truth.",
+      "auto_approve": false
+    },
+    "unofficial_high_signal_lead": {
+      "description": "Unofficial high-signal channels for early-warning lead intelligence only.",
+      "auto_approve": false,
+      "independent_corroboration_required": true
+    }
+  },
+  "crosscheck": {
+    "date": "2026-09-18",
+    "checked_against": [
+      "previous Geomacro source lists",
+      "current global country matrix",
+      "public Telegram pages",
+      "independent Telegram directories",
+      "OSINT source lists"
+    ],
+    "duplicate_policy": "same handle is stored once; existing candidates were reclassified rather than duplicated",
+    "exclusion_policy": [
+      "explicitly unofficial publisher impersonators remain HOLD",
+      "raw Telegram content is never customer-delivered",
+      "no candidate is runtime-approved by this file"
+    ],
+    "coverage_note": "The global Telegram ecosystem is too large to enumerate exhaustively; this is the cross-checked Geomacro discovery universe, not a claim that every public channel on Telegram is listed."
   }
 }
