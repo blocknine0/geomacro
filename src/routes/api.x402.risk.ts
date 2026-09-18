@@ -214,10 +214,11 @@ export const Route = createFileRoute("/api/x402/risk")({
         }
 
         let prepared: Record<string, unknown>;
-        if (claim.response_payload && typeof claim.response_payload === "object") {
-          prepared = claim.response_payload as Record<string, unknown>;
-        } else {
-          try {
+        let preparedResponseSha256: string;
+        try {
+          if (claim.response_payload && typeof claim.response_payload === "object") {
+            prepared = claim.response_payload as Record<string, unknown>;
+          } else {
             // Final deliverability re-check immediately before irreversible settlement.
             const result = await proveLegacyDeliverable(body);
             prepared = {
@@ -233,14 +234,22 @@ export const Route = createFileRoute("/api/x402/risk")({
                 payer: verified.payer ?? null,
                 settlement_reference: null,
                 bazaar_extension_echoed: paymentPayloadEchoesBazaar(paymentPayload),
-                note: "Base Sepolia x402 acceptance-test payment. Testnet activity is non-revenue.",
+                note:
+                  config.commercialEnvironment === "testnet"
+                    ? "Base Sepolia x402 acceptance-test payment. Testnet activity is non-revenue."
+                    : "Base mainnet x402 production payment. Revenue remains pending until reconciliation.",
               },
             };
-            await prepareCoinbaseX402Delivery({ paymentFingerprint, claimToken, responsePayload: prepared });
-          } catch (error) {
-            await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "RISK_RESOURCE_UNAVAILABLE" });
-            return json({ ok: false, chargeable: false, error: { code: "RISK_RESOURCE_UNAVAILABLE", message: "Requested risk context changed or became unavailable before settlement; no payment was taken." }, execution_authorized: false }, 409);
           }
+          const preparedResult = await prepareCoinbaseX402Delivery({
+            paymentFingerprint,
+            claimToken,
+            responsePayload: prepared,
+          });
+          preparedResponseSha256 = preparedResult.responseSha256;
+        } catch (error) {
+          await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: error instanceof Error ? error.message : "RISK_RESOURCE_UNAVAILABLE" });
+          return json({ ok: false, chargeable: false, error: { code: "RISK_RESOURCE_UNAVAILABLE", message: "Requested risk context changed or became unavailable before settlement; no payment was taken." }, execution_authorized: false }, 409);
         }
 
         let settlement: CoinbaseSettleResult;
@@ -272,7 +281,19 @@ export const Route = createFileRoute("/api/x402/risk")({
         }
 
         const bazaar = bazaarExtensionOutcome(verified, settlement);
-        await persistCoinbaseSettlementTelemetry({ requestId: String(prepared.request_id ?? ""), payer: settlement.payer ?? verified.payer ?? null, settlementTx: settlement.transaction, settlementNetwork: settlement.network ?? config.networkName, config, paymentFingerprint, bazaarExtensionEchoed: paymentPayloadEchoesBazaar(paymentPayload), bazaarStatus: bazaar.status, bazaarRejectedReason: bazaar.rejectedReason });
+        await persistCoinbaseSettlementTelemetry({
+          requestId: String(prepared.request_id ?? ""),
+          payer: settlement.payer ?? verified.payer ?? null,
+          settlementTx: settlement.transaction,
+          settlementNetwork: settlement.network ?? config.networkName,
+          config,
+          paymentFingerprint,
+          responseSha256: preparedResponseSha256,
+          capability: "risk_preflight_coinbase_x402",
+          bazaarExtensionEchoed: paymentPayloadEchoesBazaar(paymentPayload),
+          bazaarStatus: bazaar.status,
+          bazaarRejectedReason: bazaar.rejectedReason,
+        });
         return json(finalPaidResponse(prepared, settlement, config), 200, { "PAYMENT-RESPONSE": coinbaseX402PaymentResponseHeader(settlement) });
       },
     },
