@@ -67,6 +67,7 @@ describe("Telegram signal Supabase isolation contract", () => {
     const corroborate = read(
       "supabase/functions/live-flash-corroborate/index.ts",
     );
+    const archive = read("supabase/functions/live-flash-archive/index.ts");
 
     expect(lifecycle).toContain("signal_category text not null default 'UNCLASSIFIED'");
     expect(lifecycle).toContain("source_version integer not null default 1");
