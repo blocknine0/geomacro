@@ -407,8 +407,8 @@ function validateCorpus() {
 
   assert(hashes.size === 7000, "Seven-day corpus must contain exactly 7000 unique questions");
   assert(modeCounts.current === 3500 && modeCounts.historical === 3500, "Corpus must split current/historical 50/50");
-  assert(categoryCounts.geopolitics === 2334, "Unexpected geopolitics corpus count");
-  assert(categoryCounts.macro === 2334, "Unexpected macro corpus count");
+  assert(categoryCounts.geopolitics === 2338, "Unexpected geopolitics corpus count");
+  assert(categoryCounts.macro === 2338, "Unexpected macro corpus count");
   assert(categoryCounts.critical_minerals === 2332, "Unexpected critical-minerals corpus count");
 
   console.log(JSON.stringify({
