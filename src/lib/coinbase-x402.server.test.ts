@@ -61,7 +61,7 @@ describe("Coinbase x402 configuration", () => {
     process.env.COINBASE_X402_MAINNET_ACK = COINBASE_X402_MAINNET_ACK;
     expect(() => getCoinbaseX402Config()).toThrow("COINBASE_X402_PRICE_USDC is required");
 
-    process.env.COINBASE_X402_PRICE_USDC = "0.05";
+    process.env.COINBASE_X402_PRICE_USDC = "0.02";
     const config = getCoinbaseX402Config();
     expect(config?.network).toBe(COINBASE_X402_MAINNET_NETWORK);
     expect(config?.chainId).toBe("8453");
