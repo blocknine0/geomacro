@@ -45,6 +45,15 @@ export default defineEventHandler((event) => {
     </div>
 
     <div class="panel">
+      <div class="top"><div><h2 class="section-title">Developer API activation funnel</h2><div class="muted">Every Testnet Developer API attempt is traced from request receipt through authentication, scope, preflight, payment and intelligence delivery. Failed attempts are retained even when no successful usage event exists.</div></div></div>
+      <div id="funnelCards" class="grid" style="margin-top:12px"></div>
+      <div class="top" style="margin-top:18px"><div><h3 class="section-title">Stage rollup</h3></div></div>
+      <div id="funnelRollup" class="table-wrap"></div>
+      <div class="top" style="margin-top:18px"><div><h3 class="section-title">Latest attempts</h3></div></div>
+      <div id="funnelTable" class="table-wrap"></div>
+    </div>
+
+    <div class="panel">
       <div class="top"><div><h2 class="section-title">Recent payments & settlements</h2><div class="muted">Provider, rail, environment, asset/currency, status, tx/reference, fees, reconciliation and revenue classification.</div></div></div>
       <div id="paymentTable" class="table-wrap"></div>
     </div>
@@ -102,6 +111,14 @@ function growthTable(rows){
 }
 function summarize(data){
   const usage=data.recent_usage||[], pay=data.recent_payments||[];
+  const funnel=data.developer_api_funnel||{};
+  const attempts=Number(funnel.unique_attempt_count||0);
+  const developers=Number(funnel.unique_principal_count||0);
+  const delivered=(funnel.stage_rollup||[]).filter(x=>x.stage==='completed'&&x.outcome==='passed').reduce((a,x)=>a+Number(x.count||0),0);
+  const paymentRequired=(funnel.stage_rollup||[]).filter(x=>x.stage==='payment'&&x.outcome==='required').reduce((a,x)=>a+Number(x.count||0),0);
+  const paymentFailed=(funnel.stage_rollup||[]).filter(x=>x.stage==='payment'&&x.outcome==='failed').reduce((a,x)=>a+Number(x.count||0),0);
+  const funnelCards=[['API attempts',attempts],['Unique principals',developers],['Completed deliveries',delivered],['Payment required',paymentRequired],['Payment failures',paymentFailed],['Telemetry events',Number(funnel.observed_event_count||0)]];
+  $('funnelCards').innerHTML=funnelCards.map(([k,v])=>'<div class="card"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>').join('');
   const req=usage.length, ok=usage.filter(x=>x.success).length;
   const credits=usage.reduce((a,x)=>a+num(x.credits_charged),0);
   const settled=pay.filter(x=>x.payment_status==='settled').length;
@@ -131,6 +148,14 @@ async function reviewGrowth(id,action){
     await loadGrowth();
   }catch(e){$('growthStatusText').innerHTML='<span class="danger">'+esc(e.message)+'</span>'}
 }
+function renderDeveloperFunnel(data){
+  const funnel=data.developer_api_funnel||{};
+  const rollup=funnel.stage_rollup||[];
+  const attempts=funnel.latest_attempts||[];
+  $('funnelRollup').innerHTML=table(rollup);
+  $('funnelTable').innerHTML=table(attempts);
+}
+
 async function load(){
   opsToken=$('token').value.trim();
   if(opsToken.length<32){$('status').innerHTML='<span class="danger">Enter the owner token.</span>';return}
@@ -138,7 +163,7 @@ async function load(){
   try{
     const r=await fetch('/api/internal/commercial-ops?days='+encodeURIComponent($('days').value),{headers:{'x-geomacro-ops-token':opsToken,'accept':'application/json'},cache:'no-store'});
     const j=await r.json(); if(!r.ok||!j.ok)throw new Error(j?.error?.message||'Load failed');
-    summarize(j.data); $('usageTable').innerHTML=table(j.data.recent_usage); $('paymentTable').innerHTML=table(j.data.recent_payments); $('usageRollup').innerHTML=table(j.data.usage_rollup); $('paymentRollup').innerHTML=table(j.data.payment_rollup);
+    summarize(j.data); renderDeveloperFunnel(j.data); $('usageTable').innerHTML=table(j.data.recent_usage); $('paymentTable').innerHTML=table(j.data.recent_payments); $('usageRollup').innerHTML=table(j.data.usage_rollup); $('paymentRollup').innerHTML=table(j.data.payment_rollup);
     $('content').classList.remove('hidden'); $('status').innerHTML='<span class="ok">Loaded '+esc(j.data.generated_at)+'</span>';
     await loadGrowth();
   }catch(e){$('status').innerHTML='<span class="danger">'+esc(e.message)+'</span>'}
