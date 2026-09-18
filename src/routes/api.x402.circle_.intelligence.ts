@@ -564,6 +564,7 @@ export const Route = createFileRoute("/api/x402/circle/intelligence")({
             plan,
             requestId,
             clientRequestId: parsed.client_request_id ?? null,
+            priceUsdc: config.priceUsdc,
           });
           responsePayload = {
             ...assembled,
