@@ -49,6 +49,8 @@ describe("commercial production acceptance ordered chain", () => {
     expect(canaryVerifier).toContain('revenue_classification !== "non_revenue_internal"');
     expect(canaryVerifier).toContain('e.purchase_classification !== "internal_canary"');
     expect(canaryVerifier).toContain("commercial_revenue !== false");
+    expect(canaryVerifier).toContain("single_payment_event_for_settlement");
+    expect(canaryVerifier).toContain("payment_event_count_for_settlement");
   });
 
   it("requires deliberately observed normal, global freeze and every single-provider quarantine state", () => {
