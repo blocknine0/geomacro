@@ -349,7 +349,7 @@ export const Route = createFileRoute("/api/x402/intelligence")({
         let prepared: Record<string, unknown>;
         let preparedResponseSha256: string;
         try {
-          const intelligence = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null });
+          const intelligence = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null, priceUsdc: config.priceUsdc });
           if (intelligence.execution_authorized !== false) throw new Error("EXECUTION_BOUNDARY_VIOLATION");
           prepared = {
             ...intelligence,
