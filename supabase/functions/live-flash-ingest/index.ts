@@ -9,6 +9,9 @@ const SERVICE_ROLE_KEY =
 const FLASH_INGEST_TOKEN =
   Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
 
+const SIGNAL_DB_MODE =
+  Deno.env.get("SIGNAL_DB_MODE") === "true"
+
 const ALLOWED_SOURCE_IDS =
   new Set([
     "telegram_mtproto_flash",
@@ -178,6 +181,20 @@ function clampCoordinate(
   return numeric
 }
 
+function fractionalHundredths(value: unknown) {
+  const numeric = clampScore(value)
+  return numeric === null ? null : Math.round(numeric * 100)
+}
+
+function coordinateMicrodegrees(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+) {
+  const numeric = clampCoordinate(value, minimum, maximum)
+  return numeric === null ? null : Math.round(numeric * 1_000_000)
+}
+
 function cleanString(
   value: unknown,
   maxLength: number,
@@ -299,6 +316,10 @@ async function loadCountries() {
     return countryCache.rows
   }
 
+  if (SIGNAL_DB_MODE) {
+    return []
+  }
+
   const result =
     await db
       .from("live_country_registry")
@@ -328,9 +349,11 @@ function explicitIsoMatches(
   rows: CountryRow[],
 ) {
   const allowed =
-    new Set(
-      rows.map(row => row.iso3)
-    )
+    SIGNAL_DB_MODE
+      ? null
+      : new Set(
+          rows.map(row => row.iso3)
+        )
 
   const values = [
     payload.country_iso3,
@@ -357,7 +380,7 @@ function explicitIsoMatches(
 
     if (
       !/^[A-Z]{3}$/.test(iso3) ||
-      !allowed.has(iso3) ||
+      (!SIGNAL_DB_MODE && !allowed?.has(iso3)) ||
       seen.has(iso3)
     ) {
       continue
@@ -821,44 +844,78 @@ Deno.serve(async request => {
       publishedAt,
     updated_at:
       new Date().toISOString(),
-    headline,
-    body,
+    // The signal project is a compact hot index. Keep only a bounded
+    // headline; full body/raw payload is never persisted here.
+    headline:
+      SIGNAL_DB_MODE
+        ? headline.slice(0, 512)
+        : headline,
+    body:
+      null,
     source_channel:
-      sourceChannel,
+      sourceChannel
+        ? sourceChannel.slice(0, 120)
+        : null,
     source_url:
-      sourceUrl,
+      sourceUrl
+        ? sourceUrl.slice(0, 512)
+        : null,
     event_type:
       cleanString(
         payload.event_type,
-        200,
+        SIGNAL_DB_MODE ? 80 : 200,
       ),
     severity:
-      clampScore(
-        payload.severity
-      ),
+      SIGNAL_DB_MODE
+        ? null
+        : clampScore(payload.severity),
     source_reliability:
-      telegramChannel
-        ? clampScore(
-            telegramChannel
-              .source_reliability
-          )
-        : clampScore(
-            payload.source_reliability
-          ),
+      SIGNAL_DB_MODE
+        ? null
+        : telegramChannel
+          ? clampScore(
+              telegramChannel.source_reliability
+            )
+          : clampScore(
+              payload.source_reliability
+            ),
     verification_status:
       verificationStatus,
     latitude:
-      clampCoordinate(
-        payload.latitude,
-        -90,
-        90,
-      ),
+      SIGNAL_DB_MODE
+        ? null
+        : clampCoordinate(
+            payload.latitude,
+            -90,
+            90,
+          ),
     longitude:
-      clampCoordinate(
-        payload.longitude,
-        -180,
-        180,
-      ),
+      SIGNAL_DB_MODE
+        ? null
+        : clampCoordinate(
+            payload.longitude,
+            -180,
+            180,
+          ),
+    severity_bps:
+      SIGNAL_DB_MODE
+        ? fractionalHundredths(payload.severity)
+        : undefined,
+    source_reliability_bps:
+      SIGNAL_DB_MODE
+        ? fractionalHundredths(
+            telegramChannel?.source_reliability ??
+            payload.source_reliability
+          )
+        : undefined,
+    latitude_e6:
+      SIGNAL_DB_MODE
+        ? coordinateMicrodegrees(payload.latitude, -90, 90)
+        : undefined,
+    longitude_e6:
+      SIGNAL_DB_MODE
+        ? coordinateMicrodegrees(payload.longitude, -180, 180)
+        : undefined,
     commodity_tags:
       Array.isArray(
         payload.commodity_tags
@@ -876,7 +933,6 @@ Deno.serve(async request => {
             .slice(0, 30)
         : [],
     raw_payload:
-      payload.raw_payload ??
       null,
     content_hash:
       contentHash,

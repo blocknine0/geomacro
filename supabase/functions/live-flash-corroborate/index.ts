@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 const FLASH_INGEST_TOKEN = Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
+const SIGNAL_DB_MODE = Deno.env.get("SIGNAL_DB_MODE") === "true"
 
 const db = createClient(
   SUPABASE_URL,
@@ -34,6 +35,7 @@ type Flash = {
   headline: string
   body: string | null
   source_reliability: number | null
+  source_reliability_bps: number | null
   verification_status: string
 }
 
@@ -177,7 +179,7 @@ Deno.serve(async request => {
   const flashResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status",
     )
     .gte("ingested_at", cutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
@@ -215,21 +217,28 @@ Deno.serve(async request => {
     }
   }
 
-  const structuredResult = await db
-    .from("live_structured_events")
-    .select(
-      "id,title,summary,primary_country,countries,last_seen_at,first_seen_at,independent_source_count",
-    )
-    .gte("last_seen_at", cutoff)
-    .order("last_seen_at", { ascending: false })
-    .limit(500)
+  // The isolated signal project intentionally has no customer-facing
+  // structured-intelligence table. Main production intelligence remains in
+  // the authoritative project and is aligned through a controlled handoff.
+  let structuredEvents: StructuredEvent[] = []
 
-  if (structuredResult.error) {
-    console.error(structuredResult.error)
-    return jsonResponse(500, { ok: false, error: "structured_query_failed" })
+  if (!SIGNAL_DB_MODE) {
+    const structuredResult = await db
+      .from("live_structured_events")
+      .select(
+        "id,title,summary,primary_country,countries,last_seen_at,first_seen_at,independent_source_count",
+      )
+      .gte("last_seen_at", cutoff)
+      .order("last_seen_at", { ascending: false })
+      .limit(500)
+
+    if (structuredResult.error) {
+      console.error(structuredResult.error)
+      return jsonResponse(500, { ok: false, error: "structured_query_failed" })
+    }
+
+    structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
   }
-
-  const structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
 
   let verified = 0
   let corroborating = 0
@@ -238,7 +247,9 @@ Deno.serve(async request => {
 
   for (const flash of flashes) {
     const primaryCountries = countryByFlash.get(flash.flash_id) ?? new Set<string>()
-    const primaryText = `${flash.headline ?? ""} ${flash.body ?? ""}`
+    const primaryText = SIGNAL_DB_MODE
+      ? `${flash.headline ?? ""}`
+      : `${flash.headline ?? ""} ${flash.body ?? ""}`
     const primaryTime = flash.published_at ?? flash.ingested_at
     const primaryFamily = flashFamily(flash)
 
@@ -264,7 +275,9 @@ Deno.serve(async request => {
       const countryOverlap = overlaps(primaryCountries, otherCountries)
       const score = similarity(
         primaryText,
-        `${other.headline ?? ""} ${other.body ?? ""}`,
+        SIGNAL_DB_MODE
+          ? `${other.headline ?? ""}`
+          : `${other.headline ?? ""} ${other.body ?? ""}`,
       )
 
       if (!((countryOverlap && score >= 0.34) || score >= 0.58)) continue
@@ -373,7 +386,14 @@ Deno.serve(async request => {
 
     const prior = Math.max(
       0,
-      Math.min(10, Number(flash.source_reliability ?? 50) * 0.10),
+      Math.min(
+        10,
+        Number(
+          SIGNAL_DB_MODE
+            ? (flash.source_reliability_bps ?? 5000) / 100
+            : (flash.source_reliability ?? 50)
+        ) * 0.10,
+      ),
     )
 
     const verificationScore = Math.max(
@@ -421,7 +441,12 @@ Deno.serve(async request => {
       .from("live_flash_events")
       .update({
         verification_status: nextStatus,
-        verification_score: Number(verificationScore.toFixed(3)),
+        verification_score: SIGNAL_DB_MODE
+          ? null
+          : Number(verificationScore.toFixed(3)),
+        verification_score_bps: SIGNAL_DB_MODE
+          ? Math.round(verificationScore * 100)
+          : null,
         corroboration_count: edges.length,
         independent_source_count: distinctSourceCount,
         verified_at: nextStatus === "VERIFIED" ? new Date().toISOString() : null,

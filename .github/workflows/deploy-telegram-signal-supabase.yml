@@ -1,0 +1,128 @@
+name: Deploy Telegram signal ingest to isolated Supabase
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan pending migrations only; apply migrates and deploys the isolated signal functions."
+        required: true
+        default: plan
+        type: choice
+        options: [plan, apply]
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-telegram-signal-supabase.yml"
+      - "supabase/functions/live-flash-archive/**"
+      - "supabase/migrations/951_telegram_signal_compact_storage.sql"
+      - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
+      - "supabase/functions/live-flash-ingest/**"
+      - "supabase/functions/live-flash-corroborate/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflow:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate isolated deployment boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=".github/workflows/deploy-telegram-signal-supabase.yml"
+          grep -q 'workflow_dispatch:' "$file"
+          grep -q 'qogpagklwbfdmrgnrhzi' "$file"
+          grep -q 'SIGNAL_DB_MODE' "$file"
+          grep -q -- '--no-verify-jwt' "$file"
+          ! grep -q 'ldpwajisioljyjtojvfx' "$file"
+          echo "PASS: Telegram signal deployment remains isolated from authoritative production Supabase."
+
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: deploy-telegram-signal-supabase-production
+      cancel-in-progress: false
+    env:
+      EXPECTED_SIGNAL_SUPABASE_PROJECT_REF: qogpagklwbfdmrgnrhzi
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_DB_PASSWORD }}
+      FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate required signal-project secrets and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing signal-project secret::${name} is not configured."
+              missing=1
+            fi
+          done
+          if [[ "${{ inputs.mode }}" == "apply" && -z "${FLASH_INGEST_TOKEN:-}" ]]; then
+            echo "::error title=Missing signal-project secret::FLASH_INGEST_TOKEN is required for apply mode."
+            missing=1
+          fi
+          if [[ "$missing" -ne 0 ]]; then exit 1; fi
+          if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SIGNAL_SUPABASE_PROJECT_REF" ]]; then
+            echo "::error title=Wrong signal-project target::Refusing to deploy outside the dedicated Telegram signal Supabase project."
+            exit 1
+          fi
+          echo "PASS: isolated Telegram signal Supabase project confirmed."
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+      - name: Link isolated signal project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Show pending database migrations
+        run: supabase db push --dry-run
+      - name: Stop after deployment plan
+        if: ${{ inputs.mode == 'plan' }}
+        run: echo "Plan completed. No signal-project database or function changes were applied."
+      - name: Apply signal database migrations
+        if: ${{ inputs.mode == 'apply' }}
+        run: supabase db push
+      - name: Configure isolated function secrets
+        if: ${{ inputs.mode == 'apply' }}
+        run: |
+          set -euo pipefail
+          supabase secrets set FLASH_INGEST_TOKEN="$FLASH_INGEST_TOKEN" SIGNAL_DB_MODE="true" --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Deploy isolated live flash ingest function
+        if: ${{ inputs.mode == 'apply' }}
+        run: supabase functions deploy live-flash-ingest --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      - name: Deploy isolated live flash corroboration function
+        if: ${{ inputs.mode == 'apply' }}
+        run: supabase functions deploy live-flash-corroborate --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      - name: Deploy isolated live flash archive function
+        if: ${{ inputs.mode == 'apply' }}
+        run: supabase functions deploy live-flash-archive --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      - name: Smoke-check isolated endpoints without synthetic inserts
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          ingest_code="$(curl --silent --show-error --output /tmp/flash-ingest.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-ingest")"
+          cat /tmp/flash-ingest.json
+          [[ "$ingest_code" == "400" ]] && grep -q 'source_record_id_and_headline_required' /tmp/flash-ingest.json
+          corroborate_code="$(curl --silent --show-error --output /tmp/flash-corroborate.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-corroborate")"
+          cat /tmp/flash-corroborate.json
+          [[ "$corroborate_code" == "200" ]] && grep -q '"ok":true' /tmp/flash-corroborate.json
+          echo "Isolated Telegram signal Supabase smoke checks passed."
