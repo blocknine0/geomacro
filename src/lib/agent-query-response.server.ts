@@ -201,7 +201,7 @@ function publicRiskState(object: LoadedRiskObject["object"]) {
   };
 }
 
-function buildCurrentState(
+async function buildCurrentState(
   plan: AgentQueryPlan,
   structural: Awaited<ReturnType<typeof structuralSubject>>[],
   riskObjects: LoadedRiskObject[],
@@ -212,11 +212,45 @@ function buildCurrentState(
     hotTopics.map((result) => [subjectKey(result.subject), result]),
   );
 
-  return plan.subjects.map((subject) => {
+  const asOf = plan.as_of ?? new Date().toISOString();
+
+  return Promise.all(plan.subjects.map(async (subject) => {
     const key = subjectKey(subject);
     const structuralRow = structural.find((item) => subjectKey(item.subject) === key);
     const risk = riskBySubject.get(key);
     const hot = hotBySubject.get(key);
+
+    const historicalReferencePoints = risk
+      ? await Promise.all(
+          [
+            ["30d", 30],
+            ["90d", 90],
+          ] as const,
+        ).then(async (windows) =>
+          Promise.all(
+            windows.map(async ([window, days]) => {
+              const referenceAsOf = new Date(Date.parse(asOf) - days * 86_400_000).toISOString();
+              const reference = await loadCommercialRiskObjectForAgentQuery(subject, referenceAsOf);
+              if (!reference) return {
+                window,
+                available: false,
+                as_of: referenceAsOf,
+              };
+              return {
+                window,
+                available: true,
+                as_of: reference.generated_at,
+                score: reference.risk.score,
+                label: reference.risk.label,
+                delta_from_current: Number((risk.object.risk.score - reference.risk.score).toFixed(4)),
+                object_id: reference.object_id,
+                methodology_version: reference.methodology_version,
+              };
+            }),
+          ),
+        )
+      : [];
+
     const developmentInputs = (hot?.events ?? []).map((event) => publicStructuralDevelopment({
       event_id: event.event_id,
       story_key: event.story_key,
@@ -238,7 +272,7 @@ function buildCurrentState(
 
     const stateVersion = intelligenceStateVersion({
       subject,
-      as_of: plan.as_of ?? new Date().toISOString(),
+      as_of: asOf,
       risk_calculation_hash: risk?.integrity.calculation_hash ?? null,
       structural_observation_hashes:
         (structuralRow?.intelligence
@@ -259,6 +293,9 @@ function buildCurrentState(
       subject,
       state_version: stateVersion,
       risk: risk ? publicRiskState(risk) : null,
+      historical_context: {
+        reference_states: historicalReferencePoints,
+      },
       structural: structuralRow?.evidence_summary ?? null,
       live: {
         current_event_signal: hot?.current_event_signal ?? false,
@@ -268,12 +305,12 @@ function buildCurrentState(
       },
       developments: developmentInputs,
     };
-  });
+  }));
 }
 
 function buildDirectAnswer(
   plan: AgentQueryPlan,
-  states: ReturnType<typeof buildCurrentState>,
+  states: Awaited<ReturnType<typeof buildCurrentState>>,
 ) {
   const supported = states.filter((state) => state.risk !== null);
   if (!supported.length) {
@@ -504,7 +541,7 @@ export async function assembleAgentQueryResponse(input: {
     ),
     limitations: result.limitations,
   }));
-  const currentStates = buildCurrentState(plan, structural, riskObjects, hotTopics);
+  const currentStates = await buildCurrentState(plan, structural, riskObjects, hotTopics);
   const adaptiveAnalysis = intentAnalysis(plan, riskObjects);
 
   const core = {
