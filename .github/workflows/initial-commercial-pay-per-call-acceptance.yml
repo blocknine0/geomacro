@@ -1,0 +1,179 @@
+name: Initial Commercial Pay-Per-Call Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA to accept for the initial commercial pay-per-call path"
+        required: true
+        type: string
+      confirmation:
+        description: "Type exactly ACCEPT_GEOMACRO_INITIAL_0_05_USDC_PAY_PER_CALL"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: initial-commercial-pay-per-call-acceptance
+  cancel-in-progress: false
+
+jobs:
+  accept:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+
+    steps:
+      - name: Validate exact candidate and no-funds acceptance acknowledgement
+        shell: bash
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$DISPATCH_REF" == 'refs/heads/main' ]]
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]]
+          [[ "$CONFIRMATION" == 'ACCEPT_GEOMACRO_INITIAL_0_05_USDC_PAY_PER_CALL' ]]
+          echo "PASS: exact current main candidate accepted for non-funded commercial readiness."
+
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618eaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify exact product contract, pricing and milestone
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun - <<'NODE'
+          const contract = await Bun.file("src/lib/geomacro-intelligence-contract.ts").text();
+          const env = await Bun.file(".env.example").text();
+          const config = await Bun.file("config/prelaunch-mainnet-x402.env.example").text();
+          const manifest = await Bun.file("config/commercial-launch-manifest.json").json();
+
+          if (!contract.includes('"0.05"')) throw new Error("canonical intelligence price is not 0.05");
+          if (!env.includes("COINBASE_X402_PRICE_USDC=0.05")) throw new Error("Coinbase production example is not 0.05");
+          if (!config.includes("COINBASE_X402_PRICE_USDC=0.05")) throw new Error("Coinbase prelaunch config is not 0.05");
+          if (!config.includes("CIRCLE_X402_PRICE_USDC=0.05")) throw new Error("Circle prelaunch config is not 0.05");
+
+          if (manifest.commercial_milestone?.launch_price_usdc !== "0.05") throw new Error("manifest launch price mismatch");
+          if (manifest.commercial_milestone?.early_adoption_delivery_target !== 10000) throw new Error("manifest 10k milestone mismatch");
+          if (manifest.commercial_milestone?.gross_usdc_if_10000_successful_deliveries !== "500.00") throw new Error("manifest 10k gross milestone mismatch");
+          if (manifest.commercial_milestone?.pre_funding_required !== false) throw new Error("10k milestone must not require founder pre-funding");
+
+          if (manifest.required_gates?.includes("strict_p0_capacity_closure")) throw new Error("40k P0 scale proof must not be an initial launch gate");
+          if (manifest.required_gates?.includes("provider_capped_paid_smoke_reconciled")) throw new Error("founder-funded provider canary must not block initial no-funds acceptance");
+          if (manifest.required_gates?.includes("marketplace_post_listing_verification")) throw new Error("marketplace verification is post-launch, not initial launch acceptance");
+          if (!manifest.optional_scale_gates?.includes("strict_p0_capacity_closure")) throw new Error("optional 40k scale gate must remain explicitly documented");
+          if (!manifest.optional_scale_gates?.includes("distributed_40k_observability_closure")) throw new Error("optional distributed 40k gate must remain explicitly documented");
+
+          if (manifest.launch_rule?.scale_certification_required_before_initial_launch !== false) throw new Error("scale certification must remain optional for initial launch");
+          if (manifest.launch_rule?.require_internal_real_money_canary_before_initial_launch !== false) throw new Error("internal real-money canary must remain optional for no-funds launch");
+          if (manifest.launch_rule?.require_external_first_purchase_before_revenue_claim !== true) throw new Error("external first purchase must be required before revenue claim");
+
+          if (!env.includes("GEOMACRO_COMMERCIAL_LAUNCH_ACK=")) throw new Error("global launch ack must remain present and blank by default");
+          if (!env.includes("COINBASE_X402_MAINNET_ACK=")) throw new Error("Coinbase mainnet ack must remain present and blank by default");
+          if (/^GEOMACRO_COMMERCIAL_LAUNCH_ACK=I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH$/m.test(env)) throw new Error("global production launch ack is active in .env.example");
+          if (/^COINBASE_X402_MAINNET_ACK=I_ACCEPT_REAL_USDC$/m.test(env)) throw new Error("Coinbase real-funds ack is active in .env.example");
+          console.log("PASS: 0.05 USDC x 10,000 milestone is canonical and does not require founder pre-funding.");
+          NODE
+
+      - name: Build exact candidate
+        run: bun run build
+
+      - name: Run initial commercial contract and safety suite
+        run: >-
+          bunx vitest run
+          src/lib/geomacro-intelligence-contract.test.ts
+          src/lib/commercial-launch-gate.server.test.ts
+          src/lib/coinbase-x402.server.test.ts
+          src/__tests__/public-intelligence-machine-surfaces-static.test.ts
+          src/__tests__/pre-mainnet-x402-readiness.test.ts
+          src/__tests__/production-launch-safety-static.test.ts
+          src/__tests__/agent-commerce-delivery-ledger-static.test.ts
+          src/__tests__/agent-commerce-discovery-static.test.ts
+          src/__tests__/commercial-source-rights-evidence-parity.test.js
+          src/__tests__/commercial-source-rights-runtime-migration.test.js
+
+      - name: Verify database schema safety
+        run: bun run db:safety
+
+      - name: Verify hosting alignment
+        run: bun run hosting:verify
+
+      - name: Write no-funds commercial acceptance evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          bun - <<'NODE'
+          const fs = require("node:fs");
+          const crypto = require("node:crypto");
+          const sha256 = value => crypto.createHash("sha256").update(value, "utf8").digest("hex");
+          const manifest = JSON.parse(fs.readFileSync("config/commercial-launch-manifest.json", "utf8"));
+          const evidence = {
+            schema_version: "geomacro.initial-commercial-pay-per-call-acceptance.v1",
+            generated_at: new Date().toISOString(),
+            candidate_sha: process.env.CANDIDATE_SHA,
+            launch_price_usdc: manifest.commercial_milestone.launch_price_usdc,
+            early_adoption_delivery_target: manifest.commercial_milestone.early_adoption_delivery_target,
+            gross_usdc_if_target_completed: manifest.commercial_milestone.gross_usdc_if_10000_successful_deliveries,
+            pre_funding_required: false,
+            real_payment_performed: false,
+            production_activation_performed: false,
+            mainnet_activation_performed: false,
+            founder_prefunded_target: false,
+            scale_certification_required_before_initial_launch: false,
+            internal_real_money_canary_required_before_initial_launch: false,
+            external_first_purchase_required_before_revenue_claim: true,
+            marketplace_promotion: "post_launch_evidence_only",
+            status: "PASS_NO_FUNDS_REQUIRED",
+            notes: [
+              "10,000 is a post-launch adoption/revenue milestone, not a founder-funded test workload.",
+              "40k distributed capacity proof is retained as optional future scalability certification.",
+              "This evidence does not authorize production funds or real-money settlement."
+            ]
+          };
+          evidence.evidence_sha256 = sha256(JSON.stringify(evidence));
+          fs.writeFileSync("artifacts/initial-commercial-pay-per-call-acceptance.json", JSON.stringify(evidence, null, 2) + "\n");
+          NODE
+
+      - name: Publish acceptance summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Initial Commercial Pay-Per-Call Acceptance"
+            echo
+            echo "- Launch price: **0.05 USDC per successful paid intelligence delivery**"
+            echo "- Early-adoption target: **10,000 successful deliveries**"
+            echo "- Gross receipts at 10,000 successful deliveries: **500.00 USDC** before provider/network costs"
+            echo "- Founder pre-funding required for the milestone: **NO**"
+            echo "- Real-money payment performed by this workflow: **NO**"
+            echo "- 40k scale certification required before initial launch: **NO**"
+            echo "- External first production purchase required before revenue claim: **YES**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized acceptance evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: initial-commercial-pay-per-call-acceptance-${{ github.run_id }}
+          path: artifacts/initial-commercial-pay-per-call-acceptance.json
+          if-no-files-found: error
+          retention-days: 90
