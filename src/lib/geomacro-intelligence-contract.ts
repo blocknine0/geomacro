@@ -115,21 +115,7 @@ function freshnessStatus(age: number | null) {
  * source URLs, provenance blobs and raw article material.
  */
 export function publicStructuralObservation(
-  row: {
-    observation_id: string;
-    dimension: string;
-    country_iso3: string | null;
-    partner_country_iso3: string | null;
-    observed_at: string | null;
-    published_at: string | null;
-    metric: string;
-    value_numeric: number | null;
-    value_text: string | null;
-    unit: string | null;
-    event_type: string | null;
-    signal_type: string | null;
-    retrieved_at: string | null;
-  },
+  row: import("./structural-context.server").StructuralObservation,
   asOf: string,
 ): PublicStructuralObservation & {
   freshness: {
@@ -158,26 +144,6 @@ export function publicStructuralObservation(
       age_seconds: age,
       status: freshnessStatus(age),
     },
-  };
-}
-
-export function publicStructuralCoverage(row: {
-  dimension: string;
-  country_iso3: string;
-  coverage_year: number;
-  coverage_status: string;
-  observation_count: number;
-  latest_observed_at: string | null;
-  updated_at: string;
-}): PublicStructuralCoverage {
-  return {
-    dimension: row.dimension,
-    country_iso3: row.country_iso3,
-    coverage_year: row.coverage_year,
-    coverage_status: row.coverage_status,
-    observation_count: row.observation_count,
-    latest_observed_at: row.latest_observed_at,
-    updated_at: row.updated_at,
   };
 }
 
