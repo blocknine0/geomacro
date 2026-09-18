@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   bounded-staging-config:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: staging
@@ -50,7 +50,7 @@ jobs:
           NODE
 
   distributed-capacity-config:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: staging-capacity
