@@ -194,7 +194,7 @@ describe("end-to-end paid production acceptance evidence chain", () => {
 
   it("binds final launch acceptance to exact successful Strict P0 evidence", () => {
     expect(finalProductionAcceptance).toContain(
-      ".github/workflows/strict-commercial-launch-closure.yml",
+      ".github/workflows/p0-strict-prepublic-closure.yml",
     );
     expect(finalProductionAcceptance).toContain('run?.event !== "workflow_dispatch"');
     expect(finalProductionAcceptance).toContain('run?.head_branch !== "main"');
