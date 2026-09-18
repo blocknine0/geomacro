@@ -44,6 +44,8 @@ import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
 import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
+import { Route as ApiIntelligenceCapabilitiesRouteImport } from './routes/api.intelligence.capabilities'
+import { Route as ApiIntelligenceStateRouteImport } from './routes/api.intelligence.state'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
@@ -229,6 +231,17 @@ const ApiDemoPreflightRoute = ApiDemoPreflightRouteImport.update({
   path: '/api/demo/preflight',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIntelligenceCapabilitiesRoute =
+  ApiIntelligenceCapabilitiesRouteImport.update({
+    id: '/api/intelligence/capabilities',
+    path: '/api/intelligence/capabilities',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntelligenceStateRoute = ApiIntelligenceStateRouteImport.update({
+  id: '/api/intelligence/state',
+  path: '/api/intelligence/state',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
   id: '/api/testnet-tester/$',
   path: '/api/testnet-tester/$',
@@ -313,6 +326,8 @@ export interface FileRoutesByFullPath {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
+  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -359,6 +374,8 @@ export interface FileRoutesByTo {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
+  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -406,6 +423,8 @@ export interface FileRoutesById {
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
+  '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
+  '/api/intelligence/state': typeof ApiIntelligenceStateRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -454,6 +473,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/intelligence/capabilities'
+    | '/api/intelligence/state'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -500,6 +521,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/intelligence/capabilities'
+    | '/api/intelligence/state'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -546,6 +569,8 @@ export interface FileRouteTypes {
     | '/api/agent/risk'
     | '/api/demo/feedback'
     | '/api/demo/preflight'
+    | '/api/intelligence/capabilities'
+    | '/api/intelligence/state'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -593,6 +618,8 @@ export interface RootRouteChildren {
   ApiAgentRiskRoute: typeof ApiAgentRiskRoute
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
+  ApiIntelligenceCapabilitiesRoute: typeof ApiIntelligenceCapabilitiesRoute
+  ApiIntelligenceStateRoute: typeof ApiIntelligenceStateRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
@@ -851,6 +878,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDemoPreflightRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/intelligence/capabilities': {
+      id: '/api/intelligence/capabilities'
+      path: '/api/intelligence/capabilities'
+      fullPath: '/api/intelligence/capabilities'
+      preLoaderRoute: typeof ApiIntelligenceCapabilitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/intelligence/state': {
+      id: '/api/intelligence/state'
+      path: '/api/intelligence/state'
+      fullPath: '/api/intelligence/state'
+      preLoaderRoute: typeof ApiIntelligenceStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/testnet-tester/$': {
       id: '/api/testnet-tester/$'
       path: '/api/testnet-tester/$'
@@ -953,6 +994,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentRiskRoute: ApiAgentRiskRoute,
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
+  ApiIntelligenceCapabilitiesRoute: ApiIntelligenceCapabilitiesRoute,
+  ApiIntelligenceStateRoute: ApiIntelligenceStateRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,

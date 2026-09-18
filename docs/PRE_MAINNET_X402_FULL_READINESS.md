@@ -35,7 +35,7 @@ Already implemented:
 - ambiguous-settlement manual-review state
 - no blind retry after a signed payment exists
 - commercial-pending-accounting boundary before reconciliation
-- approved production price: 0.02 USDC per call
+- initial launch price: 0.02 USDC per successful paid intelligence delivery for the first 10,000 deliveries; later reference price 0.10 USDC after adoption evidence
 
 Launch-time external inputs still required:
 

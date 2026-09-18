@@ -8,6 +8,14 @@ The core product turns real-world events into structured, explainable, machine-r
 
 Prediction markets and programmable onchain execution are secondary application, feedback and technical-proof layers.
 
+## Intelligence Contract v1
+
+The canonical current commercial intelligence response contract is documented in [Geomacro Intelligence Contract v1](./GEOMACRO_INTELLIGENCE_CONTRACT_V1.md). The contract keeps the existing adaptive API identity while adding versioned current state, deterministic direct answers and redacted structural developments.
+
+Early-adoption pricing is **0.02 USDC per successful paid intelligence delivery for the first 10,000 deliveries**. The later reference price is **0.10 USDC**, subject to adoption evidence and an explicit commercial transition.
+
+Current commercial responses do not redistribute raw upstream article material or source identity. Internal provenance and commercial-rights checks remain governed server-side.
+
 ## Product status
 
 | Surface | Status | Role |
