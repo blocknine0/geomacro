@@ -324,7 +324,10 @@ async function main() {
     replay.body,
     replay.response.headers.get("PAYMENT-RESPONSE") ?? "",
   );
-  if (replaySettlement && replaySettlement !== paidSettlement) {
+  if (!replaySettlement) {
+    fail("Production canary replay is missing the durable settlement reference");
+  }
+  if (replaySettlement !== paidSettlement) {
     fail("Production canary replay returned a different settlement reference");
   }
   await payment.assertReplayNoCharge();
@@ -353,6 +356,14 @@ async function main() {
     query_plan_hash: hashes.queryPlanHash,
     delivered_product_hash: hashes.deliveredProductHash,
     replay_no_second_charge: true,
+    replay_same_settlement_reference: true,
+    zero_second_charge_proof: {
+      server_idempotent_replay: true,
+      same_settlement_reference: true,
+      buyer_balance_check_performed: provider === "coinbase",
+      buyer_balance_unchanged_after_replay: provider === "coinbase" ? true : null,
+      reconciliation_single_payment_event_required: true,
+    },
     changed_request_replay_failed_closed: true,
     execution_authorized: false,
     internal_canary: true,
