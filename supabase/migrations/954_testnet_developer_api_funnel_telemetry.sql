@@ -71,11 +71,11 @@ create or replace function public.prevent_testnet_developer_api_funnel_mutation(
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $$
 begin
   raise exception 'Testnet Developer API funnel telemetry is append-only';
 end;
-$;
+$$;
 
 drop trigger if exists testnet_developer_api_funnel_immutable
 on public.testnet_developer_api_funnel_events;
