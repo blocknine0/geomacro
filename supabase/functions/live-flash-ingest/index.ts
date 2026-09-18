@@ -74,6 +74,7 @@ type FlashPayload = {
   published_at?: string | null
   headline?: string
   body?: string | null
+  signal_category?: string | null
   source_channel?: string | null
   source_channel_key?: string | null
   source_url?: string | null
@@ -130,6 +131,117 @@ function normalizeText(
     )
     .replace(/\s+/g, " ")
     .trim()
+}
+
+const SIGNAL_CATEGORIES = [
+  "GEOPOLITICS",
+  "MACRO",
+  "CRITICAL_MINERALS",
+] as const
+
+type SignalCategory = (typeof SIGNAL_CATEGORIES)[number]
+
+const CATEGORY_KEYWORDS: Record<SignalCategory, string[]> = {
+  GEOPOLITICS: [
+    "war", "attack", "strike", "missile", "military", "troops",
+    "border", "invasion", "ceasefire", "airstrike", "drone", "coup",
+    "protest", "sanctions", "tariff", "diplomatic", "embassy", "hostage",
+    "terror", "conflict", "navy", "weapon", "nuclear", "security",
+  ],
+  MACRO: [
+    "fed", "fomc", "interest rate", "rates", "inflation", "cpi", "ppi",
+    "gdp", "jobs", "payrolls", "unemployment", "employment",
+    "central bank", "ecb", "boj", "boe", "pmi", "retail sales",
+    "yield", "bond", "treasury", "currency", "forex", "fx",
+    "recession", "default", "debt", "fiscal", "monetary",
+    "capital flows", "trade balance",
+  ],
+  CRITICAL_MINERALS: [
+    "critical mineral", "critical minerals", "rare earth", "lithium",
+    "cobalt", "nickel", "graphite", "manganese", "copper", "gallium",
+    "germanium", "tungsten", "vanadium", "chromium", "antimony",
+    "beryllium", "niobium", "tantalum", "tin", "uranium", "mineral mine",
+    "mineral supply", "ore concentrate", "refinery", "refining capacity",
+    "mineral export",
+  ],
+}
+
+function normalizeSignalCategory(value: unknown): SignalCategory | "UNCLASSIFIED" {
+  const normalized = String(value ?? "").trim().toUpperCase()
+  return SIGNAL_CATEGORIES.includes(normalized as SignalCategory)
+    ? (normalized as SignalCategory)
+    : "UNCLASSIFIED"
+}
+
+function categoryFromEventType(value: unknown): SignalCategory | "UNCLASSIFIED" {
+  const normalized = String(value ?? "").trim().toUpperCase()
+  if (normalized.startsWith("GEOPOLITICS")) return "GEOPOLITICS"
+  if (normalized.startsWith("MACRO")) return "MACRO"
+  if (normalized.startsWith("CRITICAL_MINERALS")) return "CRITICAL_MINERALS"
+  return "UNCLASSIFIED"
+}
+
+function classifySignalCategory(
+  explicitCategory: unknown,
+  eventType: unknown,
+  headline: string,
+  body: string | null,
+  sourceDomains: string[] | null,
+): SignalCategory | "UNCLASSIFIED" {
+  const explicit = normalizeSignalCategory(explicitCategory)
+  if (explicit !== "UNCLASSIFIED") return explicit
+
+  const eventTypeCategory = categoryFromEventType(eventType)
+  if (eventTypeCategory !== "UNCLASSIFIED") return eventTypeCategory
+
+  const text = normalizeText((headline + " " + (body ?? "")).slice(0, 18000))
+  const scores = SIGNAL_CATEGORIES.map((category) => {
+    let score = 0
+    for (const keyword of CATEGORY_KEYWORDS[category]) {
+      if (text.includes(normalizeText(keyword))) score += 1
+    }
+    return { category, score }
+  }).sort((a, b) => b.score - a.score)
+
+  const top = scores[0]
+  const second = scores[1]
+  if (top && top.score >= 2 && top.score >= (second?.score ?? 0) + 1) return top.category
+
+  const domainCategories = (Array.isArray(sourceDomains) ? sourceDomains : [])
+    .map((value) => normalizeSignalCategory(value))
+    .filter((value): value is SignalCategory => value !== "UNCLASSIFIED")
+  return new Set(domainCategories).size === 1 ? domainCategories[0] : "UNCLASSIFIED"
+}
+
+function headlineTokens(value: string) {
+  return normalizeText(value).split(" ").filter((token) => token.length >= 3)
+}
+
+function headlineSimilarity(left: string, right: string) {
+  const a = new Set(headlineTokens(left))
+  const b = new Set(headlineTokens(right))
+  if (!a.size || !b.size) return 0
+  let intersection = 0
+  for (const token of a) if (b.has(token)) intersection += 1
+  const union = a.size + b.size - intersection
+  return union ? intersection / union : 0
+}
+
+function numberSignature(value: string) {
+  return Array.from(normalizeText(value).matchAll(/\b\d+(?:\.\d+)?(?:%|bps)?\b/g))
+    .map((match) => match[0])
+    .sort()
+    .join("|")
+}
+
+function materialEditChange(previousHeadline: string, nextHeadline: string) {
+  if (numberSignature(previousHeadline) !== numberSignature(nextHeadline)) {
+    return { material: true, reason: "numeric_fact_changed" }
+  }
+  if (headlineSimilarity(previousHeadline, nextHeadline) < 0.92) {
+    return { material: true, reason: "headline_materially_changed" }
+  }
+  return { material: false, reason: "minor_or_formatting_edit" }
 }
 
 function clampScore(
@@ -224,6 +336,7 @@ type ApprovedTelegramChannel = {
   source_reliability: number
   enabled: boolean
   manual_review_status: string
+  domains: string[] | null
 }
 
 function normalizeTelegramChannelKey(
@@ -252,7 +365,7 @@ async function loadApprovedTelegramChannel(
     await db
       .from("live_telegram_channel_registry")
       .select(
-        "channel_key,display_name,official_status,rights_status,source_reliability,enabled,manual_review_status"
+        "channel_key,display_name,official_status,rights_status,source_reliability,enabled,manual_review_status,domains"
       )
       .eq(
         "channel_key",
@@ -767,6 +880,13 @@ Deno.serve(async request => {
     )
   }
 
+  const signalCategory = classifySignalCategory(
+    payload.signal_category,
+    payload.event_type,
+    headline,
+    body,
+    telegramChannel?.domains ?? null,
+  )
   const requestedVerification =
     payload.verification_status ??
     "UNVERIFIED"
@@ -803,6 +923,21 @@ Deno.serve(async request => {
       ? explicit
       : inferred
 
+  const existingResult =
+    await db
+      .from("live_flash_events")
+      .select("flash_id,content_hash,source_version,first_seen_at,last_material_update_at,event_family_id,headline")
+      .eq("source_id", sourceId)
+      .eq("source_record_id", sourceRecordId)
+      .maybeSingle()
+
+  if (existingResult.error) {
+    console.error("existing flash lookup failed", existingResult.error)
+    return jsonResponse(500, {
+      ok: false,
+      error: "flash_existing_lookup_failed",
+    })
+  }
   const stableIdentityHash =
     await sha256Hex(
       `${sourceId}:${sourceRecordId}`
@@ -833,9 +968,91 @@ Deno.serve(async request => {
   const flashId =
     `${sourceId}_${stableIdentityHash.slice(0, 32)}`
 
+  const nowIso = new Date().toISOString()
+  const previous = existingResult.data as {
+    flash_id: string
+    content_hash: string
+    source_version: number
+    first_seen_at: string | null
+    last_material_update_at: string | null
+    event_family_id: string | null
+    headline: string
+  } | null
+
+  if (previous && previous.content_hash === contentHash) {
+    const versionCheck = await db
+      .from("live_flash_event_versions")
+      .select("id")
+      .eq("flash_id", previous.flash_id)
+      .eq("source_version", previous.source_version)
+      .maybeSingle()
+
+    if (versionCheck.error) {
+      return jsonResponse(500, { ok: false, error: "flash_version_lookup_failed" })
+    }
+
+    if (!versionCheck.data) {
+      const repair = await db
+        .from("live_flash_event_versions")
+        .insert({
+          flash_id: previous.flash_id,
+          event_family_id: previous.event_family_id,
+          source_version: previous.source_version,
+          captured_at: nowIso,
+          published_at: publishedAt,
+          headline,
+          content_hash: contentHash,
+          signal_category: signalCategory,
+          material_update: false,
+          material_update_reason: "idempotent_version_repair",
+        })
+
+      if (repair.error) {
+        return jsonResponse(500, { ok: false, error: "flash_version_repair_failed" })
+      }
+    }
+
+    return jsonResponse(200, {
+      ok: true,
+      duplicate: true,
+      unchanged: true,
+      flash_id: previous.flash_id,
+      source_id: sourceId,
+      signal_category: signalCategory,
+      event_version: previous.source_version,
+      material_update: false,
+      verification_status: "UNCHANGED",
+      scoring_eligible: false,
+    })
+  }
+
+  const sourceVersion = previous
+    ? Number(previous.source_version ?? 1) + 1
+    : 1
+  const editAssessment = previous
+    ? materialEditChange(previous.headline, headline)
+    : { material: false, reason: "initial_source_record" }
+  const materialUpdate = Boolean(previous && editAssessment.material)
+  const materialUpdateReason = previous ? editAssessment.reason : "initial_source_record"
   const eventRow = {
     flash_id:
       flashId,
+    signal_category:
+      signalCategory,
+    source_version:
+      sourceVersion,
+    material_update:
+      materialUpdate,
+    material_update_reason:
+      materialUpdateReason,
+    first_seen_at:
+      previous?.first_seen_at ?? nowIso,
+    last_seen_at:
+      nowIso,
+    last_material_update_at:
+      materialUpdate ? nowIso : (previous?.last_material_update_at ?? null),
+    event_family_id:
+      previous?.event_family_id ?? null,
     source_id:
       sourceId,
     source_record_id:
@@ -1037,12 +1254,38 @@ Deno.serve(async request => {
     }
   }
 
+
+  const versionInsert = await db
+    .from("live_flash_event_versions")
+    .insert({
+      flash_id: storedFlashId,
+      event_family_id: previous?.event_family_id ?? null,
+      source_version: sourceVersion,
+      captured_at: nowIso,
+      published_at: publishedAt,
+      headline,
+      content_hash: contentHash,
+      signal_category: signalCategory,
+      material_update: materialUpdate,
+      material_update_reason: materialUpdateReason,
+    })
+
+  if (versionInsert.error) {
+    console.error("flash version insert failed", versionInsert.error)
+    return jsonResponse(500, { ok: false, error: "flash_version_store_failed" })
+  }
   return jsonResponse(
     200,
     {
       ok: true,
       flash_id:
         storedFlashId,
+      signal_category:
+        signalCategory,
+      event_version:
+        sourceVersion,
+      material_update:
+        materialUpdate,
       source_id:
         sourceId,
       verification_status:

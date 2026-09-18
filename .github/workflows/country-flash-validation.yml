@@ -15,8 +15,13 @@ on:
       - "supabase/migrations/039_flash_corroboration_graph.sql"
       - "supabase/migrations/040_critical_minerals_news_candidates.sql"
       - "supabase/migrations/041_country_flash_live_smoke_hardening.sql"
+      - "supabase/migrations/953_event_family_version_ledger.sql"
+      - "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
+      - "supabase/migrations/951_telegram_signal_compact_storage.sql"
+      - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
       - "supabase/migrations/946_telegram_manual_review_gate.sql"
       - "src/__tests__/telegram-raw-signal-manual-review.test.ts"
+      - "src/__tests__/telegram-signal-supabase-isolation.test.ts"
       - ".github/workflows/country-flash-validation.yml"
 
 permissions:
@@ -76,6 +81,13 @@ jobs:
           test -f supabase/migrations/040_critical_minerals_news_candidates.sql
           test -f supabase/migrations/041_country_flash_live_smoke_hardening.sql
           test -f supabase/migrations/946_telegram_manual_review_gate.sql
+          test -f supabase/migrations/950_telegram_signal_ingest_isolation.sql
+          test -f supabase/migrations/951_telegram_signal_compact_storage.sql
+          test -f supabase/migrations/952_realtime_flash_event_lifecycle.sql
+          test -f supabase/migrations/953_event_family_version_ledger.sql
 
       - name: Verify Telegram manual-review contract
         run: bunx vitest run src/__tests__/telegram-raw-signal-manual-review.test.ts
+
+      - name: Verify Telegram realtime lifecycle contract
+        run: bunx vitest run src/__tests__/telegram-signal-supabase-isolation.test.ts

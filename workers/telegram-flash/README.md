@@ -10,7 +10,10 @@ The design deliberately separates **speed** from **truth**:
 4. A near-real-time corroboration loop compares the lead with independent Telegram channels, RSS/official feeds and existing GDELT-backed `live_structured_events`.
 5. Matching evidence is stored in `live_flash_corroborations`.
 6. A deterministic verification score promotes the item to `CORROBORATING` or `VERIFIED` only when independent evidence thresholds are met.
-7. Fast-wire ingestion itself never grants GRI/Risk Gate scoring eligibility.
+7. A canonical event-family layer deduplicates the same real-world event across sources.
+8. An edited source record is versioned; material fact/headline changes are marked as updates.
+9. Event-family versions increment only on material developments, while additional source reports remain corroboration.
+10. Fast-wire ingestion itself never grants GRI/Risk Gate scoring eligibility.
 
 This means a low-trust or unofficial source can still be extremely useful for early detection. Its trust level changes the verification weight, not whether Geomacro can ingest the lead internally.
 
@@ -37,6 +40,11 @@ Existing Geomacro GDELT pipeline -------------------------> |
                                                 verification evidence graph
                                                             |
                                     UNVERIFIED -> CORROBORATING -> VERIFIED
+                                                            |
+                                                            v
+                                             canonical event-family layer
+                                                            |
+                                       same event -> one family / new material fact -> vN
                                                             |
                                                             v
                                                structured intelligence path
@@ -120,15 +128,12 @@ and the deterministic verification score must clear the verification threshold.
 
 ## Database migrations
 
-Apply in numeric order:
+Apply in repository numeric order. The current isolated signal baseline additionally uses:
 
-- `036_country_flash_intelligence.sql`
-- `037_breaking_news_source_registry.sql`
-- `038_telegram_flash_channel_registry.sql`
-- `039_flash_corroboration_graph.sql`
-- `040_critical_minerals_news_candidates.sql`
-- `041_country_flash_live_smoke_hardening.sql`
-- `042_country_flash_atf_demonym_fix.sql`
+- `950_telegram_signal_ingest_isolation.sql`
+- `951_telegram_signal_compact_storage.sql`
+- `952_realtime_flash_event_lifecycle.sql`
+- `953_event_family_version_ledger.sql`
 
 ## Supabase functions
 
