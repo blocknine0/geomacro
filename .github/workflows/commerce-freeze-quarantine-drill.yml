@@ -1,0 +1,96 @@
+name: Commerce Freeze Quarantine Drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA used by the accepted production canary cohort"
+        required: true
+        type: string
+      canary_cohort_run_id:
+        description: "Successful Production Canary Cohort Acceptance run ID"
+        required: true
+        type: string
+      mode:
+        description: "Observe exactly one deliberately configured safety state"
+        required: true
+        type: choice
+        options:
+          - normal
+          - global_freeze
+          - quarantine_coinbase_x402
+          - quarantine_circle_gateway_x402
+          - quarantine_nevermined
+      owner_ack:
+        description: "Must equal I_CONFIRM_CANARY_RUNTIME_SAFETY_STATE_IS_SET"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: commerce-freeze-quarantine-drill
+  cancel-in-progress: false
+
+jobs:
+  observe-safety-state:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-canary
+    env:
+      GEOMACRO_PRODUCTION_CANARY_BASE_URL: ${{ vars.GEOMACRO_PRODUCTION_CANARY_BASE_URL }}
+      GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST: ${{ vars.GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST }}
+      GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ inputs.candidate_sha }}
+      GEOMACRO_COMMERCE_SAFETY_DRILL_MODE: ${{ inputs.mode }}
+      GEOMACRO_COMMERCE_SAFETY_DRILL_OUTPUT_DIR: /tmp/commerce-safety-drill
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact SHA and explicit operator state acknowledgement
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          OWNER_ACK: ${{ inputs.owner_ack }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::Full candidate SHA required."; exit 1; }
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]] || { echo "::error::Safety-drill candidate must equal workflow dispatch SHA."; exit 1; }
+          [[ "$OWNER_ACK" == "I_CONFIRM_CANARY_RUNTIME_SAFETY_STATE_IS_SET" ]] || { echo "::error::Safety state acknowledgement missing."; exit 1; }
+          [[ -n "${GEOMACRO_PRODUCTION_CANARY_BASE_URL:-}" && -n "${GEOMACRO_PRODUCTION_CANARY_EXPECTED_HOST:-}" ]] || {
+            echo "::error::Isolated canary host configuration missing."; exit 1;
+          }
+
+      - name: Verify referenced three-provider canary cohort
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          RUN_ID: ${{ inputs.canary_cohort_run_id }}
+        with:
+          script: |
+            const runId = Number(process.env.RUN_ID);
+            if (!Number.isInteger(runId) || runId <= 0) core.setFailed('canary_cohort_run_id must be numeric');
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.path !== '.github/workflows/production-canary-cohort-acceptance.yml') core.setFailed('Referenced run is not Production Canary Cohort Acceptance');
+            if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Canary cohort must be a manual main run');
+            if (String(run.head_sha || '').toLowerCase() !== String(process.env.EXPECTED_SHA).toLowerCase()) core.setFailed('Canary cohort SHA mismatch');
+            if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed('Canary cohort is not successful');
+
+      - name: Observe real runtime safety state without mutation or payment
+        run: node scripts/commerce/probe-commerce-safety-drill.mjs
+
+      - name: Upload sanitized phase evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: commerce-safety-drill-${{ inputs.mode }}-${{ github.run_id }}
+          path: /tmp/commerce-safety-drill/${{ inputs.mode }}.json
+          if-no-files-found: error
+          retention-days: 14

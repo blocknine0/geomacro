@@ -1,0 +1,231 @@
+name: P0 Strict Prepublic Closure
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: 'Exact canonical main SHA deployed only to isolated non-public staging for P0 closure'
+        required: true
+        type: string
+      distributed_evidence_run_id:
+        description: 'Successful Distributed 40k Evidence Closure workflow run ID for this exact SHA'
+        required: true
+        type: string
+      staging_requests:
+        description: 'Bounded isolated staging requests for final safety smoke (max 2000)'
+        required: true
+        default: '120'
+        type: string
+      staging_concurrency:
+        description: 'Bounded staging concurrency for final safety smoke (max 25)'
+        required: true
+        default: '8'
+        type: string
+      staging_mode:
+        description: 'country, corridor, or mixed'
+        required: true
+        default: 'mixed'
+        type: choice
+        options: [country, corridor, mixed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: p0-strict-prepublic-closure
+  cancel-in-progress: false
+
+jobs:
+  exact-candidate-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact closure candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require exact main SHA and explicit evidence run ID
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EVIDENCE_RUN_ID: ${{ inputs.distributed_evidence_run_id }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$DISPATCH_REF" == 'refs/heads/main' ]] || { echo '::error title=Wrong dispatch ref::Strict closure must run from main.'; exit 1; }
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo '::error title=Invalid candidate SHA::Full SHA required.'; exit 1; }
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]] || { echo '::error title=Candidate mismatch::candidate_sha must equal this workflow SHA.'; exit 1; }
+          [[ "$EVIDENCE_RUN_ID" =~ ^[0-9]+$ ]] || { echo '::error title=Invalid evidence run ID::Numeric run ID required.'; exit 1; }
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify all P0 safety/evidence contracts offline
+        run: |
+          bun x tsx scripts/load-test-risk-gate-staging.ts --self-test
+          bun x tsx scripts/probe-risk-gate-staging-response-security.ts --self-test
+          node scripts/validate-risk-gate-staging-load-report.mjs --self-test
+          node scripts/scale/validate-million-agent-distributed-results.mjs --self-test
+          node scripts/scale/validate-distributed-capacity-telemetry.mjs --self-test
+          node scripts/scale/fetch-distributed-capacity-telemetry.mjs --self-test
+          node scripts/scale/probe-distributed-risk-gate-idempotency.mjs --self-test
+      - name: Build exact production boundaries
+        run: bun run build
+      - name: Audit privileged source and browser bundle boundaries
+        env:
+          P0_REQUIRE_BROWSER_BUILD: '1'
+        run: node scripts/audit-p0-secret-boundaries.mjs
+      - name: Audit synchronous Risk Gate provider path on exact candidate
+        env:
+          RISK_GATE_DISTRIBUTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: node scripts/scale/audit-risk-gate-provider-path.mjs
+      - name: Upload exact-candidate contract evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: strict-commercial-contract-${{ github.run_id }}
+          path: |
+            artifacts/p0-secret-boundary-audit.json
+            artifacts/risk-gate-provider-path-audit.json
+          if-no-files-found: error
+          retention-days: 90
+
+  real-distributed-capacity-evidence:
+    needs: exact-candidate-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify referenced Distributed 40k Evidence Closure run is exact and successful
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EVIDENCE_RUN_ID: ${{ inputs.distributed_evidence_run_id }}
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+        with:
+          script: |
+            const runId = Number(process.env.EVIDENCE_RUN_ID);
+            const expectedSha = String(process.env.EXPECTED_SHA).toLowerCase();
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.path !== '.github/workflows/distributed-40k-evidence-closure.yml') core.setFailed(`Unexpected evidence workflow path: ${run.path}`);
+            if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Evidence closure must be a main-branch manual execution');
+            if (String(run.head_sha || '').toLowerCase() !== expectedSha) core.setFailed('Evidence closure SHA does not match isolated candidate');
+            if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`Evidence closure is not successful: ${run.status}/${run.conclusion}`);
+      - name: Download exact 40k evidence closure artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.distributed_evidence_run_id }}
+          name: distributed-40k-launch-evidence-closure-${{ inputs.distributed_evidence_run_id }}
+          path: artifacts/distributed-evidence
+      - name: Parse and require complete same-SHA 40k evidence content
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const e = JSON.parse(fs.readFileSync('artifacts/distributed-evidence/distributed-40k-launch-evidence-closure.json','utf8'));
+          const sha = process.env.EXPECTED_SHA.toLowerCase();
+          if (e?.schema_version !== 'geomacro.distributed-40k-launch-evidence-closure.v1' || e?.pass !== true) throw new Error('40k closure artifact is not PASS evidence');
+          if (e?.candidate_sha !== sha || e?.verified_staging_sha !== sha) throw new Error('40k closure SHA mismatch');
+          if (e?.real_staging_load?.burst?.requests !== 1000000 || e?.real_staging_load?.burst?.rps !== 40000 || e?.real_staging_load?.burst?.duration_seconds !== 25) throw new Error('1M burst evidence mismatch');
+          if (e?.real_staging_load?.soak?.requests !== 12000000 || e?.real_staging_load?.soak?.rps !== 40000 || e?.real_staging_load?.soak?.duration_seconds !== 300) throw new Error('12M soak evidence mismatch');
+          for (const flag of ['zero_5xx','zero_timeouts_transport_errors','zero_unexpected_auth_failures','zero_rate_limits','zero_data_leak_response_violations']) if (e?.real_staging_load?.[flag] !== true) throw new Error(`missing real load gate ${flag}`);
+          if (!Number.isFinite(e?.real_staging_load?.burst?.p95_ms) || !Number.isFinite(e?.real_staging_load?.burst?.p99_ms) || !Number.isFinite(e?.real_staging_load?.soak?.p95_ms) || !Number.isFinite(e?.real_staging_load?.soak?.p99_ms)) throw new Error('p95/p99 evidence missing');
+          if (e?.db_pool?.connection_errors !== 0 || e?.db_pool?.exhausted_events !== 0) throw new Error('DB pool proof failed');
+          if (e?.edge_runtime?.saturation_events !== 0 || e?.edge_runtime?.runtime_errors !== 0) throw new Error('edge/runtime proof failed');
+          if (e?.idempotency_replay?.post_load_control_plane_pass !== true || e?.idempotency_replay?.duplicate_effects !== 0 || e?.idempotency_replay?.replay_mismatches !== 0) throw new Error('idempotency/replay proof failed');
+          if (e?.provider_saturation?.status !== 'not_applicable_to_synchronous_risk_gate_request_path') throw new Error('provider request-path evidence missing');
+          if (e?.production_load !== false || e?.real_payment !== false || e?.mainnet_activation !== false) throw new Error('activation boundary violation');
+          console.log('PASS: exact-candidate 40k burst/soak, latency, errors, DB, edge, auth, leakage, replay and provider-path evidence validated.');
+          NODE
+      - name: Upload strict copy of distributed evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: strict-commercial-distributed-evidence-${{ github.run_id }}
+          path: artifacts/distributed-evidence/distributed-40k-launch-evidence-closure.json
+          if-no-files-found: error
+          retention-days: 90
+
+  bounded-staging-safety:
+    needs: exact-candidate-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    env:
+      RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+      RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+      RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
+      RISK_GATE_LOAD_TEST_REQUESTS: ${{ inputs.staging_requests }}
+      RISK_GATE_LOAD_TEST_CONCURRENCY: ${{ inputs.staging_concurrency }}
+      RISK_GATE_LOAD_TEST_MODE: ${{ inputs.staging_mode }}
+      RISK_GATE_LOAD_TEST_COUNTRY_ISO3: USA
+      RISK_GATE_LOAD_TEST_CORRIDOR_ORIGIN_ISO3: USA
+      RISK_GATE_LOAD_TEST_CORRIDOR_DESTINATION_ISO3: CHN
+      RISK_GATE_LOAD_TEST_ALLOW_429: 'false'
+      RISK_GATE_LOAD_TEST_TIMEOUT_MS: '10000'
+      RISK_GATE_LOAD_TEST_MAX_P95_MS: '3000'
+      RISK_GATE_LOAD_TEST_MAX_P99_MS: '8000'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Require isolated staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${RISK_GATE_STAGING_BASE_URL:-}" && -n "${RISK_GATE_STAGING_API_KEY:-}" ]] || { echo '::error title=Missing staging configuration::Bounded final staging smoke cannot be skipped.'; exit 1; }
+      - name: Probe authenticated staging response security boundary
+        run: bun x tsx scripts/probe-risk-gate-staging-response-security.ts
+      - name: Run bounded final staging Risk Gate HTTP safety smoke
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts
+      - name: Enforce bounded staging latency and zero-error gates
+        run: node scripts/validate-risk-gate-staging-load-report.mjs
+      - name: Upload bounded staging safety evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: strict-commercial-staging-safety-${{ github.run_id }}
+          path: |
+            artifacts/risk-gate-staging-response-security.json
+            artifacts/risk-gate-staging-http-load.json
+            artifacts/risk-gate-staging-http-load-validation.json
+          if-no-files-found: error
+          retention-days: 90
+
+  closure:
+    if: always()
+    needs: [exact-candidate-contract, real-distributed-capacity-evidence, bounded-staging-safety]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every strict closure dimension to pass
+        shell: bash
+        env:
+          CONTRACT_RESULT: ${{ needs.exact-candidate-contract.result }}
+          CAPACITY_RESULT: ${{ needs.real-distributed-capacity-evidence.result }}
+          STAGING_RESULT: ${{ needs.bounded-staging-safety.result }}
+        run: |
+          set -euo pipefail
+          for result in "$CONTRACT_RESULT" "$CAPACITY_RESULT" "$STAGING_RESULT"; do
+            [[ "$result" == 'success' ]] || { echo '::error title=Strict launch closure blocked::At least one required exact-candidate evidence dimension is not successful.'; exit 1; }
+          done
+          {
+            echo '## P0 Strict Prepublic Closure: PASS'
+            echo
+            echo '- Exact candidate build + secret/security contracts: PASS'
+            echo '- Same-SHA real distributed 40k full evidence closure: PASS'
+            echo '- Final bounded isolated-staging safety smoke: PASS'
+            echo
+            echo 'No public production publication, payment settlement, mainnet activation or real-funds authorization was performed by this P0 workflow.'
+            echo 'This is first-party launch-readiness evidence, not a third-party penetration-test certification or unlimited-capacity guarantee.'
+          } >> "$GITHUB_STEP_SUMMARY"

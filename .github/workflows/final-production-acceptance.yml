@@ -1,0 +1,206 @@
+name: Final Production Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA for final production acceptance"
+        required: true
+        type: string
+      p0_run_id:
+        description: "Successful P0 Strict Prepublic Closure run ID"
+        required: true
+        type: string
+      ledger_readiness_run_id:
+        description: "Successful Private Revenue Ledger Readiness run ID"
+        required: true
+        type: string
+      canary_cohort_run_id:
+        description: "Successful Production Canary Cohort Acceptance run ID"
+        required: true
+        type: string
+      safety_acceptance_run_id:
+        description: "Successful Commerce Safety Drill Acceptance run ID"
+        required: true
+        type: string
+      public_prelisting_run_id:
+        description: "Successful Public Production Prelisting Health run ID"
+        required: true
+        type: string
+      marketplace_submission_run_id:
+        description: "Successful Marketplace Submission Evidence run ID"
+        required: true
+        type: string
+      marketplace_observation_run_id:
+        description: "Successful Marketplace Listing Observation run ID"
+        required: true
+        type: string
+      post_listing_health_run_id:
+        description: "Successful Post Listing Health run ID"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: final-production-acceptance
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact current main SHA
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]]
+
+      - name: Verify exact-SHA run chain and required order
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          P0_RUN: ${{ inputs.p0_run_id }}
+          LEDGER_RUN: ${{ inputs.ledger_readiness_run_id }}
+          CANARY_RUN: ${{ inputs.canary_cohort_run_id }}
+          SAFETY_RUN: ${{ inputs.safety_acceptance_run_id }}
+          PRELIST_RUN: ${{ inputs.public_prelisting_run_id }}
+          SUBMISSION_RUN: ${{ inputs.marketplace_submission_run_id }}
+          MARKET_RUN: ${{ inputs.marketplace_observation_run_id }}
+          POST_RUN: ${{ inputs.post_listing_health_run_id }}
+        with:
+          script: |
+            const expected = String(process.env.EXPECTED_SHA).toLowerCase();
+            const spec = [
+              ['p0', Number(process.env.P0_RUN), '.github/workflows/p0-strict-prepublic-closure.yml'],
+              ['ledger', Number(process.env.LEDGER_RUN), '.github/workflows/private-revenue-ledger-readiness.yml'],
+              ['canary', Number(process.env.CANARY_RUN), '.github/workflows/production-canary-cohort-acceptance.yml'],
+              ['safety', Number(process.env.SAFETY_RUN), '.github/workflows/commerce-safety-drill-acceptance.yml'],
+              ['prelisting', Number(process.env.PRELIST_RUN), '.github/workflows/public-production-prelisting-health.yml'],
+              ['submission', Number(process.env.SUBMISSION_RUN), '.github/workflows/marketplace-submission-evidence.yml'],
+              ['marketplace', Number(process.env.MARKET_RUN), '.github/workflows/marketplace-listing-observation.yml'],
+              ['postlisting', Number(process.env.POST_RUN), '.github/workflows/post-listing-health.yml'],
+            ];
+            const ids = new Set(spec.map(([,id]) => id));
+            if (ids.size !== spec.length || [...ids].some(id => !Number.isInteger(id) || id <= 0)) {
+              core.setFailed('All acceptance run IDs must be distinct positive integers');
+              return;
+            }
+            const { owner, repo } = context.repo;
+            const runs = {};
+            for (const [key, runId, path] of spec) {
+              const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              runs[key] = run;
+              if (run.path !== path) core.setFailed(`${key}: wrong workflow path`);
+              if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed(`${key}: must be a manual main run`);
+              if (String(run.head_sha || '').toLowerCase() !== expected) core.setFailed(`${key}: SHA mismatch`);
+              if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`${key}: run is not successful`);
+            }
+            const at = key => new Date(runs[key].created_at).getTime();
+            if (at('canary') < at('p0')) core.setFailed('Canary cohort predates P0 closure');
+            if (at('canary') < at('ledger')) core.setFailed('Canary cohort predates private-ledger readiness');
+            if (at('safety') < at('canary')) core.setFailed('Safety drill predates canary cohort');
+            if (at('prelisting') < at('safety')) core.setFailed('Public production prelisting proof predates safety drill');
+            if (at('submission') < at('prelisting')) core.setFailed('Marketplace submission evidence predates public production prelisting proof');
+            if (at('marketplace') < at('submission')) core.setFailed('Marketplace observation predates marketplace submission evidence');
+            if (at('postlisting') < at('marketplace')) core.setFailed('Post-listing health predates marketplace observation');
+
+      - name: Download private-ledger readiness evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.ledger_readiness_run_id }}
+          name: private-revenue-ledger-readiness-${{ inputs.ledger_readiness_run_id }}
+          path: /tmp/final/ledger
+
+      - name: Download canary cohort evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.canary_cohort_run_id }}
+          name: production-canary-cohort-acceptance-${{ inputs.canary_cohort_run_id }}
+          path: /tmp/final/canary
+
+      - name: Download safety-drill evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.safety_acceptance_run_id }}
+          name: commerce-safety-drill-acceptance-${{ inputs.safety_acceptance_run_id }}
+          path: /tmp/final/safety
+
+      - name: Download public prelisting evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.public_prelisting_run_id }}
+          name: public-production-prelisting-health-${{ inputs.public_prelisting_run_id }}
+          path: /tmp/final/prelisting
+
+      - name: Download marketplace submission evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.marketplace_submission_run_id }}
+          name: marketplace-submission-evidence-${{ inputs.marketplace_submission_run_id }}
+          path: /tmp/final/submission
+
+      - name: Download marketplace observation evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.marketplace_observation_run_id }}
+          name: marketplace-listing-observation-${{ inputs.marketplace_observation_run_id }}
+          path: /tmp/final/marketplace
+
+      - name: Download post-listing health evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.post_listing_health_run_id }}
+          name: post-listing-health-${{ inputs.post_listing_health_run_id }}
+          path: /tmp/final/postlisting
+
+      - name: Verify complete production acceptance evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ inputs.candidate_sha }}
+          GEOMACRO_STRICT_CLOSURE_RUN_ID: ${{ inputs.p0_run_id }}
+          GEOMACRO_PRIVATE_REVENUE_LEDGER_READINESS_EVIDENCE: /tmp/final/ledger/private-ledger-readiness.json
+          GEOMACRO_CANARY_ACCEPTANCE_EVIDENCE: /tmp/final/canary/initial-cohort-acceptance.json
+          GEOMACRO_COMMERCE_SAFETY_DRILL_ACCEPTANCE_EVIDENCE: /tmp/final/safety/acceptance.json
+          GEOMACRO_PUBLIC_PRELISTING_HEALTH_EVIDENCE: /tmp/final/prelisting/public-prelisting-health.json
+          GEOMACRO_MARKETPLACE_SUBMISSION_EVIDENCE: /tmp/final/submission/marketplace-submission-acceptance.json
+          GEOMACRO_MARKETPLACE_OBSERVATION_EVIDENCE: /tmp/final/marketplace/marketplace-observation.json
+          GEOMACRO_POST_LISTING_HEALTH_EVIDENCE: /tmp/final/postlisting/post-listing-health.json
+          GEOMACRO_FINAL_PRODUCTION_ACCEPTANCE_OUTPUT: /tmp/final/final-production-acceptance.json
+        run: node scripts/commerce/verify-final-production-acceptance.mjs
+
+      - name: Upload sanitized final acceptance
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: final-production-acceptance-${{ github.run_id }}
+          path: /tmp/final/final-production-acceptance.json
+          if-no-files-found: error
+          retention-days: 30

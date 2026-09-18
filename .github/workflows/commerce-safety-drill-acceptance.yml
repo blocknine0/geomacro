@@ -1,0 +1,176 @@
+name: Commerce Safety Drill Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA"
+        required: true
+        type: string
+      normal_run_id:
+        required: true
+        type: string
+      global_freeze_run_id:
+        required: true
+        type: string
+      quarantine_coinbase_run_id:
+        required: true
+        type: string
+      quarantine_circle_run_id:
+        required: true
+        type: string
+      quarantine_nevermined_run_id:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: commerce-safety-drill-acceptance
+  cancel-in-progress: false
+
+jobs:
+  verify-all-phases:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact current main SHA
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]]
+
+      - name: Verify source safety-drill runs
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          NORMAL_RUN: ${{ inputs.normal_run_id }}
+          GLOBAL_RUN: ${{ inputs.global_freeze_run_id }}
+          COINBASE_RUN: ${{ inputs.quarantine_coinbase_run_id }}
+          CIRCLE_RUN: ${{ inputs.quarantine_circle_run_id }}
+          NEVERMINED_RUN: ${{ inputs.quarantine_nevermined_run_id }}
+        with:
+          script: |
+            const expected = String(process.env.EXPECTED_SHA).toLowerCase();
+            const entries = [
+              ['normal', Number(process.env.NORMAL_RUN)],
+              ['global_freeze', Number(process.env.GLOBAL_RUN)],
+              ['quarantine_coinbase_x402', Number(process.env.COINBASE_RUN)],
+              ['quarantine_circle_gateway_x402', Number(process.env.CIRCLE_RUN)],
+              ['quarantine_nevermined', Number(process.env.NEVERMINED_RUN)],
+            ];
+            const ids = new Set(entries.map(([,id]) => id));
+            if (ids.size !== entries.length || [...ids].some(id => !Number.isInteger(id) || id <= 0)) {
+              core.setFailed('All five safety-drill run IDs must be distinct positive integers');
+              return;
+            }
+            const { owner, repo } = context.repo;
+            for (const [mode, runId] of entries) {
+              const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+              if (run.path !== '.github/workflows/commerce-freeze-quarantine-drill.yml') core.setFailed(`${mode}: wrong workflow`);
+              if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed(`${mode}: must be manual main run`);
+              if (String(run.head_sha || '').toLowerCase() !== expected) core.setFailed(`${mode}: SHA mismatch`);
+              if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed(`${mode}: run is not successful`);
+            }
+
+      - name: Download normal phase
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.normal_run_id }}
+          path: /tmp/safety/normal
+
+      - name: Download global freeze phase
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.global_freeze_run_id }}
+          path: /tmp/safety/global
+
+      - name: Download Coinbase quarantine phase
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.quarantine_coinbase_run_id }}
+          path: /tmp/safety/coinbase
+
+      - name: Download Circle quarantine phase
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.quarantine_circle_run_id }}
+          path: /tmp/safety/circle
+
+      - name: Download Nevermined quarantine phase
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.quarantine_nevermined_run_id }}
+          path: /tmp/safety/nevermined
+
+      - name: Resolve one exact evidence object per phase
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/safety/resolved
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const phases = {
+            normal: '/tmp/safety/normal',
+            global_freeze: '/tmp/safety/global',
+            quarantine_coinbase_x402: '/tmp/safety/coinbase',
+            quarantine_circle_gateway_x402: '/tmp/safety/circle',
+            quarantine_nevermined: '/tmp/safety/nevermined',
+          };
+          function walk(dir) {
+            const out=[];
+            for (const e of fs.readdirSync(dir,{withFileTypes:true})) {
+              const p=path.join(dir,e.name);
+              if(e.isDirectory()) out.push(...walk(p));
+              else if(e.isFile() && e.name.endsWith('.json')) out.push(p);
+            }
+            return out;
+          }
+          for (const [mode,dir] of Object.entries(phases)) {
+            const hits=walk(dir).filter(file => {
+              const v=JSON.parse(fs.readFileSync(file,'utf8'));
+              return v?.schema_version === 'geomacro.commerce-safety-drill-phase.v1' && v?.mode === mode;
+            });
+            if(hits.length !== 1) throw new Error(`${mode}: expected exactly one phase evidence object`);
+            fs.copyFileSync(hits[0], `/tmp/safety/resolved/${mode}.json`);
+          }
+          NODE
+
+      - name: Verify complete freeze/quarantine drill
+        env:
+          GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ inputs.candidate_sha }}
+          GEOMACRO_COMMERCE_SAFETY_DRILL_EVIDENCE_DIR: /tmp/safety/resolved
+          GEOMACRO_COMMERCE_SAFETY_DRILL_ACCEPTANCE_OUTPUT: /tmp/safety/acceptance.json
+        run: node scripts/commerce/verify-commerce-safety-drill.mjs
+
+      - name: Upload sanitized drill acceptance
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: commerce-safety-drill-acceptance-${{ github.run_id }}
+          path: /tmp/safety/acceptance.json
+          if-no-files-found: error
+          retention-days: 14
