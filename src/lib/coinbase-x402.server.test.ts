@@ -43,7 +43,7 @@ describe("Coinbase x402 configuration", () => {
     const config = getCoinbaseX402Config();
     expect(config?.network).toBe(COINBASE_X402_TESTNET_NETWORK);
     expect(config?.asset).toBe(COINBASE_X402_TESTNET_USDC);
-    expect(config?.amountAtomic).toBe("50000");
+    expect(config?.amountAtomic).toBe("20000");
     expect(config?.commercialEnvironment).toBe("testnet");
   });
 
