@@ -37,6 +37,28 @@ type Flash = {
   source_reliability: number | null
   source_reliability_bps: number | null
   verification_status: string
+  signal_category: string
+  source_version: number
+  event_family_id: string | null
+  material_update: boolean
+  content_hash: string
+}
+
+type EventFamily = {
+  family_id: string
+  signal_category: "GEOPOLITICS" | "MACRO" | "CRITICAL_MINERALS"
+  canonical_headline: string
+  country_isos: string[] | null
+  first_seen_at: string
+  last_seen_at: string
+  current_version: number
+  current_status: "ACTIVE" | "RESOLVED"
+  source_count: number
+  independent_source_count: number
+  last_material_update_at: string | null
+  latest_update_reason: string | null
+  latest_flash_id: string | null
+  latest_content_hash: string | null
 }
 
 type StructuredEvent = {
@@ -179,7 +201,7 @@ Deno.serve(async request => {
   const flashResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status,signal_category,source_version,event_family_id,material_update,content_hash",
     )
     .gte("ingested_at", cutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
@@ -240,6 +262,58 @@ Deno.serve(async request => {
     structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
   }
 
+  const familyCutoff = new Date(Date.now() - 24 * 60 * 60_000).toISOString()
+  const familyResult = await db
+    .from("live_flash_event_families")
+    .select("family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,current_version,current_status,source_count,independent_source_count,last_material_update_at,latest_update_reason,latest_flash_id,latest_content_hash")
+    .eq("current_status", "ACTIVE")
+    .gte("last_seen_at", familyCutoff)
+    .order("last_seen_at", { ascending: false })
+    .limit(500)
+
+  if (familyResult.error) {
+    console.error(familyResult.error)
+    return jsonResponse(500, { ok: false, error: "family_query_failed" })
+  }
+
+  const families = (familyResult.data ?? []) as EventFamily[]
+  const familyMemberIds = new Map<string, Set<string>>()
+  const familySourceFamilies = new Map<string, Set<string>>()
+
+  for (const family of families) {
+    familyMemberIds.set(family.family_id, new Set<string>())
+    familySourceFamilies.set(family.family_id, new Set<string>())
+  }
+
+  const existingFamilyIds = families.map((family) => family.family_id)
+  if (existingFamilyIds.length) {
+    const memberResult = await db
+      .from("live_flash_events")
+      .select("flash_id,source_id,source_channel,event_family_id")
+      .in("event_family_id", existingFamilyIds)
+      .gte("ingested_at", familyCutoff)
+      .limit(5000)
+
+    if (memberResult.error) {
+      console.error(memberResult.error)
+      return jsonResponse(500, { ok: false, error: "family_members_query_failed" })
+    }
+
+    for (const member of memberResult.data ?? []) {
+      const familyId = member.event_family_id
+      if (!familyId) continue
+      familyMemberIds.get(familyId)?.add(member.flash_id)
+      familySourceFamilies.get(familyId)?.add(
+        flashFamily({
+          flash_id: member.flash_id,
+          source_id: member.source_id,
+          source_channel: member.source_channel,
+        } as Flash),
+      )
+    }
+  }
+
+  const familyById = new Map(families.map((family) => [family.family_id, family]))
   let verified = 0
   let corroborating = 0
   let unverified = 0
@@ -460,6 +534,187 @@ Deno.serve(async request => {
       return jsonResponse(500, { ok: false, error: "verification_update_failed" })
     }
 
+    // Canonical event family routing is deliberately downstream of source
+    // verification. It deduplicates the same real-world event across
+    // independent sources and increments the family version only for a
+    // material source revision.
+    if (
+      flash.signal_category !== "UNCLASSIFIED" &&
+      flash.signal_category !== undefined
+    ) {
+      const sourceCountries = countryByFlash.get(flash.flash_id) ?? new Set<string>()
+      const candidates = [...familyById.values()].filter((family) => {
+        if (family.signal_category !== flash.signal_category) return false
+        const delta = secondsBetween(
+          flash.published_at ?? flash.ingested_at,
+          family.last_seen_at,
+        )
+        if (delta === null || delta > 6 * 60 * 60) return false
+        const familyCountries = new Set(
+          (family.country_isos ?? []).map((value) => String(value).toUpperCase()),
+        )
+        const countryOverlap = overlaps(sourceCountries, familyCountries)
+        const score = similarity(
+          flash.headline,
+          family.canonical_headline,
+        )
+        return (countryOverlap && score >= 0.30) || score >= 0.58
+      })
+
+      let family = flash.event_family_id ? familyById.get(flash.event_family_id) : undefined
+
+      if (!family && candidates.length) {
+        family = candidates.reduce((best, candidate) => {
+          const score = similarity(flash.headline, candidate.canonical_headline)
+          if (!best) return { candidate, score } as unknown as EventFamily
+          const bestScore = similarity(flash.headline, best.canonical_headline)
+          return score > bestScore ? candidate : best
+        }, undefined as EventFamily | undefined)
+      }
+
+      if (!family) {
+        const countries = [...sourceCountries].sort()
+        const createFamily = await db
+          .from("live_flash_event_families")
+          .insert({
+            signal_category: flash.signal_category,
+            canonical_headline: flash.headline,
+            country_isos: countries,
+            first_seen_at: flash.first_seen_at ?? flash.ingested_at,
+            last_seen_at: flash.last_seen_at ?? flash.ingested_at,
+            current_version: 1,
+            current_status: "ACTIVE",
+            source_count: 0,
+            independent_source_count: 0,
+            latest_flash_id: flash.flash_id,
+            latest_content_hash: flash.content_hash,
+          })
+          .select("family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,current_version,current_status,source_count,independent_source_count,last_material_update_at,latest_update_reason,latest_flash_id,latest_content_hash")
+          .single()
+
+        if (createFamily.error || !createFamily.data) {
+          console.error(createFamily.error)
+          return jsonResponse(500, { ok: false, error: "family_create_failed" })
+        }
+
+        family = createFamily.data as EventFamily
+        familyById.set(family.family_id, family)
+        familyMemberIds.set(family.family_id, new Set<string>())
+        familySourceFamilies.set(family.family_id, new Set<string>())
+      }
+
+      const members = familyMemberIds.get(family.family_id) ?? new Set<string>()
+      const sources = familySourceFamilies.get(family.family_id) ?? new Set<string>()
+      const sourceFamily = flashFamily(flash)
+      const isNewMember = !members.has(flash.flash_id)
+
+      if (isNewMember) {
+        const memberInsert = await db
+          .from("live_flash_event_family_members")
+          .insert({
+            family_id: family.family_id,
+            flash_id: flash.flash_id,
+            linked_at: new Date().toISOString(),
+            last_seen_at: new Date().toISOString(),
+          })
+
+        if (memberInsert.error) {
+          console.error(memberInsert.error)
+          return jsonResponse(500, { ok: false, error: "family_member_store_failed" })
+        }
+
+        members.add(flash.flash_id)
+        sources.add(sourceFamily)
+        familyMemberIds.set(family.family_id, members)
+        familySourceFamilies.set(family.family_id, sources)
+      } else {
+        sources.add(sourceFamily)
+      }
+
+      const familyCountries = new Set(
+        (family.country_isos ?? []).map((value) => String(value).toUpperCase()),
+      )
+      for (const country of sourceCountries) familyCountries.add(country)
+
+      const isMaterialFamilyUpdate = Boolean(
+        flash.material_update &&
+        family.latest_content_hash !== flash.content_hash,
+      )
+      const nextVersion = isMaterialFamilyUpdate
+        ? family.current_version + 1
+        : family.current_version
+
+      const familyUpdate = await db
+        .from("live_flash_event_families")
+        .update({
+          canonical_headline: isMaterialFamilyUpdate ? flash.headline : family.canonical_headline,
+          country_isos: [...familyCountries].sort(),
+          first_seen_at:
+            new Date(family.first_seen_at).getTime() <= new Date(flash.first_seen_at ?? flash.ingested_at).getTime()
+              ? family.first_seen_at
+              : flash.first_seen_at ?? flash.ingested_at,
+          last_seen_at:
+            new Date(family.last_seen_at).getTime() >= new Date(flash.last_seen_at ?? flash.ingested_at).getTime()
+              ? family.last_seen_at
+              : flash.last_seen_at ?? flash.ingested_at,
+          current_version: nextVersion,
+          source_count: members.size,
+          independent_source_count: sources.size,
+          last_material_update_at: isMaterialFamilyUpdate
+            ? (flash.last_seen_at ?? flash.ingested_at)
+            : family.last_material_update_at,
+          latest_update_reason: isMaterialFamilyUpdate
+            ? flash.material_update_reason
+            : family.latest_update_reason,
+          latest_flash_id: flash.flash_id,
+          latest_content_hash: flash.content_hash,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("family_id", family.family_id)
+
+      if (familyUpdate.error) {
+        console.error(familyUpdate.error)
+        return jsonResponse(500, { ok: false, error: "family_update_failed" })
+      }
+
+      const flashFamilyUpdate = await db
+        .from("live_flash_events")
+        .update({
+          event_family_id: family.family_id,
+        })
+        .eq("flash_id", flash.flash_id)
+
+      if (flashFamilyUpdate.error) {
+        console.error(flashFamilyUpdate.error)
+        return jsonResponse(500, { ok: false, error: "flash_family_link_failed" })
+      }
+
+      family = {
+        ...family,
+        canonical_headline: isMaterialFamilyUpdate ? flash.headline : family.canonical_headline,
+        country_isos: [...familyCountries].sort(),
+        current_version: nextVersion,
+        first_seen_at:
+          new Date(family.first_seen_at).getTime() <= new Date(flash.first_seen_at ?? flash.ingested_at).getTime()
+            ? family.first_seen_at
+            : flash.first_seen_at ?? flash.ingested_at,
+        last_seen_at:
+          new Date(family.last_seen_at).getTime() >= new Date(flash.last_seen_at ?? flash.ingested_at).getTime()
+            ? family.last_seen_at
+            : flash.last_seen_at ?? flash.ingested_at,
+        source_count: members.size,
+        independent_source_count: sources.size,
+        last_material_update_at: isMaterialFamilyUpdate
+          ? (flash.last_seen_at ?? flash.ingested_at)
+          : family.last_material_update_at,
+        latest_update_reason: isMaterialFamilyUpdate
+          ? flash.material_update_reason
+          : family.latest_update_reason,
+        latest_flash_id: flash.flash_id,
+        latest_content_hash: flash.content_hash,
+      }
+      familyById.set(family.family_id, family)
+    }
     if (nextStatus === "VERIFIED") verified += 1
     else if (nextStatus === "CORROBORATING") corroborating += 1
     else unverified += 1
