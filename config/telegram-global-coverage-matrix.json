@@ -754,6 +754,83 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@GeoPWatch",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent geopolitical/OSINT media channel focused on worldwide conflicts and geopolitics; strong real-time discovery value but not first-party institutional media.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@conflictarchive",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent conflict archive/OSINT channel covering modern and historical conflicts; useful for evidence discovery, not authoritative truth.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@ourwarstoday",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent war/world-news and OSINT channel with global conflict coverage and linked source attribution; treat as lead intelligence only.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@intelslava",
+      "country": "Global / Eastern Europe / Middle East",
+      "region": "eastern_europe_balkans",
+      "basis": "Large independent world-news channel covering military conflicts and international affairs; high signal volume but no first-party institutional authority.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@MaxOsintIntel",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent OSINT channel focused on geopolitics, global events and real-time news.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@isnreport",
+      "country": "India / Global",
+      "region": "south_asia",
+      "basis": "Independent India Sentinel Network covering Indian/global affairs, OSINT and political developments.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@CIG_telegram",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent geopolitical/news channel with substantial volume; contains explicit ideological framing, so use only as low-trust lead intelligence and never as sole corroboration.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true
     }
   ],
   "country_source_sweep": {
@@ -1808,6 +1885,33 @@
       "coverage_rule": "195-country targets plus regional/institutional channels",
       "runtime_effect": false,
       "auto_approval": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "global_unofficial_high_signal_pass",
+      "categories": [
+        "global_osint",
+        "conflict_archive",
+        "war_news",
+        "regional_osint",
+        "ideological_lead"
+      ],
+      "added": [
+        "@GeoPWatch",
+        "@conflictarchive",
+        "@ourwarstoday",
+        "@intelslava",
+        "@MaxOsintIntel",
+        "@isnreport",
+        "@CIG_telegram"
+      ],
+      "runtime_effect": false
     }
-  ]
+  ],
+  "unofficial_source_policy": {
+    "status": "DISCOVERY_ONLY",
+    "runtime_effect": false,
+    "rule": "Unofficial channels may be ingested only as UNVERIFIED lead intelligence after manual approval; they can never directly publish GRI/Risk Gate/Risk Object or customer intelligence; independent corroboration is mandatory.",
+    "no_auto_approval": true
+  }
 }
