@@ -17,6 +17,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  copilot-free-policy:
+    name: No GitHub AI Dependency
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Reject repository-owned Copilot dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nEi '(^|[^[:alnum:]])copilot([^[:alnum:]]|$)|github-advanced-security' -- . ':!*.lock' ':!bun.lock' ; then
+            echo "::error title=GitHub AI dependency detected::Repository content must not introduce a Copilot or github-advanced-security dependency."
+            exit 1
+          fi
+          echo "PASS: no repository-owned Copilot or GitHub Advanced Security AI dependency found."
+
   gitleaks:
     name: Secret Leak Scan
     runs-on: ubuntu-latest
@@ -49,21 +68,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
+      - copilot-free-policy
       - gitleaks
       - osv
     if: ${{ always() }}
     steps:
       - name: Require independent scanners to pass
         env:
+          POLICY_RESULT: ${{ needs.copilot-free-policy.result }}
           GITLEAKS_RESULT: ${{ needs.gitleaks.result }}
           OSV_RESULT: ${{ needs.osv.result }}
         shell: bash
         run: |
           set -euo pipefail
+          echo "No GitHub AI Dependency: ${POLICY_RESULT}"
           echo "Secret Leak Scan: ${GITLEAKS_RESULT}"
           echo "Dependency Vulnerability Scan: ${OSV_RESULT}"
 
-          if [[ "${GITLEAKS_RESULT}" != "success" || "${OSV_RESULT}" != "success" ]]; then
+          if [[ "${POLICY_RESULT}" != "success" || "${GITLEAKS_RESULT}" != "success" || "${OSV_RESULT}" != "success" ]]; then
             echo "::error title=Independent security gate failed::A required independent security scanner did not pass."
             exit 1
           fi
