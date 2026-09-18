@@ -72,7 +72,7 @@ describe("pre-mainnet x402 readiness", () => {
   it("keeps Circle production locked behind provider and global acknowledgements", () => {
     process.env.CIRCLE_X402_ENVIRONMENT = "production";
     process.env.CIRCLE_X402_SELLER_ADDRESS = `0x${"1".repeat(40)}`;
-    process.env.CIRCLE_X402_PRICE_USDC = "0.02";
+    process.env.CIRCLE_X402_PRICE_USDC = "0.05";
     process.env.CIRCLE_X402_PRODUCTION_NETWORKS = "eip155:8453";
     expect(() => getCircleGatewayProductionConfig()).toThrow();
 
