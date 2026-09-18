@@ -16,6 +16,8 @@ create table if not exists public.production_intelligence_watch_results (
 
   category text not null,
   mode text not null check (mode in ('current', 'historical')),
+  as_of timestamptz,
+  build_verified boolean not null default false,
 
   question text not null,
   question_sha256 text not null,
@@ -62,6 +64,9 @@ create table if not exists public.production_intelligence_watch_results (
 
   constraint production_intelligence_watch_category_check
     check (category in ('geopolitics', 'macro', 'critical_minerals')),
+
+  constraint production_intelligence_watch_as_of_mode_check
+    check ((mode = 'historical' and as_of is not null) or (mode = 'current' and as_of is null)),
 
   constraint production_intelligence_watch_question_check
     check (char_length(question) between 4 and 300),
