@@ -506,7 +506,26 @@ export async function assembleAgentQueryResponse(input: {
     current_event_signal: result.current_event_signal,
     commercially_deliverable_event_count: result.commercially_deliverable_event_count,
     excluded_non_deliverable_event_count: result.excluded_non_deliverable_event_count,
-    events: result.events,
+    events: result.events.map((event) =>
+      publicStructuralDevelopment({
+        event_id: event.event_id,
+        story_key: event.story_key,
+        event_type: event.event_type,
+        families: event.families,
+        primary_country: event.primary_country,
+        countries: event.countries,
+        severity: event.severity,
+        confidence: event.confidence,
+        direction: event.direction,
+        status: event.status,
+        first_seen_at: event.first_seen_at,
+        last_seen_at: event.last_seen_at,
+        evidence_count: event.evidence_count,
+        independent_source_count: event.independent_source_count,
+        structure_version: event.structure_version,
+        classification_version: event.classification_version,
+      }),
+    ),
     limitations: result.limitations,
   }));
   const currentStates = buildCurrentState(plan, structural, riskObjects, hotTopics);
