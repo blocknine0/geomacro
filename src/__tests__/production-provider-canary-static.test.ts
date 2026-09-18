@@ -10,7 +10,7 @@ describe("production provider real-money canary runner", () => {
     expect(canary).toContain("I_AUTHORIZE_CIRCLE_CAPPED_CANARY");
     expect(canary).toContain("I_AUTHORIZE_NEVERMINED_CAPPED_CANARY");
     expect(canary).toContain("GEOMACRO_PRODUCTION_CANARY_MAX_USDC");
-    expect(canary).toContain("HARD_MAX_USDC_ATOMIC = 1_000_000n");
+    expect(canary).toContain("HARD_MAX_USDC_ATOMIC = 50_000n");
     expect(canary).toContain("canaryContext()");
     expect(canary).toContain("verifyCanaryBuild(context)");
   });
@@ -54,6 +54,7 @@ describe("production provider real-money canary runner", () => {
     expect(canary).toContain("Coinbase canary debit mismatch");
     expect(canary).toContain("Coinbase replay changed buyer USDC balance");
     expect(canary).toContain('GatewayClient');
+    expect(canary).toContain("encodePaymentSignatureHeader");
     expect(canary).toContain("Nevermined live plan maximum exceeds the owner-approved canary cap");
     expect(canary).toContain("Production canary replay is not explicitly marked idempotent");
   });
