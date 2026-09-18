@@ -634,6 +634,7 @@ Deno.serve(async request => {
       const sources = familySourceFamilies.get(family.family_id) ?? new Set<string>()
       const sourceFamily = flashFamily(flash)
       const isNewMember = !members.has(flash.flash_id)
+      const isIndependentNewSource = !sources.has(sourceFamily)
 
       if (isNewMember) {
         const memberInsert = await db
@@ -672,6 +673,7 @@ Deno.serve(async request => {
       const familyAgeSeconds = secondsBetween(sourceTime, family.last_seen_at)
       const newSourceMaterialDevelopment = Boolean(
         !flash.material_update &&
+        isIndependentNewSource &&
         family.latest_flash_id !== flash.flash_id &&
         family.latest_content_hash !== flash.content_hash &&
         familyCountryOverlap &&
@@ -685,7 +687,7 @@ Deno.serve(async request => {
         (flash.material_update || newSourceMaterialDevelopment),
       )
       const familyUpdateReason = flash.material_update
-        ? flash.material_update_reason
+        ? (flash.material_update_reason ?? "material_source_update")
         : newSourceMaterialDevelopment
           ? "new_source_potential_material_development"
           : family.latest_update_reason
