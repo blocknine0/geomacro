@@ -304,6 +304,7 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
   if (
     parsed.question &&
     !parsed.as_of &&
+    topics.length > 0 &&
     ["single_subject", "comparison", "corridor"].includes(intent)
   ) {
     topics = [...new Set([...topics, "risk_object", "hot_topics"])].sort() as AgentQueryTopic[];
