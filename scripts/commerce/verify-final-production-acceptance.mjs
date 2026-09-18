@@ -137,6 +137,23 @@ async function main() {
   }
   sameSha(prelisting, expectedSha, "Public production prelisting health");
 
+  const submission = await load(
+    required("GEOMACRO_MARKETPLACE_SUBMISSION_EVIDENCE"),
+    "Marketplace submission evidence",
+  );
+  if (
+    submission.schema_version !== "geomacro.marketplace-submission-acceptance.v1" ||
+    submission.result !== "PASS" ||
+    submission.gates?.circle_submission_evidenced !== true ||
+    submission.gates?.nevermined_submission_evidenced !== true ||
+    submission.gates?.coinbase_indexing_requires_observation !== true ||
+    submission.gates?.listing_not_inferred_from_submission !== true ||
+    submission.gates?.listing_not_inferred_from_payment !== true
+  ) {
+    fail("Marketplace submission/indexing handoff is not PASS evidence");
+  }
+  sameSha(submission, expectedSha, "Marketplace submission evidence");
+
   const marketplace = await load(
     required("GEOMACRO_MARKETPLACE_OBSERVATION_EVIDENCE"),
     "Marketplace observation",
@@ -190,6 +207,7 @@ async function main() {
     canary_acceptance_schema: canary.schema_version,
     commerce_safety_drill_schema: safety.schema_version,
     public_prelisting_health_schema: prelisting.schema_version,
+    marketplace_submission_schema: submission.schema_version,
     marketplace_observation_schema: marketplace.schema_version,
     post_listing_health_schema: health.schema_version,
     gates: {
@@ -205,6 +223,7 @@ async function main() {
       exact_same_sha_public_production: true,
       prelisting_unpaid_live_402_health: true,
       unpaid_live_402_health: true,
+      marketplace_submission_or_indexing_handoff_evidenced: true,
       marketplace_indexing_or_listing_observed: true,
       post_listing_health_verified: true,
       execution_authorized: false,
