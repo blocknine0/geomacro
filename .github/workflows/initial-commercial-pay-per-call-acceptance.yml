@@ -60,11 +60,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun - <<'NODE'
-          const contract = await Bun.file("src/lib/geomacro-intelligence-contract.ts").text();
-          const env = await Bun.file(".env.example").text();
-          const config = await Bun.file("config/prelaunch-mainnet-x402.env.example").text();
-          const manifest = await Bun.file("config/commercial-launch-manifest.json").json();
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const read = path => fs.readFileSync(path, "utf8");
+          const contract = read("src/lib/geomacro-intelligence-contract.ts");
+          const env = read(".env.example");
+          const config = read("config/prelaunch-mainnet-x402.env.example");
+          const manifest = JSON.parse(read("config/commercial-launch-manifest.json"));
 
           if (!contract.includes('"0.05"')) throw new Error("canonical intelligence price is not 0.05");
           if (!env.includes("COINBASE_X402_PRICE_USDC=0.05")) throw new Error("Coinbase production example is not 0.05");
@@ -121,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          bun - <<'NODE'
+          node --input-type=module <<'NODE'
           const fs = require("node:fs");
           const crypto = require("node:crypto");
           const sha256 = value => crypto.createHash("sha256").update(value, "utf8").digest("hex");
