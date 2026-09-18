@@ -47,6 +47,19 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(migration).toContain("prevent_live_signal_fragment_mutation");
   });
 
+  it("archives compact signal records as private gzip evidence with readback verification", () => {
+    const archive = read("supabase/functions/live-flash-archive/index.ts");
+
+    expect(archive).toContain("CompressionStream(\"gzip\")");
+    expect(archive).toContain("geomacro-telegram-signal");
+    expect(archive).toContain("payload_sha256");
+    expect(archive).toContain("compressed_sha256");
+    expect(archive).toContain("archive_readback_sha_mismatch");
+    expect(archive).toContain("archived_fragment_id");
+    expect(archive).toContain("archived_at");
+    expect(archive).not.toContain("raw_payload");
+  });
+
   it("does not persist Telegram raw body or raw payload in signal mode", () => {
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
 
