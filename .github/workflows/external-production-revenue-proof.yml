@@ -1,0 +1,117 @@
+name: External Production Revenue Proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: "Exact canonical main SHA already accepted for production launch"
+        required: true
+        type: string
+      final_acceptance_run_id:
+        description: "Successful Final Production Acceptance run ID"
+        required: true
+        type: string
+      provider:
+        description: "Provider used by the independently originating production purchase"
+        required: true
+        type: choice
+        options: [coinbase_cdp_x402, circle_gateway_x402, nevermined_x402]
+      purchase_classification:
+        description: "Must represent a non-controlled buyer"
+        required: true
+        type: choice
+        options: [external_customer, independent_production_buyer]
+      reconciliation_reference:
+        description: "Non-secret accounting reconciliation reference"
+        required: true
+        type: string
+      owner_ack:
+        description: "Must equal I_CONFIRM_THIS_IS_NOT_A_CONTROLLED_CANARY"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: external-production-revenue-proof
+  cancel-in-progress: false
+
+jobs:
+  verify-and-reconcile:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE: ${{ secrets.GEOMACRO_EXTERNAL_REVENUE_SETTLEMENT_REFERENCE }}
+      GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH: ${{ secrets.GEOMACRO_EXTERNAL_REVENUE_DELIVERED_PRODUCT_HASH }}
+      GEOMACRO_PAYMENT_PROVIDER: ${{ inputs.provider }}
+      GEOMACRO_PURCHASE_CLASSIFICATION: ${{ inputs.purchase_classification }}
+      GEOMACRO_RECONCILIATION_MODE: commercial_revenue
+      GEOMACRO_PRODUCTION_RECONCILIATION_ACK: I_RECONCILE_VERIFIED_PRODUCTION_DELIVERY
+      GEOMACRO_RECONCILIATION_REFERENCE: ${{ inputs.reconciliation_reference }}
+      GEOMACRO_RECONCILIATION_EVIDENCE_PATH: /tmp/revenue/reconciliation.json
+      GEOMACRO_PUBLIC_REVENUE_RECONCILIATION_EVIDENCE: /tmp/revenue/reconciliation.json
+      GEOMACRO_PUBLIC_REVENUE_PROOF_OUTPUT: /tmp/revenue/public-revenue-proof.json
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+
+      - name: Require exact current main SHA and non-canary owner acknowledgement
+        shell: bash
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          OWNER_ACK: ${{ inputs.owner_ack }}
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "${CANDIDATE_SHA,,}" == "${DISPATCH_SHA,,}" ]]
+          [[ "$OWNER_ACK" == "I_CONFIRM_THIS_IS_NOT_A_CONTROLLED_CANARY" ]] || {
+            echo "::error::Revenue proof is forbidden for controlled canaries."; exit 1;
+          }
+          [[ "${GEOMACRO_PURCHASE_CLASSIFICATION}" == "external_customer" || "${GEOMACRO_PURCHASE_CLASSIFICATION}" == "independent_production_buyer" ]]
+          [[ -n "${GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE:-}" && -n "${GEOMACRO_EXPECTED_DELIVERED_PRODUCT_HASH:-}" ]] || {
+            echo "::error::External purchase reconciliation evidence is not configured."; exit 1;
+          }
+          echo "::add-mask::${GEOMACRO_EXPECTED_SETTLEMENT_REFERENCE}"
+
+      - name: Verify successful final production acceptance happened first
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          FINAL_RUN: ${{ inputs.final_acceptance_run_id }}
+        with:
+          script: |
+            const runId = Number(process.env.FINAL_RUN);
+            if (!Number.isInteger(runId) || runId <= 0) core.setFailed('final_acceptance_run_id must be numeric');
+            const { owner, repo } = context.repo;
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.path !== '.github/workflows/final-production-acceptance.yml') core.setFailed('Referenced run is not Final Production Acceptance');
+            if (run.event !== 'workflow_dispatch' || run.head_branch !== 'main') core.setFailed('Final acceptance must be a manual main run');
+            if (String(run.head_sha || '').toLowerCase() !== String(process.env.EXPECTED_SHA).toLowerCase()) core.setFailed('Final acceptance SHA mismatch');
+            if (run.status !== 'completed' || run.conclusion !== 'success') core.setFailed('Final production acceptance is not successful');
+
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Reconcile independently originating production purchase
+        run: node scripts/ops/reconcile-agent-commerce-payment.mjs
+
+      - name: Verify bounded public revenue claim
+        run: node scripts/commerce/verify-public-revenue-proof.mjs
+
+      - name: Upload sanitized revenue proof only
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: external-production-revenue-proof-${{ github.run_id }}
+          path: /tmp/revenue/public-revenue-proof.json
+          if-no-files-found: error
+          retention-days: 30
