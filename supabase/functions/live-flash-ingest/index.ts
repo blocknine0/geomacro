@@ -72,6 +72,7 @@ type FlashPayload = {
   source_id?: string
   source_record_id?: string
   published_at?: string | null
+  source_updated_at_utc?: string | null
   headline?: string
   body?: string | null
   signal_category?: string | null
@@ -864,6 +865,13 @@ Deno.serve(async request => {
       80,
     )
 
+  const sourceUpdatedAtUtc =
+    cleanString(
+      payload.source_updated_at_utc,
+      80,
+    ) ??
+    publishedAt
+
   if (
     publishedAt &&
     Number.isNaN(
@@ -876,6 +884,22 @@ Deno.serve(async request => {
         ok: false,
         error:
           "invalid_published_at",
+      },
+    )
+  }
+
+  if (
+    sourceUpdatedAtUtc &&
+    Number.isNaN(
+      Date.parse(sourceUpdatedAtUtc)
+    )
+  ) {
+    return jsonResponse(
+      400,
+      {
+        ok: false,
+        error:
+          "invalid_source_updated_at_utc",
       },
     )
   }
@@ -969,6 +993,15 @@ Deno.serve(async request => {
     `${sourceId}_${stableIdentityHash.slice(0, 32)}`
 
   const nowIso = new Date().toISOString()
+  const sourceUpdatedAtMs = sourceUpdatedAtUtc
+    ? Date.parse(sourceUpdatedAtUtc)
+    : Number.NaN
+  const detectionLatencyMs = Number.isFinite(sourceUpdatedAtMs)
+    ? Math.max(
+        0,
+        Date.parse(nowIso) - sourceUpdatedAtMs,
+      )
+    : null
   const previous = existingResult.data as {
     flash_id: string
     content_hash: string
@@ -1021,6 +1054,7 @@ Deno.serve(async request => {
       signal_category: signalCategory,
       event_version: previous.source_version,
       material_update: false,
+      detection_latency_ms: detectionLatencyMs,
       verification_status: "UNCHANGED",
       scoring_eligible: false,
     })
@@ -1059,6 +1093,10 @@ Deno.serve(async request => {
       sourceRecordId,
     published_at:
       publishedAt,
+    source_updated_at_utc:
+      sourceUpdatedAtUtc,
+    detection_latency_ms:
+      detectionLatencyMs,
     updated_at:
       new Date().toISOString(),
     // The signal project is a compact hot index. Keep only a bounded
@@ -1263,6 +1301,8 @@ Deno.serve(async request => {
       source_version: sourceVersion,
       captured_at: nowIso,
       published_at: publishedAt,
+      source_updated_at_utc: sourceUpdatedAtUtc,
+      detection_latency_ms: detectionLatencyMs,
       headline,
       content_hash: contentHash,
       signal_category: signalCategory,
