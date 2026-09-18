@@ -8,7 +8,7 @@ const CDP_ORIGIN = `https://${CDP_HOST}` as const;
 const DISCOVERY_SEARCH_PATH = "/platform/v2/x402/discovery/search" as const;
 const BAZAAR_STATUSES = new Set(["success", "processing", "rejected"]);
 
-export const COINBASE_BAZAAR_RESOURCE_URL = "https://geomacro.live/api/x402/risk" as const;
+export const COINBASE_BAZAAR_RESOURCE_URL = "https://geomacro.live/api/x402/intelligence" as const;
 
 type DiscoveryResource = {
   resource?: unknown;
