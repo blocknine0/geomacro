@@ -301,7 +301,7 @@ async function probe(probe) {
         category: probe.category,
         mode: probe.mode,
         as_of: probe.as_of,
-        build_verified: Boolean(probe.build.schema === "geomacro.deployment-build.v1" && probe.build.sha),
+        build_verified: Boolean(probe.build.verified),
         question: probe.question,
         question_sha256: sha256(probe.question),
         request_id: json?.request_id ? String(json.request_id) : null,
