@@ -607,7 +607,7 @@ Deno.serve(async request => {
         family = createFamily.data as EventFamily
         const initialVersion = await db
           .from("live_flash_event_family_versions")
-          .upsert({
+          .insert({
             family_id: family.family_id,
             version: 1,
             captured_at: new Date().toISOString(),
@@ -616,8 +616,8 @@ Deno.serve(async request => {
             signal_category: family.signal_category,
             material_update_reason: "initial_event_family",
             content_hash: flash.content_hash,
-          }, { onConflict: "family_id,version" })
-        if (initialVersion.error) {
+          })
+        if (initialVersion.error && initialVersion.error.code !== "23505") {
           console.error(initialVersion.error)
           return jsonResponse(500, { ok: false, error: "family_version_create_failed" })
         }
@@ -703,7 +703,7 @@ Deno.serve(async request => {
       if (isMaterialFamilyUpdate) {
         const familyVersionInsert = await db
           .from("live_flash_event_family_versions")
-          .upsert({
+          .insert({
             family_id: family.family_id,
             version: nextVersion,
             captured_at: new Date().toISOString(),
@@ -712,8 +712,8 @@ Deno.serve(async request => {
             signal_category: flash.signal_category,
             material_update_reason: flash.material_update_reason,
             content_hash: flash.content_hash,
-          }, { onConflict: "family_id,version" })
-        if (familyVersionInsert.error) {
+          })
+        if (familyVersionInsert.error && familyVersionInsert.error.code !== "23505") {
           console.error(familyVersionInsert.error)
           return jsonResponse(500, { ok: false, error: "family_version_store_failed" })
         }
