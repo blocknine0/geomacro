@@ -67,10 +67,32 @@ create index if not exists testnet_developer_api_funnel_principal_idx
 create index if not exists testnet_developer_api_funnel_stage_idx
   on public.testnet_developer_api_funnel_events (stage, outcome, occurred_at desc);
 
+create or replace function public.prevent_testnet_developer_api_funnel_mutation()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  raise exception 'Testnet Developer API funnel telemetry is append-only';
+end;
+$;
+
+drop trigger if exists testnet_developer_api_funnel_immutable
+on public.testnet_developer_api_funnel_events;
+
+create trigger testnet_developer_api_funnel_immutable
+before update or delete
+on public.testnet_developer_api_funnel_events
+for each row
+execute function public.prevent_testnet_developer_api_funnel_mutation();
+
 alter table public.testnet_developer_api_funnel_events enable row level security;
 
 revoke all on table public.testnet_developer_api_funnel_events from PUBLIC, anon, authenticated;
-grant all on table public.testnet_developer_api_funnel_events to service_role;
+grant select, insert on table public.testnet_developer_api_funnel_events to service_role;
 
 comment on table public.testnet_developer_api_funnel_events is
   'Server-only Testnet Developer API activation funnel telemetry. No raw request bodies, API secrets, IP addresses or upstream news-source identities.';
+
+comment on function public.prevent_testnet_developer_api_funnel_mutation() is
+  'Prevents mutation or deletion of Developer API funnel evidence after it has been recorded.';
