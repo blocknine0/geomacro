@@ -48,7 +48,7 @@ describe("adaptive hot-topic commercial delivery", () => {
   });
 
   it("keeps a healthy no-signal result distinct from zero risk", () => {
-    expect(loader).toContain('current_event_signal: matching.length > 0');
+    expect(loader).toContain('current_event_signal: canonicalRows.length > 0');
     expect(loader).toContain('no_signal_is_not_zero_risk: true');
     expect(loader).toContain('unclassified_events_excluded_from_family_specific_results: true');
   });
@@ -67,7 +67,7 @@ describe("adaptive hot-topic commercial delivery", () => {
     expect(external).toContain('input.module === "hot_topics"');
     expect(external).toContain('loadAgentHotTopics');
     expect(response).toContain('loadAgentHotTopics');
-    expect(response).toContain('hot_topics: hotTopics');
-    expect(response).toContain('current_event_raw_source_material_redistributed: false');
+    expect(response).toContain('events: result.events.map((event) =>');
+    expect(response).toContain('publicStructuralDevelopment');
   });
 });
