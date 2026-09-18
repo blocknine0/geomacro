@@ -76,6 +76,14 @@ function verifyCanary(e, provider) {
   if (e.paid_status !== 200 || e.replay_status !== 200) fail(`${provider.key} canary paid/replay status must both be 200`);
   if (e.settlement_proven !== true) fail(`${provider.key} canary settlement is not proven`);
   if (e.replay_no_second_charge !== true) fail(`${provider.key} canary did not prove zero second charge`);
+  if (
+    e.replay_same_settlement_reference !== true ||
+    e.zero_second_charge_proof?.server_idempotent_replay !== true ||
+    e.zero_second_charge_proof?.same_settlement_reference !== true ||
+    e.zero_second_charge_proof?.reconciliation_single_payment_event_required !== true
+  ) {
+    fail(`${provider.key} canary replay proof is incomplete`);
+  }
   if (e.execution_authorized !== false) fail(`${provider.key} canary violated non-execution boundary`);
   if (e.private_key_persisted !== false) fail(`${provider.key} canary persisted private-key material`);
   if (e.raw_payment_proof_persisted !== false) fail(`${provider.key} canary persisted raw payment proof`);
@@ -113,6 +121,12 @@ function verifyReconciliation(e, provider, canary) {
     fail(`${provider.key} canary reconciliation did not reach matched non-revenue internal state`);
   }
   if (e.execution_authorized !== false) fail(`${provider.key} reconciliation violated non-execution boundary`);
+  if (
+    e.single_payment_event_for_settlement !== true ||
+    Number(e.payment_event_count_for_settlement) !== 1
+  ) {
+    fail(`${provider.key} reconciliation did not prove exactly one payment event for the settlement`);
+  }
   if (e.raw_settlement_reference_recorded_in_artifact !== false) {
     fail(`${provider.key} reconciliation artifact contains raw settlement reference`);
   }
@@ -162,6 +176,8 @@ async function main() {
       paid_status: 200,
       replay_status: 200,
       replay_no_second_charge: true,
+      replay_same_settlement_reference: true,
+      single_payment_event_for_settlement: true,
       reconciliation_status: "matched",
       revenue_classification: "non_revenue_internal",
       commercial_revenue: false,
