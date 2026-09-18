@@ -132,18 +132,9 @@ Static catalog prices are never authoritative. The live HTTP 402 challenge or pr
 
 The canonical machine queue is `config/agent-marketplace-distribution.json`.
 
-Primary coordinated-launch cohort:
+Initial paid launch rail: **Coinbase x402**.
 
-- Coinbase Bazaar
-- Coinbase Agentic Market
-- Circle Agent Marketplace
-- x402.new
-- Agent402.tools
-- PayAPI Market
-- x402scan
-- x402 List
-- Nevermined registry
-- true402
+Marketplace distribution is a separate post-launch track. Coinbase Bazaar/Agentic Market are the first marketplace targets; Circle Agent Marketplace, Nevermined registry and the other directories are later distribution tracks.
 
 Parallel onboarding:
 
