@@ -86,9 +86,25 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
   const allObservations = context.observations
     .slice(0, Math.max(limit, 12))
     .map((row) => publicStructuralObservation(row, plan.as_of ?? new Date().toISOString()));
+  const stateVersionInputHash = hash({
+    observation_hashes: context.observations
+      .map((row) => row.normalized_hash)
+      .filter((value): value is string => typeof value === "string")
+      .sort(),
+    coverage: context.metadata.coverage
+      .map((row) => ({
+        dimension: row.dimension,
+        country_iso3: row.country_iso3,
+        coverage_year: row.coverage_year,
+        coverage_status: row.coverage_status,
+        latest_observed_at: row.latest_observed_at,
+      }))
+      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+  });
 
   return {
     subject,
+    stateVersionInputHash,
     intelligence,
     evidence_summary: {
       observation_count: allObservations.length,
@@ -319,14 +335,14 @@ async function buildCurrentState(
       classification_version: event.classification_version,
     }));
 
-    const stateVersion = intelligenceStateVersion({
+      const stateVersion = intelligenceStateVersion({
       subject,
       as_of: asOf,
       risk_calculation_hash: risk?.integrity.calculation_hash ?? null,
       structural_observation_hashes:
-        (structuralRow?.intelligence
-          ? [hash(structuralRow.intelligence)]
-          : []),
+        structuralRow?.stateVersionInputHash
+          ? [structuralRow.stateVersionInputHash]
+          : [],
       structural_coverage: structuralRow
         ? Object.values(structuralRow.intelligence).flatMap((value) =>
             value && typeof value === "object" && "coverage" in value &&
@@ -610,7 +626,7 @@ export async function assembleAgentQueryResponse(input: {
     subjects: plan.subjects,
     as_of: plan.as_of ?? new Date().toISOString(),
     analysis: adaptiveAnalysis,
-    structural,
+    structural: structural.map(({ stateVersionInputHash: _stateVersionInputHash, ...publicRow }) => publicRow),
     hot_topics: publicHotTopics,
     risk_gate: riskGates,
     signed_risk_objects: riskObjects.map(publicRiskObjectAttestation),
