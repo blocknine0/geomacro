@@ -147,6 +147,26 @@ export function publicStructuralObservation(
   };
 }
 
+export function publicStructuralCoverage(row: {
+  dimension: string;
+  country_iso3: string;
+  coverage_year: number;
+  coverage_status: string;
+  observation_count: number;
+  latest_observed_at: string | null;
+  updated_at: string;
+}): PublicStructuralCoverage {
+  return {
+    dimension: row.dimension,
+    country_iso3: row.country_iso3,
+    coverage_year: row.coverage_year,
+    coverage_status: row.coverage_status,
+    observation_count: row.observation_count,
+    latest_observed_at: row.latest_observed_at,
+    updated_at: row.updated_at,
+  };
+}
+
 function materiality(severity: number | null): PublicStructuralDevelopment["materiality"] {
   const value = typeof severity === "number" && Number.isFinite(severity) ? severity : 0;
   if (value >= 80) return "CRITICAL";
