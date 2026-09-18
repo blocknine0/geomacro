@@ -37,17 +37,19 @@ Already implemented:
 - commercial-pending-accounting boundary before reconciliation
 - initial launch price: 0.05 USDC per successful paid intelligence delivery for the first 10,000 deliveries; later reference price 0.10 USDC after adoption evidence
 
-Launch-time external inputs still required:
+Launch-time external inputs still required for the initial Coinbase pay-per-call path:
 
 - dedicated production receiver address
 - production CDP credentials
 - exact deployment commit with CI/security green
 - explicit owner acknowledgements and coordinated launch acknowledgement
-- one capped real-USDC smoke purchase followed by ledger/onchain reconciliation
+- an independently originating first production purchase followed by ledger/onchain reconciliation
 
-These are launch actions, not missing implementation.
+A founder-funded smoke purchase is not required for initial activation. The first customer-originating production purchase supplies the first commercial settlement/reconciliation evidence.
 
 ## 2. Circle Gateway / Circle Agent Marketplace
+
+Circle is a later additive provider track and is not part of the initial Coinbase pay-per-call launch blocker set.
 
 Implementation status: **production adapter prepared and locked**.
 
@@ -69,6 +71,8 @@ Arc mainnet is **not** enabled by this package. Do not use private/pre-GA Arc-ma
 Circle Agent Marketplace can list the canonical Geomacro x402 service after production is live; Circle Gateway is additive and is not treated as a reason to publish before launch.
 
 ## 3. Nevermined
+
+Nevermined is a later additive provider track and is not part of the initial Coinbase pay-per-call launch blocker set.
 
 Implementation status: **provider code-ready; live-plan inputs intentionally absent**.
 
