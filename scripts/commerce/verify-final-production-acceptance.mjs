@@ -40,8 +40,8 @@ async function strictClosureRun(runId, expectedSha) {
   );
   if (response.status !== 200) fail(`Strict closure GitHub run lookup returned HTTP ${response.status}`);
   const run = await response.json();
-  if (run?.path !== ".github/workflows/strict-commercial-launch-closure.yml") {
-    fail("Referenced P0 run is not Strict Commercial Launch Closure");
+  if (run?.path !== ".github/workflows/p0-strict-prepublic-closure.yml") {
+    fail("Referenced P0 run is not P0 Strict Prepublic Closure");
   }
   if (run?.event !== "workflow_dispatch" || run?.head_branch !== "main") {
     fail("Strict closure must be a manual main-branch execution");
@@ -122,6 +122,21 @@ async function main() {
     fail("Safety drill and real-money canaries did not use the same isolated host");
   }
 
+  const prelisting = await load(
+    required("GEOMACRO_PUBLIC_PRELISTING_HEALTH_EVIDENCE"),
+    "Public production prelisting health",
+  );
+  if (
+    prelisting.schema_version !== "geomacro.public-production-prelisting-health.v1" ||
+    prelisting.result !== "PASS" ||
+    prelisting.build_marker_match !== true ||
+    prelisting.payment_performed_by_this_check !== false ||
+    prelisting.settlement_performed_by_this_check !== false
+  ) {
+    fail("Public production prelisting exact-SHA health is not PASS evidence");
+  }
+  sameSha(prelisting, expectedSha, "Public production prelisting health");
+
   const marketplace = await load(
     required("GEOMACRO_MARKETPLACE_OBSERVATION_EVIDENCE"),
     "Marketplace observation",
@@ -174,6 +189,7 @@ async function main() {
     private_revenue_ledger_head_entry_sha256: privateRevenueLedger.head_entry_sha256,
     canary_acceptance_schema: canary.schema_version,
     commerce_safety_drill_schema: safety.schema_version,
+    public_prelisting_health_schema: prelisting.schema_version,
     marketplace_observation_schema: marketplace.schema_version,
     post_listing_health_schema: health.schema_version,
     gates: {
@@ -187,6 +203,7 @@ async function main() {
       global_emergency_freeze_drilled: true,
       per_provider_quarantine_drilled: true,
       exact_same_sha_public_production: true,
+      prelisting_unpaid_live_402_health: true,
       unpaid_live_402_health: true,
       marketplace_indexing_or_listing_observed: true,
       post_listing_health_verified: true,
