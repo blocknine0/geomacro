@@ -85,14 +85,14 @@ for (const [provider, state] of Object.entries(launch.providers || {})) {
 if (launch.providers?.coinbase_x402?.launch_cohort !== true) {
   throw new Error("Coinbase must remain in the initial payment launch cohort");
 }
-if (launch.providers?.circle_gateway_x402?.launch_cohort !== true) {
-  throw new Error("Circle Gateway must remain in the initial payment launch cohort");
+if (launch.providers?.circle_gateway_x402?.launch_cohort !== false) {
+  throw new Error("Circle Gateway must remain outside the initial payment launch cohort until later additive activation");
 }
 if (launch.providers?.circle_gateway_x402?.arc_mainnet_enabled !== false) {
   throw new Error("Arc mainnet must remain disabled in the prepared Circle launch path");
 }
-if (launch.providers?.nevermined?.launch_cohort !== true) {
-  throw new Error("Nevermined must remain in the initial payment launch cohort");
+if (launch.providers?.nevermined?.launch_cohort !== false) {
+  throw new Error("Nevermined must remain outside the initial payment launch cohort until later additive activation");
 }
 if (launch.providers?.goat_x402?.launch_cohort !== false) {
   throw new Error("GOAT mainnet must remain deferred from the initial payment launch cohort");
@@ -137,7 +137,8 @@ const evidence = {
   production_activation_performed: false,
   production_funds_authorized: false,
   official_launch_announced: false,
-  payment_launch_cohort: ["coinbase_x402", "circle_gateway_x402", "nevermined"],
+  payment_launch_cohort: ["coinbase_x402"],
+  later_payment_provider_tracks: ["circle_gateway_x402", "nevermined", "goat_x402"],
   deferred_payment_providers: {
     goat_x402_mainnet: "manual_merchant_application_and_approval_required",
   },
