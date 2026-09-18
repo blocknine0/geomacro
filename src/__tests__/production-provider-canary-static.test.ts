@@ -30,6 +30,7 @@ describe("production provider real-money canary runner", () => {
     expect(canary).toContain("idempotent_replay");
     expect(canary).toContain("Production canary replay returned different intelligence");
     expect(canary).toContain("Changed-request replay did not fail closed");
+    expect(canary).toContain("payment_verified: true");
     expect(canary).toContain("replay_no_second_charge: true");
   });
 
@@ -54,6 +55,7 @@ describe("production provider real-money canary runner", () => {
     expect(canary).toContain("Coinbase canary debit mismatch");
     expect(canary).toContain("Coinbase replay changed buyer USDC balance");
     expect(canary).toContain('GatewayClient');
+    expect(canary).toContain("circleRequestBody = JSON.parse(serializedBody)");
     expect(canary).toContain("encodePaymentSignatureHeader");
     expect(canary).toContain("Nevermined live plan maximum exceeds the owner-approved canary cap");
     expect(canary).toContain("Production canary replay is not explicitly marked idempotent");
