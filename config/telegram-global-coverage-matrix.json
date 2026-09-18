@@ -736,6 +736,24 @@
       "status": "PENDING",
       "enabled": false,
       "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@Europeancommission",
+      "country": "European Union",
+      "region": "global_institutions",
+      "basis": "Public Telegram channel identifies European Commission and links ec.europa.eu; first-party institutional identity is evident, but source-rights/operator approval remains required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@BBCNewsAsia",
+      "country": "Asia-Pacific regional",
+      "region": "east_asia",
+      "basis": "Public Telegram channel identifies itself as BBC Asia; first-party ownership should still be confirmed from BBC's official web/social footprint before approval.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY"
     }
   ],
   "country_source_sweep": {
@@ -1779,6 +1797,17 @@
         "@QORAXABAR"
       ],
       "runtime_effect": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "global_full_discovery_pass",
+      "added": [
+        "@Europeancommission",
+        "@BBCNewsAsia"
+      ],
+      "coverage_rule": "195-country targets plus regional/institutional channels",
+      "runtime_effect": false,
+      "auto_approval": false
     }
   ]
 }
