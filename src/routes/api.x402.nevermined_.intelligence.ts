@@ -513,6 +513,7 @@ export const Route = createFileRoute("/api/x402/nevermined/intelligence")({
             plan,
             requestId,
             clientRequestId: parsed.client_request_id ?? null,
+            priceUsdc: null,
           });
           if (intelligence.execution_authorized !== false) throw new Error("EXECUTION_BOUNDARY_VIOLATION");
           prepared = {
