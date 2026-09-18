@@ -84,7 +84,7 @@ describe("commercial production acceptance ordered chain", () => {
     expect(submissionVerifier).toContain("listing_not_inferred_from_submission: true");
     expect(marketplace).toContain("public_prelisting_run_id:");
     expect(marketplace).toContain("marketplace_submission_run_id:");
-    expect(marketplace).toContain("Marketplace observation predates marketplace submission evidence");
+    expect(finalWorkflow).toContain("Marketplace observation predates marketplace submission evidence");
     expect(marketplace).toContain("observe-marketplace-listings.mjs");
     expect(marketplace).toContain("GEOMACRO_COINBASE_BAZAAR_OBSERVATION_URL");
     expect(marketplace).toContain("GEOMACRO_CIRCLE_MARKETPLACE_OBSERVATION_URL");
