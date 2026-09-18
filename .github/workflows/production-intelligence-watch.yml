@@ -1,0 +1,152 @@
+name: Production Intelligence 7-Day Watch
+
+on:
+  schedule:
+    - cron: "7 0 * * *"
+    - cron: "7 6 * * *"
+    - cron: "7 12 * * *"
+    - cron: "7 18 * * *"
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "250-probe batch slot"
+        required: true
+        default: "0"
+        type: choice
+        options:
+          - "0"
+          - "1"
+          - "2"
+          - "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-intelligence-watch
+  cancel-in-progress: false
+
+jobs:
+  slot-0:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '7 0 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.slot == '0')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GEOMACRO_WATCH_BASE_URL: https://geomacro.live
+      GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WATCH_SLOT: "0"
+      WATCH_BATCH_SIZE: "250"
+      WATCH_WINDOW_DAYS: "7"
+      WATCH_OUTPUT_DIR: production-watch-artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v24
+        with:
+          node-version: "22"
+      - name: Run slot 0
+        run: node scripts/production-watch/run-intelligence-watch.mjs
+      - name: Upload exact response artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-watch-slot-0-${{ github.run_id }}
+          path: production-watch-artifacts/*.jsonl
+          retention-days: 30
+          if-no-files-found: ignore
+
+  slot-1:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '7 6 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.slot == '1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GEOMACRO_WATCH_BASE_URL: https://geomacro.live
+      GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WATCH_SLOT: "1"
+      WATCH_BATCH_SIZE: "250"
+      WATCH_WINDOW_DAYS: "7"
+      WATCH_OUTPUT_DIR: production-watch-artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v24
+        with:
+          node-version: "22"
+      - name: Run slot 1
+        run: node scripts/production-watch/run-intelligence-watch.mjs
+      - name: Upload exact response artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-watch-slot-1-${{ github.run_id }}
+          path: production-watch-artifacts/*.jsonl
+          retention-days: 30
+          if-no-files-found: ignore
+
+  slot-2:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '7 12 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.slot == '2')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GEOMACRO_WATCH_BASE_URL: https://geomacro.live
+      GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WATCH_SLOT: "2"
+      WATCH_BATCH_SIZE: "250"
+      WATCH_WINDOW_DAYS: "7"
+      WATCH_OUTPUT_DIR: production-watch-artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v24
+        with:
+          node-version: "22"
+      - name: Run slot 2
+        run: node scripts/production-watch/run-intelligence-watch.mjs
+      - name: Upload exact response artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-watch-slot-2-${{ github.run_id }}
+          path: production-watch-artifacts/*.jsonl
+          retention-days: 30
+          if-no-files-found: ignore
+
+  slot-3:
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '7 18 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.slot == '3')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GEOMACRO_WATCH_BASE_URL: https://geomacro.live
+      GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      WATCH_SLOT: "3"
+      WATCH_BATCH_SIZE: "250"
+      WATCH_WINDOW_DAYS: "7"
+      WATCH_OUTPUT_DIR: production-watch-artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v24
+        with:
+          node-version: "22"
+      - name: Run slot 3
+        run: node scripts/production-watch/run-intelligence-watch.mjs
+      - name: Upload exact response artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-watch-slot-3-${{ github.run_id }}
+          path: production-watch-artifacts/*.jsonl
+          retention-days: 30
+          if-no-files-found: ignore
