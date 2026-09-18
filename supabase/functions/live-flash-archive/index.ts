@@ -30,7 +30,7 @@ Deno.serve(async (request) => {
 
   const { data: events, error } = await db
     .from("live_flash_events")
-    .select("id,source_record_id,published_at,headline,source_channel,source_channel_key,source_url,event_type,verification_status,severity_bps,source_reliability_bps,verification_score_bps,latitude_e6,longitude_e6,content_hash,created_at")
+    .select("flash_id,source_record_id,published_at,headline,source_channel,source_url,event_type,signal_category,source_version,material_update,verification_status,severity_bps,source_reliability_bps,verification_score_bps,latitude_e6,longitude_e6,content_hash,created_at")
     .is("archived_at", null)
     .order("created_at", { ascending: true })
     .limit(MAX_ITEMS);
@@ -39,15 +39,17 @@ Deno.serve(async (request) => {
   if (!events?.length) return new Response(JSON.stringify({ ok: true, archived: 0, status: "empty" }), { status: 200 });
 
   const records = events.map((event) => JSON.stringify({
-    schema_version: "telegram-signal-evidence-v1.0.0",
-    id: event.id,
+    schema_version: "telegram-signal-evidence-v1.1.0",
+    flash_id: event.flash_id,
     source_record_id: event.source_record_id,
     published_at: event.published_at,
     headline: event.headline,
     source_channel: event.source_channel,
-    source_channel_key: event.source_channel_key,
     source_url: event.source_url,
     event_type: event.event_type,
+    signal_category: event.signal_category,
+    source_version: event.source_version,
+    material_update: event.material_update,
     verification_status: event.verification_status,
     severity_bps: event.severity_bps,
     source_reliability_bps: event.source_reliability_bps,
@@ -74,10 +76,10 @@ Deno.serve(async (request) => {
     .maybeSingle();
 
   const chainMaterial = new TextEncoder().encode(
-    `telegram-flash|\${periodStart}|\${periodEnd}|\${payloadSha}|\${compressedSha}|\${previous?.chain_sha256 ?? ""}`,
+    `telegram-flash|${periodStart}|${periodEnd}|${payloadSha}|${compressedSha}|${previous?.chain_sha256 ?? ""}`,
   );
   const chainSha = await sha256Hex(chainMaterial);
-  const path = `telegram-flash/\${periodEnd.replaceAll(":", "-").replaceAll(".", "-")}-\${compressedSha}.jsonl.gz`;
+  const path = `telegram-flash/${periodEnd.replaceAll(":", "-").replaceAll(".", "-")}-${compressedSha}.jsonl.gz`;
 
   const { error: uploadError } = await db.storage.from(BUCKET).upload(path, compressed, {
     contentType: "application/gzip",
@@ -90,6 +92,7 @@ Deno.serve(async (request) => {
     await db.storage.from(BUCKET).remove([path]);
     return new Response(JSON.stringify({ ok: false, error: "archive_readback_failed" }), { status: 500 });
   }
+
   const readbackSha = await sha256Hex(new Uint8Array(await readback.arrayBuffer()));
   if (readbackSha !== compressedSha) {
     await db.storage.from(BUCKET).remove([path]);
@@ -103,7 +106,7 @@ Deno.serve(async (request) => {
       storage_bucket: BUCKET,
       object_path: path,
       compression: "gzip",
-      schema_version: "telegram-signal-evidence-v1.0.0",
+      schema_version: "telegram-signal-evidence-v1.1.0",
       period_start: periodStart,
       period_end: periodEnd,
       item_count: events.length,
@@ -125,11 +128,11 @@ Deno.serve(async (request) => {
     return new Response(JSON.stringify({ ok: false, error: manifestError?.message ?? "manifest_insert_failed" }), { status: 500 });
   }
 
-  const ids = events.map((event) => event.id);
+  const ids = events.map((event) => event.flash_id);
   const { error: markError } = await db
     .from("live_flash_events")
     .update({ archived_fragment_id: manifest.id, archived_at: new Date().toISOString() })
-    .in("id", ids)
+    .in("flash_id", ids)
     .is("archived_at", null);
 
   if (markError) {
