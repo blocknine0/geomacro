@@ -1037,6 +1037,50 @@ Deno.serve(async request => {
     }
   }
 
+  const primaryCountry = countryMatches[0]?.iso3 ?? null
+  const storySnapshot = {
+    country_iso3: primaryCountry,
+    event_type:
+      cleanString(payload.event_type, 80),
+    severity_bps:
+      fractionalHundredths(payload.severity),
+    source_reliability_bps:
+      fractionalHundredths(
+        telegramChannel?.source_reliability ??
+        payload.source_reliability,
+      ),
+    latitude_e6:
+      coordinateMicrodegrees(payload.latitude, -90, 90),
+    longitude_e6:
+      coordinateMicrodegrees(payload.longitude, -180, 180),
+  }
+
+  const normalizedHeadline = normalizeText(headline)
+  const storyResult = await db.rpc(
+    "record_flash_story_revision",
+    {
+      p_source_id: sourceId,
+      p_source_message_id: sourceRecordId,
+      p_source_timestamp: publishedAt,
+      p_observed_at: new Date().toISOString(),
+      p_normalized_headline: normalizedHeadline,
+      p_content_sha256: contentHash,
+      p_compact_snapshot: storySnapshot,
+      p_event_type: cleanString(payload.event_type, 80),
+      p_country_iso3: primaryCountry,
+    },
+  )
+
+  if (storyResult.error) {
+    console.error("flash story dedup failed", storyResult.error)
+    return jsonResponse(500, {
+      ok: false,
+      error: "flash_story_dedup_failed",
+    })
+  }
+
+  const story = storyResult.data ?? {}
+
   return jsonResponse(
     200,
     {
@@ -1064,6 +1108,16 @@ Deno.serve(async request => {
       // and commercial eligibility pipeline at this endpoint.
       scoring_eligible:
         false,
+      story_id:
+        story.story_id ?? null,
+      story_action:
+        story.action ?? null,
+      story_revision_no:
+        story.revision_no ?? null,
+      story_revision_type:
+        story.revision_type ?? null,
+      story_material_change:
+        story.material_change ?? false,
     },
   )
 })
