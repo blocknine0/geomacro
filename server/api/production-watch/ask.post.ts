@@ -17,6 +17,7 @@ const WatchProbeInput = z.object({
   probe_index: z.number().int().min(0).max(999),
   category: z.enum(["geopolitics", "macro", "critical_minerals"]),
   mode: z.enum(["current", "historical"]),
+  as_of: z.string().datetime({ offset: true }).nullable().optional(),
   question: z.string().trim().min(4).max(300),
 });
 
@@ -54,6 +55,7 @@ export default defineEventHandler(async (event) => {
   requireWatchToken(getRequestHeader(event, "x-geomacro-production-watch-token"));
 
   const startedAt = Date.now();
+  const requestId = crypto.randomUUID();
 
   const rawBody = (await readRawBody(event)) ?? "";
   if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
@@ -83,7 +85,7 @@ export default defineEventHandler(async (event) => {
 
   let answer;
   try {
-    answer = await answerQuestion(input.question);
+    answer = await answerQuestion(input.question, { asOf: input.mode === "historical" ? input.as_of ?? null : null });
   } catch (error) {
     console.error("[production-watch] answer failed", error);
     setResponseStatus(event, 503);
@@ -98,6 +100,8 @@ export default defineEventHandler(async (event) => {
         probe_index: input.probe_index,
         category: input.category,
         mode: input.mode,
+        as_of: input.as_of ?? null,
+        request_id: requestId,
         latency_ms: Date.now() - startedAt,
       },
     };
@@ -131,11 +135,14 @@ export default defineEventHandler(async (event) => {
     .map((row) => safeDate(row.published_at ?? row.created_at))
     .filter((value): value is Date => Boolean(value));
 
+  const anchorMs = input.mode === "historical" && input.as_of
+    ? new Date(input.as_of).getTime()
+    : now;
   const currentEvidenceCount = eventTimes.filter(
-    (value) => now - value.getTime() <= 48 * 3_600_000,
+    (value) => anchorMs - value.getTime() >= 0 && anchorMs - value.getTime() <= 48 * 3_600_000,
   ).length;
   const historicalEvidenceCount = eventTimes.filter(
-    (value) => now - value.getTime() > 7 * 24 * 3_600_000,
+    (value) => anchorMs - value.getTime() > 7 * 24 * 3_600_000,
   ).length;
 
   return {
@@ -145,6 +152,8 @@ export default defineEventHandler(async (event) => {
       probe_index: input.probe_index,
       category: input.category,
       mode: input.mode,
+      as_of: input.as_of ?? null,
+      request_id: requestId,
       question_sha256: sha256(input.question),
       latency_ms: Date.now() - startedAt,
       evidence_count: answer.evidence.length,
@@ -153,5 +162,6 @@ export default defineEventHandler(async (event) => {
       evidence_timing: evidenceTiming,
     },
     answer,
+    request_id: requestId,
   };
 });
