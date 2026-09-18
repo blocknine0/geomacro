@@ -1,0 +1,257 @@
+name: Deploy GDELT Native Pipeline Scheduler
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/939_gdelt_native_pipeline_scheduler.sql"
+      - "supabase/functions/scheduled-gdelt-pipeline/**"
+      - ".github/workflows/deploy-gdelt-native-pipeline.yml"
+      - ".github/workflows/gdelt-gal-live-sync.yml"
+      - "src/__tests__/gdelt-gal-live-sync-static.test.ts"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/939_gdelt_native_pipeline_scheduler.sql"
+      - "supabase/functions/scheduled-gdelt-pipeline/**"
+      - ".github/workflows/deploy-gdelt-native-pipeline.yml"
+      - ".github/workflows/gdelt-gal-live-sync.yml"
+      - "src/__tests__/gdelt-gal-live-sync-static.test.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-gdelt-native-pipeline-production
+  cancel-in-progress: false
+
+jobs:
+  validate-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Validate native scheduler safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration=supabase/migrations/939_gdelt_native_pipeline_scheduler.sql
+          orchestrator=supabase/functions/scheduled-gdelt-pipeline/index.ts
+          legacy=.github/workflows/gdelt-gal-live-sync.yml
+          deploy=.github/workflows/deploy-gdelt-native-pipeline.yml
+
+          grep -q 'create extension if not exists pg_net' "$migration"
+          grep -q 'create extension if not exists pg_cron' "$migration"
+          grep -q 'create extension if not exists supabase_vault' "$migration"
+          grep -q 'geomacro_gdelt_pipeline_scheduler_token' "$migration"
+          grep -q 'geomacro-gdelt-native-pipeline-10m' "$migration"
+          grep -q '3,13,23,33,43,53 \* \* \* \*' "$migration"
+          grep -q 'acquire_gdelt_native_pipeline_lease' "$migration"
+          grep -q 'reconcile_live_structured_event_commercial_rights' "$migration"
+          grep -q 'scheduled-gdelt-pipeline' "$migration"
+
+          grep -q 'verify_gdelt_pipeline_scheduler_token' "$orchestrator"
+          grep -q 'acquire_gdelt_native_pipeline_lease' "$orchestrator"
+          grep -q 'release_gdelt_native_pipeline_lease' "$orchestrator"
+          grep -q 'LIVE_INGEST_TOKEN' "$orchestrator"
+          grep -q 'LIVE_STRUCTURE_TOKEN' "$orchestrator"
+          grep -q 'public_alert_activation: false' "$orchestrator"
+          grep -q 'commercial_signal_activation: false' "$orchestrator"
+          grep -q 'payment_or_mainnet_activation: false' "$orchestrator"
+
+          grep -q 'workflow_dispatch:' "$legacy"
+          if grep -q 'schedule:' "$legacy"; then
+            echo 'ERROR: legacy GitHub mutating GDELT workflow must be manual fallback only.' >&2
+            exit 1
+          fi
+
+          grep -q 'psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/939_gdelt_native_pipeline_scheduler.sql' "$deploy"
+          if grep -Eq 'supabase[[:space:]]+db[[:space:]]+push' "$deploy"; then
+            echo 'ERROR: native scheduler deployment must not broad-push unrelated migrations.' >&2
+            exit 1
+          fi
+
+          echo 'PASS: native GDELT scheduler is leased, Vault-backed, exact-migration-only and commercial-signal/mainnet neutral.'
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LIVE_INGEST_TOKEN: ${{ secrets.LIVE_INGEST_TOKEN }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      APP_SUPABASE_URL: https://ldpwajisioljyjtojvfx.supabase.co
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AGENT_HOT_TOPIC_READINESS_OUTPUT: agent-hot-topic-readiness-native-scheduler.json
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Validate production target and required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_URL SUPABASE_SERVICE_ROLE_KEY LIVE_INGEST_TOKEN LIVE_STRUCTURE_TOKEN; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing production secret::${name} is not configured."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo '::error::Wrong Supabase project ref'; exit 1; }
+
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const direct = db.hostname === `db.${ref}.supabase.co` && db.username === 'postgres';
+          const pooler = db.hostname.endsWith('.pooler.supabase.com') && db.username === `postgres.${ref}`;
+          if (!['postgres:', 'postgresql:'].includes(db.protocol) || (!direct && !pooler)) {
+            throw new Error('SUPABASE_DB_URL is not the authoritative Geomacro production database');
+          }
+          if (!db.password || db.pathname !== '/postgres') throw new Error('Invalid production database URL');
+          console.log('PASS: authoritative production database target confirmed.');
+          NODE
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+        with:
+          version: 2.117.0
+
+      - name: Setup Bun for post-deploy health audit
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Sync existing internal function tokens
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase secrets set \
+            LIVE_INGEST_TOKEN="$LIVE_INGEST_TOKEN" \
+            LIVE_STRUCTURE_TOKEN="$LIVE_STRUCTURE_TOKEN" \
+            --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Deploy pipeline Edge Functions before enabling cron
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy live-gdelt-ingest \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --no-verify-jwt
+          supabase functions deploy live-structure-intelligence \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --no-verify-jwt
+          supabase functions deploy scheduled-gdelt-pipeline \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --no-verify-jwt
+
+      - name: Apply only migration 939
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/939_gdelt_native_pipeline_scheduler.sql
+          echo 'PASS: exact native scheduler migration applied.'
+
+      - name: Rotate Vault scheduler token without exposing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          scheduler_token="$(openssl rand -hex 32)"
+          echo "::add-mask::$scheduler_token"
+          echo "GDELT_PIPELINE_SCHEDULER_TOKEN=$scheduler_token" >> "$GITHUB_ENV"
+
+          secret_id="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select id from vault.decrypted_secrets where name='geomacro_gdelt_pipeline_scheduler_token' order by updated_at desc limit 1")"
+          if [[ -z "$secret_id" ]]; then
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+              -v scheduler_token="$scheduler_token" \
+              -c "select vault.create_secret(:'scheduler_token', 'geomacro_gdelt_pipeline_scheduler_token', 'Geomacro native GDELT scheduler token');" >/dev/null
+          else
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 \
+              -v scheduler_token="$scheduler_token" \
+              -v secret_id="$secret_id" \
+              -c "select vault.update_secret(:'secret_id'::uuid, :'scheduler_token', 'geomacro_gdelt_pipeline_scheduler_token', 'Geomacro native GDELT scheduler token');" >/dev/null
+          fi
+
+          verified="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -At \
+            -v scheduler_token="$scheduler_token" \
+            -c "select public.verify_gdelt_pipeline_scheduler_token(:'scheduler_token');")"
+          test "$verified" = 't' || { echo '::error::Vault scheduler token verification failed'; exit 1; }
+          echo 'PASS: Vault-backed scheduler token rotated and verifier confirmed.'
+
+      - name: Smoke-run complete native pipeline before installing cron
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error \
+            --max-time 180 \
+            --output gdelt-native-pipeline-smoke.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-geomacro-scheduler-token: ${GDELT_PIPELINE_SCHEDULER_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data '{"trigger":"deployment_smoke"}' \
+            "${APP_SUPABASE_URL}/functions/v1/scheduled-gdelt-pipeline")"
+
+          cat gdelt-native-pipeline-smoke.json
+          echo
+          test "$code" = '200' || { echo "::error::Native scheduler smoke HTTP $code"; exit 1; }
+          jq -e '.ok == true and .status == "completed"' gdelt-native-pipeline-smoke.json >/dev/null
+          jq -e '.public_alert_activation == false' gdelt-native-pipeline-smoke.json >/dev/null
+          jq -e '.commercial_signal_activation == false' gdelt-native-pipeline-smoke.json >/dev/null
+          jq -e '.payment_or_mainnet_activation == false' gdelt-native-pipeline-smoke.json >/dev/null
+
+          lease_state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select last_status from public.live_pipeline_scheduler_leases where pipeline_key='gdelt_gal_native_pipeline'")"
+          test "$lease_state" = 'succeeded' || { echo "::error::Unexpected pipeline lease state: $lease_state"; exit 1; }
+          echo 'PASS: native GDELT ingest -> structure -> rights reconciliation smoke completed.'
+
+      - name: Install 10-minute Supabase cron after successful smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          job_id="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select public.install_gdelt_native_pipeline_cron();")"
+          test -n "$job_id" || { echo '::error::Cron installer returned no job id'; exit 1; }
+
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select jobname || '|' || schedule || '|' || active::text from cron.job where jobname='geomacro-gdelt-native-pipeline-10m'")"
+          test "$state" = 'geomacro-gdelt-native-pipeline-10m|3,13,23,33,43,53 * * * *|true' || { echo "::error::Unexpected cron state: $state"; exit 1; }
+          echo "PASS: Supabase-native GDELT cron installed as job ${job_id}."
+
+      - name: Verify commercial hot-topic boundary remains healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-agent-hot-topic-readiness.ts --require-pipeline-healthy
+          jq -e '.writes_performed == false' "$AGENT_HOT_TOPIC_READINESS_OUTPUT" >/dev/null
+          jq -e '.pipeline.healthy == true' "$AGENT_HOT_TOPIC_READINESS_OUTPUT" >/dev/null
+          jq -e '.claim_boundary.raw_source_material_redistributed == false' "$AGENT_HOT_TOPIC_READINESS_OUTPUT" >/dev/null
+          jq -e '.claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true' "$AGENT_HOT_TOPIC_READINESS_OUTPUT" >/dev/null
+          echo 'PASS: native scheduler did not loosen commercial source-rights boundaries.'
+
+      - name: Upload sanitized deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gdelt-native-pipeline-deployment
+          path: |
+            gdelt-native-pipeline-smoke.json
+            agent-hot-topic-readiness-native-scheduler.json
+          if-no-files-found: warn
+          retention-days: 30

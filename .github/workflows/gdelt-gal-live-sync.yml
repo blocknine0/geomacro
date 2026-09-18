@@ -1,21 +1,7 @@
 name: GDELT GAL Live Hot-Topic Sync
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "scripts/sync-gdelt-gal-production.mjs"
-      - "supabase/functions/live-structure-intelligence/**"
-      - "scripts/audit-agent-hot-topic-readiness.ts"
-      - "supabase/migrations/049_structured_event_source_rights_view.sql"
-      - "supabase/migrations/050_structured_event_commercial_rights_sync.sql"
-      - "supabase/migrations/051_internal_handoff_source_rights_resolution.sql"
-      - "supabase/migrations/052_admitted_event_derived_delivery_policy.sql"
-      - ".github/workflows/gdelt-gal-live-sync.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "4,19,34,49 * * * *"
 
 permissions:
   contents: read
@@ -59,6 +45,7 @@ jobs:
           done
           node scripts/db/assert-authoritative-supabase.mjs
           bun --check scripts/sync-gdelt-gal-production.mjs
+          echo 'PASS: GitHub workflow is manual fallback only; Supabase native cron owns scheduled freshness.'
 
       - name: Catch GDELT GAL cursor up to the live window
         shell: bash
