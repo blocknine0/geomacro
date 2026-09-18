@@ -21,7 +21,7 @@ describe("production provider canary workflow", () => {
     expect(workflow).toContain("I_AUTHORIZE_COINBASE_CAPPED_CANARY");
     expect(workflow).toContain("I_AUTHORIZE_CIRCLE_CAPPED_CANARY");
     expect(workflow).toContain("I_AUTHORIZE_NEVERMINED_CAPPED_CANARY");
-    expect(workflow).toContain("max_usdc must be >0 and <=1 USDC");
+    expect(workflow).toContain("max_usdc must be >0 and <=0.05 USDC");
   });
 
   it("uses a protected canary environment and never sets server launch acknowledgements", () => {
