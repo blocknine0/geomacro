@@ -10,7 +10,7 @@ import {
 /**
  * Deterministic Ask Geomacro engine.
  *
- * It uses only Geomacro's stored intelligence and the current canonical GRI.
+ * It uses only Geomacro's stored intelligence and verified GRI snapshots.
  * No LLM provider, external search or private fallback score is involved.
  */
 export type AskAnswer = {
@@ -258,18 +258,21 @@ function evidenceFromRows(rows: EventRow[], base = 100) {
     }));
 }
 
-async function retrieve(terms: string[], categories: string[]) {
+async function retrieve(terms: string[], categories: string[], anchorMs = Date.now()) {
   const supabase = getAppSupabase();
   if (!supabase) throw new Error("Intelligence store unavailable");
 
-  const recentSince = new Date(Date.now() - 7 * DAY).toISOString();
-  const keywordSince = new Date(Date.now() - 30 * DAY).toISOString();
+  const anchor = new Date(anchorMs);
+  const recentSince = new Date(anchorMs - 7 * DAY).toISOString();
+  const keywordSince = new Date(anchorMs - 30 * DAY).toISOString();
+  const anchorIso = anchor.toISOString();
 
   const recent = supabase
     .from("events")
     .select(COLUMNS)
     .in("category", ["geopolitics", "macro", "rare_earth"])
     .gte("created_at", recentSince)
+    .lte("created_at", anchorIso)
     .order("created_at", { ascending: false })
     .limit(RECENT_LIMIT);
 
@@ -289,6 +292,7 @@ async function retrieve(terms: string[], categories: string[]) {
         .select(COLUMNS)
         .in("category", ["geopolitics", "macro", "rare_earth"])
         .gte("created_at", keywordSince)
+        .lte("created_at", anchorIso)
         .or(filters.join(","))
         .order("severity", { ascending: false })
         .limit(KEYWORD_LIMIT),
@@ -325,7 +329,7 @@ type GriReading = {
   explanation: Record<string, unknown> | null;
 };
 
-async function loadPublishedGri(): Promise<GriReading> {
+async function loadPublishedGri(anchorMs = Date.now(), requireFresh = true): Promise<GriReading> {
   const unavailable = (): GriReading => ({
     displayScore: null,
     previousScore: null,
@@ -349,6 +353,7 @@ async function loadPublishedGri(): Promise<GriReading> {
     )
     .eq("status", "published")
     .eq("methodology_version", GRI_METHOD_VERSION)
+    .lte("as_of", new Date(anchorMs).toISOString())
     .order("as_of", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -380,7 +385,7 @@ async function loadPublishedGri(): Promise<GriReading> {
     Math.abs(reconciliationResidual) <= 1e-7 &&
     (changeResidual === null ||
       (Number.isFinite(changeResidual) && Math.abs(changeResidual) <= 1e-7));
-  const fresh = ageHours >= -0.25 && ageHours <= GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS;
+  const fresh = !requireFresh || (ageHours >= -0.25 && ageHours <= GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS);
   const verified =
     data.verification_status === "verified" &&
     data.proof_version === GRI_PROOF_VERSION &&
@@ -507,8 +512,10 @@ function broadAnswer(
   intent: Exclude<Intent, "gri_change" | "topic">,
   recentRows: EventRow[],
   gri: GriReading,
+  anchorMs: number,
+  historical: boolean,
 ): AskAnswer {
-  const now = Date.now();
+  const now = anchorMs;
   const rows = [...recentRows].sort(sortByNewest);
   if (!rows.length) {
     return insufficientAnswer(
@@ -560,11 +567,11 @@ function broadAnswer(
     : null;
 
   return {
-    summary: `${selected.length} stored records are most relevant to this broad current-risk question across ${categories.join(", ") || "the current risk set"}. ${context}`,
+    summary: `${selected.length} stored records are most relevant to this broad ${historical ? "historical" : "current"}-risk question across ${categories.join(", ") || "the current risk set"}. ${context}`,
     what_changed: `${titles}.${risingCount ? ` ${risingCount} of these records are scoring higher than their previous reading.` : ""}`,
     why_it_matters:
       gri.displayScore !== null
-        ? `The current verified GRI is ${gri.displayScore}/100 from ${gri.eventCount} eligible evidence rows across ${gri.independentStoryCount} independent stories. The selected records should be read as supporting context, not as a separate index.`
+        ? `The ${historical ? "verified historical" : "current verified"} GRI snapshot is ${gri.displayScore}/100 from ${gri.eventCount} eligible evidence rows across ${gri.independentStoryCount} independent stories. The selected records should be read as supporting context, not as a separate index.`
         : "The canonical GRI is currently unavailable, so this answer is limited to the stored event record and does not substitute a private score.",
     geomacro_view:
       meanSeverity === null
@@ -595,15 +602,21 @@ function insufficientAnswer(message: string, gri: number | null): AskAnswer {
   };
 }
 
-export async function answerQuestion(question: string): Promise<AskAnswer> {
+export async function answerQuestion(
+  question: string,
+  options: { asOf?: string | null } = {},
+): Promise<AskAnswer> {
   const terms = extractTerms(question);
   const categories = inferCategories(terms);
   const intent = detectIntent(question);
+  const requestedAsOf = options.asOf ? new Date(options.asOf) : null;
+  const historical = Boolean(requestedAsOf && Number.isFinite(requestedAsOf.getTime()));
+  const anchorMs = historical ? requestedAsOf!.getTime() : Date.now();
   const [{ rows, recentRows }, gri] = await Promise.all([
-    retrieve(terms, categories),
-    loadPublishedGri(),
+    retrieve(terms, categories, anchorMs),
+    loadPublishedGri(anchorMs, !historical),
   ]);
-  const now = Date.now();
+  const now = anchorMs;
 
   if (intent === "gri_change") {
     const answer = griWhy(gri);
@@ -614,7 +627,7 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
   }
 
   if (intent !== "topic") {
-    return broadAnswer(intent, recentRows, gri);
+    return broadAnswer(intent, recentRows, gri, anchorMs, historical);
   }
 
   const ranked = rows
@@ -632,8 +645,8 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
   if (selected.length === 0) {
     return insufficientAnswer(
       recentRows.length === 0
-        ? "No scored events are recorded in the stored seven-day window."
-        : `${recentRows.length} events are stored for the last seven days, but none clear the relevance threshold for this topic-specific question.`,
+        ? `No scored events are recorded in the stored seven-day window${historical ? " at the requested historical as-of time" : ""}.`
+        : `${recentRows.length} events are stored for the seven-day window, but none clear the relevance threshold for this topic-specific question.`,
       gri.displayScore,
     );
   }
@@ -659,7 +672,7 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
     what_changed: `Most recent matched record: ${sentence(newest)}${rising.length ? ` ${rising.length} matched ${rising.length === 1 ? "record is" : "records are"} scoring higher than before.` : ""}${falling.length ? ` ${falling.length} ${falling.length === 1 ? "is" : "are"} scoring lower.` : ""}`,
     why_it_matters:
       gri.displayScore !== null
-        ? `The current verified GRI (${gri.methodologyVersion}) is ${gri.displayScore}/100. The matched set is supporting context for that broader index, not a separate probability or execution signal.`
+        ? `The ${historical ? "verified historical" : "current verified"} GRI (${gri.methodologyVersion}) is ${gri.displayScore}/100. The matched set is supporting context for that broader index, not a separate probability or execution signal.`
         : "The canonical GRI is currently unavailable, so Geomacro is limiting this answer to the stored matched evidence instead of producing a private fallback score.",
     geomacro_view: lowConfidence
       ? `The matches are weak or tangential (mean relevance ${Math.round(meanSimilarity * 100)}%), so Geomacro is withholding interpretation.`
