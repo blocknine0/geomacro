@@ -298,6 +298,18 @@ export function buildAgentQueryPlan(raw: unknown): AgentQueryPlan {
     topics = [...topics, "risk_gate"].sort() as AgentQueryTopic[];
   }
 
+  // A current natural-language intelligence request is answered from the
+  // canonical risk state plus current structured developments. Historical
+  // requests stay explicitly historical and do not silently mix live events.
+  if (
+    parsed.question &&
+    !parsed.as_of &&
+    topics.length > 0 &&
+    ["single_subject", "comparison", "corridor"].includes(intent)
+  ) {
+    topics = [...new Set([...topics, "risk_object", "hot_topics"])].sort() as AgentQueryTopic[];
+  }
+
   if (topics.length === 0) throw new Error("UNSUPPORTED_OR_AMBIGUOUS_AGENT_QUESTION");
   validateIntent(parsed, intent, subjects, topics);
 
