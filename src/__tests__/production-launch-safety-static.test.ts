@@ -7,13 +7,15 @@ describe("production launch safety contract", () => {
   it("keeps the initial paid cohort coordinated and includes Circle explicitly", () => {
     const manifest = JSON.parse(read("config/commercial-launch-manifest.json"));
 
-    for (const provider of ["coinbase_x402", "circle_gateway_x402", "nevermined"]) {
-      expect(manifest.providers[provider].launch_cohort).toBe(true);
-      expect(manifest.providers[provider].production_enabled).toBe(false);
-    }
-
+    expect(manifest.providers.coinbase_x402.launch_cohort).toBe(true);
+    expect(manifest.providers.coinbase_x402.production_enabled).toBe(false);
+    expect(manifest.providers.circle_gateway_x402.launch_cohort).toBe(false);
+    expect(manifest.providers.circle_gateway_x402.production_enabled).toBe(false);
+    expect(manifest.providers.nevermined.launch_cohort).toBe(false);
+    expect(manifest.providers.nevermined.production_enabled).toBe(false);
     expect(manifest.providers.goat_x402.launch_cohort).toBe(false);
     expect(manifest.launch_rule.allow_partial_provider_launch).toBe(false);
+    expect(manifest.initial_payment_provider_cohort).toEqual(["coinbase_x402"]);
   });
 
   it("requires the lean initial pay-per-call gate and separates post-launch/scale evidence", () => {
