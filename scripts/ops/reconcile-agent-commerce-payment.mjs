@@ -173,6 +173,8 @@ async function main() {
     generated_at: new Date().toISOString(),
     project_ref: PROD_PROJECT_REF,
     payment_event_id: before.id,
+    payment_event_count_for_settlement: payments.length,
+    single_payment_event_for_settlement: payments.length === 1,
     provider: after.provider,
     provider_environment: after.provider_environment,
     environment: after.environment,
