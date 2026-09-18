@@ -286,7 +286,6 @@ export function intelligenceStateVersion(input: {
   return `gstate_${sha256({
     schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
     subject: input.subject,
-    as_of: input.as_of,
     risk_calculation_hash: input.risk_calculation_hash ?? null,
     structural_observation_hashes: [...input.structural_observation_hashes].sort(),
     structural_coverage: input.structural_coverage
