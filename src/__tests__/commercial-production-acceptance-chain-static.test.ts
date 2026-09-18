@@ -52,6 +52,8 @@ describe("commercial production acceptance ordered chain", () => {
     expect(canaryVerifier).toContain("payment verification is not proven");
     expect(canaryVerifier).toContain("single_payment_event_for_settlement");
     expect(canaryVerifier).toContain("payment_event_count_for_settlement");
+    expect(canaryVerifier).toContain("authoritative_ledger_single_payment_event_after_replay");
+    expect(canaryVerifier).toContain("authoritative_ledger_single_settled_usage_response_after_replay");
   });
 
   it("requires deliberately observed normal, global freeze and every single-provider quarantine state", () => {
