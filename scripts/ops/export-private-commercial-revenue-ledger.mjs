@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { assertPathOutsideRepository, assertPrivateLedgerOwnerAuthorization } from "./private-ledger-owner-auth.mjs";
 
 const PROD_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const PAGE_SIZE = 500;
@@ -21,6 +22,8 @@ function sha256(value) {
 }
 
 async function main() {
+  assertPrivateLedgerOwnerAuthorization("EXPORT");
+
   const url = required("APP_SUPABASE_URL");
   const key = required("APP_SUPABASE_SERVICE_ROLE_KEY");
   const target = new URL(url);
@@ -138,18 +141,22 @@ async function main() {
     String(process.env.GEOMACRO_PRIVATE_REVENUE_LEDGER_CHECKPOINT_PATH ?? "").trim() ||
     `${output}.checkpoint.json`;
 
-  await mkdir(path.dirname(output), { recursive: true });
-  await mkdir(path.dirname(checkpointPath), { recursive: true });
-  await writeFile(output, fullExportText, { mode: 0o600 });
-  await writeFile(checkpointPath, JSON.stringify(checkpoint, null, 2) + "\n", {
+  const safeOutput = assertPathOutsideRepository(output, "Private revenue ledger export path");
+  const safeCheckpointPath = assertPathOutsideRepository(checkpointPath, "Private revenue ledger checkpoint path");
+  if (safeOutput === safeCheckpointPath) fail("Private export and checkpoint paths must differ");
+
+  await mkdir(path.dirname(safeOutput), { recursive: true });
+  await mkdir(path.dirname(safeCheckpointPath), { recursive: true });
+  await writeFile(safeOutput, fullExportText, { mode: 0o600 });
+  await writeFile(safeCheckpointPath, JSON.stringify(checkpoint, null, 2) + "\n", {
     mode: 0o600,
   });
 
   console.log("PASS: private commercial revenue delivery ledger exported with verified hash chain.");
   console.log(`Rows: ${rows.length}`);
   console.log(`Head: ${head?.entry_sha256 ?? "GENESIS"}`);
-  console.log(`Full private export: ${output}`);
-  console.log(`Checkpoint: ${checkpointPath}`);
+  console.log(`Full private export: ${safeOutput}`);
+  console.log(`Checkpoint: ${safeCheckpointPath}`);
   console.log("BOUNDARY: no export was uploaded or published by this script.");
 }
 
