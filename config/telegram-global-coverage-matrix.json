@@ -422,7 +422,8 @@
       "role": "independent OSINT publisher",
       "status": "PENDING",
       "identity_basis": "publisher-linked Telegram handle from prior manual review",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@KyivIndependent_official",
@@ -430,7 +431,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "channel identifies as official publisher channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@bbcrussian",
@@ -438,7 +440,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified official BBC Russian service",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@anadoluagency_en",
@@ -446,7 +449,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page states official Anadolu Agency English account",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@euronews_eng",
@@ -454,7 +458,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified verified Euronews English channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@nikkeiasia",
@@ -462,7 +467,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Nikkei Asia channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@rbc_news",
@@ -470,7 +476,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified official RBC channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@THnewsupdates",
@@ -478,7 +485,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified The Hindu feed",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@SCMP_News",
@@ -486,7 +494,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified South China Morning Post channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@hongkongfp",
@@ -494,7 +503,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Hong Kong Free Press channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@cnalatest",
@@ -502,7 +512,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified CNA channel linking cna.asia",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@AddisstandardEng",
@@ -510,7 +521,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Addis Standard channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@MiddleEastEye_TG",
@@ -518,7 +530,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Middle East Eye channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@trtworld",
@@ -526,7 +539,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified TRT World channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@the_jerusalem_post",
@@ -534,7 +548,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Jerusalem Post channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@listadapublica",
@@ -542,7 +557,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "prior review identified Agência Pública channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@BBCArabic",
@@ -550,7 +566,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page labels itself official BBC Arabic",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@France24_en",
@@ -558,7 +575,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page identifies FRANCE 24 English",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@France24_fr",
@@ -566,7 +584,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page identifies FRANCE 24 French",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@hindustantimes",
@@ -574,7 +593,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page labels channel official and links hindustantimes.com",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@thedailystar",
@@ -582,7 +602,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page identifies The Daily Star Bangladesh",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@AJENews_Official",
@@ -590,7 +611,8 @@
       "role": "publisher",
       "status": "PENDING",
       "identity_basis": "Telegram page uses Al Jazeera English branding and official-style handle; first-party ownership still required",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@AlJazeeraEnglish",
@@ -598,7 +620,8 @@
       "role": "publisher",
       "status": "HOLD",
       "identity_basis": "public channel exists but exact first-party ownership is not established by current evidence",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
     },
     {
       "handle": "@ReutersWorldChannel",
@@ -606,7 +629,8 @@
       "role": "unofficial relay",
       "status": "HOLD",
       "identity_basis": "channel explicitly states it is not an official Reuters channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@bbcworld",
@@ -614,7 +638,8 @@
       "role": "unofficial relay",
       "status": "HOLD",
       "identity_basis": "Telegram page explicitly says not an official channel",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@BBCWorldoffl",
@@ -622,7 +647,8 @@
       "role": "unofficial relay",
       "status": "HOLD",
       "identity_basis": "claims BBC feed but is an independent aggregator, not first-party BBC",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
     },
     {
       "handle": "@FinancialJuice",
@@ -630,7 +656,1663 @@
       "role": "aggregator",
       "status": "HOLD",
       "identity_basis": "prior review identified automated relay/no affiliation",
-      "rights": "INTERNAL_RESEARCH_ONLY"
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@RFI_En",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "public Telegram page identifies RFI English and links rfi.fr; first-party ownership still requires operator review",
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
+    },
+    {
+      "handle": "@DWNewsEnglish",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "public Telegram page identifies Deutsche Welle English branding and links dw.com; first-party ownership still requires operator review",
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
+    },
+    {
+      "handle": "@aljazeeraglobal",
+      "region": "global",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "public Telegram channel describes itself as Al Jazeera English and links aljazeera.com; first-party ownership still requires operator review",
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate"
+    },
+    {
+      "handle": "@MIB_India",
+      "country": "India",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Official Government of India Ministry of Information & Broadcasting Telegram page; operator/source-rights review still required.",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@timesofindia",
+      "country": "India",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Telegram page identifies Times of India and explicitly calls it official; operator/source-rights review still required.",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@DaryoUz",
+      "country": "Uzbekistan",
+      "region": "central_asia_caucasus",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public directory identifies Daryo as an official Uzbek news outlet Telegram channel; first-party ownership review required.",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@sputnik_africa",
+      "country": "Africa",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Telegram page identifies Sputnik Africa; publisher identity is visible but commercial/rightsholder review remains required.",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@sputnik_ethiopia",
+      "country": "Ethiopia",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Sputnik Africa page links the Amharic regional channel; first-party ownership/operator review required.",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@sputnik_afrique",
+      "country": "Africa / Francophone",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "identity_basis": "Public Sputnik Africa page links the French regional channel; first-party ownership/operator review required.",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@unopsuzbekistan",
+      "country": "Uzbekistan",
+      "region": "central_asia_caucasus",
+      "basis": "UNOPS official social-media directory lists Telegram for Uzbekistan; first-party operator and rights review required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@TIKVAH_ETH",
+      "country": "Ethiopia",
+      "region": "africa",
+      "basis": "Public regional-news listing identifies TIKVAH-ETHIOPIA; first-party publisher ownership and rights review required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@QORAXABAR",
+      "country": "Uzbekistan",
+      "region": "central_asia_caucasus",
+      "basis": "Public regional-news listing identifies QORAXABAR as an Official Channel; first-party publisher ownership and rights review required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@Europeancommission",
+      "country": "European Union",
+      "region": "global_institutions",
+      "basis": "Public Telegram channel identifies European Commission and links ec.europa.eu; first-party institutional identity is evident, but source-rights/operator approval remains required.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@BBCNewsAsia",
+      "country": "Asia-Pacific regional",
+      "region": "east_asia",
+      "basis": "Public Telegram channel identifies itself as BBC Asia; first-party ownership should still be confirmed from BBC's official web/social footprint before approval.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate"
+    },
+    {
+      "handle": "@GeoPWatch",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent geopolitical/OSINT media channel focused on worldwide conflicts and geopolitics; strong real-time discovery value but not first-party institutional media.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@conflictarchive",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent conflict archive/OSINT channel covering modern and historical conflicts; useful for evidence discovery, not authoritative truth.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@ourwarstoday",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent war/world-news and OSINT channel with global conflict coverage and linked source attribution; treat as lead intelligence only.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@intelslava",
+      "country": "Global / Eastern Europe / Middle East",
+      "region": "eastern_europe_balkans",
+      "basis": "Large independent world-news channel covering military conflicts and international affairs; high signal volume but no first-party institutional authority.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@MaxOsintIntel",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent OSINT channel focused on geopolitics, global events and real-time news.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@isnreport",
+      "country": "India / Global",
+      "region": "south_asia",
+      "basis": "Independent India Sentinel Network covering Indian/global affairs, OSINT and political developments.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@CIG_telegram",
+      "country": "Global",
+      "region": "global_institutions",
+      "basis": "Independent geopolitical/news channel with substantial volume; contains explicit ideological framing, so use only as low-trust lead intelligence and never as sole corroboration.",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "trust_tier": "UNOFFICIAL_LEAD_ONLY",
+      "independent_corroboration_required": true,
+      "source_category": "unofficial_high_signal_lead"
+    },
+    {
+      "handle": "@France24_ar",
+      "country": "Middle East / Arabic",
+      "region": "middle_east",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "identity_basis": "FRANCE 24 Arabic public Telegram channel explicitly describes itself as the official international news channel account and links france24.com/ar.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@AuroraIntel",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public Telegram channel identifies itself as the official channel of Aurora Intel and links its publisher site; useful OSINT/IMINT source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@GeopoliticalCenter",
+      "country": "Europe / Global",
+      "region": "western_central_europe",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public Telegram channel identifies itself as the official GeopoliticalCenter channel; Italian strategic/political/economic analysis.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@bnonews",
+      "country": "Global / United States",
+      "region": "north_america",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public Telegram channel identifies BNO News and describes breaking/developing stories from the U.S. and around the world.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@ClashReport",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public Telegram channel publishes breaking news, reports and opinions on ongoing global clashes; independent/non-first-party lead source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@warmonitors",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "High-volume public channel branded Global News Monitor, focused on breaking news and geopolitics; third-party source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@Middle_East_Spectator",
+      "country": "Middle East",
+      "region": "middle_east",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public channel states it is independent but not unbiased and focuses on Iran and Resistance Axis; high-frequency regional lead source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINTdefender",
+      "country": "Global / Europe / Middle East",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public OSINT channel covering breaking news and engineering analysis; linked social footprint identifies it as an open-source intelligence monitor.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@DeepStateUA",
+      "country": "Ukraine / Eastern Europe",
+      "region": "eastern_europe_balkans",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Large public Ukrainian analytical channel covering Ukraine and world events; map/OSINT-oriented source.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@nexta_tv",
+      "country": "Belarus / Eastern Europe",
+      "region": "eastern_europe_balkans",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel identifies NEXTA and provides Belarus news, analysis and investigations; cross-linked English/world feeds.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINTLive",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public channel aggregates feeds from prominent OSINT accounts; useful as discovery/lead layer, not primary authority.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINTIndustries",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel belongs to OSINT Industries and publishes investigation/verification material; relevant to source validation and threat intelligence.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OsintTv",
+      "country": "India / Global",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel identifies itself as an India-based channel covering foreign affairs, geopolitics and aviation.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@OSINT_updates",
+      "country": "India / Pakistan",
+      "region": "south_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "identity_basis": "Public channel covers OSINT, India-Pakistan and breaking updates; low-trust lead source requiring independent corroboration.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@geopoliticalcenterfb",
+      "country": "Europe / Global",
+      "region": "western_central_europe",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "independent_osint_candidate",
+      "identity_basis": "Public channel identifies GeopoliticalCenter as an independent strategic, political and economic analysis group based in Italy.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@TheStraitsTimes",
+      "country": "Singapore",
+      "region": "southeast_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "The Straits Times Telegram channel; current public page identifies the publisher and carries Singapore/world news.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@thestar_official",
+      "country": "Malaysia",
+      "region": "southeast_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "The Star's Telegram page explicitly calls itself the official account for TheStar.com.my.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@africanewsofficial",
+      "country": "Africa",
+      "region": "africa",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "Africanews English public Telegram channel; publisher site identifies Africanews as a pan-African newsroom.",
+      "independent_corroboration_required": false
+    },
+    {
+      "handle": "@BBCWorld",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "role": "news_channel",
+      "identity_basis": "BBC News World mirror; channel explicitly states it is not an official BBC channel.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@reutersnews_bot",
+      "country": "Global",
+      "region": "global_institutions",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "role": "news_channel",
+      "identity_basis": "Telegram bot explicitly describes itself as an unofficial Reuters news bot.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@france24english",
+      "country": "Global / France",
+      "region": "western_central_europe",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "unofficial_high_signal_lead",
+      "role": "news_channel",
+      "identity_basis": "Smaller France 24 English mirror; retained only as lead/duplicate-monitoring source, not first-party.",
+      "independent_corroboration_required": true
+    },
+    {
+      "handle": "@TheStraitsTimes",
+      "country": "Singapore",
+      "region": "southeast_asia",
+      "status": "PENDING",
+      "enabled": false,
+      "rights": "INTERNAL_RESEARCH_ONLY",
+      "source_category": "official_first_party_candidate",
+      "role": "news_channel",
+      "identity_basis": "The Straits Times public Telegram channel carries Singapore and international news.",
+      "independent_corroboration_required": false
     }
-  ]
+  ],
+  "country_source_sweep": {
+    "schema_version": "geomacro.telegram.country-source-sweep.v1",
+    "review_date": "2026-09-18",
+    "scope": "All 195 UN-member/observer-country coverage targets",
+    "rule": "Every country is a discovery target. Directory hits are discovery-only; no channel becomes ingest-approved without first-party identity, public username, rights boundary, and operator approval.",
+    "discovery_methods": [
+      "first-party publisher websites",
+      "public Telegram pages",
+      "independent Telegram directories"
+    ],
+    "evidence_basis": [
+      "turn0search0",
+      "turn0search3",
+      "turn0search16",
+      "turn1search2"
+    ],
+    "targets": [
+      {
+        "country": "Afghanistan",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Albania",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Algeria",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Andorra",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Angola",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Antigua and Barbuda",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Argentina",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Armenia",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Australia",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Austria",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Azerbaijan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bahamas",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bahrain",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bangladesh",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Barbados",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Belarus",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Belgium",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Belize",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Benin",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bhutan",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bolivia",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bosnia and Herzegovina",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Botswana",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Brazil",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Brunei",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Bulgaria",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Burkina Faso",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Burundi",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cabo Verde",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cambodia",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cameroon",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Canada",
+        "region": "north_america",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Central African Republic",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Chad",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Chile",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "China",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Colombia",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Comoros",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Congo",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Costa Rica",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Côte d’Ivoire",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Croatia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cuba",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Cyprus",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Czechia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Democratic Republic of the Congo",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Denmark",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Djibouti",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Dominica",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Dominican Republic",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ecuador",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Egypt",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "El Salvador",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Equatorial Guinea",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Eritrea",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Estonia",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Eswatini",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ethiopia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Fiji",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Finland",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "France",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Gabon",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Gambia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Georgia",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Germany",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ghana",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Greece",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Grenada",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guatemala",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guinea",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guinea-Bissau",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Guyana",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Haiti",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Honduras",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Hungary",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Iceland",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "India",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Indonesia",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Iran",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Iraq",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ireland",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Israel",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Italy",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Jamaica",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Japan",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Jordan",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kazakhstan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kenya",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kiribati",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kuwait",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Kyrgyzstan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Laos",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Latvia",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Lebanon",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Lesotho",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Liberia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Libya",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Liechtenstein",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Lithuania",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Luxembourg",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Madagascar",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Malawi",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Malaysia",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Maldives",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mali",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Malta",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Marshall Islands",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mauritania",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mauritius",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mexico",
+        "region": "north_america",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Micronesia",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Moldova",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Monaco",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mongolia",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Montenegro",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Morocco",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Mozambique",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Myanmar",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Namibia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nauru",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nepal",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Netherlands",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "New Zealand",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nicaragua",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Niger",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Nigeria",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "North Korea",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "North Macedonia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Norway",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Oman",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Pakistan",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Palau",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Palestine",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Panama",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Papua New Guinea",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Paraguay",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Peru",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Philippines",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Poland",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Portugal",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Qatar",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Romania",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Russia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Rwanda",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saint Kitts and Nevis",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saint Lucia",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saint Vincent and the Grenadines",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Samoa",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "San Marino",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "São Tomé and Príncipe",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Saudi Arabia",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Senegal",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Serbia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Seychelles",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sierra Leone",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Singapore",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Slovakia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Slovenia",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Solomon Islands",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Somalia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "South Africa",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "South Korea",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "South Sudan",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Spain",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sri Lanka",
+        "region": "south_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sudan",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Suriname",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Sweden",
+        "region": "northern_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Switzerland",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Syria",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Taiwan",
+        "region": "east_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tajikistan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tanzania",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Thailand",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Timor-Leste",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Togo",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tonga",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Trinidad and Tobago",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tunisia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Türkiye",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Turkmenistan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Tuvalu",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Uganda",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Ukraine",
+        "region": "eastern_europe_balkans",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "United Arab Emirates",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "United Kingdom",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "United States",
+        "region": "north_america",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Uruguay",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Uzbekistan",
+        "region": "central_asia_caucasus",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Vanuatu",
+        "region": "oceania_pacific",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Vatican City",
+        "region": "western_central_europe",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Venezuela",
+        "region": "latin_america_caribbean",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Vietnam",
+        "region": "southeast_asia",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Yemen",
+        "region": "middle_east",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Zambia",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      },
+      {
+        "country": "Zimbabwe",
+        "region": "africa",
+        "status": "DISCOVERY_TARGET"
+      }
+    ]
+  },
+  "coverage_audit": {
+    "total_country_targets": 196,
+    "regions": [
+      "south_asia",
+      "eastern_europe_balkans",
+      "africa",
+      "western_central_europe",
+      "latin_america_caribbean",
+      "central_asia_caucasus",
+      "oceania_pacific",
+      "middle_east",
+      "southeast_asia",
+      "north_america",
+      "east_asia",
+      "northern_europe"
+    ],
+    "note": "No automatic runtime activation. Candidate registry remains PENDING/HOLD until manual approval."
+  },
+  "source_expansion_log": [
+    {
+      "date": "2026-09-18",
+      "action": "country_zone_discovery_sweep",
+      "added": [
+        "@MIB_India",
+        "@timesofindia",
+        "@DaryoUz",
+        "@sputnik_africa",
+        "@sputnik_ethiopia",
+        "@sputnik_afrique"
+      ],
+      "runtime_effect": false,
+      "approval_required": true
+    },
+    {
+      "date": "2026-09-18",
+      "action": "verified_public_discovery_sweep",
+      "added": [
+        "@unopsuzbekistan",
+        "@TIKVAH_ETH",
+        "@QORAXABAR"
+      ],
+      "runtime_effect": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "global_full_discovery_pass",
+      "added": [
+        "@Europeancommission",
+        "@BBCNewsAsia"
+      ],
+      "coverage_rule": "195-country targets plus regional/institutional channels",
+      "runtime_effect": false,
+      "auto_approval": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "global_unofficial_high_signal_pass",
+      "categories": [
+        "global_osint",
+        "conflict_archive",
+        "war_news",
+        "regional_osint",
+        "ideological_lead"
+      ],
+      "added": [
+        "@GeoPWatch",
+        "@conflictarchive",
+        "@ourwarstoday",
+        "@intelslava",
+        "@MaxOsintIntel",
+        "@isnreport",
+        "@CIG_telegram"
+      ],
+      "runtime_effect": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "full_three_category_crosscheck_and_merge",
+      "added": [
+        "@France24_ar",
+        "@AuroraIntel",
+        "@GeopoliticalCenter",
+        "@bnonews",
+        "@ClashReport",
+        "@warmonitors",
+        "@Middle_East_Spectator",
+        "@OSINTdefender",
+        "@DeepStateUA",
+        "@nexta_tv",
+        "@OSINTLive",
+        "@OSINTIndustries",
+        "@OsintTv",
+        "@OSINT_updates",
+        "@geopoliticalcenterfb"
+      ],
+      "runtime_effect": false,
+      "auto_approval": false
+    },
+    {
+      "date": "2026-09-18",
+      "action": "global_news_channel_crosscheck_three_categories",
+      "added": [
+        "@TheStraitsTimes",
+        "@thestar_official",
+        "@africanewsofficial",
+        "@France24_en",
+        "@France24_ar",
+        "@AJENews_Official",
+        "@DWNewsEnglish",
+        "@cnalatest",
+        "@ReutersWorldChannel",
+        "@BBCWorld",
+        "@BBCWorldoffl",
+        "@reutersnews_bot",
+        "@france24english",
+        "@AlJazeeraEnglish",
+        "@TheStraitsTimes"
+      ],
+      "runtime_effect": false,
+      "auto_approval": false
+    }
+  ],
+  "unofficial_source_policy": {
+    "status": "DISCOVERY_ONLY",
+    "runtime_effect": false,
+    "rule": "Unofficial channels may be ingested only as UNVERIFIED lead intelligence after manual approval; they can never directly publish GRI/Risk Gate/Risk Object or customer intelligence; independent corroboration is mandatory.",
+    "no_auto_approval": true
+  },
+  "source_categories": {
+    "official_first_party_candidate": {
+      "description": "First-party publisher/government/institutional candidates; still require operator approval and commercial-rights review.",
+      "auto_approve": false
+    },
+    "independent_osint_candidate": {
+      "description": "Independent OSINT/research/publisher sources; useful for discovery and corroboration, never sole truth.",
+      "auto_approve": false
+    },
+    "unofficial_high_signal_lead": {
+      "description": "Unofficial high-signal channels for early-warning lead intelligence only.",
+      "auto_approve": false,
+      "independent_corroboration_required": true
+    }
+  },
+  "crosscheck": {
+    "date": "2026-09-18",
+    "checked_against": [
+      "previous Geomacro source lists",
+      "current global country matrix",
+      "public Telegram pages",
+      "independent Telegram directories",
+      "OSINT source lists"
+    ],
+    "duplicate_policy": "same handle is stored once; existing candidates were reclassified rather than duplicated",
+    "exclusion_policy": [
+      "explicitly unofficial publisher impersonators remain HOLD",
+      "raw Telegram content is never customer-delivered",
+      "no candidate is runtime-approved by this file"
+    ],
+    "coverage_note": "The global Telegram ecosystem is too large to enumerate exhaustively; this is the cross-checked Geomacro discovery universe, not a claim that every public channel on Telegram is listed."
+  },
+  "news_source_crosscheck": {
+    "date": "2026-09-18",
+    "purpose": "Cross-check news-channel coverage across official, independent/OSINT, and unofficial high-signal categories and merge prior lists.",
+    "verified_official_examples": [
+      "@cnalatest",
+      "@France24_en",
+      "@France24_ar",
+      "@AJENews_Official",
+      "@DWNewsEnglish",
+      "@TheStraitsTimes",
+      "@thestar_official",
+      "@africanewsofficial"
+    ],
+    "explicit_unofficial_examples": [
+      "@ReutersWorldChannel",
+      "@BBCWorld",
+      "@BBCWorldoffl",
+      "@reutersnews_bot"
+    ],
+    "rules": [
+      "Official candidates still require first-party operator approval and commercial-rights review.",
+      "Independent/OSINT news candidates require corroboration before production use.",
+      "Unofficial mirrors are lead-only and cannot be treated as publisher-authoritative.",
+      "Duplicate handles are not duplicated in the registry."
+    ]
+  }
 }

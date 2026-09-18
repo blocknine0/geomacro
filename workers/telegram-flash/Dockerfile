@@ -13,5 +13,6 @@ COPY production_entrypoint.py ./
 COPY corroboration_loop.py ./
 COPY supervisor.py ./
 COPY archive_loop.py ./
+COPY alignment_loop.py ./
 
 CMD ["python", "supervisor.py"]
