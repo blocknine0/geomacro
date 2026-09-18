@@ -437,7 +437,7 @@ function detectIntent(question: string): Intent {
   return "topic";
 }
 
-function griWhy(gri: GriReading): AskAnswer | null {
+function griWhy(gri: GriReading, historical = false): AskAnswer | null {
   if (gri.displayScore === null) return null;
   const why =
     gri.explanation?.why && typeof gri.explanation.why === "object"
@@ -479,8 +479,8 @@ function griWhy(gri: GriReading): AskAnswer | null {
   const change = gri.changePoints;
   const summary =
     change === null || gri.previousScore === null
-      ? `The current verified GRI is ${gri.displayScore}/100.`
-      : `The current verified GRI is ${gri.displayScore}/100, ${change >= 0 ? "up" : "down"} ${Math.abs(change).toFixed(2)} points from ${gri.previousScore}.`;
+      ? `The ${historical ? "verified historical" : "current verified"} GRI is ${gri.displayScore}/100.`
+      : `The ${historical ? "verified historical" : "current verified"} GRI is ${gri.displayScore}/100, ${change >= 0 ? "up" : "down"} ${Math.abs(change).toFixed(2)} points from ${gri.previousScore}.`;
 
   const evidence = currentEvents
     .filter((item) => Boolean(item.eventId) && Boolean(item.sourceUrl))
@@ -619,7 +619,7 @@ export async function answerQuestion(
   const now = anchorMs;
 
   if (intent === "gri_change") {
-    const answer = griWhy(gri);
+    const answer = griWhy(gri, historical);
     return answer ?? insufficientAnswer(
       "The current GRI has not passed the public verification/freshness contract, so Geomacro will not manufacture a change explanation.",
       null,
