@@ -47,6 +47,15 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(migration).toContain("prevent_live_signal_fragment_mutation");
   });
 
+  it("keeps additional Telegram coverage candidates disabled until manual approval", () => {
+    const migration = read("supabase/migrations/954_telegram_coverage_candidates.sql");
+    expect(migration).toContain("'bricsnews'");
+    expect(migration).toContain("'uztmk_official'");
+    expect(migration).toContain("'INTERNAL_RESEARCH_ONLY'");
+    expect(migration).toContain("enabled,");
+    expect(migration).toContain("false,");
+    expect(migration).toContain("pending manual approval");
+  });
   it("defines a canonical event-family lifecycle and material-update ledger", () => {
     const lifecycle = read(
       "supabase/migrations/952_realtime_flash_event_lifecycle.sql",
