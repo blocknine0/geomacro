@@ -47,6 +47,17 @@ Core fields:
 
 An expired artifact may remain `cryptographic_valid=true` for historical audit while `valid=false` for current use.
 
+## Canonicalization and independent verification
+
+The public canonicalization specification is:
+
+- `docs/GRO_CANONICAL_JSON_V1.md`
+- Test vector: `docs/examples/gro-1.1-canonical-v1-test-vector.json`
+
+The canonicalization identifier is `geomacro-canonical-json-v1`. The specification defines the exact signable framing, recursive key ordering, JSON serialization rules, UTF-8 byte boundary, SHA-256 payload-hash calculation, and Ed25519 signature verification procedure.
+
+Independent consumers should reproduce the canonical UTF-8 bytes and payload hash, then verify the Ed25519 signature using the public key returned by `/api/risk-object-keys`.
+
 ## Integrity boundary
 
 The public trust endpoint recalculates the signed payload hash and verifies the Ed25519 signature against the trusted key registry. It also checks that `input_hash`, `data_hash`, and `calculation_hash` are present in the signed artifact.
