@@ -24,7 +24,7 @@ CDP_API_KEY_SECRET=...
 
 The CDP secret may be either a PKCS#8 ES256 PEM private key or a 64-byte base64 Ed25519 key. It must remain server-only.
 
-The coordinated production launch price is **0.05 USDC per successful paid x402 intelligence delivery for the first 10,000 deliveries**. After adoption evidence supports the transition, the reference price is **0.10 USDC**. The successful Base Sepolia acceptance evidence remains historical testnet evidence and does not define production pricing.
+The coordinated production launch price is **0.02 USDC per successful paid x402 intelligence delivery for the first 10,000 deliveries**. After adoption evidence supports the transition, the reference price is **0.10 USDC**. The successful Base Sepolia acceptance evidence remains historical testnet evidence and does not define production pricing.
 
 Production additionally requires:
 
