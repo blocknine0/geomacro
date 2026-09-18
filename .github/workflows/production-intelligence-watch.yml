@@ -6,6 +6,7 @@ on:
     - cron: "7 6 * * *"
     - cron: "7 12 * * *"
     - cron: "7 18 * * *"
+    - cron: "47 23 * * *"
   workflow_dispatch:
     inputs:
       slot:
@@ -37,6 +38,7 @@ jobs:
     env:
       GEOMACRO_WATCH_BASE_URL: https://geomacro.live
       GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      GEOMACRO_EXPECTED_PRODUCTION_SHA: ${{ github.sha }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       WATCH_SLOT: "0"
@@ -68,6 +70,7 @@ jobs:
     env:
       GEOMACRO_WATCH_BASE_URL: https://geomacro.live
       GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      GEOMACRO_EXPECTED_PRODUCTION_SHA: ${{ github.sha }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       WATCH_SLOT: "1"
@@ -99,6 +102,7 @@ jobs:
     env:
       GEOMACRO_WATCH_BASE_URL: https://geomacro.live
       GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      GEOMACRO_EXPECTED_PRODUCTION_SHA: ${{ github.sha }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       WATCH_SLOT: "2"
@@ -130,6 +134,7 @@ jobs:
     env:
       GEOMACRO_WATCH_BASE_URL: https://geomacro.live
       GEOMACRO_PRODUCTION_WATCH_TOKEN: ${{ secrets.GEOMACRO_PRODUCTION_WATCH_TOKEN }}
+      GEOMACRO_EXPECTED_PRODUCTION_SHA: ${{ github.sha }}
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       WATCH_SLOT: "3"
