@@ -157,8 +157,9 @@ function materiality(severity: number | null): PublicStructuralDevelopment["mate
 
 /**
  * One canonical live event may have many upstream observations. The event
- * identity remains stable while this derived version changes when the
- * structured interpretation/timestamp changes.
+ * identity remains stable while this derived version changes when its
+ * material structured interpretation changes. A passive last-seen timestamp
+ * refresh does not create a new commercial event version.
  */
 export function structuralEventVersion(event: {
   event_id: string;
@@ -186,7 +187,6 @@ export function structuralEventVersion(event: {
     direction: event.direction,
     status: event.status,
     first_seen_at: event.first_seen_at,
-    last_seen_at: event.last_seen_at,
     structure_version: event.structure_version,
     classification_version: event.classification_version,
   }).slice(0, 24)}`;
