@@ -17,6 +17,7 @@ on:
       - "supabase/migrations/041_country_flash_live_smoke_hardening.sql"
       - "supabase/migrations/953_event_family_version_ledger.sql"
       - "supabase/migrations/954_telegram_coverage_candidates.sql"
+      - "supabase/migrations/955_realtime_detection_latency.sql"
       - "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
       - "supabase/migrations/951_telegram_signal_compact_storage.sql"
       - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
@@ -87,6 +88,7 @@ jobs:
           test -f supabase/migrations/952_realtime_flash_event_lifecycle.sql
           test -f supabase/migrations/953_event_family_version_ledger.sql
           test -f supabase/migrations/954_telegram_coverage_candidates.sql
+          test -f supabase/migrations/955_realtime_detection_latency.sql
 
       - name: Verify Telegram manual-review contract
         run: bunx vitest run src/__tests__/telegram-raw-signal-manual-review.test.ts
