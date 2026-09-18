@@ -31,7 +31,7 @@ const EVIDENCE_PROVIDERS = {
 };
 const BASE_MAINNET = "eip155:8453";
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-const HARD_MAX_USDC_ATOMIC = 1_000_000n;
+const HARD_MAX_USDC_ATOMIC = 50_000n;
 
 function sha256(value) {
   return createHash("sha256").update(String(value), "utf8").digest("hex");
@@ -92,7 +92,7 @@ function assertProductHashes(body, label) {
 function requireUsdcCap(challenge) {
   const maxAtomic = centsToAtomic(required("GEOMACRO_PRODUCTION_CANARY_MAX_USDC"));
   if (maxAtomic <= 0n || maxAtomic > HARD_MAX_USDC_ATOMIC) {
-    fail("GEOMACRO_PRODUCTION_CANARY_MAX_USDC must be > 0 and <= 1 USDC");
+    fail("GEOMACRO_PRODUCTION_CANARY_MAX_USDC must be > 0 and <= 0.05 USDC");
   }
   const requirement = challenge.accepts[0];
   if (requirement.scheme !== "exact" || requirement.network !== BASE_MAINNET) {
@@ -188,6 +188,7 @@ async function circlePayment(challenge, serializedBody, endpoint) {
   if (!/^0x[0-9a-fA-F]{64}$/.test(privateKey)) fail("Circle canary buyer private key format is invalid");
 
   const { GatewayClient } = await import("@circle-fin/x402-batching/client");
+  const { encodePaymentSignatureHeader } = await import("@x402/core/http");
   let capturedPayload = null;
   let capturedSettlement = null;
   const maxAtomic = centsToAtomic(required("GEOMACRO_PRODUCTION_CANARY_MAX_USDC"));
@@ -220,7 +221,7 @@ async function circlePayment(challenge, serializedBody, endpoint) {
   const data = result?.data ?? result?.body ?? result;
   const status = Number(result?.status ?? 200);
   if (!data || typeof data !== "object") fail("Circle canary paid result has no JSON data");
-  const signature = base64Json(capturedPayload);
+  const signature = encodePaymentSignatureHeader(capturedPayload);
   return {
     paid: { response: { status, headers: new Headers() }, body: data },
     signature,
