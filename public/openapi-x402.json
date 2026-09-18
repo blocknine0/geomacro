@@ -222,79 +222,6 @@
           }
         }
       }
-    },
-    "/api/intelligence/capabilities": {
-      "get": {
-        "summary": "Free machine capability discovery",
-        "operationId": "getIntelligenceCapabilities",
-        "responses": {
-          "200": {
-            "description": "Current Geomacro machine capabilities and commercial boundaries.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/intelligence/state": {
-      "get": {
-        "summary": "Free Geomacro intelligence state-change check",
-        "operationId": "getIntelligenceState",
-        "parameters": [
-          {
-            "name": "country",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Z]{3}$"
-            }
-          },
-          {
-            "name": "origin",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Z]{3}$"
-            }
-          },
-          {
-            "name": "destination",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Z]{3}$"
-            }
-          },
-          {
-            "name": "known_state_version",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Current state version, freshness and change signals. Paid intelligence is not returned.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -302,10 +229,7 @@
       "AdaptiveQuery": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "question",
-          "subjects"
-        ],
+        "required": ["question", "subjects"],
         "properties": {
           "question": {
             "type": "string",
@@ -332,11 +256,7 @@
             "minimum": 60
           },
           "detail": {
-            "enum": [
-              "compact",
-              "standard",
-              "detailed"
-            ]
+            "enum": ["compact", "standard", "detailed"]
           },
           "client_request_id": {
             "type": "string",
@@ -346,11 +266,7 @@
       },
       "AdaptiveResponse": {
         "type": "object",
-        "required": [
-          "schema_version",
-          "product",
-          "execution_authorized"
-        ],
+        "required": ["schema_version", "product", "execution_authorized"],
         "properties": {
           "schema_version": {
             "const": "geomacro.adaptive-intelligence-response.v1"
