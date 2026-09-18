@@ -1,0 +1,636 @@
+{
+  "schema_version": "geomacro.telegram.global-coverage.v1",
+  "review_date": "2026-09-18",
+  "status": "DISCOVERY_MATRIX_ONLY",
+  "runtime_effect": false,
+  "approval_policy": "All candidates remain PENDING or HOLD until first-party identity, public username, rights boundary, and operator review are recorded. No candidate in this file authorizes ingestion.",
+  "coverage_goal": "Global geographic and linguistic coverage with controlled, diversified Telegram signal intake.",
+  "regions": [
+    {
+      "id": "north_america",
+      "countries": [
+        "United States",
+        "Canada",
+        "Mexico"
+      ],
+      "languages": [
+        "English",
+        "French",
+        "Spanish"
+      ],
+      "topics": [
+        "geopolitics",
+        "macro",
+        "trade",
+        "security",
+        "energy"
+      ]
+    },
+    {
+      "id": "latin_america_caribbean",
+      "countries": [
+        "Brazil",
+        "Argentina",
+        "Chile",
+        "Colombia",
+        "Peru",
+        "Venezuela",
+        "Ecuador",
+        "Bolivia",
+        "Paraguay",
+        "Uruguay",
+        "Costa Rica",
+        "Panama",
+        "Dominican Republic",
+        "Jamaica",
+        "Trinidad and Tobago"
+      ],
+      "languages": [
+        "Spanish",
+        "Portuguese",
+        "English"
+      ],
+      "topics": [
+        "macro",
+        "politics",
+        "commodities",
+        "security",
+        "trade"
+      ]
+    },
+    {
+      "id": "western_central_europe",
+      "countries": [
+        "United Kingdom",
+        "Ireland",
+        "France",
+        "Germany",
+        "Netherlands",
+        "Belgium",
+        "Luxembourg",
+        "Switzerland",
+        "Austria",
+        "Italy",
+        "Spain",
+        "Portugal"
+      ],
+      "languages": [
+        "English",
+        "French",
+        "German",
+        "Italian",
+        "Spanish",
+        "Portuguese",
+        "Dutch"
+      ],
+      "topics": [
+        "EU",
+        "macro",
+        "trade",
+        "energy",
+        "security"
+      ]
+    },
+    {
+      "id": "northern_europe",
+      "countries": [
+        "Norway",
+        "Sweden",
+        "Denmark",
+        "Finland",
+        "Iceland",
+        "Estonia",
+        "Latvia",
+        "Lithuania"
+      ],
+      "languages": [
+        "English",
+        "Nordic languages",
+        "Baltic languages"
+      ],
+      "topics": [
+        "security",
+        "energy",
+        "shipping",
+        "NATO",
+        "macro"
+      ]
+    },
+    {
+      "id": "eastern_europe_balkans",
+      "countries": [
+        "Ukraine",
+        "Russia",
+        "Belarus",
+        "Poland",
+        "Czechia",
+        "Slovakia",
+        "Hungary",
+        "Romania",
+        "Bulgaria",
+        "Moldova",
+        "Serbia",
+        "Croatia",
+        "Bosnia and Herzegovina",
+        "North Macedonia",
+        "Albania",
+        "Kosovo",
+        "Greece"
+      ],
+      "languages": [
+        "Russian",
+        "Ukrainian",
+        "Polish",
+        "Czech",
+        "Slovak",
+        "Hungarian",
+        "Romanian",
+        "Bulgarian",
+        "Serbian",
+        "Croatian",
+        "Greek"
+      ],
+      "topics": [
+        "conflict",
+        "security",
+        "energy",
+        "macro",
+        "EU"
+      ]
+    },
+    {
+      "id": "middle_east",
+      "countries": [
+        "Türkiye",
+        "Israel",
+        "Palestine",
+        "Lebanon",
+        "Jordan",
+        "Syria",
+        "Iraq",
+        "Iran",
+        "Saudi Arabia",
+        "United Arab Emirates",
+        "Qatar",
+        "Kuwait",
+        "Bahrain",
+        "Oman",
+        "Yemen"
+      ],
+      "languages": [
+        "Arabic",
+        "Persian",
+        "Turkish",
+        "Hebrew",
+        "English"
+      ],
+      "topics": [
+        "conflict",
+        "energy",
+        "shipping",
+        "security",
+        "macro"
+      ]
+    },
+    {
+      "id": "africa",
+      "countries": [
+        "Egypt",
+        "Morocco",
+        "Algeria",
+        "Tunisia",
+        "Libya",
+        "Sudan",
+        "Ethiopia",
+        "Somalia",
+        "Kenya",
+        "Uganda",
+        "Tanzania",
+        "Rwanda",
+        "Nigeria",
+        "Ghana",
+        "Senegal",
+        "Ivory Coast",
+        "Cameroon",
+        "DR Congo",
+        "South Africa",
+        "Zambia",
+        "Zimbabwe",
+        "Mozambique",
+        "Angola"
+      ],
+      "languages": [
+        "Arabic",
+        "English",
+        "French",
+        "Portuguese",
+        "Swahili",
+        "Amharic"
+      ],
+      "topics": [
+        "conflict",
+        "commodities",
+        "energy",
+        "food",
+        "macro",
+        "humanitarian"
+      ]
+    },
+    {
+      "id": "south_asia",
+      "countries": [
+        "India",
+        "Pakistan",
+        "Bangladesh",
+        "Sri Lanka",
+        "Nepal",
+        "Bhutan",
+        "Maldives",
+        "Afghanistan"
+      ],
+      "languages": [
+        "Hindi",
+        "Bengali",
+        "Urdu",
+        "Tamil",
+        "Sinhala",
+        "Nepali",
+        "English"
+      ],
+      "topics": [
+        "macro",
+        "trade",
+        "security",
+        "energy",
+        "food",
+        "monsoon"
+      ]
+    },
+    {
+      "id": "east_asia",
+      "countries": [
+        "China",
+        "Hong Kong",
+        "Taiwan",
+        "Japan",
+        "South Korea",
+        "North Korea",
+        "Mongolia"
+      ],
+      "languages": [
+        "Chinese",
+        "Japanese",
+        "Korean",
+        "Mongolian",
+        "English"
+      ],
+      "topics": [
+        "macro",
+        "trade",
+        "semiconductors",
+        "security",
+        "shipping"
+      ]
+    },
+    {
+      "id": "southeast_asia",
+      "countries": [
+        "Indonesia",
+        "Malaysia",
+        "Singapore",
+        "Thailand",
+        "Vietnam",
+        "Philippines",
+        "Myanmar",
+        "Cambodia",
+        "Laos",
+        "Brunei",
+        "Timor-Leste"
+      ],
+      "languages": [
+        "Indonesian",
+        "Malay",
+        "Thai",
+        "Vietnamese",
+        "Tagalog",
+        "Burmese",
+        "Khmer",
+        "Lao",
+        "English"
+      ],
+      "topics": [
+        "trade",
+        "shipping",
+        "manufacturing",
+        "security",
+        "macro"
+      ]
+    },
+    {
+      "id": "central_asia_caucasus",
+      "countries": [
+        "Kazakhstan",
+        "Uzbekistan",
+        "Kyrgyzstan",
+        "Tajikistan",
+        "Turkmenistan",
+        "Armenia",
+        "Azerbaijan",
+        "Georgia"
+      ],
+      "languages": [
+        "Russian",
+        "Kazakh",
+        "Uzbek",
+        "Kyrgyz",
+        "Tajik",
+        "Turkmen",
+        "Armenian",
+        "Azerbaijani",
+        "Georgian"
+      ],
+      "topics": [
+        "energy",
+        "corridors",
+        "security",
+        "macro",
+        "Russia-China"
+      ]
+    },
+    {
+      "id": "oceania_pacific",
+      "countries": [
+        "Australia",
+        "New Zealand",
+        "Papua New Guinea",
+        "Fiji",
+        "Solomon Islands",
+        "Vanuatu"
+      ],
+      "languages": [
+        "English",
+        "French",
+        "local Pacific languages"
+      ],
+      "topics": [
+        "shipping",
+        "commodities",
+        "climate",
+        "security",
+        "China-Pacific"
+      ]
+    },
+    {
+      "id": "global_institutions",
+      "countries": [
+        "Global"
+      ],
+      "languages": [
+        "English",
+        "French",
+        "Arabic",
+        "Spanish",
+        "Russian",
+        "Chinese"
+      ],
+      "topics": [
+        "multilateral",
+        "markets",
+        "conflict",
+        "humanitarian",
+        "macro",
+        "trade"
+      ]
+    }
+  ],
+  "candidate_policy": {
+    "discovery_sources": [
+      "first-party publisher websites",
+      "public Telegram pages",
+      "independent directories for discovery only"
+    ],
+    "prohibited_assumption": "Public visibility, subscriber count, verification badge, or directory listing does not prove ownership or commercial reuse rights.",
+    "corroboration": "Telegram-only evidence is never sufficient for production intelligence.",
+    "rights_default": "INTERNAL_RESEARCH_ONLY",
+    "approval_state": "PENDING",
+    "enabled": false
+  },
+  "reviewed_candidates": [
+    {
+      "handle": "@liveuamap",
+      "region": "global",
+      "role": "independent OSINT publisher",
+      "status": "PENDING",
+      "identity_basis": "publisher-linked Telegram handle from prior manual review",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@KyivIndependent_official",
+      "region": "eastern_europe_balkans",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "channel identifies as official publisher channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@bbcrussian",
+      "region": "eastern_europe_balkans",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified official BBC Russian service",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@anadoluagency_en",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page states official Anadolu Agency English account",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@euronews_eng",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified verified Euronews English channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@nikkeiasia",
+      "region": "east_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified Nikkei Asia channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@rbc_news",
+      "region": "eastern_europe_balkans",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified official RBC channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@THnewsupdates",
+      "region": "south_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified The Hindu feed",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@SCMP_News",
+      "region": "east_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified South China Morning Post channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@hongkongfp",
+      "region": "east_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified Hong Kong Free Press channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@cnalatest",
+      "region": "southeast_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified CNA channel linking cna.asia",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@AddisstandardEng",
+      "region": "africa",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified Addis Standard channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@MiddleEastEye_TG",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified Middle East Eye channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@trtworld",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified TRT World channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@the_jerusalem_post",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified Jerusalem Post channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@listadapublica",
+      "region": "latin_america_caribbean",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "prior review identified Agência Pública channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@BBCArabic",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page labels itself official BBC Arabic",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@France24_en",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page identifies FRANCE 24 English",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@France24_fr",
+      "region": "western_central_europe",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page identifies FRANCE 24 French",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@hindustantimes",
+      "region": "south_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page labels channel official and links hindustantimes.com",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@thedailystar",
+      "region": "south_asia",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page identifies The Daily Star Bangladesh",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@AJENews_Official",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "PENDING",
+      "identity_basis": "Telegram page uses Al Jazeera English branding and official-style handle; first-party ownership still required",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@AlJazeeraEnglish",
+      "region": "middle_east",
+      "role": "publisher",
+      "status": "HOLD",
+      "identity_basis": "public channel exists but exact first-party ownership is not established by current evidence",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@ReutersWorldChannel",
+      "region": "global",
+      "role": "unofficial relay",
+      "status": "HOLD",
+      "identity_basis": "channel explicitly states it is not an official Reuters channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@bbcworld",
+      "region": "global",
+      "role": "unofficial relay",
+      "status": "HOLD",
+      "identity_basis": "Telegram page explicitly says not an official channel",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@BBCWorldoffl",
+      "region": "global",
+      "role": "unofficial relay",
+      "status": "HOLD",
+      "identity_basis": "claims BBC feed but is an independent aggregator, not first-party BBC",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@FinancialJuice",
+      "region": "global",
+      "role": "aggregator",
+      "status": "HOLD",
+      "identity_basis": "prior review identified automated relay/no affiliation",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    }
+  ]
+}
