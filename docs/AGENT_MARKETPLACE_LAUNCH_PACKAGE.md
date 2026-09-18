@@ -2,7 +2,7 @@
 
 Status: **PRE-LAUNCH HOLD**
 
-This package prepares Geomacro for coordinated distribution without publishing or activating a real-money service early. The approved initial production cohort is Coinbase x402 + Circle Gateway x402 + Nevermined. GOAT mainnet is deferred until manual merchant onboarding is complete.
+This package prepares Geomacro for the initial Coinbase x402 commercial pay-per-call launch without publishing or activating a real-money service early. Circle Gateway and Nevermined are later additive provider tracks. GOAT mainnet is separately deferred until manual merchant onboarding is complete.
 
 ## Canonical provider identity
 
@@ -75,7 +75,7 @@ Use Circle's current provider-listing submission path only after the dedicated C
 
 Submit the canonical provider identity above and the dedicated Circle endpoint `https://geomacro.live/api/x402/circle/intelligence`. After approval/listing, query Circle's Discovery API and verify the returned resource URL, network, USDC asset, amount, recipient and provider metadata against Geomacro's own authoritative payment contract before marking the listing verified.
 
-The prepared Circle settlement path is Base-mainnet USDC only. Arc mainnet remains disabled. The runtime must discover the currently supported Circle Gateway verifying contract before advertising or accepting payment.
+The prepared Circle settlement path is Base-mainnet USDC only and remains a later additive provider track. Arc mainnet remains disabled. The runtime must discover the currently supported Circle Gateway verifying contract before advertising or accepting payment.
 
 ### 5. x402scan
 
