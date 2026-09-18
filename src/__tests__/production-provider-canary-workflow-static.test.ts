@@ -9,7 +9,7 @@ describe("production provider canary workflow", () => {
     expect(workflow).toContain("github.ref == 'refs/heads/main'");
     expect(workflow).toContain("candidate_sha:");
     expect(workflow).toContain("strict_closure_run_id:");
-    expect(workflow).toContain(".github/workflows/strict-commercial-launch-closure.yml");
+    expect(workflow).toContain(".github/workflows/p0-strict-prepublic-closure.yml");
     expect(workflow).toContain("run.head_sha");
     expect(workflow).not.toMatch(/^\s{2}push:/m);
     expect(workflow).not.toMatch(/^\s{2}schedule:/m);
