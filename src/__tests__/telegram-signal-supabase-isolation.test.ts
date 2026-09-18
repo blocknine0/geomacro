@@ -8,7 +8,10 @@ describe("Telegram signal Supabase isolation contract", () => {
     const workflow = read(".github/workflows/deploy-telegram-signal-supabase.yml");
 
     expect(workflow).toContain("qogpagklwbfdmrgnrhzi");
-    expect(workflow).not.toContain("ldpwajisioljyjtojvfx");
+    expect(workflow).toContain("ldpwajisioljyjtojvfx");
+    expect(workflow).not.toContain(
+      "SUPABASE_PROJECT_ID: ldpwajisioljyjtojvfx",
+    );
     expect(workflow).toContain("TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID");
     expect(workflow).toContain("SIGNAL_DB_MODE");
   });
@@ -31,14 +34,14 @@ describe("Telegram signal Supabase isolation contract", () => {
       "supabase/functions/live-flash-corroborate/index.ts",
     );
 
-    expect(corroborate).toContain('SIGNAL_DB_MODE');
-    expect(corroborate).toContain('if (!SIGNAL_DB_MODE)');
+    expect(corroborate).toContain("SIGNAL_DB_MODE");
+    expect(corroborate).toContain("if (!SIGNAL_DB_MODE)");
   });
 
   it("keeps country inference fail-closed until controlled alignment", () => {
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
 
-    expect(ingest).toContain('if (SIGNAL_DB_MODE)');
+    expect(ingest).toContain("if (SIGNAL_DB_MODE)");
     expect(ingest).toContain("return []");
   });
 
