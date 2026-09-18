@@ -318,7 +318,38 @@ export async function loadAgentHotTopics(input: {
     };
   }
 
-  const delivered = eligible.slice(0, MAX_DELIVERED_EVENTS).map(asDeliverableEvent);
+  // One real-world development can appear in many upstream reports. The
+  // commercial product returns one canonical event identity (story_key) and
+  // lets a material update advance last_seen/structure/classification state
+  // rather than charging or emitting another copy of the same development.
+  const canonical = new Map<string, LiveEventRow>();
+  for (const row of eligible) {
+    const current = canonical.get(row.story_key);
+    if (!current) {
+      canonical.set(row.story_key, row);
+      continue;
+    }
+    const currentTime = Date.parse(current.last_seen_at);
+    const rowTime = Date.parse(row.last_seen_at);
+    if (
+      Number.isFinite(rowTime) &&
+      (!Number.isFinite(currentTime) || rowTime > currentTime)
+    ) {
+      canonical.set(row.story_key, row);
+    }
+  }
+
+  const canonicalRows = [...canonical.values()].sort((a, b) => {
+    const byTime = Date.parse(b.last_seen_at) - Date.parse(a.last_seen_at);
+    return Number.isFinite(byTime) && byTime !== 0
+      ? byTime
+      : a.story_key.localeCompare(b.story_key);
+  });
+
+  const delivered = canonicalRows
+    .slice(0, MAX_DELIVERED_EVENTS)
+    .map(asDeliverableEvent);
+
   return {
     deliverable: true,
     code: "AVAILABLE",
@@ -327,8 +358,8 @@ export async function loadAgentHotTopics(input: {
     matched_families: matchedFamilies,
     source_pipeline: pipeline,
     subject: input.subject,
-    current_event_signal: matching.length > 0,
-    commercially_deliverable_event_count: eligible.length,
+    current_event_signal: canonicalRows.length > 0,
+    commercially_deliverable_event_count: canonicalRows.length,
     excluded_non_deliverable_event_count: blocked,
     events: delivered,
     limitations: baseLimitations(input.subject),
