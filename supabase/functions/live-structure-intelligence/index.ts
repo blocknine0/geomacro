@@ -3025,6 +3025,14 @@ Deno.serve(async (req) => {
           requestedFragmentId,
         )
         .eq(
+          "source_key",
+          "gdelt_gal",
+        )
+        .eq(
+          "stream_key",
+          "global-relevant",
+        )
+        .eq(
           "verification_method",
           "storage-readback-sha256",
         )
