@@ -10,6 +10,7 @@ const STORY_PROMPT_VERSION = "story-match-title-v1.0.0"
 const CONTRACT_VERSION = "risk-indices-v1.1.0"
 const LOOKBACK_HOURS = 72
 const SNAPSHOT_RETENTION_DAYS = 91
+const MAX_CATEGORY_READING_AGE_HOURS = 6
 const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
 const FUTURE_TOLERANCE_MS = 15 * 60 * 1000
@@ -175,8 +176,13 @@ function indexSeries(
 function latestVerifiedCategorySnapshot(
   snapshots: AnyRow[],
   category: string,
+  latestAt: number,
 ): { snapshot: AnyRow; categoryRow: AnyRow } | null {
   for (const snapshot of snapshots) {
+    const snapshotAt = Date.parse(String(snapshot.as_of ?? ""))
+    if (!Number.isFinite(snapshotAt)) continue
+    if (latestAt - snapshotAt > MAX_CATEGORY_READING_AGE_HOURS * HOUR) break
+
     const categoryRow = categoryByName(snapshot, category)
     if (num(categoryRow?.score) !== null) {
       return { snapshot, categoryRow: categoryRow as AnyRow }
@@ -238,7 +244,7 @@ function verifySnapshot(snapshot: AnyRow, now: number) {
 
 function buildIndices(snapshots: AnyRow[], latest: AnyRow, latestAt: number) {
   return INDEX_SPECS.map((spec) => {
-    const reading = latestVerifiedCategorySnapshot(snapshots, spec.sourceCategory)
+    const reading = latestVerifiedCategorySnapshot(snapshots, spec.sourceCategory, latestAt)
     const readingSnapshot = reading?.snapshot ?? null
     const current = reading?.categoryRow ?? null
     const storedChange = readingSnapshot
