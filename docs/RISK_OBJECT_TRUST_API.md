@@ -78,6 +78,13 @@ The deterministic test vector is `docs/examples/gro-1.1-canonical-v1-test-vector
 
 Consumers should reproduce the canonical UTF-8 bytes and payload hash, then verify the Ed25519 signature using the trusted public key returned by `/api/risk-object-keys`.
 
+## Federico strict evidence profile
+
+Federico handoff artifacts may use the signed `FEDERICO_STRICT` delivery profile. This profile is intentionally narrower than the general canonical publisher path: it uses recent `live_flash_event_families` that are actively verified, requires direct country linkage, records source URLs and source-family identities, applies a six-hour evidence-age ceiling, and applies a three-hour ceiling plus two-source (or explicitly allowlisted major-source) corroboration for high-impact conflict/military evidence.
+
+The strict profile also signs a reproducibility manifest containing the exact calculation input, score components, evidence-selection policy and data-hash projection. A receiver can recompute the input hash, data hash, score, aggregate confidence and calculation hash without receiving raw provider payloads.
+
+The artifact binds the active public Ed25519 key, the public trust-registry URL and the canonicalization specification URL inside the signed `integrity` object. Receivers should still resolve `signing_key_id` through the trusted registry and verify the signature rather than treating the embedded key as a trust root.
 ## Seven-day rolling refresh
 
 The production country Risk Object validity window is intentionally short-lived: each signed artifact carries a bounded `expires_at` based on the active Risk Object TTL. The Federico handoff uses a rolling refresh rather than extending one signed artifact across seven days.
