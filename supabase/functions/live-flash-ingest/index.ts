@@ -50,6 +50,7 @@ const ALLOWED_SOURCE_IDS =
   new Set([
     "telegram_mtproto_flash",
     "aljazeera_rss",
+    "bbc_world_rss",
     "federal_reserve_press_rss",
     "forexlive_rss",
     "mining_com_rss",
@@ -1041,12 +1042,13 @@ Deno.serve(async request => {
 
   if (
     githubOidcAuthorized &&
-    ![
+    !new Set([
       "aljazeera_rss",
+      "bbc_world_rss",
       "federal_reserve_press_rss",
       "forexlive_rss",
       "usgs_minerals_news_rss",
-    ].includes(sourceId)
+    ]).has(sourceId)
   ) {
     return jsonResponse(
       403,
