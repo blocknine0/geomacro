@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import random
+import socket
 import sys
 import time
 import urllib.error
@@ -117,6 +118,9 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "url": "https://www.usgs.gov/news/minerals/feed",
         "event_type": "CRITICAL_MINERALS_BREAKING",
         "source_reliability": 90.0,
+        "timeout_seconds": 60,
+        "retry_attempts": 2,
+        "retry_backoff_seconds": 2,
     },
 ]
 
@@ -154,6 +158,27 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
                 min(100.0, float(item.get("source_reliability", 50.0))),
             ),
         }
+
+        timeout_seconds = item.get("timeout_seconds")
+        if timeout_seconds is not None:
+            feed["timeout_seconds"] = max(
+                10,
+                min(90, int(timeout_seconds)),
+            )
+
+        retry_attempts = item.get("retry_attempts")
+        if retry_attempts is not None:
+            feed["retry_attempts"] = max(
+                0,
+                min(3, int(retry_attempts)),
+            )
+
+        retry_backoff_seconds = item.get("retry_backoff_seconds")
+        if retry_backoff_seconds is not None:
+            feed["retry_backoff_seconds"] = max(
+                0.0,
+                min(10.0, float(retry_backoff_seconds)),
+            )
         country_iso3 = str(item.get("country_iso3", "")).strip().upper()
         if len(country_iso3) == 3:
             feed["country_iso3"] = country_iso3
@@ -237,6 +262,9 @@ def fetch_feed_sync(
     url: str,
     etag: str | None,
     modified: str | None,
+    timeout_seconds: int = 20,
+    retry_attempts: int = 0,
+    retry_backoff_seconds: float = 1.0,
 ) -> tuple[int, bytes, str | None, str | None]:
     headers = {
         "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.5",
@@ -247,21 +275,35 @@ def fetch_feed_sync(
     if modified:
         headers["If-Modified-Since"] = modified
 
-    request = urllib.request.Request(url, headers=headers, method="GET")
+    last_error: Exception | None = None
 
-    try:
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return (
-                int(response.status),
-                response.read(),
-                response.headers.get("ETag"),
-                response.headers.get("Last-Modified"),
-            )
-    except urllib.error.HTTPError as exc:
-        if exc.code == 304:
-            return 304, b"", etag, modified
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Feed HTTP {exc.code}: {detail[:500]}") from exc
+    for attempt in range(retry_attempts + 1):
+        request = urllib.request.Request(url, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                return (
+                    int(response.status),
+                    response.read(),
+                    response.headers.get("ETag"),
+                    response.headers.get("Last-Modified"),
+                )
+        except urllib.error.HTTPError as exc:
+            if exc.code == 304:
+                return 304, b"", etag, modified
+            detail = exc.read().decode("utf-8", errors="replace")
+            if 500 <= exc.code < 600 and attempt < retry_attempts:
+                last_error = exc
+            else:
+                raise RuntimeError(f"Feed HTTP {exc.code}: {detail[:500]}") from exc
+        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+            last_error = exc
+
+        if attempt < retry_attempts:
+            time.sleep(retry_backoff_seconds * (attempt + 1))
+
+    raise RuntimeError(
+        f"Feed read failed after {retry_attempts + 1} attempts: {last_error}"
+    ) from last_error
 
 
 def structured_time_to_iso(value: Any) -> str | None:
@@ -474,6 +516,9 @@ async def process_feed(
         url,
         current["etag"],
         current["modified"],
+        int(feed.get("timeout_seconds", 20)),
+        int(feed.get("retry_attempts", 0)),
+        float(feed.get("retry_backoff_seconds", 1.0)),
     )
 
     if status == 304:
