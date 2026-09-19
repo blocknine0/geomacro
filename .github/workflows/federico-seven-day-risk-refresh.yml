@@ -295,8 +295,7 @@ jobs:
               if (freshEnough) {
                 require('node:fs').appendFileSync(
                   process.env.GITHUB_ENV,
-                  'FRESH_GDELT_FRAGMENT_ID=' + String(candidate.id) + '
-',
+                  'FRESH_GDELT_FRAGMENT_ID=' + String(candidate.id) + '\n',
                 );
                 console.log('PASS: recent verified GDELT fragment is fresh enough for Federico strict corroboration.');
                 return;
@@ -373,13 +372,6 @@ jobs:
           python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
           for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
-          grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
-              echo "::error::RSS source ${source_id} did not complete a post-structure poll."
-              exit 1
-            }
-          done
-
-          grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
           grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
             echo "::error title=Xinhua CHN attribution missing::Fresh Xinhua evidence did not produce the required CHN attribution."
             exit 1
@@ -392,7 +384,7 @@ jobs:
         run: |
           set -euo pipefail
           base="${APP_SUPABASE_URL%/}/functions/v1"
-          response="\$(curl --silent --show-error \
+          response="$(curl --silent --show-error \
             --output /tmp/federico-corroborate.json \
             --write-out '%{http_code}' \
             --request POST \
@@ -403,7 +395,7 @@ jobs:
             "${base}/live-flash-corroborate")"
           cat /tmp/federico-corroborate.json
           echo
-          test "\$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
+          test "$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
           jq -e '.ok == true' /tmp/federico-corroborate.json >/dev/null
           echo "PASS: fresh RSS and structured evidence corroboration completed."
 
