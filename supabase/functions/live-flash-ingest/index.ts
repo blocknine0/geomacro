@@ -149,15 +149,22 @@ async function verifyGitHubActionsOidc(
         },
       )
 
+    const workflowRef =
+      typeof payload.job_workflow_ref ===
+        "string"
+        ? payload.job_workflow_ref
+        : typeof payload.workflow_ref ===
+            "string"
+          ? payload.workflow_ref
+          : ""
+
     return (
       payload.repository ===
         GITHUB_OIDC_REPOSITORY &&
       payload.ref ===
         "refs/heads/main" &&
-      typeof payload.workflow_ref ===
-        "string" &&
       GITHUB_OIDC_WORKFLOW_REFS.has(
-        payload.workflow_ref,
+        workflowRef,
       )
     )
   }
