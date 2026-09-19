@@ -65,6 +65,8 @@ RSS_ENABLED = env_bool("BREAKING_RSS_ENABLED", True)
 TELEGRAM_CHANNELS = parse_channels(os.environ.get("TELEGRAM_CHANNELS", ""))
 TELEGRAM_SOURCE_RELIABILITY = parse_reliability()
 
+RSS_RUN_ONCE = env_bool("BREAKING_RSS_RUN_ONCE", False)
+
 RSS_POLL_SECONDS = max(
     20,
     min(
@@ -573,18 +575,21 @@ async def run_rss() -> None:
                 "rss": "ready",
                 "feeds": [feed["source_id"] for feed in RSS_FEEDS],
                 "poll_seconds": RSS_POLL_SECONDS,
+                "run_once": RSS_RUN_ONCE,
             }
         ),
         flush=True,
     )
 
     while True:
+        cycle_failed = False
         for feed in RSS_FEEDS:
             source_id = str(feed["source_id"])
             try:
                 await process_feed(feed, state)
                 failure_count[source_id] = 0
             except Exception as exc:
+                cycle_failed = True
                 failure_count[source_id] = failure_count.get(source_id, 0) + 1
                 print(
                     json.dumps(
@@ -600,6 +605,11 @@ async def run_rss() -> None:
                     flush=True,
                 )
 
+        if RSS_RUN_ONCE:
+            if cycle_failed:
+                raise RuntimeError("One-shot RSS cycle failed for one or more feeds")
+            return
+
         jitter = random.uniform(0.0, min(5.0, RSS_POLL_SECONDS * 0.1))
         await asyncio.sleep(RSS_POLL_SECONDS + jitter)
 
@@ -607,6 +617,8 @@ async def run_rss() -> None:
 async def main() -> None:
     if not TELEGRAM_ENABLED and not RSS_ENABLED:
         raise RuntimeError("Both Telegram and RSS breaking-news collectors are disabled")
+    if RSS_RUN_ONCE and TELEGRAM_ENABLED:
+        raise RuntimeError("BREAKING_RSS_RUN_ONCE requires TELEGRAM_ENABLED=false")
 
     tasks = []
     if TELEGRAM_ENABLED:
