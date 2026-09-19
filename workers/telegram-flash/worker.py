@@ -110,11 +110,11 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "source_reliability": 65.0,
     },
     {
-        "source_id": "mining_com_rss",
-        "name": "MINING.com RSS",
-        "url": "https://www.mining.com/feed/",
+        "source_id": "usgs_minerals_news_rss",
+        "name": "USGS Minerals News RSS",
+        "url": "https://www.usgs.gov/news/minerals/feed",
         "event_type": "CRITICAL_MINERALS_BREAKING",
-        "source_reliability": 70.0,
+        "source_reliability": 90.0,
     },
 ]
 
