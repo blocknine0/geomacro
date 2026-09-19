@@ -160,10 +160,7 @@ function canonicalize(
           unknown
         >,
       )
-        .sort(
-          ([a], [b]) =>
-            a.localeCompare(b),
-        )
+        .sort()
         .map(
           ([key, item]) => [
             key,
