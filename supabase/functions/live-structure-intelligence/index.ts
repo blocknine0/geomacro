@@ -3186,6 +3186,9 @@ Deno.serve(async (req) => {
         )
         .filter(Boolean);
 
+    phase =
+      "processed_evidence_lookup";
+
     const done =
       new Set<string>();
 
@@ -3235,6 +3238,9 @@ Deno.serve(async (req) => {
           row.fingerprint,
         );
       }
+
+      phase =
+        "exclusion_lookup";
 
       const {
         data:
@@ -4427,6 +4433,9 @@ Deno.serve(async (req) => {
       }
     }
 
+    phase =
+      "evidence_persistence";
+
     for (
       let i = 0;
       i <
@@ -4457,6 +4466,9 @@ Deno.serve(async (req) => {
       }
     }
 
+    phase =
+      "exclusion_persistence";
+
     for (
       let i = 0;
       i <
@@ -4486,6 +4498,9 @@ Deno.serve(async (req) => {
         throw error;
       }
     }
+
+    phase =
+      "finalize_run";
 
     const handledAfter =
       handledBefore +
