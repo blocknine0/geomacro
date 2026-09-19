@@ -65,8 +65,8 @@ async function main() {
   const events = await fetchAll(
     db,
     "live_structured_events",
-    "id,story_key,primary_country,countries,status,last_seen_at,commercial_eligibility_status,commercial_eligibility_reason_codes,evidence_count,independent_source_count",
-    (q) => q.gte("last_seen_at", cutoff).in("status", ["active", "monitoring"]).order("last_seen_at", { ascending: false }),
+    "id,story_key,primary_country,countries,status,last_seen_at,last_observed_at,commercial_eligibility_status,commercial_eligibility_reason_codes,evidence_count,independent_source_count",
+    (q) => q.gte("last_observed_at", cutoff).lte("last_observed_at", now.toISOString()).in("status", ["active", "monitoring"]).order("last_observed_at", { ascending: false }),
   );
 
   const perCountry = new Map<string, {

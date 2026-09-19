@@ -349,6 +349,7 @@ async function loadRecentStructuredEvents(
         direction,
         first_seen_at,
         last_seen_at,
+        last_observed_at,
         evidence_count,
         independent_source_count,
         evidence_refs,
@@ -358,15 +359,15 @@ async function loadRecentStructuredEvents(
         commercial_eligibility_reason_codes
       `)
       .gte(
-        "last_seen_at",
+        "last_observed_at",
         cutoff,
       )
       .lte(
-        "last_seen_at",
+        "last_observed_at",
         asOf.toISOString(),
       )
       .order(
-        "last_seen_at",
+        "last_observed_at",
         {
           ascending: false,
         },
@@ -458,12 +459,12 @@ async function loadFedericoStructuredFallback(
   const result = await db
     .from("live_structured_events")
     .select(
-      "id,domain,event_type,title,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,evidence_count,independent_source_count,evidence_refs,structure_version,structured_payload,commercial_eligibility_status,commercial_eligibility_reason_codes,status",
+      "id,domain,event_type,title,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,last_observed_at,evidence_count,independent_source_count,evidence_refs,structure_version,structured_payload,commercial_eligibility_status,commercial_eligibility_reason_codes,status",
     )
     .in("status", ["active", "monitoring"])
-    .gte("last_seen_at", cutoff)
-    .lte("last_seen_at", asOf.toISOString())
-    .order("last_seen_at", { ascending: false })
+    .gte("last_observed_at", cutoff)
+    .lte("last_observed_at", asOf.toISOString())
+    .order("last_observed_at", { ascending: false })
     .limit(500);
 
   if (result.error) throw result.error;
