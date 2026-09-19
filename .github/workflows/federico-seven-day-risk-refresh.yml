@@ -205,6 +205,7 @@ jobs:
             .gates.trust_metadata == "PASS" and
             .gates.reproducibility == "PASS" and
             .gates.partner_admission == "PASS" and
+            .gates.partner_proof_verification == "PASS" and
             .gates.live_partner_review == "PASS" and
             .live_review.proof_present == true
           ' /tmp/federico-preflight.json >/dev/null
