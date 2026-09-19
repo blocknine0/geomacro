@@ -2,9 +2,6 @@ name: Federico Continuous Testnet Risk Object Refresh
 # Continuous testnet acceptance and partner-refresh path. Publication remains fail-closed on all strict evidence gates.
 
 on:
-  push:
-    paths:
-      - ".github/workflows/federico-seven-day-risk-refresh.yml"
   workflow_dispatch:
   schedule:
     - cron: "17 */2 * * *"
@@ -25,7 +22,7 @@ permissions:
 
 concurrency:
   group: federico-seven-day-risk-refresh
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   refresh:
