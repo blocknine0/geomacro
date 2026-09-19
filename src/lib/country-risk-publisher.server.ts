@@ -549,10 +549,7 @@ async function loadFedericoStructuredFallback(
       ),
     ];
 
-    const independentSourceCount = Math.max(
-      sourceFamilies.length,
-      Number(row.independent_source_count ?? 0),
-    );
+    const independentSourceCount = sourceFamilies.length;
     if (independentSourceCount < 2) continue;
 
     const evidenceTimes = validEvidence
