@@ -78,6 +78,13 @@ The deterministic test vector is `docs/examples/gro-1.1-canonical-v1-test-vector
 
 Consumers should reproduce the canonical UTF-8 bytes and payload hash, then verify the Ed25519 signature using the trusted public key returned by `/api/risk-object-keys`.
 
+## Seven-day rolling refresh
+
+The production country Risk Object validity window is intentionally short-lived: each signed artifact carries a bounded `expires_at` based on the active Risk Object TTL. The Federico handoff uses a rolling refresh rather than extending one signed artifact across seven days.
+
+The current refresh workflow runs every two hours during the handoff window, publishes a fresh production-signed Risk Object, re-verifies the persisted payload, proves one-field tamper rejection, and stores a historical handoff artifact for that refresh alongside the fixed latest alias. The current production TTL remains three hours, leaving a one-hour freshness buffer between scheduled refreshes.
+
+Never edit or extend `expires_at` on an already-signed artifact. A new observation requires a newly generated and newly signed artifact so the canonical payload hash, signature, timestamps, and provenance remain bound together.
 ## Canonical gro-1.1 JSON Schema
 
 Repository source: `schemas/gro-1.1.schema.json`.
