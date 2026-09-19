@@ -315,6 +315,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
+
+          for attempt in 1 2 3 4; do
+            response_file="/tmp/federico-exact-structure-${attempt}.json"
+            curl --fail-with-body -sS \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --retry-max-time 120 \
+              -X POST \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "$(jq -nc --arg fragment_id "${FRESH_GDELT_FRAGMENT_ID}" '{fragment_id:$fragment_id}')" \
+              -o "${response_file}"
+
+            jq -e '.ok == true' "${response_file}" >/dev/null
+            jq '{ok,status,fragment_id,batch_size,evidence_structured,evidence_excluded,handled_before,handled_after,fragment_total,remaining,has_more}' "${response_file}"
+            remaining="$(jq -r '.remaining // 0' "${response_file}")"
+
+            if [[ "${remaining}" == "0" ]]; then
+              break
+            fi
+
+            [[ "${attempt}" -lt 4 ]] || {
+              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after four targeted structure batches."
+              exit 1
+            }
+          done
+
+          echo "PASS: exact fresh GDELT fragment targeted structuring completed before the persistence proof."
           node <<'NODE'
           const { createClient } = require('@supabase/supabase-js');
 
