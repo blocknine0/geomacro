@@ -10,6 +10,9 @@ on:
     paths:
       - "workers/telegram-flash/**"
       - ".github/workflows/testnet-rss-live-runner.yml"
+      - "supabase/migrations/955_realtime_event_family_lifecycle.sql"
+      - "supabase/migrations/956_event_family_version_ledger.sql"
+      - "supabase/migrations/957_repair_federico_event_family_schema.sql"
 
 permissions:
   contents: read
@@ -41,7 +44,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@a26af69be951a213d495a4a3e3e1fa3b84a0a49 # v5.6.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
 
