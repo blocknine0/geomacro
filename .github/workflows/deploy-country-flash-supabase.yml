@@ -157,7 +157,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db query --db-url "$SUPABASE_DB_URL" "DO \\$\\$ BEGIN
+
+          command -v psql >/dev/null 2>&1 || {
+            echo "::error::psql is required for authoritative production schema verification."
+            exit 1
+          }
+
+          export PGSSLMODE="require"
+
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X <<'SQL'
+          DO $$
+          BEGIN
             IF to_regclass('public.live_flash_event_families') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_families is missing from authoritative production';
             END IF;
@@ -182,7 +192,9 @@ jobs:
             ) THEN
               RAISE EXCEPTION 'live_structured_events.last_observed_at is missing from authoritative production';
             END IF;
-          END \\$\\$;"
+          END
+          $$;
+          SQL
 
           echo "PASS: authoritative event-family lifecycle schema is present."
       - name: Determine flash runtime credential state
