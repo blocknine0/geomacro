@@ -216,6 +216,107 @@ jobs:
           console.log('PASS: production signer matches deployed active trust key');
           NODE
 
+      - name: Wait for fresh CHN independent event-family evidence
+        shell: bash
+        env:
+          EVIDENCE_WAIT_ATTEMPTS: "6"
+          EVIDENCE_WAIT_SECONDS: "20"
+        run: |
+          set -euo pipefail
+
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+
+          const db = createClient(
+            process.env.APP_SUPABASE_URL,
+            process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { persistSession: false, autoRefreshToken: false } },
+          );
+
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function check() {
+            const cutoff = new Date(
+              Date.now() - 6 * 60 * 60 * 1000,
+            ).toISOString();
+
+            const familiesResult = await db
+              .from('live_flash_event_families')
+              .select(
+                'family_id,signal_category,country_isos,last_material_update_at,last_seen_at,current_status,source_count,independent_source_count',
+              )
+              .eq('current_status', 'ACTIVE')
+              .contains('country_isos', ['CHN'])
+              .gte('last_seen_at', cutoff)
+              .order('last_seen_at', { ascending: false })
+              .limit(100);
+
+            if (familiesResult.error) throw familiesResult.error;
+
+            const candidates = (familiesResult.data ?? []).filter((family) =>
+              Number(family.independent_source_count ?? 0) >= 2 &&
+              family.signal_category &&
+              ['GEOPOLITICS', 'MACRO', 'CRITICAL_MINERALS'].includes(
+                String(family.signal_category),
+              ),
+            );
+
+            if (!candidates.length) {
+              return {
+                ready: false,
+                active_families: (familiesResult.data ?? []).length,
+                qualifying_families: 0,
+                verified_members: 0,
+              };
+            }
+
+            const familyIds = candidates.map((family) => family.family_id);
+            const membersResult = await db
+              .from('live_flash_events')
+              .select(
+                'flash_id,event_family_id,verification_status,last_seen_at,source_url,source_id,source_record_id,content_hash',
+              )
+              .in('event_family_id', familyIds)
+              .eq('verification_status', 'VERIFIED')
+              .gte('last_seen_at', cutoff)
+              .limit(500);
+
+            if (membersResult.error) throw membersResult.error;
+
+            const usableMembers = (membersResult.data ?? []).filter((row) =>
+              /^https?:\/\//i.test(String(row.source_url ?? '')) &&
+              String(row.source_id ?? '').trim() &&
+              String(row.source_record_id ?? '').trim() &&
+              /^[a-f0-9]{64}$/.test(String(row.content_hash ?? '')),
+            );
+
+            return {
+              ready: usableMembers.length > 0,
+              active_families: (familiesResult.data ?? []).length,
+              qualifying_families: candidates.length,
+              verified_members: usableMembers.length,
+            };
+          }
+
+          let last = null;
+          for (let attempt = 1; attempt <= Number(process.env.EVIDENCE_WAIT_ATTEMPTS); attempt += 1) {
+            last = await check();
+            console.log(JSON.stringify({ attempt, ...last }));
+            if (last.ready) {
+              console.log('PASS: fresh CHN family with at least two independent source families is available for FEDERICO_STRICT.');
+              process.exit(0);
+            }
+            if (attempt < Number(process.env.EVIDENCE_WAIT_ATTEMPTS)) {
+              await sleep(Number(process.env.EVIDENCE_WAIT_SECONDS) * 1000);
+            }
+          }
+
+          throw new Error(
+            'Fresh CHN strict evidence was not available after bounded synchronization wait: ' +
+              JSON.stringify(last),
+          );
+          NODE
+
       - name: Publish fresh production-signed CHN Risk Object
         shell: bash
         run: |

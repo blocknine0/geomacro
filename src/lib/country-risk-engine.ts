@@ -15,6 +15,7 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
+  FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION,
   FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
@@ -1194,7 +1195,7 @@ export async function buildCountryRiskObject(
       );
     }
 
-    if (totalIndependentSources < 2) {
+    if (totalIndependentSources < FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES) {
       readinessReasons.push("insufficient_independent_source_families");
     }
 
@@ -1307,7 +1308,7 @@ export async function buildCountryRiskObject(
       high_impact_severity_threshold:
         FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
       minimum_high_impact_independent_sources:
-        strictProfile ? 2 : 1,
+        strictProfile ? FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES : 1,
 
       source_independence_method:
         strictProfile

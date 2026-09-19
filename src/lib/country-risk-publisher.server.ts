@@ -38,6 +38,7 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
+  FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_MAJOR_SOURCE_IDS,
   FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
   FEDERICO_STRICT_RELEVANCE_METHOD,
@@ -551,7 +552,7 @@ async function loadFedericoStructuredFallback(
     ];
 
     const independentSourceCount = sourceFamilies.length;
-    if (independentSourceCount < 2) continue;
+    if (independentSourceCount < FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES) continue;
 
     const evidenceTimes = validEvidence
       .map((item) => Date.parse(String(item.evidence_published_at)))
@@ -999,7 +1000,7 @@ async function loadFedericoStrictEvents(
         ? "CONFIRMED"
         : "CORROBORATING";
 
-    if (isHighImpact && independentSourceCount < 2 && !hasNamedMajorSource) {
+    if (isHighImpact && independentSourceCount < FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES && !hasNamedMajorSource) {
       severity = Math.min(severity, 55);
       confidence = Math.min(confidence, 40);
       corroborationStatus = "UNCONFIRMED";
@@ -1038,7 +1039,7 @@ async function loadFedericoStrictEvents(
       continue;
     }
 
-    if (isHighImpact && independentSourceCount < 2 && !hasNamedMajorSource) {
+    if (isHighImpact && independentSourceCount < FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES && !hasNamedMajorSource) {
       continue;
     }
 
