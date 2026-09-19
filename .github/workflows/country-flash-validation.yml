@@ -7,6 +7,7 @@ on:
       - "workers/telegram-flash/**"
       - "scripts/ingest-reliefweb-live.mjs"
       - "scripts/corroborate-live-flashes.mjs"
+      - "scripts/verify-production-country-registry.mjs"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
       - "supabase/migrations/036_country_flash_intelligence.sql"
@@ -58,6 +59,7 @@ jobs:
         run: |
           node --check scripts/ingest-reliefweb-live.mjs
           node --check scripts/corroborate-live-flashes.mjs
+          node --check scripts/verify-production-country-registry.mjs
 
       - name: Set up Deno 2.9.6
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5

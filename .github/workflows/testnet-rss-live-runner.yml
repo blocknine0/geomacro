@@ -10,9 +10,11 @@ on:
     paths:
       - "workers/telegram-flash/**"
       - ".github/workflows/testnet-rss-live-runner.yml"
-      - "supabase/migrations/955_realtime_event_family_lifecycle.sql"
-      - "supabase/migrations/956_event_family_version_ledger.sql"
-      - "supabase/migrations/957_repair_federico_event_family_schema.sql"
+  workflow_run:
+    workflows:
+      - "Deploy country flash intelligence to Supabase"
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -24,7 +26,17 @@ concurrency:
 
 jobs:
   rss:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      ${{
+        github.repository == 'blocknine0/geomacro' &&
+        (
+          github.event_name != 'workflow_run' ||
+          (
+            github.event.workflow_run.conclusion == 'success' &&
+            github.event.workflow_run.head_branch == 'main'
+          )
+        )
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     environment: production
