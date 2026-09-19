@@ -7,6 +7,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - ".github/workflows/deploy-country-flash-supabase.yml"
+      - "scripts/db/reconcile-production-migration-history.sh"
   workflow_dispatch:
     inputs:
       mode:
