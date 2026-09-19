@@ -60,6 +60,3 @@ do update set
   freshness_class = excluded.freshness_class,
   notes = excluded.notes,
   updated_at = now();
-
-comment on table public.live_external_sources is
-  'Governed external intelligence source registry. Source IDs referenced by live_flash_events must be registered here.';
