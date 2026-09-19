@@ -51,12 +51,29 @@ const GITHUB_OIDC_JWKS =
 async function verifyGitHubActionsOidc(
   request: Request,
 ) {
-  const token =
+  const customHeaderToken =
     (
       request.headers.get(
         GITHUB_OIDC_HEADER,
       ) ?? ""
     ).trim()
+
+  const authorization =
+    (
+      request.headers.get(
+        "authorization",
+      ) ?? ""
+    ).trim()
+
+  const bearerMatch =
+    authorization.match(
+      /^Bearer\\s+(.+)$/i,
+    )
+
+  const token =
+    customHeaderToken ||
+    bearerMatch?.[1]?.trim() ||
+    ""
 
   if (!token) return false
 
