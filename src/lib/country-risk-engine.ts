@@ -526,7 +526,7 @@ export async function buildCountryRiskObject(
         0,
         100,
       ),
-      3,
+      1,
     );
 
   const aggregateConfidence =
@@ -898,25 +898,50 @@ export async function buildCountryRiskObject(
       calculationInput,
     );
 
+  const dataProjection = {
+    country_iso3:
+      countryIso3,
+
+    evidence:
+      evidence.map(
+        (item) => ({
+          event_id:
+            item.event_id,
+
+          event_family_id:
+            item.event_family_id ?? null,
+
+          evidence_refs:
+            item.evidence_refs,
+
+          source_ids:
+            item.source_ids ?? [],
+
+          source_urls:
+            item.source_urls ?? [],
+
+          source_families:
+            item.source_families,
+
+          evidence_age_hours:
+            item.evidence_age_hours,
+
+          relevance_reason:
+            item.relevance_reason,
+
+          transmission_channel:
+            item.transmission_channel,
+
+          relevance_weight:
+            item.relevance_weight,
+        }),
+      ),
+  };
+
   const dataHash =
-    await sha256({
-      country_iso3:
-        countryIso3,
-
-      evidence:
-        evidence.map(
-          (item) => ({
-            event_id:
-              item.event_id,
-
-            evidence_refs:
-              item.evidence_refs,
-
-            source_families:
-              item.source_families,
-          }),
-        ),
-    });
+    await sha256(
+      dataProjection,
+    );
 
   const calculationHash =
     await sha256({
@@ -973,6 +998,167 @@ export async function buildCountryRiskObject(
     );
   }
 
+  const strictProfile =
+    input.calculation_namespace ===
+    "federico_strict_evidence_v1";
+
+  const totalIndependentSources = new Set(
+    evidence.flatMap(
+      (item) =>
+        item.source_families ??
+        [],
+    ),
+  ).size;
+
+  const highImpactEvidence = evidence.filter(
+    (item) =>
+      Number(item.severity ?? 0) >=
+        FEDERICO_STRICT_HIGH_IMPACT_SEVERITY &&
+      ["conflict", "military_attack"].includes(
+        String(item.event_type ?? "").toLowerCase(),
+      ),
+  );
+
+  const readinessReasons: string[] = [];
+
+  if (strictProfile) {
+    if (!evidence.length) {
+      readinessReasons.push("no_fresh_evidence");
+    }
+
+    if (totalIndependentSources < 2) {
+      readinessReasons.push("insufficient_independent_source_families");
+    }
+
+    if (
+      highImpactEvidence.some(
+        (item) =>
+          item.corroboration_status !==
+            "CONFIRMED" ||
+          Number(item.evidence_age_hours ?? 999) >
+            FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
+      )
+    ) {
+      readinessReasons.push("high_impact_evidence_gate_failed");
+    }
+  }
+
+  const decisionReadiness = {
+    status:
+      !strictProfile ||
+      readinessReasons.length === 0
+        ? "READY"
+        : evidence.length > 0
+          ? "DEGRADED"
+          : "UNREADY",
+    policy_version:
+      "federico-strict-evidence-v1",
+    reason_codes:
+      readinessReasons.sort(),
+    evaluated_at:
+      asOf.toISOString(),
+  } as const;
+
+  const aggregateConfidenceRounded =
+    round(
+      clamp(
+        aggregateConfidence,
+        0,
+        1,
+      ),
+      4,
+    );
+
+  const uncertaintyMargin =
+    round(
+      clamp(
+        12 -
+          aggregateConfidenceRounded * 6 +
+          (strictProfile &&
+          evidence.some(
+            (item) =>
+              item.freshness_status ===
+              "AGING",
+          )
+            ? 2
+            : 0),
+        5,
+        20,
+      ),
+      1,
+    );
+
+  const uncertaintyInterval = {
+    low:
+      round(
+        clamp(
+          score - uncertaintyMargin,
+          0,
+          100,
+        ),
+        1,
+      ),
+    high:
+      round(
+        clamp(
+          score + uncertaintyMargin,
+          0,
+          100,
+        ),
+        1,
+      ),
+    method:
+      "confidence_freshness_policy_v1" as const,
+    calibrated:
+      false as const,
+  };
+
+  const scoreBandStart =
+    Math.floor(score / 5) * 5;
+  const scoreBandEnd =
+    Math.min(
+      100,
+      scoreBandStart + 4.9,
+    );
+
+  const reproducibility = {
+    manifest_version:
+      "risk-object-repro-v1",
+    calculation_namespace:
+      input.calculation_namespace?.trim() ||
+      null,
+    selection_policy: {
+      max_evidence_age_hours:
+        strictProfile
+          ? FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
+          : COUNTRY_RISK_LOOKBACK_HOURS,
+      high_impact_max_evidence_age_hours:
+        strictProfile
+          ? FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
+          : COUNTRY_RISK_LOOKBACK_HOURS,
+      high_impact_severity_threshold:
+        FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
+      minimum_high_impact_independent_sources:
+        strictProfile ? 2 : 1,
+    },
+    calculation_input:
+      calculationInput,
+    score_components: {
+      total_weight:
+        round(totalWeight, 6),
+      raw_score:
+        round(rawScore, 6),
+      rounded_score:
+        score,
+      aggregate_confidence:
+        aggregateConfidenceRounded,
+    },
+    hash_inputs: {
+      data_projection:
+        dataProjection,
+    },
+  };
+
   const objectId =
     `gro_country_${countryIso3}_${calculationHash.slice(
       0,
@@ -1002,6 +1188,12 @@ export async function buildCountryRiskObject(
       score,
       label:
         riskLabel(score),
+
+      score_band:
+        `${scoreBandStart.toFixed(0)}-${scoreBandEnd.toFixed(1)}`,
+
+      uncertainty_interval:
+        uncertaintyInterval,
 
       previous_score:
         previousScore,
@@ -1041,6 +1233,9 @@ export async function buildCountryRiskObject(
       independent_source_count:
         sourceFamilies.size,
     },
+
+    decision_readiness:
+      decisionReadiness,
 
     methodology_version:
       COUNTRY_RISK_METHOD_VERSION,
@@ -1117,6 +1312,9 @@ export async function buildCountryRiskObject(
 
       story_versions:
         storyVersions,
+
+      reproducibility:
+        reproducibility,
     },
   };
 }
