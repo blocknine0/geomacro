@@ -35,7 +35,6 @@ import {
 } from "./risk-supabase.server";
 
 import {
-  FEDERICO_STRICT_CALCULATION_NAMESPACE,
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
@@ -466,20 +465,12 @@ async function loadFedericoStrictEvents(
   }
 
   const families = (familiesResult.data ?? []) as Array<Record<string, unknown>>;
-  if (!families.length) {
-    return { events: [], commercial_eligibility: [] };
-  }
-
-  const familyIds = families
-    .map((row) => String(row.family_id ?? ""))
-    .filter(Boolean);
 
   const flashesResult = await db
     .from("live_flash_events")
     .select(
       "flash_id,source_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,source_reliability,source_reliability_bps,verification_score,verification_score_bps,verification_status,first_seen_at,last_seen_at,event_family_id,content_hash,material_update",
     )
-    .in("event_family_id", familyIds)
     .eq("verification_status", "VERIFIED")
     .gte("last_seen_at", cutoff)
     .order("last_seen_at", { ascending: false })
@@ -489,19 +480,116 @@ async function loadFedericoStrictEvents(
     throw flashesResult.error;
   }
 
+  const flashRows =
+    (flashesResult.data ?? []) as Array<Record<string, unknown>>;
+
+  const flashIds =
+    flashRows
+      .map((row) => String(row.flash_id ?? ""))
+      .filter(Boolean);
+
+  const countryByFlash = new Map<string, Set<string>>();
+  for (const id of flashIds) {
+    countryByFlash.set(id, new Set<string>());
+  }
+
+  for (let i = 0; i < flashIds.length; i += 250) {
+    const countryResult = await db
+      .from("live_flash_event_countries")
+      .select("flash_id,country_iso3")
+      .in("flash_id", flashIds.slice(i, i + 250));
+
+    if (countryResult.error) {
+      throw countryResult.error;
+    }
+
+    for (const row of countryResult.data ?? []) {
+      const set = countryByFlash.get(String(row.flash_id));
+      if (set && typeof row.country_iso3 === "string") {
+        set.add(row.country_iso3.trim().toUpperCase());
+      }
+    }
+  }
+
+  const existingFamiliesById = new Map(
+    families.map((row) => [
+      String(row.family_id ?? ""),
+      row,
+    ]),
+  );
+
+  const virtualFamilies: Array<Record<string, unknown>> = [];
+
+  for (const flash of flashRows) {
+    const flashId = String(flash.flash_id ?? "");
+    const eventCountries =
+      countryByFlash.get(flashId) ??
+      new Set<string>();
+
+    if (!eventCountries.has(iso3)) continue;
+
+    const actualFamilyId =
+      String(flash.event_family_id ?? "").trim();
+
+    if (actualFamilyId) {
+      continue;
+    }
+
+    virtualFamilies.push({
+      family_id: `flash:${flashId}`,
+      signal_category:
+        String(flash.signal_category ?? "GEOPOLITICS").toUpperCase(),
+      canonical_headline:
+        String(flash.headline ?? ""),
+      country_isos:
+        [...eventCountries].sort(),
+      first_seen_at:
+        String(flash.first_seen_at ?? flash.ingested_at ?? asOf.toISOString()),
+      last_seen_at:
+        String(flash.last_seen_at ?? flash.ingested_at ?? asOf.toISOString()),
+      current_status: "ACTIVE",
+      source_count: 1,
+      independent_source_count: 1,
+      latest_flash_id: flashId,
+    });
+  }
+
+  const combinedFamilies = [
+    ...families,
+    ...virtualFamilies.filter(
+      (row) => !existingFamiliesById.has(String(row.family_id)),
+    ),
+  ];
+
+  const familyIds = families
+    .map((row) => String(row.family_id ?? ""))
+    .filter(Boolean);
+
   const byFamily = new Map<string, Array<Record<string, unknown>>>();
-  for (const flash of (flashesResult.data ?? []) as Array<Record<string, unknown>>) {
-    const familyId = String(flash.event_family_id ?? "");
-    if (!familyId) continue;
-    const list = byFamily.get(familyId) ?? [];
+
+  for (const flash of flashRows) {
+    const actualFamilyId =
+      String(flash.event_family_id ?? "").trim();
+    const eventCountries =
+      countryByFlash.get(String(flash.flash_id ?? "")) ??
+      new Set<string>();
+
+    if (!eventCountries.has(iso3)) continue;
+
+    const key =
+      actualFamilyId || `flash:${String(flash.flash_id ?? "")}`;
+
+    const list =
+      byFamily.get(key) ?? [];
+
     list.push(flash);
-    byFamily.set(familyId, list);
+    byFamily.set(key, list);
   }
 
   const events: CountryRiskEventInput[] = [];
   const commercial_eligibility: StructuredEventCommercialEligibility[] = [];
 
-  for (const family of families) {
+  for (const family of combinedFamilies) {
     const familyId = String(family.family_id ?? "");
     const members = byFamily.get(familyId) ?? [];
     if (!members.length) continue;
