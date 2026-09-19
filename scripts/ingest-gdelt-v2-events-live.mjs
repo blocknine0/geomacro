@@ -110,44 +110,92 @@ async function fetchWithRetry(url, accept) {
   throw lastError ?? new Error("GDELT request failed")
 }
 
-function parseLastUpdate(text) {
+function parseLastUpdate(text, asOf = NOW) {
   const rows = String(text)
     .trim()
     .split(/\r?\n/)
     .map((line) => line.trim().split(/\s+/))
     .filter((parts) => parts.length >= 3)
-    .map(([size, md5, url]) => ({ size: Number(size), md5: String(md5).toLowerCase(), url }))
+    .map(([size, md5, url]) => ({
+      size: Number(size),
+      md5: String(md5).toLowerCase(),
+      url,
+    }))
+    .filter((row) => row.url.endsWith(".export.CSV.zip"))
 
-  const exportRow = rows.find((row) => row.url.endsWith(".export.CSV.zip"))
-  if (!exportRow) throw new Error("GDELT lastupdate.txt has no Event export ZIP")
-  if (!Number.isInteger(exportRow.size) || exportRow.size <= 0) {
-    throw new Error("GDELT export size is invalid")
-  }
-  if (!/^[0-9a-f]{32}$/.test(exportRow.md5)) {
-    throw new Error("GDELT export MD5 is invalid")
+  const candidates = []
+  for (const row of rows) {
+    if (!Number.isInteger(row.size) || row.size <= 0) continue
+    if (!/^[0-9a-f]{32}$/.test(row.md5)) continue
+
+    let listedUrl
+    try {
+      listedUrl = new URL(row.url)
+    } catch {
+      continue
+    }
+
+    if (
+      !["http:", "https:"].includes(listedUrl.protocol) ||
+      listedUrl.hostname !== "data.gdeltproject.org" ||
+      !/^\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(listedUrl.pathname)
+    ) {
+      continue
+    }
+
+    const timestamp =
+      /\/(\d{14})\.export\.CSV\.zip$/.exec(listedUrl.pathname)?.[1] ?? null
+    const batchIso = timestamp ? parseDateAdded(timestamp) : null
+    if (!batchIso) continue
+
+    candidates.push({
+      ...row,
+      listed_url: row.url,
+      listedUrl,
+      batchIso,
+    })
   }
 
-  const listedUrl = new URL(exportRow.url)
-  if (
-    !["http:", "https:"].includes(listedUrl.protocol) ||
-    listedUrl.hostname !== "data.gdeltproject.org" ||
-    !/^\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(listedUrl.pathname)
-  ) {
-    throw new Error(`Unexpected GDELT export URL: ${exportRow.url}`)
+  if (!candidates.length) {
+    throw new Error("GDELT lastupdate.txt has no valid Event export ZIP")
   }
 
-  // The official list still emits legacy HTTP URLs. Validate the exact official
-  // host/path first, then upgrade the transport rather than following HTTP.
-  const secureUrl = `https://data.gdeltproject.org${listedUrl.pathname}`
-  const timestamp = /\/(\d{14})\.export\.CSV\.zip$/.exec(listedUrl.pathname)?.[1] ?? null
-  const batchIso = timestamp ? parseDateAdded(timestamp) : null
-  if (!batchIso) throw new Error("GDELT export filename has invalid batch timestamp")
+  /*
+   * GDELT's rolling lastupdate manifest can briefly advertise the next
+   * five-minute export before that ZIP is actually published. Selecting the
+   * newest batch whose timestamp is not in the future makes availability
+   * deterministic and avoids treating a not-yet-published export as a
+   * freshness-positive batch.
+   */
+  const available = candidates
+    .filter((row) => {
+      const batchTime = new Date(row.batchIso).getTime()
+      return Number.isFinite(batchTime) && batchTime <= asOf.getTime()
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.batchIso).getTime() -
+        new Date(a.batchIso).getTime(),
+    )[0]
+
+  if (!available) {
+    throw new Error(
+      "GDELT lastupdate.txt has no Event export available at or before the requested as-of time",
+    )
+  }
+
+  // The official list still emits legacy HTTP URLs. Validate the exact
+  // official host/path first, then upgrade the transport rather than
+  // following HTTP.
+  const secureUrl =
+    `https://data.gdeltproject.org${available.listedUrl.pathname}`
 
   return {
-    ...exportRow,
-    listed_url: exportRow.url,
+    size: available.size,
+    md5: available.md5,
+    listed_url: available.listed_url,
     url: secureUrl,
-    batchIso,
+    batchIso: available.batchIso,
   }
 }
 
