@@ -5,8 +5,6 @@ import { Contract, JsonRpcProvider, Wallet } from 'ethers';
 const BASE_URL = String(process.env.GEOMACRO_TESTNET_E2E_BASE_URL || 'https://geomacro.live').replace(/\/$/, '');
 const EXPECTED_HOST = String(process.env.GEOMACRO_TESTNET_E2E_EXPECTED_HOST || 'geomacro.live').trim().toLowerCase();
 const PRIVATE_KEY = String(process.env.GEOMACRO_TESTNET_E2E_PRIVATE_KEY || '').trim();
-const API_KEY = String(process.env.GEOMACRO_TESTNET_DEVELOPER_API_KEY || '').trim();
-const API_SECRET = String(process.env.GEOMACRO_TESTNET_DEVELOPER_API_SECRET || '').trim();
 const CHAIN_KEY = String(process.env.GEOMACRO_TESTNET_E2E_CHAIN_KEY || 'arcTestnet').trim();
 const RPC_URL = String(process.env.GEOMACRO_TESTNET_E2E_RPC_URL || 'https://rpc.testnet.arc.network').trim();
 const MAX_USDC = Number(process.env.GEOMACRO_TESTNET_E2E_MAX_USDC || '0.5');
@@ -17,7 +15,52 @@ const CAPABILITIES = ['intelligence_query','gri_read','structural_country_digest
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
 function rid(prefix) { return prefix + '-' + Date.now() + '-' + crypto.randomUUID(); }
-function authHeaders() { return { authorization: 'GeomacroTest ' + API_KEY + '.' + API_SECRET }; }
+function authHeaders(apiKey, apiSecret) {
+  return { authorization: 'GeomacroTest ' + apiKey + '.' + apiSecret };
+}
+
+function extractCookie(headers) {
+  const raw = headers.get('set-cookie') || '';
+  const pair = raw.split(';', 1)[0]?.trim();
+  assert(pair && pair.includes('='), 'Wallet sign-in did not return a session cookie');
+  return pair;
+}
+
+async function signIn(wallet, chainId) {
+  const origin = new URL(BASE_URL).origin;
+  const challenge = await jsonFetch(
+    'developer wallet challenge',
+    BASE_URL + '/api/testnet-tester/auth-challenge',
+    {
+      method: 'POST',
+      headers: { origin, referer: BASE_URL + '/testnet-access' },
+      body: JSON.stringify({ wallet_address: wallet.address, chain_id: chainId }),
+    },
+  );
+  assert(challenge.payload?.ok === true, 'Developer E2E wallet challenge failed');
+  const data = challenge.payload.data;
+  assert(data?.message && data?.nonce && data?.issued_at, 'Developer E2E challenge is incomplete');
+  const signature = await wallet.signMessage(data.message);
+  const verify = await jsonFetch(
+    'developer wallet verify',
+    BASE_URL + '/api/testnet-tester/auth-verify',
+    {
+      method: 'POST',
+      headers: { origin, referer: BASE_URL + '/testnet-access' },
+      body: JSON.stringify({
+        wallet_address: wallet.address,
+        chain_id: chainId,
+        nonce: data.nonce,
+        issued_at: data.issued_at,
+        message: data.message,
+        signature,
+        profile_name: 'Geomacro Developer E2E',
+      }),
+    },
+  );
+  assert(verify.payload?.ok === true && verify.payload?.data?.access_status === 'active', 'Developer E2E wallet access did not become active');
+  return { cookie: extractCookie(verify.response.headers), principal_id: String(verify.payload.data.principal_id) };
+}
 function noExecutionAuthorization(value, seen = new Set()) {
   if (!value || typeof value !== 'object' || seen.has(value)) return true;
   seen.add(value);
@@ -56,8 +99,6 @@ async function main() {
   const base = new URL(BASE_URL);
   assert(base.protocol === 'https:', 'Developer E2E requires HTTPS');
   assert(base.hostname.toLowerCase() === EXPECTED_HOST, 'Refusing unexpected host ' + base.hostname);
-  assert(/^gmk_test_[A-Za-z0-9_-]{20,}$/.test(API_KEY), 'Developer API key is not configured');
-  assert(/^gms_test_[A-Za-z0-9_-]{32,}$/.test(API_SECRET), 'Developer API secret is not configured');
   assert(/^0x[0-9a-fA-F]{64}$/.test(PRIVATE_KEY), 'Dedicated E2E wallet private key is not configured');
   assert(Object.hasOwn(CHAINS, CHAIN_KEY), 'Unsupported Testnet chain ' + CHAIN_KEY);
   assert(/^https:\/\//.test(RPC_URL), 'Testnet RPC URL must use HTTPS');
@@ -69,7 +110,51 @@ async function main() {
   assert(manifest.payload.commercial_revenue === false, 'Developer manifest is classified as revenue');
   assert(JSON.stringify(Object.keys(manifest.payload.capabilities || {}).sort()) === JSON.stringify(CAPABILITIES.slice().sort()), 'Developer capability set drifted');
 
-  const account = await jsonFetch('developer account', BASE_URL + '/api/testnet/account', { headers: authHeaders() });
+  const wallet = new Wallet(PRIVATE_KEY);
+  const session = await signIn(wallet, CHAINS[CHAIN_KEY]);
+  const keyList = await jsonFetch(
+    'developer credential inventory',
+    BASE_URL + '/api/testnet-tester/developer-keys',
+    { headers: { cookie: session.cookie } },
+  );
+  assert(keyList.payload.ok === true, 'Developer credential inventory failed');
+  const activeCredential = (keyList.payload.data || []).find((item) => item.enabled === true && !item.revoked_at);
+
+  let credential;
+  if (activeCredential?.credential_id) {
+    const rotated = await jsonFetch(
+      'developer credential rotation',
+      BASE_URL + '/api/testnet-tester/developer-key-rotate',
+      {
+        method: 'POST',
+        headers: { cookie: session.cookie },
+        body: JSON.stringify({ credential_id: activeCredential.credential_id }),
+      },
+    );
+    credential = rotated.payload.data;
+    assert(credential?.api_key && credential?.api_secret, 'Developer credential rotation did not return the one-time credential pair');
+    assert(credential.rotated_from_credential_id === activeCredential.credential_id, 'Developer credential rotation provenance is incorrect');
+  } else {
+    const issued = await jsonFetch(
+      'developer credential issuance',
+      BASE_URL + '/api/testnet-tester/developer-key',
+      {
+        method: 'POST',
+        headers: { cookie: session.cookie },
+        body: JSON.stringify({ label: 'Dedicated automated E2E', integration_type: 'product_api' }),
+      },
+    );
+    credential = issued.payload.data;
+    assert(credential?.api_key && credential?.api_secret, 'Developer credential issuance did not return the one-time credential pair');
+  }
+
+  const API_KEY = String(credential.api_key);
+  const API_SECRET = String(credential.api_secret);
+  assert(/^gmk_test_[A-Za-z0-9_-]{20,}$/.test(API_KEY), 'Issued Developer API key format is invalid');
+  assert(/^gms_test_[A-Za-z0-9_-]{32,}$/.test(API_SECRET), 'Issued Developer API secret format is invalid');
+
+  const auth = () => ({ authorization: 'GeomacroTest ' + API_KEY + '.' + API_SECRET });
+  const account = await jsonFetch('developer account', BASE_URL + '/api/testnet/account', { headers: auth() });
   assert(account.payload.ok === true, 'Developer account failed');
   assert(account.payload.data?.environment === 'testnet', 'Developer account is not Testnet');
   assert(account.payload.data?.payment_model === 'pay_per_call', 'Developer API is not pay-per-call');
@@ -79,7 +164,7 @@ async function main() {
   let paidSeed = null;
   for (const capability of CAPABILITIES) {
     const request = requestFor(capability);
-    const quote = await jsonFetch('402 quote ' + capability, BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: authHeaders(), body: JSON.stringify(request) }, [402]);
+    const quote = await jsonFetch('402 quote ' + capability, BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: auth(), body: JSON.stringify(request) }, [402]);
     assert(quote.payload.ok === false, 'Quote must remain non-successful');
     assert(quote.payload.error?.code === 'TESTNET_PAYMENT_REQUIRED', 'Missing TESTNET_PAYMENT_REQUIRED for ' + capability);
     assert(Number(quote.payload.payment?.credit_cost) > 0, 'Missing credit cost for ' + capability);
@@ -94,7 +179,6 @@ async function main() {
   assert(quotedChain, 'Selected Testnet chain is absent from developer quote');
   const amountUsdc = Number(paidSeed.payment.amount_due_usdc);
   assert(amountUsdc <= MAX_USDC, 'Quoted amount exceeds E2E safety cap');
-  const wallet = new Wallet(PRIVATE_KEY);
   const provider = new JsonRpcProvider(RPC_URL, CHAINS[CHAIN_KEY], { staticNetwork: true });
   const network = await provider.getNetwork();
   assert(Number(network.chainId) === CHAINS[CHAIN_KEY], 'RPC chain mismatch');
@@ -107,7 +191,7 @@ async function main() {
   assert(receipt?.status === 1, 'Testnet USDC transfer reverted');
   const proof = { chain_key: CHAIN_KEY, tx_hash: String(tx.hash), payer_address: wallet.address };
 
-  const settled = await jsonFetch('developer paid delivery', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...paidSeed.request, payment: proof }), timeout_ms: 30000 });
+  const settled = await jsonFetch('developer paid delivery', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: auth(), body: JSON.stringify({ ...paidSeed.request, payment: proof }), timeout_ms: 30000 });
   assert(settled.payload.ok === true, 'Developer paid delivery failed');
   assert(settled.payload.request_id === paidSeed.request.request_id, 'Request binding changed');
   assert(settled.payload.entitlement?.idempotent_replay === false, 'Initial delivery incorrectly marked replay');
@@ -115,16 +199,16 @@ async function main() {
   assert(settled.payload.audit?.response_sha256, 'Missing response SHA');
   const creditsAfter = settled.payload.entitlement?.credits_remaining;
 
-  const replay = await jsonFetch('developer exact replay', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...paidSeed.request, payment: proof }) });
+  const replay = await jsonFetch('developer exact replay', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: auth(), body: JSON.stringify({ ...paidSeed.request, payment: proof }) });
   assert(replay.payload.ok === true, 'Exact replay failed');
   assert(replay.payload.entitlement?.idempotent_replay === true, 'Exact replay was not idempotent');
   if (creditsAfter != null && replay.payload.entitlement?.credits_remaining != null) assert(Number(replay.payload.entitlement.credits_remaining) === Number(creditsAfter), 'Exact replay consumed credits twice');
 
-  const crossRequest = await jsonFetch('developer cross-request payment replay', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ ...paidSeed.request, request_id: rid('cross-request'), payment: proof }) }, [409]);
+  const crossRequest = await jsonFetch('developer cross-request payment replay', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: auth(), body: JSON.stringify({ ...paidSeed.request, request_id: rid('cross-request'), payment: proof }) }, [409]);
   assert(crossRequest.payload.error?.code === 'TESTNET_PAYMENT_ALREADY_CLAIMED', 'Payment proof was reusable across request IDs');
 
   const changedPayload = { ...paidSeed.request, subject: { type: 'country', country_iso3: 'IND' }, payment: proof };
-  const changed = await jsonFetch('developer same-id changed-payload replay', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: authHeaders(), body: JSON.stringify(changedPayload) }, [400, 409]);
+  const changed = await jsonFetch('developer same-id changed-payload replay', BASE_URL + '/api/testnet/intelligence', { method: 'POST', headers: auth(), body: JSON.stringify(changedPayload) }, [400, 409]);
   assert(['TESTNET_REQUEST_BINDING_MISMATCH','TESTNET_PAYMENT_ALREADY_CLAIMED','TESTNET_REQUEST_ID_REUSED'].includes(changed.payload.error?.code), 'Changed payload replay was not rejected');
 
   const report = {
@@ -133,6 +217,7 @@ async function main() {
     chain_key: CHAIN_KEY,
     wallet_address: wallet.address,
     developer_key_id: API_KEY,
+    credential_rotated_or_issued: true,
     all_eight_quote_checks_passed: quotes.length === 8,
     quote_checks: quotes,
     paid_e2e: {
