@@ -9,6 +9,7 @@ on:
     workflows:
       - "Auto Ingest News"
       - "GDELT GAL Live Hot-Topic Sync"
+      - "Testnet RSS Live Intelligence Runner"
     types:
       - completed
 
