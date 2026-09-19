@@ -27,6 +27,24 @@ insert into public.live_external_sources (
 )
 values
 (
+  'bbc_world_rss',
+  'BBC News World RSS',
+  'BBC',
+  'GEOPOLITICS',
+  'RSS',
+  'NONE',
+  'https://feeds.bbci.co.uk/news/world/rss.xml',
+  null,
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  true,
+  false,
+  'GLOBAL',
+  'NEAR_REAL_TIME',
+  'Independent geopolitical corroboration/feed intake only. Store minimal feed metadata and Geomacro-derived intelligence; do not redistribute BBC article bodies. Commercial signal use remains gated pending explicit rights review.'
+),
+(
   'aljazeera_rss',
   'Al Jazeera RSS',
   'Al Jazeera Media Network',
