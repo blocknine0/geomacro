@@ -24,11 +24,12 @@ const GITHUB_OIDC_WORKFLOW_REFS = new Set([
   "blocknine0/geomacro/.github/workflows/deploy-country-flash-supabase.yml@refs/heads/main",
 ])
 
-const GITHUB_OIDC_JWKS_URL =
-  "https://token.actions.githubusercontent.com/.well-known/jwks"
-
-const GITHUB_OIDC_HEADER =
-  "x-geomacro-github-oidc-token"
+const GITHUB_OIDC_JWKS =
+  createRemoteJWKSet(
+    new URL(
+      "https://token.actions.githubusercontent.com/.well-known/jwks",
+    ),
+  )
 
 const GITHUB_OIDC_WORKFLOW_FILES = new Set([
   "testnet-rss-live-runner.yml",
@@ -41,12 +42,93 @@ const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
   "workflow_dispatch",
 ])
 
-const GITHUB_OIDC_JWKS =
-  createRemoteJWKSet(
-    new URL(
-      "https://token.actions.githubusercontent.com/.well-known/jwks",
-    ),
+const SIGNAL_DB_MODE =
+  Deno.env.get("SIGNAL_DB_MODE") === "true"
+
+const ALLOWED_SOURCE_IDS =
+  new Set([
+    "telegram_mtproto_flash",
+    "aljazeera_rss",
+    "federal_reserve_press_rss",
+    "forexlive_rss",
+    "mining_com_rss",
+    "usgs_minerals_news_rss",
+  ])
+
+const ALLOWED_VERIFICATION_STATUSES =
+  new Set([
+    "UNVERIFIED",
+    "CORROBORATING",
+    "VERIFIED",
+    "REJECTED",
+  ])
+
+const db =
+  createClient(
+    SUPABASE_URL,
+    SERVICE_ROLE_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    },
   )
+
+type CountryRow = {
+  iso2: string
+  iso3: string
+  country_name: string
+  aliases: string[] | null
+  demonyms: string[] | null
+}
+
+type CountryMatch = {
+  iso3: string
+  confidence: number
+  method: string
+  matched: string
+}
+
+type RankedCountryMatch =
+  CountryMatch & {
+    rank: number
+  }
+
+type VerificationStatus =
+  | "UNVERIFIED"
+  | "CORROBORATING"
+  | "VERIFIED"
+  | "REJECTED"
+
+type FlashPayload = {
+  source_id?: string
+  source_record_id?: string
+  published_at?: string | null
+  headline?: string
+  body?: string | null
+  signal_category?: string | null
+  source_channel?: string | null
+  source_channel_key?: string | null
+  source_url?: string | null
+  event_type?: string | null
+  severity?: number | null
+  source_reliability?: number | null
+  verification_status?: VerificationStatus
+  latitude?: number | null
+  longitude?: number | null
+  commodity_tags?: string[] | null
+  country_iso3?: string | null
+  related_country_iso3?: string[] | null
+  raw_payload?: unknown
+}
+
+let countryCache:
+  | {
+      expiresAt: number
+      rows: CountryRow[]
+    }
+  | null = null
 
 async function verifyGitHubActionsOidc(
   request: Request,
@@ -790,13 +872,12 @@ Deno.serve(async request => {
 
   if (
     githubOidcAuthorized &&
-    !new Set([
+    ![
       "aljazeera_rss",
-      "bbc_world_rss",
       "federal_reserve_press_rss",
       "forexlive_rss",
       "usgs_minerals_news_rss",
-    ]).has(sourceId)
+    ].includes(sourceId)
   ) {
     return jsonResponse(
       403,
