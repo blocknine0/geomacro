@@ -132,7 +132,6 @@ async function main() {
     target_host: base.hostname,
     chain_key: CHAIN_KEY,
     wallet_address: wallet.address,
-    developer_key_id: API_KEY,
     all_eight_quote_checks_passed: quotes.length === 8,
     quote_checks: quotes,
     paid_e2e: {
