@@ -32,6 +32,7 @@ on:
 # Certification refresh anchor: second explicit production source refresh for final Federico acceptance.
 # Final Federico race-fix anchor: run GDELT after exact-fragment structuring fix.
 # Final source-map diagnostic anchor: execute GDELT after strict source identity diagnostics.
+# Final live-window refresh anchor: produce fresh fragment for Federation strict acceptance.
 
 permissions:
   contents: read
