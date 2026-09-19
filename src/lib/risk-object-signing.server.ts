@@ -804,6 +804,15 @@ export function signRiskObject(
 
         signing_key_id:
           keyId,
+
+        trust_registry_url:
+          "https://geomacro.live/api/risk-object-keys",
+
+        canonicalization_url:
+          "https://github.com/blocknine0/geomacro/blob/main/docs/GRO_CANONICAL_JSON_V1.md",
+
+        public_key_spki_b64:
+          publicKeyBase64(derivedPublicKey),
       },
     };
 
