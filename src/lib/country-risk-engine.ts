@@ -15,6 +15,8 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
+  FEDERICO_STRICT_RELEVANCE_METHOD,
+  FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
 } from "./public-demo-risk-profile";
 
 export type CountryRiskEventInput = {
@@ -1011,8 +1013,8 @@ export async function buildCountryRiskObject(
     (item) =>
       Number(item.severity ?? 0) >=
         FEDERICO_STRICT_HIGH_IMPACT_SEVERITY &&
-      ["conflict", "military_attack"].includes(
-        String(item.event_type ?? "").toLowerCase(),
+      /conflict|military|attack|escalat/i.test(
+        String(item.event_type ?? ""),
       ),
   );
 
