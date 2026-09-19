@@ -301,7 +301,7 @@ jobs:
             --header "Authorization: Bearer ${auth_header_value}" \
             --header 'Content-Type: application/json' \
             --data '{}' \
-            "${base}/live-flash-corroborate")"
+            "${base}/live-flash-corroborate?mode=health")"
 
           cat /tmp/flash-corroborate.json
           echo

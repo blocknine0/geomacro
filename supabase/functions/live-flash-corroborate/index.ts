@@ -327,6 +327,30 @@ Deno.serve(async request => {
     return jsonResponse(401, { ok: false, error: "unauthorized" })
   }
 
+  if (
+    new URL(request.url).searchParams.get("mode") ===
+      "health"
+  ) {
+    const healthResult = await db
+      .from("live_flash_events")
+      .select("flash_id")
+      .limit(1)
+
+    if (healthResult.error) {
+      console.error(healthResult.error)
+      return jsonResponse(500, {
+        ok: false,
+        error: "health_query_failed",
+      })
+    }
+
+    return jsonResponse(200, {
+      ok: true,
+      health: true,
+      authenticated: true,
+    })
+  }
+
   const cutoff = new Date(Date.now() - 120 * 60_000).toISOString()
 
   const flashResult = await db
