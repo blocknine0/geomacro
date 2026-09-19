@@ -561,10 +561,6 @@ async function loadFedericoStrictEvents(
     ),
   ];
 
-  const familyIds = families
-    .map((row) => String(row.family_id ?? ""))
-    .filter(Boolean);
-
   const byFamily = new Map<string, Array<Record<string, unknown>>>();
 
   for (const flash of flashRows) {
@@ -595,7 +591,6 @@ async function loadFedericoStrictEvents(
     if (!members.length) continue;
 
     const latest = members[0];
-    const independentSourceCount = Number(family.independent_source_count ?? 0);
     const sourceFamilies = [
       ...new Set(
         members.map((member) =>
@@ -608,6 +603,11 @@ async function loadFedericoStrictEvents(
         ),
       ),
     ];
+
+    const independentSourceCount = Math.max(
+      Number(family.independent_source_count ?? 0),
+      sourceFamilies.length,
+    );
 
     const sourceIds = [
       ...new Set(
