@@ -82,5 +82,19 @@
     "direct_RSS_or_API",
     "official_web_release_feeds",
     "regional_publisher_feeds"
-  ]
+  ],
+  "public_channel_discovery": {
+    "enabled": true,
+    "method": "telegram.messages.searchGlobal",
+    "broadcasts_only": true,
+    "schedule": "every_6_hours",
+    "countries_per_run": 194,
+    "max_candidates_per_country": 4,
+    "minimum_candidate_score": 55,
+    "initial_admission": "ACTIVE_INTERNAL_LEAD",
+    "official_ownership_auto_promotion": false,
+    "commercial_rights_auto_promotion": false,
+    "evidence_state": "UNVERIFIED",
+    "replacement_loop": true
+  }
 }
