@@ -239,191 +239,146 @@ jobs:
         run: |
           set -euo pipefail
           for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN GEOMACRO_FLASH_OIDC_TOKEN; do
-            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+            test -n "\${!name:-}" || { echo "::error::$name is missing"; exit 1; }
           done
 
-          for i in 1 2 3 4; do
-            response_file="/tmp/federico-gdelt-${i}.json"
+          fresh_fragment=""
+          max_attempts=30
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            response_file="/tmp/federico-gdelt-\${attempt}.json"
             GDELT_GAL_SYNC_OUTPUT="$response_file" bun scripts/sync-gdelt-gal-production.mjs
             jq -e '.ok == true' "$response_file" >/dev/null
-            jq -c '{ok,status,source_stamp:(.latest_source_stamp // .last_source_stamp // null),source_files:(.source_files // .files_seen // 0),items_seen:(.items_seen // 0),items_accepted:(.items_accepted // .accepted // 0),fragment_id:(.fragment_id // null)}' "$response_file"
+
+            status="$(jq -r '.status // ""' "$response_file")"
+            fragment_id="$(jq -r '.fragment_id // ""' "$response_file")"
+            latest_source_stamp="$(jq -r '.latest_source_stamp // .last_source_stamp // ""' "$response_file")"
+
+            jq -c --argjson attempt "$attempt" '{attempt:$attempt,ok,status,source_stamp:(.latest_source_stamp // .last_source_stamp // null),source_files:(.source_files // .files_seen // 0),items_seen:(.items_seen // 0),items_accepted:(.items_accepted // 0),fragment_id:(.fragment_id // null)}' "$response_file"
+
+            if [[ "$status" == "sealed" && -n "$fragment_id" ]]; then
+              fresh_fragment="$fragment_id"
+              break
+            fi
+
+            case "$status" in
+              no_new_gdelt_file|all_duplicates_or_irrelevant)
+                echo "GDELT has not produced a fresh accepted fragment yet (source_stamp=$latest_source_stamp)."
+                ;;
+              *)
+                echo "::error title=Unexpected GDELT sync state::Unsupported sync status '$status'."
+                exit 1
+                ;;
+            esac
+
+            if [[ "$attempt" -lt "$max_attempts" ]]; then
+              sleep 30
+            fi
           done
 
-          for i in 1 2 3; do
-            response_file="/tmp/federico-structure-${i}.json"
+          test -n "$fresh_fragment" || {
+            echo "::error title=Fresh GDELT fragment unavailable::No newly sealed accepted GDELT fragment arrived within the bounded synchronization window."
+            exit 1
+          }
+
+          printf "FRESH_GDELT_FRAGMENT_ID=%s\n" "$fresh_fragment" >> "$GITHUB_ENV"
+          echo "PASS: fresh accepted GDELT fragment sealed: $fresh_fragment"
+
+      - name: Structure the exact fresh GDELT fragment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "\${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL is missing"; exit 1; }
+          test -n "\${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN is missing"; exit 1; }
+          test -n "\${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
+
+          structured=false
+
+          for attempt in 1 2 3 4 5 6; do
+            response_file="/tmp/federico-structure-\${attempt}.json"
             curl --fail-with-body -sS \
               --retry 3 \
               --retry-all-errors \
               --retry-delay 2 \
               --retry-max-time 90 \
               -X POST \
-              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
-              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+              "\${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+              -H "x-geomacro-structure-token: \${LIVE_STRUCTURE_TOKEN}" \
               -H "Content-Type: application/json" \
+              --data "{\\"fragment_id\\":\\"\${FRESH_GDELT_FRAGMENT_ID}\\"}" \
               -o "$response_file"
-            jq -e '.ok == true' "$response_file" >/dev/null
-            jq -c '{ok,status,fragments_considered:(.fragments_considered // 0),fragments_processed:(.fragments_processed // 0),evidence_rows:(.evidence_rows // 0),event_rows:(.event_rows // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file"
+
+            jq -e --arg fragment "$FRESH_GDELT_FRAGMENT_ID" '.ok == true and .fragment_id == $fragment' "$response_file" >/dev/null
+            jq -c '{ok,status,fragment_id,evidence_structured:(.evidence_structured // 0),evidence_excluded:(.evidence_excluded // 0),remaining:(.remaining // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file"
+
+            remaining="$(jq -r '.remaining // 0' "$response_file")"
+            if [[ "$remaining" == "0" ]]; then
+              structured=true
+              break
+            fi
           done
 
-          echo "PASS: fresh GDELT GAL evidence was synchronized and structured against the authoritative production project."
+          [[ "$structured" == "true" ]] || {
+            echo "::error title=Fresh GDELT structure incomplete::The exact fresh fragment did not fully reach structured state."
+            exit 1
+          }
+
+          echo "PASS: exact fresh GDELT fragment was structurally processed against authoritative production."
+
+      - name: Re-poll governed RSS after fresh GDELT structure
+        shell: bash
+        env:
+          SUPABASE_PROJECT_ID: \${{ secrets.SUPABASE_PROJECT_ID }}
+          GEOMACRO_FLASH_INGEST_URL: https://\${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+          GEOMACRO_FLASH_INGEST_TOKEN: \${{ secrets.FLASH_INGEST_TOKEN }}
+          TELEGRAM_ENABLED: "false"
+          BREAKING_RSS_ENABLED: "true"
+          BREAKING_RSS_RUN_ONCE: "true"
+          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "\${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
+          test -n "\${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
+          python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
+          cd workers/telegram-flash
+          python worker.py 2>&1 | tee /tmp/federico-rss-live.log
+
+          for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
+            grep -q "\\"source_id\\": \\"\${source_id}\\"" /tmp/federico-rss-live.log || {
+              echo "::error::RSS source \${source_id} did not complete a post-structure poll."
+              exit 1
+            }
+          done
+
+          ! grep -q '"kind": "rss_error"' /tmp/federico-rss-live.log
+          grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
+            echo "::error title=Xinhua CHN attribution missing::Fresh Xinhua evidence did not produce the required CHN attribution."
+            exit 1
+          }
+
+          echo "PASS: governed RSS sources were re-polled after the exact fresh GDELT structure, including Xinhua CHN attribution."
 
       - name: Corroborate fresh RSS and structured evidence
         shell: bash
         run: |
           set -euo pipefail
-          base="${APP_SUPABASE_URL%/}/functions/v1"
-          response="$(curl --silent --show-error \
+          base="\${APP_SUPABASE_URL%/}/functions/v1"
+          response="\$(curl --silent --show-error \
             --output /tmp/federico-corroborate.json \
             --write-out '%{http_code}' \
             --request POST \
-            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header "x-geomacro-github-oidc-token: \${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header "Authorization: Bearer \${GEOMACRO_FLASH_OIDC_TOKEN}" \
             --header 'Content-Type: application/json' \
             --data '{}' \
-            "${base}/live-flash-corroborate")"
+            "\${base}/live-flash-corroborate")"
           cat /tmp/federico-corroborate.json
           echo
-          test "$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
+          test "\$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
           jq -e '.ok == true' /tmp/federico-corroborate.json >/dev/null
           echo "PASS: fresh RSS and structured evidence corroboration completed."
-      - name: Wait for fresh CHN independent event-family evidence
-        shell: bash
-        env:
-          EVIDENCE_WAIT_ATTEMPTS: "12"
-          EVIDENCE_WAIT_SECONDS: "15"
-        run: |
-          set -euo pipefail
-
-          node <<'NODE'
-          (async () => {
-          const { createClient } = require('@supabase/supabase-js');
-
-          const db = createClient(
-            process.env.APP_SUPABASE_URL,
-            process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
-            { auth: { persistSession: false, autoRefreshToken: false } },
-          );
-
-          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-          async function check() {
-            const cutoff = new Date(
-              Date.now() - 6 * 60 * 60 * 1000,
-            ).toISOString();
-
-            const familiesResult = await db
-              .from('live_flash_event_families')
-              .select(
-                'family_id,signal_category,country_isos,last_material_update_at,last_seen_at,current_status,source_count,independent_source_count',
-              )
-              .eq('current_status', 'ACTIVE')
-              .contains('country_isos', ['CHN'])
-              .gte('last_seen_at', cutoff)
-              .order('last_seen_at', { ascending: false })
-              .limit(100);
-
-            if (familiesResult.error) throw familiesResult.error;
-
-            const candidates = (familiesResult.data ?? []).filter((family) =>
-              family.signal_category &&
-              ['GEOPOLITICS', 'MACRO', 'CRITICAL_MINERALS'].includes(
-                String(family.signal_category),
-              ),
-            );
-
-            const familyIds = candidates.map((family) => family.family_id);
-            if (!familyIds.length) {
-              return {
-                ready: false,
-                active_families: (familiesResult.data ?? []).length,
-                qualifying_families: 0,
-                verified_members: 0,
-                qualifying_family_id: null,
-                qualifying_family_source_families: [],
-              };
-            }
-
-            const membersResult = await db
-              .from('live_flash_events')
-              .select(
-                'flash_id,event_family_id,verification_status,last_seen_at,source_url,source_id,source_record_id,content_hash',
-              )
-              .in('event_family_id', familyIds)
-              .eq('verification_status', 'VERIFIED')
-              .gte('last_seen_at', cutoff)
-              .limit(1000);
-
-            if (membersResult.error) throw membersResult.error;
-
-            const sourceFamiliesByFamily = new Map();
-            let usableMembers = 0;
-
-            for (const row of membersResult.data ?? []) {
-              const familyId = String(row.event_family_id ?? '').trim();
-              const sourceId = String(row.source_id ?? '').trim();
-              const sourceUrl = String(row.source_url ?? '');
-              const sourceRecordId = String(row.source_record_id ?? '').trim();
-              const contentHash = String(row.content_hash ?? '');
-
-              if (
-                !familyId ||
-                !/^https?:\/\//i.test(sourceUrl) ||
-                !sourceId ||
-                !sourceRecordId ||
-                !/^[a-f0-9]{64}$/.test(contentHash)
-              ) {
-                continue;
-              }
-
-              usableMembers += 1;
-              if (!sourceFamiliesByFamily.has(familyId)) {
-                sourceFamiliesByFamily.set(familyId, new Set());
-              }
-              sourceFamiliesByFamily.get(familyId).add(sourceId);
-            }
-
-            const qualifying = candidates.find((family) =>
-              (sourceFamiliesByFamily.get(String(family.family_id))?.size ?? 0) >= 2,
-            );
-
-            const qualifyingSources = qualifying
-              ? [...(sourceFamiliesByFamily.get(String(qualifying.family_id)) ?? new Set())].sort()
-              : [];
-
-            return {
-              ready: Boolean(qualifying),
-              active_families: (familiesResult.data ?? []).length,
-              qualifying_families: candidates.filter((family) =>
-                (sourceFamiliesByFamily.get(String(family.family_id))?.size ?? 0) >= 2,
-              ).length,
-              verified_members: usableMembers,
-              qualifying_family_id: qualifying?.family_id ?? null,
-              qualifying_family_source_families: qualifyingSources,
-            };
-          }
-
-          let last = null;
-          for (let attempt = 1; attempt <= Number(process.env.EVIDENCE_WAIT_ATTEMPTS); attempt += 1) {
-            last = await check();
-            console.log(JSON.stringify({ attempt, ...last }));
-            if (last.ready) {
-              console.log('PASS: one fresh CHN event family has at least two independent VERIFIED source families.');
-              process.exit(0);
-            }
-            if (attempt < Number(process.env.EVIDENCE_WAIT_ATTEMPTS)) {
-              await sleep(Number(process.env.EVIDENCE_WAIT_SECONDS) * 1000);
-            }
-          }
-
-          throw new Error(
-            'Fresh CHN strict evidence was not available after bounded synchronization wait: ' +
-              JSON.stringify(last),
-          );
-          })().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          NODE
 
       - name: Publish fresh production-signed CHN Risk Object
         shell: bash
