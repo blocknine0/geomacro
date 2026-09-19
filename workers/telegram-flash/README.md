@@ -128,7 +128,7 @@ and the deterministic verification score must clear the verification threshold.
 
 ## Database migrations
 
-Apply in repository numeric order. The current isolated signal baseline additionally uses:
+Apply the authoritative production migrations from `supabase/migrations`. The isolated Telegram signal project uses a separate Supabase workdir at `supabase/isolated-signal` and its own numeric migration track:
 
 - `950_telegram_signal_ingest_isolation.sql`
 - `951_telegram_signal_compact_storage.sql`

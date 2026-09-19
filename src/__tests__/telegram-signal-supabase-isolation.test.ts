@@ -18,7 +18,7 @@ describe("Telegram signal Supabase isolation contract", () => {
 
   it("creates only raw/current signal storage and never enables commercial signals", () => {
     const migration = read(
-      "supabase/migrations/950_telegram_signal_ingest_isolation.sql",
+      "supabase/isolated-signal/migrations/950_telegram_signal_ingest_isolation.sql",
     );
 
     expect(migration).toContain("live_telegram_channel_registry");
@@ -31,7 +31,7 @@ describe("Telegram signal Supabase isolation contract", () => {
 
   it("uses compact fractional storage for the isolated signal hot index", () => {
     const migration = read(
-      "supabase/migrations/951_telegram_signal_compact_storage.sql",
+      "supabase/isolated-signal/migrations/951_telegram_signal_compact_storage.sql",
     );
 
     expect(migration).toContain("severity_bps smallint");
@@ -49,10 +49,10 @@ describe("Telegram signal Supabase isolation contract", () => {
 
   it("defines a canonical event-family lifecycle and material-update ledger", () => {
     const lifecycle = read(
-      "supabase/migrations/952_realtime_flash_event_lifecycle.sql",
+      "supabase/isolated-signal/migrations/952_realtime_flash_event_lifecycle.sql",
     );
     const familyVersions = read(
-      "supabase/migrations/953_event_family_version_ledger.sql",
+      "supabase/isolated-signal/migrations/953_event_family_version_ledger.sql",
     );
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
     const corroborate = read(

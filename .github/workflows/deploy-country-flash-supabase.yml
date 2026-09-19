@@ -1,6 +1,11 @@
 name: Deploy country flash intelligence to Supabase
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
   workflow_dispatch:
     inputs:
       mode:
@@ -43,11 +48,18 @@ jobs:
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
+          grep -q 'push:' "$file"
+          test -f "supabase/migrations/042_realtime_event_family_lifecycle.sql"
+          test -f "supabase/migrations/043_event_family_version_ledger.sql"
+          test ! -f "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
+          test ! -f "supabase/migrations/951_telegram_signal_compact_storage.sql"
+          test ! -f "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
+          test ! -f "supabase/migrations/953_event_family_version_ledger.sql"
 
           echo "Supabase deployment workflow safety guardrails are present."
 
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -80,7 +92,7 @@ jobs:
             fi
           done
 
-          if [[ "${{ inputs.mode }}" == "apply" && -z "${FLASH_INGEST_TOKEN:-}" ]]; then
+          if [[ ( "${{ github.event_name }}" == "push" || "${{ inputs.mode }}" == "apply" ) && -z "${FLASH_INGEST_TOKEN:-}" ]]; then
             echo "::error title=Missing production secret::FLASH_INGEST_TOKEN is required for apply mode."
             missing=1
           fi
@@ -114,20 +126,35 @@ jobs:
           supabase db push --dry-run
 
       - name: Stop after deployment plan
-        if: ${{ inputs.mode == 'plan' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
         shell: bash
         run: |
           echo "Plan completed. No production database or function changes were applied."
 
       - name: Apply database migrations
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
           supabase db push
 
+      - name: Verify authoritative event-family schema
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db query --linked -p "$SUPABASE_DB_PASSWORD" "DO \\$\\$ BEGIN
+            IF to_regclass('public.live_flash_event_families') IS NULL THEN
+              RAISE EXCEPTION 'live_flash_event_families is missing from authoritative production';
+            END IF;
+            IF to_regclass('public.live_flash_event_family_versions') IS NULL THEN
+              RAISE EXCEPTION 'live_flash_event_family_versions is missing from authoritative production';
+            END IF;
+          END \\$\\$;"
+
+          echo "PASS: authoritative event-family lifecycle schema is present."
       - name: Sync flash authentication secret
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -136,7 +163,7 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Deploy live flash ingest function
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -145,7 +172,7 @@ jobs:
             --no-verify-jwt
 
       - name: Deploy live flash corroboration function
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -154,7 +181,7 @@ jobs:
             --no-verify-jwt
 
       - name: Smoke-check deployed endpoints without inserting synthetic data
-        if: ${{ inputs.mode == 'apply' }}
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
