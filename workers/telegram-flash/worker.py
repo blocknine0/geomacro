@@ -152,8 +152,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "url": "https://www.usgs.gov/news/minerals/feed",
         "event_type": "CRITICAL_MINERALS_BREAKING",
         "source_reliability": 90.0,
-        "timeout_seconds": 60,
-        "retry_attempts": 2,
+        "timeout_seconds": 90,
+        "retry_attempts": 3,
         "retry_backoff_seconds": 2,
     },
 ]
@@ -727,14 +727,17 @@ async def run_rss() -> None:
     )
 
     while True:
+        results = await asyncio.gather(
+            *(process_feed(feed, state) for feed in RSS_FEEDS),
+            return_exceptions=True,
+        )
+
         cycle_failed = False
 
-        for feed in RSS_FEEDS:
+        for feed, result in zip(RSS_FEEDS, results):
             source_id = str(feed["source_id"])
-            try:
-                await process_feed(feed, state)
-                failure_count[source_id] = 0
-            except Exception as exc:
+
+            if isinstance(result, Exception):
                 cycle_failed = True
                 failure_count[source_id] = failure_count.get(source_id, 0) + 1
                 print(
@@ -743,13 +746,15 @@ async def run_rss() -> None:
                             "kind": "rss_error",
                             "source_id": source_id,
                             "failures": failure_count[source_id],
-                            "error": str(exc),
+                            "error": str(result),
                         },
                         ensure_ascii=False,
                     ),
                     file=sys.stderr,
                     flush=True,
                 )
+            else:
+                failure_count[source_id] = 0
 
         if RSS_RUN_ONCE:
             if cycle_failed:
