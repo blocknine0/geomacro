@@ -514,6 +514,21 @@ jobs:
           });
           NODE
 
+      - name: Print strict object source identity diagnostics before integrity gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+          const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+          (async () => {
+            const objectId = process.env.OBJECT_ID || require('node:fs').readFileSync('/tmp/publish.json','utf8') && JSON.parse(require('node:fs').readFileSync('/tmp/publish.json','utf8')).object_id;
+            const { data, error } = await db.from('geomacro_risk_objects').select('payload').eq('object_id', objectId).maybeSingle();
+            if (error) throw error;
+            const evidence = Array.isArray(data?.payload?.evidence) ? data.payload.evidence : [];
+            console.log(JSON.stringify(evidence.map((item) => ({ source_ids:item.source_ids, source_families:item.source_families })), null, 2));
+          })().catch((e) => { console.error(e); process.exit(1); });
+          NODE
       - name: Verify freshness, signature and tamper rejection
         shell: bash
         run: |
