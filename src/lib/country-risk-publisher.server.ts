@@ -444,6 +444,222 @@ function flashDirection(
   return "steady";
 }
 
+async function loadFedericoStructuredFallback(
+  db: ReturnType<typeof requireRiskSupabase>,
+  asOf: Date,
+  iso3: string,
+): Promise<LoadedStructuredEvents> {
+  const cutoff = new Date(
+    asOf.getTime() -
+      FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS *
+        3_600_000,
+  ).toISOString();
+
+  const result = await db
+    .from("live_structured_events")
+    .select(
+      "id,domain,event_type,title,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,evidence_count,independent_source_count,evidence_refs,structure_version,structured_payload,commercial_eligibility_status,commercial_eligibility_reason_codes,status",
+    )
+    .in("status", ["active", "monitoring"])
+    .gte("last_seen_at", cutoff)
+    .lte("last_seen_at", asOf.toISOString())
+    .order("last_seen_at", { ascending: false })
+    .limit(500);
+
+  if (result.error) throw result.error;
+
+  const rows = (result.data ?? []) as Array<Record<string, unknown>>;
+  const candidateRows = rows.filter((row) => {
+    const primary = String(row.primary_country ?? "").trim().toUpperCase();
+    const countries = Array.isArray(row.countries)
+      ? row.countries.map((value) => String(value).trim().toUpperCase())
+      : [];
+    return primary === iso3 || countries.includes(iso3);
+  });
+
+  if (!candidateRows.length) {
+    return { events: [], commercial_eligibility: [] };
+  }
+
+  const eventIds = candidateRows
+    .map((row) => String(row.id ?? "").trim())
+    .filter(Boolean);
+
+  const evidenceResult = await db
+    .from("live_structured_event_evidence")
+    .select(
+      "event_id,fingerprint,source_domain,source_url,evidence_published_at,country_iso3",
+    )
+    .in("event_id", eventIds);
+
+  if (evidenceResult.error) throw evidenceResult.error;
+
+  const evidenceByEvent = new Map<string, Array<Record<string, unknown>>>();
+  for (const evidence of evidenceResult.data ?? []) {
+    const eventId = String(evidence.event_id ?? "").trim();
+    if (!eventId) continue;
+    const list = evidenceByEvent.get(eventId) ?? [];
+    list.push(evidence);
+    evidenceByEvent.set(eventId, list);
+  }
+
+  const events: CountryRiskEventInput[] = [];
+  const commercial_eligibility: StructuredEventCommercialEligibility[] = [];
+
+  for (const row of candidateRows) {
+    const eventId = String(row.id ?? "").trim();
+    if (!eventId) continue;
+
+    const commercialStatus = normalizeCommercialEligibilityStatus(
+      row.commercial_eligibility_status,
+    );
+    if (commercialStatus !== "VERIFIED" && commercialStatus !== "DERIVED_ONLY") {
+      continue;
+    }
+
+    const payload =
+      row.structured_payload &&
+      typeof row.structured_payload === "object"
+        ? row.structured_payload as Record<string, unknown>
+        : {};
+
+    const validEvidence = (evidenceByEvent.get(eventId) ?? []).filter((item) => {
+      const url = String(item.source_url ?? "").trim();
+      const published = String(item.evidence_published_at ?? "").trim();
+      return /^https?:\/\//i.test(url) && published && !Number.isNaN(Date.parse(published));
+    });
+
+    if (!validEvidence.length) continue;
+
+    const sourceDomains = [
+      ...new Set(
+        validEvidence
+          .map((item) => String(item.source_domain ?? "").trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
+
+    const payloadSourceFamilies = Array.isArray(payload.source_families)
+      ? payload.source_families.map(String).map((value) => value.trim()).filter(Boolean)
+      : [];
+
+    const sourceFamilies = [
+      ...new Set(
+        (payloadSourceFamilies.length ? payloadSourceFamilies : sourceDomains).filter(Boolean),
+      ),
+    ];
+
+    const independentSourceCount = sourceFamilies.length;
+    if (independentSourceCount < 2) continue;
+
+    const evidenceTimes = validEvidence
+      .map((item) => Date.parse(String(item.evidence_published_at)))
+      .filter(Number.isFinite);
+
+    if (!evidenceTimes.length) continue;
+
+    const latestEvidenceMs = Math.max(...evidenceTimes);
+    const ageHours = Math.max(
+      0,
+      (asOf.getTime() - latestEvidenceMs) / 3_600_000,
+    );
+    if (
+      !Number.isFinite(ageHours) ||
+      ageHours > FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
+    ) continue;
+
+    const rawSeverity = Math.max(
+      0,
+      Math.min(100, Number(row.severity ?? 0)),
+    );
+    const eventType = String(row.event_type ?? "geopolitical_development");
+    const isHighImpact =
+      rawSeverity >= FEDERICO_STRICT_HIGH_IMPACT_SEVERITY &&
+      /conflict|military|attack|escalat/i.test(eventType);
+
+    if (
+      isHighImpact &&
+      ageHours > FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
+    ) continue;
+
+    const primaryCountry = String(row.primary_country ?? "").trim().toUpperCase();
+    const countries = Array.isArray(row.countries)
+      ? row.countries.map((value) => String(value).trim().toUpperCase()).filter(Boolean)
+      : [iso3];
+
+    const sourceUrls = [
+      ...new Set(
+        validEvidence
+          .map((item) => String(item.source_url ?? "").trim())
+          .filter((value) => /^https?:\/\//i.test(value)),
+      ),
+    ];
+
+    const sourceRecordIds = [
+      ...new Set(
+        validEvidence
+          .map((item) => String(item.fingerprint ?? "").trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    const sourceIds = [
+      ...new Set(
+        [
+          ...sourceDomains,
+          ...(Array.isArray(payload.source_domains) ? payload.source_domains.map(String) : []),
+        ]
+          .map((value) => value.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
+
+    events.push({
+      id: `structured_event_${eventId}`,
+      domain: normalizeDomain(row.domain),
+      event_type: eventType,
+      title: String(row.title ?? ""),
+      primary_country: primaryCountry || null,
+      countries: countries.length ? countries : [iso3],
+      severity: rawSeverity,
+      confidence: Math.max(0, Math.min(100, Number(row.confidence ?? 0))),
+      direction: normalizeDirection(row.direction),
+      first_seen_at: String(row.first_seen_at ?? row.last_seen_at ?? asOf.toISOString()),
+      last_seen_at: String(row.last_seen_at ?? asOf.toISOString()),
+      material_evidence_at: new Date(latestEvidenceMs).toISOString(),
+      evidence_count: Math.max(Number(row.evidence_count ?? 0), validEvidence.length),
+      independent_source_count: independentSourceCount,
+      evidence_refs: sourceUrls,
+      structure_version: String(row.structure_version ?? "live-structure-v1.0.0"),
+      structured_payload: payload,
+      event_family_id: `structured:${eventId}`,
+      source_ids: sourceIds,
+      source_record_ids: sourceRecordIds,
+      source_urls: sourceUrls,
+      source_families: sourceFamilies,
+      content_hashes: sourceRecordIds,
+      relevance_reason:
+        primaryCountry === iso3
+          ? `Direct primary-country linkage in governed structured intelligence: ${iso3}`
+          : `Direct country linkage in governed structured intelligence country set: ${iso3}`,
+      transmission_channel: "structured_event_direct_country",
+      relevance_weight: 1,
+      subject_is_primary: primaryCountry === iso3,
+      subject_attribution_confidence: primaryCountry === iso3 ? 100 : 90,
+      subject_attribution_method: "structured_event_country_registry",
+      corroboration_status: "CONFIRMED",
+    });
+
+    commercial_eligibility.push({
+      event_id: `structured_event_${eventId}`,
+      status: commercialStatus,
+      reason_codes: normalizeStringArray(row.commercial_eligibility_reason_codes),
+    });
+  }
+
+  return { events, commercial_eligibility };
+}
+
 async function loadFedericoStrictEvents(
   asOf: Date,
   iso3: string,
@@ -921,10 +1137,15 @@ async function loadFedericoStrictEvents(
     });
   }
 
+  if (events.length === 0) {
+    const fallback = await loadFedericoStructuredFallback(db, asOf, iso3);
+    if (fallback.events.length > 0) {
+      return fallback;
+    }
+  }
+
   return { events, commercial_eligibility };
 }
-
-
 
 function eventTouchesCountry(
   event: CountryRiskEventInput,
