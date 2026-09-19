@@ -62,17 +62,14 @@ export function RiskIndicesPreview({
                     </div>
                     <div className="mt-3"><RiskBadge score={index.score} /></div>
                     <p className="mt-5 text-xs leading-5 text-muted-foreground">
-                      {index.readingStatus === "current" ? "Current verified reading" : "Last verified reading"} · {formatReadingDate(index.readingAsOf)}
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {index.eventCount} evidence rows · {index.independentStoryCount} independent stories
                     </p>
                   </>
                 ) : (
                   <div className="mt-5">
-                    <p className="text-sm font-medium text-foreground">No verified reading available</p>
+                    <p className="text-sm font-medium text-foreground">Refreshing verified reading</p>
                     <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                      Geomacro does not substitute zero or a synthetic estimate.
+                      No synthetic or zero-risk substitute is shown.
                     </p>
                   </div>
                 )}
@@ -93,16 +90,4 @@ export function RiskIndicesPreview({
       </div>
     </section>
   );
-}
-
-function formatReadingDate(value: string | null) {
-  if (!value) return "date unavailable";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "date unavailable";
-  return new Intl.DateTimeFormat("en", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(date);
 }
