@@ -311,46 +311,68 @@ jobs:
           });
           NODE
 
-      - name: Structure the exact fresh GDELT fragment
+      - name: Prove exact fresh GDELT fragment is fully persisted
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL is missing"; exit 1; }
-          test -n "${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN is missing"; exit 1; }
-          test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
 
-          structured=false
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
 
-          for attempt in 1 2 3 4 5 6; do
-            response_file="/tmp/federico-structure-${attempt}.json"
-            curl --fail-with-body -sS \
-              --retry 3 \
-              --retry-all-errors \
-              --retry-delay 2 \
-              --retry-max-time 90 \
-              -X POST \
-              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
-              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
-              -H "Content-Type: application/json" \
-              --data "{\"fragment_id\":\"${FRESH_GDELT_FRAGMENT_ID}\"}" \
-              -o "$response_file"
+            const fragmentId = process.env.FRESH_GDELT_FRAGMENT_ID;
+            if (!fragmentId) throw new Error('FRESH_GDELT_FRAGMENT_ID is missing');
 
-            jq -e --arg fragment "$FRESH_GDELT_FRAGMENT_ID" '.ok == true and .fragment_id == $fragment' "$response_file" >/dev/null
-            jq -c '{ok,status,fragment_id,evidence_structured:(.evidence_structured // 0),evidence_excluded:(.evidence_excluded // 0),remaining:(.remaining // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file"
+            const { data: manifest, error: manifestError } = await db
+              .from('live_fragment_manifest')
+              .select('id,item_count,source_key,stream_key,verification_method,sealed_at,period_end')
+              .eq('id', fragmentId)
+              .maybeSingle();
+            if (manifestError) throw manifestError;
+            if (!manifest) throw new Error('Fresh GDELT fragment manifest was not found');
+            if (manifest.source_key !== 'gdelt_gal' || manifest.stream_key !== 'global-relevant') {
+              throw new Error('Fresh fragment identity does not match GDELT global-relevant stream');
+            }
+            if (manifest.verification_method !== 'storage-readback-sha256') {
+              throw new Error('Fresh fragment is not verified by storage-readback-sha256');
+            }
 
-            remaining="$(jq -r '.remaining // 0' "$response_file")"
-            if [[ "$remaining" == "0" ]]; then
-              structured=true
-              break
-            fi
-          done
+            const [{ count: structuredCount, error: structuredError }, { count: excludedCount, error: excludedError }] = await Promise.all([
+              db.from('live_structured_event_evidence').select('*', { count: 'exact', head: true }).eq('fragment_id', fragmentId),
+              db.from('live_structuring_exclusions').select('*', { count: 'exact', head: true }).eq('fragment_id', fragmentId),
+            ]);
+            if (structuredError) throw structuredError;
+            if (excludedError) throw excludedError;
 
-          [[ "$structured" == "true" ]] || {
-            echo "::error title=Fresh GDELT structure incomplete::The exact fresh fragment did not fully reach structured state."
-            exit 1
-          }
+            const structured = structuredCount ?? 0;
+            const excluded = excludedCount ?? 0;
+            const handled = structured + excluded;
+            const total = Number(manifest.item_count ?? 0);
+            if (!total || handled !== total) {
+              throw new Error(`Fresh fragment persistence incomplete: structured=${structured}, excluded=${excluded}, total=${total}`);
+            }
 
-          echo "PASS: exact fresh GDELT fragment was structurally processed against authoritative production."
+            console.log(JSON.stringify({
+              ok: true,
+              fragment_id: fragmentId,
+              total,
+              structured,
+              excluded,
+              remaining: 0,
+              sealed_at: manifest.sealed_at,
+              period_end: manifest.period_end,
+            }));
+            console.log('PASS: exact fresh GDELT fragment is fully persisted as structured or explicitly excluded evidence.');
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
 
       - name: Re-poll governed RSS after fresh GDELT structure
         env:
