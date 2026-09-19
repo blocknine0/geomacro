@@ -155,6 +155,40 @@ async function main() {
   const configuredChain = (config.payload?.data?.chains || []).find((chain) => chain.key === CHAIN_KEY);
   assert(configuredChain?.public_api_key, `Public API key missing for ${CHAIN_KEY}`);
 
+  // Every published public chain key must be able to reach the same
+  // canonical pay-per-call endpoint and must quote only its bound chain.
+  const publicChainKeys = [
+    { key: "arcTestnet", public_api_key: "gmk_public_arc_testnet_v1" },
+    { key: "baseSepolia", public_api_key: "gmk_public_base_sepolia_v1" },
+    { key: "polygonAmoy", public_api_key: "gmk_public_polygon_amoy_v1" },
+  ];
+  const publicQuoteChecks = [];
+  for (const entry of publicChainKeys) {
+    const publicQuote = await jsonFetch(
+      "public API quote " + entry.key,
+      `${BASE_URL}/api/testnet-tester/intelligence`,
+      {
+        method: "POST",
+        headers: { cookie: first.cookie, "x-geomacro-public-key": entry.public_api_key },
+        body: JSON.stringify({
+          request_id: requestId("public-quote-" + entry.key),
+          capability: "gri_read",
+          subject: { type: "global" },
+        }),
+      },
+      [402],
+    );
+    assert(publicQuote.payload?.error?.code === "TESTNET_PAYMENT_REQUIRED", "Public " + entry.key + " did not return the payment-required contract");
+    const supported = publicQuote.payload?.payment?.supported_chains || [];
+    assert(supported.length === 1 && supported[0]?.key === entry.key, "Public " + entry.key + " quote was not bound to its published payment chain");
+    publicQuoteChecks.push({
+      chain_key: entry.key,
+      public_api_key: entry.public_api_key,
+      amount_due_usdc: publicQuote.payload.payment.amount_due_usdc,
+      credit_cost: publicQuote.payload.payment.credit_cost,
+    });
+  }
+
   // Reconnect with the same wallet. The principal must be stable, and any
   // existing developer API key identifiers must remain stable rather than being
   // regenerated on reconnect.
@@ -199,6 +233,10 @@ async function main() {
     principal_stable_after_reconnect: true,
     developer_key_ids_stable_after_reconnect: true,
     request_id: req.request_id,
+    public_api: {
+      all_published_public_keys_quoted: publicQuoteChecks.length === 3,
+      quote_checks: publicQuoteChecks,
+    },
     quote: {
       credit_cost: quote.payload.payment.credit_cost,
       amount_due_usdc: quote.payload.payment.amount_due_usdc,

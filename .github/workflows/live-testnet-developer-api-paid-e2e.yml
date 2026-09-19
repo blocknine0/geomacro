@@ -1,0 +1,65 @@
+name: Live Testnet Developer API Paid E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-testnet-developer-api-paid-e2e
+  cancel-in-progress: false
+
+jobs:
+  developer-paid-e2e:
+    if: github.event_name == 'workflow_dispatch' || vars.GEOMACRO_TESTNET_DEVELOPER_E2E_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: geomacro-testnet-e2e
+    env:
+      GEOMACRO_TESTNET_E2E_BASE_URL: https://geomacro.live
+      GEOMACRO_TESTNET_E2E_EXPECTED_HOST: geomacro.live
+      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
+      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
+      GEOMACRO_TESTNET_DEVELOPER_API_KEY: ${{ secrets.GEOMACRO_TESTNET_DEVELOPER_API_KEY }}
+      GEOMACRO_TESTNET_DEVELOPER_API_SECRET: ${{ secrets.GEOMACRO_TESTNET_DEVELOPER_API_SECRET }}
+      GEOMACRO_TESTNET_E2E_CHAIN_KEY: arcTestnet
+      GEOMACRO_TESTNET_E2E_MAX_USDC: '0.5'
+      GEOMACRO_TESTNET_E2E_ARTIFACT_DIR: artifacts/testnet-developer-live-e2e
+    steps:
+      - name: Validate dedicated E2E configuration without printing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GEOMACRO_TESTNET_E2E_PRIVATE_KEY GEOMACRO_TESTNET_DEVELOPER_API_KEY GEOMACRO_TESTNET_DEVELOPER_API_SECRET; do
+            test -n "${!name:-}" || { echo "::error::$name is not configured in geomacro-testnet-e2e."; exit 1; }
+          done
+          echo 'Developer paid E2E: enabled' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Chain: Arc Testnet' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Maximum testnet payment per run: 0.5 USDC' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Commercial revenue: false' >> "$GITHUB_STEP_SUMMARY"
+          echo 'execution_authorized: false' >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install exact dependencies
+        run: timeout 5m bun install --frozen-lockfile --ignore-scripts
+      - name: Run real-wallet Developer API E2E
+        run: timeout 12m bun scripts/testnet/live-developer-api-e2e.mjs
+      - name: Upload sanitized Developer API E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-testnet-developer-api-e2e-${{ github.run_id }}
+          path: artifacts/testnet-developer-live-e2e/*.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Permanent boundary
+        if: always()
+        run: |
+          echo 'Developer API paid E2E uses only the dedicated Testnet E2E wallet and Testnet USDC.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Production signing keys are never used by this workflow.' >> "$GITHUB_STEP_SUMMARY"
