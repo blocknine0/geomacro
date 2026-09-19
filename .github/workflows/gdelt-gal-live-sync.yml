@@ -12,6 +12,9 @@ on:
       - "supabase/migrations/050_structured_event_commercial_rights_sync.sql"
       - "supabase/migrations/051_internal_handoff_source_rights_resolution.sql"
       - "supabase/migrations/052_admitted_event_derived_delivery_policy.sql"
+      - "supabase/migrations/955_realtime_event_family_lifecycle.sql"
+      - "supabase/migrations/956_event_family_version_ledger.sql"
+      - "supabase/migrations/957_repair_federico_event_family_schema.sql"
       - ".github/workflows/gdelt-gal-live-sync.yml"
   workflow_dispatch:
   schedule:
