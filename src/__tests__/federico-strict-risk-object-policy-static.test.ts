@@ -156,7 +156,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
 
   it("registers every governed Xinhua source before event ingestion", () => {
     const sourceRegistry = read(
-      "supabase/migrations/959_register_xinhua_china_rss.sql",
+      "supabase/migrations/20260919103000_register_xinhua_china_rss.sql",
     );
     const worker = read(
       "workers/telegram-flash/worker.py",
