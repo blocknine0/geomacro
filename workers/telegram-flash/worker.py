@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import socket
 import sys
 import time
@@ -89,6 +90,14 @@ USER_AGENT = os.environ.get(
     "BREAKING_FEED_USER_AGENT",
     "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
 ).strip()
+
+FIXED_RSS_COUNTRIES: dict[str, str] = {
+    "federal_reserve_press_rss": "USA",
+}
+
+HIGH_CONFIDENCE_HEADLINE_COUNTRIES: list[tuple[str, str]] = [
+    ("CHN", r"\b(?:china|chinese|beijing|prc|pboc|people'?s republic of china)\b"),
+]
 
 class NewsPageParser:
     def __init__(self, link_prefix: str, base_url: str):
@@ -382,6 +391,40 @@ def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
         ) from exc
 
 
+def fetch_web_page_sync(
+    url: str,
+    timeout_seconds: int = 30,
+    retry_attempts: int = 1,
+    retry_backoff_seconds: float = 2.0,
+) -> tuple[int, bytes]:
+    headers = {
+        "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
+        "User-Agent": USER_AGENT,
+    }
+    last_error: Exception | None = None
+
+    for attempt in range(retry_attempts + 1):
+        request = urllib.request.Request(url, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                return int(response.status), response.read()
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            if 500 <= exc.code < 600 and attempt < retry_attempts:
+                last_error = exc
+            else:
+                raise RuntimeError(f"Web page HTTP {exc.code}: {detail[:500]}") from exc
+        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+            last_error = exc
+
+        if attempt < retry_attempts:
+            time.sleep(retry_backoff_seconds * (attempt + 1))
+
+    raise RuntimeError(
+        f"Web page read failed after {retry_attempts + 1} attempts: {last_error}"
+    ) from last_error
+
+
 def fetch_feed_sync(
     url: str,
     etag: str | None,
@@ -667,14 +710,12 @@ async def process_feed(
         if not fallback_url or not fallback_link_prefix:
             raise
 
-        status, raw, _, _ = await asyncio.to_thread(
-            fetch_feed_sync,
+        status, raw = await asyncio.to_thread(
+            fetch_web_page_sync,
             fallback_url,
-            None,
-            None,
-            25,
-            1,
-            2.0,
+            35,
+            2,
+            3.0,
         )
         transport = "official_page_fallback"
 
@@ -757,9 +798,18 @@ async def process_feed(
             },
         }
 
-        country_iso3 = feed.get("country_iso3")
+        country_iso3 = (
+            feed.get("country_iso3")
+            or FIXED_RSS_COUNTRIES.get(source_id)
+        )
         if isinstance(country_iso3, str) and len(country_iso3) == 3:
             payload["country_iso3"] = country_iso3
+        else:
+            normalized_title = " ".join(title.split()).strip().lower()
+            for iso3, pattern in HIGH_CONFIDENCE_HEADLINE_COUNTRIES:
+                if re.search(pattern, normalized_title, flags=re.IGNORECASE):
+                    payload["country_iso3"] = iso3
+                    break
 
         result = await asyncio.to_thread(post_json_sync, payload)
         current["seen"].add(identity)

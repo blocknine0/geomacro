@@ -44,6 +44,7 @@ const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
   "push",
   "schedule",
   "workflow_dispatch",
+  "workflow_run",
 ])
 
 const SIGNAL_DB_MODE =
