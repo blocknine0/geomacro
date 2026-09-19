@@ -148,7 +148,14 @@ jobs:
             exit 1
           }
 
-          echo "PASS: all governed RSS feeds completed without collector errors and explicit USA attribution is active."
+          # Xinhua is the governed China source for Federico's strict CHN path.
+          # This asserts actual source ingestion plus production CHN attribution.
+          grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/testnet-rss-live.log || {
+            echo "::error title=Xinhua CHN attribution missing::Xinhua RSS was ingested but no CHN attribution was returned."
+            exit 1
+          }
+
+          echo "PASS: all governed RSS feeds completed without collector errors and explicit USA + Xinhua CHN attribution are active."
 
       - name: Upload live Testnet RSS evidence
         if: always()
