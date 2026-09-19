@@ -35,6 +35,10 @@ import {
 } from "./risk-supabase.server";
 
 import {
+  FEDERICO_STRICT_CALCULATION_NAMESPACE,
+  FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
+  FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
+  FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
   riskObjectCalculationNamespace,
   withPublicDemoProfileReason,
   type RiskObjectDeliveryProfile,
@@ -397,6 +401,295 @@ async function loadRecentStructuredEvents(
 }
 
 
+function flashSourceFamily(
+  sourceId: string,
+  sourceChannel: string | null,
+) {
+  if (sourceId === "telegram_mtproto_flash") {
+    return `telegram:${String(sourceChannel ?? "unknown").replace(/^@+/, "").trim().toLowerCase()}`;
+  }
+  return sourceId;
+}
+
+function flashDomain(
+  signalCategory: unknown,
+): CountryRiskEventInput["domain"] {
+  switch (String(signalCategory ?? "").toUpperCase()) {
+    case "MACRO":
+      return "macro";
+    case "CRITICAL_MINERALS":
+      return "rare_earth";
+    default:
+      return "geopolitics";
+  }
+}
+
+function flashDirection(
+  eventType: unknown,
+): RiskDirection {
+  const value = String(eventType ?? "").toLowerCase();
+  if (value.includes("ceasefire") || value.includes("cool")) return "cooling";
+  if (
+    value.includes("attack") ||
+    value.includes("conflict") ||
+    value.includes("sanction") ||
+    value.includes("military") ||
+    value.includes("escalat")
+  ) return "escalating";
+  return "steady";
+}
+
+async function loadFedericoStrictEvents(
+  asOf: Date,
+  iso3: string,
+): Promise<LoadedStructuredEvents> {
+  const db = requireRiskSupabase();
+  const cutoff = new Date(
+    asOf.getTime() -
+      FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS *
+        3_600_000,
+  ).toISOString();
+
+  const familiesResult = await db
+    .from("live_flash_event_families")
+    .select(
+      "family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,current_status,source_count,independent_source_count,latest_flash_id",
+    )
+    .eq("current_status", "ACTIVE")
+    .gte("last_seen_at", cutoff)
+    .contains("country_isos", [iso3])
+    .order("last_seen_at", { ascending: false })
+    .limit(100);
+
+  if (familiesResult.error) {
+    throw familiesResult.error;
+  }
+
+  const families = (familiesResult.data ?? []) as Array<Record<string, unknown>>;
+  if (!families.length) {
+    return { events: [], commercial_eligibility: [] };
+  }
+
+  const familyIds = families
+    .map((row) => String(row.family_id ?? ""))
+    .filter(Boolean);
+
+  const flashesResult = await db
+    .from("live_flash_events")
+    .select(
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,source_reliability,source_reliability_bps,verification_score,verification_score_bps,verification_status,first_seen_at,last_seen_at,event_family_id,content_hash,material_update",
+    )
+    .in("event_family_id", familyIds)
+    .eq("verification_status", "VERIFIED")
+    .gte("last_seen_at", cutoff)
+    .order("last_seen_at", { ascending: false })
+    .limit(1000);
+
+  if (flashesResult.error) {
+    throw flashesResult.error;
+  }
+
+  const byFamily = new Map<string, Array<Record<string, unknown>>>();
+  for (const flash of (flashesResult.data ?? []) as Array<Record<string, unknown>>) {
+    const familyId = String(flash.event_family_id ?? "");
+    if (!familyId) continue;
+    const list = byFamily.get(familyId) ?? [];
+    list.push(flash);
+    byFamily.set(familyId, list);
+  }
+
+  const events: CountryRiskEventInput[] = [];
+  const commercial_eligibility: StructuredEventCommercialEligibility[] = [];
+
+  for (const family of families) {
+    const familyId = String(family.family_id ?? "");
+    const members = byFamily.get(familyId) ?? [];
+    if (!members.length) continue;
+
+    const latest = members[0];
+    const independentSourceCount = Number(family.independent_source_count ?? 0);
+    const sourceFamilies = [
+      ...new Set(
+        members.map((member) =>
+          flashSourceFamily(
+            String(member.source_id ?? ""),
+            member.source_channel == null
+              ? null
+              : String(member.source_channel),
+          ),
+        ),
+      ),
+    ];
+
+    const sourceIds = [
+      ...new Set(
+        members
+          .map((member) => String(member.source_id ?? "").trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    const sourceUrls = [
+      ...new Set(
+        members
+          .map((member) => String(member.source_url ?? "").trim())
+          .filter((value) => /^https?:\/\//i.test(value)),
+      ),
+    ];
+
+    const rawSeverity = Math.max(
+      0,
+      Math.min(
+        100,
+        Number(
+          latest.severity_bps != null
+            ? Number(latest.severity_bps) / 100
+            : latest.severity != null
+              ? Number(latest.severity)
+              : 0,
+        ),
+      ),
+    );
+
+    const rawConfidence = Math.max(
+      0,
+      Math.min(
+        100,
+        Number(
+          latest.verification_score_bps != null
+            ? Number(latest.verification_score_bps) / 100
+            : latest.verification_score != null
+              ? Number(latest.verification_score)
+              : latest.source_reliability_bps != null
+                ? Number(latest.source_reliability_bps) / 100
+                : latest.source_reliability != null
+                  ? Number(latest.source_reliability)
+                  : 0,
+        ),
+      ),
+    );
+
+    const eventType = String(
+      latest.event_type ?? "geopolitical_development",
+    );
+    const isHighImpact =
+      rawSeverity >= FEDERICO_STRICT_HIGH_IMPACT_SEVERITY &&
+      /conflict|military|attack|escalat/i.test(eventType);
+
+    const hasNamedMajorSource =
+      sourceIds.includes("aljazeera_rss");
+
+    let severity = rawSeverity;
+    let confidence = rawConfidence;
+    let corroborationStatus:
+      | "CONFIRMED"
+      | "CORROBORATING"
+      | "UNCONFIRMED" =
+      independentSourceCount >= 2
+        ? "CONFIRMED"
+        : "CORROBORATING";
+
+    if (isHighImpact && independentSourceCount < 2 && !hasNamedMajorSource) {
+      severity = Math.min(severity, 55);
+      confidence = Math.min(confidence, 40);
+      corroborationStatus = "UNCONFIRMED";
+    }
+
+    const lastSeen = new Date(
+      String(
+        family.last_seen_at ??
+          latest.last_seen_at ??
+          latest.ingested_at,
+      ),
+    );
+    const ageHours = Math.max(
+      0,
+      (asOf.getTime() - lastSeen.getTime()) / 3_600_000,
+    );
+
+    if (
+      !Number.isFinite(ageHours) ||
+      ageHours > FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
+    ) {
+      continue;
+    }
+
+    if (
+      isHighImpact &&
+      ageHours > FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
+    ) {
+      continue;
+    }
+
+    if (isHighImpact && independentSourceCount < 2 && !hasNamedMajorSource) {
+      continue;
+    }
+
+    events.push({
+      id: `flash_family_${familyId}`,
+      domain: flashDomain(family.signal_category),
+      event_type: eventType,
+      title: String(family.canonical_headline ?? latest.headline ?? ""),
+      primary_country: iso3,
+      countries: Array.isArray(family.country_isos)
+        ? family.country_isos.map(String)
+        : [iso3],
+      severity,
+      confidence,
+      direction: flashDirection(eventType),
+      first_seen_at: String(family.first_seen_at ?? latest.first_seen_at ?? latest.ingested_at),
+      last_seen_at: lastSeen.toISOString(),
+      evidence_count: members.length,
+      independent_source_count: independentSourceCount,
+      evidence_refs: sourceUrls.length ? sourceUrls : members.map(
+        (member) => String(member.content_hash ?? ""),
+      ).filter(Boolean),
+      structure_version: "live-flash-family-v1",
+      structured_payload: {
+        source_families: sourceFamilies,
+        source_ids: sourceIds,
+        source_urls: sourceUrls,
+        event_family_id: familyId,
+        relevance_reason:
+          `Direct CHN linkage via canonical event-family country mapping: ${iso3}`,
+        transmission_channel:
+          "direct_country_link",
+        relevance_weight: 1,
+        corroboration_status: corroborationStatus,
+        evidence_freshness_policy:
+          "federico-strict-evidence-v1",
+        high_impact_gate:
+          isHighImpact
+            ? "two_independent_sources_or_named_major_source"
+            : "not_required",
+      },
+      event_family_id: familyId,
+      source_ids: sourceIds,
+      source_urls: sourceUrls,
+      source_families: sourceFamilies,
+      relevance_reason:
+        `Direct CHN linkage via canonical event-family country mapping: ${iso3}`,
+      transmission_channel:
+        "direct_country_link",
+      relevance_weight: 1,
+      corroboration_status: corroborationStatus,
+    });
+
+    commercial_eligibility.push({
+      event_id: `flash_family_${familyId}`,
+      status: "DERIVED_ONLY",
+      reason_codes: [
+        "verified_live_flash_family",
+        "derived_only_delivery_no_raw_redistribution",
+      ],
+    });
+  }
+
+  return { events, commercial_eligibility };
+}
+
+
+
 function eventTouchesCountry(
   event: CountryRiskEventInput,
   iso3: string,
@@ -467,14 +760,19 @@ async function generateInternal(
     );
   }
 
-  const loaded =
-    await loadRecentStructuredEvents(
-      asOf,
-    );
-
   const deliveryProfile =
     input.delivery_profile ??
     "CANONICAL";
+
+  const loaded =
+    deliveryProfile === "FEDERICO_STRICT"
+      ? await loadFedericoStrictEvents(
+          asOf,
+          iso3,
+        )
+      : await loadRecentStructuredEvents(
+          asOf,
+        );
 
   const eligibleEventIds =
     deliveryProfile ===
