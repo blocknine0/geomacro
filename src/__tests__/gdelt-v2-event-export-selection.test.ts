@@ -12,7 +12,10 @@ describe("GDELT V2 live event export selection", () => {
       "function parseLastUpdate(text, asOf = NOW)",
     );
     expect(script).toContain(
-      'candidates.filter((row) => {',
+      "const available = candidates",
+    );
+    expect(script).toContain(
+      ".filter(",
     );
     expect(script).toContain(
       "batchTime <= asOf.getTime()",
