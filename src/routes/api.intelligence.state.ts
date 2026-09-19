@@ -144,7 +144,7 @@ export const Route = createFileRoute("/api/intelligence/state")({
               .filter((value): value is string => Boolean(value))
               .sort()
               .at(-1) ?? null,
-            hotTopics.events.map((event) => event.last_seen_at).sort().at(-1) ?? null,
+            hotTopics.events.map((event) => event.last_observed_at).sort().at(-1) ?? null,
           ].filter((value): value is string => Boolean(value));
 
           const newestTimestamp = timestamps
