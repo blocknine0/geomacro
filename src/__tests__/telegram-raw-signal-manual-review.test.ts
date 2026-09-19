@@ -49,10 +49,11 @@ describe("Telegram raw-signal automated admission contract", () => {
     expect(migration).toContain("country_iso3");
   });
 
-  it("ships with Telegram disabled and no default channel list", () => {
+  it("ships with Telegram auto-discovery enabled and no hard-coded channel list", () => {
     const env = read("workers/telegram-flash/.env.example");
 
     expect(env).toContain("TELEGRAM_ENABLED=false");
+    expect(env).toContain("TELEGRAM_AUTO_DISCOVERY=true");
     expect(env).toContain("TELEGRAM_CHANNELS=");
     expect(env).toContain("TELEGRAM_SOURCE_RELIABILITY_JSON={}");
     expect(env).not.toContain(
