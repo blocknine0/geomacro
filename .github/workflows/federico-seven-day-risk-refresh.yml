@@ -71,46 +71,62 @@ jobs:
         if: steps.window.outputs.active == 'true'
         shell: bash
         env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
 
-          test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::SUPABASE_DB_PASSWORD is missing"; exit 1; }
-
           expected_project="ldpwajisioljyjtojvfx"
-          if [[ "${SUPABASE_PROJECT_ID:-$expected_project}" != "$expected_project" ]]; then
+
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
+
+          if [[ "$SUPABASE_PROJECT_ID" != "$expected_project" ]]; then
             echo "::error::Refusing Federico DB repair against a non-authoritative Supabase project."
             exit 1
           fi
 
-          export PGHOST="db.$expected_project.supabase.co"
-          export PGPORT="5432"
-          export PGUSER="postgres"
-          export PGDATABASE="postgres"
-          export PGPASSWORD="$SUPABASE_DB_PASSWORD"
-          export PGSSLMODE="require"
+          node <<'NODE'
+          const ref = process.env.SUPABASE_PROJECT_ID;
+          const raw = process.env.SUPABASE_DB_URL;
+
+          let url;
+          try {
+            url = new URL(raw);
+          } catch {
+            throw new Error('SUPABASE_DB_URL must be a valid percent-encoded postgres connection URL');
+          }
+
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
+            throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
+          }
+
+          const directHost = `db.${ref}.supabase.co`;
+          const username = decodeURIComponent(url.username);
+          const directMatch =
+            url.hostname === directHost &&
+            username === 'postgres';
+          const poolerMatch =
+            url.hostname.endsWith('.pooler.supabase.com') &&
+            username === `postgres.${ref}`;
+
+          if (!directMatch && !poolerMatch) {
+            throw new Error('SUPABASE_DB_URL does not resolve to the authoritative Geomacro production project');
+          }
+
+          if (!url.password || url.pathname !== '/postgres') {
+            throw new Error('SUPABASE_DB_URL must contain the database password and target /postgres');
+          }
+
+          console.log('PASS: authoritative production DB identity confirmed without printing credentials.');
+          NODE
 
           command -v psql >/dev/null 2>&1 || {
-            echo "::error::psql is required on the GitHub runner for direct authoritative schema repair."
+            echo "::error::psql is required on the GitHub runner for authoritative production schema repair."
             exit 1
           }
 
-          # GitHub-hosted runners may have no IPv6 route. Prefer the authoritative
-          # Supabase direct database IPv4 address while retaining PGHOST for TLS
-          # naming and future diagnostics.
-          DB_IPV4="$(
-            getent ahostsv4 "$PGHOST" 2>/dev/null |
-              awk 'NF {print $1; exit}'
-          )"
-
-          test -n "$DB_IPV4" || {
-            echo "::error::No IPv4 address is available for the authoritative Supabase database host $PGHOST."
-            exit 1
-          }
-
-          export PGHOSTADDR="$DB_IPV4"
-          echo "Using authoritative Supabase database IPv4 endpoint: $DB_IPV4"
+          export PGSSLMODE="require"
 
           required_schema="DO \$\$
           BEGIN
@@ -129,23 +145,23 @@ jobs:
           END \$\$;"
 
           set +e
-          psql -v ON_ERROR_STOP=1 -X -c "$required_schema" >/tmp/federico-schema-check.txt 2>&1
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "$required_schema" >/tmp/federico-schema-check.txt 2>&1
           schema_rc=$?
           set -e
 
           cat /tmp/federico-schema-check.txt
 
           if [[ "$schema_rc" -ne 0 ]]; then
-            echo "Authoritative production event-family schema is incomplete. Applying the idempotent repair migration directly over the production database connection."
-            psql -v ON_ERROR_STOP=1 -X -f supabase/migrations/044_repair_federico_event_family_schema.sql
+            echo "Authoritative production event-family schema is incomplete. Applying the idempotent repair migration over the canonical production DB URL."
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -f supabase/migrations/044_repair_federico_event_family_schema.sql
 
             # Force PostgREST to reload its schema cache after DDL.
-            psql -v ON_ERROR_STOP=1 -X -c "NOTIFY pgrst, 'reload schema';"
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "NOTIFY pgrst, 'reload schema';"
           else
             echo "PASS: authoritative production event-family schema already present."
           fi
 
-          psql -v ON_ERROR_STOP=1 -X -c "$required_schema"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "$required_schema"
 
           echo "PASS: authoritative production event-family schema is present before Federico publication."
 
