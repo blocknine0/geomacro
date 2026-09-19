@@ -39,6 +39,7 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
   FEDERICO_STRICT_MAJOR_SOURCE_IDS,
+  FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
   riskObjectCalculationNamespace,
@@ -405,14 +406,14 @@ async function loadRecentStructuredEvents(
 
 function flashSourceFamily(
   sourceId: string,
-  sourceChannel: string | null,
+  _sourceChannel: string | null,
 ) {
-  // Treat the Telegram ingestion network as one source-family so multiple
-  // channels cannot masquerade as independent editorial organizations.
-  if (sourceId === "telegram_mtproto_flash") {
-    return sourceId;
-  }
-  return sourceId;
+  return (
+    FEDERICO_STRICT_SOURCE_FAMILY_BY_ID[
+      sourceId as keyof typeof FEDERICO_STRICT_SOURCE_FAMILY_BY_ID
+    ] ??
+    `unmapped:${sourceId}`
+  );
 }
 
 function flashDomain(
@@ -847,7 +848,9 @@ async function loadFedericoStrictEvents(
       structured_payload: {
         source_families: sourceFamilies,
         source_ids: sourceIds,
+        source_record_ids: sourceRecordIds,
         source_urls: sourceUrls,
+        content_hashes: contentHashes,
         event_family_id: familyId,
         relevance_reason:
           `Direct CHN linkage via canonical event-family country mapping: ${iso3}`,
