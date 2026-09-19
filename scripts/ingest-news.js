@@ -597,6 +597,33 @@ const GDELT_DISCOVERY_QUERIES = Object.freeze({
     '("rare earth" OR "critical minerals" OR lithium OR cobalt OR nickel OR gallium OR germanium)',
 });
 
+const GDELT_DISCOVERY_CATEGORY_ORDER = Object.freeze([
+  'geopolitics',
+  'macro',
+  'rare_earth',
+]);
+
+/*
+ * GDELT enforces a materially stricter request cadence than the two-hour
+ * Geomacro ingestion schedule. Three back-to-back category calls caused
+ * repeated 429s in production, so the permanent policy is one GDELT request
+ * per ingestion run with deterministic category rotation. Across three
+ * consecutive scheduled runs, all three GRI domains receive one query.
+ *
+ * Manual/workflow re-runs remain deterministic for the same UTC two-hour slot,
+ * which prevents an operator retry from silently creating a new request pattern.
+ */
+function gdeltCategoryForCurrentRun(now = new Date()) {
+  const twoHourSlot = Math.floor(
+    now.getTime() / (2 * 60 * 60 * 1000),
+  );
+  return GDELT_DISCOVERY_CATEGORY_ORDER[
+    ((twoHourSlot % GDELT_DISCOVERY_CATEGORY_ORDER.length) +
+      GDELT_DISCOVERY_CATEGORY_ORDER.length) %
+      GDELT_DISCOVERY_CATEGORY_ORDER.length
+  ];
+}
+
 const CATEGORIES = [
   {
     name: 'geopolitics',
@@ -3124,11 +3151,20 @@ async function ingestNews() {
      * GDELT is discovery infrastructure only. Original publisher URL/domain
      * remains the evidence source used by downstream GRI source caps.
      */
+    const gdeltCategory =
+      gdeltCategoryForCurrentRun();
+
     const gdeltQuery =
-      GDELT_DISCOVERY_QUERIES[category.name];
+      category.name === gdeltCategory
+        ? GDELT_DISCOVERY_QUERIES[category.name]
+        : null;
 
     if (gdeltQuery) {
       try {
+        console.log(
+          `  GDELT discovery slot: ${gdeltCategory} (one request per ingestion run).`,
+        );
+
         const gdeltArticles =
           await fetchGdeltArticles(gdeltQuery);
 
@@ -3185,6 +3221,10 @@ async function ingestNews() {
           `  GDELT discovery failed for ${category.name} (${e.message}).`
         );
       }
+    } else {
+      console.log(
+        `  GDELT discovery skipped for ${category.name}; current deterministic slot is ${gdeltCategory}.`,
+      );
     }
 
     candidateArticles.sort(
