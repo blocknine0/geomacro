@@ -135,7 +135,7 @@ def upsert_candidate(row: dict[str, Any]) -> None:
             "apikey": SUPABASE_SERVICE_ROLE_KEY,
             "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
             "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates,return=minimal",
+            "Prefer": "resolution=ignore-duplicates,return=minimal",
         },
         method="POST",
     )
@@ -264,7 +264,8 @@ async def main() -> None:
                     "notes": (
                         f"Automated public-channel discovery for {country.iso3}; "
                         f"candidate_score={candidate['score']}; no ownership or "
-                        "commercial-rights claim. Independent corroboration required."
+                        "commercial-rights claim. Independent corroboration required. "
+                        "Existing registry rows are never overwritten by discovery."
                     ),
                     "auto_admission_status": "ACTIVE",
                     "source_role": role,
