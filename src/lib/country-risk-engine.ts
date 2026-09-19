@@ -16,6 +16,8 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
   FEDERICO_STRICT_RELEVANCE_METHOD,
+  FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION,
+  FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
 } from "./public-demo-risk-profile";
 
@@ -99,6 +101,7 @@ type WeightedEvent = {
 
   severity: number;
   confidence: number;
+  relevance_weight: number;
 };
 
 function clamp(
@@ -449,9 +452,17 @@ export async function buildCountryRiskObject(
     const confidenceWeight =
       confidence / 100;
 
+    const relevanceWeight =
+      clamp(
+        Number(event.relevance_weight ?? 1),
+        0,
+        1,
+      );
+
     const weight =
       confidenceWeight *
-      timeWeight;
+      timeWeight *
+      relevanceWeight;
 
     if (
       !Number.isFinite(weight) ||
@@ -487,6 +498,8 @@ export async function buildCountryRiskObject(
 
       confidence:
         round(confidence),
+      relevance_weight:
+        round(relevanceWeight, 3),
     });
   }
 
@@ -888,6 +901,17 @@ export async function buildCountryRiskObject(
 
           weight:
             item.weight,
+
+          relevance_weight:
+            item.relevance_weight,
+
+          source_families:
+            item.event.source_families ??
+            [],
+
+          event_family_id:
+            item.event.event_family_id ??
+            null,
         }),
       ),
   };
