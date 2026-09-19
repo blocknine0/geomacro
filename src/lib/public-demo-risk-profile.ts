@@ -14,9 +14,21 @@ export const FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS = 6;
 export const FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS = 3;
 export const FEDERICO_STRICT_HIGH_IMPACT_SEVERITY = 70;
 export const FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD =
-  "controlled_live_flash_source_family_v1" as const;
+  "controlled_live_flash_source_family_v2" as const;
 export const FEDERICO_STRICT_RELEVANCE_METHOD =
-  "direct_country_mapping_v1" as const;
+  "country_bridge_attribution_v1" as const;
+
+export const FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION =
+  "federico-source-family-map-v1" as const;
+
+export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
+  telegram_mtproto_flash: "telegram_network",
+  aljazeera_rss: "aljazeera",
+  federal_reserve_press_rss: "federal_reserve",
+  forexlive_rss: "forexlive",
+  mining_com_rss: "mining_com",
+  reliefweb: "reliefweb_aggregator",
+} as const;
 export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
 ] as const;
