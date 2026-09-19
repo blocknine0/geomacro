@@ -319,7 +319,7 @@ jobs:
           set -euo pipefail
           test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
 
-          for attempt in 1 2 3 4; do
+          for attempt in 1 2 3 4 5 6 7 8; do
             response_file="/tmp/federico-exact-structure-${attempt}.json"
             curl --fail-with-body -sS \
               --retry 3 \
@@ -342,7 +342,7 @@ jobs:
             fi
 
             [[ "${attempt}" -lt 4 ]] || {
-              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after four targeted structure batches."
+              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after eight targeted structure batches."
               exit 1
             }
           done
