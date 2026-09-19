@@ -1,5 +1,7 @@
 name: Deploy country flash intelligence to Supabase
 
+# Federico certification trigger anchor: no behavioral change.
+
 on:
   push:
     branches:
