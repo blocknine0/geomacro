@@ -43,7 +43,9 @@ const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
 
 const GITHUB_OIDC_JWKS =
   createRemoteJWKSet(
-    new URL(GITHUB_OIDC_JWKS_URL),
+    new URL(
+      "https://token.actions.githubusercontent.com/.well-known/jwks",
+    ),
   )
 
 async function verifyGitHubActionsOidc(
@@ -128,8 +130,7 @@ async function verifyGitHubActionsOidc(
       workflowRefAuthorized ||
       workflowFileAuthorized
     )
-  }
-  catch {
+  } catch {
     return false
   }
 }
