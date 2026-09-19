@@ -457,7 +457,7 @@ async function loadFedericoStrictEvents(
   const familiesResult = await db
     .from("live_flash_event_families")
     .select(
-      "family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,current_status,source_count,independent_source_count,latest_flash_id",
+      "family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,last_material_update_at,current_status,source_count,independent_source_count,latest_flash_id",
     )
     .eq("current_status", "ACTIVE")
     .gte("last_seen_at", cutoff)
@@ -552,6 +552,16 @@ async function loadFedericoStrictEvents(
         String(flash.first_seen_at ?? flash.ingested_at ?? asOf.toISOString()),
       last_seen_at:
         String(flash.last_seen_at ?? flash.ingested_at ?? asOf.toISOString()),
+      last_material_update_at:
+        String(
+          flash.last_material_update_at ??
+            (flash.material_update
+              ? flash.last_seen_at
+              : flash.published_at ??
+                flash.first_seen_at ??
+                flash.ingested_at ??
+                asOf.toISOString()),
+        ),
       current_status: "ACTIVE",
       source_count: 1,
       independent_source_count: 1,
