@@ -398,6 +398,11 @@ let liveReview:
       verdict: string;
       confidence: number | null;
       issue_count: number | null;
+      blocker_count: number;
+      high_count: number;
+      medium_count: number;
+      low_count: number;
+      admission_clear: boolean;
       proof_present: boolean;
       billing: unknown;
     } = { attempted: false };
@@ -462,8 +467,14 @@ console.log(
         freshness: "PASS",
         partner_request_contract: "PASS",
         live_partner_review: liveReview.attempted ? "PASS" : "NOT_RUN",
-      trust_metadata: strictProfile ? "PASS" : "NOT_APPLICABLE",
-      reproducibility: strictProfile ? "PASS" : "NOT_APPLICABLE",
+        partner_admission:
+          liveReview.attempted && liveReview.admission_clear
+            ? "PASS"
+            : liveReview.attempted
+              ? "FAIL"
+              : "NOT_RUN",
+        trust_metadata: strictProfile ? "PASS" : "NOT_APPLICABLE",
+        reproducibility: strictProfile ? "PASS" : "NOT_APPLICABLE",
       },
       object: {
         object_id: riskObject.object_id,
