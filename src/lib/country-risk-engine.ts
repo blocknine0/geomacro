@@ -781,6 +781,9 @@ export async function buildCountryRiskObject(
         source_record_ids:
           [...((event as any).source_record_ids ?? [])],
 
+        source_record_ids:
+          [...(event.source_record_ids ?? [])],
+
         source_urls:
           [...(event.source_urls ?? [])],
 
@@ -788,7 +791,7 @@ export async function buildCountryRiskObject(
           [...(event.source_families ?? [])],
 
         content_hashes:
-          [...((event as any).content_hashes ?? [])],
+          [...(event.content_hashes ?? [])],
 
         relevance_reason:
           event.relevance_reason ??
@@ -811,20 +814,20 @@ export async function buildCountryRiskObject(
           ),
 
         subject_is_primary:
-          (event as any).subject_is_primary ??
+          event.subject_is_primary ??
           true,
 
         subject_attribution_confidence:
-          typeof (event as any).subject_attribution_confidence ===
+          typeof event.subject_attribution_confidence ===
           "number"
             ? round(
-                (event as any).subject_attribution_confidence,
+                event.subject_attribution_confidence,
                 2,
               )
             : null,
 
         subject_attribution_method:
-          (event as any).subject_attribution_method ??
+          event.subject_attribution_method ??
           null,
 
         material_evidence_at:
@@ -1037,6 +1040,9 @@ export async function buildCountryRiskObject(
 
           source_ids:
             item.source_ids ?? [],
+
+          source_record_ids:
+            item.source_record_ids ?? [],
 
           source_urls:
             item.source_urls ?? [],
