@@ -11,6 +11,12 @@ import {
   type RiskDriver,
 } from "./risk-object-contract";
 
+import {
+  FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
+  FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
+  FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
+} from "./public-demo-risk-profile";
+
 export type CountryRiskEventInput = {
   id: string;
 
@@ -44,6 +50,15 @@ export type CountryRiskEventInput = {
   structured_payload:
     | Record<string, unknown>
     | null;
+
+  event_family_id?: string | null;
+  source_ids?: string[];
+  source_urls?: string[];
+  source_families?: string[];
+  relevance_reason?: string;
+  transmission_channel?: string | null;
+  relevance_weight?: number;
+  corroboration_status?: "CONFIRMED" | "CORROBORATING" | "UNCONFIRMED";
 };
 
 export type BuildCountryRiskInput = {
