@@ -323,38 +323,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          country_count="$(psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -X -c "
-            SELECT count(*)
-            FROM public.live_country_registry
-            WHERE enabled = true;
-          ")"
-
-          chn_count="$(psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -X -c "
-            SELECT count(*)
-            FROM public.live_country_registry
-            WHERE enabled = true AND iso3 = 'CHN';
-          ")"
-
-          usa_count="$(psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -X -c "
-            SELECT count(*)
-            FROM public.live_country_registry
-            WHERE enabled = true AND iso3 = 'USA';
-          ")"
-
-          test "$country_count" = "194" || {
-            echo "::error title=Country registry drift::Expected 194 enabled sovereign-country registry rows, found $country_count."
-            exit 1
-          }
-          test "$chn_count" = "1" || {
-            echo "::error title=CHN registry missing::CHN is not present in the enabled authoritative country registry."
-            exit 1
-          }
-          test "$usa_count" = "1" || {
-            echo "::error title=USA registry missing::USA is not present in the enabled authoritative country registry."
-            exit 1
-          }
-
-          echo "PASS: authoritative production country registry is complete for the governed 194-country denominator."
+          node scripts/verify-production-country-registry.mjs
       - name: Report deferred flash runtime activation
         if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY != 'true' }}
         shell: bash
