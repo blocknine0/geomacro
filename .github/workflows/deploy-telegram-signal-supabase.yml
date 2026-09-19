@@ -13,10 +13,11 @@ on:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
       - "supabase/functions/live-flash-archive/**"
-      - "supabase/migrations/953_event_family_version_ledger.sql"
-      - "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
-      - "supabase/migrations/951_telegram_signal_compact_storage.sql"
-      - "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
+      - "supabase/isolated-signal/config.toml"
+      - "supabase/isolated-signal/migrations/953_event_family_version_ledger.sql"
+      - "supabase/isolated-signal/migrations/952_realtime_flash_event_lifecycle.sql"
+      - "supabase/isolated-signal/migrations/951_telegram_signal_compact_storage.sql"
+      - "supabase/isolated-signal/migrations/950_telegram_signal_ingest_isolation.sql"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
 
@@ -92,9 +93,9 @@ jobs:
         with:
           version: 2.117.0
       - name: Link isolated signal project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+        run: SUPABASE_WORKDIR=supabase/isolated-signal supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Show pending database migrations
-        run: supabase db push --dry-run
+        run: SUPABASE_WORKDIR=supabase/isolated-signal supabase db push --dry-run
       - name: Stop after deployment plan
         if: ${{ inputs.mode == 'plan' }}
         run: echo "Plan completed. No signal-project database or function changes were applied."
