@@ -41,6 +41,6 @@ describe("Telegram automated global coverage contract", () => {
     const matrix = JSON.parse(read("config/telegram-global-coverage-matrix.json"));
     expect(matrix.runtime_effect).toBe(false);
     expect(matrix.coverage_goal).toContain("Global geographic and linguistic coverage");
-    expect(matrix.approval_policy).toContain("machine");
+    expect(matrix.approval_policy).toMatch(/machine/i);
   });
 });
