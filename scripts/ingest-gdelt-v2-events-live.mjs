@@ -227,6 +227,60 @@ function mapFipsToIso3(fipsCode, fipsLookup, registry) {
   return { iso3: null, sourceName, reason: "OFFICIAL_FIPS_NAME_NOT_IN_CANONICAL_COUNTRY_REGISTRY" }
 }
 
+
+async function loadCurrentlyAvailableExport(asOf) {
+  const waitMinutes = Number(
+    process.env.GDELT_MAX_AVAILABILITY_WAIT_MINUTES ?? 8,
+  )
+  if (!Number.isFinite(waitMinutes) || waitMinutes < 0) {
+    throw new Error(
+      "GDELT_MAX_AVAILABILITY_WAIT_MINUTES must be zero or positive",
+    )
+  }
+
+  const deadline =
+    Date.now() + waitMinutes * 60_000
+
+  let lastAvailabilityError = null
+
+  while (true) {
+    const lastUpdateResponse = await fetchWithRetry(
+      LAST_UPDATE_URL,
+      "text/plain",
+    )
+    const lastUpdateText = await lastUpdateResponse.text()
+
+    try {
+      return parseLastUpdate(lastUpdateText, asOf)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        message !==
+        "GDELT lastupdate.txt has no Event export available at or before the requested as-of time"
+      ) {
+        throw error
+      }
+
+      lastAvailabilityError = error
+    }
+
+    if (Date.now() >= deadline) {
+      throw (
+        lastAvailabilityError ??
+        new Error("GDELT Event export did not become available")
+      )
+    }
+
+    console.log(
+      "GDELT lastupdate advertises a future Event export; waiting for an export that is available at or before as-of time.",
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 10_000))
+  }
+}
+
 async function loadSourceRegistration(db) {
   const result = await db
     .from("live_external_sources")
@@ -274,9 +328,7 @@ const registry = await loadCountryRegistry(db)
 const sourceRegistration = await loadSourceRegistration(db)
 if (WRITE) assertWriteGovernance(sourceRegistration)
 
-const lastUpdateResponse = await fetchWithRetry(LAST_UPDATE_URL, "text/plain")
-const lastUpdateText = await lastUpdateResponse.text()
-const exportMeta = parseLastUpdate(lastUpdateText)
+const exportMeta = await loadCurrentlyAvailableExport(NOW)
 const batchAgeMinutes = ageMinutes(exportMeta.batchIso, NOW)
 if (batchAgeMinutes > MAX_BATCH_AGE_MINUTES) {
   throw new Error(`GDELT Event batch is stale: ${batchAgeMinutes.toFixed(2)} minutes old`)
