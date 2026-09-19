@@ -2830,6 +2830,8 @@ async function ingestNews() {
 
   let totalInserted = 0;
   let totalRejectedByGate = 0;
+  let totalDiscoveryCandidates = 0;
+  let totalClassifierCandidates = 0;
   let stopRun = false;
 
   for (const category of CATEGORIES) {
@@ -3275,6 +3277,9 @@ async function ingestNews() {
         {}
       );
 
+    totalClassifierCandidates += candidateArticles.length;
+    totalDiscoveryCandidates += candidateArticles.length;
+
     console.log(
       `  ${candidateArticles.length} new unique candidate article(s) to classify. ` +
         `Providers=${JSON.stringify(providerCounts)}`
@@ -3425,6 +3430,13 @@ async function ingestNews() {
   console.log(
     `Rejected by gate: ${totalRejectedByGate}. ` +
       `Groq requests this run: ${groqRequestsThisRun}.`
+  );
+  console.log(
+    JSON.stringify({
+      discovery_candidates_classified: totalDiscoveryCandidates,
+      events_inserted: totalInserted,
+      candidates_rejected: totalRejectedByGate,
+    })
   );
 
   console.log('');
