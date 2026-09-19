@@ -127,3 +127,23 @@ The measurable production objective is:
 ## Implementation boundary
 
 Runtime admission and worker-side registry discovery are implemented by the current branch. The remaining population task is automated public-channel discovery and continuous candidate replacement so the registry reaches the per-country targets. Until that population work is complete, Geomacro must not claim 194-country Telegram source completeness.
+
+
+## Automated public-channel discovery
+
+The branch now includes a scheduled discovery job that queries Telegram's official global channel-search surface for each enabled country in `live_country_registry`. Telegram documents `messages.searchGlobal` with `broadcasts_only` specifically for channel search, so discovery uses that path rather than user/contact search. citeturn0search0turn0search2
+
+Discovery is deliberately conservative:
+
+- only public broadcast channels with a public username are candidates;
+- scam/fake channels are rejected;
+- candidate country attribution is deterministic and based on country name/alias matches across channel metadata and returned messages;
+- discovered sources enter `ACTIVE` only for the internal lead layer;
+- ownership is never auto-promoted to `OFFICIAL`;
+- rights remain `INTERNAL_RESEARCH_ONLY`;
+- every resulting event remains `UNVERIFIED`;
+- source diversity and independent corroboration remain required before production intelligence promotion.
+
+The job runs every six hours and can also be dispatched manually. It is a discovery/replacement loop, not the real-time listener itself. The long-lived Telegram worker remains the real-time transport.
+
+Telegram also exposes `channels.searchPosts` for global public-channel post search, but Telegram documents a daily free-search/flood-control model for full-text post searches. It is therefore not used as the always-on discovery primitive here. citeturn0search1turn0search2
