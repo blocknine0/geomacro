@@ -66,9 +66,9 @@ async function loadGlobalLiveSeverity() {
   const db = requireRiskSupabase();
   const result = await db
     .from("live_structured_events")
-    .select("id,event_type,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,structure_version")
+    .select("id,event_type,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,last_observed_at,structure_version")
     .not("severity", "is", null)
-    .order("last_seen_at", { ascending: false })
+    .order("last_observed_at", { ascending: false })
     .limit(200);
 
   if (result.error) throw result.error;
@@ -86,6 +86,7 @@ async function loadGlobalLiveSeverity() {
       direction: row.direction == null ? null : String(row.direction),
       first_seen_at: row.first_seen_at == null ? null : String(row.first_seen_at),
       last_seen_at: row.last_seen_at == null ? null : String(row.last_seen_at),
+      last_observed_at: row.last_observed_at == null ? null : String(row.last_observed_at),
       structure_version: row.structure_version == null ? null : String(row.structure_version),
     }))
     .filter((row) => Number.isFinite(row.severity) && row.severity >= 0 && row.severity <= 100)
