@@ -1040,6 +1040,21 @@ export async function buildCountryRiskObject(
 
           relevance_weight:
             item.relevance_weight,
+
+          subject_is_primary:
+            item.subject_is_primary ?? true,
+
+          subject_attribution_confidence:
+            item.subject_attribution_confidence ?? null,
+
+          subject_attribution_method:
+            item.subject_attribution_method ?? null,
+
+          source_record_ids:
+            item.source_record_ids ?? [],
+
+          content_hashes:
+            item.content_hashes ?? [],
         }),
       ),
   };
@@ -1246,6 +1261,26 @@ export async function buildCountryRiskObject(
         FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
       minimum_high_impact_independent_sources:
         strictProfile ? 2 : 1,
+
+      source_independence_method:
+        strictProfile
+          ? FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD
+          : "canonical_source_family_v1",
+
+      relevance_method:
+        strictProfile
+          ? FEDERICO_STRICT_RELEVANCE_METHOD
+          : "country_registry_match_v1",
+
+      source_family_map_version:
+        strictProfile
+          ? FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION
+          : "not_applicable",
+
+      source_family_map:
+        strictProfile
+          ? { ...FEDERICO_STRICT_SOURCE_FAMILY_BY_ID }
+          : {},
     },
     calculation_input:
       calculationInput,
