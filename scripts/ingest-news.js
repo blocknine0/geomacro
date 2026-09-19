@@ -515,7 +515,17 @@ const GUARDIAN_QUERY_ROTATION_HOURS = (() => {
 const GUARDIAN_ROTATION_RUN_MS =
   Date.now();
 
-function guardianQueryPlan(queries) {
+const FEDERICO_GEO_PRIORITY_QUERIES = Object.freeze([
+  'China Taiwan military drills blockade invasion',
+  'China Taiwan Strait military escalation',
+  'China Philippines South China Sea naval clash',
+  'China strategic minerals sanctions export controls',
+]);
+
+function guardianQueryPlan(
+  queries,
+  priorityQueries = [],
+) {
   const allQueries =
     Array.isArray(queries)
       ? queries
@@ -530,17 +540,18 @@ function guardianQueryPlan(queries) {
       chunkIndex: 0,
       startIndex: 0,
       endIndex: 0,
+      priorityQueries: [],
     };
   }
 
   const budget = Math.min(
     GUARDIAN_QUERY_BUDGET_PER_CATEGORY,
-    allQueries.length
+    allQueries.length,
   );
 
   const totalChunks =
     Math.ceil(
-      allQueries.length / budget
+      allQueries.length / budget,
     );
 
   const guardianRotationSlot =
@@ -551,7 +562,7 @@ function guardianQueryPlan(queries) {
           60 *
           60 *
           1000
-        )
+        ),
     );
 
   const chunkIndex =
@@ -564,15 +575,40 @@ function guardianQueryPlan(queries) {
   const endIndex =
     Math.min(
       startIndex + budget,
-      allQueries.length
+      allQueries.length,
     );
 
+  const rotatedQueries =
+    allQueries.slice(
+      startIndex,
+      endIndex,
+    );
+
+  const priority =
+    Array.isArray(priorityQueries)
+      ? priorityQueries.filter(
+          (query) =>
+            typeof query === 'string' &&
+            allQueries.includes(query),
+        )
+      : [];
+
+  const selectedQueries = [];
+  const selected = new Set();
+
+  for (const query of [
+    ...priority,
+    ...rotatedQueries,
+  ]) {
+    if (selected.has(query)) continue;
+    selected.add(query);
+    selectedQueries.push(query);
+
+    if (selectedQueries.length >= budget) break;
+  }
+
   return {
-    queries:
-      allQueries.slice(
-        startIndex,
-        endIndex
-      ),
+    queries: selectedQueries,
     totalQueries:
       allQueries.length,
     budget,
@@ -580,9 +616,9 @@ function guardianQueryPlan(queries) {
     chunkIndex,
     startIndex,
     endIndex,
+    priorityQueries: priority,
   };
 }
-
 const RELIEFWEB_DISCOVERY_QUERIES = Object.freeze({
   geopolitics:
     'conflict war attack ceasefire displacement sanctions military humanitarian crisis',
@@ -2903,7 +2939,10 @@ async function ingestNews() {
 
     const guardianPlan =
       guardianQueryPlan(
-        category.queries
+        category.queries,
+        category.name === 'geopolitics'
+          ? FEDERICO_GEO_PRIORITY_QUERIES
+          : [],
       );
 
     console.log(
