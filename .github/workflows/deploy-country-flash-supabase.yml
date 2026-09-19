@@ -68,6 +68,7 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
 
     steps:
@@ -82,7 +83,7 @@ jobs:
           set -euo pipefail
 
           missing=0
-          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD; do
+          for name in SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD SUPABASE_DB_URL; do
             if [[ -z "${!name:-}" ]]; then
               echo "::error title=Missing production secret::${name} is not configured."
               missing=1
@@ -94,28 +95,49 @@ jobs:
           fi
 
           if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SUPABASE_PROJECT_REF" ]]; then
-            echo "::error title=Wrong production target::Refusing to link or deploy to a Supabase project other than the authoritative Geomacro production ref."
+            echo "::error title=Wrong production target::Refusing to deploy to a Supabase project other than the authoritative Geomacro production ref."
             exit 1
           fi
 
-          echo "PASS: authoritative production Supabase project ref confirmed."
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const raw = process.env.SUPABASE_DB_URL;
+          let url;
+          try {
+            url = new URL(raw);
+          } catch {
+            throw new Error('SUPABASE_DB_URL must be a valid percent-encoded postgres connection URL');
+          }
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
+            throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
+          }
+          const directHost = 'db.' + ref + '.supabase.co';
+          const username = decodeURIComponent(url.username);
+          const directMatch = url.hostname === directHost && username === 'postgres';
+          const poolerMatch =
+            url.hostname.endsWith('.pooler.supabase.com') &&
+            username === 'postgres.' + ref;
+          if (!directMatch && !poolerMatch) {
+            throw new Error('SUPABASE_DB_URL does not resolve to the authoritative Geomacro production project');
+          }
+          if (!url.password || url.pathname !== '/postgres') {
+            throw new Error('SUPABASE_DB_URL must contain the database password and target /postgres');
+          }
+          console.log('PASS: authoritative production DB identity confirmed without printing credentials.');
+          NODE
+
+          echo "PASS: authoritative production target and DB URL confirmed."
 
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.117.0
 
-      - name: Link production project
-        shell: bash
-        run: |
-          set -euo pipefail
-          supabase link --project-ref "$SUPABASE_PROJECT_ID"
-
       - name: Show pending database migrations
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --dry-run
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
 
       - name: Stop after deployment plan
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
@@ -128,19 +150,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push
+          supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Verify authoritative event-family schema
         if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
-          supabase db query --linked -p "$SUPABASE_DB_PASSWORD" "DO \\$\\$ BEGIN
+          supabase db query --db-url "$SUPABASE_DB_URL" "DO \\$\\$ BEGIN
             IF to_regclass('public.live_flash_event_families') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_families is missing from authoritative production';
             END IF;
+            IF to_regclass('public.live_flash_event_family_members') IS NULL THEN
+              RAISE EXCEPTION 'live_flash_event_family_members is missing from authoritative production';
+            END IF;
             IF to_regclass('public.live_flash_event_family_versions') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_family_versions is missing from authoritative production';
+            END IF;
+            IF to_regclass('public.live_flash_event_versions') IS NULL THEN
+              RAISE EXCEPTION 'live_flash_event_versions is missing from authoritative production';
+            END IF;
+            IF to_regclass('public.live_structured_events') IS NULL THEN
+              RAISE EXCEPTION 'live_structured_events is missing from authoritative production';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'live_structured_events'
+                AND column_name = 'last_observed_at'
+            ) THEN
+              RAISE EXCEPTION 'live_structured_events.last_observed_at is missing from authoritative production';
             END IF;
           END \\$\\$;"
 
@@ -151,6 +191,10 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
+            test -n "${SUPABASE_ACCESS_TOKEN:-}" || {
+              echo "::error title=Missing production secret::SUPABASE_ACCESS_TOKEN is required when flash runtime activation is requested."
+              exit 1
+            }
             echo "FLASH_RUNTIME_READY=true" >> "$GITHUB_ENV"
             echo "Flash runtime credential configured; Edge deployment and smoke checks will run."
           else
@@ -234,4 +278,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Core country-flash schema migrations are applied. Flash runtime activation remains explicitly blocked by the missing FLASH_INGEST_TOKEN."
+          echo "Core country-flash schema migrations are applied through the authoritative PostgreSQL connection. Flash runtime activation remains explicitly blocked by the missing FLASH_INGEST_TOKEN."
