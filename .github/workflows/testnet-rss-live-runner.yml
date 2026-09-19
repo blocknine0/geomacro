@@ -2,6 +2,12 @@ name: Testnet RSS Live Intelligence Runner
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/telegram-flash/worker.py"
+      - ".github/workflows/testnet-rss-live-runner.yml"
   schedule:
     - cron: "*/15 * * * *"
   workflow_run:
