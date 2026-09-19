@@ -673,7 +673,8 @@ async function loadFedericoStrictEvents(
       | "CONFIRMED"
       | "CORROBORATING"
       | "UNCONFIRMED" =
-      independentSourceCount >= 2
+      independentSourceCount >= 2 ||
+      hasNamedMajorSource
         ? "CONFIRMED"
         : "CORROBORATING";
 
