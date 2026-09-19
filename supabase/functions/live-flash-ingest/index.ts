@@ -1022,6 +1022,24 @@ Deno.serve(async request => {
         },
       )
     }
+
+    // Successful delivery is also a machine health observation. This keeps
+    // source freshness measurable without introducing a human approval step.
+    const healthUpdate = await db
+      .from("live_telegram_channel_registry")
+      .update({
+        last_health_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+        consecutive_failures: 0,
+        auto_admission_status: "ACTIVE",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("channel_key", channelKey)
+      .eq("auto_admission_status", "ACTIVE")
+
+    if (healthUpdate.error) {
+      console.error("telegram source health update failed", healthUpdate.error)
+    }
   }
 
   const publishedAt =
