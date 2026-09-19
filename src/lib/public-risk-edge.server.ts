@@ -36,11 +36,31 @@ function validateIndices(value: unknown): value is PublicRiskIndices {
   if (!Array.isArray(row.indices) || row.indices.length !== 3) return false;
 
   const keys = row.indices.map((item) => record(item)?.key).sort();
-  return (
-    keys[0] === "critical_minerals" &&
-    keys[1] === "geopolitics" &&
-    keys[2] === "macro"
-  );
+  if (
+    keys[0] !== "critical_minerals" ||
+    keys[1] !== "geopolitics" ||
+    keys[2] !== "macro"
+  ) return false;
+
+  return row.indices.every((item) => {
+    const index = record(item);
+    if (!index) return false;
+    if (!["available", "unavailable"].includes(String(index.status))) return false;
+    if (!["current", "last_verified"].includes(String(index.readingStatus))) return false;
+    if (index.status === "available") {
+      return (
+        typeof index.readingSnapshotId === "string" &&
+        typeof index.readingAsOf === "string" &&
+        typeof index.readingAgeHours === "number" &&
+        Number.isFinite(index.readingAgeHours)
+      );
+    }
+    return (
+      index.readingSnapshotId === null &&
+      index.readingAsOf === null &&
+      index.readingAgeHours === null
+    );
+  });
 }
 
 function validateLegacyGlobalRisk(value: unknown): value is GlobalRisk {

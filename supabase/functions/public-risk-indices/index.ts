@@ -7,8 +7,10 @@ const METHOD_VERSION = "gri-v1.2.0"
 const PROOF_VERSION = "gri-proof-v1.2.0"
 const STORY_VERSION = "story-correlation-v1.0.0"
 const STORY_PROMPT_VERSION = "story-match-title-v1.0.0"
-const CONTRACT_VERSION = "risk-indices-v1.0.0"
+const CONTRACT_VERSION = "risk-indices-v1.1.0"
 const LOOKBACK_HOURS = 72
+const SNAPSHOT_RETENTION_DAYS = 91
+const MAX_CATEGORY_READING_AGE_HOURS = 6
 const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
 const FUTURE_TOLERANCE_MS = 15 * 60 * 1000
@@ -171,6 +173,24 @@ function indexSeries(
   return finishSeries(timeframe, buckets)
 }
 
+function latestVerifiedCategorySnapshot(
+  snapshots: AnyRow[],
+  category: string,
+  latestAt: number,
+): { snapshot: AnyRow; categoryRow: AnyRow } | null {
+  for (const snapshot of snapshots) {
+    const snapshotAt = Date.parse(String(snapshot.as_of ?? ""))
+    if (!Number.isFinite(snapshotAt)) continue
+    if (latestAt - snapshotAt > MAX_CATEGORY_READING_AGE_HOURS * HOUR) break
+
+    const categoryRow = categoryByName(snapshot, category)
+    if (num(categoryRow?.score) !== null) {
+      return { snapshot, categoryRow: categoryRow as AnyRow }
+    }
+  }
+  return null
+}
+
 function verifySnapshot(snapshot: AnyRow, now: number) {
   const latestAt = Date.parse(String(snapshot.as_of ?? ""))
   const reconciliationResidual = num(snapshot.reconciliation_residual)
@@ -224,17 +244,36 @@ function verifySnapshot(snapshot: AnyRow, now: number) {
 
 function buildIndices(snapshots: AnyRow[], latest: AnyRow, latestAt: number) {
   return INDEX_SPECS.map((spec) => {
-    const current = categoryByName(latest, spec.sourceCategory)
-    const storedChange = categoryChangeByName(latest, spec.sourceCategory)
+    const reading = latestVerifiedCategorySnapshot(snapshots, spec.sourceCategory, latestAt)
+    const readingSnapshot = reading?.snapshot ?? null
+    const current = reading?.categoryRow ?? null
+    const storedChange = readingSnapshot
+      ? categoryChangeByName(readingSnapshot, spec.sourceCategory)
+      : null
     const rawScore = num(current?.score)
     const previousScore = num(storedChange?.previousScore)
     const currentForChange = num(storedChange?.currentScore) ?? rawScore
+    const readingAt = readingSnapshot
+      ? Date.parse(String(readingSnapshot.as_of ?? ""))
+      : NaN
+    const readingAgeHours = Number.isFinite(readingAt)
+      ? Math.max(0, (latestAt - readingAt) / HOUR)
+      : null
 
     return {
       key: spec.key,
       name: spec.name,
       sourceCategory: spec.sourceCategory,
       status: rawScore === null ? "unavailable" : "available",
+      readingStatus:
+        rawScore === null
+          ? "last_verified"
+          : readingSnapshot?.id === latest.id
+            ? "current"
+            : "last_verified",
+      readingSnapshotId: rawScore === null ? null : String(readingSnapshot?.id ?? ""),
+      readingAsOf: rawScore === null ? null : String(readingSnapshot?.as_of ?? ""),
+      readingAgeHours: rawScore === null ? null : readingAgeHours,
       score: rawScore === null ? null : Math.round(rawScore),
       rawScore,
       previousScore,
@@ -253,7 +292,9 @@ function buildIndices(snapshots: AnyRow[], latest: AnyRow, latestAt: number) {
         "7D": indexSeries(snapshots, spec.sourceCategory, "7D", latestAt),
         "30D": indexSeries(snapshots, spec.sourceCategory, "30D", latestAt),
       },
-      topEvent: topEventFor(latest, spec.sourceCategory),
+      topEvent: readingSnapshot
+        ? topEventFor(readingSnapshot, spec.sourceCategory)
+        : null,
     }
   })
 }
@@ -310,7 +351,7 @@ async function handle(request: Request) {
   }
 
   const now = Date.now()
-  const since = new Date(now - 31 * DAY).toISOString()
+  const since = new Date(now - SNAPSHOT_RETENTION_DAYS * DAY).toISOString()
   const { data, error } = await db
     .from("gri_snapshots")
     .select(
