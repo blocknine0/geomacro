@@ -149,9 +149,10 @@ If the StringSession is ever exposed, revoke/replace the Telegram session before
 7. Confirm the worker image is published from `main`.
 8. Start the container in RSS-only mode first with `TELEGRAM_ENABLED=false`.
 9. Verify new RSS records enter `live_flash_events` and remain `UNVERIFIED` until corroborated.
-10. Manually review each public Telegram channel and record the decision in `live_telegram_channel_registry`.
-11. Enable only rows with `manual_review_status=APPROVED` and `enabled=true`; keep all others disabled.
-12. Add only those approved public usernames to the worker `TELEGRAM_CHANNELS` deployment configuration, then set `TELEGRAM_ENABLED=true`.
+10. Run the automated Telegram public-channel discovery job against the canonical `live_country_registry`.
+11. Verify discovered rows are `enabled=true` and `auto_admission_status=ACTIVE`; discovery must not promote ownership to `OFFICIAL` or rights to `COMMERCIAL_OK`.
+12. Start the long-lived worker with registry auto-discovery enabled. `TELEGRAM_CHANNELS` is only an explicit fallback.
+13. Verify Telegram records enter `UNVERIFIED` and require independent corroboration before promotion.
 13. Verify Telegram records use stable source/message identity and edits update rather than duplicate the same message.
 14. Confirm every Telegram item enters as `UNVERIFIED`, corroboration edges are written, and no single-source item becomes `VERIFIED` by itself.
 15. Only after this runtime verification should Telegram raw-signal intake be treated as production-active.

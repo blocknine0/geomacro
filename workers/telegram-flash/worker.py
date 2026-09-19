@@ -65,11 +65,59 @@ INGEST_TOKEN = os.environ.get("GEOMACRO_FLASH_INGEST_TOKEN", "").strip()
 OIDC_TOKEN = os.environ.get("GEOMACRO_FLASH_OIDC_TOKEN", "").strip()
 
 TELEGRAM_ENABLED = env_bool("TELEGRAM_ENABLED", True)
+TELEGRAM_AUTO_DISCOVERY = env_bool("TELEGRAM_AUTO_DISCOVERY", True)
 RSS_ENABLED = env_bool("BREAKING_RSS_ENABLED", True)
 RSS_RUN_ONCE = env_bool("BREAKING_RSS_RUN_ONCE", False)
 
 TELEGRAM_CHANNELS = parse_channels(os.environ.get("TELEGRAM_CHANNELS", ""))
 TELEGRAM_SOURCE_RELIABILITY = parse_reliability()
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+
+def load_registry_channels_sync() -> list[str]:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise RuntimeError(
+            "TELEGRAM_AUTO_DISCOVERY=true requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY"
+        )
+
+    url = (
+        f"{SUPABASE_URL}/rest/v1/live_telegram_channel_registry"
+        "?select=channel_key,enabled,auto_admission_status"
+        "&enabled=eq.true&auto_admission_status=eq.ACTIVE"
+        "&order=channel_key.asc"
+    )
+    request = urllib.request.Request(
+        url,
+        headers={
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Telegram registry lookup HTTP {exc.code}: {detail[:500]}"
+        ) from exc
+
+    if not isinstance(body, list):
+        raise RuntimeError("Telegram registry lookup returned a non-list payload")
+
+    channels = [
+        str(row.get("channel_key", "")).strip()
+        for row in body
+        if isinstance(row, dict) and str(row.get("channel_key", "")).strip()
+    ]
+    if not channels:
+        raise RuntimeError("Telegram automated registry contains no ACTIVE public channels")
+    return channels
+
 
 RSS_POLL_SECONDS = max(
     20,
@@ -684,9 +732,12 @@ async def run_telegram() -> None:
         print(json.dumps({"telegram": "disabled"}), flush=True)
         return
 
-    if not TELEGRAM_CHANNELS:
+    channels = TELEGRAM_CHANNELS
+    if TELEGRAM_AUTO_DISCOVERY:
+        channels = await asyncio.to_thread(load_registry_channels_sync)
+    if not channels:
         raise RuntimeError(
-            "TELEGRAM_ENABLED=true but TELEGRAM_CHANNELS is empty"
+            "TELEGRAM_ENABLED=true but no Telegram channels are configured or discovered"
         )
 
     api_id = int(require_env("TELEGRAM_API_ID"))
@@ -697,7 +748,7 @@ async def run_telegram() -> None:
     await client.start()
 
     resolved = []
-    for channel in TELEGRAM_CHANNELS:
+    for channel in channels:
         entity = await client.get_entity(channel)
         username = getattr(entity, "username", None)
         if not isinstance(username, str) or not username.strip():
