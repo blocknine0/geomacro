@@ -777,8 +777,18 @@ const DISCOVERY_STOPWORDS = new Set([
   'news', 'crisis', 'risk', 'world', 'political', 'politics',
 ]);
 
+function normalizeDiscoveryText(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
 function discoveryQueryTokens(query) {
-  return normalizeText(query)
+  return normalizeDiscoveryText(query)
     .split(' ')
     .map((token) => token.trim())
     .filter((token) => token.length >= 3 && !DISCOVERY_STOPWORDS.has(token));
@@ -788,7 +798,7 @@ function guardianQueryRelevance(query, article) {
   const queryTokens = discoveryQueryTokens(query);
   if (!queryTokens.length) return true;
 
-  const articleText = normalizeText(
+  const articleText = normalizeDiscoveryText(
     `${article.title || ''} ${article.description || ''}`.slice(0, 6000),
   );
   const articleTokens = new Set(articleText.split(' '));
