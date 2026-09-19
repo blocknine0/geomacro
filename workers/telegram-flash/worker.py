@@ -196,6 +196,14 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "priority_max_items": 5,
     },
     {
+        "source_id": "xinhua_english_china_rss",
+        "name": "Xinhua English China RSS",
+        "url": "https://www.xinhuanet.com/english/rss/chinarss.xml",
+        "event_type": "GEOPOLITICS_BREAKING",
+        "source_reliability": 90.0,
+        "country_iso3": "CHN",
+    },
+    {
         "source_id": "federal_reserve_press_rss",
         "name": "Federal Reserve Press Releases",
         "url": "https://www.federalreserve.gov/feeds/press_all.xml",
