@@ -70,6 +70,7 @@ export type PublicStructuralDevelopment = {
   status: string;
   first_seen_at: string;
   last_seen_at: string;
+  last_observed_at: string;
   evidence_count: number;
   corroboration_count: number;
   structure_version: string;
@@ -225,6 +226,7 @@ export function publicStructuralDevelopment(event: {
   status: string;
   first_seen_at: string;
   last_seen_at: string;
+  last_observed_at: string;
   evidence_count: number;
   independent_source_count: number;
   structure_version: string;
@@ -250,6 +252,7 @@ export function publicStructuralDevelopment(event: {
     status: event.status,
     first_seen_at: event.first_seen_at,
     last_seen_at: event.last_seen_at,
+    last_observed_at: event.last_observed_at,
     evidence_count: Math.max(0, event.evidence_count),
     corroboration_count: Math.max(0, event.independent_source_count),
     structure_version: event.structure_version,
