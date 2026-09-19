@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   validate-workflow:
@@ -202,16 +203,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || {
+            echo "::error title=Missing production secret::SUPABASE_ACCESS_TOKEN is required for live-flash-ingest deployment."
+            exit 1
+          }
+
+          echo "FLASH_INGEST_DEPLOY_READY=true" >> "${GITHUB_ENV}"
+
           if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
-            test -n "${SUPABASE_ACCESS_TOKEN:-}" || {
-              echo "::error title=Missing production secret::SUPABASE_ACCESS_TOKEN is required when flash runtime activation is requested."
-              exit 1
-            }
-            echo "FLASH_RUNTIME_READY=true" >> "$GITHUB_ENV"
-            echo "Flash runtime credential configured; Edge deployment and smoke checks will run."
+            echo "FLASH_RUNTIME_READY=true" >> "${GITHUB_ENV}"
+            echo "Dedicated FLASH_INGEST_TOKEN configured; static-token Telegram/corroboration paths remain enabled."
           else
-            echo "FLASH_RUNTIME_READY=false" >> "$GITHUB_ENV"
-            echo "::warning::FLASH_INGEST_TOKEN is not configured. Core database migrations will still apply; flash Edge deployment and smoke checks will remain disabled until the protected runtime credential is provisioned."
+            echo "FLASH_RUNTIME_READY=false" >> "${GITHUB_ENV}"
+            echo "Dedicated FLASH_INGEST_TOKEN is absent; GitHub OIDC will be the RSS authentication path."
           fi
 
       - name: Sync flash authentication secret
@@ -224,7 +229,7 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Deploy live flash ingest function
-        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_INGEST_DEPLOY_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -241,21 +246,39 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_ID" \
             --no-verify-jwt
 
-      - name: Smoke-check deployed endpoints without inserting synthetic data
-        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
+      - name: Smoke-check live flash ingest authentication without inserting synthetic data
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_INGEST_DEPLOY_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
 
           base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          auth_header_name="Authorization"
+          auth_header_value=""
+
+          if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
+            auth_header_name="x-geomacro-flash-token"
+            auth_header_value="${FLASH_INGEST_TOKEN}"
+          else
+            test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
+            test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
+            oidc_response="$(
+              curl --fail-with-body -sS \
+                -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+                "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://geomacro.live/actions/live-flash-rss"
+            )"
+            auth_header_value="$(printf "%s" "$oidc_response" | jq -er ".value")"
+            test -n "$auth_header_value"
+            echo "::add-mask::$auth_header_value"
+          fi
 
           ingest_code="$(curl --silent --show-error \
             --output /tmp/flash-ingest.json \
             --write-out '%{http_code}' \
             --request POST \
-            --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \
+            --header "${auth_header_name}: ${auth_header_value}" \
             --header 'Content-Type: application/json' \
-            --data '{}' \
+            --data '{"source_id":"aljazeera_rss"}' \
             "${base}/live-flash-ingest")"
 
           cat /tmp/flash-ingest.json
@@ -266,25 +289,26 @@ jobs:
             exit 1
           fi
 
-          corroborate_code="$(curl --silent --show-error \
-            --output /tmp/flash-corroborate.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --data '{}' \
-            "${base}/live-flash-corroborate")"
+          if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
+            corroborate_code="$(curl --silent --show-error \
+              --output /tmp/flash-corroborate.json \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \
+              --header 'Content-Type: application/json' \
+              --data '{}' \
+              "${base}/live-flash-corroborate")"
 
-          cat /tmp/flash-corroborate.json
-          echo
+            cat /tmp/flash-corroborate.json
+            echo
 
-          if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
-            echo "::error title=Corroboration smoke check failed::live-flash-corroborate did not return a successful response."
-            exit 1
+            if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
+              echo "::error title=Corroboration smoke check failed::live-flash-corroborate did not return a successful response."
+              exit 1
+            fi
           fi
 
-          echo "Country flash Supabase deployment smoke checks passed."
-
+          echo "PASS: live-flash-ingest authentication boundary is healthy."
       - name: Report deferred flash runtime activation
         if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY != 'true' }}
         shell: bash
