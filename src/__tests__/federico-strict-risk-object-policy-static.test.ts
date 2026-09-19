@@ -137,7 +137,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
     const schemaGuard = read(
-      "supabase/migrations/954_federico_risk_object_schema_guard.sql",
+      "supabase/migrations/044_repair_federico_event_family_schema.sql",
     );
 
     expect(preflight).toContain(

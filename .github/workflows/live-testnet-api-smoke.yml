@@ -2,6 +2,8 @@ name: Live Testnet API Smoke
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
@@ -30,6 +32,40 @@ jobs:
           grep -Fq '"database_authority":"external-supabase"' "$body"
           grep -Fq '"supabase_project_ref":"ldpwajisioljyjtojvfx"' "$body"
           echo "PASS: live deployment exposes the GitHub/Supabase/Lovable alignment contract."
+
+      - name: Verify public Risk Object trust registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/risk-object-keys")"
+          echo "Final HTTP status: $code"
+          if [[ "$code" != "200" ]]; then
+            echo "::error title=Risk Object trust registry unavailable::Expected 200 from /api/risk-object-keys, got $code."
+            cat "$body" || true
+            exit 1
+          fi
+          node - "$body" <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (body?.ok !== true || !Array.isArray(body?.keys) || body.keys.length === 0) {
+            throw new Error('Public Risk Object trust registry returned an invalid contract');
+          }
+          const active = body.keys.filter((item) => item?.status === 'active');
+          if (active.length === 0) {
+            throw new Error('Public Risk Object trust registry has no active key');
+          }
+          for (const key of active) {
+            if (
+              typeof key.key_id !== 'string' ||
+              typeof key.public_key_spki_b64 !== 'string' ||
+              !key.public_key_spki_b64
+            ) {
+              throw new Error('Active Risk Object trust key is missing required public metadata');
+            }
+          }
+          console.log('PASS: public Risk Object trust registry is reachable and structurally valid.');
+          NODE
 
       - name: Verify public Testnet developer manifest
         shell: bash

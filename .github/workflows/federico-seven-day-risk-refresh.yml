@@ -1,5 +1,5 @@
-name: Federico 7-Day Risk Object Refresh
-# Acceptance runs execute on workflow-file changes after hardening merges.
+name: Federico Continuous Testnet Risk Object Refresh
+# Continuous testnet acceptance and partner-refresh path. Publication remains fail-closed on all strict evidence gates.
 
 on:
   workflow_dispatch:
@@ -39,45 +39,20 @@ jobs:
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
-      FEDERICO_REFRESH_UNTIL: "2026-09-26T02:41:32Z"
 
     steps:
-      - name: Stop after seven-day window
-        id: window
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          NOW_EPOCH="$(date -u +%s)"
-          END_EPOCH="$(date -u -d "$FEDERICO_REFRESH_UNTIL" +%s)"
-
-          if [ "$NOW_EPOCH" -ge "$END_EPOCH" ]; then
-            echo "active=false" >> "$GITHUB_OUTPUT"
-            echo "Federico refresh window ended at $FEDERICO_REFRESH_UNTIL."
-            curl -L --silent --show-error --fail               -X PUT               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/federico-seven-day-risk-refresh.yml/disable"               || echo "::warning::Could not self-disable workflow; future runs will still exit before publishing."
-            exit 0
-          fi
-
-          echo "active=true" >> "$GITHUB_OUTPUT"
-          echo "Refresh window active until $FEDERICO_REFRESH_UNTIL."
-
       - name: Checkout
-        if: steps.window.outputs.active == 'true'
         uses: actions/checkout@v7
 
       - name: Setup Bun 1.4.2
-        if: steps.window.outputs.active == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
 
       - name: Install locked dependencies
-        if: steps.window.outputs.active == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Reconcile authoritative production event-family schema
-        if: steps.window.outputs.active == 'true'
         shell: bash
         env:
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
@@ -175,7 +150,6 @@ jobs:
           echo "PASS: authoritative production event-family schema is present before Federico publication."
 
       - name: Validate production signing configuration
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -209,7 +183,6 @@ jobs:
           NODE
 
       - name: Verify signer matches deployed trust registry
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -239,7 +212,6 @@ jobs:
           NODE
 
       - name: Publish fresh production-signed CHN Risk Object
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -258,7 +230,6 @@ jobs:
           ' /tmp/publish.json >/dev/null
 
       - name: Export exact persisted signed payload
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -297,7 +268,6 @@ jobs:
           NODE
 
       - name: Verify freshness, signature and tamper rejection
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -318,7 +288,6 @@ jobs:
           ' /tmp/federico-preflight.json >/dev/null
 
       - name: Build handoff artifact
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -393,7 +362,6 @@ jobs:
           PY
 
       - name: Upload historical Federico handoff
-        if: steps.window.outputs.active == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: federico-handoff-${{ github.run_id }}
@@ -402,7 +370,6 @@ jobs:
           retention-days: 8
 
       - name: Upload fixed latest Federico handoff
-        if: steps.window.outputs.active == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: federico-latest-handoff
@@ -411,7 +378,6 @@ jobs:
           retention-days: 8
 
       - name: Remove superseded fixed-name handoff artifacts
-        if: steps.window.outputs.active == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -446,14 +412,13 @@ jobs:
           echo "PASS: federico-latest-handoff now points to this refresh run only."
 
       - name: Publish sanitized summary
-        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
           {
-            echo "## Federico 7-day Risk Object refresh"
+            echo "## Federico continuous Testnet Risk Object refresh"
             echo
-            echo "Window ends: $FEDERICO_REFRESH_UNTIL"
+            echo "Refresh mode: continuous testnet acceptance"
             echo
             jq '{
               object_id: .object.object_id,
