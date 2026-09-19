@@ -91,8 +91,8 @@ async function main() {
   const rows = await withReadRetry("load recent structured events", async () => {
     const result = await db
       .from("live_structured_events")
-      .select("primary_country,countries,commercial_eligibility_status,last_seen_at")
-      .gte("last_seen_at", cutoff);
+      .select("primary_country,countries,commercial_eligibility_status,last_observed_at")
+      .gte("last_observed_at", cutoff);
 
     if (result.error) throw result.error;
     return (result.data ?? []) as Record<string, unknown>[];
