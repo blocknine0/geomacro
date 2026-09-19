@@ -137,7 +137,7 @@ jobs:
 
           if [[ "$schema_rc" -ne 0 ]]; then
             echo "Authoritative production event-family schema is incomplete. Applying the idempotent repair migration over the canonical production DB URL."
-            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -f supabase/migrations/044_repair_federico_event_family_schema.sql
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -f supabase/migrations/957_repair_federico_event_family_schema.sql
 
             # Force PostgREST to reload its schema cache after DDL.
             psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "NOTIFY pgrst, 'reload schema';"
