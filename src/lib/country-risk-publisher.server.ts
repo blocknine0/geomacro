@@ -474,7 +474,7 @@ async function loadFedericoStrictEvents(
   const flashesResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,severity,severity_bps,source_reliability,source_reliability_bps,verification_score,verification_score_bps,verification_status,first_seen_at,last_seen_at,last_material_update_at,event_family_id,content_hash,material_update",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,severity,source_reliability,verification_score,verification_status,first_seen_at,last_seen_at,last_material_update_at,event_family_id,content_hash,material_update",
     )
     .eq("verification_status", "VERIFIED")
     .gte("last_seen_at", cutoff)
@@ -643,11 +643,7 @@ async function loadFedericoStrictEvents(
       Math.min(
         100,
         Number(
-          latest.severity_bps != null
-            ? Number(latest.severity_bps) / 100
-            : latest.severity != null
-              ? Number(latest.severity)
-              : 0,
+          latest.severity ?? 0,
         ),
       ),
     );
@@ -657,15 +653,11 @@ async function loadFedericoStrictEvents(
       Math.min(
         100,
         Number(
-          latest.verification_score_bps != null
-            ? Number(latest.verification_score_bps) / 100
-            : latest.verification_score != null
-              ? Number(latest.verification_score)
-              : latest.source_reliability_bps != null
-                ? Number(latest.source_reliability_bps) / 100
-                : latest.source_reliability != null
-                  ? Number(latest.source_reliability)
-                  : 0,
+          latest.verification_score != null
+            ? Number(latest.verification_score)
+            : latest.source_reliability != null
+              ? Number(latest.source_reliability)
+              : 0,
         ),
       ),
     );
