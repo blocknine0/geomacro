@@ -12,6 +12,7 @@ on:
       - main
     paths:
       - ".github/workflows/auto-ingest-news.yml"
+      - "scripts/ingest-news.js"
 
 permissions:
   contents: read
