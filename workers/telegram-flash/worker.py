@@ -89,6 +89,67 @@ USER_AGENT = os.environ.get(
     "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
 ).strip()
 
+class NewsPageParser:
+    def __init__(self, link_prefix: str):
+        from html.parser import HTMLParser
+
+        class _Parser(HTMLParser):
+            def __init__(self, outer: "NewsPageParser"):
+                super().__init__(convert_charrefs=True)
+                self.outer = outer
+                self.in_link = False
+                self.href: str | None = None
+                self.text_parts: list[str] = []
+
+            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+                if tag != "a":
+                    return
+                href = dict(attrs).get("href")
+                if not isinstance(href, str) or not href:
+                    return
+                if self.outer.link_prefix not in href:
+                    return
+                self.in_link = True
+                self.href = href
+                self.text_parts = []
+
+            def handle_data(self, data: str) -> None:
+                if self.in_link:
+                    self.text_parts.append(data)
+
+            def handle_endtag(self, tag: str) -> None:
+                if tag != "a" or not self.in_link:
+                    return
+                title = " ".join("".join(self.text_parts).split()).strip()
+                href = self.href
+                self.in_link = False
+                self.href = None
+                self.text_parts = []
+                if not href or not title or title.lower() == "read article":
+                    return
+                self.outer.entries.append({
+                    "id": href,
+                    "link": href,
+                    "title": title[:1200],
+                })
+
+        self.link_prefix = link_prefix
+        self.entries: list[dict[str, Any]] = []
+        self._parser = _Parser(self)
+
+    def feed(self, raw: bytes) -> list[dict[str, Any]]:
+        from html import unescape
+
+        text = raw.decode("utf-8", errors="replace")
+        self._parser.feed(unescape(text))
+        self._parser.close()
+
+        unique: dict[str, dict[str, Any]] = {}
+        for entry in self.entries:
+            unique[entry["link"]] = entry
+        return list(unique.values())
+
+
 DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
         "source_id": "aljazeera_rss",
@@ -152,9 +213,11 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "url": "https://www.usgs.gov/news/minerals/feed",
         "event_type": "CRITICAL_MINERALS_BREAKING",
         "source_reliability": 90.0,
-        "timeout_seconds": 60,
-        "retry_attempts": 2,
+        "timeout_seconds": 25,
+        "retry_attempts": 1,
         "retry_backoff_seconds": 2,
+        "fallback_url": "https://www.usgs.gov/programs/mineral-resources-program/news",
+        "fallback_link_prefix": "/programs/mineral-resources-program/news/",
     },
 ]
 
@@ -208,6 +271,14 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
                 0,
                 min(10, int(priority_max_items)),
             )
+
+        fallback_url = item.get("fallback_url")
+        if isinstance(fallback_url, str) and fallback_url.strip():
+            feed["fallback_url"] = fallback_url.strip()[:1000]
+
+        fallback_link_prefix = item.get("fallback_link_prefix")
+        if isinstance(fallback_link_prefix, str) and fallback_link_prefix.strip():
+            feed["fallback_link_prefix"] = fallback_link_prefix.strip()[:300]
 
         if timeout_seconds is not None:
             feed["timeout_seconds"] = max(
@@ -576,15 +647,33 @@ async def process_feed(
         },
     )
 
-    status, raw, etag, modified = await asyncio.to_thread(
-        fetch_feed_sync,
-        url,
-        current["etag"],
-        current["modified"],
-        int(feed.get("timeout_seconds", 20)),
-        int(feed.get("retry_attempts", 0)),
-        float(feed.get("retry_backoff_seconds", 1.0)),
-    )
+    transport = "rss"
+    try:
+        status, raw, etag, modified = await asyncio.to_thread(
+            fetch_feed_sync,
+            url,
+            current["etag"],
+            current["modified"],
+            int(feed.get("timeout_seconds", 20)),
+            int(feed.get("retry_attempts", 0)),
+            float(feed.get("retry_backoff_seconds", 1.0)),
+        )
+    except Exception as primary_error:
+        fallback_url = str(feed.get("fallback_url", "")).strip()
+        fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+        if not fallback_url or not fallback_link_prefix:
+            raise
+
+        status, raw, _, _ = await asyncio.to_thread(
+            fetch_feed_sync,
+            fallback_url,
+            None,
+            None,
+            25,
+            1,
+            2.0,
+        )
+        transport = "official_page_fallback"
 
     if status == 304:
         return
@@ -592,13 +681,22 @@ async def process_feed(
     current["etag"] = etag
     current["modified"] = modified
 
-    parsed = feedparser.parse(raw)
-    if getattr(parsed, "bozo", False) and not parsed.entries:
-        raise RuntimeError(
-            f"Feed parse failed: {getattr(parsed, 'bozo_exception', 'unknown error')}"
+    if transport == "rss":
+        parsed = feedparser.parse(raw)
+        if getattr(parsed, "bozo", False) and not parsed.entries:
+            raise RuntimeError(
+                f"Feed parse failed: {getattr(parsed, 'bozo_exception', 'unknown error')}"
+            )
+        all_entries = list(parsed.entries)
+    else:
+        parser = NewsPageParser(
+            str(feed.get("fallback_link_prefix", "")),
         )
-
-    all_entries = list(parsed.entries)
+        all_entries = parser.feed(raw)
+        if not all_entries:
+            raise RuntimeError(
+                "Official fallback page returned no governed news entries"
+            )
     if not current["bootstrapped"]:
         latest_entries = all_entries[:RSS_BOOTSTRAP_MAX_ITEMS]
         priority_keywords = [
@@ -694,6 +792,7 @@ async def process_feed(
                 "kind": "rss_poll",
                 "source_id": source_id,
                 "http_status": status,
+                "transport": transport,
                 "entries_seen": len(entries),
                 "new_items": new_count,
                 "priority_items_selected": priority_items_selected,
