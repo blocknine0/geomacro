@@ -171,6 +171,7 @@ async function main() {
         cursor: lastStamp ? { last_source_stamp: lastStamp } : {},
         status: "healthy",
         last_attempt_at: nowIso,
+        last_success_at: nowIso,
         consecutive_failures: 0,
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
