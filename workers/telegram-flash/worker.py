@@ -107,6 +107,13 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "priority_max_items": 5,
     },
     {
+        "source_id": "bbc_world_rss",
+        "name": "BBC News World RSS",
+        "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "event_type": "GEOPOLITICS_BREAKING",
+        "source_reliability": 85.0,
+    },
+    {
         "source_id": "federal_reserve_press_rss",
         "name": "Federal Reserve Press Releases",
         "url": "https://www.federalreserve.gov/feeds/press_all.xml",

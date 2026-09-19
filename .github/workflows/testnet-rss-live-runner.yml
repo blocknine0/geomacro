@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for source_id in aljazeera_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
+          for source_id in aljazeera_rss bbc_world_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
             grep -q "\"source_id\": \"${source_id}\"" /tmp/testnet-rss-live.log || {
               echo "::error::RSS source ${source_id} did not complete a poll cycle."
               exit 1
