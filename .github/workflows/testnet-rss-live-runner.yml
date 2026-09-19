@@ -93,6 +93,32 @@ jobs:
           cd workers/telegram-flash
           python worker.py 2>&1 | tee /tmp/testnet-rss-live.log
 
+      - name: Corroborate governed RSS evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          response="$(curl --silent --show-error \
+            --output /tmp/flash-corroborate.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "${base}/live-flash-corroborate")"
+          cat /tmp/flash-corroborate.json
+          echo
+          test "$response" = "200" || {
+            echo "::error::live-flash-corroborate did not return HTTP 200."
+            exit 1
+          }
+          grep -q '"ok":true' /tmp/flash-corroborate.json || {
+            echo "::error::live-flash-corroborate did not return ok=true."
+            exit 1
+          }
+          echo "PASS: governed RSS evidence corroboration completed."
+
       - name: Verify all governed RSS sources completed
         shell: bash
         run: |
