@@ -2,7 +2,7 @@
 -- Live publishing remains disabled by config; this prevents a broken endpoint from
 -- accumulating unbounded delivery attempts if/when the worker is later activated.
 
-do $
+do $$
 begin
   if not exists (
     select 1
@@ -15,7 +15,7 @@ begin
       check (attempt_count <= 5);
   end if;
 end
-$;
+$$;
 
 comment on constraint early_warning_distribution_attempt_cap_check
   on public.early_warning_distribution_receipts is
