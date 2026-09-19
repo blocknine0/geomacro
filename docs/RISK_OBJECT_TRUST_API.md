@@ -85,6 +85,11 @@ Federico handoff artifacts may use the signed `FEDERICO_STRICT` delivery profile
 The strict profile also signs a reproducibility manifest containing the exact calculation input, score components, evidence-selection policy and data-hash projection. A receiver can recompute the input hash, data hash, score, aggregate confidence and calculation hash without receiving raw provider payloads.
 
 The artifact binds the active public Ed25519 key, the public trust-registry URL and the canonicalization specification URL inside the signed `integrity` object. Receivers should still resolve `signing_key_id` through the trusted registry and verify the signature rather than treating the embedded key as a trust root.
+## External review proof verification
+
+The Federico preflight does not treat a returned partner proof as trusted merely because `/review` returned HTTP 200. When a signed proof is returned, the preflight posts its signed event to the proof's published `/verify-proof` URL and to the first published independent verifier node, requiring both verifiers to report the proof as valid before the partner-proof gate can pass.
+
+Partner admission is separate from proof integrity: the live review must return `approve` or `approve_with_concerns` and must contain no blocker or high-severity issues before `partner_admission` can pass. A signed `reject` remains a review failure even though its proof is cryptographically valid.
 ## Seven-day rolling refresh
 
 The production country Risk Object validity window is intentionally short-lived: each signed artifact carries a bounded `expires_at` based on the active Risk Object TTL. The Federico handoff uses a rolling refresh rather than extending one signed artifact across seven days.
