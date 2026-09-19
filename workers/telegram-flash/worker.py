@@ -112,6 +112,15 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
         "event_type": "GEOPOLITICS_BREAKING",
         "source_reliability": 85.0,
+        "priority_keywords": [
+            "china",
+            "chinese",
+            "beijing",
+            "taiwan",
+            "south china sea",
+            "philippines",
+        ],
+        "priority_max_items": 5,
     },
     {
         "source_id": "federal_reserve_press_rss",
@@ -127,6 +136,15 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "url": "https://www.forexlive.com/feed/news",
         "event_type": "MACRO_BREAKING",
         "source_reliability": 65.0,
+        "priority_keywords": [
+            "china",
+            "chinese",
+            "beijing",
+            "taiwan",
+            "south china sea",
+            "philippines",
+        ],
+        "priority_max_items": 5,
     },
     {
         "source_id": "usgs_minerals_news_rss",
@@ -176,6 +194,21 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
         }
 
         timeout_seconds = item.get("timeout_seconds")
+        priority_keywords = item.get("priority_keywords")
+        if isinstance(priority_keywords, list):
+            feed["priority_keywords"] = [
+                str(value).strip()
+                for value in priority_keywords
+                if str(value).strip()
+            ][:30]
+
+        priority_max_items = item.get("priority_max_items")
+        if priority_max_items is not None:
+            feed["priority_max_items"] = max(
+                0,
+                min(10, int(priority_max_items)),
+            )
+
         if timeout_seconds is not None:
             feed["timeout_seconds"] = max(
                 10,
@@ -647,6 +680,11 @@ async def process_feed(
             flush=True,
         )
 
+    priority_items_selected = max(
+        0,
+        len(entries) - RSS_BOOTSTRAP_MAX_ITEMS,
+    )
+
     current["bootstrapped"] = True
 
     print(
@@ -657,11 +695,7 @@ async def process_feed(
                 "http_status": status,
                 "entries_seen": len(entries),
                 "new_items": new_count,
-                "priority_items_selected": (
-                    max(0, len(entries) - RSS_BOOTSTRAP_MAX_ITEMS)
-                    if not current["bootstrapped"]
-                    else 0
-                ),
+                "priority_items_selected": priority_items_selected,
             }
         ),
         flush=True,
