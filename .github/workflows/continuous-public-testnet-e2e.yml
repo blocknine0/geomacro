@@ -1,0 +1,167 @@
+name: Continuous Public + Testnet E2E Acceptance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/continuous-public-testnet-e2e.yml"
+      - "src/routes/demo.tsx"
+      - "src/routes/api.agent.risk.ts"
+      - "server/api/testnet/**"
+      - "src/lib/testnet-*.ts"
+      - "src/lib/agentic-demo-*.ts"
+      - "src/lib/*risk-object*.ts"
+      - "scripts/refresh-public-demo-risk-objects.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: continuous-public-testnet-e2e
+  cancel-in-progress: false
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BASE_URL: https://geomacro.live
+      ARC_RPC_URL: https://rpc.testnet.arc.network
+      ARC_CHAIN_ID: "5042002"
+    steps:
+      - name: Health and deployment authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 5 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health")"
+          test "$code" = "200"
+          jq -e '
+            .alignment_contract == "github-main-external-supabase-lovable-v1"
+            and .source_authority == "github-main"
+            and .database_authority == "external-supabase"
+            and .supabase_project_ref == "ldpwajisioljyjtojvfx"
+          ' "$body" >/dev/null || { cat "$body"; exit 1; }
+
+      - name: Public Risk Object trust registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 5 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/risk-object-keys")"
+          test "$code" = "200"
+          jq -e '.ok == true and ([.keys[]? | select(.status == "active")] | length) > 0' "$body" >/dev/null
+
+      - name: Public developer manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 5 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet/manifest")"
+          test "$code" = "200"
+          jq -e '
+            .ok == true
+            and .manifest_version == "testnet-developer-api-manifest-v1.0.0"
+            and .api_version == "testnet-intelligence-v1.0.0"
+            and .environment == "testnet"
+            and .commercial_revenue == false
+            and .full_product_api_surface.full_machine_decision_bundle == "risk_gate_bundle"
+            and ([.capabilities | keys[]] | length) == 8
+          ' "$body" >/dev/null
+
+      - name: Public demo all four scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const base = process.env.BASE_URL;
+          const scenarios = [
+            ["USA>CHN", {subject:{type:"corridor",origin_country_iso3:"USA",destination_country_iso3:"CHN"},policy_preset:"cautious",action_type:"agent_payment",amount_usdc:10000}],
+            ["CHN>USA", {subject:{type:"corridor",origin_country_iso3:"CHN",destination_country_iso3:"USA"},policy_preset:"cautious",action_type:"agent_payment",amount_usdc:10000}],
+            ["USA", {subject:{type:"country",country_iso3:"USA"},policy_preset:"cautious",action_type:"agent_payment",amount_usdc:10000}],
+            ["CHN", {subject:{type:"country",country_iso3:"CHN"},policy_preset:"cautious",action_type:"agent_payment",amount_usdc:10000}],
+          ];
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          for (const [name, body] of scenarios) {
+            let passed = false;
+            let last = null;
+            for (let attempt = 1; attempt <= 4; attempt++) {
+              try {
+                const res = await fetch(base + "/api/demo/preflight", {
+                  method: "POST",
+                  headers: {"content-type":"application/json","user-agent":"geomacro-continuous-e2e/1.0"},
+                  body: JSON.stringify(body),
+                });
+                const payload = await res.json().catch(() => null);
+                const expected = body.subject.type === "corridor"
+                  ? body.subject.origin_country_iso3 + ">" + body.subject.destination_country_iso3
+                  : body.subject.country_iso3;
+                const execution = payload?.risk_gate?.execution_authorized ?? payload?.boundaries?.execution_authorized;
+                if (res.status === 200 && payload?.ok === true && payload?.mode === "PUBLIC_SANDBOX"
+                    && payload?.risk_object?.subject?.id === expected && execution === false) {
+                  console.log("PASS", name, "attempt", attempt);
+                  passed = true;
+                  break;
+                }
+                last = {status:res.status, payload};
+              } catch (error) {
+                last = {error:String(error)};
+              }
+              if (attempt < 4) await sleep(5000);
+            }
+            if (!passed) throw new Error("Public demo failed for " + name + ": " + JSON.stringify(last));
+          }
+          NODE
+
+      - name: Public and developer API unauthenticated boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}'             -H 'content-type: application/json'             --data '{"request_id":"continuous-unauth-001","capability":"gri_read","subject":{"type":"global"}}'             "$BASE_URL/api/testnet/intelligence")"
+          test "$code" = "401"
+          grep -Fq 'COMMERCIAL_API_KEY_REQUIRED' "$body"
+          ! grep -Eqi 'display_score|raw_score|risk_object|payment_event_id|credits_remaining|gmk_test_|gms_test_' "$body"
+
+          body2="$(mktemp)"
+          code2="$(curl -L --retry 4 --retry-all-errors --retry-delay 2 -sS -o "$body2" -w '%{http_code}'             -H 'content-type: application/json'             --data '{"subject":{"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"},"policy_preset":"cautious","action_type":"agent_payment","amount_usdc":10000}'             "$BASE_URL/api/agent/risk")"
+          case "$code2" in
+            401|402) ;;
+            *) echo "Unexpected /api/agent/risk status: $code2"; cat "$body2"; exit 1 ;;
+          esac
+
+      - name: Arc Testnet RPC and chain identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl -L --retry 5 --retry-all-errors --retry-delay 2 -sS             -H 'content-type: application/json'             --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'             "$ARC_RPC_URL")"
+          test "$(echo "$response" | jq -r '.result')" = "0x4cef52"
+          test $((16#4cef52)) = "$ARC_CHAIN_ID"
+
+      - name: Arc Testnet application contract is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(curl -L --retry 5 --retry-all-errors --retry-delay 2 -sS             -H 'content-type: application/json'             --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0x2F874FB07084a22D2bB314D0762Af57Cb1856868","latest"],"id":1}'             "$ARC_RPC_URL")"
+          code="$(echo "$body" | jq -r '.result')"
+          test -n "$code"
+          test "$code" != "0x"
+
+      - name: Acceptance summary
+        run: |
+          {
+            echo "## Continuous public + Testnet E2E acceptance"
+            echo
+            echo "- Four public demo scenarios: PASS"
+            echo "- Public Risk Object trust registry: PASS"
+            echo "- Testnet developer manifest: PASS"
+            echo "- Unauthenticated developer/API boundaries: PASS"
+            echo "- Arc Testnet chain identity: PASS"
+            echo "- Arc Testnet application contract reachability: PASS"
+            echo
+            echo "Paid Testnet wallet settlement, replay/no-double-charge, and Federico live strict-output certification remain separate observable gates and are never represented by this public monitor as passed."
+          } >> "$GITHUB_STEP_SUMMARY"
