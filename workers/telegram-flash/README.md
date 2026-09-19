@@ -52,22 +52,15 @@ Existing Geomacro GDELT pipeline -------------------------> |
                                                       GRO / Risk Gate
 ```
 
-## Telegram manual-review allowlist
+## Telegram automated registry admission
 
-No Telegram channel is active by default.
+Telegram sources are governed by the server-side registry. The runtime worker reads only rows with `enabled=true` and `auto_admission_status=ACTIVE`.
 
-Historical starter rows may exist in `live_telegram_channel_registry`, but migration `946_telegram_manual_review_gate.sql` resets them to `manual_review_status=PENDING` and `enabled=false`.
+Public-channel discovery is automated through Telegram's global channel-search API and runs separately from the long-lived real-time listener. Discovery can add new public sources to the internal lead registry without founder approval.
 
-A channel can be ingested only when both conditions are true:
+Discovery never auto-promotes ownership to `OFFICIAL`, never grants commercial redistribution rights, and never verifies an event. New sources remain `INTERNAL_RESEARCH_ONLY`, and every Telegram item enters as `UNVERIFIED` until independent corroboration.
 
-- the server-side registry row is manually reviewed and marked `APPROVED`;
-- the same public username is deliberately present in the worker's `TELEGRAM_CHANNELS` deployment configuration.
-
-Environment configuration alone cannot authorize a Telegram source. The ingest function checks the database gate again and rejects unapproved channels.
-
-Every Telegram item is forced to `UNVERIFIED` at ingestion. A high source-reliability prior never bypasses independent corroboration.
-
-Do not expose raw Telegram text or media as customer-facing publisher content unless rights are separately cleared. Telegram remains internal lead intelligence.
+The worker still accepts `TELEGRAM_CHANNELS` as an explicit fallback, but production auto-discovery is the preferred registry-driven path.
 
 ## Active free-first machine feeds
 
@@ -196,6 +189,11 @@ Required when Telegram is enabled:
 TELEGRAM_API_ID
 TELEGRAM_API_HASH
 TELEGRAM_SESSION
+```
+
+Optional fallback when registry auto-discovery is disabled:
+
+```text
 TELEGRAM_CHANNELS
 ```
 
