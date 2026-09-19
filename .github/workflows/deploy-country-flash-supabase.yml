@@ -49,8 +49,8 @@ jobs:
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
           grep -q 'push:' "$file"
-          grep -q 'supabase/migrations/042_realtime_event_family_lifecycle.sql' "$file" || true
-          grep -q 'supabase/migrations/043_event_family_version_ledger.sql' "$file" || true
+          grep -q 'supabase/migrations/042_realtime_event_family_lifecycle.sql' "$file"
+          grep -q 'supabase/migrations/043_event_family_version_ledger.sql' "$file"
 
           echo "Supabase deployment workflow safety guardrails are present."
 
