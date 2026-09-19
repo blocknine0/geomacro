@@ -135,6 +135,31 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("registers every governed Xinhua source before event ingestion", () => {
+    const sourceRegistry = read(
+      "supabase/migrations/958_register_xinhua_china_rss.sql",
+    );
+    const worker = read(
+      "workers/telegram-flash/worker.py",
+    );
+
+    expect(sourceRegistry).toContain(
+      "'xinhua_english_china_rss'",
+    );
+    expect(sourceRegistry).toContain(
+      "'https://www.xinhuanet.com/english/rss/chinarss.xml'",
+    );
+    expect(sourceRegistry).toContain(
+      "enabled_for_ingestion",
+    );
+    expect(sourceRegistry).toContain(
+      "enabled_for_commercial_signals",
+    );
+    expect(worker).toContain(
+      '"source_id": "xinhua_english_china_rss"',
+    );
+  });
+
   it("pins the authoritative production lifecycle migrations", () => {
     const lifecycle = read(
       "supabase/migrations/955_realtime_event_family_lifecycle.sql",
