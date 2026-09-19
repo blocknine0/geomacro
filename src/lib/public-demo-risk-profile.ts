@@ -30,6 +30,7 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   bbc_world_rss: "bbc_world",
   federal_reserve_press_rss: "federal_reserve",
   xinhua_english_china_rss: "xinhua_english_china",
+  scmp_china_rss: "scmp_china",
   forexlive_rss: "forexlive",
   mining_com_rss: "mining_com",
   usgs_minerals_news_rss: "usgs",
