@@ -1,0 +1,86 @@
+{
+  "schema_version": "geomacro.telegram.global-auto-coverage.v1",
+  "status": "DISCOVERY_AND_RUNTIME_POLICY",
+  "runtime_scope": "INTERNAL_LEAD_INTELLIGENCE",
+  "human_approval_required": false,
+  "commercial_promotion_requires_corroboration": true,
+  "target": {
+    "canonical_country_registry": "public.live_country_registry",
+    "target_enabled_sovereign_countries": 194,
+    "country_coverage_is_measured_not_assumed": true
+  },
+  "automatic_source_admission": {
+    "enabled": true,
+    "public_only": true,
+    "required_fields": [
+      "public_username",
+      "public_url",
+      "source_role",
+      "country_iso3",
+      "language",
+      "signal_domains"
+    ],
+    "reject_if": [
+      "private_or_invite_only",
+      "unresolvable_public_username",
+      "malformed_public_url",
+      "duplicate_channel",
+      "known_impersonation_or_explicit_unofficial_relay",
+      "automated_health_check_failure"
+    ],
+    "source_roles": [
+      "official_authority",
+      "publisher",
+      "local_news",
+      "regional_news",
+      "independent_osint",
+      "sector_signal"
+    ],
+    "initial_evidence_state": "UNVERIFIED"
+  },
+  "country_targets": {
+    "minimum_source_classes": [
+      "local_news",
+      "official_authority",
+      "regional_news"
+    ],
+    "preferred_source_classes": [
+      "publisher",
+      "independent_osint",
+      "sector_signal"
+    ],
+    "minimum_active_sources_per_country": 2,
+    "preferred_active_sources_per_country": 4,
+    "high_priority_active_sources_per_country": 8,
+    "high_priority_rule": "country_has_material_geopolitical_macro_or_critical-minerals_exposure"
+  },
+  "health_policy": {
+    "freshness_windows_minutes": [
+      5,
+      15,
+      60
+    ],
+    "stale_after_minutes": 180,
+    "quarantine_after_consecutive_failures": 5,
+    "automatic_reactivation_after_successes": 3,
+    "country_gap_state": "NO_LIVE_TELEGRAM_COVERAGE",
+    "no_event_state": "NO_MATERIAL_EVENT_DETECTED"
+  },
+  "corroboration": {
+    "telegram_only_never_verifies": true,
+    "independent_source_families_required_for_verified": 2,
+    "preferred_independent_source_families": [
+      "official",
+      "local_or_regional_publisher",
+      "gdelt",
+      "direct_rss",
+      "other_structured_feed"
+    ]
+  },
+  "fallback_fabric": [
+    "GDELT",
+    "direct_RSS_or_API",
+    "official_web_release_feeds",
+    "regional_publisher_feeds"
+  ]
+}
