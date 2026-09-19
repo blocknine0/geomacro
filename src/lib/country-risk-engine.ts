@@ -779,9 +779,6 @@ export async function buildCountryRiskObject(
           [...(event.source_ids ?? [])],
 
         source_record_ids:
-          [...((event as any).source_record_ids ?? [])],
-
-        source_record_ids:
           [...(event.source_record_ids ?? [])],
 
         source_urls:
