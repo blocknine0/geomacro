@@ -837,8 +837,18 @@ async function loadFedericoStrictEvents(
       severity,
       confidence,
       direction: flashDirection(eventType),
-      first_seen_at: String(family.first_seen_at ?? latest.first_seen_at ?? latest.ingested_at),
-      last_seen_at: lastSeen.toISOString(),
+      first_seen_at: String(
+        family.first_seen_at ??
+          latest.first_seen_at ??
+          latest.ingested_at,
+      ),
+      last_seen_at: String(
+        family.last_seen_at ??
+          latest.last_seen_at ??
+          latest.ingested_at,
+      ),
+      material_evidence_at:
+        lastSeen.toISOString(),
       evidence_count: members.length,
       independent_source_count: independentSourceCount,
       evidence_refs: sourceUrls.length ? sourceUrls : members.map(
