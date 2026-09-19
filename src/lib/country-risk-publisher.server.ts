@@ -638,6 +638,13 @@ async function loadFedericoStrictEvents(
       ),
     ];
 
+    if (!sourceUrls.length) {
+      // A strict Federico evidence item must remain externally attributable.
+      // Hash-only fallback is retained for non-Federico historical paths, but
+      // is not sufficient for this acceptance profile.
+      continue;
+    }
+
     const rawSeverity = Math.max(
       0,
       Math.min(
