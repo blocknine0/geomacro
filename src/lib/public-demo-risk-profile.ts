@@ -27,6 +27,7 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   federal_reserve_press_rss: "federal_reserve",
   forexlive_rss: "forexlive",
   mining_com_rss: "mining_com",
+  usgs_minerals_news_rss: "usgs",
   reliefweb: "reliefweb_aggregator",
   gdelt_structured: "gdelt_structured",
 } as const;
