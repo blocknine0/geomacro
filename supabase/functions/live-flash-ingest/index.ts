@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { createRemoteJWKSet, jwtVerify } from "https://esm.sh/jose@6.2.3"
+import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"
 
 const SUPABASE_URL =
   Deno.env.get("SUPABASE_URL") ?? ""
@@ -43,9 +43,7 @@ const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
 
 const GITHUB_OIDC_JWKS =
   createRemoteJWKSet(
-    new URL(
-      "https://token.actions.githubusercontent.com/.well-known/jwks",
-    ),
+    new URL(GITHUB_OIDC_JWKS_URL),
   )
 
 async function verifyGitHubActionsOidc(
