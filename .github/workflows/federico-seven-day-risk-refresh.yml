@@ -1,5 +1,6 @@
 name: Federico 7-Day Risk Object Refresh
-# Acceptance runs execute on workflow-file changes after hardening merges.\n
+# Acceptance runs execute on workflow-file changes after hardening merges.
+
 on:
   workflow_dispatch:
   schedule:
@@ -9,6 +10,11 @@ on:
       - main
     paths:
       - ".github/workflows/federico-seven-day-risk-refresh.yml"
+  workflow_run:
+    workflows:
+      - "Auto Ingest News"
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -20,6 +26,14 @@ concurrency:
 
 jobs:
   refresh:
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

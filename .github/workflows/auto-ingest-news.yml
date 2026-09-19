@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "0 */2 * * *"
   workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/auto-ingest-news.yml"
 
 permissions:
   contents: read
