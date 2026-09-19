@@ -730,7 +730,7 @@ export async function buildCountryRiskObject(
 
   const evidence =
     weighted.map(
-      ({ event }) => ({
+      ({ event, age_hours }) => ({
         event_id:
           event.id,
 
@@ -745,7 +745,7 @@ export async function buildCountryRiskObject(
             Number(
               event.severity ?? 0,
             ),
-            3,
+            1,
           ),
 
         confidence:
@@ -754,7 +754,85 @@ export async function buildCountryRiskObject(
               event.confidence ??
                 0,
             ),
+            1,
+          ),
+
+        event_family_id:
+          event.event_family_id ??
+          null,
+
+        source_ids:
+          [...(event.source_ids ?? [])],
+
+        source_record_ids:
+          [...((event as any).source_record_ids ?? [])],
+
+        source_urls:
+          [...(event.source_urls ?? [])],
+
+        source_families:
+          [...(event.source_families ?? [])],
+
+        content_hashes:
+          [...((event as any).content_hashes ?? [])],
+
+        relevance_reason:
+          event.relevance_reason ??
+          `Country-link relevance: ${countryIso3}`,
+
+        transmission_channel:
+          event.transmission_channel ??
+          null,
+
+        relevance_weight:
+          round(
+            clamp(
+              Number(
+                event.relevance_weight ?? 1,
+              ),
+              0,
+              1,
+            ),
             3,
+          ),
+
+        subject_is_primary:
+          (event as any).subject_is_primary ??
+          true,
+
+        subject_attribution_confidence:
+          typeof (event as any).subject_attribution_confidence ===
+          "number"
+            ? round(
+                (event as any).subject_attribution_confidence,
+                2,
+              )
+            : null,
+
+        subject_attribution_method:
+          (event as any).subject_attribution_method ??
+          null,
+
+        evidence_age_hours:
+          round(age_hours, 2),
+
+        freshness_status:
+          age_hours <=
+          FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
+            ? "FRESH"
+            : age_hours <=
+                FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
+              ? "AGING"
+              : "STALE",
+
+        corroboration_status:
+          event.corroboration_status ??
+          (
+            Number(
+              event.independent_source_count ?? 0,
+            ) >= 2
+              ? "CONFIRMED"
+              : "UNCONFIRMED"
           ),
 
         direction:
@@ -772,21 +850,13 @@ export async function buildCountryRiskObject(
 
         independent_source_count:
           Number(
-            event
-              .independent_source_count ??
+            event.independent_source_count ??
               0,
           ),
 
         evidence_refs:
           normalizeStringArray(
             event.evidence_refs,
-          ),
-
-        source_families:
-          normalizeStringArray(
-            event
-              .structured_payload
-              ?.source_families,
           ),
       }),
     );
