@@ -1,0 +1,4 @@
+project_id = "geomacro-telegram-signal"
+
+[api]
+enabled = false
