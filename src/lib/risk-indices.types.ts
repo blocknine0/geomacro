@@ -1,6 +1,6 @@
 import type { Timeframe, TimeframeSeries } from "./global-risk.types";
 
-export const PUBLIC_RISK_INDICES_CONTRACT_VERSION = "risk-indices-v1.0.0" as const;
+export const PUBLIC_RISK_INDICES_CONTRACT_VERSION = "risk-indices-v1.1.0" as const;
 
 export type PublicRiskIndexKey =
   | "geopolitics"
@@ -8,12 +8,17 @@ export type PublicRiskIndexKey =
   | "critical_minerals";
 
 export type PublicRiskIndexStatus = "available" | "unavailable";
+export type PublicRiskIndexReadingStatus = "current" | "last_verified";
 
 export type PublicRiskIndex = {
   key: PublicRiskIndexKey;
   name: string;
   sourceCategory: "geopolitics" | "macro" | "rare_earth";
   status: PublicRiskIndexStatus;
+  readingStatus: PublicRiskIndexReadingStatus;
+  readingSnapshotId: string | null;
+  readingAsOf: string | null;
+  readingAgeHours: number | null;
   score: number | null;
   rawScore: number | null;
   previousScore: number | null;
