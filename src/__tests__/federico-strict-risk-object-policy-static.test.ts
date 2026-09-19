@@ -135,6 +135,25 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("keeps production migration deployment safe for known out-of-order history", () => {
+    const workflow = read(
+      ".github/workflows/deploy-country-flash-supabase.yml",
+    );
+
+    expect(workflow).toContain(
+      "Found local migration files to be inserted before the last migration on remote database.",
+    );
+    expect(workflow).toContain(
+      "supabase db push --db-url \"$SUPABASE_DB_URL\" --include-all --dry-run",
+    );
+    expect(workflow).toContain(
+      'SUPABASE_MIGRATION_INCLUDE_ALL=true',
+    );
+    expect(workflow).toContain(
+      'supabase db push --db-url "$SUPABASE_DB_URL" --include-all',
+    );
+  });
+
   it("registers every governed Xinhua source before event ingestion", () => {
     const sourceRegistry = read(
       "supabase/migrations/959_register_xinhua_china_rss.sql",

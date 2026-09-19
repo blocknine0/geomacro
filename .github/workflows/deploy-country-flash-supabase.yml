@@ -140,7 +140,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+          plan_log="$(mktemp)"
+          set +e
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee "$plan_log"
+          plan_rc=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$plan_rc" -eq 0 ]]; then
+            echo "SUPABASE_MIGRATION_INCLUDE_ALL=false" >> "$GITHUB_ENV"
+            echo "PASS: production migration plan is in normal order."
+            exit 0
+          fi
+
+          if grep -q "Found local migration files to be inserted before the last migration on remote database." "$plan_log"; then
+            echo "Detected an already-applied later migration in production with a pending local migration before it. Replanning with --include-all is required to reconcile the authoritative migration history safely."
+            supabase db push --db-url "$SUPABASE_DB_URL" --include-all --dry-run
+            echo "SUPABASE_MIGRATION_INCLUDE_ALL=true" >> "$GITHUB_ENV"
+            echo "PASS: out-of-order production migration plan reconciled with --include-all."
+            exit 0
+          fi
+
+          echo "::error title=Production migration plan failed::Supabase returned an unexpected migration planning error."
+          exit "$plan_rc"
 
       - name: Stop after deployment plan
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'plan' }}
@@ -153,7 +175,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db push --db-url "$SUPABASE_DB_URL"
+
+          if [[ "${SUPABASE_MIGRATION_INCLUDE_ALL:-false}" == "true" ]]; then
+            supabase db push --db-url "$SUPABASE_DB_URL" --include-all
+          else
+            supabase db push --db-url "$SUPABASE_DB_URL"
+          fi
 
       - name: Verify authoritative event-family schema
         if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
