@@ -329,6 +329,7 @@ async function buildCurrentState(
       status: event.status,
       first_seen_at: event.first_seen_at,
       last_seen_at: event.last_seen_at,
+      last_observed_at: event.last_observed_at,
       evidence_count: event.evidence_count,
       independent_source_count: event.independent_source_count,
       structure_version: event.structure_version,
