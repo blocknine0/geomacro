@@ -24,6 +24,8 @@ on:
 
 # Certification cycle anchor: fresh GDELT completion after Federico workflow hardening.
 
+# Certification cycle anchor: fresh GDELT completion after Federico OIDC allowlist fix.
+
 permissions:
   contents: read
 
