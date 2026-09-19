@@ -93,9 +93,9 @@ async function main() {
   const { data: rows, error: rowsError } = await db
     .from("live_structured_events")
     .select(
-      "id,primary_country,countries,commercial_eligibility_status,commercial_eligibility_reason_codes,last_seen_at",
+      "id,primary_country,countries,commercial_eligibility_status,commercial_eligibility_reason_codes,last_observed_at",
     )
-    .gte("last_seen_at", cutoff);
+    .gte("last_observed_at", cutoff);
 
   if (rowsError) {
     throw rowsError;
