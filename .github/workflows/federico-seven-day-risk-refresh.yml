@@ -225,6 +225,7 @@ jobs:
           set -euo pipefail
 
           node <<'NODE'
+          (async () => {
           const { createClient } = require('@supabase/supabase-js');
 
           const db = createClient(
@@ -315,6 +316,10 @@ jobs:
             'Fresh CHN strict evidence was not available after bounded synchronization wait: ' +
               JSON.stringify(last),
           );
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
           NODE
 
       - name: Publish fresh production-signed CHN Risk Object
