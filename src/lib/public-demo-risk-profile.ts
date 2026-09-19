@@ -28,6 +28,7 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   forexlive_rss: "forexlive",
   mining_com_rss: "mining_com",
   reliefweb: "reliefweb_aggregator",
+  gdelt_structured: "gdelt_structured",
 } as const;
 export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
