@@ -37,7 +37,7 @@ describe("Telegram raw-signal automated admission contract", () => {
 
   it("ships an automated admission and health migration", () => {
     const migration = read(
-      "supabase/migrations/958_telegram_automated_admission_health.sql",
+      "supabase/migrations/959_telegram_automated_admission_health.sql",
     );
 
     expect(migration).toContain("auto_admission_status");
