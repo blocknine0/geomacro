@@ -11,6 +11,7 @@ on:
       - "Testnet RSS Live Intelligence Runner"
       - "Deploy country flash intelligence to Supabase"
       - "Deploy live structure intelligence edge"
+      - "GDELT GAL Live Hot-Topic Sync"
     types:
       - completed
 
