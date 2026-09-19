@@ -9,7 +9,6 @@ on:
       - main
     paths:
       - "workers/telegram-flash/**"
-      - ".github/workflows/testnet-rss-live-runner.yml"
   workflow_run:
     workflows:
       - "Deploy country flash intelligence to Supabase"
