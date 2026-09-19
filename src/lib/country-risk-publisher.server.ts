@@ -494,14 +494,25 @@ async function loadFedericoStrictEvents(
       .filter(Boolean);
 
   const countryByFlash = new Map<string, Set<string>>();
+  const attributionByFlash = new Map<
+    string,
+    Array<{
+      country_iso3: string;
+      confidence: number;
+      is_primary: boolean;
+      attribution_method: string;
+    }>
+  >();
+
   for (const id of flashIds) {
     countryByFlash.set(id, new Set<string>());
+    attributionByFlash.set(id, []);
   }
 
   for (let i = 0; i < flashIds.length; i += 250) {
     const countryResult = await db
       .from("live_flash_event_countries")
-      .select("flash_id,country_iso3")
+      .select("flash_id,country_iso3,confidence,is_primary,attribution_method")
       .in("flash_id", flashIds.slice(i, i + 250));
 
     if (countryResult.error) {
@@ -511,7 +522,25 @@ async function loadFedericoStrictEvents(
     for (const row of countryResult.data ?? []) {
       const set = countryByFlash.get(String(row.flash_id));
       if (set && typeof row.country_iso3 === "string") {
-        set.add(row.country_iso3.trim().toUpperCase());
+        const countryIso3 =
+          row.country_iso3.trim().toUpperCase();
+
+        set.add(countryIso3);
+
+        const attributions =
+          attributionByFlash.get(String(row.flash_id));
+
+        if (attributions) {
+          attributions.push({
+            country_iso3: countryIso3,
+            confidence:
+              Number(row.confidence ?? 0),
+            is_primary:
+              Boolean(row.is_primary),
+            attribution_method:
+              String(row.attribution_method ?? "UNKNOWN"),
+          });
+        }
       }
     }
   }
@@ -622,6 +651,22 @@ async function loadFedericoStrictEvents(
     const independentSourceCount =
       sourceFamilies.length;
 
+    const sourceRecordIds = [
+      ...new Set(
+        members
+          .map((member) => String(member.source_record_id ?? "").trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    const contentHashes = [
+      ...new Set(
+        members
+          .map((member) => String(member.content_hash ?? "").trim())
+          .filter((value) => /^[a-f0-9]{64}$/.test(value)),
+      ),
+    ];
+
     const sourceIds = [
       ...new Set(
         members
@@ -644,6 +689,47 @@ async function loadFedericoStrictEvents(
       // is not sufficient for this acceptance profile.
       continue;
     }
+
+    const targetAttributions =
+      members
+        .flatMap(
+          (member) =>
+            attributionByFlash.get(
+              String(member.flash_id ?? ""),
+            ) ?? [],
+        )
+        .filter(
+          (item) => item.country_iso3 === iso3,
+        )
+        .sort(
+          (a, b) =>
+            Number(b.is_primary) -
+              Number(a.is_primary) ||
+            b.confidence -
+              a.confidence,
+        );
+
+    const bestTargetAttribution =
+      targetAttributions[0] ?? null;
+
+    const relevanceWeight =
+      bestTargetAttribution
+        ? Math.max(
+            0.75,
+            Math.min(
+              1,
+              (
+                bestTargetAttribution.confidence /
+                100
+              ) *
+                (
+                  bestTargetAttribution.is_primary
+                    ? 1
+                    : 0.9
+                ),
+            ),
+          )
+        : 0;
 
     const rawSeverity = Math.max(
       0,
@@ -782,13 +868,33 @@ async function loadFedericoStrictEvents(
       },
       event_family_id: familyId,
       source_ids: sourceIds,
+      source_record_ids: sourceRecordIds,
       source_urls: sourceUrls,
       source_families: sourceFamilies,
+      content_hashes: contentHashes,
       relevance_reason:
-        `Direct ${iso3} linkage via canonical event-family country mapping: ${iso3}`,
+        bestTargetAttribution
+          ? `${iso3} country attribution: ${bestTargetAttribution.attribution_method}${bestTargetAttribution.is_primary ? " (primary)" : " (related)"}`
+          : `Country linkage for ${iso3} was present in the governed flash-country bridge`,
       transmission_channel:
-        "direct_country_link",
-      relevance_weight: 1,
+        bestTargetAttribution?.is_primary
+          ? "direct_country_link"
+          : "linked_country_transmission",
+      relevance_weight:
+        Number(
+          relevanceWeight.toFixed(3),
+        ),
+      subject_is_primary:
+        Boolean(
+          bestTargetAttribution?.is_primary,
+        ),
+      subject_attribution_confidence:
+        bestTargetAttribution
+          ? bestTargetAttribution.confidence
+          : 0,
+      subject_attribution_method:
+        bestTargetAttribution?.attribution_method ??
+        "UNKNOWN",
       corroboration_status: corroborationStatus,
     });
 
