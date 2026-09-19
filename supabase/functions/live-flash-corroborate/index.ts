@@ -649,9 +649,6 @@ Deno.serve(async request => {
         verification_score: SIGNAL_DB_MODE
           ? null
           : Number(verificationScore.toFixed(3)),
-        verification_score_bps: SIGNAL_DB_MODE
-          ? Math.round(verificationScore * 100)
-          : null,
         corroboration_count: edges.length,
         independent_source_count: distinctSourceCount,
         verified_at: nextStatus === "VERIFIED" ? new Date().toISOString() : null,
