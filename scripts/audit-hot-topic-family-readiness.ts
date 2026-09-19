@@ -127,12 +127,13 @@ async function main() {
   const events = await fetchAll(
     db,
     "live_structured_events",
-    "id,story_key,domain,event_type,title,summary,primary_country,countries,status,last_seen_at,commercial_eligibility_status,evidence_count,independent_source_count,structure_version,classification_version",
+    "id,story_key,domain,event_type,title,summary,primary_country,countries,status,last_seen_at,last_observed_at,commercial_eligibility_status,evidence_count,independent_source_count,structure_version,classification_version",
     (q) =>
       q
-        .gte("last_seen_at", cutoff)
+        .gte("last_observed_at", cutoff)
+        .lte("last_observed_at", now.toISOString())
         .in("status", ["active", "monitoring"])
-        .order("last_seen_at", { ascending: false }),
+        .order("last_observed_at", { ascending: false }),
   );
 
   const perFamily = new Map<
@@ -173,10 +174,10 @@ async function main() {
   let futureTimestampEventCount = 0;
   for (const raw of events) {
     const row = raw as Record<string, unknown>;
-    const lastSeenAt = String(row.last_seen_at ?? "");
-    const lastSeenMs = Date.parse(lastSeenAt);
-    if (!Number.isFinite(lastSeenMs)) continue;
-    if (lastSeenMs > now.getTime()) {
+    const lastObservedAt = String(row.last_observed_at ?? "");
+    const lastObservedMs = Date.parse(lastObservedAt);
+    if (!Number.isFinite(lastObservedMs)) continue;
+    if (lastObservedMs > now.getTime()) {
       futureTimestampEventCount += 1;
       continue;
     }
@@ -192,7 +193,7 @@ async function main() {
 
     for (const family of families) {
       const item = perFamily.get(family)!;
-      const ageSeconds = Math.max(0, (now.getTime() - lastSeenMs) / 1_000);
+      const ageSeconds = Math.max(0, (now.getTime() - lastObservedMs) / 1_000);
       if (ageSeconds > item.max_age_seconds) continue;
 
       item.matched_event_count += 1;
@@ -203,8 +204,8 @@ async function main() {
         item.blocked_event_count += 1;
       }
       for (const iso3 of countries) item.countries_with_signal.add(iso3);
-      if (!item.latest_event_at || lastSeenAt > item.latest_event_at) {
-        item.latest_event_at = lastSeenAt;
+      if (!item.latest_event_at || lastObservedAt > item.latest_event_at) {
+        item.latest_event_at = lastObservedAt;
       }
       item.minimum_evidence_count =
         item.minimum_evidence_count === null
