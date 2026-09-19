@@ -28,10 +28,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
 
   it("pins the authoritative production lifecycle migrations", () => {
     const lifecycle = read(
-      "supabase/migrations/042_realtime_event_family_lifecycle.sql",
+      "supabase/migrations/955_realtime_event_family_lifecycle.sql",
     );
     const versions = read(
-      "supabase/migrations/043_event_family_version_ledger.sql",
+      "supabase/migrations/956_event_family_version_ledger.sql",
     );
 
     expect(lifecycle).toContain(
@@ -137,7 +137,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
     const schemaGuard = read(
-      "supabase/migrations/044_repair_federico_event_family_schema.sql",
+      "supabase/migrations/957_repair_federico_event_family_schema.sql",
     );
 
     expect(preflight).toContain(
