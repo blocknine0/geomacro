@@ -23,5 +23,17 @@ describe("GDELT V2 live event export selection", () => {
     expect(script).toContain(
       "GDELT Event batch is stale",
     );
+    expect(script).toContain(
+      "async function loadCurrentlyAvailableExport(asOf)",
+    );
+    expect(script).toContain(
+      "GDELT_MAX_AVAILABILITY_WAIT_MINUTES",
+    );
+    expect(script).toContain(
+      "GDELT lastupdate advertises a future Event export",
+    );
+    expect(script).toContain(
+      "setTimeout(resolve, 10_000)",
+    );
   });
 });
