@@ -142,11 +142,17 @@ export type RiskEvidenceReference = {
 
   event_family_id?: string | null;
   source_ids?: string[];
+  source_record_ids?: string[];
   source_urls?: string[];
   source_families?: string[];
+  content_hashes?: string[];
   relevance_reason?: string;
   transmission_channel?: string | null;
   relevance_weight?: number;
+  subject_is_primary?: boolean;
+  subject_attribution_confidence?: number;
+  subject_attribution_method?: string;
+  material_evidence_at?: string;
   evidence_age_hours?: number;
   freshness_status?: "FRESH" | "AGING" | "STALE";
   corroboration_status?: "CONFIRMED" | "CORROBORATING" | "UNCONFIRMED";
@@ -285,6 +291,10 @@ export type GeomacroRiskObject = {
         high_impact_max_evidence_age_hours: number;
         high_impact_severity_threshold: number;
         minimum_high_impact_independent_sources: number;
+        source_independence_method: string;
+        relevance_method: string;
+        source_family_map_version: string;
+        source_family_map: Record<string, string>;
       };
       calculation_input: unknown;
       score_components: {

@@ -150,7 +150,9 @@ if (strictProfile) {
   if (
     !manifest?.calculation_input ||
     !manifest?.hash_inputs?.data_projection ||
-    !manifest?.score_components
+    !manifest?.score_components ||
+    !manifest?.selection_policy?.source_family_map_version ||
+    !manifest?.selection_policy?.source_family_map
   ) {
     throw new Error(
       "Federico strict object is missing the signed reproducibility manifest",
@@ -295,13 +297,58 @@ if (strictProfile) {
         item.source_urls.length === 0 ||
         !item.relevance_reason ||
         !item.transmission_channel ||
-        item.relevance_weight !== 1 ||
+        !Array.isArray(item.source_record_ids) ||
+        item.source_record_ids.length === 0 ||
+        !Array.isArray(item.content_hashes) ||
+        item.content_hashes.length === 0 ||
+        typeof item.subject_is_primary !== "boolean" ||
+        typeof item.subject_attribution_confidence !== "number" ||
+        !item.subject_attribution_method ||
+        typeof item.relevance_weight !== "number" ||
+        item.relevance_weight <= 0 ||
+        item.relevance_weight > 1 ||
+        !Array.isArray(item.source_families) ||
+        item.source_families.length === 0 ||
         Number(item.evidence_age_hours ?? 999) >
           6
     )
   ) {
     throw new Error(
       "Federico strict evidence is missing attributable source URLs, relevance metadata or freshness bounds",
+    );
+  }
+
+  const configuredSourceFamilyMap =
+    manifest.selection_policy.source_family_map as Record<
+      string,
+      string
+    >;
+
+  const configuredSourceFamilies =
+    new Set(
+      Object.values(
+        configuredSourceFamilyMap,
+      ),
+    );
+
+  if (
+    evidence.some(
+      (item: any) =>
+        (item.source_ids ?? []).some(
+          (sourceId: string) =>
+            !Object.prototype.hasOwnProperty.call(
+              configuredSourceFamilyMap,
+              sourceId,
+            ),
+        ) ||
+        (item.source_families ?? []).some(
+          (family: string) =>
+            !configuredSourceFamilies.has(family),
+        )
+    )
+  ) {
+    throw new Error(
+      "Federico strict evidence contains an unmapped source identity",
     );
   }
 
@@ -404,6 +451,12 @@ let liveReview:
       low_count: number;
       admission_clear: boolean;
       proof_present: boolean;
+      proof_verification?: {
+        primary: boolean;
+        independent_node: boolean;
+        verify_url: string | null;
+        independent_node_url: string | null;
+      };
       billing: unknown;
     } = { attempted: false };
 
@@ -461,6 +514,108 @@ if (invinoApiKey) {
   const mediumCount = severityCount("medium");
   const lowCount = severityCount("low");
 
+  let proofVerification = {
+    primary: false,
+    independent_node: false,
+    verify_url: null as string | null,
+    independent_node_url: null as string | null,
+  };
+
+  const signedEvent =
+    body?.proof?.event;
+
+  if (
+    signedEvent &&
+    body?.proof?.proof_payload
+  ) {
+    const verifyUrl =
+      String(
+        body.proof.proof_payload.verify_url ??
+          "",
+      ).trim();
+
+    if (verifyUrl) {
+      const verifyResponse =
+        await fetch(verifyUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            event: signedEvent,
+          }),
+        });
+
+      const verifyBody =
+        await verifyResponse
+          .json()
+          .catch(() => null);
+
+      if (!verifyResponse.ok || verifyBody?.valid !== true) {
+        throw new Error(
+          `invinoveritas primary /verify-proof failed: ${JSON.stringify(
+            verifyBody,
+          )}`,
+        );
+      }
+
+      proofVerification.primary = true;
+      proofVerification.verify_url = verifyUrl;
+    }
+
+    const independentNodes =
+      Array.isArray(
+        body.proof.proof_payload.independent_nodes,
+      )
+        ? body.proof.proof_payload.independent_nodes
+        : [];
+
+    const independentNode =
+      String(independentNodes[0] ?? "").trim();
+
+    if (independentNode) {
+      const independentResponse =
+        await fetch(independentNode, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            event: signedEvent,
+          }),
+        });
+
+      const independentBody =
+        await independentResponse
+          .json()
+          .catch(() => null);
+
+      if (
+        !independentResponse.ok ||
+        independentBody?.valid !== true
+      ) {
+        throw new Error(
+          `invinoveritas independent-node proof verification failed: ${JSON.stringify(
+            independentBody,
+          )}`,
+        );
+      }
+
+      proofVerification.independent_node = true;
+      proofVerification.independent_node_url =
+        independentNode;
+    }
+  }
+
+  if (
+    !proofVerification.primary ||
+    !proofVerification.independent_node
+  ) {
+    throw new Error(
+      "Signed partner proof could not be independently verified against the primary and independent verifier nodes",
+    );
+  }
+
   const admissionClear =
     ["approve", "approve_with_concerns"].includes(verdict) &&
     blockerCount === 0 &&
@@ -479,6 +634,7 @@ if (invinoApiKey) {
     low_count: lowCount,
     admission_clear: admissionClear,
     proof_present: true,
+    proof_verification: proofVerification,
     billing: body?.billing ?? null,
   };
 }
@@ -495,6 +651,14 @@ console.log(
         live_partner_review: liveReview.attempted ? "PASS" : "NOT_RUN",
         partner_admission:
           liveReview.attempted && liveReview.admission_clear
+            ? "PASS"
+            : liveReview.attempted
+              ? "FAIL"
+              : "NOT_RUN",
+        partner_proof_verification:
+          liveReview.attempted &&
+          liveReview.proof_verification?.primary === true &&
+          liveReview.proof_verification?.independent_node === true
             ? "PASS"
             : liveReview.attempted
               ? "FAIL"
