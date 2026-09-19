@@ -255,23 +255,24 @@ jobs:
             if (familiesResult.error) throw familiesResult.error;
 
             const candidates = (familiesResult.data ?? []).filter((family) =>
-              Number(family.independent_source_count ?? 0) >= 2 &&
               family.signal_category &&
               ['GEOPOLITICS', 'MACRO', 'CRITICAL_MINERALS'].includes(
                 String(family.signal_category),
               ),
             );
 
-            if (!candidates.length) {
+            const familyIds = candidates.map((family) => family.family_id);
+
+            if (!familyIds.length) {
               return {
                 ready: false,
                 active_families: (familiesResult.data ?? []).length,
                 qualifying_families: 0,
                 verified_members: 0,
+                independent_source_families: 0,
               };
             }
 
-            const familyIds = candidates.map((family) => family.family_id);
             const membersResult = await db
               .from('live_flash_events')
               .select(
@@ -291,11 +292,19 @@ jobs:
               /^[a-f0-9]{64}$/.test(String(row.content_hash ?? '')),
             );
 
+            const independentSourceFamilies = new Set(
+              usableMembers.map((row) => String(row.source_id ?? '').trim()),
+            );
+
             return {
-              ready: usableMembers.length > 0,
+              // Match the Federico publisher contract: independent source
+              // families are counted across the complete fresh country
+              // evidence set, not required to coexist inside one event family.
+              ready: independentSourceFamilies.size >= 2,
               active_families: (familiesResult.data ?? []).length,
               qualifying_families: candidates.length,
               verified_members: usableMembers.length,
+              independent_source_families: independentSourceFamilies.size,
             };
           }
 

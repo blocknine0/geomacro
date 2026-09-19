@@ -82,6 +82,22 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("keeps Federico CHN synchronization aligned with country-level source diversity", () => {
+    const workflow = read(
+      ".github/workflows/federico-seven-day-risk-refresh.yml",
+    );
+
+    expect(workflow).toContain(
+      "independentSourceFamilies.size >= 2",
+    );
+    expect(workflow).toContain(
+      "independent source families are counted across the complete fresh country evidence set",
+    );
+    expect(workflow).not.toContain(
+      "Number(family.independent_source_count ?? 0) >= 2",
+    );
+  });
+
   it("pins the authoritative production lifecycle migrations", () => {
     const lifecycle = read(
       "supabase/migrations/955_realtime_event_family_lifecycle.sql",
