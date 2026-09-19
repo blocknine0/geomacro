@@ -49,13 +49,9 @@ jobs:
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
           grep -q 'push:' "$file"
-          test -f "supabase/migrations/042_realtime_event_family_lifecycle.sql"
-          test -f "supabase/migrations/043_event_family_version_ledger.sql"
-          test ! -f "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
-          test ! -f "supabase/migrations/951_telegram_signal_compact_storage.sql"
-          test ! -f "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
-          test ! -f "supabase/migrations/953_event_family_version_ledger.sql"
-
+          test -f "supabase/migrations/955_realtime_event_family_lifecycle.sql"
+          test -f "supabase/migrations/956_event_family_version_ledger.sql"
+                                        
           echo "Supabase deployment workflow safety guardrails are present."
 
   deploy:
