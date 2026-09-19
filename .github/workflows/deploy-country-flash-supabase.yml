@@ -7,6 +7,7 @@ on:
     paths:
       - "supabase/migrations/**"
       - "supabase/functions/live-flash-ingest/**"
+      - "supabase/functions/live-flash-corroborate/**"
       - ".github/workflows/deploy-country-flash-supabase.yml"
   workflow_dispatch:
     inputs:
