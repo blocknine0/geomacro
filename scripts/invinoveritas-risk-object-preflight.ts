@@ -136,11 +136,19 @@ const reviewArtifact = {
     : null,
 };
 
+const reviewArtifactText = JSON.stringify(reviewArtifact);
+const reviewArtifactBytes = Buffer.byteLength(reviewArtifactText, "utf8");
+if (reviewArtifactBytes > 20_000) {
+  throw new Error(
+    `Compact invinoveritas review artifact exceeds the partner limit: ${reviewArtifactBytes} bytes > 20000`,
+  );
+}
+
 const reviewRequest = {
-  artifact: JSON.stringify(reviewArtifact),
+  artifact: reviewArtifactText,
   artifact_type: "general",
   context:
-    "Pre-action external risk context from Geomacro. The review artifact is a compact, lossless decision summary of a separately preserved signed gro-1.1 Risk Object. The complete signed object remains intact in the handoff artifact and is independently verified by Geomacro before this request. Validate the stated risk context, confidence, evidence/provenance summary, integrity identifiers, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
+    "Pre-action external risk context from Geomacro. The review artifact is a compact decision summary of a separately preserved signed gro-1.1 Risk Object. The complete signed object remains intact in the handoff artifact and is independently verified by Geomacro before this request. Validate the stated risk context, confidence, evidence/provenance summary, integrity identifiers, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
   sign: true,
   confidentiality_tier: "hash_only",
 };
@@ -240,7 +248,7 @@ console.log(
         sign: reviewRequest.sign,
         confidentiality_tier: reviewRequest.confidentiality_tier,
         context: reviewRequest.context,
-        artifact_bytes: Buffer.byteLength(reviewRequest.artifact, "utf8"),
+        artifact_bytes: reviewArtifactBytes,
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
       },
