@@ -653,6 +653,7 @@ type EventState = {
 
   firstSeenAt: string;
   lastSeenAt: string;
+  lastObservedAt: string;
 
   evidenceCount: number;
   evidenceRefs: string[];
@@ -3319,7 +3320,7 @@ Deno.serve(async (req) => {
         "live_structured_events",
       )
       .select(
-        "id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,evidence_count,evidence_refs,structured_payload",
+        "id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,last_observed_at,evidence_count,evidence_refs,structured_payload",
       )
       .gte(
         "last_seen_at",
@@ -3438,6 +3439,9 @@ Deno.serve(async (req) => {
         firstSeenAt:
           row.first_seen_at,
         lastSeenAt:
+          row.last_seen_at,
+        lastObservedAt:
+          row.last_observed_at ??
           row.last_seen_at,
         evidenceCount:
           Number(
@@ -3895,6 +3899,8 @@ Deno.serve(async (req) => {
             seenAt,
           lastSeenAt:
             seenAt,
+          lastObservedAt:
+            manifest.period_end,
           evidenceCount: 0,
           evidenceRefs: [],
           sourceDomains:
@@ -4009,6 +4015,16 @@ Deno.serve(async (req) => {
         selected
           .lastSeenAt =
           seenAt;
+      }
+
+      if (
+        manifest.period_end >
+        selected
+          .lastObservedAt
+      ) {
+        selected
+          .lastObservedAt =
+          manifest.period_end;
       }
 
       if (
@@ -4195,6 +4211,10 @@ Deno.serve(async (req) => {
                 event
                   .lastSeenAt,
 
+              last_observed_at:
+                event
+                  .lastObservedAt,
+
               evidence_count:
                 event
                   .evidenceCount,
@@ -4240,6 +4260,13 @@ Deno.serve(async (req) => {
 
                 risk_channels:
                   event.channels,
+
+                observation: {
+                  observed_at:
+                    event.lastObservedAt,
+                  observation_basis:
+                    "verified_fragment_period_end",
+                },
 
                 what_changed: {
                   state:
