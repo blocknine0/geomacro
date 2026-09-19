@@ -1399,7 +1399,7 @@ export async function buildCountryRiskObject(
         ),
     },
 
-    attribution,
+    attribution: continuityAttribution,
 
     confidence:
       round(
