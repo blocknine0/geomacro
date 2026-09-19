@@ -4,11 +4,6 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: "*/15 * * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - "workers/telegram-flash/**"
   workflow_run:
     workflows:
       - "Deploy country flash intelligence to Supabase"
