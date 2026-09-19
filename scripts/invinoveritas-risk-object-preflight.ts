@@ -35,6 +35,7 @@ const invinoOrigin = (
 ).replace(/\/$/, "");
 const invinoApiKey = process.env.INVINO_API_KEY?.trim() ?? "";
 const requestOut = process.env.INVINO_REQUEST_OUT?.trim() ?? "";
+const reviewOut = process.env.INVINO_REVIEW_OUT?.trim() ?? "";
 
 const riskObject = JSON.parse(await readFile(file, "utf8"));
 
@@ -154,6 +155,14 @@ if (invinoApiKey) {
     );
   }
 
+  if (reviewOut) {
+    await writeFile(
+      reviewOut,
+      JSON.stringify(body, null, 2) + "\n",
+      { mode: 0o600 },
+    );
+  }
+
   liveReview = {
     attempted: true,
     http_status: response.status,
@@ -193,6 +202,7 @@ console.log(
         context: reviewRequest.context,
         artifact_bytes: Buffer.byteLength(reviewRequest.artifact, "utf8"),
         request_written_to: requestOut || null,
+        review_response_written_to: reviewOut || null,
       },
       live_review: liveReview,
       handoff_rule:
