@@ -771,6 +771,43 @@ function stripHtml(value) {
     .trim();
 }
 
+const DISCOVERY_STOPWORDS = new Set([
+  'the', 'and', 'or', 'for', 'with', 'from', 'into', 'amid', 'after',
+  'before', 'over', 'under', 'across', 'between', 'global', 'current',
+  'news', 'crisis', 'risk', 'world', 'political', 'politics',
+]);
+
+function discoveryQueryTokens(query) {
+  return normalizeText(query)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !DISCOVERY_STOPWORDS.has(token));
+}
+
+function guardianQueryRelevance(query, article) {
+  const queryTokens = discoveryQueryTokens(query);
+  if (!queryTokens.length) return true;
+
+  const articleText = normalizeText(
+    `${article.title || ''} ${article.description || ''}`.slice(0, 6000),
+  );
+  const articleTokens = new Set(articleText.split(' '));
+
+  const matched = queryTokens.filter((token) => articleTokens.has(token)).length;
+
+  const highSignalTokens = queryTokens.filter((token) =>
+    /(?:china|taiwan|russia|ukraine|nato|iran|israel|gaza|houthi|north|korea|india|pakistan|sudan|drc|ethiopia|myanmar|fed|fomc|ecb|boj|boe|inflation|interest|rate|recession|debt|tariff|yield|rare|earth|lithium|cobalt|nickel|gallium|germanium|graphite|tungsten|uranium|critical|mineral)/i.test(token),
+  );
+  const highSignalMatched = highSignalTokens.filter((token) =>
+    articleTokens.has(token),
+  ).length;
+
+  return (
+    matched >= 2 ||
+    (highSignalTokens.length > 0 && highSignalMatched >= 1)
+  );
+}
+
 function isFresh(publishedAt) {
   const t = Date.parse(publishedAt);
   if (!Number.isFinite(t)) return false;
@@ -2229,7 +2266,7 @@ async function fetchArticlesFromApis(query, categoryName) {
     const guardianUrl =
       `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}` +
       `&type=article${sectionParam}` +
-      `&order-by=newest&from-date=${fromDate}` +
+      `&order-by=relevance&from-date=${fromDate}` +
       `&show-fields=trailText&page-size=10` +
       `&api-key=${process.env.GUARDIAN_API_KEY}`;
 
@@ -2874,6 +2911,13 @@ async function ingestNews() {
           existingTitles.has(normTitle) ||
           seenInCurrentRun.has(normTitle) ||
           seenCandidatesThisCategory.has(normTitle)
+        ) {
+          continue;
+        }
+
+        if (
+          article.discoveryProvider === 'guardian' &&
+          !guardianQueryRelevance(query, article)
         ) {
           continue;
         }
