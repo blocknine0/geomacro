@@ -49,8 +49,12 @@ jobs:
           grep -q 'ldpwajisioljyjtojvfx' "$file"
           grep -q 'version: 2.117.0' "$file"
           grep -q 'push:' "$file"
-          grep -q 'supabase/migrations/042_realtime_event_family_lifecycle.sql' "$file"
-          grep -q 'supabase/migrations/043_event_family_version_ledger.sql' "$file"
+          test -f "supabase/migrations/042_realtime_event_family_lifecycle.sql"
+          test -f "supabase/migrations/043_event_family_version_ledger.sql"
+          test ! -f "supabase/migrations/950_telegram_signal_ingest_isolation.sql"
+          test ! -f "supabase/migrations/951_telegram_signal_compact_storage.sql"
+          test ! -f "supabase/migrations/952_realtime_flash_event_lifecycle.sql"
+          test ! -f "supabase/migrations/953_event_family_version_ledger.sql"
 
           echo "Supabase deployment workflow safety guardrails are present."
 
@@ -134,6 +138,21 @@ jobs:
           set -euo pipefail
           supabase db push
 
+      - name: Verify authoritative event-family schema
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db query --linked -p "$SUPABASE_DB_PASSWORD" "DO \\$\\$ BEGIN
+            IF to_regclass('public.live_flash_event_families') IS NULL THEN
+              RAISE EXCEPTION 'live_flash_event_families is missing from authoritative production';
+            END IF;
+            IF to_regclass('public.live_flash_event_family_versions') IS NULL THEN
+              RAISE EXCEPTION 'live_flash_event_family_versions is missing from authoritative production';
+            END IF;
+          END \\$\\$;"
+
+          echo "PASS: authoritative event-family lifecycle schema is present."
       - name: Sync flash authentication secret
         if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash
