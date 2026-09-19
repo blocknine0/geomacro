@@ -1,5 +1,6 @@
 name: Federico 7-Day Risk Object Refresh
-# Acceptance runs execute on workflow-file changes after hardening merges.\n
+# Acceptance runs execute on workflow-file changes after hardening merges.
+
 on:
   workflow_dispatch:
   schedule:
