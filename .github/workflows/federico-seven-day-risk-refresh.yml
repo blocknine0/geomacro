@@ -204,6 +204,7 @@ jobs:
             .gates.partner_request_contract == "PASS" and
             .gates.trust_metadata == "PASS" and
             .gates.reproducibility == "PASS" and
+            .gates.partner_admission == "PASS" and
             .gates.live_partner_review == "PASS" and
             .live_review.proof_present == true
           ' /tmp/federico-preflight.json >/dev/null
@@ -355,6 +356,7 @@ jobs:
             }' /tmp/federico-preflight.json
             echo
             echo "Artifact: federico-latest-handoff"
+            echo "Historical artifact: federico-handoff-${{ github.run_id }}"
             echo "Package: Geomacro_Federico_Latest_Handoff.zip"
             echo "Run ID: ${{ github.run_id }}"
           } >> "$GITHUB_STEP_SUMMARY"
