@@ -22,6 +22,8 @@ on:
 
 # Certification trigger: successful fresh GDELT completion must exercise Federico strict acceptance.
 
+# Certification cycle anchor: fresh GDELT completion after Federico workflow hardening.
+
 permissions:
   contents: read
 
