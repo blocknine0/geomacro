@@ -8,6 +8,7 @@ on:
   workflow_run:
     workflows:
       - "Auto Ingest News"
+      - "GDELT GAL Live Hot-Topic Sync"
     types:
       - completed
 
