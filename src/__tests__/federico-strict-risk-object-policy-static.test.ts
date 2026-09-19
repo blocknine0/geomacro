@@ -63,6 +63,25 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("preserves country attribution on idempotent live-flash duplicates", () => {
+    const ingest = read(
+      "supabase/functions/live-flash-ingest/index.ts",
+    );
+
+    expect(ingest).toContain(
+      'const existingCountryResult = await db',
+    );
+    expect(ingest).toContain(
+      '.from("live_flash_event_countries")',
+    );
+    expect(ingest).toContain(
+      "countries: (existingCountryResult.data ?? []).map",
+    );
+    expect(ingest).toContain(
+      'verification_status: "UNCHANGED"',
+    );
+  });
+
   it("pins the authoritative production lifecycle migrations", () => {
     const lifecycle = read(
       "supabase/migrations/955_realtime_event_family_lifecycle.sql",

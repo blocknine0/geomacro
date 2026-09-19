@@ -1169,6 +1169,21 @@ Deno.serve(async request => {
       }
     }
 
+    const existingCountryResult = await db
+      .from("live_flash_event_countries")
+      .select("country_iso3,is_primary,confidence,attribution_method")
+      .eq("flash_id", previous.flash_id)
+      .order("is_primary", { ascending: false })
+      .order("country_iso3", { ascending: true })
+
+    if (existingCountryResult.error) {
+      console.error("existing country attribution lookup failed", existingCountryResult.error)
+      return jsonResponse(500, {
+        ok: false,
+        error: "flash_existing_country_lookup_failed",
+      })
+    }
+
     return jsonResponse(200, {
       ok: true,
       duplicate: true,
@@ -1179,6 +1194,12 @@ Deno.serve(async request => {
       event_version: previous.source_version,
       material_update: false,
       verification_status: "UNCHANGED",
+      countries: (existingCountryResult.data ?? []).map((row) => ({
+        iso3: row.country_iso3,
+        primary: Boolean(row.is_primary),
+        confidence: row.confidence,
+        method: row.attribution_method,
+      })),
       scoring_eligible: false,
     })
   }
