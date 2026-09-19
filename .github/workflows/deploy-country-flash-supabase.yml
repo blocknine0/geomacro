@@ -239,7 +239,7 @@ jobs:
             --no-verify-jwt
 
       - name: Deploy live flash corroboration function
-        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_INGEST_DEPLOY_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -292,23 +292,22 @@ jobs:
             exit 1
           fi
 
-          if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
-            corroborate_code="$(curl --silent --show-error \
-              --output /tmp/flash-corroborate.json \
-              --write-out '%{http_code}' \
-              --request POST \
-              --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" \
-              --header 'Content-Type: application/json' \
-              --data '{}' \
-              "${base}/live-flash-corroborate")"
+          corroborate_code="$(curl --silent --show-error \
+            --output /tmp/flash-corroborate.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "${auth_header_name}: ${auth_header_value}" \
+            --header "Authorization: Bearer ${auth_header_value}" \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "${base}/live-flash-corroborate")"
 
-            cat /tmp/flash-corroborate.json
-            echo
+          cat /tmp/flash-corroborate.json
+          echo
 
-            if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
-              echo "::error title=Corroboration smoke check failed::live-flash-corroborate did not return a successful response."
-              exit 1
-            fi
+          if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
+            echo "::error title=Corroboration smoke check failed::live-flash-corroborate did not return a successful response."
+            exit 1
           fi
 
           echo "PASS: live-flash-ingest authentication boundary is healthy."
@@ -317,4 +316,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Core country-flash schema migrations are applied through the authoritative PostgreSQL connection. Flash runtime activation remains explicitly blocked by the missing FLASH_INGEST_TOKEN."
+          echo "Core country-flash schema migrations are applied through the authoritative PostgreSQL connection. Static-token Telegram activation remains disabled when FLASH_INGEST_TOKEN is absent; governed RSS ingest and corroboration use the scoped GitHub OIDC boundary."
