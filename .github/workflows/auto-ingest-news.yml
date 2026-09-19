@@ -12,6 +12,9 @@ on:
       - main
     paths:
       - ".github/workflows/auto-ingest-news.yml"
+      - "supabase/migrations/955_realtime_event_family_lifecycle.sql"
+      - "supabase/migrations/956_event_family_version_ledger.sql"
+      - "supabase/migrations/957_repair_federico_event_family_schema.sql"
       - "scripts/ingest-news.js"
 
 permissions:
