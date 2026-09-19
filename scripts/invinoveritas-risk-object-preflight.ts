@@ -404,6 +404,12 @@ let liveReview:
       low_count: number;
       admission_clear: boolean;
       proof_present: boolean;
+      proof_verification?: {
+        primary: boolean;
+        independent_node: boolean;
+        verify_url: string | null;
+        independent_node_url: string | null;
+      };
       billing: unknown;
     } = { attempted: false };
 
@@ -461,6 +467,108 @@ if (invinoApiKey) {
   const mediumCount = severityCount("medium");
   const lowCount = severityCount("low");
 
+  let proofVerification = {
+    primary: false,
+    independent_node: false,
+    verify_url: null as string | null,
+    independent_node_url: null as string | null,
+  };
+
+  const signedEvent =
+    body?.proof?.event;
+
+  if (
+    signedEvent &&
+    body?.proof?.proof_payload
+  ) {
+    const verifyUrl =
+      String(
+        body.proof.proof_payload.verify_url ??
+          "",
+      ).trim();
+
+    if (verifyUrl) {
+      const verifyResponse =
+        await fetch(verifyUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            event: signedEvent,
+          }),
+        });
+
+      const verifyBody =
+        await verifyResponse
+          .json()
+          .catch(() => null);
+
+      if (!verifyResponse.ok || verifyBody?.valid !== true) {
+        throw new Error(
+          `invinoveritas primary /verify-proof failed: ${JSON.stringify(
+            verifyBody,
+          )}`,
+        );
+      }
+
+      proofVerification.primary = true;
+      proofVerification.verify_url = verifyUrl;
+    }
+
+    const independentNodes =
+      Array.isArray(
+        body.proof.proof_payload.independent_nodes,
+      )
+        ? body.proof.proof_payload.independent_nodes
+        : [];
+
+    const independentNode =
+      String(independentNodes[0] ?? "").trim();
+
+    if (independentNode) {
+      const independentResponse =
+        await fetch(independentNode, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            event: signedEvent,
+          }),
+        });
+
+      const independentBody =
+        await independentResponse
+          .json()
+          .catch(() => null);
+
+      if (
+        !independentResponse.ok ||
+        independentBody?.valid !== true
+      ) {
+        throw new Error(
+          `invinoveritas independent-node proof verification failed: ${JSON.stringify(
+            independentBody,
+          )}`,
+        );
+      }
+
+      proofVerification.independent_node = true;
+      proofVerification.independent_node_url =
+        independentNode;
+    }
+  }
+
+  if (
+    !proofVerification.primary ||
+    !proofVerification.independent_node
+  ) {
+    throw new Error(
+      "Signed partner proof could not be independently verified against the primary and independent verifier nodes",
+    );
+  }
+
   const admissionClear =
     ["approve", "approve_with_concerns"].includes(verdict) &&
     blockerCount === 0 &&
@@ -479,6 +587,7 @@ if (invinoApiKey) {
     low_count: lowCount,
     admission_clear: admissionClear,
     proof_present: true,
+    proof_verification: proofVerification,
     billing: body?.billing ?? null,
   };
 }
