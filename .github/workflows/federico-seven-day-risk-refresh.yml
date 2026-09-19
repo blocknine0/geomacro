@@ -5,14 +5,12 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 */2 * * *"
-  push:
-    branches:
-      - main
   workflow_run:
     workflows:
       - "Auto Ingest News"
       - "Testnet RSS Live Intelligence Runner"
       - "Deploy country flash intelligence to Supabase"
+      - "Deploy live structure intelligence edge"
     types:
       - completed
 
@@ -234,7 +232,7 @@ jobs:
           console.log('PASS: production signer matches deployed active trust key');
           NODE
 
-      - name: Wait for a freshly sealed GDELT fragment
+      - name: Wait for a recent verified GDELT fragment
         shell: bash
         run: |
           set -euo pipefail
@@ -253,8 +251,8 @@ jobs:
               { auth: { persistSession: false, autoRefreshToken: false } },
             );
 
-            const startedAt = new Date().toISOString();
             const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            const freshnessWindowMs = 20 * 60 * 1000;
 
             async function latestManifest() {
               const { data, error } = await db
@@ -271,51 +269,42 @@ jobs:
               return data ?? null;
             }
 
-            const baseline = await latestManifest();
-            const baselineSealedAt = baseline?.sealed_at ?? startedAt;
-            console.log(JSON.stringify({
-              baseline_fragment_id: baseline?.id ?? null,
-              baseline_sealed_at: baselineSealedAt,
-              baseline_period_end: baseline?.period_end ?? null,
-            }));
-
             for (let attempt = 1; attempt <= 24; attempt += 1) {
               const candidate = await latestManifest();
-
-              if (
+              const now = Date.now();
+              const sealedAt = Date.parse(String(candidate?.sealed_at ?? ''));
+              const periodEnd = Date.parse(String(candidate?.period_end ?? ''));
+              const freshEnough =
                 candidate &&
-                candidate.id !== baseline?.id &&
                 Number(candidate.item_count ?? 0) > 0 &&
-                String(candidate.sealed_at ?? '') >= startedAt &&
-                String(candidate.sealed_at ?? '') >= baselineSealedAt
-              ) {
-                process.env.FRESH_GDELT_FRAGMENT_ID = String(candidate.id);
-                console.log(JSON.stringify({
-                  attempt,
-                  fresh_fragment_id: candidate.id,
-                  item_count: candidate.item_count,
-                  period_end: candidate.period_end,
-                  sealed_at: candidate.sealed_at,
-                }));
-                require('node:fs').appendFileSync(
-                  process.env.GITHUB_ENV,
-                  `FRESH_GDELT_FRAGMENT_ID=${candidate.id}\n`,
-                );
-                console.log('PASS: newly sealed accepted GDELT fragment detected.');
-                return;
-              }
+                Number.isFinite(sealedAt) &&
+                Number.isFinite(periodEnd) &&
+                now - sealedAt <= freshnessWindowMs &&
+                now - periodEnd <= freshnessWindowMs;
 
               console.log(JSON.stringify({
                 attempt,
-                waiting_for_fresh_fragment: true,
-                latest_fragment_id: candidate?.id ?? null,
-                latest_sealed_at: candidate?.sealed_at ?? null,
+                fresh_enough: Boolean(freshEnough),
+                fragment_id: candidate?.id ?? null,
+                item_count: candidate?.item_count ?? null,
+                sealed_at: candidate?.sealed_at ?? null,
+                period_end: candidate?.period_end ?? null,
               }));
+
+              if (freshEnough) {
+                require('node:fs').appendFileSync(
+                  process.env.GITHUB_ENV,
+                  'FRESH_GDELT_FRAGMENT_ID=' + String(candidate.id) + '
+',
+                );
+                console.log('PASS: recent verified GDELT fragment is fresh enough for Federico strict corroboration.');
+                return;
+              }
 
               if (attempt < 24) await sleep(30000);
             }
 
-            throw new Error('No newly sealed accepted GDELT fragment appeared within the bounded synchronization window.');
+            throw new Error('No verified GDELT fragment within the required 20-minute freshness window.');
           })().catch((error) => {
             console.error(error);
             process.exit(1);
