@@ -370,24 +370,57 @@ Deno.serve(async request => {
     Date.now() - CORROBORATION_LOOKBACK_HOURS * 60 * 60_000,
   ).toISOString()
 
-  const flashResult = await db
+  // Process only fresh unverified/corroborating candidates, while keeping
+  // recently VERIFIED flashes as corroboration references. This preserves
+  // strict evidence semantics and prevents scheduled runs from reprocessing
+  // the entire six-hour history.
+  const candidateResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
     )
     .gte("ingested_at", cutoff)
-    .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
+    .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
     .order("ingested_at", { ascending: false })
-    .limit(1500)
+    .limit(500)
 
-  if (flashResult.error) {
-    console.error(flashResult.error)
-    return jsonResponse(500, { ok: false, error: "flash_query_failed" })
+  if (candidateResult.error) {
+    console.error(candidateResult.error)
+    return jsonResponse(500, { ok: false, error: "candidate_query_failed" })
   }
 
-  const flashes = (flashResult.data ?? []) as Flash[]
-  if (!flashes.length) {
-    return jsonResponse(200, { ok: true, processed: 0 })
+  const referenceResult = await db
+    .from("live_flash_events")
+    .select(
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
+    )
+    .gte("ingested_at", cutoff)
+    .eq("verification_status", "VERIFIED")
+    .order("ingested_at", { ascending: false })
+    .limit(1000)
+
+  if (referenceResult.error) {
+    console.error(referenceResult.error)
+    return jsonResponse(500, { ok: false, error: "reference_query_failed" })
+  }
+
+  const candidateFlashes = (candidateResult.data ?? []) as Flash[]
+  const referenceFlashes = (referenceResult.data ?? []) as Flash[]
+  const flashes = [
+    ...new Map(
+      [...referenceFlashes, ...candidateFlashes].map(row => [row.flash_id, row]),
+    ).values(),
+  ] as Flash[]
+
+  if (!candidateFlashes.length) {
+    return jsonResponse(200, {
+      ok: true,
+      processed: 0,
+      verified: 0,
+      corroborating: 0,
+      unverified: 0,
+      reference_verified: referenceFlashes.length,
+    })
   }
 
   const flashIds = flashes.map(row => row.flash_id)
@@ -491,7 +524,7 @@ Deno.serve(async request => {
   let unverified = 0
   let edgesWritten = 0
 
-  for (const flash of flashes) {
+  for (const flash of candidateFlashes) {
     const primaryCountries = countryByFlash.get(flash.flash_id) ?? new Set<string>()
     const primaryText = SIGNAL_DB_MODE
       ? `${flash.headline ?? ""}`
