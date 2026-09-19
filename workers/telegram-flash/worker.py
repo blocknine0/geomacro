@@ -295,6 +295,7 @@ def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
         request.add_header("x-geomacro-flash-token", INGEST_TOKEN)
     if OIDC_TOKEN:
         request.add_header("x-geomacro-github-oidc-token", OIDC_TOKEN)
+        request.add_header("Authorization", f"Bearer {OIDC_TOKEN}")
 
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
