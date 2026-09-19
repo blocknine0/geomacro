@@ -67,6 +67,7 @@ export type CountryRiskEventInput = {
   subject_is_primary?: boolean;
   subject_attribution_confidence?: number;
   subject_attribution_method?: string;
+  material_evidence_at?: string;
   corroboration_status?: "CONFIRMED" | "CORROBORATING" | "UNCONFIRMED";
 };
 
@@ -400,9 +401,13 @@ export async function buildCountryRiskObject(
       continue;
     }
 
+    const evidenceTimestamp =
+      event.material_evidence_at ??
+      event.last_seen_at;
+
     const seen =
       new Date(
-        event.last_seen_at,
+        evidenceTimestamp,
       );
 
     if (
@@ -818,6 +823,10 @@ export async function buildCountryRiskObject(
           (event as any).subject_attribution_method ??
           null,
 
+        material_evidence_at:
+          event.material_evidence_at ??
+          event.last_seen_at,
+
         evidence_age_hours:
           round(age_hours, 2),
 
@@ -1035,11 +1044,18 @@ export async function buildCountryRiskObject(
           relevance_reason:
             item.relevance_reason,
 
+          material_evidence_at:
+            item.material_evidence_at,
+
           transmission_channel:
             item.transmission_channel,
 
           relevance_weight:
             item.relevance_weight,
+
+          material_evidence_at:
+            item.material_evidence_at ??
+            null,
 
           subject_is_primary:
             item.subject_is_primary ?? true,
