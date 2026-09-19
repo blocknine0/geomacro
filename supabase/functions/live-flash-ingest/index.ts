@@ -22,6 +22,7 @@ const GITHUB_OIDC_REPOSITORY =
 const GITHUB_OIDC_WORKFLOW_REFS = new Set([
   "blocknine0/geomacro/.github/workflows/testnet-rss-live-runner.yml@refs/heads/main",
   "blocknine0/geomacro/.github/workflows/deploy-country-flash-supabase.yml@refs/heads/main",
+  "blocknine0/geomacro/.github/workflows/federico-seven-day-risk-refresh.yml@refs/heads/main",
 ])
 
 const GITHUB_OIDC_JWKS_URL =
@@ -38,6 +39,7 @@ const GITHUB_OIDC_JWKS =
 const GITHUB_OIDC_WORKFLOW_FILES = new Set([
   "testnet-rss-live-runner.yml",
   "deploy-country-flash-supabase.yml",
+  "federico-seven-day-risk-refresh.yml",
 ])
 
 const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
