@@ -29,6 +29,7 @@ export type AgentHotTopicEvent = {
   status: string;
   first_seen_at: string;
   last_seen_at: string;
+  last_observed_at: string;
   evidence_count: number;
   independent_source_count: number;
   structure_version: string;
@@ -85,6 +86,7 @@ type LiveEventRow = {
   status: string;
   first_seen_at: string;
   last_seen_at: string;
+  last_observed_at: string;
   evidence_count: number | null;
   independent_source_count: number | null;
   structure_version: string;
@@ -160,6 +162,7 @@ function asDeliverableEvent(row: LiveEventRow): AgentHotTopicEvent {
     status: row.status,
     first_seen_at: row.first_seen_at,
     last_seen_at: row.last_seen_at,
+    last_observed_at: row.last_observed_at,
     evidence_count: Number(row.evidence_count ?? 0),
     independent_source_count: Number(row.independent_source_count ?? 0),
     structure_version: row.structure_version,
@@ -281,11 +284,11 @@ export async function loadAgentHotTopics(input: {
   const cutoff = new Date(asOf.getTime() - requestedWindow * 1000).toISOString();
   const rows = await db
     .from("live_structured_events")
-    .select("id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,status,first_seen_at,last_seen_at,evidence_count,independent_source_count,structure_version,classification_version,commercial_eligibility_status,commercial_eligibility_reason_codes")
-    .gte("last_seen_at", cutoff)
-    .lte("last_seen_at", asOf.toISOString())
+    .select("id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,status,first_seen_at,last_seen_at,last_observed_at,evidence_count,independent_source_count,structure_version,classification_version,commercial_eligibility_status,commercial_eligibility_reason_codes")
+    .gte("last_observed_at", cutoff)
+    .lte("last_observed_at", asOf.toISOString())
     .in("status", ["active", "monitoring"])
-    .order("last_seen_at", { ascending: false })
+    .order("last_observed_at", { ascending: false })
     .limit(MAX_RECENT_ROWS);
   if (rows.error) throw rows.error;
 
@@ -329,8 +332,8 @@ export async function loadAgentHotTopics(input: {
       canonical.set(row.story_key, row);
       continue;
     }
-    const currentTime = Date.parse(current.last_seen_at);
-    const rowTime = Date.parse(row.last_seen_at);
+    const currentTime = Date.parse(current.last_observed_at);
+    const rowTime = Date.parse(row.last_observed_at);
     if (
       Number.isFinite(rowTime) &&
       (!Number.isFinite(currentTime) || rowTime > currentTime)
@@ -340,7 +343,7 @@ export async function loadAgentHotTopics(input: {
   }
 
   const canonicalRows = [...canonical.values()].sort((a, b) => {
-    const byTime = Date.parse(b.last_seen_at) - Date.parse(a.last_seen_at);
+    const byTime = Date.parse(b.last_observed_at) - Date.parse(a.last_observed_at);
     return Number.isFinite(byTime) && byTime !== 0
       ? byTime
       : a.story_key.localeCompare(b.story_key);
