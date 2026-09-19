@@ -234,78 +234,116 @@ jobs:
           console.log('PASS: production signer matches deployed active trust key');
           NODE
 
-      - name: Synchronize fresh independent GDELT evidence
+      - name: Wait for a freshly sealed GDELT fragment
         shell: bash
         run: |
           set -euo pipefail
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN GEOMACRO_FLASH_OIDC_TOKEN; do
-            test -n "\${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
           done
 
-          fresh_fragment=""
-          max_attempts=30
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
 
-          for attempt in $(seq 1 "$max_attempts"); do
-            response_file="/tmp/federico-gdelt-\${attempt}.json"
-            GDELT_GAL_SYNC_OUTPUT="$response_file" bun scripts/sync-gdelt-gal-production.mjs
-            jq -e '.ok == true' "$response_file" >/dev/null
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
 
-            status="$(jq -r '.status // ""' "$response_file")"
-            fragment_id="$(jq -r '.fragment_id // ""' "$response_file")"
-            latest_source_stamp="$(jq -r '.latest_source_stamp // .last_source_stamp // ""' "$response_file")"
+            const startedAt = new Date().toISOString();
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-            jq -c --argjson attempt "$attempt" '{attempt:$attempt,ok,status,source_stamp:(.latest_source_stamp // .last_source_stamp // null),source_files:(.source_files // .files_seen // 0),items_seen:(.items_seen // 0),items_accepted:(.items_accepted // 0),fragment_id:(.fragment_id // null)}' "$response_file"
+            async function latestManifest() {
+              const { data, error } = await db
+                .from('live_fragment_manifest')
+                .select('id,source_key,stream_key,item_count,period_end,sealed_at,verification_method')
+                .eq('source_key', 'gdelt_gal')
+                .eq('stream_key', 'global-relevant')
+                .eq('verification_method', 'storage-readback-sha256')
+                .order('sealed_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            if [[ "$status" == "sealed" && -n "$fragment_id" ]]; then
-              fresh_fragment="$fragment_id"
-              break
-            fi
+              if (error) throw error;
+              return data ?? null;
+            }
 
-            case "$status" in
-              no_new_gdelt_file|all_duplicates_or_irrelevant)
-                echo "GDELT has not produced a fresh accepted fragment yet (source_stamp=$latest_source_stamp)."
-                ;;
-              *)
-                echo "::error title=Unexpected GDELT sync state::Unsupported sync status '$status'."
-                exit 1
-                ;;
-            esac
+            const baseline = await latestManifest();
+            const baselineSealedAt = baseline?.sealed_at ?? startedAt;
+            console.log(JSON.stringify({
+              baseline_fragment_id: baseline?.id ?? null,
+              baseline_sealed_at: baselineSealedAt,
+              baseline_period_end: baseline?.period_end ?? null,
+            }));
 
-            if [[ "$attempt" -lt "$max_attempts" ]]; then
-              sleep 30
-            fi
-          done
+            for (let attempt = 1; attempt <= 24; attempt += 1) {
+              const candidate = await latestManifest();
 
-          test -n "$fresh_fragment" || {
-            echo "::error title=Fresh GDELT fragment unavailable::No newly sealed accepted GDELT fragment arrived within the bounded synchronization window."
-            exit 1
-          }
+              if (
+                candidate &&
+                candidate.id !== baseline?.id &&
+                Number(candidate.item_count ?? 0) > 0 &&
+                String(candidate.sealed_at ?? '') >= startedAt &&
+                String(candidate.sealed_at ?? '') >= baselineSealedAt
+              ) {
+                process.env.FRESH_GDELT_FRAGMENT_ID = String(candidate.id);
+                console.log(JSON.stringify({
+                  attempt,
+                  fresh_fragment_id: candidate.id,
+                  item_count: candidate.item_count,
+                  period_end: candidate.period_end,
+                  sealed_at: candidate.sealed_at,
+                }));
+                require('node:fs').appendFileSync(
+                  process.env.GITHUB_ENV,
+                  `FRESH_GDELT_FRAGMENT_ID=${candidate.id}\n`,
+                );
+                console.log('PASS: newly sealed accepted GDELT fragment detected.');
+                return;
+              }
 
-          printf "FRESH_GDELT_FRAGMENT_ID=%s\n" "$fresh_fragment" >> "$GITHUB_ENV"
-          echo "PASS: fresh accepted GDELT fragment sealed: $fresh_fragment"
+              console.log(JSON.stringify({
+                attempt,
+                waiting_for_fresh_fragment: true,
+                latest_fragment_id: candidate?.id ?? null,
+                latest_sealed_at: candidate?.sealed_at ?? null,
+              }));
+
+              if (attempt < 24) await sleep(30000);
+            }
+
+            throw new Error('No newly sealed accepted GDELT fragment appeared within the bounded synchronization window.');
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
 
       - name: Structure the exact fresh GDELT fragment
         shell: bash
         run: |
           set -euo pipefail
-          test -n "\${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL is missing"; exit 1; }
-          test -n "\${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN is missing"; exit 1; }
-          test -n "\${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
+          test -n "${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL is missing"; exit 1; }
+          test -n "${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN is missing"; exit 1; }
+          test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
 
           structured=false
 
           for attempt in 1 2 3 4 5 6; do
-            response_file="/tmp/federico-structure-\${attempt}.json"
+            response_file="/tmp/federico-structure-${attempt}.json"
             curl --fail-with-body -sS \
               --retry 3 \
               --retry-all-errors \
               --retry-delay 2 \
               --retry-max-time 90 \
               -X POST \
-              "\${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
-              -H "x-geomacro-structure-token: \${LIVE_STRUCTURE_TOKEN}" \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\\"fragment_id\\":\\"\${FRESH_GDELT_FRAGMENT_ID}\\"}" \
+              --data "{\\"fragment_id\\":\\"${FRESH_GDELT_FRAGMENT_ID}\\"}" \
               -o "$response_file"
 
             jq -e --arg fragment "$FRESH_GDELT_FRAGMENT_ID" '.ok == true and .fragment_id == $fragment' "$response_file" >/dev/null
@@ -327,9 +365,9 @@ jobs:
 
       - name: Re-poll governed RSS after fresh GDELT structure
         env:
-          SUPABASE_PROJECT_ID: \${{ secrets.SUPABASE_PROJECT_ID }}
-          GEOMACRO_FLASH_INGEST_URL: https://\${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
-          GEOMACRO_FLASH_INGEST_TOKEN: \${{ secrets.FLASH_INGEST_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+          GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
           TELEGRAM_ENABLED: "false"
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
@@ -338,15 +376,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "\${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
-          test -n "\${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
+          test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
           python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
           cd workers/telegram-flash
           python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
           for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
           grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
-              echo "::error::RSS source \${source_id} did not complete a post-structure poll."
+              echo "::error::RSS source ${source_id} did not complete a post-structure poll."
               exit 1
             }
           done
@@ -363,16 +401,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base="\${APP_SUPABASE_URL%/}/functions/v1"
+          base="${APP_SUPABASE_URL%/}/functions/v1"
           response="\$(curl --silent --show-error \
             --output /tmp/federico-corroborate.json \
             --write-out '%{http_code}' \
             --request POST \
-            --header "x-geomacro-github-oidc-token: \${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header "Authorization: Bearer \${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
             --header 'Content-Type: application/json' \
             --data '{}' \
-            "\${base}/live-flash-corroborate")"
+            "${base}/live-flash-corroborate")"
           cat /tmp/federico-corroborate.json
           echo
           test "\$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
