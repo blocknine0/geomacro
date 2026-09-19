@@ -38,6 +38,9 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
+  FEDERICO_STRICT_MAJOR_SOURCE_IDS,
+  FEDERICO_STRICT_RELEVANCE_METHOD,
+  FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
   riskObjectCalculationNamespace,
   withPublicDemoProfileReason,
   type RiskObjectDeliveryProfile,
@@ -404,8 +407,10 @@ function flashSourceFamily(
   sourceId: string,
   sourceChannel: string | null,
 ) {
+  // Treat the Telegram ingestion network as one source-family so multiple
+  // channels cannot masquerade as independent editorial organizations.
   if (sourceId === "telegram_mtproto_flash") {
-    return `telegram:${String(sourceChannel ?? "unknown").replace(/^@+/, "").trim().toLowerCase()}`;
+    return sourceId;
   }
   return sourceId;
 }
@@ -469,7 +474,7 @@ async function loadFedericoStrictEvents(
   const flashesResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,source_reliability,source_reliability_bps,verification_score,verification_score_bps,verification_status,first_seen_at,last_seen_at,event_family_id,content_hash,material_update",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,severity,severity_bps,source_reliability,source_reliability_bps,verification_score,verification_score_bps,verification_status,first_seen_at,last_seen_at,last_material_update_at,event_family_id,content_hash,material_update",
     )
     .eq("verification_status", "VERIFIED")
     .gte("last_seen_at", cutoff)
@@ -604,10 +609,8 @@ async function loadFedericoStrictEvents(
       ),
     ];
 
-    const independentSourceCount = Math.max(
-      Number(family.independent_source_count ?? 0),
-      sourceFamilies.length,
-    );
+    const independentSourceCount =
+      sourceFamilies.length;
 
     const sourceIds = [
       ...new Set(
@@ -665,7 +668,12 @@ async function loadFedericoStrictEvents(
       /conflict|military|attack|escalat/i.test(eventType);
 
     const hasNamedMajorSource =
-      sourceIds.includes("aljazeera_rss");
+      sourceIds.some(
+        (sourceId) =>
+          (FEDERICO_STRICT_MAJOR_SOURCE_IDS as readonly string[]).includes(
+            sourceId,
+          ),
+      );
 
     let severity = rawSeverity;
     let confidence = rawConfidence;
@@ -684,13 +692,20 @@ async function loadFedericoStrictEvents(
       corroborationStatus = "UNCONFIRMED";
     }
 
-    const lastSeen = new Date(
+    const materialEvidenceAt =
       String(
-        family.last_seen_at ??
-          latest.last_seen_at ??
-          latest.ingested_at,
-      ),
-    );
+        family.last_material_update_at ??
+          latest.last_material_update_at ??
+          (
+            latest.material_update
+              ? latest.last_seen_at
+              : latest.published_at ??
+                latest.first_seen_at ??
+                latest.ingested_at
+          ),
+      );
+
+    const lastSeen = new Date(materialEvidenceAt);
     const ageHours = Math.max(
       0,
       (asOf.getTime() - lastSeen.getTime()) / 3_600_000,
@@ -747,6 +762,10 @@ async function loadFedericoStrictEvents(
         corroboration_status: corroborationStatus,
         evidence_freshness_policy:
           "federico-strict-evidence-v1",
+        source_independence_method:
+          FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
+        relevance_method:
+          FEDERICO_STRICT_RELEVANCE_METHOD,
         high_impact_gate:
           isHighImpact
             ? "two_independent_sources_or_named_major_source"
@@ -757,7 +776,7 @@ async function loadFedericoStrictEvents(
       source_urls: sourceUrls,
       source_families: sourceFamilies,
       relevance_reason:
-        `Direct CHN linkage via canonical event-family country mapping: ${iso3}`,
+        `Direct ${iso3} linkage via canonical event-family country mapping: ${iso3}`,
       transmission_channel:
         "direct_country_link",
       relevance_weight: 1,
