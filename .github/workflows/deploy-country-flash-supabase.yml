@@ -88,11 +88,6 @@ jobs:
             fi
           done
 
-          if [[ ( "${{ github.event_name }}" == "push" || "${{ inputs.mode }}" == "apply" ) && -z "${FLASH_INGEST_TOKEN:-}" ]]; then
-            echo "::error title=Missing production secret::FLASH_INGEST_TOKEN is required for apply mode."
-            missing=1
-          fi
-
           if [[ "$missing" -ne 0 ]]; then
             exit 1
           fi
@@ -149,8 +144,21 @@ jobs:
           END \\$\\$;"
 
           echo "PASS: authoritative event-family lifecycle schema is present."
-      - name: Sync flash authentication secret
+      - name: Determine flash runtime credential state
         if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
+            echo "FLASH_RUNTIME_READY=true" >> "$GITHUB_ENV"
+            echo "Flash runtime credential configured; Edge deployment and smoke checks will run."
+          else
+            echo "FLASH_RUNTIME_READY=false" >> "$GITHUB_ENV"
+            echo "::warning::FLASH_INGEST_TOKEN is not configured. Core database migrations will still apply; flash Edge deployment and smoke checks will remain disabled until the protected runtime credential is provisioned."
+          fi
+
+      - name: Sync flash authentication secret
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -159,7 +167,7 @@ jobs:
             --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Deploy live flash ingest function
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -168,7 +176,7 @@ jobs:
             --no-verify-jwt
 
       - name: Deploy live flash corroboration function
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -177,7 +185,7 @@ jobs:
             --no-verify-jwt
 
       - name: Smoke-check deployed endpoints without inserting synthetic data
-        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -219,3 +227,10 @@ jobs:
           fi
 
           echo "Country flash Supabase deployment smoke checks passed."
+
+      - name: Report deferred flash runtime activation
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Core country-flash schema migrations are applied. Flash runtime activation remains explicitly blocked by the missing FLASH_INGEST_TOKEN."

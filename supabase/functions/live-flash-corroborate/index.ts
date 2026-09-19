@@ -251,10 +251,10 @@ Deno.serve(async request => {
     const structuredResult = await db
       .from("live_structured_events")
       .select(
-        "id,title,summary,primary_country,countries,last_seen_at,first_seen_at,independent_source_count",
+        "id,title,summary,primary_country,countries,last_seen_at,last_observed_at,first_seen_at,independent_source_count",
       )
-      .gte("last_seen_at", cutoff)
-      .order("last_seen_at", { ascending: false })
+      .gte("last_observed_at", cutoff)
+      .order("last_observed_at", { ascending: false })
       .limit(500)
 
     if (structuredResult.error) {

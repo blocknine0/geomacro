@@ -26,7 +26,7 @@ describe("testnet canonical intelligence console", () => {
 
   it("reads actual severity from the canonical live structured event table", () => {
     expect(severityService).toContain('.from("live_structured_events")');
-    expect(severityService).toContain('"id,event_type,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,structure_version"');
+    expect(severityService).toContain('"id,event_type,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,last_observed_at,structure_version"');
     expect(severityService).toContain('scale: "0-100"');
     expect(runner).toContain("loadTestnetLiveSeverity");
   });
