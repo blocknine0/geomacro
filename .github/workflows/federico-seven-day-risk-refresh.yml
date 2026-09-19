@@ -48,8 +48,10 @@ jobs:
       GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
 
     steps:
-      - name: Checkout
+      - name: Checkout current production main
         uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
