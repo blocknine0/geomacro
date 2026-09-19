@@ -552,7 +552,7 @@ export async function buildCountryRiskObject(
         0,
         100,
       ),
-      1,
+      strictProfile ? 1 : 3,
     );
 
   const aggregateConfidence =
