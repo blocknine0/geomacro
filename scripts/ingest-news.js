@@ -522,6 +522,16 @@ const FEDERICO_GEO_PRIORITY_QUERIES = Object.freeze([
   'China strategic minerals sanctions export controls',
 ]);
 
+// Keep at least one high-signal Critical Minerals discovery query in every
+// Guardian rotation window. This does not bypass classification, freshness,
+// severity, confidence, anchor, or provenance gates; it only prevents the
+// rare_earth domain from being starved by deterministic query rotation.
+const CRITICAL_MINERALS_PRIORITY_QUERIES = Object.freeze([
+  'China rare earth export license quota ban',
+  'neodymium praseodymium dysprosium terbium shortage',
+  'China gallium germanium antimony graphite export control',
+]);
+
 function guardianQueryPlan(
   queries,
   priorityQueries = [],
@@ -2942,7 +2952,9 @@ async function ingestNews() {
         category.queries,
         category.name === 'geopolitics'
           ? FEDERICO_GEO_PRIORITY_QUERIES
-          : [],
+          : category.name === 'rare_earth'
+            ? CRITICAL_MINERALS_PRIORITY_QUERIES
+            : [],
       );
 
     console.log(
