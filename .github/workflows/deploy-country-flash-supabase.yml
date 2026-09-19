@@ -211,6 +211,11 @@ jobs:
             exit 1
           }
 
+          # The canonical production project is never the isolated signal DB.
+          # Force this mode explicitly so stale project secrets cannot silently
+          # disable country attribution in the production ingest path.
+          supabase secrets set SIGNAL_DB_MODE="false" --project-ref "$SUPABASE_PROJECT_ID"
+
           echo "FLASH_INGEST_DEPLOY_READY=true" >> "${GITHUB_ENV}"
 
           if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
@@ -312,6 +317,44 @@ jobs:
           fi
 
           echo "PASS: live-flash-ingest authentication boundary is healthy."
+      - name: Verify authoritative country registry
+        if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_INGEST_DEPLOY_READY == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          country_count="$(psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -X -c "
+            SELECT count(*)
+            FROM public.live_country_registry
+            WHERE enabled = true;
+          ")"
+
+          chn_count="$(psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -X -c "
+            SELECT count(*)
+            FROM public.live_country_registry
+            WHERE enabled = true AND iso3 = 'CHN';
+          ")"
+
+          usa_count="$(psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -X -c "
+            SELECT count(*)
+            FROM public.live_country_registry
+            WHERE enabled = true AND iso3 = 'USA';
+          ")"
+
+          test "$country_count" = "194" || {
+            echo "::error title=Country registry drift::Expected 194 enabled sovereign-country registry rows, found $country_count."
+            exit 1
+          }
+          test "$chn_count" = "1" || {
+            echo "::error title=CHN registry missing::CHN is not present in the enabled authoritative country registry."
+            exit 1
+          }
+          test "$usa_count" = "1" || {
+            echo "::error title=USA registry missing::USA is not present in the enabled authoritative country registry."
+            exit 1
+          }
+
+          echo "PASS: authoritative production country registry is complete for the governed 194-country denominator."
       - name: Report deferred flash runtime activation
         if: ${{ (github.event_name == 'push' || inputs.mode == 'apply') && env.FLASH_RUNTIME_READY != 'true' }}
         shell: bash
