@@ -348,7 +348,7 @@ if (strictProfile) {
     )
   ) {
     throw new Error(
-      "Federico strict evidence contains an unmapped source identity",
+      "Federico strict evidence contains an unmapped source identity: " + JSON.stringify(evidence.map((item: any) => ({ source_ids: item.source_ids, source_families: item.source_families }))),
     );
   }
 
