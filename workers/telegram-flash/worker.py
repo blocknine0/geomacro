@@ -57,7 +57,8 @@ def parse_reliability() -> dict[str, float]:
 
 
 INGEST_URL = require_env("GEOMACRO_FLASH_INGEST_URL")
-INGEST_TOKEN = require_env("GEOMACRO_FLASH_INGEST_TOKEN")
+INGEST_TOKEN = os.environ.get("GEOMACRO_FLASH_INGEST_TOKEN", "").strip()
+OIDC_TOKEN = os.environ.get("GEOMACRO_FLASH_OIDC_TOKEN", "").strip()
 
 TELEGRAM_ENABLED = env_bool("TELEGRAM_ENABLED", True)
 RSS_ENABLED = env_bool("BREAKING_RSS_ENABLED", True)
@@ -212,10 +213,14 @@ def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": USER_AGENT,
-            "x-geomacro-flash-token": INGEST_TOKEN,
         },
         method="POST",
     )
+
+    if INGEST_TOKEN:
+        request.add_header("x-geomacro-flash-token", INGEST_TOKEN)
+    if OIDC_TOKEN:
+        request.add_header("Authorization", f"Bearer {OIDC_TOKEN}")
 
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
@@ -617,6 +622,17 @@ async def run_rss() -> None:
 async def main() -> None:
     if not TELEGRAM_ENABLED and not RSS_ENABLED:
         raise RuntimeError("Both Telegram and RSS breaking-news collectors are disabled")
+
+    if TELEGRAM_ENABLED and not INGEST_TOKEN:
+        raise RuntimeError(
+            "TELEGRAM_ENABLED=true requires GEOMACRO_FLASH_INGEST_TOKEN"
+        )
+
+    if RSS_ENABLED and not (INGEST_TOKEN or OIDC_TOKEN):
+        raise RuntimeError(
+            "RSS collection requires GEOMACRO_FLASH_INGEST_TOKEN or GEOMACRO_FLASH_OIDC_TOKEN"
+        )
+
     if RSS_RUN_ONCE and TELEGRAM_ENABLED:
         raise RuntimeError("BREAKING_RSS_RUN_ONCE requires TELEGRAM_ENABLED=false")
 
