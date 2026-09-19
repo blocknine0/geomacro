@@ -202,8 +202,30 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "event_type": "GEOPOLITICS_BREAKING",
         "source_reliability": 90.0,
         "country_iso3": "CHN",
+        "max_entry_age_hours": 24,
+        "fallback_url": "https://english.news.cn/china/index.htm",
+        "fallback_link_prefix": "/2026",
     },
     {
+    {
+        "source_id": "scmp_china_rss",
+        "name": "South China Morning Post China RSS",
+        "url": "https://www.scmp.com/rss/4/feed",
+        "event_type": "GEOPOLITICS_BREAKING",
+        "source_reliability": 80.0,
+        "country_iso3": "CHN",
+        "priority_keywords": [
+            "china",
+            "chinese",
+            "beijing",
+            "taiwan",
+            "south china sea",
+            "united states",
+            "trump",
+            "xi",
+        ],
+        "priority_max_items": 10,
+    },
         "source_id": "federal_reserve_press_rss",
         "name": "Federal Reserve Press Releases",
         "url": "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -290,6 +312,13 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
             feed["priority_max_items"] = max(
                 0,
                 min(10, int(priority_max_items)),
+            )
+
+        max_entry_age_hours = item.get("max_entry_age_hours")
+        if max_entry_age_hours is not None:
+            feed["max_entry_age_hours"] = max(
+                1,
+                min(168, float(max_entry_age_hours)),
             )
 
         fallback_url = item.get("fallback_url")
@@ -740,6 +769,44 @@ async def process_feed(
                 f"Feed parse failed: {getattr(parsed, 'bozo_exception', 'unknown error')}"
             )
         all_entries = list(parsed.entries)
+
+        # Treat HTTP 200 as transport success, not freshness success. Some
+        # publishers retain legacy RSS URLs that serve archival entries.
+        max_entry_age_hours = feed.get("max_entry_age_hours")
+        fallback_url = str(feed.get("fallback_url", "")).strip()
+        fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+        if max_entry_age_hours is not None and fallback_url and fallback_link_prefix:
+            published_times = [
+                time.mktime(parsed_time) if parsed_time else float("nan")
+                for parsed_time in (
+                    entry.get("published_parsed")
+                    or entry.get("updated_parsed")
+                    or entry.get("created_parsed")
+                    for entry in all_entries
+                )
+            ]
+            latest_published = max(
+                (value for value in published_times if math.isfinite(value)),
+                default=float("nan"),
+            )
+            stale_cutoff = time.time() - float(max_entry_age_hours) * 60 * 60
+            if not math.isfinite(latest_published) or latest_published < stale_cutoff:
+                fallback_status, fallback_raw = await asyncio.to_thread(
+                    fetch_web_page_sync,
+                    fallback_url,
+                    35,
+                    2,
+                    3.0,
+                )
+                parser = NewsPageParser(fallback_link_prefix, fallback_url)
+                fallback_entries = parser.feed(fallback_raw)
+                if not fallback_entries:
+                    raise RuntimeError(
+                        "RSS feed was stale and official fallback page returned no governed news entries"
+                    )
+                all_entries = fallback_entries
+                transport = "official_page_fallback"
+
     else:
         parser = NewsPageParser(
             str(feed.get("fallback_link_prefix", "")),
