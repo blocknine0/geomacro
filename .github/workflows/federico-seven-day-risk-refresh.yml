@@ -13,6 +13,7 @@ on:
       - "Auto Ingest News"
       - "GDELT GAL Live Hot-Topic Sync"
       - "Testnet RSS Live Intelligence Runner"
+      - "Deploy country flash intelligence to Supabase"
     types:
       - completed
 
@@ -262,14 +263,14 @@ jobs:
             );
 
             const familyIds = candidates.map((family) => family.family_id);
-
             if (!familyIds.length) {
               return {
                 ready: false,
                 active_families: (familiesResult.data ?? []).length,
                 qualifying_families: 0,
                 verified_members: 0,
-                independent_source_families: 0,
+                qualifying_family_id: null,
+                qualifying_family_source_families: [],
               };
             }
 
@@ -281,30 +282,54 @@ jobs:
               .in('event_family_id', familyIds)
               .eq('verification_status', 'VERIFIED')
               .gte('last_seen_at', cutoff)
-              .limit(500);
+              .limit(1000);
 
             if (membersResult.error) throw membersResult.error;
 
-            const usableMembers = (membersResult.data ?? []).filter((row) =>
-              /^https?:\/\//i.test(String(row.source_url ?? '')) &&
-              String(row.source_id ?? '').trim() &&
-              String(row.source_record_id ?? '').trim() &&
-              /^[a-f0-9]{64}$/.test(String(row.content_hash ?? '')),
+            const sourceFamiliesByFamily = new Map();
+            let usableMembers = 0;
+
+            for (const row of membersResult.data ?? []) {
+              const familyId = String(row.event_family_id ?? '').trim();
+              const sourceId = String(row.source_id ?? '').trim();
+              const sourceUrl = String(row.source_url ?? '');
+              const sourceRecordId = String(row.source_record_id ?? '').trim();
+              const contentHash = String(row.content_hash ?? '');
+
+              if (
+                !familyId ||
+                !/^https?:\/\//i.test(sourceUrl) ||
+                !sourceId ||
+                !sourceRecordId ||
+                !/^[a-f0-9]{64}$/.test(contentHash)
+              ) {
+                continue;
+              }
+
+              usableMembers += 1;
+              if (!sourceFamiliesByFamily.has(familyId)) {
+                sourceFamiliesByFamily.set(familyId, new Set());
+              }
+              sourceFamiliesByFamily.get(familyId).add(sourceId);
+            }
+
+            const qualifying = candidates.find((family) =>
+              (sourceFamiliesByFamily.get(String(family.family_id))?.size ?? 0) >= 2,
             );
 
-            const independentSourceFamilies = new Set(
-              usableMembers.map((row) => String(row.source_id ?? '').trim()),
-            );
+            const qualifyingSources = qualifying
+              ? [...(sourceFamiliesByFamily.get(String(qualifying.family_id)) ?? new Set())].sort()
+              : [];
 
             return {
-              // Match the Federico publisher contract: independent source
-              // families are counted across the complete fresh country
-              // evidence set, not required to coexist inside one event family.
-              ready: independentSourceFamilies.size >= 2,
+              ready: Boolean(qualifying),
               active_families: (familiesResult.data ?? []).length,
-              qualifying_families: candidates.length,
-              verified_members: usableMembers.length,
-              independent_source_families: independentSourceFamilies.size,
+              qualifying_families: candidates.filter((family) =>
+                (sourceFamiliesByFamily.get(String(family.family_id))?.size ?? 0) >= 2,
+              ).length,
+              verified_members: usableMembers,
+              qualifying_family_id: qualifying?.family_id ?? null,
+              qualifying_family_source_families: qualifyingSources,
             };
           }
 
@@ -313,7 +338,7 @@ jobs:
             last = await check();
             console.log(JSON.stringify({ attempt, ...last }));
             if (last.ready) {
-              console.log('PASS: fresh CHN family with at least two independent source families is available for FEDERICO_STRICT.');
+              console.log('PASS: one fresh CHN event family has at least two independent VERIFIED source families.');
               process.exit(0);
             }
             if (attempt < Number(process.env.EVIDENCE_WAIT_ATTEMPTS)) {

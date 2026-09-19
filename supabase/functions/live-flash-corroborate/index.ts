@@ -365,7 +365,10 @@ Deno.serve(async request => {
     })
   }
 
-  const cutoff = new Date(Date.now() - 120 * 60_000).toISOString()
+  const CORROBORATION_LOOKBACK_HOURS = 6
+  const cutoff = new Date(
+    Date.now() - CORROBORATION_LOOKBACK_HOURS * 60 * 60_000,
+  ).toISOString()
 
   const flashResult = await db
     .from("live_flash_events")
@@ -375,7 +378,7 @@ Deno.serve(async request => {
     .gte("ingested_at", cutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
     .order("ingested_at", { ascending: false })
-    .limit(500)
+    .limit(1500)
 
   if (flashResult.error) {
     console.error(flashResult.error)
