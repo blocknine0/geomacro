@@ -20,6 +20,8 @@ on:
   schedule:
     - cron: "4,19,34,49 * * * *"
 
+# Certification trigger: successful fresh GDELT completion must exercise Federico strict acceptance.
+
 permissions:
   contents: read
 
