@@ -377,7 +377,7 @@ const reviewRequest = {
   artifact: JSON.stringify(riskObject),
   artifact_type: "general",
   context:
-    "Pre-action external risk context from Geomacro. The artifact is a signed gro-1.1 geopolitical/macro Risk Object. Validate its stated risk context, confidence, evidence/provenance, integrity and freshness as an input to the caller's own decision gate. Geomacro does not authorize execution. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
+    "Pre-action external risk context from Geomacro. The artifact is a signed gro-1.1 geopolitical/macro Risk Object. Validate its stated risk context, confidence, evidence/provenance, integrity and freshness as an input to the caller's own decision gate. The signed artifact embeds an active Geomacro public key, trust-registry URL, canonicalization URL, strict evidence-selection policy and a reproducibility manifest. Geomacro does not authorize execution. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
   sign: true,
   confidentiality_tier: "hash_only",
 };
@@ -445,13 +445,39 @@ if (invinoApiKey) {
     );
   }
 
+  const issues =
+    Array.isArray(body?.issues)
+      ? body.issues
+      : [];
+
+  const severityCount = (severity: string) =>
+    issues.filter(
+      (issue: any) =>
+        String(issue?.severity ?? "").toLowerCase() === severity,
+    ).length;
+
+  const blockerCount = severityCount("blocker");
+  const highCount = severityCount("high");
+  const mediumCount = severityCount("medium");
+  const lowCount = severityCount("low");
+
+  const admissionClear =
+    ["approve", "approve_with_concerns"].includes(verdict) &&
+    blockerCount === 0 &&
+    highCount === 0;
+
   liveReview = {
     attempted: true,
     http_status: response.status,
     verdict,
     confidence:
       typeof body?.confidence === "number" ? body.confidence : null,
-    issue_count: Array.isArray(body?.issues) ? body.issues.length : null,
+    issue_count: issues.length,
+    blocker_count: blockerCount,
+    high_count: highCount,
+    medium_count: mediumCount,
+    low_count: lowCount,
+    admission_clear: admissionClear,
     proof_present: true,
     billing: body?.billing ?? null,
   };
