@@ -147,7 +147,7 @@ jobs:
           import fs from 'node:fs';
           const body = JSON.parse(fs.readFileSync('/tmp/public-risk-indices.json', 'utf8'));
           if (body?.ok !== true) throw new Error('payload is not ok');
-          if (body?.data?.contractVersion !== 'risk-indices-v1.0.0') throw new Error('contract version mismatch');
+          if (body?.data?.contractVersion !== 'risk-indices-v1.1.0') throw new Error('contract version mismatch');
           if (body?.data?.parentMethodologyVersion !== 'gri-v1.2.0') throw new Error('methodology mismatch');
           if (body?.data?.proofVersion !== 'gri-proof-v1.2.0') throw new Error('proof version mismatch');
           if (body?.data?.verificationStatus !== 'verified') throw new Error('snapshot is not verified');
