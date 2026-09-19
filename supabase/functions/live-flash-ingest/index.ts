@@ -457,14 +457,17 @@ function cleanString(
   )
 }
 
-type ApprovedTelegramChannel = {
+type TelegramChannel = {
   channel_key: string
   display_name: string
   official_status: string
   rights_status: string
   source_reliability: number
   enabled: boolean
-  manual_review_status: string
+  auto_admission_status: string
+  source_role: string
+  country_iso3: string | null
+  language: string | null
   domains: string[] | null
 }
 
@@ -487,14 +490,14 @@ function normalizeTelegramChannelKey(
   return cleaned
 }
 
-async function loadApprovedTelegramChannel(
+async function loadActiveTelegramChannel(
   channelKey: string,
 ) {
   const result =
     await db
       .from("live_telegram_channel_registry")
       .select(
-        "channel_key,display_name,official_status,rights_status,source_reliability,enabled,manual_review_status,domains"
+        "channel_key,display_name,official_status,rights_status,source_reliability,enabled,auto_admission_status,source_role,country_iso3,language,domains"
       )
       .eq(
         "channel_key",
@@ -508,14 +511,13 @@ async function loadApprovedTelegramChannel(
 
   const channel =
     result.data as
-      | ApprovedTelegramChannel
+      | TelegramChannel
       | null
 
   if (
     !channel ||
     channel.enabled !== true ||
-    channel.manual_review_status !==
-      "APPROVED"
+    channel.auto_admission_status !== "ACTIVE"
   ) {
     return null
   }
@@ -958,7 +960,7 @@ Deno.serve(async request => {
     )
 
   let telegramChannel:
-    | ApprovedTelegramChannel
+    | TelegramChannel
     | null = null
 
   if (
@@ -1003,7 +1005,7 @@ Deno.serve(async request => {
     }
 
     telegramChannel =
-      await loadApprovedTelegramChannel(
+      await loadActiveTelegramChannel(
         channelKey
       )
 
@@ -1013,9 +1015,10 @@ Deno.serve(async request => {
         {
           ok: false,
           error:
-            "telegram_channel_not_approved",
+            "telegram_channel_not_active",
           channel_key:
             channelKey,
+          admission: "AUTOMATED_REGISTRY",
         },
       )
     }
