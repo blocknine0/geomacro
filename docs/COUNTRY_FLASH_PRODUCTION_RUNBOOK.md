@@ -22,6 +22,8 @@ Configure these as GitHub Actions secrets before running the Supabase deployment
 
 `FLASH_INGEST_TOKEN` should be a long random secret generated specifically for the country-flash worker/function boundary. Do not reuse a user password, Telegram credential, Supabase service-role key, or wallet secret.
 
+The governed Testnet RSS runner does not require that static secret. It authenticates with a short-lived GitHub Actions OIDC token whose issuer, audience, repository, main-branch ref, and workflow reference are validated by `live-flash-ingest`. Static token authentication remains available for Telegram and other protected worker paths.
+
 The workflow intentionally does not print secret values.
 
 ## 2. Supabase deployment workflow
@@ -55,9 +57,9 @@ The workflow:
 
 1. repeats the migration dry run;
 2. applies pending migrations with `supabase db push`;
-3. syncs `FLASH_INGEST_TOKEN` into Supabase Edge Function secrets;
-4. deploys `live-flash-ingest`;
-5. deploys `live-flash-corroborate`;
+3. deploys `live-flash-ingest`, which supports both the dedicated static token boundary and the narrowly-scoped GitHub Actions OIDC boundary used by the governed RSS runner;
+4. syncs `FLASH_INGEST_TOKEN` only when the dedicated static token is provisioned, preserving the Telegram/corroboration path;
+5. deploys `live-flash-corroborate` only when the dedicated static token is provisioned;
 6. runs non-synthetic endpoint smoke checks.
 
 Both Edge Functions are deployed with `--no-verify-jwt` because they use the dedicated `x-geomacro-flash-token` application-level authentication boundary. The functions still reject requests that do not carry the exact flash token.
