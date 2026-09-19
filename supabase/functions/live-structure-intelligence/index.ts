@@ -2891,6 +2891,33 @@ Deno.serve(async (req) => {
     );
   }
 
+  let requestedFragmentId:
+    string | null = null;
+
+  try {
+    const bodyText = await req.text();
+    if (bodyText.trim()) {
+      const parsed = JSON.parse(bodyText);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        typeof parsed.fragment_id === "string" &&
+        parsed.fragment_id.trim()
+      ) {
+        requestedFragmentId = parsed.fragment_id.trim();
+      }
+    }
+  } catch {
+    return response(
+      {
+        ok: false,
+        error:
+          "invalid_json",
+      },
+      400,
+    );
+  }
+
   const db = admin();
   const startedAt =
     new Date().toISOString();
@@ -2981,6 +3008,92 @@ Deno.serve(async (req) => {
       any = null;
 
     let handledBefore = 0;
+
+    if (requestedFragmentId) {
+      const {
+        data: requestedManifest,
+        error: requestedManifestError,
+      } = await db
+        .from(
+          "live_fragment_manifest",
+        )
+        .select(
+          "id,object_path,item_count,period_end,verified_at",
+        )
+        .eq(
+          "id",
+          requestedFragmentId,
+        )
+        .eq(
+          "verification_method",
+          "storage-readback-sha256",
+        )
+        .maybeSingle();
+
+      if (requestedManifestError) {
+        throw requestedManifestError;
+      }
+
+      if (!requestedManifest) {
+        throw new Error(
+          `Requested verified fragment ${requestedFragmentId} was not found`,
+        );
+      }
+
+      const {
+        count:
+          requestedStructuredCount,
+        error:
+          requestedStructuredCountError,
+      } = await db
+        .from(
+          "live_structured_event_evidence",
+        )
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq(
+          "fragment_id",
+          requestedManifest.id,
+        );
+
+      if (requestedStructuredCountError) {
+        throw requestedStructuredCountError;
+      }
+
+      const {
+        count:
+          requestedExcludedCount,
+        error:
+          requestedExcludedCountError,
+      } = await db
+        .from(
+          "live_structuring_exclusions",
+        )
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq(
+          "fragment_id",
+          requestedManifest.id,
+        );
+
+      if (requestedExcludedCountError) {
+        throw requestedExcludedCountError;
+      }
+
+      const handled =
+        (requestedStructuredCount ?? 0) +
+        (requestedExcludedCount ?? 0);
+
+      manifest =
+        requestedManifest;
+
+      handledBefore =
+        handled;
+    }
 
     for (
       let manifestFrom = 0;
