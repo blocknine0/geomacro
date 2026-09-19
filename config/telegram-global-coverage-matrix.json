@@ -3,7 +3,7 @@
   "review_date": "2026-09-18",
   "status": "DISCOVERY_MATRIX_ONLY",
   "runtime_effect": false,
-  "approval_policy": "All candidates remain PENDING or HOLD until first-party identity, public username, rights boundary, and operator review are recorded. No candidate in this file authorizes ingestion.",
+  "approval_policy": "AUTOMATED_MACHINE_ADMISSION",
   "coverage_goal": "Global geographic and linguistic coverage with controlled, diversified Telegram signal intake.",
   "regions": [
     {
@@ -413,7 +413,8 @@
     "corroboration": "Telegram-only evidence is never sufficient for production intelligence.",
     "rights_default": "INTERNAL_RESEARCH_ONLY",
     "approval_state": "PENDING",
-    "enabled": false
+    "enabled": false,
+    "admission_rule": "Public-channel discovery may admit an ACTIVE internal lead source automatically after deterministic validation; ownership, commercial rights, and event truth are never auto-promoted."
   },
   "reviewed_candidates": [
     {
