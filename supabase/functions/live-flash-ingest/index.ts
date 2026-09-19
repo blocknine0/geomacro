@@ -57,6 +57,7 @@ const ALLOWED_SOURCE_IDS =
     "bbc_world_rss",
     "federal_reserve_press_rss",
     "xinhua_english_china_rss",
+    "scmp_china_rss",
     "forexlive_rss",
     "mining_com_rss",
     "usgs_minerals_news_rss",
@@ -884,6 +885,7 @@ Deno.serve(async request => {
       "bbc_world_rss",
       "federal_reserve_press_rss",
       "xinhua_english_china_rss",
+      "scmp_china_rss",
       "forexlive_rss",
       "usgs_minerals_news_rss",
     ].includes(sourceId)

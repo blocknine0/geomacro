@@ -88,13 +88,19 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
 
     expect(workflow).toContain(
+      "sourceFamiliesByFamily",
+    );
+    expect(workflow).toContain(
+      ">= 2",
+    );
+    expect(workflow).toContain(
+      "ready: Boolean(qualifying)",
+    );
+    expect(workflow).toContain(
+      "qualifying_family_id",
+    );
+    expect(workflow).not.toContain(
       "independentSourceFamilies.size >= 2",
-    );
-    expect(workflow).toContain(
-      "independentSourceFamilies",
-    );
-    expect(workflow).toContain(
-      "ready: independentSourceFamilies.size >= 2",
     );
     expect(workflow).not.toContain(
       "Number(family.independent_source_count ?? 0) >= 2",
@@ -124,14 +130,32 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(worker).toContain(
       '"country_iso3": "CHN"',
     );
+    expect(worker).toContain(
+      '"max_entry_age_hours": 24',
+    );
+    expect(worker).toContain(
+      '"fallback_url": "https://english.news.cn/china/index.htm"',
+    );
+    expect(worker).toContain(
+      '"source_id": "scmp_china_rss"',
+    );
     expect(ingest).toContain(
       '"xinhua_english_china_rss"',
+    );
+    expect(ingest).toContain(
+      '"scmp_china_rss"',
     );
     expect(policy).toContain(
       'xinhua_english_china_rss: "xinhua_english_china"',
     );
+    expect(policy).toContain(
+      'scmp_china_rss: "scmp_china"',
+    );
     expect(rssWorkflow).toContain(
       "xinhua_english_china_rss",
+    );
+    expect(rssWorkflow).toContain(
+      "scmp_china_rss",
     );
   });
 
