@@ -30,6 +30,7 @@ on:
 
 # Certification retry anchor: force a fresh production GDELT sync cycle after stale-source observation.
 # Certification refresh anchor: second explicit production source refresh for final Federico acceptance.
+# Final Federico race-fix anchor: run GDELT after exact-fragment structuring fix.
 
 permissions:
   contents: read
