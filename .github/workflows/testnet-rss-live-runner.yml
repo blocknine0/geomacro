@@ -134,7 +134,15 @@ jobs:
             cat /tmp/testnet-rss-live.log
             exit 1
           fi
-          echo "PASS: all governed RSS feeds completed without collector errors."
+
+          # Federal Reserve supplies an explicit USA ISO3. This non-synthetic
+          # assertion proves the production country-attribution path is active.
+          grep -Eq '"source_id": "federal_reserve_press_rss".*"iso3": "USA"' /tmp/testnet-rss-live.log || {
+            echo "::error title=USA attribution missing::Federal Reserve RSS was ingested but no USA attribution was returned."
+            exit 1
+          }
+
+          echo "PASS: all governed RSS feeds completed without collector errors and explicit USA attribution is active."
 
       - name: Upload live Testnet RSS evidence
         if: always()
