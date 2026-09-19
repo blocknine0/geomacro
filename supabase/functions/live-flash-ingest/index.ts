@@ -67,7 +67,7 @@ async function verifyGitHubActionsOidc(
 
   const bearerMatch =
     authorization.match(
-      /^Bearer\\s+(.+)$/i,
+      /^Bearer\s+(.+)$/i,
     )
 
   const token =
