@@ -86,6 +86,9 @@ describe("Federico strict Risk Object acceptance policy", () => {
     const workflow = read(
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
+    const schemaGuard = read(
+      "supabase/migrations/954_federico_risk_object_schema_guard.sql",
+    );
 
     expect(preflight).toContain(
       '["approve", "approve_with_concerns"].includes(verdict)',
@@ -104,6 +107,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(workflow).toContain(
       "FEDERICO_STRICT",
+    );
+    expect(schemaGuard).toContain(
+      "live_flash_event_families",
+    );
+    expect(schemaGuard).toContain(
+      "live_flash_event_family_versions",
     );
   });
 });
