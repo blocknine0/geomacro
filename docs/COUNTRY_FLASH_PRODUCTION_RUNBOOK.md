@@ -30,7 +30,7 @@ Workflow:
 
 `.github/workflows/deploy-country-flash-supabase.yml`
 
-It is manual-only and has two modes.
+It supports a protected automatic production release from `main` for committed migration changes, plus an explicit manual plan/apply path for controlled operational work.
 
 ### Plan
 
@@ -47,7 +47,9 @@ Review the migration plan before applying anything.
 
 ### Apply
 
-After the plan is correct, run `mode=apply`.
+For manual operational changes, run `mode=apply`.
+
+For normal merged migration changes on `main`, the workflow applies automatically from the protected production environment.
 
 The workflow:
 
