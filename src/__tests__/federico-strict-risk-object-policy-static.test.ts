@@ -98,6 +98,40 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("pins the governed CHN-capable RSS source contract", () => {
+    const worker = read(
+      "workers/telegram-flash/worker.py",
+    );
+    const ingest = read(
+      "supabase/functions/live-flash-ingest/index.ts",
+    );
+    const policy = read(
+      "src/lib/public-demo-risk-profile.ts",
+    );
+    const rssWorkflow = read(
+      ".github/workflows/testnet-rss-live-runner.yml",
+    );
+
+    expect(worker).toContain(
+      '"source_id": "xinhua_english_china_rss"',
+    );
+    expect(worker).toContain(
+      '"url": "https://www.xinhuanet.com/english/rss/chinarss.xml"',
+    );
+    expect(worker).toContain(
+      '"country_iso3": "CHN"',
+    );
+    expect(ingest).toContain(
+      '"xinhua_english_china_rss"',
+    );
+    expect(policy).toContain(
+      'xinhua_english_china_rss: "xinhua_english_china"',
+    );
+    expect(rssWorkflow).toContain(
+      "xinhua_english_china_rss",
+    );
+  });
+
   it("pins the authoritative production lifecycle migrations", () => {
     const lifecycle = read(
       "supabase/migrations/955_realtime_event_family_lifecycle.sql",
