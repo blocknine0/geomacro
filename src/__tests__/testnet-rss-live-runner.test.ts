@@ -18,6 +18,7 @@ describe("Testnet RSS live runner", () => {
     expect(workflow).toContain('cron: "*/15 * * * *"');
     for (const sourceId of [
       "aljazeera_rss",
+      "bbc_world_rss",
       "federal_reserve_press_rss",
       "forexlive_rss",
       "usgs_minerals_news_rss",
