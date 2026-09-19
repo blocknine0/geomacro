@@ -86,7 +86,7 @@ jobs:
               break
             fi
 
-            if grep -Eq 'https://registry\.npmjs\\.org/.*( 5[0-9][0-9]$| 5[0-9][0-9] )|registry\.npmjs\\.org.*(5[0-9][0-9]|timed out|timeout|ECONNRESET|ECONNREFUSED)' dependency-audit.txt; then
+            if grep -Eq 'registry\.npmjs\.org.*(5[0-9][0-9]|timed out|timeout|ECONNRESET|ECONNREFUSED)' dependency-audit.txt; then
               if [[ "$attempt" -lt 3 ]]; then
                 echo "WARN: npm advisory service returned a transient registry/network error; retrying audit (attempt $((attempt + 1))/3)."
                 sleep $((attempt * 5))
