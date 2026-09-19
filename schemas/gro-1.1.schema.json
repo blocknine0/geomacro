@@ -126,6 +126,7 @@
           "relevance_reason": { "type": "string" },
           "transmission_channel": { "type": ["string", "null"] },
           "relevance_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "material_evidence_at": { "type": "string", "format": "date-time" },
           "subject_is_primary": { "type": "boolean" },
           "subject_attribution_confidence": { "type": "number", "minimum": 0, "maximum": 100 },
           "subject_attribution_method": { "type": "string" },
