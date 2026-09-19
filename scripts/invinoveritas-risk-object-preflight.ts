@@ -608,6 +608,14 @@ console.log(
             : liveReview.attempted
               ? "FAIL"
               : "NOT_RUN",
+        partner_proof_verification:
+          liveReview.attempted &&
+          liveReview.proof_verification?.primary === true &&
+          liveReview.proof_verification?.independent_node === true
+            ? "PASS"
+            : liveReview.attempted
+              ? "FAIL"
+              : "NOT_RUN",
         trust_metadata: strictProfile ? "PASS" : "NOT_APPLICABLE",
         reproducibility: strictProfile ? "PASS" : "NOT_APPLICABLE",
       },
