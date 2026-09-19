@@ -8,6 +8,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urljoin
 from calendar import timegm
 from datetime import datetime, timezone
 from typing import Any
@@ -90,7 +91,7 @@ USER_AGENT = os.environ.get(
 ).strip()
 
 class NewsPageParser:
-    def __init__(self, link_prefix: str):
+    def __init__(self, link_prefix: str, base_url: str):
         from html.parser import HTMLParser
 
         class _Parser(HTMLParser):
@@ -127,13 +128,15 @@ class NewsPageParser:
                 self.text_parts = []
                 if not href or not title or title.lower() == "read article":
                     return
+                absolute = urljoin(self.outer.base_url, href)
                 self.outer.entries.append({
-                    "id": href,
-                    "link": href,
+                    "id": absolute,
+                    "link": absolute,
                     "title": title[:1200],
                 })
 
         self.link_prefix = link_prefix
+        self.base_url = base_url
         self.entries: list[dict[str, Any]] = []
         self._parser = _Parser(self)
 
@@ -691,6 +694,7 @@ async def process_feed(
     else:
         parser = NewsPageParser(
             str(feed.get("fallback_link_prefix", "")),
+            str(feed.get("fallback_url", "")),
         )
         all_entries = parser.feed(raw)
         if not all_entries:
