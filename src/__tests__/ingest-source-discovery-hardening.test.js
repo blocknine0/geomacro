@@ -158,4 +158,21 @@ describe('shared source discovery hardening', () => {
     }
   });
 
+  it('limits GDELT discovery to one deterministic category request per ingestion run', () => {
+    const gdelt = between(
+      'const GDELT_DISCOVERY_QUERIES',
+      'const CATEGORIES = [',
+    );
+    expect(gdelt).toContain('function gdeltCategoryForCurrentRun');
+    expect(gdelt).toContain('GDELT_DISCOVERY_CATEGORY_ORDER');
+
+    const ingestLoop = between(
+      'const gdeltCategory =',
+      'candidateArticles.sort(',
+    );
+    expect(ingestLoop).toContain('category.name === gdeltCategory');
+    expect(ingestLoop).toContain('GDELT_DISCOVERY_QUERIES[category.name]');
+    expect(ingestLoop).toContain('GDELT discovery skipped');
+  });
+
 });
