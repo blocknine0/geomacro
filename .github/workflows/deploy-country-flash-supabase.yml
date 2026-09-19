@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+      - ".github/workflows/deploy-country-flash-supabase.yml"
   workflow_dispatch:
     inputs:
       mode:
