@@ -67,36 +67,36 @@ jobs:
         if: steps.window.outputs.active == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Install pinned Supabase CLI
-        if: steps.window.outputs.active == 'true'
-        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
-        with:
-          version: 2.117.0
-
       - name: Reconcile authoritative production event-family schema
         if: steps.window.outputs.active == 'true'
         shell: bash
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
         run: |
           set -euo pipefail
 
-          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "::error::SUPABASE_ACCESS_TOKEN is missing"; exit 1; }
-          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
           test -n "${SUPABASE_DB_PASSWORD:-}" || { echo "::error::SUPABASE_DB_PASSWORD is missing"; exit 1; }
 
           expected_project="ldpwajisioljyjtojvfx"
-          if [[ "$SUPABASE_PROJECT_ID" != "$expected_project" ]]; then
-            echo "::error::Refusing Federico self-heal against a non-authoritative Supabase project."
+          if [[ "${SUPABASE_PROJECT_ID:-$expected_project}" != "$expected_project" ]]; then
+            echo "::error::Refusing Federico DB repair against a non-authoritative Supabase project."
             exit 1
           fi
 
-          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          export PGHOST="db.$expected_project.supabase.co"
+          export PGPORT="5432"
+          export PGUSER="postgres"
+          export PGDATABASE="postgres"
+          export PGPASSWORD="$SUPABASE_DB_PASSWORD"
+          export PGSSLMODE="require"
 
-          set +e
-          supabase db query --linked -p "$SUPABASE_DB_PASSWORD" "DO \$\$
+          command -v psql >/dev/null 2>&1 || {
+            echo "::error::psql is required on the GitHub runner for direct authoritative schema repair."
+            exit 1
+          }
+
+          required_schema="DO \$\$
           BEGIN
             IF to_regclass('public.live_flash_event_families') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_families is missing';
@@ -110,34 +110,26 @@ jobs:
             IF to_regclass('public.live_flash_event_versions') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_versions is missing';
             END IF;
-          END \$\$;" >/tmp/federico-schema-check.txt 2>&1
+          END \$\$;"
+
+          set +e
+          psql -v ON_ERROR_STOP=1 -X -c "$required_schema" >/tmp/federico-schema-check.txt 2>&1
           schema_rc=$?
           set -e
 
           cat /tmp/federico-schema-check.txt
 
           if [[ "$schema_rc" -ne 0 ]]; then
-            echo "Authoritative production event-family schema is incomplete. Applying pending production migrations."
-            supabase db push
+            echo "Authoritative production event-family schema is incomplete. Applying the idempotent repair migration directly over the production database connection."
+            psql -v ON_ERROR_STOP=1 -X -f supabase/migrations/044_repair_federico_event_family_schema.sql
+
+            # Force PostgREST to reload its schema cache after DDL.
+            psql -v ON_ERROR_STOP=1 -X -c "NOTIFY pgrst, 'reload schema';"
           else
             echo "PASS: authoritative production event-family schema already present."
           fi
 
-          supabase db query --linked -p "$SUPABASE_DB_PASSWORD" "DO \$\$
-          BEGIN
-            IF to_regclass('public.live_flash_event_families') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_families is still missing after reconciliation';
-            END IF;
-            IF to_regclass('public.live_flash_event_family_members') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_family_members is still missing after reconciliation';
-            END IF;
-            IF to_regclass('public.live_flash_event_family_versions') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_family_versions is still missing after reconciliation';
-            END IF;
-            IF to_regclass('public.live_flash_event_versions') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_versions is still missing after reconciliation';
-            END IF;
-          END \$\$;"
+          psql -v ON_ERROR_STOP=1 -X -c "$required_schema"
 
           echo "PASS: authoritative production event-family schema is present before Federico publication."
 
