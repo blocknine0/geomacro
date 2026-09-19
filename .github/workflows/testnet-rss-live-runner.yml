@@ -62,10 +62,9 @@ jobs:
           set -euo pipefail
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
           test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
-          oidc_response="$("
-            curl --fail-with-body -sS \
-              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
+          oidc_response="$(curl --fail-with-body -sS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
           )"
           token="$(printf "%s" "$oidc_response" | jq -er ".value")"
           test -n "$token"
