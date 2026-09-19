@@ -66,81 +66,86 @@ begin
 end;
 $$;
 
-perform pg_temp.assert_table('public.early_warning_alerts');
-perform pg_temp.assert_column('early_warning_alerts', 'market_impact');
-perform pg_temp.assert_column('early_warning_alerts', 'market_impact_methodology_version');
-perform pg_temp.assert_column('early_warning_alerts', 'market_impact_calibrated');
-perform pg_temp.assert_column('early_warning_alerts', 'market_impact_hash');
-perform pg_temp.assert_constraint('early_warning_alerts', 'early_warning_market_impact_object_check');
-perform pg_temp.assert_constraint('early_warning_alerts', 'early_warning_market_impact_binding_check');
-
-perform pg_temp.assert_table('public.early_warning_distribution_receipts');
-perform pg_temp.assert_column('early_warning_distribution_receipts', 'lease_token');
-perform pg_temp.assert_column('early_warning_distribution_receipts', 'lease_expires_at');
-perform pg_temp.assert_column('early_warning_distribution_receipts', 'payload_hash');
-perform pg_temp.assert_column('early_warning_distribution_receipts', 'ambiguous_outcome');
-perform pg_temp.assert_column('early_warning_distribution_receipts', 'last_response_code');
-perform pg_temp.assert_function('public.claim_early_warning_distribution(text,text,text,integer)');
-perform pg_temp.assert_function('public.finalize_early_warning_distribution(uuid,uuid,text,text,text,integer)');
-
-if position('stale unfinalized delivery claim expired' in pg_get_functiondef(
-  to_regprocedure('public.claim_early_warning_distribution(text,text,text,integer)')
-)) = 0 then
-  raise exception '942 claim implementation sentinel is missing';
-end if;
-
-if position('retry_blocked' in pg_get_functiondef(
-  to_regprocedure('public.claim_early_warning_distribution(text,text,text,integer)')
-)) = 0 then
-  raise exception '942 retry-blocked sentinel is missing';
-end if;
-
-perform pg_temp.assert_constraint(
-  'early_warning_distribution_receipts',
-  'early_warning_distribution_attempt_cap_check'
-);
-
-perform pg_temp.assert_table('public.central_security_request_buckets_v2');
-perform pg_temp.assert_function('public.consume_central_security_budget_v2(text,text,integer,integer,integer)');
-perform pg_temp.assert_function('public.consume_central_security_budget(text,text,integer,integer,integer)');
-if position('consume_central_security_budget_v2' in pg_get_functiondef(
-  to_regprocedure('public.consume_central_security_budget(text,text,integer,integer,integer)')
-)) = 0 then
-  raise exception '944 central-security facade sentinel is missing';
-end if;
-perform pg_temp.assert_function('public.central_security_database_readiness()');
-
-perform pg_temp.assert_table('public.live_telegram_channel_registry');
-perform pg_temp.assert_column('live_telegram_channel_registry', 'manual_review_status');
-perform pg_temp.assert_column('live_telegram_channel_registry', 'reviewed_at');
-perform pg_temp.assert_column('live_telegram_channel_registry', 'reviewed_by');
-perform pg_temp.assert_column('live_telegram_channel_registry', 'review_reference');
-perform pg_temp.assert_constraint(
-  'live_telegram_channel_registry',
-  'live_telegram_channel_registry_manual_review_status_check'
-);
-
-perform pg_temp.assert_table('public.coinbase_x402_deliveries');
-perform pg_temp.assert_column('coinbase_x402_deliveries', 'response_sha256');
-perform pg_temp.assert_function('public.prepare_coinbase_x402_delivery(text,uuid,jsonb,text)');
-
-perform pg_temp.assert_table('public.private_commercial_revenue_delivery_ledger');
-perform pg_temp.assert_function('public.capture_private_commercial_revenue_delivery_proof()');
-perform pg_temp.assert_function('public.verify_private_commercial_revenue_delivery_ledger()');
-perform pg_temp.assert_function('public.private_commercial_revenue_delivery_ledger_readiness()');
-
-perform pg_temp.assert_table('public.testnet_developer_api_funnel_events');
-
-perform pg_temp.assert_table('public.live_flash_event_families');
-perform pg_temp.assert_table('public.live_flash_event_family_members');
-perform pg_temp.assert_table('public.live_flash_event_family_versions');
-perform pg_temp.assert_table('public.live_flash_event_versions');
-perform pg_temp.assert_column('live_flash_events', 'signal_category');
-perform pg_temp.assert_column('live_flash_events', 'source_version');
-perform pg_temp.assert_column('live_flash_events', 'material_update');
-perform pg_temp.assert_column('live_flash_events', 'event_family_id');
-
-raise notice 'PASS: all verified migration-history structural sentinels are present in authoritative production';
+do $$
+begin
+  perform pg_temp.assert_table('public.early_warning_alerts');
+  perform pg_temp.assert_column('early_warning_alerts', 'market_impact');
+  perform pg_temp.assert_column('early_warning_alerts', 'market_impact_methodology_version');
+  perform pg_temp.assert_column('early_warning_alerts', 'market_impact_calibrated');
+  perform pg_temp.assert_column('early_warning_alerts', 'market_impact_hash');
+  perform pg_temp.assert_constraint('early_warning_alerts', 'early_warning_market_impact_object_check');
+  perform pg_temp.assert_constraint('early_warning_alerts', 'early_warning_market_impact_binding_check');
+  
+  perform pg_temp.assert_table('public.early_warning_distribution_receipts');
+  perform pg_temp.assert_column('early_warning_distribution_receipts', 'lease_token');
+  perform pg_temp.assert_column('early_warning_distribution_receipts', 'lease_expires_at');
+  perform pg_temp.assert_column('early_warning_distribution_receipts', 'payload_hash');
+  perform pg_temp.assert_column('early_warning_distribution_receipts', 'ambiguous_outcome');
+  perform pg_temp.assert_column('early_warning_distribution_receipts', 'last_response_code');
+  perform pg_temp.assert_function('public.claim_early_warning_distribution(text,text,text,integer)');
+  perform pg_temp.assert_function('public.finalize_early_warning_distribution(uuid,uuid,text,text,text,integer)');
+  
+  if position('stale unfinalized delivery claim expired' in pg_get_functiondef(
+    to_regprocedure('public.claim_early_warning_distribution(text,text,text,integer)')
+  )) = 0 then
+    raise exception '942 claim implementation sentinel is missing';
+  end if;
+  
+  if position('retry_blocked' in pg_get_functiondef(
+    to_regprocedure('public.claim_early_warning_distribution(text,text,text,integer)')
+  )) = 0 then
+    raise exception '942 retry-blocked sentinel is missing';
+  end if;
+  
+  perform pg_temp.assert_constraint(
+    'early_warning_distribution_receipts',
+    'early_warning_distribution_attempt_cap_check'
+  );
+  
+  perform pg_temp.assert_table('public.central_security_request_buckets_v2');
+  perform pg_temp.assert_function('public.consume_central_security_budget_v2(text,text,integer,integer,integer)');
+  perform pg_temp.assert_function('public.consume_central_security_budget(text,text,integer,integer,integer)');
+  if position('consume_central_security_budget_v2' in pg_get_functiondef(
+    to_regprocedure('public.consume_central_security_budget(text,text,integer,integer,integer)')
+  )) = 0 then
+    raise exception '944 central-security facade sentinel is missing';
+  end if;
+  perform pg_temp.assert_function('public.central_security_database_readiness()');
+  
+  perform pg_temp.assert_table('public.live_telegram_channel_registry');
+  perform pg_temp.assert_column('live_telegram_channel_registry', 'manual_review_status');
+  perform pg_temp.assert_column('live_telegram_channel_registry', 'reviewed_at');
+  perform pg_temp.assert_column('live_telegram_channel_registry', 'reviewed_by');
+  perform pg_temp.assert_column('live_telegram_channel_registry', 'review_reference');
+  perform pg_temp.assert_constraint(
+    'live_telegram_channel_registry',
+    'live_telegram_channel_registry_manual_review_status_check'
+  );
+  
+  perform pg_temp.assert_table('public.coinbase_x402_deliveries');
+  perform pg_temp.assert_column('coinbase_x402_deliveries', 'response_sha256');
+  perform pg_temp.assert_function('public.prepare_coinbase_x402_delivery(text,uuid,jsonb,text)');
+  
+  perform pg_temp.assert_table('public.private_commercial_revenue_delivery_ledger');
+  perform pg_temp.assert_function('public.capture_private_commercial_revenue_delivery_proof()');
+  perform pg_temp.assert_function('public.verify_private_commercial_revenue_delivery_ledger()');
+  perform pg_temp.assert_function('public.private_commercial_revenue_delivery_ledger_readiness()');
+  
+  perform pg_temp.assert_table('public.testnet_developer_api_funnel_events');
+  
+  perform pg_temp.assert_table('public.live_flash_event_families');
+  perform pg_temp.assert_table('public.live_flash_event_family_members');
+  perform pg_temp.assert_table('public.live_flash_event_family_versions');
+  perform pg_temp.assert_table('public.live_flash_event_versions');
+  perform pg_temp.assert_column('live_flash_events', 'signal_category');
+  perform pg_temp.assert_column('live_flash_events', 'source_version');
+  perform pg_temp.assert_column('live_flash_events', 'material_update');
+  perform pg_temp.assert_column('live_flash_events', 'event_family_id');
+  
+  
+  raise notice 'PASS: all verified migration-history structural sentinels are present in authoritative production';
+end;
+$$;
 SQL
 
 echo "Reading remote migration history."
