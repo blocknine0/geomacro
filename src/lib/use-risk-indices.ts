@@ -1,13 +1,52 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { getPublicRiskIndices } from "./public-risk-indices.functions";
 import type { PublicRiskIndices } from "./risk-indices.types";
+import { PUBLIC_RISK_INDICES_CONTRACT_VERSION } from "./risk-indices.types";
 import { reportError, type UserError } from "./user-errors";
+
+const PUBLIC_RISK_EDGE_URL =
+  "https://ldpwajisioljyjtojvfx.supabase.co/functions/v1/public-risk-indices";
 
 export type RiskIndicesStatus = "loading" | "ready" | "updating";
 
+function isValidPayload(value: unknown): value is { ok: true; data: PublicRiskIndices } {
+  if (!value || typeof value !== "object") return false;
+  const body = value as Record<string, unknown>;
+  if (body.ok !== true || !body.data || typeof body.data !== "object") return false;
+
+  const data = body.data as Record<string, unknown>;
+  if (data.contractVersion !== PUBLIC_RISK_INDICES_CONTRACT_VERSION) return false;
+  if (data.parentMethodologyVersion !== "gri-v1.2.0") return false;
+  if (data.proofVersion !== "gri-proof-v1.2.0") return false;
+  if (data.verificationStatus !== "verified") return false;
+  if (!Array.isArray(data.indices) || data.indices.length !== 3) return false;
+
+  const keys = data.indices
+    .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>).key : null))
+    .sort()
+    .join(",");
+  return keys === "critical_minerals,geopolitics,macro";
+}
+
+async function readPublicRiskIndices(): Promise<PublicRiskIndices> {
+  const response = await fetch(PUBLIC_RISK_EDGE_URL, {
+    method: "GET",
+    headers: { accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Authoritative public risk edge returned HTTP ${response.status}`);
+  }
+
+  const payload: unknown = await response.json();
+  if (!isValidPayload(payload)) {
+    throw new Error("Authoritative public risk edge returned an invalid verified payload");
+  }
+
+  return payload.data;
+}
+
 export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
-  const loadPublicIndices = useServerFn(getPublicRiskIndices);
   const [data, setData] = useState<PublicRiskIndices | null>(null);
   const [status, setStatus] = useState<RiskIndicesStatus>("loading");
   const [error, setError] = useState<UserError | null>(null);
@@ -22,12 +61,11 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
     async function load() {
       setStatus(hasData.current ? "updating" : "loading");
       try {
-        const response = await loadPublicIndices({ data: {} });
+        const response = await readPublicRiskIndices();
         if (cancelled) return;
-        if (!response.ok) throw new Error(response.message);
 
         hasData.current = true;
-        setData(response.data);
+        setData(response);
         setError(null);
         setStatus("ready");
       } catch (caught) {
@@ -37,11 +75,6 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
           caught,
           "refreshing the verified public risk indices",
         );
-
-        // Public risk surfaces fail soft. Never discard a verified reading just
-        // because a later refresh failed, and never expose a website error card
-        // on cold start. The normal interval and explicit retry keep recovery
-        // active while the UI remains neutral.
         setError(null);
         setStatus(hasData.current ? "ready" : "loading");
       }
@@ -53,7 +86,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [loadPublicIndices, refreshMs, reloadKey]);
+  }, [refreshMs, reloadKey]);
 
   return useMemo(
     () => ({ data, status, error, retry }),
