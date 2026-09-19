@@ -3193,10 +3193,16 @@ async function ingestNews() {
     const gdeltCategory =
       gdeltCategoryForCurrentRun();
 
-    const gdeltQuery =
+    const gdeltBaseQuery =
       category.name === gdeltCategory
         ? GDELT_DISCOVERY_QUERIES[category.name]
         : null;
+
+    const gdeltQuery =
+      gdeltBaseQuery &&
+      category.name === 'geopolitics'
+        ? `(${gdeltBaseQuery}) OR (\"China\" OR \"Taiwan\" OR \"South China Sea\" OR \"Philippines\")`
+        : gdeltBaseQuery;
 
     if (gdeltQuery) {
       try {
