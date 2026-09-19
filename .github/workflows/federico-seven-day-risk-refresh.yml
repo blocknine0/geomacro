@@ -332,7 +332,7 @@ jobs:
               "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
               -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\\"fragment_id\\":\\"${FRESH_GDELT_FRAGMENT_ID}\\"}" \
+              --data "{\"fragment_id\":\"${FRESH_GDELT_FRAGMENT_ID}\"}" \
               -o "$response_file"
 
             jq -e --arg fragment "$FRESH_GDELT_FRAGMENT_ID" '.ok == true and .fragment_id == $fragment' "$response_file" >/dev/null
@@ -372,6 +372,12 @@ jobs:
           python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
           for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
+            grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
+              echo "::error::RSS source ${source_id} did not complete a post-structure poll."
+              exit 1
+            }
+          done
+
           grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
             echo "::error title=Xinhua CHN attribution missing::Fresh Xinhua evidence did not produce the required CHN attribution."
             exit 1
