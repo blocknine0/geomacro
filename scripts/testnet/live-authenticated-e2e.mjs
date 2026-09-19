@@ -233,6 +233,10 @@ async function main() {
     principal_stable_after_reconnect: true,
     developer_key_ids_stable_after_reconnect: true,
     request_id: req.request_id,
+    public_api: {
+      all_published_public_keys_quoted: publicQuoteChecks.length === 3,
+      quote_checks: publicQuoteChecks,
+    },
     quote: {
       credit_cost: quote.payload.payment.credit_cost,
       amount_due_usdc: quote.payload.payment.amount_due_usdc,
