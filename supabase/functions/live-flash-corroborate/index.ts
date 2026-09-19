@@ -1,9 +1,45 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 const FLASH_INGEST_TOKEN = Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
 const SIGNAL_DB_MODE = Deno.env.get("SIGNAL_DB_MODE") === "true"
+
+const GITHUB_OIDC_ISSUER =
+  "https://token.actions.githubusercontent.com"
+
+const GITHUB_OIDC_AUDIENCE =
+  "https://geomacro.live/actions/live-flash-rss"
+
+const GITHUB_OIDC_REPOSITORY =
+  "blocknine0/geomacro"
+
+const GITHUB_OIDC_WORKFLOW_REFS = new Set([
+  "blocknine0/geomacro/.github/workflows/testnet-rss-live-runner.yml@refs/heads/main",
+  "blocknine0/geomacro/.github/workflows/deploy-country-flash-supabase.yml@refs/heads/main",
+])
+
+const GITHUB_OIDC_WORKFLOW_FILES = new Set([
+  "testnet-rss-live-runner.yml",
+  "deploy-country-flash-supabase.yml",
+])
+
+const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
+  "push",
+  "schedule",
+  "workflow_dispatch",
+])
+
+const GITHUB_OIDC_JWKS =
+  createRemoteJWKSet(
+    new URL(
+      "https://token.actions.githubusercontent.com/.well-known/jwks",
+    ),
+  )
+
+const GITHUB_OIDC_HEADER =
+  "x-geomacro-github-oidc-token"
 
 const db = createClient(
   SUPABASE_URL,
@@ -190,12 +226,105 @@ Deno.serve(async request => {
     return jsonResponse(405, { ok: false, error: "method_not_allowed" })
   }
 
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !FLASH_INGEST_TOKEN) {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
     return jsonResponse(500, { ok: false, error: "server_not_configured" })
   }
 
-  const token = request.headers.get("x-geomacro-flash-token") ?? ""
-  if (token !== FLASH_INGEST_TOKEN) {
+  const staticTokenAuthorized =
+    Boolean(FLASH_INGEST_TOKEN) &&
+    (
+      (
+        request.headers.get(
+          "x-geomacro-flash-token",
+        ) ?? ""
+      ) === FLASH_INGEST_TOKEN
+    )
+
+  const customHeaderToken =
+    (
+      request.headers.get(
+        GITHUB_OIDC_HEADER,
+      ) ?? ""
+    ).trim()
+
+  const authorization =
+    (
+      request.headers.get(
+        "authorization",
+      ) ?? ""
+    ).trim()
+
+  const bearerMatch =
+    authorization.match(
+      /^Bearer\s+(.+)$/i,
+    )
+
+  const oidcToken =
+    customHeaderToken ||
+    bearerMatch?.[1]?.trim() ||
+    ""
+
+  let githubOidcAuthorized = false
+
+  if (oidcToken) {
+    try {
+      const { payload } =
+        await jwtVerify(
+          oidcToken,
+          GITHUB_OIDC_JWKS,
+          {
+            issuer:
+              GITHUB_OIDC_ISSUER,
+            audience:
+              GITHUB_OIDC_AUDIENCE,
+            algorithms: ["RS256"],
+          },
+        )
+
+      const workflowRef =
+        typeof payload.job_workflow_ref ===
+          "string"
+          ? payload.job_workflow_ref
+          : typeof payload.workflow_ref ===
+              "string"
+            ? payload.workflow_ref
+            : ""
+
+      const workflowRefAuthorized =
+        GITHUB_OIDC_WORKFLOW_REFS.has(
+          workflowRef,
+        )
+
+      const workflowFileAuthorized =
+        typeof payload.workflow ===
+          "string" &&
+        GITHUB_OIDC_WORKFLOW_FILES.has(
+          payload.workflow,
+        )
+
+      githubOidcAuthorized =
+        payload.repository ===
+          GITHUB_OIDC_REPOSITORY &&
+        payload.ref ===
+          "refs/heads/main" &&
+        typeof payload.event_name ===
+          "string" &&
+        GITHUB_OIDC_ALLOWED_EVENTS.has(
+          payload.event_name,
+        ) &&
+        (
+          workflowRefAuthorized ||
+          workflowFileAuthorized
+        )
+    } catch {
+      githubOidcAuthorized = false
+    }
+  }
+
+  if (
+    !staticTokenAuthorized &&
+    !githubOidcAuthorized
+  ) {
     return jsonResponse(401, { ok: false, error: "unauthorized" })
   }
 
