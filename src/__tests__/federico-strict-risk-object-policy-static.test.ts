@@ -19,10 +19,47 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'FEDERICO_STRICT_HIGH_IMPACT_SEVERITY = 70',
     );
     expect(policy).toContain(
+      'FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES = 2',
+    );
+    expect(policy).toContain(
+      'FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY = 0.45',
+    );
+    expect(policy).toContain(
+      'FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD = 65',
+    );
+    expect(policy).toContain(
       'controlled_live_flash_source_family_v2',
     );
     expect(policy).toContain(
       'country_bridge_attribution_v1',
+    );
+  });
+
+  it("pins the two-independent-source Federico verification contract", () => {
+    const corroborator = read(
+      "supabase/functions/live-flash-corroborate/index.ts",
+    );
+
+    expect(corroborator).toContain(
+      "FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES = 2",
+    );
+    expect(corroborator).toContain(
+      "FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY = 0.45",
+    );
+    expect(corroborator).toContain(
+      "FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD = 65",
+    );
+    expect(corroborator).toContain(
+      "distinctSourceCount >= FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES",
+    );
+    expect(corroborator).toContain(
+      "countryAgreement",
+    );
+    expect(corroborator).toContain(
+      "maxSimilarity >= FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY",
+    );
+    expect(corroborator).not.toContain(
+      "distinctSourceCount >= 3 && maxSimilarity >= 0.40",
     );
   });
 
