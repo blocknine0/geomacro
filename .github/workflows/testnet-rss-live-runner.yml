@@ -1,0 +1,98 @@
+name: Testnet RSS Live Intelligence Runner
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "*/15 * * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/telegram-flash/**"
+      - ".github/workflows/testnet-rss-live-runner.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testnet-rss-live-runner
+  cancel-in-progress: false
+
+jobs:
+  rss:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: production
+    env:
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
+      TELEGRAM_ENABLED: "false"
+      BREAKING_RSS_ENABLED: "true"
+      BREAKING_RSS_RUN_ONCE: "true"
+      BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+      BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4a3e3e1fa3b84a0a49 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install worker dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt
+
+      - name: Validate Testnet runner boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
+          test -n "${GEOMACRO_FLASH_INGEST_TOKEN:-}" || { echo "::error::FLASH_INGEST_TOKEN missing"; exit 1; }
+          test "${TELEGRAM_ENABLED}" = "false"
+          test "${BREAKING_RSS_ENABLED}" = "true"
+          test "${BREAKING_RSS_RUN_ONCE}" = "true"
+          test "${GEOMACRO_FLASH_INGEST_URL}" = "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-ingest"
+          echo "PASS: Testnet RSS runner is locked to the canonical Geomacro ingest boundary."
+
+      - name: Run one complete governed RSS cycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GEOMACRO_FLASH_INGEST_TOKEN="${GEOMACRO_FLASH_INGEST_TOKEN}"
+          cd workers/telegram-flash
+          python worker.py 2>&1 | tee /tmp/testnet-rss-live.log
+
+      - name: Verify all governed RSS sources completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          for source_id in aljazeera_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
+            grep -q "\"source_id\": \"${source_id}\"" /tmp/testnet-rss-live.log || {
+              echo "::error::RSS source ${source_id} did not complete a poll cycle."
+              exit 1
+            }
+          done
+          if grep -q '"kind": "rss_error"' /tmp/testnet-rss-live.log; then
+            echo "::error::One or more governed RSS sources failed."
+            cat /tmp/testnet-rss-live.log
+            exit 1
+          fi
+          echo "PASS: all governed RSS feeds completed without collector errors."
+
+      - name: Upload live Testnet RSS evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: testnet-rss-live-run
+          path: /tmp/testnet-rss-live.log
+          if-no-files-found: warn
+          retention-days: 14
