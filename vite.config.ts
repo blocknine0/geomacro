@@ -56,6 +56,12 @@ export default defineConfig({
   vite: {
     plugins: [polyfillResolver()],
     resolve: {
+      // Force one browser React/TanStack runtime in production bundles.
+      // The Lovable config already dedupes these packages, but an explicit
+      // project-level guard prevents the deployed Vite graph from resolving
+      // a second React instance. TanStack Await uses React.use(), so a mixed
+      // React graph can fail at runtime before the route tree renders.
+      dedupe: ["react", "react-dom", "@tanstack/react-router"],
       alias: {
         net: netStub,
         "node:net": netStub,
