@@ -70,6 +70,14 @@ A well-formed but tampered, unknown-key, revoked-key, unsupported-methodology, m
 - the endpoint does not submit transactions, sign customer actions, or authorize execution;
 - Geomacro Risk Gate retains `execution_authorized=false`.
 
+## Canonicalization and independent verification
+
+The public canonicalization specification is `docs/GRO_CANONICAL_JSON_V1.md`.
+
+The deterministic test vector is `docs/examples/gro-1.1-canonical-v1-test-vector.json`, with a repository test at `src/__tests__/canonical-json-v1-test-vector.test.ts`. These define and lock the exact canonical byte framing, SHA-256 payload hash, and Ed25519 verification procedure for independent consumers.
+
+Consumers should reproduce the canonical UTF-8 bytes and payload hash, then verify the Ed25519 signature using the trusted public key returned by `/api/risk-object-keys`.
+
 ## Canonical gro-1.1 JSON Schema
 
 Repository source: `schemas/gro-1.1.schema.json`.
