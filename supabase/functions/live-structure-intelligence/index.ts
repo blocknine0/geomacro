@@ -653,6 +653,7 @@ type EventState = {
 
   firstSeenAt: string;
   lastSeenAt: string;
+  lastObservedAt: string;
 
   evidenceCount: number;
   evidenceRefs: string[];
@@ -2897,6 +2898,9 @@ Deno.serve(async (req) => {
   let runId:
     string | null = null;
 
+  let phase =
+    'create_run';
+
   try {
     const {
       data: run,
@@ -2926,6 +2930,9 @@ Deno.serve(async (req) => {
     }
 
     runId = run.id;
+
+    phase =
+      'country_registry';
 
     const {
       data: countryRows,
@@ -3124,6 +3131,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    phase =
+      'fragment_download';
+
     const {
       data: blob,
       error: downloadError,
@@ -3319,7 +3329,7 @@ Deno.serve(async (req) => {
         "live_structured_events",
       )
       .select(
-        "id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,evidence_count,evidence_refs,structured_payload",
+        "id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,last_observed_at,evidence_count,evidence_refs,structured_payload",
       )
       .gte(
         "last_seen_at",
@@ -3439,6 +3449,8 @@ Deno.serve(async (req) => {
           row.first_seen_at,
         lastSeenAt:
           row.last_seen_at,
+        lastObservedAt:
+          row.last_observed_at ?? row.last_seen_at,
         evidenceCount:
           Number(
             row.evidence_count ??
@@ -3847,83 +3859,119 @@ Deno.serve(async (req) => {
               STORY_VERSION,
               eventDomain,
               primary?.iso3 ??
-                "GLOBAL",
+                'GLOBAL',
               eventRule.id,
               [...titleTokens]
                 .sort()
                 .slice(0, 14)
-                .join("|"),
-            ].join("::"),
+                .join('|'),
+            ].join('::'),
           );
 
-        selected = {
-          id:
-            crypto.randomUUID(),
-          storyKey,
-          domain:
-            eventDomain,
-          eventType:
-            eventRule.id,
-          eventLabel:
-            eventRule.label,
-          title:
-            `${
-              primary?.name ??
-              "Global"
-            }: ${
-              eventRule.label
-            }`,
-          summary: "",
-          primaryCountry:
-            primary?.iso3 ??
-            null,
-          primaryCountryName:
-            primary?.name ??
-            null,
-          countries:
-            geography
-              .slice(0, 6)
-              .map(
-                (x) =>
-                  x.iso3,
-              ),
-          severity: 0,
-          confidence: 0,
-          direction:
-            trend,
-          firstSeenAt:
-            seenAt,
-          lastSeenAt:
-            seenAt,
-          evidenceCount: 0,
-          evidenceRefs: [],
-          sourceDomains:
-            new Set<string>(),
+        selected =
+          events.find(
+            (event) =>
+              event.storyKey ===
+              storyKey,
+          ) ??
+          null;
 
-          sourceFamilies:
-            new Set<string>(),
+        if (!selected) {
+          phase =
+            'canonical_story_lookup';
 
-          clusterTokens:
-            titleTokens,
-          why:
-            eventRule.why,
-          channels:
-            eventRule.channels,
-          severityProof: {},
-          confidenceProof: {},
-          isNew: true,
-          changed: true,
-        };
+          const {
+            data: canonicalStory,
+            error: canonicalStoryError,
+          } = await db
+            .from('live_structured_events')
+            .select('id,story_key,domain,event_type,title,summary,primary_country,countries,severity,confidence,direction,first_seen_at,last_seen_at,last_observed_at,evidence_count,evidence_refs,structured_payload')
+            .eq('story_key', storyKey)
+            .maybeSingle();
 
-        events.push(
-          selected,
-        );
+          if (canonicalStoryError) {
+            throw canonicalStoryError;
+          }
 
-        addIndex(
-          selected,
-        );
+          if (canonicalStory) {
+            const payload =
+              canonicalStory.structured_payload &&
+              typeof canonicalStory.structured_payload === 'object'
+                ? canonicalStory.structured_payload as Record<string, unknown>
+                : {};
 
-        created++;
+            selected = {
+              id: canonicalStory.id,
+              storyKey: canonicalStory.story_key,
+              domain: canonicalStory.domain,
+              eventType: canonicalStory.event_type,
+              eventLabel: String(payload.event_label ?? canonicalStory.event_type ?? eventRule.label),
+              title: canonicalStory.title,
+              summary: canonicalStory.summary ?? '',
+              primaryCountry: canonicalStory.primary_country,
+              primaryCountryName: String(payload.primary_country_name ?? '') || null,
+              countries: Array.isArray(canonicalStory.countries) ? canonicalStory.countries.map(String) : [],
+              severity: Number(canonicalStory.severity ?? 0),
+              confidence: Number(canonicalStory.confidence ?? 0),
+              direction: canonicalStory.direction ?? 'unknown',
+              firstSeenAt: canonicalStory.first_seen_at,
+              lastSeenAt: canonicalStory.last_seen_at,
+              lastObservedAt: canonicalStory.last_observed_at ?? canonicalStory.last_seen_at,
+              evidenceCount: Number(canonicalStory.evidence_count ?? 0),
+              evidenceRefs: Array.isArray(canonicalStory.evidence_refs) ? canonicalStory.evidence_refs.map(String) : [],
+              sourceDomains: new Set(Array.isArray(payload.source_domains) ? payload.source_domains.map(String) : []),
+              sourceFamilies: new Set(Array.isArray(payload.source_families) ? payload.source_families.map(String) : []),
+              clusterTokens: Array.isArray(payload.cluster_tokens) ? payload.cluster_tokens.map(String) : titleTokens,
+              why: typeof payload.why_it_matters === 'string' ? payload.why_it_matters : eventRule.why,
+              channels: Array.isArray(payload.risk_channels) ? payload.risk_channels.map(String) : eventRule.channels,
+              severityProof: payload.severity && typeof payload.severity === 'object' ? payload.severity as Record<string, unknown> : {},
+              confidenceProof: payload.confidence && typeof payload.confidence === 'object' ? payload.confidence as Record<string, unknown> : {},
+              isNew: false,
+              changed: true,
+            };
+
+            events.push(selected);
+            addIndex(selected);
+            updated++;
+          } else {
+            selected = {
+              id: crypto.randomUUID(),
+              storyKey,
+              domain: eventDomain,
+              eventType: eventRule.id,
+              eventLabel: eventRule.label,
+              title: `${primary?.name ?? 'Global'}: ${eventRule.label}`,
+              summary: '',
+              primaryCountry: primary?.iso3 ?? null,
+              primaryCountryName: primary?.name ?? null,
+              countries: geography.slice(0, 6).map((x) => x.iso3),
+              severity: 0,
+              confidence: 0,
+              direction: trend,
+              firstSeenAt: seenAt,
+              lastSeenAt: seenAt,
+              lastObservedAt: manifest.period_end,
+              evidenceCount: 0,
+              evidenceRefs: [],
+              sourceDomains: new Set<string>(),
+              sourceFamilies: new Set<string>(),
+              clusterTokens: titleTokens,
+              why: eventRule.why,
+              channels: eventRule.channels,
+              severityProof: {},
+              confidenceProof: {},
+              isNew: true,
+              changed: true,
+            };
+
+            events.push(selected);
+            addIndex(selected);
+            created++;
+          }
+        } else if (!selected.changed) {
+          selected.changed = true;
+          updated++;
+        }
       } else if (
         !selected.isNew &&
         !selected.changed
@@ -4009,6 +4057,16 @@ Deno.serve(async (req) => {
         selected
           .lastSeenAt =
           seenAt;
+      }
+
+      if (
+        manifest.period_end >
+        selected
+          .lastObservedAt
+      ) {
+        selected
+          .lastObservedAt =
+          manifest.period_end;
       }
 
       if (
@@ -4132,6 +4190,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    phase =
+      'event_persistence';
+
     const changed =
       events.filter(
         (x) => x.changed,
@@ -4195,6 +4256,10 @@ Deno.serve(async (req) => {
                 event
                   .lastSeenAt,
 
+              last_observed_at:
+                event
+                  .lastObservedAt,
+
               evidence_count:
                 event
                   .evidenceCount,
@@ -4240,6 +4305,13 @@ Deno.serve(async (req) => {
 
                 risk_channels:
                   event.channels,
+
+                observation: {
+                  observed_at:
+                    event.lastObservedAt,
+                  observation_basis:
+                    'verified_fragment_period_end',
+                },
 
                 what_changed: {
                   state:
@@ -4588,10 +4660,44 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : String(error);
+    const compact =
+      (value: unknown, limit: number) => {
+        if (typeof value !== 'string') {
+          return null;
+        }
+        const cleaned =
+          value.replace(/\s+/g, ' ').trim();
+        return cleaned ? cleaned.slice(0, limit) : null;
+      };
+
+    const objectError =
+      error && typeof error === 'object'
+        ? error as Record<string, unknown>
+        : null;
+
+    const code = compact(
+      objectError?.code ??
+        (error instanceof Error ? error.name : null),
+      120,
+    );
+    const errorMessage = compact(
+      objectError?.message ??
+        (error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : null),
+      900,
+    ) ?? 'Unknown structuring failure';
+    const details = compact(objectError?.details, 600);
+    const hint = compact(objectError?.hint, 300);
+    const message = [
+      `phase=${phase}`,
+      code ? `code=${code}` : null,
+      `message=${errorMessage}`,
+      details ? `details=${details}` : null,
+      hint ? `hint=${hint}` : null,
+    ].filter(Boolean).join('; ');
 
     if (runId) {
       await db
