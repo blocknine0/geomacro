@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: testnet-rss-live-runner
@@ -31,6 +32,7 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
       GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
+      GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
       TELEGRAM_ENABLED: "false"
       BREAKING_RSS_ENABLED: "true"
       BREAKING_RSS_RUN_ONCE: "true"
@@ -54,12 +56,29 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt
 
+      - name: Acquire scoped GitHub Actions OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
+          oidc_response="$("
+            curl --fail-with-body -sS \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
+          )"
+          token="$(printf "%s" "$oidc_response" | jq -er ".value")"
+          test -n "$token"
+          echo "::add-mask::$token"
+          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "$token" >> "$GITHUB_ENV"
+          echo "PASS: scoped GitHub OIDC token acquired for the canonical RSS workflow."
+
       - name: Validate Testnet runner boundary
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
-          test -n "${GEOMACRO_FLASH_INGEST_TOKEN:-}" || { echo "::error::FLASH_INGEST_TOKEN missing"; exit 1; }
+          test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
           test "${TELEGRAM_ENABLED}" = "false"
           test "${BREAKING_RSS_ENABLED}" = "true"
           test "${BREAKING_RSS_RUN_ONCE}" = "true"
@@ -70,7 +89,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export GEOMACRO_FLASH_INGEST_TOKEN="${GEOMACRO_FLASH_INGEST_TOKEN}"
+          export GEOMACRO_FLASH_INGEST_TOKEN="${GEOMACRO_FLASH_INGEST_TOKEN:-}"
+          export GEOMACRO_FLASH_OIDC_TOKEN="${GEOMACRO_FLASH_OIDC_TOKEN}"
           cd workers/telegram-flash
           python worker.py 2>&1 | tee /tmp/testnet-rss-live.log
 

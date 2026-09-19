@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createRemoteJWKSet, jwtVerify } from "https://esm.sh/jose@6.2.3"
 
 const SUPABASE_URL =
   Deno.env.get("SUPABASE_URL") ?? ""
@@ -8,6 +9,27 @@ const SERVICE_ROLE_KEY =
 
 const FLASH_INGEST_TOKEN =
   Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
+
+const GITHUB_OIDC_ISSUER =
+  "https://token.actions.githubusercontent.com"
+
+const GITHUB_OIDC_AUDIENCE =
+  "https://geomacro.live/actions/live-flash-rss"
+
+const GITHUB_OIDC_REPOSITORY =
+  "blocknine0/geomacro"
+
+const GITHUB_OIDC_WORKFLOW_REFS = new Set([
+  "blocknine0/geomacro/.github/workflows/testnet-rss-live-runner.yml@refs/heads/main",
+  "blocknine0/geomacro/.github/workflows/deploy-country-flash-supabase.yml@refs/heads/main",
+])
+
+const GITHUB_OIDC_JWKS =
+  createRemoteJWKSet(
+    new URL(
+      "https://token.actions.githubusercontent.com/.well-known/jwks",
+    ),
+  )
 
 const SIGNAL_DB_MODE =
   Deno.env.get("SIGNAL_DB_MODE") === "true"
@@ -96,6 +118,53 @@ let countryCache:
       rows: CountryRow[]
     }
   | null = null
+
+async function verifyGitHubActionsOidc(
+  request: Request,
+) {
+  const authorization =
+    request.headers.get("Authorization") ?? ""
+
+  if (
+    !authorization.startsWith("Bearer ")
+  ) {
+    return false
+  }
+
+  const token =
+    authorization.slice("Bearer ".length).trim()
+
+  if (!token) return false
+
+  try {
+    const { payload } =
+      await jwtVerify(
+        token,
+        GITHUB_OIDC_JWKS,
+        {
+          issuer:
+            GITHUB_OIDC_ISSUER,
+          audience:
+            GITHUB_OIDC_AUDIENCE,
+        },
+      )
+
+    return (
+      payload.repository ===
+        GITHUB_OIDC_REPOSITORY &&
+      payload.ref ===
+        "refs/heads/main" &&
+      typeof payload.workflow_ref ===
+        "string" &&
+      GITHUB_OIDC_WORKFLOW_REFS.has(
+        payload.workflow_ref,
+      )
+    )
+  }
+  catch {
+    return false
+  }
+}
 
 function jsonResponse(
   status: number,
@@ -687,8 +756,7 @@ Deno.serve(async request => {
 
   if (
     !SUPABASE_URL ||
-    !SERVICE_ROLE_KEY ||
-    !FLASH_INGEST_TOKEN
+    !SERVICE_ROLE_KEY
   ) {
     return jsonResponse(
       500,
@@ -696,22 +764,6 @@ Deno.serve(async request => {
         ok: false,
         error:
           "server_not_configured",
-      },
-    )
-  }
-
-  const token =
-    request.headers.get(
-      "x-geomacro-flash-token"
-    ) ?? ""
-
-  if (token !== FLASH_INGEST_TOKEN) {
-    return jsonResponse(
-      401,
-      {
-        ok: false,
-        error:
-          "unauthorized",
       },
     )
   }
@@ -738,6 +790,54 @@ Deno.serve(async request => {
       payload.source_id,
       120,
     ) ?? "telegram_mtproto_flash"
+
+  const staticTokenAuthorized =
+    Boolean(FLASH_INGEST_TOKEN) &&
+    (
+      (
+        request.headers.get(
+          "x-geomacro-flash-token",
+        ) ?? ""
+      ) === FLASH_INGEST_TOKEN
+    )
+
+  const githubOidcAuthorized =
+    await verifyGitHubActionsOidc(
+      request,
+    )
+
+  if (
+    !staticTokenAuthorized &&
+    !githubOidcAuthorized
+  ) {
+    return jsonResponse(
+      401,
+      {
+        ok: false,
+        error:
+          "unauthorized",
+      },
+    )
+  }
+
+  if (
+    githubOidcAuthorized &&
+    ![
+      "aljazeera_rss",
+      "federal_reserve_press_rss",
+      "forexlive_rss",
+      "usgs_minerals_news_rss",
+    ].includes(sourceId)
+  ) {
+    return jsonResponse(
+      403,
+      {
+        ok: false,
+        error:
+          "github_oidc_source_not_allowed",
+      },
+    )
+  }
 
   if (!ALLOWED_SOURCE_IDS.has(sourceId)) {
     return jsonResponse(
