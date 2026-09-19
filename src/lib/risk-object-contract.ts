@@ -285,6 +285,8 @@ export type GeomacroRiskObject = {
         high_impact_max_evidence_age_hours: number;
         high_impact_severity_threshold: number;
         minimum_high_impact_independent_sources: number;
+        source_independence_method: string;
+        relevance_method: string;
       };
       calculation_input: unknown;
       score_components: {
