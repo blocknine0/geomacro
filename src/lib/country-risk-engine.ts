@@ -534,6 +534,19 @@ export async function buildCountryRiskObject(
       0,
     );
 
+  const previous =
+    compatiblePrevious(
+      input.previous,
+      countryIso3,
+    )
+      ? input.previous!
+      : null;
+
+  const noFreshStrictEvidence =
+    strictProfile &&
+    totalWeight === 0 &&
+    previous !== null;
+
   const rawScore =
     totalWeight > 0
       ? weighted.reduce(
@@ -548,7 +561,9 @@ export async function buildCountryRiskObject(
   const score =
     round(
       clamp(
-        rawScore,
+        noFreshStrictEvidence
+          ? previous.risk.score
+          : rawScore,
         0,
         100,
       ),
@@ -604,14 +619,6 @@ export async function buildCountryRiskObject(
       current,
     );
   }
-
-  const previous =
-    compatiblePrevious(
-      input.previous,
-      countryIso3,
-    )
-      ? input.previous!
-      : null;
 
   const previousContributions =
     new Map<
@@ -728,19 +735,31 @@ export async function buildCountryRiskObject(
           ),
       );
 
+  const continuityAttribution =
+    noFreshStrictEvidence && previous
+      ? previous.attribution.map((item) => ({
+          ...item,
+          delta_contribution: null,
+          event_count: 0,
+          weight: 0,
+        }))
+      : attribution;
+
   const previousScore =
     previous
       ? previous.risk.score
       : null;
 
   const delta =
-    previousScore === null
+    noFreshStrictEvidence
       ? null
-      : round(
-          score -
-            previousScore,
-          3,
-        );
+      : previousScore === null
+        ? null
+        : round(
+            score -
+              previousScore,
+            3,
+          );
 
   const evidence =
     weighted.map(
@@ -1101,7 +1120,8 @@ export async function buildCountryRiskObject(
 
       delta,
 
-      attribution,
+      attribution:
+      continuityAttribution,
     });
 
   const generatedAt =
@@ -1166,6 +1186,12 @@ export async function buildCountryRiskObject(
   if (strictProfile) {
     if (!evidence.length) {
       readinessReasons.push("no_fresh_evidence");
+    }
+
+    if (noFreshStrictEvidence) {
+      readinessReasons.push(
+        "score_carried_forward_without_fresh_evidence",
+      );
     }
 
     if (totalIndependentSources < 2) {
@@ -1309,7 +1335,12 @@ export async function buildCountryRiskObject(
       total_weight:
         round(totalWeight, 6),
       raw_score:
-        round(rawScore, 6),
+        round(
+          noFreshStrictEvidence
+            ? score
+            : rawScore,
+          6,
+        ),
       rounded_score:
         score,
       aggregate_confidence:
