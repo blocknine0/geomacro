@@ -30,7 +30,7 @@ jobs:
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
-      FEDERICO_REFRESH_UNTIL: "2026-09-25T00:30:00Z"
+      FEDERICO_REFRESH_UNTIL: "2026-09-26T02:41:32Z"
 
     steps:
       - name: Stop after seven-day window
@@ -278,6 +278,15 @@ jobs:
                   raise SystemExit(f"Unexpected ZIP contents: {sorted(actual)}")
           print("PASS: fixed Federico handoff ZIP is valid")
           PY
+
+      - name: Upload historical Federico handoff
+        if: steps.window.outputs.active == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: federico-handoff-${{ github.run_id }}
+          path: /tmp/federico-handoff/
+          if-no-files-found: error
+          retention-days: 8
 
       - name: Upload fixed latest Federico handoff
         if: steps.window.outputs.active == 'true'
