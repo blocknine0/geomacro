@@ -82,22 +82,31 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
-  it("keeps Federico CHN synchronization aligned with country-level source diversity", () => {
+  it("keeps Federico CHN synchronization routed through the country-level source-diversity corroborator", () => {
     const workflow = read(
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
+    const corroborator = read(
+      "supabase/functions/live-flash-corroborate/index.ts",
+    );
 
     expect(workflow).toContain(
-      "sourceFamiliesByFamily",
+      "live-flash-corroborate",
     );
     expect(workflow).toContain(
-      ">= 2",
+      "fresh RSS and structured evidence corroboration completed",
     );
-    expect(workflow).toContain(
-      "ready: Boolean(qualifying)",
+    expect(corroborator).toContain(
+      "familySourceFamilies",
     );
-    expect(workflow).toContain(
-      "qualifying_family_id",
+    expect(corroborator).toContain(
+      "distinctSourceCount >= FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES",
+    );
+    expect(corroborator).toContain(
+      "strongStructuredMatch",
+    );
+    expect(corroborator).toContain(
+      "strongMultiSourceMatch",
     );
     expect(workflow).not.toContain(
       "independentSourceFamilies.size >= 2",
