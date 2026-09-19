@@ -26,6 +26,50 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("pins the authoritative production lifecycle migrations", () => {
+    const lifecycle = read(
+      "supabase/migrations/042_realtime_event_family_lifecycle.sql",
+    );
+    const versions = read(
+      "supabase/migrations/043_event_family_version_ledger.sql",
+    );
+
+    expect(lifecycle).toContain(
+      "create table if not exists public.live_flash_event_families",
+    );
+    expect(lifecycle).toContain(
+      "alter table public.live_flash_events",
+    );
+    expect(lifecycle).toContain(
+      "last_material_update_at timestamptz",
+    );
+    expect(versions).toContain(
+      "live_flash_event_family_versions",
+    );
+    expect(versions).toContain(
+      "unique (family_id, version)",
+    );
+  });
+
+  it("keeps isolated Telegram migrations outside the production track", () => {
+    const productionWorkflow = read(
+      ".github/workflows/deploy-country-flash-supabase.yml",
+    );
+    const isolatedWorkflow = read(
+      ".github/workflows/deploy-telegram-signal-supabase.yml",
+    );
+
+    expect(productionWorkflow).not.toContain(
+      "supabase/isolated-signal",
+    );
+    expect(productionWorkflow).toContain(
+      "supabase/migrations/**",
+    );
+    expect(isolatedWorkflow).toContain(
+      "SUPABASE_WORKDIR=supabase/isolated-signal",
+    );
+  });
+
   it("uses material evidence time instead of a renewed observation TTL", () => {
     const publisher = read(
       "src/lib/country-risk-publisher.server.ts",
@@ -51,6 +95,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(publisher).toContain(
       "content_hash",
+    );
+    expect(publisher).not.toContain(
+      "legacy_schema_compat",
+    );
+    expect(publisher).not.toContain(
+      "PGRST205",
     );
   });
 
