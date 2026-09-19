@@ -11,7 +11,6 @@ on:
   workflow_run:
     workflows:
       - "Auto Ingest News"
-      - "GDELT GAL Live Hot-Topic Sync"
       - "Testnet RSS Live Intelligence Runner"
       - "Deploy country flash intelligence to Supabase"
     types:
@@ -20,6 +19,7 @@ on:
 permissions:
   contents: read
   actions: write
+  id-token: write
 
 concurrency:
   group: federico-seven-day-risk-refresh
@@ -36,7 +36,7 @@ jobs:
         )
       }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -45,6 +45,8 @@ jobs:
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
 
     steps:
       - name: Checkout
@@ -58,6 +60,21 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Acquire scoped GitHub Actions OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
+          oidc_response="$(curl --fail-with-body -sS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
+          )"
+          token="$(printf "%s" "$oidc_response" | jq -er ".value")"
+          test -n "$token"
+          echo "::add-mask::$token"
+          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "$token" >> "$GITHUB_ENV"
+          echo "PASS: scoped GitHub OIDC token acquired for Federico's governed corroboration path."
       - name: Reconcile authoritative production event-family schema
         shell: bash
         env:
@@ -217,11 +234,63 @@ jobs:
           console.log('PASS: production signer matches deployed active trust key');
           NODE
 
+      - name: Synchronize fresh independent GDELT evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN GEOMACRO_FLASH_OIDC_TOKEN; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+
+          for i in 1 2 3 4; do
+            response_file="/tmp/federico-gdelt-${i}.json"
+            GDELT_GAL_SYNC_OUTPUT="$response_file" bun scripts/sync-gdelt-gal-production.mjs
+            jq -e '.ok == true' "$response_file" >/dev/null
+            jq -c '{ok,status,source_stamp:(.latest_source_stamp // .last_source_stamp // null),source_files:(.source_files // .files_seen // 0),items_seen:(.items_seen // 0),items_accepted:(.items_accepted // .accepted // 0),fragment_id:(.fragment_id // null)}' "$response_file"
+          done
+
+          for i in 1 2 3; do
+            response_file="/tmp/federico-structure-${i}.json"
+            curl --fail-with-body -sS \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --retry-max-time 90 \
+              -X POST \
+              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
+              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -o "$response_file"
+            jq -e '.ok == true' "$response_file" >/dev/null
+            jq -c '{ok,status,fragments_considered:(.fragments_considered // 0),fragments_processed:(.fragments_processed // 0),evidence_rows:(.evidence_rows // 0),event_rows:(.event_rows // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file"
+          done
+
+          echo "PASS: fresh GDELT GAL evidence was synchronized and structured against the authoritative production project."
+
+      - name: Corroborate fresh RSS and structured evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${APP_SUPABASE_URL%/}/functions/v1"
+          response="$(curl --silent --show-error \
+            --output /tmp/federico-corroborate.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data '{}' \
+            "${base}/live-flash-corroborate")"
+          cat /tmp/federico-corroborate.json
+          echo
+          test "$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
+          jq -e '.ok == true' /tmp/federico-corroborate.json >/dev/null
+          echo "PASS: fresh RSS and structured evidence corroboration completed."
       - name: Wait for fresh CHN independent event-family evidence
         shell: bash
         env:
-          EVIDENCE_WAIT_ATTEMPTS: "6"
-          EVIDENCE_WAIT_SECONDS: "20"
+          EVIDENCE_WAIT_ATTEMPTS: "12"
+          EVIDENCE_WAIT_SECONDS: "15"
         run: |
           set -euo pipefail
 
