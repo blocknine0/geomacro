@@ -254,7 +254,7 @@ jobs:
           set -euo pipefail
 
           base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
-          auth_header_name="Authorization"
+          auth_header_name="x-geomacro-github-oidc-token"
           auth_header_value=""
 
           if [[ -n "${FLASH_INGEST_TOKEN:-}" ]]; then
@@ -272,9 +272,6 @@ jobs:
             test -n "$auth_header_value"
             echo "::add-mask::$auth_header_value"
 
-            claims_json="$(node -e 'const p=process.argv[1].split(".")[1]; process.stdout.write(JSON.stringify(JSON.parse(Buffer.from(p, "base64url").toString("utf8"))))' "$auth_header_value")"
-            printf "%s\n" "$claims_json" |
-              jq -c '{iss,aud,repository,ref,workflow,workflow_ref,workflow_sha,job_workflow_ref,job_workflow_sha,event_name,environment,sub}'
           fi
 
           ingest_code="$(curl --silent --show-error \
