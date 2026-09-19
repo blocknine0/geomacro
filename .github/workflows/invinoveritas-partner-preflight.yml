@@ -1,4 +1,5 @@
 name: invinoveritas Partner Preflight
+# Trigger live validation from the canonical main implementation.
 
 on:
   workflow_dispatch:
