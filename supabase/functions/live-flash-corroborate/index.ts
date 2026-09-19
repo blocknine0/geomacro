@@ -71,7 +71,6 @@ type Flash = {
   headline: string
   body: string | null
   source_reliability: number | null
-  source_reliability_bps: number | null
   verification_status: string
   signal_category: string
   source_version: number
@@ -333,7 +332,7 @@ Deno.serve(async request => {
   const flashResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,source_reliability_bps,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at",
+      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at",
     )
     .gte("ingested_at", cutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING", "VERIFIED"])
@@ -595,9 +594,9 @@ Deno.serve(async request => {
       Math.min(
         10,
         Number(
-          SIGNAL_DB_MODE
-            ? (flash.source_reliability_bps ?? 5000) / 100
-            : (flash.source_reliability ?? 50)
+          Number(
+            flash.source_reliability ?? 50,
+          )
         ) * 0.10,
       ),
     )
