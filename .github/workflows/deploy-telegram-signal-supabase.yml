@@ -101,7 +101,7 @@ jobs:
         run: echo "Plan completed. No signal-project database or function changes were applied."
       - name: Apply signal database migrations
         if: ${{ inputs.mode == 'apply' }}
-        run: supabase db push
+        run: SUPABASE_WORKDIR=supabase/isolated-signal supabase db push
       - name: Configure isolated function secrets
         if: ${{ inputs.mode == 'apply' }}
         run: |
