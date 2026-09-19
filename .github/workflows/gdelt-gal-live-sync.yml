@@ -28,6 +28,8 @@ on:
 
 # Final Federico certification trigger anchor: run fresh GDELT after persisted-fragment proof.
 
+# Certification retry anchor: force a fresh production GDELT sync cycle after stale-source observation.
+
 permissions:
   contents: read
 
