@@ -18,25 +18,45 @@ alter table public.early_warning_alerts
   add column if not exists market_impact_calibrated boolean not null default false,
   add column if not exists market_impact_hash text;
 
-alter table public.early_warning_alerts
-  add constraint early_warning_market_impact_object_check
-    check (market_impact is null or jsonb_typeof(market_impact) = 'object'),
-  add constraint early_warning_market_impact_binding_check
-    check (
-      (
-        market_impact is null
-        and market_impact_methodology_version is null
-        and market_impact_hash is null
-        and market_impact_calibrated is false
-      )
-      or
-      (
-        market_impact is not null
-        and market_impact_methodology_version = 'early-warning-market-impact-v0.1-provisional'
-        and market_impact_hash ~ '^[0-9a-f]{64}$'
-        and market_impact_calibrated is false
-      )
-    );
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'early_warning_market_impact_object_check'
+      and conrelid = 'public.early_warning_alerts'::regclass
+  ) then
+    alter table public.early_warning_alerts
+      add constraint early_warning_market_impact_object_check
+      check (market_impact is null or jsonb_typeof(market_impact) = 'object');
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'early_warning_market_impact_binding_check'
+      and conrelid = 'public.early_warning_alerts'::regclass
+  ) then
+    alter table public.early_warning_alerts
+      add constraint early_warning_market_impact_binding_check
+      check (
+        (
+          market_impact is null
+          and market_impact_methodology_version is null
+          and market_impact_hash is null
+          and market_impact_calibrated is false
+        )
+        or
+        (
+          market_impact is not null
+          and market_impact_methodology_version = 'early-warning-market-impact-v0.1-provisional'
+          and market_impact_hash ~ '^[0-9a-f]{64}$'
+          and market_impact_calibrated is false
+        )
+      );
+  end if;
+end
+$$;
 
 comment on column public.early_warning_alerts.market_impact is
   'Deterministic categorical structural cross-asset pressure map. Not a price forecast or trading instruction.';
