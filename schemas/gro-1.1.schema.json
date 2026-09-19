@@ -291,7 +291,9 @@
                 "max_evidence_age_hours": { "type": "number", "minimum": 0 },
                 "high_impact_max_evidence_age_hours": { "type": "number", "minimum": 0 },
                 "high_impact_severity_threshold": { "type": "number", "minimum": 0, "maximum": 100 },
-                "minimum_high_impact_independent_sources": { "type": "integer", "minimum": 1 }
+                "minimum_high_impact_independent_sources": { "type": "integer", "minimum": 1 },
+                "source_independence_method": { "type": "string" },
+                "relevance_method": { "type": "string" }
               }
             },
             "calculation_input": {},
