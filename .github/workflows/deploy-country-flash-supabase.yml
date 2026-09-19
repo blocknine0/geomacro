@@ -279,6 +279,7 @@ jobs:
             --write-out '%{http_code}' \
             --request POST \
             --header "${auth_header_name}: ${auth_header_value}" \
+            --header "Authorization: Bearer ${auth_header_value}" \
             --header 'Content-Type: application/json' \
             --data '{"source_id":"aljazeera_rss"}' \
             "${base}/live-flash-ingest")"
