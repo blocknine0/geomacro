@@ -383,6 +383,10 @@ export async function buildCountryRiskObject(
     );
   }
 
+  const strictProfile =
+    input.calculation_namespace ===
+    "federico_strict_evidence_v1";
+
   const weighted:
     WeightedEvent[] = [];
 
@@ -955,7 +959,9 @@ export async function buildCountryRiskObject(
       asOf.toISOString(),
 
     lookback_hours:
-      COUNTRY_RISK_LOOKBACK_HOURS,
+      strictProfile
+        ? FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
+        : COUNTRY_RISK_LOOKBACK_HOURS,
 
     half_life_hours:
       COUNTRY_RISK_HALF_LIFE_HOURS,
@@ -1134,10 +1140,6 @@ export async function buildCountryRiskObject(
       "missing_structure_version",
     );
   }
-
-  const strictProfile =
-    input.calculation_namespace ===
-    "federico_strict_evidence_v1";
 
   const totalIndependentSources = new Set(
     evidence.flatMap(
