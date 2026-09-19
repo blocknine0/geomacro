@@ -96,6 +96,22 @@ jobs:
             exit 1
           }
 
+          # GitHub-hosted runners may have no IPv6 route. Prefer the authoritative
+          # Supabase direct database IPv4 address while retaining PGHOST for TLS
+          # naming and future diagnostics.
+          DB_IPV4="$(
+            getent ahostsv4 "$PGHOST" 2>/dev/null |
+              awk 'NF {print $1; exit}'
+          )"
+
+          test -n "$DB_IPV4" || {
+            echo "::error::No IPv4 address is available for the authoritative Supabase database host $PGHOST."
+            exit 1
+          }
+
+          export PGHOSTADDR="$DB_IPV4"
+          echo "Using authoritative Supabase database IPv4 endpoint: $DB_IPV4"
+
           required_schema="DO \$\$
           BEGIN
             IF to_regclass('public.live_flash_event_families') IS NULL THEN
