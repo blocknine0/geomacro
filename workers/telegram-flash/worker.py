@@ -96,6 +96,15 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "url": "https://www.aljazeera.com/xml/rss/all.xml",
         "event_type": "GEOPOLITICS_BREAKING",
         "source_reliability": 70.0,
+        "priority_keywords": [
+            "china",
+            "chinese",
+            "beijing",
+            "taiwan",
+            "south china sea",
+            "philippines",
+        ],
+        "priority_max_items": 5,
     },
     {
         "source_id": "federal_reserve_press_rss",
@@ -325,6 +334,21 @@ def feed_entry_timestamp(entry: Any) -> str | None:
     return None
 
 
+def feed_entry_matches_priority(
+    entry: Any,
+    keywords: list[str],
+) -> bool:
+    text = " ".join(
+        str(entry.get(key, "")).strip()
+        for key in ("title", "summary", "description")
+    ).lower()
+    return any(
+        keyword.strip().lower() in text
+        for keyword in keywords
+        if keyword.strip()
+    )
+
+
 def feed_entry_identity(entry: Any, source_id: str) -> str:
     for key in ("id", "guid", "link"):
         value = entry.get(key)
@@ -533,9 +557,34 @@ async def process_feed(
             f"Feed parse failed: {getattr(parsed, 'bozo_exception', 'unknown error')}"
         )
 
-    entries = list(parsed.entries)
+    all_entries = list(parsed.entries)
     if not current["bootstrapped"]:
-        entries = entries[:RSS_BOOTSTRAP_MAX_ITEMS]
+        latest_entries = all_entries[:RSS_BOOTSTRAP_MAX_ITEMS]
+        priority_keywords = [
+            str(value).strip()
+            for value in feed.get("priority_keywords", [])
+            if str(value).strip()
+        ]
+        priority_max_items = max(
+            0,
+            min(10, int(feed.get("priority_max_items", 0))),
+        )
+        priority_entries = [
+            entry
+            for entry in all_entries[RSS_BOOTSTRAP_MAX_ITEMS:]
+            if feed_entry_matches_priority(entry, priority_keywords)
+        ][:priority_max_items]
+        seen_ids = {
+            feed_entry_identity(entry, source_id)
+            for entry in latest_entries
+        }
+        entries = latest_entries + [
+            entry
+            for entry in priority_entries
+            if feed_entry_identity(entry, source_id) not in seen_ids
+        ]
+    else:
+        entries = all_entries
 
     new_count = 0
     for entry in reversed(entries):
@@ -601,6 +650,11 @@ async def process_feed(
                 "http_status": status,
                 "entries_seen": len(entries),
                 "new_items": new_count,
+                "priority_items_selected": (
+                    max(0, len(entries) - RSS_BOOTSTRAP_MAX_ITEMS)
+                    if not current["bootstrapped"]
+                    else 0
+                ),
             }
         ),
         flush=True,
