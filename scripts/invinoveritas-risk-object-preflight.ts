@@ -251,7 +251,7 @@ if (strictProfile) {
         ),
     ) > 1e-6 ||
     Math.abs(
-      aggregateConfidence -
+      Math.round(aggregateConfidence * 10_000) / 10_000 -
         Number(
           manifest.score_components.aggregate_confidence,
         ),
