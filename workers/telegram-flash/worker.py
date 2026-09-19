@@ -207,7 +207,6 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "fallback_link_prefix": "/2026",
     },
     {
-    {
         "source_id": "scmp_china_rss",
         "name": "South China Morning Post China RSS",
         "url": "https://www.scmp.com/rss/4/feed",
