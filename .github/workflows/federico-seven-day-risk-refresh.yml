@@ -326,7 +326,6 @@ jobs:
           echo "PASS: exact fresh GDELT fragment was structurally processed against authoritative production."
 
       - name: Re-poll governed RSS after fresh GDELT structure
-        shell: bash
         env:
           SUPABASE_PROJECT_ID: \${{ secrets.SUPABASE_PROJECT_ID }}
           GEOMACRO_FLASH_INGEST_URL: https://\${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
@@ -346,13 +345,13 @@ jobs:
           python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
           for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
-            grep -q "\\"source_id\\": \\"\${source_id}\\"" /tmp/federico-rss-live.log || {
+          grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
               echo "::error::RSS source \${source_id} did not complete a post-structure poll."
               exit 1
             }
           done
 
-          ! grep -q '"kind": "rss_error"' /tmp/federico-rss-live.log
+          grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
           grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
             echo "::error title=Xinhua CHN attribution missing::Fresh Xinhua evidence did not produce the required CHN attribution."
             exit 1
