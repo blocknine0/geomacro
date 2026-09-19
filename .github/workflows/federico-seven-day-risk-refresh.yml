@@ -27,6 +27,9 @@ jobs:
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      INVINO_REQUEST_OUT: /tmp/federico-review-request.json
+      INVINO_REVIEW_OUT: /tmp/federico-review-response.json
       FEDERICO_REFRESH_UNTIL: "2026-09-25T00:30:00Z"
 
     steps:
@@ -196,7 +199,9 @@ jobs:
             .gates.deployed_original_verification == "PASS" and
             .gates.tampered_payload_rejected == "PASS" and
             .gates.freshness == "PASS" and
-            .gates.partner_request_contract == "PASS"
+            .gates.partner_request_contract == "PASS" and
+            .gates.live_partner_review == "PASS" and
+            .live_review.proof_present == true
           ' /tmp/federico-preflight.json >/dev/null
 
       - name: Build handoff artifact
@@ -207,16 +212,21 @@ jobs:
           mkdir -p /tmp/federico-handoff
           cp /tmp/federico-risk-object.json /tmp/federico-handoff/federico-risk-object.json
           cp schemas/gro-1.1.schema.json /tmp/federico-handoff/gro-1.1.schema.json
+          cp docs/GRO_CANONICAL_JSON_V1.md /tmp/federico-handoff/GRO_CANONICAL_JSON_V1.md
+          cp docs/examples/gro-1.1-canonical-v1-test-vector.json /tmp/federico-handoff/gro-1.1-canonical-v1-test-vector.json
+          cp /tmp/federico-review-request.json /tmp/federico-handoff/review-request.json
+          cp /tmp/federico-review-response.json /tmp/federico-handoff/review-response.json
 
           (
             cd /tmp/federico-handoff
-            sha256sum gro-1.1.schema.json federico-risk-object.json > SHA256SUMS.txt
+            sha256sum GRO_CANONICAL_JSON_V1.md gro-1.1-canonical-v1-test-vector.json gro-1.1.schema.json federico-risk-object.json review-request.json review-response.json > SHA256SUMS.txt
           )
 
           jq '{
             ok,
             gates,
-            object
+            object,
+            live_review
           }' /tmp/federico-preflight.json > /tmp/federico-handoff/verification-summary.json
 
           python3 - <<'PY'
@@ -226,8 +236,12 @@ jobs:
           root = Path("/tmp/federico-handoff")
           package = root / "Geomacro_Federico_Latest_Handoff.zip"
           files = [
+              "GRO_CANONICAL_JSON_V1.md",
+              "gro-1.1-canonical-v1-test-vector.json",
               "gro-1.1.schema.json",
               "federico-risk-object.json",
+              "review-request.json",
+              "review-response.json",
               "SHA256SUMS.txt",
               "verification-summary.json",
           ]
@@ -250,8 +264,12 @@ jobs:
               if bad is not None:
                   raise SystemExit(f"ZIP integrity failure: {bad}")
               expected = {
+                  "GRO_CANONICAL_JSON_V1.md",
+                  "gro-1.1-canonical-v1-test-vector.json",
                   "gro-1.1.schema.json",
                   "federico-risk-object.json",
+                  "review-request.json",
+                  "review-response.json",
                   "SHA256SUMS.txt",
                   "verification-summary.json",
               }
