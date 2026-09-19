@@ -152,6 +152,7 @@ export type RiskEvidenceReference = {
   subject_is_primary?: boolean;
   subject_attribution_confidence?: number;
   subject_attribution_method?: string;
+  material_evidence_at?: string;
   evidence_age_hours?: number;
   freshness_status?: "FRESH" | "AGING" | "STALE";
   corroboration_status?: "CONFIRMED" | "CORROBORATING" | "UNCONFIRMED";
