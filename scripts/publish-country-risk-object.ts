@@ -41,6 +41,9 @@ if (!/^[A-Z]{3}$/.test(iso3)) {
 const result =
   await publishCountryRiskObject({
     country_iso3: iso3,
+
+    delivery_profile:
+      profile,
   });
 
 const signatureCheck =
