@@ -649,11 +649,20 @@ async function loadFedericoStrictEvents(
 
   const sourceFamilyFor = (
     sourceId: string,
-  ) =>
-    FEDERICO_STRICT_SOURCE_FAMILY_BY_ID[
-      sourceId as keyof typeof FEDERICO_STRICT_SOURCE_FAMILY_BY_ID
-    ] ??
-    "unmapped:" + sourceId;
+  ) => {
+    if (
+      sourceId.startsWith("telegram:")
+    ) {
+      return "telegram_network";
+    }
+
+    return (
+      FEDERICO_STRICT_SOURCE_FAMILY_BY_ID[
+        sourceId as keyof typeof FEDERICO_STRICT_SOURCE_FAMILY_BY_ID
+      ] ??
+      "unmapped:" + sourceId
+    );
+  };
 
   const combinedFamilies =
     lifecycleAvailable
