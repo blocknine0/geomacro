@@ -91,7 +91,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "independentSourceFamilies.size >= 2",
     );
     expect(workflow).toContain(
-      "independent source families are counted across the complete fresh country evidence set",
+      "independentSourceFamilies",
+    );
+    expect(workflow).toContain(
+      "ready: independentSourceFamilies.size >= 2",
     );
     expect(workflow).not.toContain(
       "Number(family.independent_source_count ?? 0) >= 2",
