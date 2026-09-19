@@ -24,6 +24,12 @@ const GITHUB_OIDC_WORKFLOW_REFS = new Set([
   "blocknine0/geomacro/.github/workflows/deploy-country-flash-supabase.yml@refs/heads/main",
 ])
 
+const GITHUB_OIDC_JWKS_URL =
+  "https://token.actions.githubusercontent.com/.well-known/jwks"
+
+const GITHUB_OIDC_HEADER =
+  "x-geomacro-github-oidc-token"
+
 const GITHUB_OIDC_JWKS =
   createRemoteJWKSet(
     new URL(
@@ -49,6 +55,7 @@ const ALLOWED_SOURCE_IDS =
   new Set([
     "telegram_mtproto_flash",
     "aljazeera_rss",
+    "bbc_world_rss",
     "federal_reserve_press_rss",
     "forexlive_rss",
     "mining_com_rss",
