@@ -226,6 +226,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         ],
         "priority_max_items": 10,
     },
+    {
         "source_id": "federal_reserve_press_rss",
         "name": "Federal Reserve Press Releases",
         "url": "https://www.federalreserve.gov/feeds/press_all.xml",
