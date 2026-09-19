@@ -3,14 +3,14 @@ import { readFileSync } from "node:fs";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
-describe("Telegram raw-signal manual-review contract", () => {
-  it("keeps every Telegram source behind explicit database approval", () => {
+describe("Telegram raw-signal automated admission contract", () => {
+  it("uses machine-governed registry admission instead of founder approval", () => {
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
 
     expect(ingest).toContain('from("live_telegram_channel_registry")');
-    expect(ingest).toContain("manual_review_status");
-    expect(ingest).toContain('"APPROVED"');
-    expect(ingest).toContain('"telegram_channel_not_approved"');
+    expect(ingest).toContain("auto_admission_status");
+    expect(ingest).toContain('"ACTIVE"');
+    expect(ingest).toContain('"telegram_channel_not_active"');
     expect(ingest).toContain('"telegram_public_channel_key_required"');
     expect(ingest).toContain('"telegram_public_source_url_required"');
   });
@@ -35,16 +35,18 @@ describe("Telegram raw-signal manual-review contract", () => {
     );
   });
 
-  it("resets historical starter channels to pending and disabled", () => {
+  it("ships an automated admission and health migration", () => {
     const migration = read(
-      "supabase/migrations/946_telegram_manual_review_gate.sql",
+      "supabase/migrations/958_telegram_automated_admission_health.sql",
     );
 
-    expect(migration).toContain("manual_review_status = 'PENDING'");
-    expect(migration).toContain("enabled = false");
-    expect(migration).toContain(
-      "manual_review_status=APPROVED plus enabled=true",
-    );
+    expect(migration).toContain("auto_admission_status");
+    expect(migration).toContain("ACTIVE");
+    expect(migration).toContain("DEGRADED");
+    expect(migration).toContain("QUARANTINED");
+    expect(migration).toContain("last_health_at");
+    expect(migration).toContain("last_seen_at");
+    expect(migration).toContain("country_iso3");
   });
 
   it("ships with Telegram disabled and no default channel list", () => {
