@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: federico-seven-day-risk-refresh
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
