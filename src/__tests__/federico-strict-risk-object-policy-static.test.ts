@@ -88,13 +88,19 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
 
     expect(workflow).toContain(
+      "sourceFamiliesByFamily",
+    );
+    expect(workflow).toContain(
+      ">= 2",
+    );
+    expect(workflow).toContain(
+      "ready: Boolean(qualifying)",
+    );
+    expect(workflow).toContain(
+      "qualifying_family_id",
+    );
+    expect(workflow).not.toContain(
       "independentSourceFamilies.size >= 2",
-    );
-    expect(workflow).toContain(
-      "independentSourceFamilies",
-    );
-    expect(workflow).toContain(
-      "ready: independentSourceFamilies.size >= 2",
     );
     expect(workflow).not.toContain(
       "Number(family.independent_source_count ?? 0) >= 2",
