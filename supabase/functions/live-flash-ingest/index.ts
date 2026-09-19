@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createRemoteJWKSet, jwtVerify } from "https://esm.sh/jose@6.2.3"
 
 const SUPABASE_URL =
   Deno.env.get("SUPABASE_URL") ?? ""
@@ -29,207 +30,23 @@ const GITHUB_OIDC_JWKS_URL =
 const GITHUB_OIDC_HEADER =
   "x-geomacro-github-oidc-token"
 
-type GitHubJwk =
-  JsonWebKey & {
-    kid?: string
-    alg?: string
-    use?: string
-  }
+const GITHUB_OIDC_WORKFLOW_FILES = new Set([
+  "testnet-rss-live-runner.yml",
+  "deploy-country-flash-supabase.yml",
+])
 
-let githubJwksCache:
-  | {
-      expiresAt: number
-      keys: GitHubJwk[]
-    }
-  | null = null
+const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
+  "push",
+  "schedule",
+  "workflow_dispatch",
+])
 
-const SIGNAL_DB_MODE =
-  Deno.env.get("SIGNAL_DB_MODE") === "true"
-
-const ALLOWED_SOURCE_IDS =
-  new Set([
-    "telegram_mtproto_flash",
-    "aljazeera_rss",
-    "bbc_world_rss",
-    "federal_reserve_press_rss",
-    "forexlive_rss",
-    "mining_com_rss",
-    "usgs_minerals_news_rss",
-  ])
-
-const ALLOWED_VERIFICATION_STATUSES =
-  new Set([
-    "UNVERIFIED",
-    "CORROBORATING",
-    "VERIFIED",
-    "REJECTED",
-  ])
-
-const db =
-  createClient(
-    SUPABASE_URL,
-    SERVICE_ROLE_KEY,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    },
-  )
-
-type CountryRow = {
-  iso2: string
-  iso3: string
-  country_name: string
-  aliases: string[] | null
-  demonyms: string[] | null
-}
-
-type CountryMatch = {
-  iso3: string
-  confidence: number
-  method: string
-  matched: string
-}
-
-type RankedCountryMatch =
-  CountryMatch & {
-    rank: number
-  }
-
-type VerificationStatus =
-  | "UNVERIFIED"
-  | "CORROBORATING"
-  | "VERIFIED"
-  | "REJECTED"
-
-type FlashPayload = {
-  source_id?: string
-  source_record_id?: string
-  published_at?: string | null
-  headline?: string
-  body?: string | null
-  signal_category?: string | null
-  source_channel?: string | null
-  source_channel_key?: string | null
-  source_url?: string | null
-  event_type?: string | null
-  severity?: number | null
-  source_reliability?: number | null
-  verification_status?: VerificationStatus
-  latitude?: number | null
-  longitude?: number | null
-  commodity_tags?: string[] | null
-  country_iso3?: string | null
-  related_country_iso3?: string[] | null
-  raw_payload?: unknown
-}
-
-let countryCache:
-  | {
-      expiresAt: number
-      rows: CountryRow[]
-    }
-  | null = null
-
-function decodeBase64Url(
-  value: string,
-) {
-  const normalized =
-    value
-      .replace(/-/g, "+")
-      .replace(/_/g, "/") +
-    "=".repeat(
-      (4 - (value.length % 4)) % 4,
-    )
-
-  const binary =
-    atob(normalized)
-
-  return Uint8Array.from(
-    binary,
-    character => character.charCodeAt(0),
-  )
-}
-
-function decodeJsonPart(
-  value: string,
-) {
-  return JSON.parse(
-    new TextDecoder().decode(
-      decodeBase64Url(value),
+const GITHUB_OIDC_JWKS =
+  createRemoteJWKSet(
+    new URL(
+      "https://token.actions.githubusercontent.com/.well-known/jwks",
     ),
-  ) as Record<string, unknown>
-}
-
-async function loadGitHubJwks(
-  forceRefresh = false,
-) {
-  const now = Date.now()
-
-  if (
-    !forceRefresh &&
-    githubJwksCache &&
-    githubJwksCache.expiresAt > now
-  ) {
-    return githubJwksCache.keys
-  }
-
-  const response =
-    await fetch(
-      GITHUB_OIDC_JWKS_URL,
-      {
-        headers: {
-          Accept:
-            "application/json",
-        },
-      },
-    )
-
-  if (!response.ok) {
-    throw new Error(
-      "GitHub OIDC JWKS request failed",
-    )
-  }
-
-  const body =
-    await response.json()
-
-  if (
-    !body ||
-    !Array.isArray(body.keys)
-  ) {
-    throw new Error(
-      "GitHub OIDC JWKS response is invalid",
-    )
-  }
-
-  const keys =
-    body.keys as GitHubJwk[]
-
-  githubJwksCache = {
-    keys,
-    expiresAt:
-      now + 10 * 60 * 1000,
-  }
-
-  return keys
-}
-
-function audienceMatches(
-  value: unknown,
-) {
-  if (typeof value === "string") {
-    return value === GITHUB_OIDC_AUDIENCE
-  }
-
-  return (
-    Array.isArray(value) &&
-    value.includes(
-      GITHUB_OIDC_AUDIENCE,
-    )
   )
-}
 
 async function verifyGitHubActionsOidc(
   request: Request,
@@ -243,31 +60,30 @@ async function verifyGitHubActionsOidc(
 
   if (!token) return false
 
-  const parts =
-    token.split(".")
-
-  if (parts.length !== 3) {
-    return false
-  }
-
   try {
-    const header =
-      decodeJsonPart(parts[0])
-    const payload =
-      decodeJsonPart(parts[1])
+    const { payload } =
+      await jwtVerify(
+        token,
+        GITHUB_OIDC_JWKS,
+        {
+          issuer:
+            GITHUB_OIDC_ISSUER,
+          audience:
+            GITHUB_OIDC_AUDIENCE,
+          algorithms: ["RS256"],
+        },
+      )
 
     if (
-      header.alg !== "RS256" ||
-      typeof header.kid !== "string" ||
-      !header.kid
-    ) {
-      return false
-    }
-
-    if (
-      payload.iss !==
-        GITHUB_OIDC_ISSUER ||
-      !audienceMatches(payload.aud)
+      payload.repository !==
+        GITHUB_OIDC_REPOSITORY ||
+      payload.ref !==
+        "refs/heads/main" ||
+      typeof payload.event_name !==
+        "string" ||
+      !GITHUB_OIDC_ALLOWED_EVENTS.has(
+        payload.event_name,
+      )
     ) {
       return false
     }
@@ -281,111 +97,27 @@ async function verifyGitHubActionsOidc(
           ? payload.workflow_ref
           : ""
 
-    if (
-      payload.repository !==
-        GITHUB_OIDC_REPOSITORY ||
-      payload.ref !==
-        "refs/heads/main" ||
-      !GITHUB_OIDC_WORKFLOW_REFS.has(
+    const workflowRefAuthorized =
+      GITHUB_OIDC_WORKFLOW_REFS.has(
         workflowRef,
       )
-    ) {
-      return false
-    }
 
-    const now =
-      Math.floor(Date.now() / 1000)
-    const exp =
-      typeof payload.exp ===
-        "number"
-        ? payload.exp
-        : null
-    const nbf =
-      typeof payload.nbf ===
-        "number"
-        ? payload.nbf
-        : null
-
-    if (
-      exp === null ||
-      exp < now ||
-      (nbf !== null &&
-        nbf > now + 30)
-    ) {
-      return false
-    }
-
-    let keys =
-      await loadGitHubJwks()
-    let key =
-      keys.find(
-        candidate =>
-          candidate.kid ===
-            header.kid &&
-          candidate.kty === "RSA" &&
-          (
-            !candidate.alg ||
-            candidate.alg ===
-              "RS256"
-          ),
+    const workflowFileAuthorized =
+      typeof payload.workflow ===
+        "string" &&
+      GITHUB_OIDC_WORKFLOW_FILES.has(
+        payload.workflow,
       )
 
-    if (!key) {
-      keys =
-        await loadGitHubJwks(
-          true,
-        )
-      key =
-        keys.find(
-          candidate =>
-            candidate.kid ===
-              header.kid &&
-            candidate.kty === "RSA" &&
-            (
-              !candidate.alg ||
-              candidate.alg ===
-                "RS256"
-            ),
-        )
-    }
-
-    if (!key) {
-      return false
-    }
-
-    const publicKey =
-      await crypto.subtle.importKey(
-        "jwk",
-        key,
-        {
-          name:
-            "RSASSA-PKCS1-v1_5",
-          hash:
-            "SHA-256",
-        },
-        false,
-        ["verify"],
-      )
-
-    const signature =
-      decodeBase64Url(parts[2])
-    const signingInput =
-      new TextEncoder().encode(
-        parts[0] + "." + parts[1],
-      )
-
-    return await crypto.subtle.verify(
-      "RSASSA-PKCS1-v1_5",
-      publicKey,
-      signature,
-      signingInput,
+    return (
+      workflowRefAuthorized ||
+      workflowFileAuthorized
     )
   }
   catch {
     return false
   }
 }
-
 function jsonResponse(
   status: number,
   body: unknown,
