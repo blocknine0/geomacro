@@ -32,9 +32,7 @@ const GITHUB_OIDC_HEADER =
 
 const GITHUB_OIDC_JWKS =
   createRemoteJWKSet(
-    new URL(
-      "https://token.actions.githubusercontent.com/.well-known/jwks",
-    ),
+    new URL(GITHUB_OIDC_JWKS_URL),
   )
 
 const GITHUB_OIDC_WORKFLOW_FILES = new Set([
@@ -881,6 +879,7 @@ Deno.serve(async request => {
     githubOidcAuthorized &&
     ![
       "aljazeera_rss",
+      "bbc_world_rss",
       "federal_reserve_press_rss",
       "forexlive_rss",
       "usgs_minerals_news_rss",
