@@ -24,6 +24,7 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION =
 export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   telegram_mtproto_flash: "telegram_network",
   aljazeera_rss: "aljazeera",
+  bbc_world_rss: "bbc_world",
   federal_reserve_press_rss: "federal_reserve",
   forexlive_rss: "forexlive",
   mining_com_rss: "mining_com",
