@@ -6,6 +6,10 @@ import {
   verifyRiskObjectSignature,
 } from "../src/lib/risk-object-signing.server";
 
+import type {
+  RiskObjectDeliveryProfile,
+} from "../src/lib/public-demo-risk-profile";
+
 const rawIso3 =
   process.argv[2] ?? "";
 
@@ -13,6 +17,20 @@ const iso3 =
   rawIso3
     .trim()
     .toUpperCase();
+
+const profile =
+  (process.argv[3]?.trim() ||
+    "CANONICAL") as RiskObjectDeliveryProfile;
+
+if (
+  profile !== "CANONICAL" &&
+  profile !== "PUBLIC_DEMO" &&
+  profile !== "FEDERICO_STRICT"
+) {
+  throw new Error(
+    "Profile must be CANONICAL, PUBLIC_DEMO, or FEDERICO_STRICT",
+  );
+}
 
 if (!/^[A-Z]{3}$/.test(iso3)) {
   throw new Error(
@@ -23,6 +41,9 @@ if (!/^[A-Z]{3}$/.test(iso3)) {
 const result =
   await publishCountryRiskObject({
     country_iso3: iso3,
+
+    delivery_profile:
+      profile,
   });
 
 const signatureCheck =
@@ -44,6 +65,9 @@ console.log(
 
       schema_version:
         object.schema_version,
+
+      delivery_profile:
+        profile,
 
       subject:
         object.subject,
@@ -67,6 +91,15 @@ console.log(
 
       confidence:
         object.confidence,
+
+      score_band:
+        object.risk.score_band,
+
+      uncertainty_interval:
+        object.risk.uncertainty_interval,
+
+      decision_readiness:
+        object.decision_readiness,
 
       evidence_summary:
         object.evidence_summary,

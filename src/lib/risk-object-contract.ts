@@ -140,6 +140,17 @@ export type RiskEvidenceReference = {
   severity: number;
   confidence: number;
 
+  event_family_id?: string | null;
+  source_ids?: string[];
+  source_urls?: string[];
+  source_families?: string[];
+  relevance_reason?: string;
+  transmission_channel?: string | null;
+  relevance_weight?: number;
+  evidence_age_hours?: number;
+  freshness_status?: "FRESH" | "AGING" | "STALE";
+  corroboration_status?: "CONFIRMED" | "CORROBORATING" | "UNCONFIRMED";
+
   direction: RiskDirection;
 
   last_seen_at: string;
@@ -218,6 +229,13 @@ export type GeomacroRiskObject = {
     independent_source_count: number;
   };
 
+  decision_readiness?: {
+    status: "READY" | "DEGRADED" | "UNREADY";
+    policy_version: string;
+    reason_codes: string[];
+    evaluated_at: string;
+  };
+
   methodology_version:
     RiskMethodologyVersion;
 
@@ -259,6 +277,26 @@ export type GeomacroRiskObject = {
     relevance_versions: string[];
     country_versions: string[];
     story_versions: string[];
+    reproducibility?: {
+      manifest_version: string;
+      calculation_namespace: string | null;
+      selection_policy: {
+        max_evidence_age_hours: number;
+        high_impact_max_evidence_age_hours: number;
+        high_impact_severity_threshold: number;
+        minimum_high_impact_independent_sources: number;
+      };
+      calculation_input: unknown;
+      score_components: {
+        total_weight: number;
+        raw_score: number;
+        rounded_score: number;
+        aggregate_confidence: number;
+      };
+      hash_inputs: {
+        data_projection: unknown;
+      };
+    };
   };
 };
 

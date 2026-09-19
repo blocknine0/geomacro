@@ -44,6 +44,18 @@
       "properties": {
         "score": { "type": "number", "minimum": 0, "maximum": 100 },
         "label": { "enum": ["CALM", "STABLE", "WATCH", "ELEVATED", "CRITICAL"] },
+        "score_band": { "type": "string" },
+        "uncertainty_interval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low", "high", "method", "calibrated"],
+          "properties": {
+            "low": { "type": "number", "minimum": 0, "maximum": 100 },
+            "high": { "type": "number", "minimum": 0, "maximum": 100 },
+            "method": { "const": "confidence_freshness_policy_v1" },
+            "calibrated": { "const": false }
+          }
+        },
         "previous_score": { "type": ["number", "null"] },
         "delta": { "type": ["number", "null"] },
         "direction": { "enum": ["escalating", "cooling", "steady", "unknown"] }
@@ -105,6 +117,16 @@
           "event_type": { "type": ["string", "null"] },
           "severity": { "type": "number" },
           "confidence": { "type": "number" },
+          "event_family_id": { "type": ["string", "null"] },
+          "source_ids": { "type": "array", "items": { "type": "string" } },
+          "source_urls": { "type": "array", "items": { "type": "string" } },
+          "source_families": { "type": "array", "items": { "type": "string" } },
+          "relevance_reason": { "type": "string" },
+          "transmission_channel": { "type": ["string", "null"] },
+          "relevance_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "evidence_age_hours": { "type": "number", "minimum": 0 },
+          "freshness_status": { "enum": ["FRESH", "AGING", "STALE"] },
+          "corroboration_status": { "enum": ["CONFIRMED", "CORROBORATING", "UNCONFIRMED"] },
           "direction": { "enum": ["escalating", "cooling", "steady", "unknown"] },
           "last_seen_at": { "type": "string", "format": "date-time" },
           "evidence_count": { "type": "integer", "minimum": 0 },
@@ -115,6 +137,17 @@
       }
     },
     "evidence_coverage": { "type": ["number", "null"] },
+    "decision_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "policy_version", "reason_codes", "evaluated_at"],
+      "properties": {
+        "status": { "enum": ["READY", "DEGRADED", "UNREADY"] },
+        "policy_version": { "type": "string" },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "evaluated_at": { "type": "string", "format": "date-time" }
+      }
+    },
     "evidence_summary": {
       "type": "object",
       "additionalProperties": false,
@@ -209,7 +242,10 @@
         },
         "signature": { "type": ["string", "null"] },
         "signature_scheme": { "enum": ["Ed25519", null] },
-        "signing_key_id": { "type": ["string", "null"] }
+        "signing_key_id": { "type": ["string", "null"] },
+        "trust_registry_url": { "type": "string", "format": "uri" },
+        "canonicalization_url": { "type": "string", "format": "uri" },
+        "public_key_spki_b64": { "type": "string" }
       }
     },
     "provenance": {
@@ -227,7 +263,59 @@
         "scoring_versions": { "type": "array", "items": { "type": "string" } },
         "relevance_versions": { "type": "array", "items": { "type": "string" } },
         "country_versions": { "type": "array", "items": { "type": "string" } },
-        "story_versions": { "type": "array", "items": { "type": "string" } }
+        "story_versions": { "type": "array", "items": { "type": "string" } },
+        "reproducibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "manifest_version",
+            "calculation_namespace",
+            "selection_policy",
+            "calculation_input",
+            "score_components",
+            "hash_inputs"
+          ],
+          "properties": {
+            "manifest_version": { "type": "string" },
+            "calculation_namespace": { "type": ["string", "null"] },
+            "selection_policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "max_evidence_age_hours",
+                "high_impact_max_evidence_age_hours",
+                "high_impact_severity_threshold",
+                "minimum_high_impact_independent_sources"
+              ],
+              "properties": {
+                "max_evidence_age_hours": { "type": "number", "minimum": 0 },
+                "high_impact_max_evidence_age_hours": { "type": "number", "minimum": 0 },
+                "high_impact_severity_threshold": { "type": "number", "minimum": 0, "maximum": 100 },
+                "minimum_high_impact_independent_sources": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "calculation_input": {},
+            "score_components": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["total_weight", "raw_score", "rounded_score", "aggregate_confidence"],
+              "properties": {
+                "total_weight": { "type": "number" },
+                "raw_score": { "type": "number" },
+                "rounded_score": { "type": "number" },
+                "aggregate_confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            },
+            "hash_inputs": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["data_projection"],
+              "properties": {
+                "data_projection": {}
+              }
+            }
+          }
+        }
       }
     }
   }

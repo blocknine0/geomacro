@@ -136,11 +136,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/publish-country-risk-object.ts CHN | tee /tmp/publish.json
+          bun scripts/publish-country-risk-object.ts CHN FEDERICO_STRICT | tee /tmp/publish.json
 
           jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
             .published == true and
             .schema_version == "gro-1.1" and
+            .delivery_profile == "FEDERICO_STRICT" and
+            .decision_readiness.status == "READY" and
             .commercial_eligibility.status == "VERIFIED" and
             .verification.status == "VERIFIED" and
             .integrity.signature_present == true and
@@ -200,6 +202,9 @@ jobs:
             .gates.tampered_payload_rejected == "PASS" and
             .gates.freshness == "PASS" and
             .gates.partner_request_contract == "PASS" and
+            .gates.trust_metadata == "PASS" and
+            .gates.reproducibility == "PASS" and
+            .gates.partner_admission == "PASS" and
             .gates.live_partner_review == "PASS" and
             .live_review.proof_present == true
           ' /tmp/federico-preflight.json >/dev/null
@@ -351,6 +356,7 @@ jobs:
             }' /tmp/federico-preflight.json
             echo
             echo "Artifact: federico-latest-handoff"
+            echo "Historical artifact: federico-handoff-${{ github.run_id }}"
             echo "Package: Geomacro_Federico_Latest_Handoff.zip"
             echo "Run ID: ${{ github.run_id }}"
           } >> "$GITHUB_STEP_SUMMARY"
