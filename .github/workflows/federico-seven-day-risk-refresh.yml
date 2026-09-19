@@ -332,7 +332,8 @@ jobs:
               "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
               -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\\"fragment_id\\":\\"${FRESH_GDELT_FRAGMENT_ID}\\"}" \
+              --data "{\"fragment_id\":\"${FRESH_GDELT_FRAGMENT_ID}\"}" \
+
               -o "$response_file"
 
             jq -e --arg fragment "$FRESH_GDELT_FRAGMENT_ID" '.ok == true and .fragment_id == $fragment' "$response_file" >/dev/null
