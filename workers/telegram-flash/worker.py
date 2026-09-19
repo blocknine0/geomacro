@@ -777,7 +777,7 @@ async def process_feed(
         fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
         if max_entry_age_hours is not None and fallback_url and fallback_link_prefix:
             published_times = [
-                time.mktime(parsed_time) if parsed_time else float("nan")
+                timegm(parsed_time) if parsed_time else float("nan")
                 for parsed_time in (
                     entry.get("published_parsed")
                     or entry.get("updated_parsed")
