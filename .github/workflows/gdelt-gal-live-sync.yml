@@ -26,6 +26,8 @@ on:
 
 # Certification cycle anchor: fresh GDELT completion after Federico OIDC allowlist fix.
 
+# Final Federico certification trigger anchor: run fresh GDELT after persisted-fragment proof.
+
 permissions:
   contents: read
 
