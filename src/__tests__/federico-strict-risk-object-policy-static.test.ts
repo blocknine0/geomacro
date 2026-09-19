@@ -19,10 +19,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'FEDERICO_STRICT_HIGH_IMPACT_SEVERITY = 70',
     );
     expect(policy).toContain(
-      'controlled_live_flash_source_family_v1',
+      'controlled_live_flash_source_family_v2',
     );
     expect(policy).toContain(
-      'direct_country_mapping_v1',
+      'country_bridge_attribution_v1',
     );
   });
 
@@ -42,6 +42,15 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(publisher).toContain(
       'verification_status", "VERIFIED"',
+    );
+    expect(publisher).toContain(
+      "last_material_update_at",
+    );
+    expect(publisher).toContain(
+      "source_record_id",
+    );
+    expect(publisher).toContain(
+      "content_hash",
     );
   });
 
