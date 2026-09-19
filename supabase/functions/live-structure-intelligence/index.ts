@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "geomacro-live-intelligence";
 
-const STRUCTURE_VERSION = "live-structure-v1.4.8";
+const STRUCTURE_VERSION = "live-structure-v1.4.9";
 const COUNTRY_VERSION = "country-attribution-v1.4.0";
 const STORY_VERSION = "story-hybrid-overlap-v1.4.2";
 const SCORING_VERSION = "live-risk-score-v1.3.1";
