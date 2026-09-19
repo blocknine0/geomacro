@@ -57,11 +57,16 @@ export type CountryRiskEventInput = {
 
   event_family_id?: string | null;
   source_ids?: string[];
+  source_record_ids?: string[];
   source_urls?: string[];
   source_families?: string[];
+  content_hashes?: string[];
   relevance_reason?: string;
   transmission_channel?: string | null;
   relevance_weight?: number;
+  subject_is_primary?: boolean;
+  subject_attribution_confidence?: number;
+  subject_attribution_method?: string;
   corroboration_status?: "CONFIRMED" | "CORROBORATING" | "UNCONFIRMED";
 };
 
@@ -977,6 +982,14 @@ export async function buildCountryRiskObject(
 
           source_families:
             item.event.source_families ??
+            [],
+
+          source_record_ids:
+            item.event.source_record_ids ??
+            [],
+
+          content_hashes:
+            item.event.content_hashes ??
             [],
 
           event_family_id:
