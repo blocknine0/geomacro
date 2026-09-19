@@ -6,6 +6,19 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 const FLASH_INGEST_TOKEN = Deno.env.get("FLASH_INGEST_TOKEN") ?? ""
 const SIGNAL_DB_MODE = Deno.env.get("SIGNAL_DB_MODE") === "true"
 
+// Federico strict verification contract.
+// Two genuinely independent source families are sufficient when they also
+// agree on country and event content strongly enough. The overall verification
+// score remains fail-closed at 65; this only removes the accidental requirement
+// for a third source that previously made valid two-family corroboration stay
+// CORROBORATING forever.
+const FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES = 2
+const FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY = 0.45
+const FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD = 65
+const FEDERICO_STRICT_CORROBORATION_FAMILY_SCORE = 25
+const FEDERICO_STRICT_SIMILARITY_SCORE_WEIGHT = 35
+const FEDERICO_STRICT_COUNTRY_AGREEMENT_SCORE = 15
+
 const GITHUB_OIDC_ISSUER =
   "https://token.actions.githubusercontent.com"
 
@@ -631,21 +644,24 @@ Deno.serve(async request => {
       Math.min(
         100,
         prior +
-          Math.min(35, corroboratingFamilies.size * 17.5) +
-          maxSimilarity * 30 +
-          (countryAgreement ? 10 : 0) +
+          Math.min(40, corroboratingFamilies.size * FEDERICO_STRICT_CORROBORATION_FAMILY_SCORE) +
+          maxSimilarity * FEDERICO_STRICT_SIMILARITY_SCORE_WEIGHT +
+          (countryAgreement ? FEDERICO_STRICT_COUNTRY_AGREEMENT_SCORE : 0) +
           (bestStructured ? Math.min(20, 8 + structuredEvidenceCount * 4) : 0),
       ),
     )
 
     const strongStructuredMatch = Boolean(
       bestStructured &&
-        bestStructured.similarity >= 0.38 &&
-        bestStructured.event.independent_source_count >= 2,
+        bestStructured.similarity >= FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY &&
+        bestStructured.event.independent_source_count >= FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES &&
+        countryAgreement
     )
 
     const strongMultiSourceMatch =
-      distinctSourceCount >= 3 && maxSimilarity >= 0.40
+      distinctSourceCount >= FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES &&
+      countryAgreement &&
+      maxSimilarity >= FEDERICO_STRICT_MULTI_SOURCE_MIN_SIMILARITY
 
     let nextStatus = "UNVERIFIED"
     let reason = "No independent corroboration yet"
@@ -653,7 +669,7 @@ Deno.serve(async request => {
     if (
       corroboratingFamilies.size > 0 &&
       (strongStructuredMatch || strongMultiSourceMatch) &&
-      verificationScore >= 65
+      verificationScore >= FEDERICO_STRICT_VERIFICATION_SCORE_THRESHOLD
     ) {
       nextStatus = "VERIFIED"
       reason = strongStructuredMatch
