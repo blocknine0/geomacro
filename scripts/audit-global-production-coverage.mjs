@@ -90,7 +90,7 @@ const [
   shocks,
   shockModules,
   criticalMineralShocks,
-  criticalMineralPaths,
+  sourceUniverse,
   cursors,
 ] = await Promise.all([
   fetchSingle(db, "live_global_source_inventory_100_status"),
@@ -108,6 +108,12 @@ const [
   fetchAll(db, "live_global_source_universe", "universe_id,scope_type,scope_code,source_role,source_id,required"),
   fetchAll(db, "live_ingestion_cursors", "source_key,stream_key,status,last_success_at,last_item_at,consecutive_failures"),
 ]);
+
+const criticalMineralPaths = sourceUniverse.filter(
+  row =>
+    String(row.scope_type ?? "") === "SHOCK" &&
+    String(row.source_role ?? "").startsWith("CRITICAL_MINERALS_"),
+);
 
 const enabledCountries = countries.filter(r => bool(r.enabled));
 const unique = (rows, key) => new Set(rows.map(r => String(r[key] ?? ""))).size;
