@@ -12,9 +12,14 @@ country_scope=excluded.country_scope,freshness_class=excluded.freshness_class,no
 
 insert into public.live_source_coverage_targets
 (coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
-values
-('geo-unhcr-global','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','unhcr_global_public_api','gdelt_v2','Global displacement/emergency primary path; collector certification required.'),
-('geo-unhcr-emergency','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','unhcr_core_emergencies','unhcr_operational_data_portal','Emergency situation publication path; disabled until machine extraction contract is certified.')
+values ('geo-unhcr-global','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','unhcr_global_public_api','gdelt_v2','Global displacement/emergency primary path; collector certification required.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('geo-unhcr-emergency','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','unhcr_core_emergencies','unhcr_operational_data_portal','Emergency situation publication path; disabled until machine extraction contract is certified.')
 on conflict(category,scope_type,scope_code,source_class) do update set
 required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
 primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
