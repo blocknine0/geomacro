@@ -15,6 +15,7 @@ on:
       - 'vite.config.*'
       - 'tsconfig*.json'
       - '.github/workflows/product-ci.yml'
+      - '.github/workflows/**'
   push:
     branches: [main]
     paths:

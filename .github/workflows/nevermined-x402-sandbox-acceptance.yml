@@ -36,9 +36,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.2
       - name: Install locked dependencies
@@ -78,9 +80,11 @@ jobs:
       NEVERMINED_SANDBOX_X402_ACCESS_TOKEN: ${{ secrets.NEVERMINED_SANDBOX_X402_ACCESS_TOKEN }}
     steps:
       - name: Checkout exact ref
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.2
       - name: Install locked dependencies
@@ -119,7 +123,7 @@ jobs:
           if (e.verify_valid !== true || e.settlement_evidence_valid !== true) throw new Error('provider acceptance evidence incomplete');
           NODE
       - name: Upload Nevermined sandbox evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: nevermined-sandbox-acceptance-${{ github.sha }}
           path: artifacts/nevermined-sandbox-acceptance.json
