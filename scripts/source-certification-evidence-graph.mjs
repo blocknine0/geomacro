@@ -766,7 +766,7 @@ async function main() {
         evidence_strength: "OBSERVED",
         claim: String(independentCount) + " distinct providers are observable across the source's governed scope peers.",
         evidence_ref: "db://live_source_certification_queue",
-        evidence_hash: sha256(JSON.stringify({ source_id: source.source_id, providers: [source.provider_name].concat([...peerProviders]).sort() })),
+        evidence_hash: sha256(JSON.stringify({ source_id: source.source_id, providers: [source.provider_name].concat([...providerSet]).sort() })),
         observed_at: evaluatedAt,
         method: "governed-scope-provider-diversity-check",
         details: {
