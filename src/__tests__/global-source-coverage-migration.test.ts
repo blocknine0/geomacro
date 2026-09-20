@@ -11,6 +11,16 @@ const coverageContract = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
+  it("binds the 058 statistics directory status view to its directory table", () => {
+    const statisticsDirectory = readFileSync(
+      "supabase/migrations/058_country_statistics_office_directory.sql",
+      "utf8",
+    );
+    expect(statisticsDirectory).toContain(
+      "from public.live_country_statistics_source_directory;",
+    );
+  });
+
   it("binds the 057 government portal status view to its directory table", () => {
     const governmentPortals = readFileSync(
       "supabase/migrations/057_country_primary_government_portals.sql",
