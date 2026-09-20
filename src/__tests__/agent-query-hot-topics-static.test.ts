@@ -63,6 +63,23 @@ describe("adaptive hot-topic commercial delivery", () => {
     expect(familyAudit).toContain('writes_performed: false');
   });
 
+
+  it("keeps live family-count assertions data-driven so taxonomy expansion cannot recreate stale hard-coded gates", () => {
+    const workflow = fs.readFileSync(
+      ".github/workflows/hot-topic-family-readiness.yml",
+      "utf8",
+    );
+    expect(workflow).toContain(
+      "jq -e '.summary.governed_family_count == (.families | length)' hot-topic-family-readiness.json >/dev/null",
+    );
+    expect(workflow).toContain(
+      "jq -e '.summary.taxonomy_supported_family_count == .summary.governed_family_count' hot-topic-family-readiness.json >/dev/null",
+    );
+    expect(workflow).not.toMatch(
+      /\\.summary\\.(?:governed_family_count|taxonomy_supported_family_count) == 18\\b/,
+    );
+  });
+
   it("routes hot_topics through the dedicated governed checker and response layer", () => {
     expect(deliverability).toContain('"hot_topics"');
     expect(external).toContain('input.module === "hot_topics"');
