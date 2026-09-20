@@ -17,8 +17,9 @@ A Risk Object is canonicalized from its already-parsed JSON data model.
 5. Object member names and string values use the JSON escaping semantics of `JSON.stringify`.
 6. Booleans serialize as `true` or `false`; null serializes as `null`.
 7. Non-finite numbers are rejected.
-8. Negative zero is serialized as `0`.
-9. Values outside the JSON data model, including `undefined`, functions, symbols, and BigInt, are rejected.
+8. Finite numbers use the ECMAScript `Number::toString` numeric rendering used by `JSON.stringify`. Non-JavaScript consumers MUST reproduce this exact decimal/exponential formatting rather than their language's native float representation.
+9. Negative zero is serialized as `0`.
+10. Values outside the JSON data model, including `undefined`, functions, symbols, and BigInt, are rejected.
 10. The canonical JSON string is encoded as UTF-8 to obtain the exact cryptographic message bytes.
 
 The normative production signing implementation is `src/lib/risk-object-signing.server.ts::canonicalRiskObjectJson`. The general-purpose helper `src/lib/canonical-json.ts` implements the same JSON data-model serialization rules.
@@ -88,11 +89,12 @@ A payload-hash match alone is not sufficient for `VERIFIED`.
 
 ## 7. Independent verification test vector
 
-The repository includes a deterministic test vector at:
+The repository includes deterministic test vectors at:
 
-`docs/examples/gro-1.1-canonical-v1-test-vector.json`
+- `docs/examples/gro-1.1-canonical-v1-test-vector.json` for the signed Ed25519 reference object.
+- `docs/examples/gro-1.1-canonical-v1-edge-vectors.json` for numeric, Unicode-ordering, exponent, subnormal and negative-zero edge cases.
 
-It provides canonical signable JSON, payload hash, test-only Ed25519 public key, signature and expected verification outcome. The repository test `src/__tests__/canonical-json-v1-test-vector.test.ts` locks this vector so future implementation changes cannot silently change the published cryptographic contract.
+The repository tests lock these vectors so future implementation changes cannot silently change the published cryptographic contract. Non-JavaScript implementations should run the edge vectors before claiming interoperability.
 
 ## 8. Public trust endpoint
 
