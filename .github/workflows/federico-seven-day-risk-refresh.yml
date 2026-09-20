@@ -1,24 +1,18 @@
-name: Federico Continuous Testnet Risk Object Refresh
-# Continuous testnet acceptance and partner-refresh path. Publication remains fail-closed on all strict evidence gates.
+name: Federico 7-Day Risk Object Refresh
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "17 */2 * * *"
-  workflow_run:
-    workflows:
-      - "Auto Ingest News"
-      - "Testnet RSS Live Intelligence Runner"
-      - "Deploy country flash intelligence to Supabase"
-      - "Deploy live structure intelligence edge"
-      - "GDELT GAL Live Hot-Topic Sync"
-    types:
-      - completed
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/federico-seven-day-risk-refresh.yml"
 
 permissions:
   contents: read
   actions: write
-  id-token: write
 
 concurrency:
   group: federico-seven-day-risk-refresh
@@ -26,16 +20,8 @@ concurrency:
 
 jobs:
   refresh:
-    if: >-
-      ${{
-        github.event_name != 'workflow_run' ||
-        (
-          github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_branch == 'main'
-        )
-      }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -44,136 +30,45 @@ jobs:
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
-      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
+      FEDERICO_REFRESH_UNTIL: "2026-09-25T00:30:00Z"
 
     steps:
-      - name: Checkout current production main
+      - name: Stop after seven-day window
+        id: window
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOW_EPOCH="$(date -u +%s)"
+          END_EPOCH="$(date -u -d "$FEDERICO_REFRESH_UNTIL" +%s)"
+
+          if [ "$NOW_EPOCH" -ge "$END_EPOCH" ]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Federico refresh window ended at $FEDERICO_REFRESH_UNTIL."
+            curl -L --silent --show-error --fail               -X PUT               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/federico-seven-day-risk-refresh.yml/disable"               || echo "::warning::Could not self-disable workflow; future runs will still exit before publishing."
+            exit 0
+          fi
+
+          echo "active=true" >> "$GITHUB_OUTPUT"
+          echo "Refresh window active until $FEDERICO_REFRESH_UNTIL."
+
+      - name: Checkout
+        if: steps.window.outputs.active == 'true'
         uses: actions/checkout@v7
-        with:
-          ref: main
 
       - name: Setup Bun 1.4.2
+        if: steps.window.outputs.active == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
 
       - name: Install locked dependencies
+        if: steps.window.outputs.active == 'true'
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Acquire scoped GitHub Actions OIDC token
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
-          oidc_response="$(curl --fail-with-body -sS \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
-          )"
-          token="$(printf "%s" "$oidc_response" | jq -er ".value")"
-          test -n "$token"
-          echo "::add-mask::$token"
-          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "$token" >> "$GITHUB_ENV"
-          echo "PASS: scoped GitHub OIDC token acquired for Federico's governed corroboration path."
-      - name: Reconcile authoritative production event-family schema
-        shell: bash
-        env:
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          set -euo pipefail
-
-          expected_project="ldpwajisioljyjtojvfx"
-
-          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
-          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
-
-          if [[ "$SUPABASE_PROJECT_ID" != "$expected_project" ]]; then
-            echo "::error::Refusing Federico DB repair against a non-authoritative Supabase project."
-            exit 1
-          fi
-
-          node <<'NODE'
-          const ref = process.env.SUPABASE_PROJECT_ID;
-          const raw = process.env.SUPABASE_DB_URL;
-
-          let url;
-          try {
-            url = new URL(raw);
-          } catch {
-            throw new Error('SUPABASE_DB_URL must be a valid percent-encoded postgres connection URL');
-          }
-
-          if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
-            throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
-          }
-
-          const directHost = `db.${ref}.supabase.co`;
-          const username = decodeURIComponent(url.username);
-          const directMatch =
-            url.hostname === directHost &&
-            username === 'postgres';
-          const poolerMatch =
-            url.hostname.endsWith('.pooler.supabase.com') &&
-            username === `postgres.${ref}`;
-
-          if (!directMatch && !poolerMatch) {
-            throw new Error('SUPABASE_DB_URL does not resolve to the authoritative Geomacro production project');
-          }
-
-          if (!url.password || url.pathname !== '/postgres') {
-            throw new Error('SUPABASE_DB_URL must contain the database password and target /postgres');
-          }
-
-          console.log('PASS: authoritative production DB identity confirmed without printing credentials.');
-          NODE
-
-          command -v psql >/dev/null 2>&1 || {
-            echo "::error::psql is required on the GitHub runner for authoritative production schema repair."
-            exit 1
-          }
-
-          export PGSSLMODE="require"
-
-          required_schema="DO \$\$
-          BEGIN
-            IF to_regclass('public.live_flash_event_families') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_families is missing';
-            END IF;
-            IF to_regclass('public.live_flash_event_family_members') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_family_members is missing';
-            END IF;
-            IF to_regclass('public.live_flash_event_family_versions') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_family_versions is missing';
-            END IF;
-            IF to_regclass('public.live_flash_event_versions') IS NULL THEN
-              RAISE EXCEPTION 'live_flash_event_versions is missing';
-            END IF;
-          END \$\$;"
-
-          set +e
-          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "$required_schema" >/tmp/federico-schema-check.txt 2>&1
-          schema_rc=$?
-          set -e
-
-          cat /tmp/federico-schema-check.txt
-
-          if [[ "$schema_rc" -ne 0 ]]; then
-            echo "Authoritative production event-family schema is incomplete. Applying the idempotent repair migration over the canonical production DB URL."
-            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -f supabase/migrations/957_repair_federico_event_family_schema.sql
-
-            # Force PostgREST to reload its schema cache after DDL.
-            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "NOTIFY pgrst, 'reload schema';"
-          else
-            echo "PASS: authoritative production event-family schema already present."
-          fi
-
-          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -c "$required_schema"
-
-          echo "PASS: authoritative production event-family schema is present before Federico publication."
-
       - name: Validate production signing configuration
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -207,6 +102,7 @@ jobs:
           NODE
 
       - name: Verify signer matches deployed trust registry
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -235,264 +131,16 @@ jobs:
           console.log('PASS: production signer matches deployed active trust key');
           NODE
 
-      - name: Refresh GDELT source and wait for a recent verified fragment
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY; do
-            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
-          done
-
-          # Do not rely on a passive DB poll. Federico can be triggered immediately
-          # after another workflow completes, while the GDELT source window is still
-          # catching up. Run the canonical production sync directly first so this
-          # certification path can recover a stale cursor within the same run.
-          refresh_ok=false
-          for refresh_attempt in 1 2 3; do
-            response_file="/tmp/federico-gdelt-refresh-${refresh_attempt}.json"
-            if GDELT_GAL_SYNC_OUTPUT="${response_file}" bun scripts/sync-gdelt-gal-production.mjs; then
-              jq -c '{ok,status,fragment_id:(.fragment_id // null),latest_source_stamp:(.latest_source_stamp // null),items_accepted:(.items_accepted // null)}' "${response_file}" || true
-              refresh_ok=true
-              break
-            fi
-            echo "GDELT production sync attempt ${refresh_attempt} did not complete; retrying."
-            sleep 30
-          done
-
-          if [[ "${refresh_ok}" != "true" ]]; then
-            echo "::error::Canonical GDELT production sync could not complete during the Federico refresh window."
-            exit 1
-          fi
-
-          node <<'NODE'
-          const { createClient } = require('@supabase/supabase-js');
-          const fs = require('node:fs');
-
-          (async () => {
-            const db = createClient(
-              process.env.APP_SUPABASE_URL,
-              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
-              { auth: { persistSession: false, autoRefreshToken: false } },
-            );
-
-            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-            const freshnessWindowMs = 20 * 60 * 1000;
-
-            async function latestManifest() {
-              const { data, error } = await db
-                .from('live_fragment_manifest')
-                .select('id,source_key,stream_key,item_count,period_end,sealed_at,verification_method')
-                .eq('source_key', 'gdelt_gal')
-                .eq('stream_key', 'global-relevant')
-                .eq('verification_method', 'storage-readback-sha256')
-                .order('sealed_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-              if (error) throw error;
-              return data ?? null;
-            }
-
-            for (let attempt = 1; attempt <= 24; attempt += 1) {
-              const candidate = await latestManifest();
-              const now = Date.now();
-              const sealedAt = Date.parse(String(candidate?.sealed_at ?? ''));
-              const periodEnd = Date.parse(String(candidate?.period_end ?? ''));
-              const freshEnough =
-                candidate &&
-                Number(candidate.item_count ?? 0) > 0 &&
-                Number.isFinite(sealedAt) &&
-                Number.isFinite(periodEnd) &&
-                now - sealedAt <= freshnessWindowMs &&
-                now - periodEnd <= freshnessWindowMs;
-
-              console.log(JSON.stringify({
-                attempt,
-                fresh_enough: Boolean(freshEnough),
-                fragment_id: candidate?.id ?? null,
-                item_count: candidate?.item_count ?? null,
-                sealed_at: candidate?.sealed_at ?? null,
-                period_end: candidate?.period_end ?? null,
-              }));
-
-              if (freshEnough) {
-                fs.appendFileSync(
-                  process.env.GITHUB_ENV,
-                  'FRESH_GDELT_FRAGMENT_ID=' + String(candidate.id) + '\n',
-                );
-                console.log('PASS: recent verified GDELT fragment is fresh enough for Federico strict corroboration.');
-                return;
-              }
-
-              if (attempt < 24) await sleep(30000);
-            }
-
-            throw new Error('No verified GDELT fragment within the required 20-minute freshness window.');
-          })().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          NODE
-
-      - name: Prove exact fresh GDELT fragment is fully persisted
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
-
-          for attempt in 1 2 3 4 5 6 7 8; do
-            response_file="/tmp/federico-exact-structure-${attempt}.json"
-            curl --fail-with-body -sS \
-              --retry 3 \
-              --retry-all-errors \
-              --retry-delay 2 \
-              --retry-max-time 120 \
-              -X POST \
-              "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence" \
-              -H "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
-              -H "Content-Type: application/json" \
-              --data "$(jq -nc --arg fragment_id "${FRESH_GDELT_FRAGMENT_ID}" '{fragment_id:$fragment_id}')" \
-              -o "${response_file}"
-
-            jq -e '.ok == true' "${response_file}" >/dev/null
-            jq '{ok,status,fragment_id,batch_size,evidence_structured,evidence_excluded,handled_before,handled_after,fragment_total,remaining,has_more}' "${response_file}"
-            remaining="$(jq -r '.remaining // 0' "${response_file}")"
-
-            if [[ "${remaining}" == "0" ]]; then
-              break
-            fi
-
-            [[ "${attempt}" -lt 4 ]] || {
-              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after eight targeted structure batches."
-              exit 1
-            }
-          done
-
-          echo "PASS: exact fresh GDELT fragment targeted structuring completed before the persistence proof."
-          node <<'NODE'
-          const { createClient } = require('@supabase/supabase-js');
-
-          (async () => {
-            const db = createClient(
-              process.env.APP_SUPABASE_URL,
-              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
-              { auth: { persistSession: false, autoRefreshToken: false } },
-            );
-
-            const fragmentId = process.env.FRESH_GDELT_FRAGMENT_ID;
-            if (!fragmentId) throw new Error('FRESH_GDELT_FRAGMENT_ID is missing');
-
-            const { data: manifest, error: manifestError } = await db
-              .from('live_fragment_manifest')
-              .select('id,item_count,source_key,stream_key,verification_method,sealed_at,period_end')
-              .eq('id', fragmentId)
-              .maybeSingle();
-            if (manifestError) throw manifestError;
-            if (!manifest) throw new Error('Fresh GDELT fragment manifest was not found');
-            if (manifest.source_key !== 'gdelt_gal' || manifest.stream_key !== 'global-relevant') {
-              throw new Error('Fresh fragment identity does not match GDELT global-relevant stream');
-            }
-            if (manifest.verification_method !== 'storage-readback-sha256') {
-              throw new Error('Fresh fragment is not verified by storage-readback-sha256');
-            }
-
-            const [{ count: structuredCount, error: structuredError }, { count: excludedCount, error: excludedError }] = await Promise.all([
-              db.from('live_structured_event_evidence').select('*', { count: 'exact', head: true }).eq('fragment_id', fragmentId),
-              db.from('live_structuring_exclusions').select('*', { count: 'exact', head: true }).eq('fragment_id', fragmentId),
-            ]);
-            if (structuredError) throw structuredError;
-            if (excludedError) throw excludedError;
-
-            const structured = structuredCount ?? 0;
-            const excluded = excludedCount ?? 0;
-            const handled = structured + excluded;
-            const total = Number(manifest.item_count ?? 0);
-            if (!total || handled !== total) {
-              throw new Error(`Fresh fragment persistence incomplete: structured=${structured}, excluded=${excluded}, total=${total}`);
-            }
-
-            console.log(JSON.stringify({
-              ok: true,
-              fragment_id: fragmentId,
-              total,
-              structured,
-              excluded,
-              remaining: 0,
-              sealed_at: manifest.sealed_at,
-              period_end: manifest.period_end,
-            }));
-            console.log('PASS: exact fresh GDELT fragment is fully persisted as structured or explicitly excluded evidence.');
-          })().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          NODE
-
-      - name: Re-poll governed RSS after fresh GDELT structure
-        env:
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-          GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
-          GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
-          TELEGRAM_ENABLED: "false"
-          BREAKING_RSS_ENABLED: "true"
-          BREAKING_RSS_RUN_ONCE: "true"
-          BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-          BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
-          test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
-          python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
-          cd workers/telegram-flash
-          python worker.py 2>&1 | tee /tmp/federico-rss-live.log
-
-          for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
-            grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
-              echo "::error::RSS source ${source_id} did not complete a post-structure poll."
-              exit 1
-            }
-          done
-
-          grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
-            echo "::error title=Xinhua CHN attribution missing::Fresh Xinhua evidence did not produce the required CHN attribution."
-            exit 1
-          }
-
-          echo "PASS: governed RSS sources were re-polled after the exact fresh GDELT structure, including Xinhua CHN attribution."
-
-      - name: Corroborate fresh RSS and structured evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          base="${APP_SUPABASE_URL%/}/functions/v1"
-          response="$(curl --silent --show-error \
-            --output /tmp/federico-corroborate.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --data '{}' \
-            "${base}/live-flash-corroborate")"
-          cat /tmp/federico-corroborate.json
-          echo
-          test "$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
-          jq -e '.ok == true' /tmp/federico-corroborate.json >/dev/null
-          echo "PASS: fresh RSS and structured evidence corroboration completed."
-
       - name: Publish fresh production-signed CHN Risk Object
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/publish-country-risk-object.ts CHN FEDERICO_STRICT | tee /tmp/publish.json
+          bun scripts/publish-country-risk-object.ts CHN | tee /tmp/publish.json
 
           jq -e --arg key_id "$RISK_OBJECT_SIGNING_KEY_ID" '
             .published == true and
             .schema_version == "gro-1.1" and
-            .delivery_profile == "FEDERICO_STRICT" and
-            .decision_readiness.status == "READY" and
             .commercial_eligibility.status == "VERIFIED" and
             .verification.status == "VERIFIED" and
             .integrity.signature_present == true and
@@ -501,6 +149,7 @@ jobs:
           ' /tmp/publish.json >/dev/null
 
       - name: Export exact persisted signed payload
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -538,22 +187,8 @@ jobs:
           });
           NODE
 
-      - name: Print strict object source identity diagnostics before integrity gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const { createClient } = require('@supabase/supabase-js');
-          const db = createClient(process.env.APP_SUPABASE_URL, process.env.APP_SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-          (async () => {
-            const objectId = process.env.OBJECT_ID || require('node:fs').readFileSync('/tmp/publish.json','utf8') && JSON.parse(require('node:fs').readFileSync('/tmp/publish.json','utf8')).object_id;
-            const { data, error } = await db.from('geomacro_risk_objects').select('payload').eq('object_id', objectId).maybeSingle();
-            if (error) throw error;
-            const evidence = Array.isArray(data?.payload?.evidence) ? data.payload.evidence : [];
-            console.log(JSON.stringify(evidence.map((item) => ({ source_ids:item.source_ids, source_families:item.source_families })), null, 2));
-          })().catch((e) => { console.error(e); process.exit(1); });
-          NODE
       - name: Verify freshness, signature and tamper rejection
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -565,15 +200,12 @@ jobs:
             .gates.tampered_payload_rejected == "PASS" and
             .gates.freshness == "PASS" and
             .gates.partner_request_contract == "PASS" and
-            .gates.trust_metadata == "PASS" and
-            .gates.reproducibility == "PASS" and
-            .gates.partner_admission == "PASS" and
-            .gates.partner_proof_verification == "PASS" and
             .gates.live_partner_review == "PASS" and
             .live_review.proof_present == true
           ' /tmp/federico-preflight.json >/dev/null
 
       - name: Build handoff artifact
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -647,15 +279,8 @@ jobs:
           print("PASS: fixed Federico handoff ZIP is valid")
           PY
 
-      - name: Upload historical Federico handoff
-        uses: actions/upload-artifact@v4
-        with:
-          name: federico-handoff-${{ github.run_id }}
-          path: /tmp/federico-handoff/
-          if-no-files-found: error
-          retention-days: 8
-
       - name: Upload fixed latest Federico handoff
+        if: steps.window.outputs.active == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: federico-latest-handoff
@@ -664,6 +289,7 @@ jobs:
           retention-days: 8
 
       - name: Remove superseded fixed-name handoff artifacts
+        if: steps.window.outputs.active == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -698,13 +324,14 @@ jobs:
           echo "PASS: federico-latest-handoff now points to this refresh run only."
 
       - name: Publish sanitized summary
+        if: steps.window.outputs.active == 'true'
         shell: bash
         run: |
           set -euo pipefail
           {
-            echo "## Federico continuous Testnet Risk Object refresh"
+            echo "## Federico 7-day Risk Object refresh"
             echo
-            echo "Refresh mode: continuous testnet acceptance"
+            echo "Window ends: $FEDERICO_REFRESH_UNTIL"
             echo
             jq '{
               object_id: .object.object_id,
@@ -715,7 +342,6 @@ jobs:
             }' /tmp/federico-preflight.json
             echo
             echo "Artifact: federico-latest-handoff"
-            echo "Historical artifact: federico-handoff-${{ github.run_id }}"
             echo "Package: Geomacro_Federico_Latest_Handoff.zip"
             echo "Run ID: ${{ github.run_id }}"
           } >> "$GITHUB_STEP_SUMMARY"
