@@ -397,6 +397,15 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(canonicalSpec).toContain(
       "Number::toString",
     );
+    const trustApi = read(
+      "docs/RISK_OBJECT_TRUST_API.md",
+    );
+    expect(trustApi).toContain(
+      "Current verification status is verifier-derived",
+    );
+    expect(trustApi).toContain(
+      "embedded `verification.status`",
+    );
   });
 
   it("locks the canonical edge-vector regression fixture", () => {
