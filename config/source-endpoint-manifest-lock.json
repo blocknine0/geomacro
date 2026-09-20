@@ -1,0 +1,6 @@
+{
+  "schema_version": "geomacro-source-endpoint-manifest-lock-v1",
+  "source": "supabase/migrations",
+  "endpoint_count": 933,
+  "manifest_sha256": "11915e0d3eb16ba3448b0d62bf241a4f41243b78181c936583da87af8411df27"
+}

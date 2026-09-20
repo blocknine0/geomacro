@@ -1,130 +1,41 @@
 #!/usr/bin/env node
 /**
- * Permanent 933-source endpoint disposition probe.
+ * Permanent 933-endpoint disposition probe.
  *
- * Reads the canonical required/active source set from the authoritative
- * Supabase database, asserts the expected 933-source universe, probes each
- * registered endpoint, and emits machine-readable evidence.
+ * Canonical Phase B universe:
+ *   unique normalized HTTP(S) URLs extracted from supabase/migrations
+ *   and locked by config/source-endpoint-manifest-lock.json.
  *
- * This script NEVER promotes a source and NEVER changes database state.
+ * This script is read-only. It never promotes a source, changes certification,
+ * or writes production database state.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { createHash } from "node:crypto";
+import { collectMigrationEndpointManifest, readEndpointManifestLock, assertEndpointManifestLock } from "./source-endpoint-manifest.mjs";
 
-const dbUrl = process.env.SUPABASE_DB_URL;
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF ?? "ldpwajisioljyjtojvfx";
 const expectedCount = Number(process.env.EXPECTED_ENDPOINT_COUNT ?? "933");
 const timeoutMs = Number(process.env.SOURCE_PROBE_TIMEOUT_MS ?? "12000");
 const concurrency = Math.max(1, Number(process.env.SOURCE_PROBE_CONCURRENCY ?? "20"));
 
-if (!dbUrl) throw new Error("SUPABASE_DB_URL is required");
+const manifest = await collectMigrationEndpointManifest();
+const lock = await readEndpointManifestLock();
+assertEndpointManifestLock(manifest, lock);
 
-const parsed = new URL(dbUrl);
-if (!["postgres:", "postgresql:"].includes(parsed.protocol)) {
-  throw new Error("SUPABASE_DB_URL must use postgres:// or postgresql://");
-}
-const directHost = `db.${expectedProject}.supabase.co`;
-const username = decodeURIComponent(parsed.username);
-const directMatch = parsed.hostname === directHost && username === "postgres";
-const poolerMatch =
-  parsed.hostname.endsWith(".pooler.supabase.com") &&
-  username === `postgres.${expectedProject}`;
-if (!directMatch && !poolerMatch) {
-  throw new Error("Refusing endpoint probe against a database outside the authoritative production project.");
-}
-if (!parsed.password || parsed.pathname !== "/postgres") {
-  throw new Error("Invalid authoritative production database URL.");
+if (manifest.endpoint_count !== expectedCount) {
+  throw new Error(`Phase B endpoint manifest count mismatch: expected ${expectedCount}, got ${manifest.endpoint_count}`);
 }
 
 const outDir = path.join(process.cwd(), "artifacts", "source-endpoint-disposition-933");
 await fs.mkdir(outDir, { recursive: true });
-
-const exec = promisify(execFile);
-async function sql(query) {
-  const { stdout } = await exec(
-    "psql",
-    [dbUrl, "-v", "ON_ERROR_STOP=1", "-At", "-c", query],
-    { maxBuffer: 30 * 1024 * 1024 },
-  );
-  return stdout.trim();
-}
-
-const universeRaw = await sql(`
-select json_build_object(
-  'required_count', (select count(distinct u.source_id)::bigint from public.live_global_source_universe u where u.required = true),
-  'active_count', (select count(*)::bigint from public.live_external_sources s where s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true),
-  'active_outside_required_count', (select count(*)::bigint from public.live_external_sources s where (s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true) and not exists (select 1 from public.live_global_source_universe u where u.source_id = s.source_id and u.required = true)),
-  'required_outside_certification_record_count', (select count(*)::bigint from public.live_global_source_universe u left join public.live_source_certification_records r on r.source_id = u.source_id where u.required = true and r.source_id is null)
-)::text
-`);
-const universe = JSON.parse(universeRaw || "{}");
-
-const rowsRaw = await sql(`
-select coalesce(json_agg(x order by x.source_id), '[]'::json)::text
-from (
-  select distinct
-    r.source_id,
-    coalesce(r.endpoint_url, r.canonical_url, '') as endpoint_url,
-    coalesce(r.canonical_url, '') as canonical_url,
-    s.category,
-    s.provider_name,
-    s.country_scope,
-    s.freshness_class,
-    exists (
-      select 1
-      from public.live_global_source_universe u
-      where u.source_id = r.source_id and u.required = true
-    ) as required_in_phase_b,
-    (s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true) as active_operational
-  from public.live_source_certification_records r
-  join public.live_external_sources s on s.source_id = r.source_id
-  where exists (
-    select 1
-    from public.live_global_source_universe u
-    where u.source_id = r.source_id and u.required = true
-  )
-  or s.enabled_for_ingestion = true
-  or s.enabled_for_commercial_signals = true
-) x
-`);
-
-const sources = JSON.parse(rowsRaw || "[]");
-if (Number(universe.required_count) !== expectedCount) {
-  throw new Error(`Phase B canonical required-universe mismatch: expected ${expectedCount}, got ${universe.required_count}; active sources outside required universe: ${universe.active_outside_required_count}`);
-}
-const requiredSources = sources.filter((s) => s.required_in_phase_b);
-const activeSources = sources.filter((s) => s.active_operational);
-
-if (requiredSources.length !== expectedCount) {
-  throw new Error(`Certification-record coverage mismatch for required universe: expected ${expectedCount}, got ${requiredSources.length}`);
-}
-if (new Set(activeSources.map((s) => s.source_id)).size !== activeSources.length) {
-  throw new Error("Active operational source universe contains duplicate source_id values.");
-}
-if (activeSources.some((s) => !s.endpoint_url && s.active_operational)) {
-  throw new Error("An active operational source has no registered endpoint URL.");
-}
-if (new Set(sources.map((s) => s.source_id)).size !== sources.length) {
-  throw new Error("Canonical source universe contains duplicate source_id values.");
-}
 
 function classify(result) {
   const errorText = String(result.error ?? result.get_error ?? "");
   const finalUrl = String(result.final_url ?? "");
   const status = result.status;
 
-  if (!result.endpoint_url) {
-    return ["MISSING_ENDPOINT", "No canonical or registered endpoint URL is present."];
-  }
-
-  if (
-    result.ok_transport &&
-    result.method === "HEAD" &&
-    result.get_status !== null &&
-    result.get_ok_transport === false
-  ) {
+  if (result.ok_transport && result.method === "HEAD" && result.get_status !== null && result.get_ok_transport === false) {
     return ["FAIL", `HEAD succeeded but GET verification returned HTTP ${result.get_status}.`];
   }
   if (result.ok_transport && result.method === "HEAD" && result.get_error) {
@@ -141,7 +52,9 @@ function classify(result) {
         : "HTTP transport succeeded.",
     ];
   }
-  if (status === 401 || status === 407) return ["AUTH_REQUIRED", `HTTP ${status} requires authentication/proxy authorization.`];
+  if (status === 401 || status === 407) {
+    return ["AUTH_REQUIRED", `HTTP ${status} requires authentication/proxy authorization.`];
+  }
   if (status === 403) {
     const haystack = `${result.status_text ?? ""} ${result.content_type ?? ""} ${finalUrl}`.toLowerCase();
     return [
@@ -158,11 +71,13 @@ function classify(result) {
   return ["UNCLASSIFIED", "No deterministic transport disposition was produced."];
 }
 
-async function probe(source) {
+async function probe(endpoint) {
   const started = Date.now();
   const entry = {
-    ...source,
-    endpoint_url: source.endpoint_url || "",
+    endpoint_url: endpoint.endpoint_url,
+    first_seen_file: endpoint.first_seen_file,
+    first_seen_line: endpoint.first_seen_line,
+    endpoint_key: createHash("sha256").update(endpoint.endpoint_url, "utf8").digest("hex"),
     status: null,
     status_text: null,
     method: null,
@@ -183,20 +98,15 @@ async function probe(source) {
     disposition_reason: null,
   };
 
-  if (!entry.endpoint_url) {
-    [entry.disposition, entry.disposition_reason] = classify(entry);
-    entry.latency_ms = Date.now() - started;
-    return entry;
-  }
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
     let response = await fetch(entry.endpoint_url, {
       method: "HEAD",
       redirect: "follow",
       signal: controller.signal,
-      headers: { "user-agent": "Geomacro-Source-Probe/2.0" },
+      headers: { "user-agent": "Geomacro-Source-Probe/3.0" },
     });
 
     if ([403, 405, 501].includes(response.status)) {
@@ -205,7 +115,7 @@ async function probe(source) {
         redirect: "follow",
         signal: controller.signal,
         headers: {
-          "user-agent": "Geomacro-Source-Probe/2.0",
+          "user-agent": "Geomacro-Source-Probe/3.0",
           range: "bytes=0-4095",
         },
       });
@@ -232,7 +142,7 @@ async function probe(source) {
           redirect: "follow",
           signal: controller.signal,
           headers: {
-            "user-agent": "Geomacro-Source-Probe/2.0",
+            "user-agent": "Geomacro-Source-Probe/3.0",
             range: "bytes=0-4095",
           },
         });
@@ -255,20 +165,23 @@ async function probe(source) {
   return entry;
 }
 
-const results = new Array(sources.length);
+const results = new Array(manifest.entries.length);
 let next = 0;
+
 async function worker() {
   while (true) {
     const index = next++;
-    if (index >= sources.length) return;
-    results[index] = await probe(sources[index]);
-    if ((index + 1) % 50 === 0 || index === sources.length - 1) {
-      console.log(`PROBED ${index + 1}/${sources.length}`);
+    if (index >= manifest.entries.length) return;
+    results[index] = await probe(manifest.entries[index]);
+    if ((index + 1) % 50 === 0 || index === manifest.entries.length - 1) {
+      console.log(`PROBED ${index + 1}/${manifest.entries.length}`);
     }
   }
 }
 
-await Promise.all(Array.from({ length: Math.min(concurrency, sources.length) }, worker));
+await Promise.all(Array.from({
+  length: Math.min(concurrency, manifest.entries.length),
+}, worker));
 
 const classifications = {};
 for (const row of results) {
@@ -276,20 +189,16 @@ for (const row of results) {
 }
 
 const summary = {
-  schema_version: "geomacro-endpoint-disposition-933-v1",
+  schema_version: "geomacro-endpoint-disposition-933-v2",
   evaluated_at: new Date().toISOString(),
   authoritative_project_ref: expectedProject,
+  manifest_source: manifest.source,
   expected_endpoint_count: expectedCount,
-  canonical_required_source_count: Number(universe.required_count),
-  active_source_count: Number(universe.active_count),
-  active_source_observed_count: activeSources.length,
-  active_source_outside_required_count: Number(universe.active_outside_required_count),
-  required_outside_certification_record_count: Number(universe.required_outside_certification_record_count),
   observed_endpoint_count: results.length,
-  required_observed_count: results.filter((r) => r.required_in_phase_b).length,
-  active_observed_count: results.filter((r) => r.active_operational).length,
+  manifest_sha256: manifest.manifest_sha256,
   disposition_count: results.filter((r) => r.disposition !== "UNCLASSIFIED").length,
   unclassified_count: results.filter((r) => r.disposition === "UNCLASSIFIED").length,
+  transport_success_count: results.filter((r) => ["WORKING", "CANONICAL_REDIRECT"].includes(r.disposition)).length,
   remediation_count: results.filter((r) => !["WORKING", "CANONICAL_REDIRECT"].includes(r.disposition)).length,
   classifications: Object.fromEntries(Object.entries(classifications).sort()),
   write_operations_performed: false,
@@ -300,9 +209,10 @@ await fs.writeFile(path.join(outDir, "summary.json"), JSON.stringify(summary, nu
 console.log(JSON.stringify(summary, null, 2));
 
 if (
-  summary.required_observed_count !== expectedCount ||
-  summary.required_observed_count !== Number(universe.required_count) ||
-  summary.unclassified_count !== 0
+  summary.observed_endpoint_count !== expectedCount ||
+  summary.disposition_count !== expectedCount ||
+  summary.unclassified_count !== 0 ||
+  summary.manifest_sha256 !== lock.manifest_sha256
 ) {
   process.exit(1);
 }

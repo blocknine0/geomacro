@@ -6,6 +6,8 @@ on:
     paths:
       - "supabase/migrations/**"
       - "scripts/test-global-source-endpoints.mjs"
+      - "scripts/source-endpoint-manifest.mjs"
+      - "config/source-endpoint-manifest-lock.json"
       - ".github/workflows/global-source-endpoint-probe.yml"
   workflow_dispatch:
 
@@ -25,6 +27,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Verify canonical endpoint manifest lock
+        run: node scripts/source-endpoint-manifest.mjs
+
       - name: Probe all migration-referenced external URLs
         env:
           SOURCE_PROBE_TIMEOUT_MS: "12000"
@@ -40,6 +45,8 @@ jobs:
           const r = JSON.parse(fs.readFileSync("artifacts/global-source-endpoint-probe/results.json", "utf8"));
           if (s.unique_url_count !== r.length) throw new Error("summary/result count mismatch");
           if (s.transport_ok_count + s.transport_not_ok_count !== r.length) throw new Error("transport count mismatch");
+          const lock = JSON.parse(fs.readFileSync("config/source-endpoint-manifest-lock.json", "utf8"));
+          if (s.unique_url_count !== lock.endpoint_count) throw new Error(`manifest count mismatch: expected ${lock.endpoint_count}, got ${s.unique_url_count}`);
           console.log(JSON.stringify({
             pass: true,
             url_count: r.length,

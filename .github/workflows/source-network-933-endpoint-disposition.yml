@@ -39,7 +39,7 @@ jobs:
       STRICT_ENDPOINT_COUNT: "true"
 
     steps:
-      - name: Checkout exact production revision
+      - name: Checkout exact deployed revision
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -63,52 +63,68 @@ jobs:
           node --input-type=module <<'NODE'
           const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
           const db = new URL(process.env.SUPABASE_DB_URL);
-          const directHost = `db.${ref}.supabase.co`;
           const username = decodeURIComponent(db.username);
-          const directMatch = db.hostname === directHost && username === "postgres";
-          const poolerMatch = db.hostname.endsWith(".pooler.supabase.com") && username === `postgres.${ref}`;
+          const directMatch =
+            db.hostname === `db.${ref}.supabase.co` &&
+            username === "postgres";
+          const poolerMatch =
+            db.hostname.endsWith(".pooler.supabase.com") &&
+            username === `postgres.${ref}`;
           if (!["postgres:", "postgresql:"].includes(db.protocol) || (!directMatch && !poolerMatch)) {
             throw new Error("SUPABASE_DB_URL is not the authoritative production database");
           }
-          if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
+          if (!db.password || db.pathname !== "/postgres") {
+            throw new Error("Invalid production database URL");
+          }
           const api = new URL(process.env.APP_SUPABASE_URL);
-          if (api.hostname !== `${ref}.supabase.co`) throw new Error("APP_SUPABASE_URL is not the authoritative production API");
+          if (api.hostname !== `${ref}.supabase.co`) {
+            throw new Error("APP_SUPABASE_URL is not the authoritative production API");
+          }
           console.log("PASS: authoritative production DB/API identities confirmed.");
           NODE
 
-      - name: Verify endpoint disposition migration is applied
+      - name: Verify permanent endpoint disposition schema
+        shell: bash
         run: |
           set -euo pipefail
-          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c \
-            "select to_regclass('public.live_source_endpoint_disposition_933_status')"
-          test "$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.live_source_endpoint_disposition_933_status')")" = "live_source_endpoint_disposition_933_status"
-          echo "PASS: permanent 933 endpoint disposition view is present."
+          for relation in live_source_endpoint_manifest_lock live_source_endpoint_disposition_ledger live_source_endpoint_disposition_933_status; do
+            value="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.${relation}')")"
+            test "${value}" = "${relation}"
+          done
+          echo "PASS: permanent endpoint manifest lock, ledger and gate are present."
 
-      - name: Probe canonical production source universe
+      - name: Verify canonical 933 endpoint manifest lock
+        run: node scripts/source-endpoint-manifest.mjs
+
+      - name: Probe exact canonical 933 endpoint manifest
         run: node scripts/probe-production-source-endpoints-933.mjs
 
       - name: Import endpoint disposition evidence
-        run: |
-          node scripts/import-source-endpoint-evidence.mjs \
-            artifacts/source-endpoint-disposition-933/results.json
+        env:
+          EXPECTED_ENDPOINT_COUNT: "933"
+          STRICT_ENDPOINT_COUNT: "true"
+        run: node scripts/import-source-endpoint-evidence.mjs artifacts/source-endpoint-disposition-933/results.json
 
-      - name: Verify permanent endpoint disposition gates
+      - name: Verify permanent 933 endpoint disposition gate
         shell: bash
         run: |
           set -euo pipefail
 
-          required_row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c \
-            "select required_source_count,certification_record_count,disposition_count,unclassified_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
-          echo "required: ${required_row}"
-          test "${required_row}" = "933|933|933|0|t"
+          expected_hash="$(node --input-type=module -e 'import { collectMigrationEndpointManifest } from "./scripts/source-endpoint-manifest.mjs"; const m = await collectMigrationEndpointManifest(); process.stdout.write(m.manifest_sha256);')"
+          db_hash="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select manifest_sha256 from public.live_source_endpoint_manifest_lock where lock_id='phase-b-933-v1'")"
+          test "${expected_hash}" = "${db_hash}"
 
-          active_row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c \
-            "select active_source_count,certification_record_count,disposition_count,unclassified_count,active_source_endpoint_disposition_complete from public.live_active_source_endpoint_disposition_status")"
-          echo "active: ${active_row}"
-          test "${active_row##*|}" = "t"
-
-          echo "PASS: 933/933 canonical Phase B endpoint disposition is complete."
-          echo "PASS: every active operational source also has an explicit endpoint disposition."
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c             "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
+          echo "${row}"
+          IFS='|' read -r expected_count db_hash recorded_count disposition_count unclassified_count transport_success_count remediation_count complete <<< "${row}"
+          test "${expected_count}" = "933"
+          test "${db_hash}" = "${expected_hash}"
+          test "${recorded_count}" = "933"
+          test "${disposition_count}" = "933"
+          test "${unclassified_count}" = "0"
+          test "${complete}" = "t"
+          echo "PASS: 933/933 endpoint disposition is complete."
+          echo "PASS: manifest hash is aligned between repository and production."
 
       - name: Upload 933 endpoint evidence
         if: always()
