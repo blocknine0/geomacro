@@ -70,13 +70,17 @@ describe("agentic economy workflow governance", () => {
   it("pins every GitHub Action used by the agentic/commercial workflow surface", () => {
     for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
-      expect(source, path).not.toMatch(
-        /uses:\s+[^\s]+@(?![0-9a-f]{40}(?:\s|$))[^\s]+/,
-      );
-      for (const line of source
+      const refs = source
         .split("\n")
-        .filter((item) => item.includes("uses:"))) {
-        expect(line, path).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+        .map((line) => line.match(/\\buses:\\s+([^\\s#]+)/)?.[1] ?? null)
+        .filter((ref): ref is string => Boolean(ref))
+        .filter((ref) => !ref.startsWith("./"));
+      for (const ref of refs) {
+        const at = ref.lastIndexOf("@");
+        expect(at, `${path}: invalid action reference ${ref}`).toBeGreaterThan(0);
+        const revision = ref.slice(at + 1);
+        expect(revision, `${path}: ${ref}`).toHaveLength(40);
+        expect(revision, `${path}: ${ref}`).toMatch(/^[0-9a-f]{40}$/);
       }
     }
   });
