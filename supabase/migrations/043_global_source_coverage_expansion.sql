@@ -323,6 +323,69 @@ do update set
 
 -- Keep the registry internal. Existing RLS remains enabled and no public
 -- SELECT policy is introduced here.
+
+-- ---------------------------------------------------------------------------
+-- Coverage governance metadata. This is intentionally internal and stores
+-- detection coverage requirements separately from customer-facing data.
+-- ---------------------------------------------------------------------------
+create table if not exists public.live_source_coverage_targets (
+  coverage_id text primary key,
+  category text not null check (category in ('GEOPOLITICS','MACRO','CRITICAL_MINERALS')),
+  scope_type text not null check (scope_type in ('GLOBAL','REGION','COUNTRY','CORRIDOR','COMMODITY')),
+  scope_code text not null,
+  source_class text not null check (
+    source_class in (
+      'GLOBAL_AGGREGATOR',
+      'INTERNATIONAL_PRIMARY',
+      'REGIONAL_PRIMARY',
+      'COUNTRY_PRIMARY',
+      'INDEPENDENT_MEDIA',
+      'SPECIALIST_INDUSTRY',
+      'STRUCTURED_DATA'
+    )
+  ),
+  required boolean not null default true,
+  minimum_independent_paths integer not null default 1,
+  status text not null default 'PLANNED' check (
+    status in ('PLANNED','PARTIAL','COVERED','BLOCKED','REVIEW_REQUIRED')
+  ),
+  primary_source_id text references public.live_external_sources(source_id),
+  fallback_source_id text references public.live_external_sources(source_id),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(category, scope_type, scope_code, source_class)
+);
+
+create index if not exists live_source_coverage_targets_scope_idx
+  on public.live_source_coverage_targets(category, scope_type, scope_code);
+
+create index if not exists live_source_coverage_targets_status_idx
+  on public.live_source_coverage_targets(status);
+
+-- Global mandatory backbone requirements.
+insert into public.live_source_coverage_targets
+  (coverage_id, category, scope_type, scope_code, source_class, required,
+   minimum_independent_paths, status, primary_source_id, notes)
+values
+  ('geo-global-aggregator','GEOPOLITICS','GLOBAL','GLOBAL','GLOBAL_AGGREGATOR',true,1,'COVERED','gdelt_v2','Global discovery/corroboration backbone.'),
+  ('geo-un-primary','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','un_geneva_press_rss','UN official path; additional UN security/humanitarian feeds are governed separately.'),
+  ('macro-wb-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'COVERED','world_bank_indicators','Global country-level macro baseline.'),
+  ('macro-bis-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','bis_rss_media_releases','BIS global financial-system signal path.'),
+  ('minerals-usgs','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'COVERED','iea_critical_minerals','Global mineral supply/demand baseline.'),
+  ('minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','unctad_critical_minerals_data','Global trade-flow baseline.'),
+  ('minerals-policy','CRITICAL_MINERALS','GLOBAL','GLOBAL','SPECIALIST_INDUSTRY',true,2,'PARTIAL','oecd_critical_raw_materials_restrictions','Global export-restriction intelligence.')
+on conflict (category, scope_type, scope_code, source_class)
+do update set
+  required=excluded.required,
+  minimum_independent_paths=excluded.minimum_independent_paths,
+  status=excluded.status,
+  primary_source_id=excluded.primary_source_id,
+  notes=excluded.notes,
+  updated_at=now();
+
+alter table public.live_source_coverage_targets enable row level security;
+
 alter table public.live_external_sources enable row level security;
 
 commit;
