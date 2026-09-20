@@ -8,6 +8,23 @@
 -- =============================================================================
 begin;
 
+-- Extend the existing certification queue for direct monetary-authority paths.
+alter table public.live_source_certification_queue
+  drop constraint if exists live_source_certification_queue_source_role_check;
+
+alter table public.live_source_certification_queue
+  add constraint live_source_certification_queue_source_role_check
+  check (
+    source_role in (
+      'PRIMARY_MODULE', 'FALLBACK_MODULE',
+      'REGIONAL_PRIMARY', 'REGIONAL_FALLBACK',
+      'ROUTE_PRIMARY', 'ROUTE_FALLBACK',
+      'SHOCK_PRIMARY', 'SHOCK_FALLBACK',
+      'GOVERNMENT_PORTAL', 'STATISTICS_OFFICE',
+      'MONETARY_AUTHORITY'
+    )
+  );
+
 create table if not exists public.live_country_monetary_authority_directory (
   country_iso2 text primary key,
   authority_name text not null,
@@ -275,13 +292,55 @@ insert into public.live_source_certification_queue
 (queue_key,scope_type,scope_code,module_id,source_role,source_id,notes)
 select
  'COUNTRY:'||r.iso3||':MONETARY_AUTHORITY:monetary_'||lower(d.country_iso2),
- 'COUNTRY',r.iso3,NULL,'STATISTICS_OFFICE',
+ 'COUNTRY',r.iso3,NULL,'MONETARY_AUTHORITY',
  'monetary_'||lower(d.country_iso2),
  'Monetary-authority path. Certification intentionally queued.'
 from public.live_country_monetary_authority_directory d
 join public.live_country_registry r on upper(r.iso2)=upper(d.country_iso2)
 where r.enabled=true
 on conflict(queue_key) do nothing;
+
+-- Add monetary-authority mapping to future enabled-country synchronization.
+create or replace function public.sync_live_global_country_source_universe()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $
+begin
+  if new.enabled then
+    insert into public.live_global_source_universe
+    (universe_id,scope_type,scope_code,source_role,source_id,priority,required,notes)
+    select
+      'COUNTRY:'||new.iso3||':MONETARY_AUTHORITY:monetary_'||lower(d.country_iso2),
+      'COUNTRY',new.iso3,'MONETARY_AUTHORITY',
+      'monetary_'||lower(d.country_iso2),6,true,
+      'Auto-mapped national/shared monetary-authority source candidate.'
+    from public.live_country_monetary_authority_directory d
+    where upper(d.country_iso2)=upper(new.iso2)
+    on conflict(scope_type,scope_code,source_role,source_id) do update set
+      priority=excluded.priority,required=excluded.required,notes=excluded.notes,updated_at=now();
+
+    insert into public.live_source_certification_queue
+    (queue_key,scope_type,scope_code,module_id,source_role,source_id,notes)
+    select
+      'COUNTRY:'||new.iso3||':MONETARY_AUTHORITY:monetary_'||lower(d.country_iso2),
+      'COUNTRY',new.iso3,NULL,'MONETARY_AUTHORITY',
+      'monetary_'||lower(d.country_iso2),
+      'Auto-queued new country monetary-authority source.'
+    from public.live_country_monetary_authority_directory d
+    where upper(d.country_iso2)=upper(new.iso2)
+    on conflict(queue_key) do nothing;
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists trg_sync_live_global_country_source_universe on public.live_country_registry;
+create trigger trg_sync_live_global_country_source_universe
+after insert or update of enabled
+on public.live_country_registry
+for each row execute function public.sync_live_global_country_source_universe();
 
 create or replace view public.live_country_monetary_authority_directory_status
 with (security_invoker=true)
