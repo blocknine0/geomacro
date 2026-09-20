@@ -65,12 +65,12 @@ jobs:
           test "$code" = "200"
           jq -e '
             .ok == true
-            and .manifest_version == "testnet-developer-api-manifest-v1.0.0"
-            and .api_version == "testnet-intelligence-v1.0.0"
-            and .environment == "testnet"
-            and .commercial_revenue == false
-            and .full_product_api_surface.full_machine_decision_bundle == "risk_gate_bundle"
-            and ([.capabilities | keys[]] | length) == 8
+            and .data.manifest_version == "testnet-developer-api-manifest-v1.0.0"
+            and .data.api_version == "testnet-intelligence-v1.0.0"
+            and .data.environment == "testnet"
+            and .data.commercial_revenue == false
+            and .data.full_product_api_surface.full_machine_decision_bundle == "risk_gate_bundle"
+            and ([.data.capabilities | keys[]] | length) == 8
           ' "$body" >/dev/null
 
       - name: Public demo all four scenarios
