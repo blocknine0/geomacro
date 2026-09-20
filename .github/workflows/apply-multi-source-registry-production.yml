@@ -131,7 +131,7 @@ jobs:
           echo "PASS: production registry verified read-only; promoted source flags were not modified."
 
       - name: Upload production registry evidence
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: multi-source-registry-production
           path: |
