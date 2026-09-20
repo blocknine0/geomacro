@@ -18,10 +18,11 @@ jobs:
     timeout-minutes: 45
     environment: production
     env:
-      APP_SUPABASE_URL: \${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_URL: \${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      APP_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
+      SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SOURCE_EVIDENCE_CONCURRENCY: "16"
       SOURCE_EVIDENCE_TIMEOUT_MS: "12000"
@@ -47,7 +48,7 @@ jobs:
           set -euo pipefail
           test -n "\${APP_SUPABASE_URL:-}"
           test -n "\${SUPABASE_SERVICE_ROLE_KEY:-}"
-          test "\$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "\${EXPECTED_SUPABASE_PROJECT_REF}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "\${EXPECTED_SUPABASE_PROJECT_REF}"
 
       - name: Build evidence graph and run guarded promotion
         run: bun run source:certification:evidence-graph
@@ -56,7 +57,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: source-certification-evidence-graph-\${{ github.run_id }}
+          name: source-certification-evidence-graph-${{ github.run_id }}
           path: artifacts/source-certification-evidence-graph
           if-no-files-found: error
           retention-days: 30
