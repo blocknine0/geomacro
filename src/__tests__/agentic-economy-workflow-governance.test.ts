@@ -69,7 +69,7 @@ function expectPinnedActions(path: string, source: string) {
   );
 
   for (const line of externalActionLines) {
-    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|#|$)/);
   }
 
   lines.forEach((line, index) => {
