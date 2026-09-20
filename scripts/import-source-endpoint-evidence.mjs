@@ -2,20 +2,21 @@
 /**
  * Persist endpoint disposition evidence into the permanent endpoint ledger.
  *
- * This importer may update only endpoint-related fields in the optional
- * source certification record. It never promotes rights, schema, freshness,
- * provenance, independence, adapter, runtime, or certification state.
+ * This importer intentionally has zero npm-package dependencies. It uses the
+ * Supabase REST API with the production service-role key so CI cannot fail
+ * because an optional SDK is absent.
+ *
+ * It never promotes rights, schema, freshness, provenance, independence,
+ * adapter, runtime or certification state.
  */
 import fs from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { readEndpointManifestLock } from "./source-endpoint-manifest.mjs";
 
 const input = process.argv[2] ?? "artifacts/source-endpoint-disposition-933/results.json";
 const supabaseUrl = process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRole = process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF;
-
 const strict = process.env.STRICT_ENDPOINT_COUNT === "true";
 const BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 20;
@@ -27,9 +28,31 @@ if (!expectedProject) {
   throw new Error("EXPECTED_SUPABASE_PROJECT_REF is required");
 }
 
-const apiUrl = new URL(supabaseUrl);
-if (apiUrl.hostname !== `${expectedProject}.supabase.co`) {
+const api = new URL(supabaseUrl);
+if (api.hostname !== `${expectedProject}.supabase.co`) {
   throw new Error("APP_SUPABASE_URL is not the authoritative Supabase API");
+}
+
+const restBase = new URL("/rest/v1/", api).toString();
+const headers = {
+  apikey: serviceRole,
+  Authorization: `Bearer ${serviceRole}`,
+  "Content-Type": "application/json",
+};
+
+async function rest(path, init = {}) {
+  const response = await fetch(new URL(path, restBase), {
+    ...init,
+    headers: {
+      ...headers,
+      ...(init.headers ?? {}),
+    },
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`Supabase REST ${response.status} ${response.statusText}: ${body.slice(0, 2000)}`);
+  }
+  return body ? JSON.parse(body) : null;
 }
 
 const localLock = await readEndpointManifestLock();
@@ -45,30 +68,33 @@ if (manifestHashes.size !== 1 || !manifestHashes.has(localLock.manifest_sha256))
   throw new Error("Endpoint evidence manifest hash does not match the locked repository manifest.");
 }
 
-const db = createClient(supabaseUrl, serviceRole, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
-const { data: dbLock, error: lockError } = await db
-  .from("live_source_endpoint_manifest_lock")
-  .select("endpoint_count,manifest_sha256,manifest_version")
-  .eq("lock_id", "phase-b-933-v1")
-  .maybeSingle();
-if (lockError) throw lockError;
+const dbLock = await rest(
+  "live_source_endpoint_manifest_lock?select=endpoint_count,manifest_sha256,manifest_version&lock_id=eq.phase-b-933-v1&limit=1",
+);
 if (
-  !dbLock ||
-  Number(dbLock.endpoint_count) !== Number(localLock.endpoint_count) ||
-  String(dbLock.manifest_sha256) !== localLock.manifest_sha256 ||
-  String(dbLock.manifest_version) !== String(localLock.schema_version)
+  !Array.isArray(dbLock) ||
+  dbLock.length !== 1 ||
+  Number(dbLock[0].endpoint_count) !== Number(localLock.endpoint_count) ||
+  String(dbLock[0].manifest_sha256) !== localLock.manifest_sha256 ||
+  String(dbLock[0].manifest_version) !== String(localLock.schema_version)
 ) {
   throw new Error("Production endpoint manifest lock does not match the repository manifest.");
 }
 
-const { data: sources, error: sourceError } = await db
-  .from("live_source_certification_records")
-  .select("source_id,endpoint_url,canonical_url");
-if (sourceError) throw sourceError;
+async function fetchAllSources() {
+  const pageSize = 500;
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await rest(
+      `live_source_certification_records?select=source_id,endpoint_url,canonical_url&limit=${pageSize}&offset=${offset}`,
+    );
+    if (!Array.isArray(page)) throw new Error("Supabase source-record response must be an array.");
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
 
+const sources = await fetchAllSources();
 const byUrl = new Map();
 for (const source of sources ?? []) {
   for (const url of [source.endpoint_url, source.canonical_url].filter(Boolean)) {
@@ -155,7 +181,8 @@ for (const result of results) {
     endpoint_http_status: typeof result.status === "number" ? result.status : null,
     endpoint_final_url: result.final_url ?? null,
     endpoint_content_type: result.content_type ?? result.get_content_type ?? null,
-    endpoint_latency_ms: typeof result.latency_ms === "number" ? Math.trunc(result.latency_ms) : null,
+    endpoint_latency_ms:
+      typeof result.latency_ms === "number" ? Math.trunc(result.latency_ms) : null,
     endpoint_error: result.error ?? result.get_error ?? null,
     endpoint_observed_at: outcome.evaluated_at,
     updated_at: outcome.evaluated_at,
@@ -164,10 +191,16 @@ for (const result of results) {
 
 for (let index = 0; index < ledgerRows.length; index += BATCH_SIZE) {
   const batch = ledgerRows.slice(index, index + BATCH_SIZE);
-  const { error } = await db
-    .from("live_source_endpoint_disposition_ledger")
-    .upsert(batch, { onConflict: "manifest_sha256,endpoint_url" });
-  if (error) throw error;
+  await rest(
+    `live_source_endpoint_disposition_ledger?on_conflict=manifest_sha256%2Cendpoint_url`,
+    {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(batch),
+    },
+  );
   outcome.ledger_rows_upserted += batch.length;
 }
 
@@ -176,14 +209,35 @@ async function updateWorker() {
   while (true) {
     const index = updateCursor++;
     if (index >= sourceUpdates.length) return;
-    const { error } = await db
-      .from("live_source_certification_records")
-      .update(sourceUpdates[index])
-      .eq("source_id", sourceUpdates[index].source_id);
-    if (error) throw error;
+    const row = sourceUpdates[index];
+    await rest(
+      `live_source_certification_records?source_id=eq.${encodeURIComponent(row.source_id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          endpoint_status: row.endpoint_status,
+          endpoint_disposition: row.endpoint_disposition,
+          endpoint_disposition_reason: row.endpoint_disposition_reason,
+          endpoint_disposition_observed_at: row.endpoint_disposition_observed_at,
+          endpoint_url: row.endpoint_url,
+          canonical_url: row.canonical_url,
+          endpoint_http_status: row.endpoint_http_status,
+          endpoint_final_url: row.endpoint_final_url,
+          endpoint_content_type: row.endpoint_content_type,
+          endpoint_latency_ms: row.endpoint_latency_ms,
+          endpoint_error: row.endpoint_error,
+          endpoint_observed_at: row.endpoint_observed_at,
+          updated_at: row.updated_at,
+        }),
+      },
+    );
     outcome.certification_records_updated += 1;
   }
 }
+
 await Promise.all(
   Array.from(
     { length: Math.min(UPDATE_CONCURRENCY, sourceUpdates.length) },
