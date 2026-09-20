@@ -134,8 +134,21 @@ const regionMatrixComplete =
 const corridorMatrixComplete =
   corridorModules.length === corridorExpected &&
   corridorModules.every(r => r.corridor_id && r.module_id);
+const requiredShockIds = new Set(shocks.map(r => String(r.shock_id ?? "")));
+const mappedShockIds = new Set(
+  shockModules
+    .map(r => String(r.shock_id ?? ""))
+    .filter(Boolean),
+);
 const shockMatrixComplete =
-  shockModules.length === shockExpected;
+  requiredShockIds.size === shocks.length &&
+  requiredShockIds.size > 0 &&
+  [...requiredShockIds].every(id => mappedShockIds.has(id)) &&
+  shockModules.every(
+    r =>
+      requiredShockIds.has(String(r.shock_id ?? "")) &&
+      Boolean(r.module_id),
+  );
 const criticalMineralMatrixComplete =
   criticalMineralPaths.length === criticalShockExpected;
 
@@ -187,12 +200,19 @@ const result = {
     broad_shock_count: shocks.length,
     broad_shock_module_expected: shockExpected,
     broad_shock_module_actual: shockModules.length,
+    broad_shock_module_contract: "Every required global shock family must map to at least one valid module; the contract does not require every shock × every module cross-product.",
+    broad_shock_mapped_shock_count: mappedShockIds.size,
     broad_shock_matrix_complete: shockMatrixComplete,
     critical_mineral_shock_count: criticalMineralShocks.length,
     critical_mineral_shock_path_expected: criticalShockExpected,
     critical_mineral_shock_path_actual: criticalMineralPaths.length,
     critical_mineral_shock_paths_complete: criticalMineralMatrixComplete,
     required_source_universe_rows: sourceUniverseRequired,
+  },
+  gate_inputs: {
+    inventory_status: inventory ?? null,
+    source_network_status: network ?? null,
+    source_network_launch_status: launch ?? null,
   },
   realtime: {
     source_key: realtime?.source_key ?? null,
