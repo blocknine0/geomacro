@@ -15,7 +15,7 @@ const input = process.argv[2] ?? "artifacts/source-endpoint-disposition-933/resu
 const supabaseUrl = process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRole = process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF;
-const expectedCount = Number(process.env.EXPECTED_ENDPOINT_COUNT ?? "933");
+
 const strict = process.env.STRICT_ENDPOINT_COUNT === "true";
 const BATCH_SIZE = 100;
 const UPDATE_CONCURRENCY = 20;
@@ -51,14 +51,15 @@ const db = createClient(supabaseUrl, serviceRole, {
 
 const { data: dbLock, error: lockError } = await db
   .from("live_source_endpoint_manifest_lock")
-  .select("endpoint_count,manifest_sha256")
+  .select("endpoint_count,manifest_sha256,manifest_version")
   .eq("lock_id", "phase-b-933-v1")
   .maybeSingle();
 if (lockError) throw lockError;
 if (
   !dbLock ||
-  Number(dbLock.endpoint_count) !== expectedCount ||
-  String(dbLock.manifest_sha256) !== localLock.manifest_sha256
+  Number(dbLock.endpoint_count) !== Number(localLock.endpoint_count) ||
+  String(dbLock.manifest_sha256) !== localLock.manifest_sha256 ||
+  String(dbLock.manifest_version) !== String(localLock.schema_version)
 ) {
   throw new Error("Production endpoint manifest lock does not match the repository manifest.");
 }
@@ -103,6 +104,9 @@ const ledgerRows = results.map((result) => {
     endpoint_url: endpointUrl,
     endpoint_key: endpointKey,
     manifest_sha256: localLock.manifest_sha256,
+    first_seen_file: result.first_seen_file ?? null,
+    first_seen_line: typeof result.first_seen_line === "number" ? Math.trunc(result.first_seen_line) : null,
+    probe_method: result.method ?? null,
     endpoint_disposition: disposition,
     endpoint_disposition_reason: String(
       result.disposition_reason ?? "No disposition reason supplied.",
@@ -162,7 +166,7 @@ for (let index = 0; index < ledgerRows.length; index += BATCH_SIZE) {
   const batch = ledgerRows.slice(index, index + BATCH_SIZE);
   const { error } = await db
     .from("live_source_endpoint_disposition_ledger")
-    .upsert(batch, { onConflict: "endpoint_url" });
+    .upsert(batch, { onConflict: "manifest_sha256,endpoint_url" });
   if (error) throw error;
   outcome.ledger_rows_upserted += batch.length;
 }
@@ -188,14 +192,14 @@ await Promise.all(
 );
 
 if (strict) {
-  if (results.length !== expectedCount) {
+  if (results.length !== Number(localLock.endpoint_count)) {
     throw new Error(
-      `Strict Phase B result count mismatch: expected ${expectedCount}, got ${results.length}`,
+      `Strict Phase B result count mismatch: expected ${localLock.endpoint_count}, got ${results.length}`,
     );
   }
-  if (outcome.ledger_rows_upserted !== expectedCount) {
+  if (outcome.ledger_rows_upserted !== Number(localLock.endpoint_count)) {
     throw new Error(
-      `Strict Phase B ledger count mismatch: expected ${expectedCount}, got ${outcome.ledger_rows_upserted}`,
+      `Strict Phase B ledger count mismatch: expected ${localLock.endpoint_count}, got ${outcome.ledger_rows_upserted}`,
     );
   }
   if (outcome.unclassified_rows !== 0) {
