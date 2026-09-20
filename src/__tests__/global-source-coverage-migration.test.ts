@@ -12,6 +12,7 @@ describe("global source coverage migration integrity", () => {
       "GEOPOLITICS|GLOBAL|GLOBAL|GLOBAL_AGGREGATOR",
       "GEOPOLITICS|GLOBAL|GLOBAL|INTERNATIONAL_PRIMARY",
       "MACRO|GLOBAL|GLOBAL|STRUCTURED_DATA",
+      "MACRO|GLOBAL|GLOBAL|INTERNATIONAL_PRIMARY",
       "CRITICAL_MINERALS|GLOBAL|GLOBAL|STRUCTURED_DATA",
       "CRITICAL_MINERALS|GLOBAL|GLOBAL|INTERNATIONAL_PRIMARY",
       "CRITICAL_MINERALS|GLOBAL|GLOBAL|SPECIALIST_INDUSTRY",
@@ -29,7 +30,7 @@ describe("global source coverage migration integrity", () => {
       "'macro-wb-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA'",
     );
     expect(migration).toContain(
-      "'macro-bis-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA'",
+      "'macro-bis-structured','MACRO','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY'",
     );
     expect(migration).toContain(
       "'minerals-usgs','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA'",
