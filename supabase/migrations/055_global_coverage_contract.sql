@@ -1321,7 +1321,18 @@ select
     and qc.queue_nonqueued_count = 0
   ) as design_complete,
   false as certification_gate_open,
-  false as testing_gate_open;
+  false as testing_gate_open
+from country_counts cc
+cross join domain_counts dc
+cross join country_targets ct
+cross join region_counts rc
+cross join region_targets rt
+cross join corridor_counts crc
+cross join corridor_targets crt
+cross join shock_counts sc
+cross join shock_unmapped su
+cross join shock_map_counts smc
+cross join queue_counts qc;
 
 comment on view public.live_global_coverage_design_status is
   'Internal fail-closed design status for 16 modules, canonical enabled country/area universe, 24 zones, 35 strategic corridors and 35 shock families. design_complete does not certify any source or open testing.';
