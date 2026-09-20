@@ -27,7 +27,7 @@ const registry = (await sql(`
 select count(*)::bigint,
        count(distinct source_id)::bigint,
        count(*) filter (where base_url is null or btrim(base_url)='')::bigint,
-       count(*) filter (where category not in ('GEOPOLITICS','MACRO','CRITICAL_MINERALS'))::bigint,
+       count(*) filter (where category not in ('GEOPOLITICS','MACRO','CRITICAL_MINERALS','MULTI_DOMAIN'))::bigint,
        count(*) filter (where enabled_for_commercial_signals)::bigint,
        count(*) filter (where enabled_for_commercial_signals and commercial_usage_status <> 'COMMERCIAL_OK')::bigint,
        count(*) filter (where enabled_for_ingestion)::bigint
