@@ -30,6 +30,7 @@ on:
       - 'vite.config.*'
       - 'tsconfig*.json'
       - '.github/workflows/product-ci.yml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -79,7 +80,15 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Workflow recurrence governance\n        env:\n          WORKFLOW_GOVERNANCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}\n        run: bun run test:app -- src/__tests__/agentic-economy-workflow-governance.test.ts\n\n      - name: Migration safety\n        run: node scripts/db/check-migration-safety.mjs\n\n      - name: Risk Gate phase-1 static contract
+      - name: Workflow recurrence governance
+        env:
+          WORKFLOW_GOVERNANCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: bun run test:app -- src/__tests__/agentic-economy-workflow-governance.test.ts
+
+      - name: Migration safety
+        run: node scripts/db/check-migration-safety.mjs
+
+      - name: Risk Gate phase-1 static contract
         run: node scripts/test-risk-gate-phase1.mjs
 
       - name: Risk Gate country/corridor API static contract
