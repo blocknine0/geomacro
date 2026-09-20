@@ -108,7 +108,42 @@ jobs:
           console.log('PASS: authoritative production database and API identities confirmed.');
           NODE
 
+      - name: Inspect current Eurostat promotion state
+        id: state
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          case "$state" in
+            'COMMERCIAL_OK|true|false')
+              activation_changed='true'
+              already_promoted='false'
+              ;;
+            'COMMERCIAL_OK|true|true')
+              activation_changed='false'
+              already_promoted='true'
+              ;;
+            *)
+              echo "::error::Eurostat source is outside the governed promotion boundary: $state"
+              exit 1
+              ;;
+          esac
+
+          peers="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_eurostat_government_debt_latest")"
+          test "$peers" -ge 20 || { echo "::error::Eurostat latest view has only $peers rows"; exit 1; }
+
+          manifest="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select verified_rows || '|' || partial_rows || '|' || rejected_rows || '|' || unmapped_rows || '|' || write_completed::text from public.live_source_release_manifests where source_id='eurostat_government_finance' order by coverage_end desc nulls last, retrieved_at desc limit 1")"
+          IFS='|' read -r verified partial rejected unmapped written <<< "$manifest"
+          test "$written" = 'true' || { echo "::error::Eurostat latest manifest is not write-complete"; exit 1; }
+          test "$verified" -ge 20 || { echo "::error::Eurostat latest manifest has only $verified verified rows"; exit 1; }
+          test "$partial" = '0' && test "$rejected" = '0' && test "$unmapped" = '0' || { echo "::error::Eurostat latest manifest is not clean: $manifest"; exit 1; }
+
+          echo "activation_changed=$activation_changed" >> "$GITHUB_OUTPUT"
+          echo "already_promoted=$already_promoted" >> "$GITHUB_OUTPUT"
+          printf '{"source_state":"%s","latest_view_rows":%s,"manifest":"%s","activation_needed":%s,"already_promoted":%s}\n' "$state" "$peers" "$manifest" "$activation_changed" "$already_promoted" | tee eurostat-prepromotion-source-evidence.json
+
       - name: Verify pre-promotion source and release evidence
+        if: steps.state.outputs.already_promoted != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -124,6 +159,7 @@ jobs:
           printf '{"source_state":"%s","latest_view_rows":%s,"manifest":"%s"}\n' "$state" "$peers" "$manifest" | tee eurostat-prepromotion-source-evidence.json
 
       - name: Reproduce shadow baseline immediately before promotion
+        if: steps.state.outputs.already_promoted != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -139,6 +175,7 @@ jobs:
           NODE
 
       - name: Apply only migration 925
+        if: steps.state.outputs.already_promoted != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -148,6 +185,7 @@ jobs:
           echo 'PASS: Eurostat commercial signal state activated for the guarded sovereign-fiscal fallback.'
 
       - name: Run actual global country census and compare with shadow proof
+        if: steps.state.outputs.already_promoted != 'true'
         id: census
         shell: bash
         run: |
@@ -192,14 +230,24 @@ jobs:
           NODE
           echo 'PASS: production census equals or exceeds the immediate shadow baseline with no accepted-country regression.'
 
-      - name: Emergency rollback on any promotion failure
-        if: ${{ failure() }}
+      - name: Verify already-promoted Eurostat state
+        if: steps.state.outputs.already_promoted == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
+          test "$state" = 'COMMERCIAL_OK|true|true' || { echo "::error::Eurostat active state disappeared during idempotent verification: $state"; exit 1; }
+          printf '{"already_promoted":true,"source_state":"%s","execution_authorized_is_false":true}\n' "$state" > eurostat-production-promotion-evidence.json
+          echo 'PASS: Eurostat was already promoted; no duplicate promotion was attempted.'
+
+      - name: Emergency rollback only if this run activated the source
+        if: ${{ failure() && steps.state.outputs.activation_changed == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
           current="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select enabled_for_commercial_signals::text from public.live_external_sources where source_id='eurostat_government_finance'")"
           if [ "$current" = 'true' ]; then
-            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "update public.live_external_sources set enabled_for_commercial_signals=false, updated_at=now() where source_id='eurostat_government_finance';"
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "update public.live_external_sources set enabled_for_commercial_signals=false, updated_at=now() where source_id='eurostat_government_finance' and commercial_usage_status='COMMERCIAL_OK' and enabled_for_ingestion=true;"
             echo 'ROLLBACK: Eurostat commercial signals returned to false after failed production evidence.'
           else
             echo 'ROLLBACK NOT NEEDED: Eurostat commercial signals were not active.'
