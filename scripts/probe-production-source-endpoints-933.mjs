@@ -51,6 +51,16 @@ async function sql(query) {
   return stdout.trim();
 }
 
+const universeRaw = await sql(`
+select json_build_object(
+  'required_count', (select count(distinct u.source_id)::bigint from public.live_global_source_universe u where u.required = true),
+  'active_count', (select count(*)::bigint from public.live_external_sources s where s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true),
+  'active_outside_required_count', (select count(*)::bigint from public.live_external_sources s where (s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true) and not exists (select 1 from public.live_global_source_universe u where u.source_id = s.source_id and u.required = true)),
+  'required_outside_certification_record_count', (select count(*)::bigint from public.live_global_source_universe u left join public.live_source_certification_records r on r.source_id = u.source_id where u.required = true and r.source_id is null)
+)::text
+`);
+const universe = JSON.parse(universeRaw || "{}");
+
 const rowsRaw = await sql(`
 select coalesce(json_agg(x order by x.source_id), '[]'::json)::text
 from (
@@ -65,19 +75,18 @@ from (
   from public.live_source_certification_records r
   join public.live_external_sources s on s.source_id = r.source_id
   where exists (
-    select 1
-    from public.live_global_source_universe u
-    where u.source_id = r.source_id
-      and u.required = true
+    select 1 from public.live_global_source_universe u
+    where u.source_id = r.source_id and u.required = true
   )
-  or s.enabled_for_ingestion = true
-  or s.enabled_for_commercial_signals = true
 ) x
 `);
 
 const sources = JSON.parse(rowsRaw || "[]");
+if (Number(universe.required_count) !== expectedCount) {
+  throw new Error(`Phase B canonical required-universe mismatch: expected ${expectedCount}, got ${universe.required_count}; active sources outside required universe: ${universe.active_outside_required_count}`);
+}
 if (sources.length !== expectedCount) {
-  throw new Error(`Canonical source universe count mismatch: expected ${expectedCount}, got ${sources.length}`);
+  throw new Error(`Certification-record coverage mismatch for required universe: expected ${expectedCount}, got ${sources.length}`);
 }
 if (new Set(sources.map((s) => s.source_id)).size !== sources.length) {
   throw new Error("Canonical source universe contains duplicate source_id values.");
@@ -253,6 +262,10 @@ const summary = {
   evaluated_at: new Date().toISOString(),
   authoritative_project_ref: expectedProject,
   expected_endpoint_count: expectedCount,
+  canonical_required_source_count: Number(universe.required_count),
+  active_source_count: Number(universe.active_count),
+  active_source_outside_required_count: Number(universe.active_outside_required_count),
+  required_outside_certification_record_count: Number(universe.required_outside_certification_record_count),
   observed_endpoint_count: results.length,
   disposition_count: results.filter((r) => r.disposition !== "UNCLASSIFIED").length,
   unclassified_count: results.filter((r) => r.disposition === "UNCLASSIFIED").length,
