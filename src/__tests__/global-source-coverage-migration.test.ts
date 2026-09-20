@@ -43,6 +43,12 @@ describe("global source coverage migration integrity", () => {
     );
   });
 
+  it("binds every design-status CTE into the final view", () => {
+    expect(coverageContract).toContain("from country_counts cc");
+    expect(coverageContract).toContain("cross join domain_counts dc");
+    expect(coverageContract).toContain("cross join queue_counts qc");
+  });
+
   it("makes shock queue keys unique across multi-module shock mappings", () => {
     expect(coverageContract).toContain(
       "'SHOCK:' || s.shock_id || ':' || m.module_id || ':PRIMARY:' || s.primary_source_id",
