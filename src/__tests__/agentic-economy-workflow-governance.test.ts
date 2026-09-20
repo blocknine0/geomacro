@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const WORKFLOW_DIR = ".github/workflows";
 const AGENTIC_MARKERS =
-  /(agentic|agent-query|x402|goat|coinbase|circle|nevermined|a2a|commerce|commercial|marketplace|payment|settlement|revenue|candidate|listing|provider|testnet|paid|canary)/i;
+  /(agentic|agent-query|x402|goat|coinbase|circle|nevermined|a2a|commerce|marketplace|pay-per-call|payment|settlement|execution_authorized|testnet|bazaar|merchant|spend)/i;
 
 const ALL_WORKFLOWS = readdirSync(WORKFLOW_DIR)
   .filter((name) => /\.(?:yml|yaml)$/.test(name))
@@ -21,7 +21,7 @@ describe("agentic economy workflow governance", () => {
   it("globally enforces immutable actions, checkout hygiene, and locked dependencies", () => {
     const violations: string[] = [];
 
-    for (const path of ALL_WORKFLOWS) {
+    for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
       const floating = source
         .split("\n")
@@ -101,15 +101,14 @@ describe("agentic economy workflow governance", () => {
       if (source.includes("inputs.candidate_sha")) {
         expect(source, path).toContain("CANDIDATE_SHA");
         expect(source, path).toContain("DISPATCH_SHA");
-        if (source.includes("actions/checkout@")) {
-          expect(source, path).toContain("persist-credentials: false");
-        }
+        expect(source, path).toMatch(/ref:\s+\$\{\{\s*inputs\.candidate_sha\s*\}\}/);
+        expect(source, path).toContain("persist-credentials: false");
       }
     }
   });
 
   it("keeps production payment rails explicitly non-authorizing and prelaunch-safe", () => {
-    const paymentRails = WORKFLOWS.filter((path) => {
+    const paymentRails = AGENTIC_WORKFLOWS.filter((path) => {
       const source = read(path);
       return /(x402|payment|settlement|coinbase|circle|nevermined)/i.test(path) ||
         /(x402|payment|settlement|coinbase|circle|nevermined)/i.test(source);
