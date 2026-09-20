@@ -29,14 +29,49 @@ country_scope=excluded.country_scope,freshness_class=excluded.freshness_class,no
 
 insert into public.live_source_coverage_targets
 (coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
-values
-('geo-humanitarian-global','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','reliefweb_reports_api','gdelt_v2','OCHA/ReliefWeb humanitarian disruption path; API approval required.'),
-('geo-europe-osce','GEOPOLITICS','REGION','EUROPE','REGIONAL_PRIMARY',true,2,'REVIEW_REQUIRED','osce_news_rss_candidate','gdelt_v2','OSCE endpoint requires revalidation.'),
-('geo-americas-oas','GEOPOLITICS','REGION','AMERICAS','REGIONAL_PRIMARY',true,2,'REVIEW_REQUIRED','oas_council_rss_candidate','gdelt_v2','OAS catalogue verified; exact feed endpoints pending certification.'),
-('geo-emro-health-disruption','GEOPOLITICS','REGION','EMRO','REGIONAL_PRIMARY',true,2,'REVIEW_REQUIRED','who_emro_rss','gdelt_v2','WHO EMRO catalogue verified; exact feed certification pending.'),
-('macro-imf-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','imf_sdmx_central','world_bank_indicators','IMF SDMX global macro path.'),
-('macro-ilo-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','ilostat_sdmx_api','world_bank_indicators','ILOSTAT global labour-market path.'),
-('macro-eu-eurostat','MACRO','REGION','EUROPE','STRUCTURED_DATA',true,2,'PARTIAL','eurostat_sdmx_api','ecb_press_rss','Eurostat machine-readable regional macro path.')
+values ('geo-humanitarian-global','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','reliefweb_reports_api','gdelt_v2','OCHA/ReliefWeb humanitarian disruption path; API approval required.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('geo-europe-osce','GEOPOLITICS','REGION','EUROPE','REGIONAL_PRIMARY',true,2,'REVIEW_REQUIRED','osce_news_rss_candidate','gdelt_v2','OSCE endpoint requires revalidation.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('geo-americas-oas','GEOPOLITICS','REGION','AMERICAS','REGIONAL_PRIMARY',true,2,'REVIEW_REQUIRED','oas_council_rss_candidate','gdelt_v2','OAS catalogue verified; exact feed endpoints pending certification.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('geo-emro-health-disruption','GEOPOLITICS','REGION','EMRO','REGIONAL_PRIMARY',true,2,'REVIEW_REQUIRED','who_emro_rss','gdelt_v2','WHO EMRO catalogue verified; exact feed certification pending.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('macro-imf-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','imf_sdmx_central','world_bank_indicators','IMF SDMX global macro path.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('macro-ilo-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','ilostat_sdmx_api','world_bank_indicators','ILOSTAT global labour-market path.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('macro-eu-eurostat','MACRO','REGION','EUROPE','STRUCTURED_DATA',true,2,'PARTIAL','eurostat_sdmx_api','ecb_press_rss','Eurostat machine-readable regional macro path.')
 on conflict(category,scope_type,scope_code,source_class) do update set
 required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
 primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
