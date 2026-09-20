@@ -160,7 +160,24 @@ select
  ) as source_inventory_100_complete,
  false as endpoint_certification_complete,
  false as rights_certification_complete,
- false as runtime_testing_complete;
+ false as runtime_testing_complete
+from registry
+cross join gov
+cross join stats
+cross join monetary
+cross join country_universe
+cross join regions
+cross join region_paths
+cross join subzones
+cross join subzone_paths
+cross join corridors
+cross join corridor_paths
+cross join shocks
+cross join shock_paths
+cross join granular_shocks
+cross join granular_paths
+cross join specialist_ids
+cross join new_source_enablement;
 
 comment on view public.live_global_source_inventory_100_status is
  'Internal source-inventory completeness gate. 100% here means every planned country, regional, corridor, broad-shock and granular-shock inventory dimension has explicit source paths. Endpoint, rights, freshness, schema and runtime certification remain separate gates.';
