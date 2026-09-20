@@ -65,9 +65,7 @@ describe("agentic economy workflow governance", () => {
       const source = read(path);
       if (source.includes("inputs.candidate_sha")) {
         expect(source, path).toContain("CANDIDATE_SHA");
-        if (source.includes("CANDIDATE_SHA")) {
-          expect(source, path).toContain("DISPATCH_SHA");
-        }
+        expect(source, path).toContain("DISPATCH_SHA");
         if (source.includes("actions/checkout@")) {
           expect(source, path).toContain("persist-credentials: false");
         }
@@ -89,7 +87,7 @@ describe("agentic economy workflow governance", () => {
 
       if (!isFinalProductionAcceptance) {
         expect(source, path).not.toMatch(
-          /^(?:\s*(?:export\s+)?)?(?:COINBASE_X402_MAINNET_ACK|GEOMACRO_COMMERCIAL_LAUNCH_ACK)\s*[:=]\s*I_ACCEPT_REAL_USDC\\b/m,
+          /^(?:\s*(?:export\s+)?)?(?:COINBASE_X402_MAINNET_ACK|GEOMACRO_COMMERCIAL_LAUNCH_ACK)\s*[:=]\s*I_ACCEPT_REAL_USDC\b/m,
         );
       }
     }
