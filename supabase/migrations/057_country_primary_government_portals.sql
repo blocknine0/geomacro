@@ -21,7 +21,7 @@ create table if not exists public.live_country_primary_source_directory (
 );
 
 insert into public.live_country_primary_source_directory
-(country_iso2,country_name,government_portal_url,notes)
+(country_iso2,country_name,government_portal_url)
 values
 ('AF','Afghanistan','https://mfa.gov.af'),
 ('AL','Albania','https://kryeministria.al'),
