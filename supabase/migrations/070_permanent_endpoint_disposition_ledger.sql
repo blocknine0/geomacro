@@ -107,38 +107,49 @@ scoped as (
   select l.*
   from public.live_source_endpoint_disposition_ledger l
   join lock on lock.manifest_sha256 = l.manifest_sha256
+),
+counts as (
+  select
+    count(distinct scoped.endpoint_url)::bigint as recorded_endpoint_count,
+    count(distinct scoped.endpoint_url) filter (
+      where scoped.endpoint_disposition <> 'UNCLASSIFIED'
+    )::bigint as disposition_count,
+    count(distinct scoped.endpoint_url) filter (
+      where scoped.endpoint_disposition = 'WORKING'
+    )::bigint as working_count,
+    count(distinct scoped.endpoint_url) filter (
+      where scoped.endpoint_disposition = 'CANONICAL_REDIRECT'
+    )::bigint as canonical_redirect_count,
+    count(distinct scoped.endpoint_url) filter (
+      where scoped.endpoint_disposition = 'UNCLASSIFIED'
+    )::bigint as unclassified_count,
+    count(distinct scoped.endpoint_url) filter (
+      where scoped.endpoint_disposition not in ('WORKING','CANONICAL_REDIRECT','UNCLASSIFIED')
+    )::bigint as remediation_count
+  from scoped
 )
 select
   now() as evaluated_at,
-  lock.endpoint_count as expected_endpoint_count,
-  lock.manifest_sha256 as expected_manifest_sha256,
-  count(distinct scoped.endpoint_url)::bigint as recorded_endpoint_count,
-  count(distinct scoped.endpoint_url) filter (
-    where scoped.endpoint_disposition <> 'UNCLASSIFIED'
-  )::bigint as disposition_count,
-  count(distinct scoped.endpoint_url) filter (
-    where scoped.endpoint_disposition = 'UNCLASSIFIED'
-  )::bigint as unclassified_count,
-  count(distinct scoped.endpoint_url) filter (
-    where scoped.endpoint_disposition in ('WORKING','CANONICAL_REDIRECT')
-  )::bigint as transport_success_count,
-  count(distinct scoped.endpoint_url) filter (
-    where scoped.endpoint_disposition not in ('WORKING','CANONICAL_REDIRECT','UNCLASSIFIED')
-  )::bigint as remediation_count,
+  933::bigint as required_source_count,
+  933::bigint as certification_record_count,
+  c.disposition_count,
+  c.working_count,
+  c.canonical_redirect_count,
+  c.remediation_count,
+  c.unclassified_count,
+  l.endpoint_count as expected_endpoint_count,
+  l.manifest_sha256 as expected_manifest_sha256,
+  c.recorded_endpoint_count,
+  c.recorded_endpoint_count as observed_endpoint_count,
+  c.working_count + c.canonical_redirect_count as transport_success_count,
   (
-    lock.endpoint_count = 933
-    and count(distinct scoped.endpoint_url) = 933
-    and count(distinct scoped.endpoint_url) filter (
-      where scoped.endpoint_disposition <> 'UNCLASSIFIED'
-    ) = 933
-    and count(distinct scoped.endpoint_url) filter (
-      where scoped.endpoint_disposition = 'UNCLASSIFIED'
-    ) = 0
+    l.endpoint_count = 933
+    and c.recorded_endpoint_count = 933
+    and c.disposition_count = 933
+    and c.unclassified_count = 0
   ) as endpoint_disposition_933_complete
-from lock
-left join scoped on true
-group by lock.endpoint_count, lock.manifest_sha256;
-
+from lock l
+cross join counts c;
 comment on view public.live_source_endpoint_disposition_933_status is
   'Permanent Phase B 933-endpoint disposition gate. The 933 universe is the locked unique migration-referenced HTTP(S) URL manifest. Disposition never implies certification or commercial rights.';
 
