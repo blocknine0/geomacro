@@ -12,9 +12,12 @@
 begin;
 
 create table if not exists public.live_source_endpoint_disposition_ledger (
-  endpoint_url text primary key,
-  endpoint_key text not null unique,
   manifest_sha256 text not null,
+  endpoint_url text not null,
+  endpoint_key text not null,
+  first_seen_file text,
+  first_seen_line integer,
+  probe_method text,
   endpoint_disposition text not null
     check (endpoint_disposition in (
       'WORKING',
@@ -37,7 +40,9 @@ create table if not exists public.live_source_endpoint_disposition_ledger (
   error_text text,
   observed_at timestamptz not null,
   matched_source_id text references public.live_external_sources(source_id),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (manifest_sha256, endpoint_url),
+  unique (manifest_sha256, endpoint_key)
 );
 
 create index if not exists live_source_endpoint_disposition_ledger_manifest_idx
@@ -69,11 +74,25 @@ values (
   '11915e0d3eb16ba3448b0d62bf241a4f41243b78181c936583da87af8411df27',
   'unique normalized HTTP(S) URLs extracted from supabase/migrations, sorted by endpoint_url'
 )
-on conflict (lock_id) do update set
-  manifest_version = excluded.manifest_version,
-  endpoint_count = excluded.endpoint_count,
-  manifest_sha256 = excluded.manifest_sha256,
-  source_definition = excluded.source_definition;
+on conflict (lock_id) do nothing;
+
+do $
+declare
+  locked public.live_source_endpoint_manifest_lock%rowtype;
+begin
+  select * into locked
+  from public.live_source_endpoint_manifest_lock
+  where lock_id = 'phase-b-933-v1';
+
+  if locked.endpoint_count <> 933
+     or locked.manifest_version <> 'geomacro-source-endpoint-manifest-v1'
+     or locked.manifest_sha256 <> '11915e0d3eb16ba3448b0d62bf241a4f41243b78181c936583da87af8411df27'
+     or locked.source_definition <> 'unique normalized HTTP(S) URLs extracted from supabase/migrations, sorted by endpoint_url'
+  then
+    raise exception 'PHASE_B_ENDPOINT_MANIFEST_LOCK_DRIFT';
+  end if;
+end;
+$;
 
 create or replace view public.live_source_endpoint_disposition_933_status
 with (security_invoker=true)
