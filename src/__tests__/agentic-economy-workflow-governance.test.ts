@@ -1,73 +1,82 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const WORKFLOWS = [
-  ".github/workflows/product-ci.yml",
-  ".github/workflows/agent-query-production-readiness.yml",
-  ".github/workflows/coinbase-x402-adaptive-base-sepolia-paid-e2e.yml",
-  ".github/workflows/coinbase-x402-base-sepolia-acceptance.yml",
-  ".github/workflows/coinbase-x402-mainnet-readiness.yml",
-  ".github/workflows/circle-x402-prelaunch-readiness.yml",
-  ".github/workflows/nevermined-x402-sandbox-acceptance.yml",
-  ".github/workflows/goat-testnet3-provider-dry-run.yml",
-  ".github/workflows/goat-testnet3-local-paid-e2e.yml",
-  ".github/workflows/goat-testnet3-paid-artifact-replay.yml",
-  ".github/workflows/goat-testnet3-reconcile-existing.yml",
-  ".github/workflows/goat-testnet3-local-paid-readiness.yml",
-  ".github/workflows/goat-acceptance-windows.yml",
-  ".github/workflows/commercial-coordinated-launch-preflight.yml",
-  ".github/workflows/commercial-release-candidate-evidence.yml",
-  ".github/workflows/commercial-release-candidate-freeze.yml",
-  ".github/workflows/final-nonmainnet-launch-acceptance.yml",
-  ".github/workflows/final-production-acceptance.yml",
-  ".github/workflows/marketplace-listing-observation.yml",
-  ".github/workflows/marketplace-submission-evidence.yml",
-  ".github/workflows/post-listing-health.yml",
-  ".github/workflows/production-canary-cohort-acceptance.yml",
-  ".github/workflows/production-provider-canary.yml",
-  ".github/workflows/external-production-revenue-proof.yml",
-  ".github/workflows/commerce-freeze-quarantine-drill.yml",
-  ".github/workflows/commerce-safety-drill-acceptance.yml",
-  ".github/workflows/public-production-prelisting-health.yml",
-];
-
+const WORKFLOW_DIR = ".github/workflows";
+const AGENTIC_PATH_RE = /agent|x402|goat|coinbase|circle|nevermined|a2a|commerce|commercial|marketplace|risk-gate|risk.?object|testnet/i;
 const read = (path: string) => readFileSync(path, "utf8");
 
-describe("agentic economy workflow governance", () => {
-  it("pins every GitHub Action used by the agentic/commercial workflow surface", () => {
-    for (const path of WORKFLOWS) {
-      const source = read(path);
-      expect(source, path).not.toMatch(
-        /uses:\s+[^\s]+@v\d+(?:\.\d+)*\b/,
-      );
-      for (const line of source
-        .split("\n")
-        .filter((item) => item.includes("uses:"))) {
-        expect(line, path).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
-      }
-    }
-  });
+function workflowFiles(): string[] {
+  return readdirSync(WORKFLOW_DIR)
+    .filter((name) => /\.ya?ml$/i.test(name))
+    .map((name) => `${WORKFLOW_DIR}/${name}`);
+}
 
-  it("never leaves checkout credentials persisted on the agentic/commercial workflow surface", () => {
-    for (const path of WORKFLOWS) {
-      const source = read(path);
-      if (source.includes("actions/checkout@")) {
-        expect(source, path).toContain("persist-credentials: false");
-      }
-    }
-  });
+function changedWorkflowFiles(): string[] {
+  const base = process.env.WORKFLOW_GOVERNANCE_BASE_SHA?.trim();
+  if (!base || !/^[0-9a-f]{40}$/i.test(base)) return [];
 
-  it("keeps the canonical Bun dependency contract on workflows that install the app", () => {
-    for (const path of WORKFLOWS) {
+  const output = execFileSync(
+    "git",
+    ["diff", "--name-only", `${base}...HEAD`, "--", WORKFLOW_DIR],
+    { encoding: "utf8" },
+  );
+
+  return output
+    .split("\n")
+    .map((path) => path.trim())
+    .filter((path) => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(path));
+}
+
+function governanceTargets(): string[] {
+  const all = workflowFiles();
+  const changed = new Set(changedWorkflowFiles());
+  return all.filter((path) => changed.has(path) || AGENTIC_PATH_RE.test(path));
+}
+
+function expectPinnedActions(path: string) {
+  const source = read(path);
+  const usesLines = source
+    .split("\n")
+    .filter((line) => /^\s*uses:\s*\S+/.test(line));
+
+  for (const line of usesLines) {
+    const target = line.match(/^\s*uses:\s*(\S+)/)?.[1] ?? "";
+    if (target.startsWith("./")) continue;
+    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/i);
+  }
+
+  const lines = source.split("\n");
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^\s*uses:\s*actions\/checkout@/i.test(lines[i])) continue;
+    const window = lines.slice(i, Math.min(lines.length, i + 10)).join("\n");
+    expect(window, path).toContain("persist-credentials: false");
+  }
+}
+
+describe("agentic economy recurrence prevention", () => {
+  it("governs every agentic/commercial workflow and every workflow changed by the current revision", () => {
+    const targets = governanceTargets();
+    expect(targets.length, "workflow governance must never run with an empty target set").toBeGreaterThan(0);
+
+    for (const path of targets) {
+      expectPinnedActions(path);
+
       const source = read(path);
-      if (source.includes("bun install")) {
+      if (/\bbun install\b/.test(source)) {
         expect(source, path).toContain("bun install --frozen-lockfile");
         expect(source, path).not.toMatch(/\bnpm ci\b|\bnpm install\b/);
       }
     }
   });
 
-  it("requires manual candidate workflows to bind execution to the exact supplied SHA", () => {
+  it("keeps Product CI itself inside the workflow-change protection path", () => {
+    const source = read(".github/workflows/product-ci.yml");
+    expect(source).toContain("'.github/workflows/**'");
+    expectPinnedActions(".github/workflows/product-ci.yml");
+  });
+
+  it("keeps the known manual acceptance path bound to the exact candidate SHA", () => {
     for (const path of [
       ".github/workflows/commerce-freeze-quarantine-drill.yml",
       ".github/workflows/commerce-safety-drill-acceptance.yml",
@@ -83,7 +92,7 @@ describe("agentic economy workflow governance", () => {
     }
   });
 
-  it("keeps every production payment rail explicitly non-authorizing and prelaunch-safe", () => {
+  it("keeps production payment rails explicitly prelaunch and non-authorizing", () => {
     for (const path of [
       ".github/workflows/coinbase-x402-mainnet-readiness.yml",
       ".github/workflows/circle-x402-prelaunch-readiness.yml",
@@ -96,9 +105,7 @@ describe("agentic economy workflow governance", () => {
       expect(source, path).not.toContain("I_ACCEPT_REAL_USDC");
     }
 
-    const finalAcceptance = read(
-      ".github/workflows/final-production-acceptance.yml",
-    );
+    const finalAcceptance = read(".github/workflows/final-production-acceptance.yml");
     expect(finalAcceptance).toContain("production_enabled");
     expect(finalAcceptance).toContain("execution_authorized");
   });
