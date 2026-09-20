@@ -265,7 +265,9 @@ jobs:
             exit 1
           fi
 
-          node <<'NODE'      - name: Prove exact fresh GDELT fragment is fully persisted
+          node <<'NODE'
+
+      - name: Prove exact fresh GDELT fragment is fully persisted
         shell: bash
         run: |
           set -euo pipefail
