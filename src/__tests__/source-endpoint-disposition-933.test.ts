@@ -54,6 +54,8 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(importer).toContain('on_conflict=manifest_sha256%2Cendpoint_url');
     expect(importer).toContain("endpoint_disposition");
     expect(importer).toContain("matched_source_id");
+    expect(importer).toContain("normalizeHttpUrl");
+    expect(importer).toContain("invalid_source_url_values_skipped");
     expect(importer).not.toMatch(/certification_state\s*:/);
 
     expect(migration).toContain("live_source_endpoint_disposition_ledger");
