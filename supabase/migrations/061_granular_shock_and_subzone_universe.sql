@@ -89,7 +89,7 @@ create table if not exists public.live_operational_shock_catalog (
 );
 
 insert into public.live_operational_shock_catalog
-(shock_id,display_name,module_id,detection_mode,primary_source_id,secondary_source_id,fallback_source_id,freshness_max_seconds)
+(shock_id,display_name,module_id,detection_mode,primary_source_id,secondary_source_id,fallback_source_id)
 values
 ('terrorism_mass_casualty','Mass-casualty terrorism','geopolitical_security','CURRENT_EVENT','gdelt_v2_events','un_security_council_docs_rss','ucdp_candidate'),
 ('insurgency_offensive','Insurgency offensive','geopolitical_security','HYBRID','ucdp_candidate','gdelt_v2_events','reliefweb_reports_api'),
