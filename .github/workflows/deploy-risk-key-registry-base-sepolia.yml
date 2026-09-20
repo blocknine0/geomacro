@@ -34,7 +34,7 @@ jobs:
           submodules: recursive
 
       - name: Setup Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@4d7e4a0f2a0e1f67b9ef8f5f6d1e4bd5b1d8e7c9
         with:
           version: stable
 
