@@ -50,7 +50,7 @@ describe("permanent 933 endpoint disposition contract", () => {
   it("persists every disposition in the permanent ledger", () => {
     expect(importer).toContain("live_source_endpoint_disposition_ledger");
     expect(importer).toContain("endpoint_key");
-    expect(importer).toContain("onConflict: "endpoint_url"");
+    expect(importer).toContain('onConflict: "endpoint_url"');
     expect(importer).toContain("endpoint_disposition");
     expect(importer).toContain("matched_source_id");
     expect(importer).not.toMatch(/certification_state\s*:/);
@@ -67,6 +67,7 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(workflow).toContain("expected_endpoint_count");
     expect(workflow).toContain("unclassified_count");
     expect(workflow).toContain("endpoint_disposition_933_complete");
+    expect(workflow).toContain("live_source_endpoint_manifest_lock");
     expect(workflow).toContain("live_source_endpoint_disposition_ledger");
   });
 
