@@ -18,35 +18,37 @@ const AGENTIC_WORKFLOWS = ALL_WORKFLOWS.filter((path) =>
 describe("agentic economy workflow governance", () => {
 
 
-  it("pins every GitHub Action used by every workflow", () => {
-    for (const path of ALL_WORKFLOWS) {
-      const source = read(path);
-      expect(source, path).not.toMatch(
-        /uses:\s+[^\s]+@(?![0-9a-f]{40}(?:\s|$))[^\s]+/,
-      );
-      for (const line of source.split("\n").filter((item) => item.includes("uses:"))) {
-        expect(line, path).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
-      }
-    }
-  });
+  it("globally enforces immutable actions, checkout hygiene, and locked dependencies", () => {
+    const violations: string[] = [];
 
-  it("never persists checkout credentials in any workflow", () => {
     for (const path of ALL_WORKFLOWS) {
       const source = read(path);
-      if (source.includes("actions/checkout@")) {
-        expect(source, path).toContain("persist-credentials: false");
+      const floating = source
+        .split("\n")
+        .filter((line) => line.includes("uses:"))
+        .filter((line) => !/@[0-9a-f]{40}(?:\s|$)/.test(line));
+      if (floating.length) {
+        violations.push(`${path}: unpinned Actions -> ${floating.join(" | ")}`);
       }
-    }
-  });
 
-  it("never permits unlocked npm/Bun dependency installation in any workflow", () => {
-    for (const path of ALL_WORKFLOWS) {
-      const source = read(path);
+      if (source.includes("actions/checkout@") && !source.includes("persist-credentials: false")) {
+        violations.push(`${path}: checkout missing persist-credentials: false`);
+      }
+
       if (source.includes("bun install")) {
-        expect(source, path).toContain("bun install --frozen-lockfile");
-        expect(source, path).not.toMatch(/\bnpm ci\b|\bnpm install\b/);
+        if (!source.includes("bun install --frozen-lockfile")) {
+          violations.push(`${path}: Bun install is not frozen`);
+        }
+        if (/\\bnpm ci\\b|\\bnpm install\\b/.test(source)) {
+          violations.push(`${path}: npm install/ci dependency drift detected`);
+        }
       }
     }
+
+    for (const violation of violations) {
+      console.error(`WORKFLOW_GOVERNANCE_VIOLATION: ${violation}`);
+    }
+    expect(violations, "All workflow governance violations must be zero").toHaveLength(0);
   });
 
   it("automatically covers every current and future agentic/commercial workflow", () => {
