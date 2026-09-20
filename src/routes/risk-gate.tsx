@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -376,7 +377,7 @@ function FeatureCard({
   title,
   body,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   eyebrow: string;
   title: string;
   body: string;
