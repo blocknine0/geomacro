@@ -24,7 +24,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: geomacro-commercial-production-acceptance
+  group: geomacro-commercial-production-acceptance-final
   cancel-in-progress: false
 
 jobs:
