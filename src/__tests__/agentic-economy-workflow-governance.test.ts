@@ -23,10 +23,15 @@ describe("agentic economy workflow governance", () => {
 
     for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
-      const floating = source
+      const refs = source
         .split("\n")
-        .filter((line) => line.includes("uses:"))
-        .filter((line) => !/@[0-9a-f]{40}(?:\s|$)/.test(line));
+        .map((line) => line.match(/\\buses:\\s+([^\\s#]+)/)?.[1] ?? null)
+        .filter((ref): ref is string => Boolean(ref))
+        .filter((ref) => !ref.startsWith("./"));
+      const floating = refs.filter((ref) => {
+        const at = ref.lastIndexOf("@");
+        return at < 1 || !/^[0-9a-f]{40}$/.test(ref.slice(at + 1));
+      });
       if (floating.length) {
         violations.push(`${path}: unpinned Actions -> ${floating.join(" | ")}`);
       }
