@@ -354,4 +354,65 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "live_flash_event_family_versions",
     );
   });
+  it("locks Federico handoff artifact integrity and exact-SHA reproducibility", () => {
+    const workflow = read(
+      ".github/workflows/federico-seven-day-risk-refresh.yml",
+    );
+    const preflight = read(
+      "scripts/invinoveritas-risk-object-preflight.ts",
+    );
+    const canonicalSpec = read(
+      "docs/GRO_CANONICAL_JSON_V1.md",
+    );
+
+    const exactShaRef =
+      "ref: " +
+      "${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}";
+    expect(workflow).toContain(exactShaRef);
+    expect(workflow).toContain(
+      "json.load(handle)",
+    );
+    expect(workflow).toContain(
+      "sha256sum GRO_CANONICAL_JSON_V1.md gro-1.1-canonical-v1-edge-vectors.json gro-1.1-canonical-v1-test-vector.json gro-1.1.schema.json federico-risk-object.json review-request.json review-response.json verification-summary.json > SHA256SUMS.txt",
+    );
+
+    const summaryIndex = workflow.indexOf(
+      " > /tmp/federico-handoff/verification-summary.json",
+    );
+    const checksumIndex = workflow.indexOf(
+      "verification-summary.json > SHA256SUMS.txt",
+    );
+    expect(summaryIndex).toBeGreaterThan(-1);
+    expect(checksumIndex).toBeGreaterThan(summaryIndex);
+
+    expect(preflight).toContain(
+      "Risk Object must contain observed_at for review as_of binding",
+    );
+    expect(preflight).toContain(
+      "as_of: observedAt",
+    );
+    expect(preflight).toContain(
+      "signature: riskObject.integrity.signature",
+    );
+    expect(canonicalSpec).toContain(
+      "Number::toString",
+    );
+  });
+
+  it("locks the canonical edge-vector regression fixture", () => {
+    const test = read(
+      "src/__tests__/canonical-json-v1-test-vector.test.ts",
+    );
+    const vector = read(
+      "docs/examples/gro-1.1-canonical-v1-edge-vectors.json",
+    );
+
+    expect(test).toContain(
+      "gro-1.1-canonical-v1-edge-vectors.json",
+    );
+    expect(vector).toContain(
+      "\"sha256\": \"7f30fb55609afc5be866ac276c9c5e21362a7cd7eeb814adb35b03e115daffad\"",
+    );
+  });
+
 });
