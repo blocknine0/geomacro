@@ -11,6 +11,15 @@ const coverageContract = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
+  it("binds the 059 source-universe status view to every CTE source", () => {
+    const sourceUniverseHandoff = readFileSync(
+      "supabase/migrations/059_source_universe_certification_handoff.sql",
+      "utf8",
+    );
+    expect(sourceUniverseHandoff).toContain("from countries");
+    expect(sourceUniverseHandoff).toContain("cross join country_stats_paths");
+  });
+
   it("binds the 058 statistics directory status view to its directory table", () => {
     const statisticsDirectory = readFileSync(
       "supabase/migrations/058_country_statistics_office_directory.sql",
