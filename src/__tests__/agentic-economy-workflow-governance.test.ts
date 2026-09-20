@@ -11,24 +11,57 @@ const ALL_WORKFLOWS = readdirSync(WORKFLOW_DIR)
 
 const read = (path: string) => readFileSync(path, "utf8");
 
-const WORKFLOWS = ALL_WORKFLOWS.filter((path) =>
+const AGENTIC_WORKFLOWS = ALL_WORKFLOWS.filter((path) =>
   AGENTIC_MARKERS.test(path) || AGENTIC_MARKERS.test(read(path)),
 );
 
 describe("agentic economy workflow governance", () => {
+
+
+  it("pins every GitHub Action used by every workflow", () => {
+    for (const path of ALL_WORKFLOWS) {
+      const source = read(path);
+      expect(source, path).not.toMatch(
+        /uses:\s+[^\s]+@(?![0-9a-f]{40}(?:\s|$))[^\s]+/,
+      );
+      for (const line of source.split("\n").filter((item) => item.includes("uses:"))) {
+        expect(line, path).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+      }
+    }
+  });
+
+  it("never persists checkout credentials in any workflow", () => {
+    for (const path of ALL_WORKFLOWS) {
+      const source = read(path);
+      if (source.includes("actions/checkout@")) {
+        expect(source, path).toContain("persist-credentials: false");
+      }
+    }
+  });
+
+  it("never permits unlocked npm/Bun dependency installation in any workflow", () => {
+    for (const path of ALL_WORKFLOWS) {
+      const source = read(path);
+      if (source.includes("bun install")) {
+        expect(source, path).toContain("bun install --frozen-lockfile");
+        expect(source, path).not.toMatch(/\bnpm ci\b|\bnpm install\b/);
+      }
+    }
+  });
+
   it("automatically covers every current and future agentic/commercial workflow", () => {
     expect(WORKFLOWS.length).toBeGreaterThan(0);
 
     // The governance surface is discovered from the repository itself instead
     // of a hand-maintained file list, so newly-added agentic workflows cannot
     // silently bypass these invariants.
-    for (const path of WORKFLOWS) {
+    for (const path of AGENTIC_WORKFLOWS) {
       expect(path).toMatch(/^\.github\/workflows\/[^/]+\.(?:yml|yaml)$/);
     }
   });
 
   it("pins every GitHub Action used by the agentic/commercial workflow surface", () => {
-    for (const path of WORKFLOWS) {
+    for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
       expect(source, path).not.toMatch(
         /uses:\s+[^\s]+@(?![0-9a-f]{40}(?:\s|$))[^\s]+/,
@@ -42,7 +75,7 @@ describe("agentic economy workflow governance", () => {
   });
 
   it("never leaves checkout credentials persisted on the agentic/commercial workflow surface", () => {
-    for (const path of WORKFLOWS) {
+    for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
       if (source.includes("actions/checkout@")) {
         expect(source, path).toContain("persist-credentials: false");
@@ -51,7 +84,7 @@ describe("agentic economy workflow governance", () => {
   });
 
   it("keeps the canonical Bun dependency contract on workflows that install the app", () => {
-    for (const path of WORKFLOWS) {
+    for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
       if (source.includes("bun install")) {
         expect(source, path).toContain("bun install --frozen-lockfile");
@@ -61,7 +94,7 @@ describe("agentic economy workflow governance", () => {
   });
 
   it("requires manual candidate workflows to bind execution to the exact supplied SHA", () => {
-    for (const path of WORKFLOWS) {
+    for (const path of AGENTIC_WORKFLOWS) {
       const source = read(path);
       if (source.includes("inputs.candidate_sha")) {
         expect(source, path).toContain("CANDIDATE_SHA");
