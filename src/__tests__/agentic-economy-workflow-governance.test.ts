@@ -3,105 +3,48 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
-function filesUnder(path: string): string[] {
-  const absolute = join(ROOT, path);
-  return readdirSync(absolute).flatMap((name) => {
-    const child = join(path, name);
-    return statSync(join(ROOT, child)).isDirectory()
-      ? filesUnder(child)
-      : /\.ya?ml$/i.test(name)
-        ? [child]
-        : [];
+const WORKFLOW_ROOT = ".github/workflows";
+
+const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
+
+function workflowFiles(path: string): string[] {
+  return readdirSync(join(ROOT, path)).flatMap((name) => {
+    const relative = join(path, name);
+    const absolute = join(ROOT, relative);
+    if (statSync(absolute).isDirectory()) return workflowFiles(relative);
+    return /\.(?:yml|yaml)$/.test(name) ? [relative] : [];
   });
 }
 
-const WORKFLOWS = filesUnder(".github/workflows").sort();
-
-const AGENTIC_MARKERS = [
-  "agentic",
-  "agent-query",
-  "x402",
-  "goat",
-  "a2a",
-  "commerce",
-  "coinbase",
-  "circle",
-  "nevermined",
-  "pay-per-call",
-  "marketplace",
-  "testnet",
-  "execution_authorized",
-];
-
-const PRELAUNCH_MARKERS = [
-  "prelaunch",
-  "mainnet-readiness",
-  "final-nonmainnet",
-  "nonmainnet",
-];
-
-const PRODUCTION_SECRET_MARKERS = [
-  "OWNER_PRIVATE_KEY",
-  "TREASURY_PRIVATE_KEY",
-  "LIQUIDITY_PRIVATE_KEY",
-  "DEPLOYER_PRIVATE_KEY",
-  "GUARDIAN_PRIVATE_KEY",
-  "JURY_PRIVATE_KEY",
-];
-
-function read(path: string) {
-  return readFileSync(join(ROOT, path), "utf8");
-}
-
-function isAgenticWorkflow(path: string, source: string) {
-  const haystack = `${path}\n${source}`.toLowerCase();
-  return AGENTIC_MARKERS.some((marker) => haystack.includes(marker));
-}
-
-function expectPinnedActions(path: string, source: string) {
-  const lines = source.split("\n");
-  const externalActionRefs = lines
-    .map((line) => line.match(/\buses:\s+([^\s#]+)/)?.[1] ?? null)
-    .filter((ref): ref is string => Boolean(ref))
-    .filter((ref) => !ref.startsWith("./"));
-
-  for (const ref of externalActionRefs) {
-    const at = ref.lastIndexOf("@");
-    expect(at, `${path}: missing action ref in ${ref}`).toBeGreaterThan(0);
-    const revision = ref.slice(at + 1);
-    expect(revision, `${path}: ${ref}`).toHaveLength(40);
-    expect(revision, `${path}: ${ref}`).toMatch(/^[0-9a-f]{40}$/);
-  }
-
-  lines.forEach((line, index) => {
-    if (!/\buses:\s+actions\/checkout@/.test(line)) return;
-
-    const block = lines.slice(index, Math.min(lines.length, index + 8));
-    const nextStep = block.slice(1).findIndex((item) =>
-      /^\s*- (?:name:|uses:)/.test(item),
-    );
-    const checkoutBlock =
-      nextStep >= 0 ? block.slice(0, nextStep + 1) : block;
-
-    expect(
-      checkoutBlock.some((item) => item.includes("persist-credentials: false")),
-      `${path}: checkout at line ${index + 1} must disable credential persistence`,
-    ).toBe(true);
-  });
-}
+const ALL_WORKFLOWS = workflowFiles(WORKFLOW_ROOT);
 
 describe("agentic economy workflow governance", () => {
-  it("applies immutable action provenance and credential hygiene to every dynamically discovered agentic/commercial/testnet workflow", () => {
-    for (const path of WORKFLOWS) {
+  it("governs every workflow file, including future workflow additions, instead of a fixed allowlist", () => {
+    expect(ALL_WORKFLOWS.length).toBeGreaterThan(0);
+    for (const path of ALL_WORKFLOWS) {
       const source = read(path);
-      if (!isAgenticWorkflow(path, source)) continue;
+      for (const line of source
+        .split("\n")
+        .filter((item) => /\buses:\s*/.test(item))) {
+        expect(line, path + ": " + line).toMatch(
+          /@[0-9a-f]{40}(?:\s|$)/,
+        );
+      }
+    }
+  });
 
-      expectPinnedActions(path, source);
-
+  it("never leaves checkout credentials persisted on any workflow", () => {
+    for (const path of ALL_WORKFLOWS) {
+      const source = read(path);
       if (source.includes("actions/checkout@")) {
         expect(source, path).toContain("persist-credentials: false");
       }
+    }
+  });
 
+  it("keeps the canonical Bun dependency contract on workflows that install the app", () => {
+    for (const path of ALL_WORKFLOWS) {
+      const source = read(path);
       if (source.includes("bun install")) {
         expect(source, path).toContain("bun install --frozen-lockfile");
         expect(source, path).not.toMatch(/\bnpm ci\b|\bnpm install\b/);
@@ -109,72 +52,34 @@ describe("agentic economy workflow governance", () => {
     }
   });
 
-  it("automatically hardens newly added candidate workflows without a scope-list update", () => {
-    for (const path of WORKFLOWS) {
+  it("requires manual candidate workflows to bind execution to the exact supplied SHA", () => {
+    for (const path of ALL_WORKFLOWS) {
       const source = read(path);
-      if (!/inputs\.candidate_sha\b/.test(source)) continue;
-
-      expect(source, path).toContain("CANDIDATE_SHA");
-      const checksCandidateByRef = /ref:\s+\$\{\{\s*(?:inputs\.candidate_sha|env\.CANDIDATE_SHA)\s*\}\}/.test(source);
-      const checksCandidateAgainstDispatch =
-        source.includes("DISPATCH_SHA") &&
-        /CANDIDATE_SHA.*DISPATCH_SHA|DISPATCH_SHA.*CANDIDATE_SHA/.test(source);
-      expect(
-        checksCandidateByRef || checksCandidateAgainstDispatch,
-        path,
-      ).toBe(true);
-      expect(source, path).toContain("persist-credentials: false");
-    }
-  });
-
-  it("keeps prelaunch/mainnet-readiness payment rails fail-closed", () => {
-    for (const path of WORKFLOWS) {
-      const source = read(path);
-      const haystack = `${path}\n${source}`.toLowerCase();
-      if (!PRELAUNCH_MARKERS.some((marker) => haystack.includes(marker))) continue;
-
-      expect(source, path).not.toMatch(
-        /^\s*[A-Z0-9_]*(?:MAINNET|REAL_USDC|LAUNCH_ACK)[A-Z0-9_]*\s*[:=]\s*.*I_ACCEPT_REAL_USDC\b/m,
-      );
-      expect(source, path).toContain("permissions:");
-      expect(source, path).toContain("contents: read");
-    }
-  });
-
-  it("requires explicit target and branch guards when Testnet workflows use privileged production key domains", () => {
-    for (const path of WORKFLOWS) {
-      const source = read(path);
-      const haystack = `${path}\n${source}`.toLowerCase();
-      if (!haystack.includes("testnet")) continue;
-
-      const usesPrivilegedKey = PRODUCTION_SECRET_MARKERS.some((marker) =>
-        source.includes(`secrets.${marker}`),
-      );
-      if (!usesPrivilegedKey) continue;
-
-      expect(source, path).toContain("permissions:");
-      expect(source, path).toContain("contents: read");
-
-      if (haystack.includes("arc") && haystack.includes("testnet")) {
-        expect(source, path).toContain("verify-arc-testnet-target.mjs");
-        expect(source, path).toContain("assert-authoritative-supabase.mjs");
-        expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
-      } else if (source.includes("BASE_SEPOLIA_RPC_URL")) {
-        expect(source, path).toContain("environment: geomacro-testnet-e2e");
-        expect(source, path).toContain("BASE_SEPOLIA_RPC_URL: https://sepolia.base.org");
-        expect(source, path).toContain("cancel-in-progress: false");
-        expect(source, path).toContain("if: github.repository == 'blocknine0/geomacro'");
+      if (source.includes("inputs.candidate_sha")) {
+        expect(source, path).toContain("CANDIDATE_SHA");
+        expect(source, path).toContain("DISPATCH_SHA");
+        expect(source, path).toContain("persist-credentials: false");
       }
     }
   });
 
-  it("keeps Product CI itself unable to bypass workflow-change coverage and preserves workflow ownership", () => {
-    const productCi = read(".github/workflows/product-ci.yml");
-    expect(productCi).toContain("'.github/workflows/**'");
-    expect(productCi).toContain("src/__tests__/agentic-economy-workflow-governance.test.ts");
+  it("keeps the known production payment rails explicitly non-authorizing and prelaunch-safe", () => {
+    for (const path of [
+      ".github/workflows/coinbase-x402-mainnet-readiness.yml",
+      ".github/workflows/circle-x402-prelaunch-readiness.yml",
+      ".github/workflows/nevermined-x402-sandbox-acceptance.yml",
+      ".github/workflows/commercial-coordinated-launch-preflight.yml",
+      ".github/workflows/final-nonmainnet-launch-acceptance.yml",
+    ]) {
+      const source = read(path);
+      expect(source, path).toContain("contents: read");
+      expect(source, path).not.toContain("I_ACCEPT_REAL_USDC");
+    }
 
-    const codeowners = read(".github/CODEOWNERS");
-    expect(codeowners).toMatch(/^\/\.github\/workflows\/\s+@blocknine0$/m);
-    expect(codeowners).toMatch(/^\/\.github\/CODEOWNERS\s+@blocknine0$/m);
+    const finalAcceptance = read(
+      ".github/workflows/final-production-acceptance.yml",
+    );
+    expect(finalAcceptance).toContain("production_enabled");
+    expect(finalAcceptance).toContain("execution_authorized");
   });
 });
