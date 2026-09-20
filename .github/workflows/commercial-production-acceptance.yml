@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 45
     environment: staging
     env:
-      EXPECTED_SUPABASE_PROJECT_REF: hencqxkmmcgnothotqpq
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
       RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
@@ -75,50 +75,23 @@ jobs:
           trap 'supabase stop --no-backup' EXIT
           supabase db reset --local --no-seed
 
-      - name: Validate isolated staging database target
+      - name: Validate read-only production audit database target
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_DB_URL}"
           node <<'NODE'
           const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
-          let url;
-          try { url = new URL(process.env.SUPABASE_DB_URL); }
-          catch { throw new Error('SUPABASE_DB_URL must be a valid connection URL'); }
-          if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
-            throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
-          }
-          const directHosts = new Set([
-            `db.${ref}.supabase.co`,
-            `db.${ref}.supabase.com`,
-          ]);
-          const directHostMatch = directHosts.has(url.hostname);
-          const poolerHostMatch = url.hostname.endsWith('.pooler.supabase.com');
-          const directUserMatch = url.username === 'postgres' || url.username === `postgres.${ref}`;
-          const poolerUserMatch = url.username === `postgres.${ref}`;
-          const hostIdentityMatch =
-            (directHostMatch && directUserMatch) ||
-            (poolerHostMatch && poolerUserMatch);
-          if (!hostIdentityMatch) {
-            throw new Error('Refusing database target outside geomacro-staging.');
-          }
-          if (!url.password || url.pathname !== '/postgres') {
-            throw new Error('Invalid staging database target.');
-          }
-          if (![5432, 6543].includes(Number(url.port || 5432))) {
-            throw new Error('Unexpected Supabase database port.');
-          }
-          console.log('PASS: isolated geomacro-staging database identity confirmed.');
+          const url = new URL(process.env.SUPABASE_DB_URL);
+          if (!['postgres:', 'postgresql:'].includes(url.protocol)) throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
+          const directHosts = new Set([`db.${ref}.supabase.co`,`db.${ref}.supabase.com`]);
+          const directOk = directHosts.has(url.hostname) && ['postgres', `postgres.${ref}`].includes(url.username);
+          const poolerOk = url.hostname.endsWith('.pooler.supabase.com') && url.username === `postgres.${ref}`;
+          if (!directOk && !poolerOk) throw new Error('Refusing read-only audit against a database outside the canonical Geomacro production project.');
+          if (!url.password || url.pathname !== '/postgres') throw new Error('Invalid production audit database target.');
+          if (![5432,6543].includes(Number(url.port || 5432))) throw new Error('Unexpected Supabase database port.');
+          console.log('PASS: canonical production audit database identity verified; workflow performs read-only SQL only.');
           NODE
-
-      - name: Show pending staging migrations
-        run: supabase db push --db-url "${SUPABASE_DB_URL}" --dry-run
-
-      - name: Apply staging migrations
-        run: supabase db push --db-url "${SUPABASE_DB_URL}"
-
-      - name: Confirm staging migration queue is empty
-        run: supabase db push --db-url "${SUPABASE_DB_URL}" --dry-run
 
       - name: Probe all source endpoints
         env:
@@ -133,7 +106,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/gdelt-freshness
-          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -AtF '|' -c             "select freshness_1800_complete::text, coalesce(lag_seconds::text,''), coalesce(latest_source_period_end::text,''), coalesce(latest_verified_at::text,'') from public.live_realtime_source_freshness_status"             > artifacts/gdelt-freshness/observation.tsv
+          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -AtF '|' -c "select freshness_1800_complete::text, coalesce(lag_seconds::text,''), coalesce(latest_source_period_end::text,''), coalesce(latest_verified_at::text,'') from public.live_realtime_source_freshness_status" > artifacts/gdelt-freshness/observation.tsv
           cat artifacts/gdelt-freshness/observation.tsv
           IFS='|' read -r fresh lag period verified < artifacts/gdelt-freshness/observation.tsv
           test "${fresh}" = "true"
@@ -142,10 +115,41 @@ jobs:
           test "${lag}" -ge 0
           test "${lag}" -le 1800
 
+      - name: Probe isolated staging Risk Gate response security
+        env:
+          RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+          RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+          RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
+        run: bun x tsx scripts/probe-risk-gate-staging-response-security.ts
+
+      - name: Run bounded isolated staging Risk Gate load
+        env:
+          RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+          RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+          RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
+          RISK_GATE_LOAD_TEST_REQUESTS: '120'
+          RISK_GATE_LOAD_TEST_CONCURRENCY: '8'
+          RISK_GATE_LOAD_TEST_MODE: 'mixed'
+          RISK_GATE_LOAD_TEST_COUNTRY_ISO3: USA
+          RISK_GATE_LOAD_TEST_CORRIDOR_ORIGIN_ISO3: USA
+          RISK_GATE_LOAD_TEST_CORRIDOR_DESTINATION_ISO3: CHN
+          RISK_GATE_LOAD_TEST_ALLOW_429: 'false'
+          RISK_GATE_LOAD_TEST_TIMEOUT_MS: '10000'
+          RISK_GATE_LOAD_TEST_MAX_P95_MS: '3000'
+          RISK_GATE_LOAD_TEST_MAX_P99_MS: '8000'
+        run: bun x tsx scripts/load-test-risk-gate-staging.ts
+
+      - name: Validate staging Risk Gate load evidence
+        run: node scripts/validate-risk-gate-staging-load-report.mjs
+
       - name: Strict source certification audit
         run: node scripts/audit-source-certification-100.mjs --strict
 
       - name: Live Risk Gate testnet acceptance
+        env:
+          RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+          RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+          RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
         run: bun scripts/accept-risk-gate-testnet.mjs
 
       - name: Upload acceptance evidence
