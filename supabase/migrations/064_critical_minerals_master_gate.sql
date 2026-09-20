@@ -62,8 +62,8 @@ select
     critical_country.n = registry.n * 3
     and critical_region.n = 24 * 3
     and critical_corridor.n = 35 * 3
-    and critical_shock.n = 43
-    and critical_shock_paths.n = 43 * 3
+    and critical_shock.n = 45
+    and critical_shock_paths.n = 45 * 3
     and rmis.n = registry.n
   ) as critical_minerals_inventory_100_complete,
   false as endpoint_certification_complete,
