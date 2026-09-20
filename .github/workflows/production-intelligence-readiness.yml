@@ -15,6 +15,11 @@ on:
       - "supabase/migrations/929_hot_topic_claim_identity.sql"
       - ".github/workflows/production-intelligence-readiness.yml"
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - "GDELT GAL Live Hot-Topic Sync"
+    types:
+      - completed
   schedule:
     - cron: "33 */2 * * *"
 
@@ -27,6 +32,7 @@ concurrency:
 
 jobs:
   country-census:
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -72,6 +78,8 @@ jobs:
           retention-days: 30
 
   hot-topic-readiness:
+    if: >-
+      ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
