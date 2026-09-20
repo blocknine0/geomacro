@@ -24,6 +24,11 @@ import type {
 } from "./risk-gate-contract";
 
 
+import {
+  assertRiskGateCommercialReadiness,
+  RiskGateCommercialReadinessError,
+} from "./risk-gate-commercial-readiness.server";
+
 type ApiClientRow = {
   client_id: string;
   display_name: string;
@@ -1607,6 +1612,19 @@ handleExternalRiskGateRequest(
       parseExternalRiskGateBody(
         requestPayload,
       );
+
+    try {
+      await assertRiskGateCommercialReadiness();
+    } catch (error) {
+      if (error instanceof RiskGateCommercialReadinessError) {
+        throw new RiskGateApiError(
+          error.status,
+          error.code,
+          error.message,
+        );
+      }
+      throw error;
+    }
 
     const result =
       parsed.subject_type ===
