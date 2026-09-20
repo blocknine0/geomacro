@@ -44,6 +44,8 @@ jobs:
   app-test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      WORKFLOW_GOVERNANCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
 
     steps:
       - name: Checkout
@@ -80,11 +82,6 @@ jobs:
           path: artifacts/product-ci-tests.log
           if-no-files-found: error
           retention-days: 30
-
-      - name: Workflow recurrence governance
-        env:
-          WORKFLOW_GOVERNANCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: bun run test:app -- src/__tests__/agentic-economy-workflow-governance.test.ts
 
       - name: Migration safety
         run: node scripts/db/check-migration-safety.mjs
