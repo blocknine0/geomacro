@@ -14,3 +14,10 @@
 /scripts/ops/verify-website-lock.mjs @blocknine0
 /.github/workflows/website-lock.yml @blocknine0
 /.github/workflows/sync-lovable-main.yml @blocknine0
+
+# Permanent CI and agentic-economy governance ownership
+/.github/workflows/ @blocknine0
+/.github/CODEOWNERS @blocknine0
+/src/__tests__/agentic-economy-workflow-governance.test.ts @blocknine0
+/scripts/agentic/ @blocknine0
+/scripts/goat/ @blocknine0
