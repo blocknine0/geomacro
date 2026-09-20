@@ -68,7 +68,7 @@ Every corridor is expanded across all 16 modules. In addition to the module prim
 
 ## Expanded global shock taxonomy
 
-The current governed shock layer contains 35 families spanning:
+The current governed shock layer contains 36 families spanning:
 
 - armed conflict and ceasefire change;
 - sanctions, embargoes and export controls;
@@ -118,7 +118,7 @@ This phase intentionally does not advance those states.
 - exactly 16 required modules;
 - exactly 24 regional zones;
 - exactly 35 strategic corridors;
-- exactly 35 required shock families;
+- exactly 36 required shock families;
 - zero unmapped required shocks;
 - country × 16 row count equals the enabled canonical country/area universe × 16;
 - region × 16 row count equals 24 × 16;
