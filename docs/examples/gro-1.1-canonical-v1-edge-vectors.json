@@ -1,0 +1,15 @@
+{
+  "specification": "geomacro-canonical-json-v1",
+  "purpose": "Canonicalization edge vector for ECMAScript Number::toString, UTF-16 object-key ordering, negative zero and extreme finite numbers.",
+  "input": {
+    "z": 0.000001,
+    "a": 1e-7,
+    "b": 1e21,
+    "c": -0,
+    "d": 5e-324,
+    "e": "😀",
+    "f": ""
+  },
+  "canonical_json": "{\"a\":1e-7,\"b\":1e+21,\"c\":0,\"d\":5e-324,\"e\":\"😀\",\"f\":\"\",\"z\":0.000001}",
+  "sha256": "7f30fb55609afc5be866ac276c9c5e21362a7cd7eeb814adb35b03e115daffad"
+}
