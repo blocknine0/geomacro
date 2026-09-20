@@ -1172,13 +1172,8 @@ select
   'SHOCK', s.shock_id, m.module_id, 'SHOCK_PRIMARY', s.primary_source_id,
   'Shock family primary detection source. Certification intentionally queued.'
 from public.live_global_shock_taxonomy s
-join lateral (
-  select module_id
-  from public.live_global_shock_module_map
-  where shock_id = s.shock_id
-  order by module_id
-  limit 1
-) m on true
+join public.live_global_shock_module_map m
+  on m.shock_id = s.shock_id
 on conflict (queue_key) do update set updated_at = now()
 where public.live_source_certification_queue.certification_state = 'QUEUED';
 
@@ -1190,13 +1185,8 @@ select
   'SHOCK', s.shock_id, m.module_id, 'SHOCK_FALLBACK', s.fallback_source_id,
   'Shock family fallback detection source. Certification intentionally queued.'
 from public.live_global_shock_taxonomy s
-join lateral (
-  select module_id
-  from public.live_global_shock_module_map
-  where shock_id = s.shock_id
-  order by module_id
-  limit 1
-) m on true
+join public.live_global_shock_module_map m
+  on m.shock_id = s.shock_id
 on conflict (queue_key) do update set updated_at = now()
 where public.live_source_certification_queue.certification_state = 'QUEUED';
 
@@ -1263,6 +1253,13 @@ shock_unmapped as (
       where m.shock_id = s.shock_id
     )
 ),
+shock_map_counts as (
+  select count(*)::bigint as shock_module_map_count
+  from public.live_global_shock_module_map m
+  join public.live_global_shock_taxonomy s
+    on s.shock_id = m.shock_id
+  where s.required
+),
 queue_counts as (
   select
     count(*)::bigint as queue_count,
@@ -1291,10 +1288,18 @@ select
   crt.actual as actual_corridor_module_rows,
   sc.shock_count,
   su.unmapped_shock_count,
+  smc.shock_module_map_count,
   qc.queue_count,
+  (
+    (ct.actual * 2)
+    + (rt.actual * 2)
+    + (crt.actual * 4)
+    + (smc.shock_module_map_count * 2)
+  )::bigint as expected_queue_rows,
   qc.queue_nonqueued_count,
   (
     dc.domain_count = 16
+    and cc.country_count > 0
     and rc.region_count = 24
     and crc.corridor_count = 35
     and ct.actual = (cc.country_count * dc.domain_count)
@@ -1302,7 +1307,14 @@ select
     and crt.actual = (crc.corridor_count * dc.domain_count)
     and sc.shock_count = 35
     and su.unmapped_shock_count = 0
-    and qc.queue_count > 0
+    and smc.shock_module_map_count > 0
+    and qc.queue_count =
+      (
+        (ct.actual * 2)
+        + (rt.actual * 2)
+        + (crt.actual * 4)
+        + (smc.shock_module_map_count * 2)
+      )
     and qc.queue_nonqueued_count = 0
   ) as design_complete,
   false as certification_gate_open,
