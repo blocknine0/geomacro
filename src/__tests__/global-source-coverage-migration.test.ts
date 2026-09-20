@@ -43,6 +43,21 @@ describe("global source coverage migration integrity", () => {
     );
   });
 
+  it("makes shock queue keys unique across multi-module shock mappings", () => {
+    expect(coverageContract).toContain(
+      "'SHOCK:' || s.shock_id || ':' || m.module_id || ':PRIMARY:' || s.primary_source_id",
+    );
+    expect(coverageContract).toContain(
+      "'SHOCK:' || s.shock_id || ':' || m.module_id || ':FALLBACK:' || s.fallback_source_id",
+    );
+    expect(coverageContract).not.toContain(
+      "'SHOCK:' || s.shock_id || ':PRIMARY:' || s.primary_source_id",
+    );
+    expect(coverageContract).not.toContain(
+      "'SHOCK:' || s.shock_id || ':FALLBACK:' || s.fallback_source_id",
+    );
+  });
+
   it("keeps trade data distinct from the global structured-data backbone", () => {
     expect(migration).toContain(
       "'minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY'",
