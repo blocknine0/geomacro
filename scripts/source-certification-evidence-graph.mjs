@@ -550,13 +550,23 @@ async function loadAdapterEvidence(sourceIds) {
 }
 
 async function main() {
-  const [sources, queueRows, runtimeRows] = await Promise.all([
+  const [allSources, queueRows, runtimeRows, universeRows] = await Promise.all([
     fetchAll("live_external_sources", "*"),
     fetchAll("live_source_certification_queue", "*"),
     fetchAll("live_source_runtime_evidence_snapshot", "*"),
+    fetchAll("live_global_source_universe", "source_id,required"),
   ]);
 
-  const sourcesById = new Map(sources.map(s => [s.source_id, s]));
+  const requiredIds = new Set(
+    universeRows.filter((row) => row.required === true).map((row) => row.source_id),
+  );
+  for (const source of allSources) {
+    if (source.enabled_for_ingestion || source.enabled_for_commercial_signals) {
+      requiredIds.add(source.source_id);
+    }
+  }
+  const sources = allSources.filter((source) => requiredIds.has(source.source_id));
+  const sourcesById = new Map(allSources.map((s) => [s.source_id, s]));
   const runtimeById = new Map(runtimeRows.map(r => [r.source_id, r]));
   const queueRowsBySource = new Map();
   const providersByScopeKey = new Map();
@@ -907,52 +917,26 @@ async function main() {
     )
   );
 
-  const promoted = [];
-  const blocked = [];
-  const promotedPaths = [];
-
-  for (const record of records) {
-    if (!eligible.some(x => x.source_id === record.source_id)) {
-      blocked.push(record);
-      continue;
-    }
-    const result = await supabase.rpc("promote_source_certification_from_evidence_graph", {
-      p_source_id: record.source_id,
+  const promotionResult = await supabase.rpc(
+    "promote_source_certification_evidence_graph_run",
+    {
       p_run_id: runId,
       p_certified_by: ACTOR,
-    });
-    if (result.error) {
-      blocked.push(Object.assign({}, record, { promotion_error: result.error.message }));
-      continue;
-    }
-    promoted.push(result.data);
-
-    const sourceCertHash = result.data.certification_hash;
-    for (const q of queueRows.filter(row => row.source_id === record.source_id)) {
-      const pathHash = sha256(sourceCertHash + ":" + q.queue_key + ":" + runId);
-      const pathResult = await supabase.rpc("certify_live_source_queue_path", {
-        p_queue_key: q.queue_key,
-        p_endpoint_check: "PASS",
-        p_rights_check: result.data.rights_status,
-        p_schema_check: "PASS",
-        p_freshness_check: "PASS",
-        p_independence_check: "PASS",
-        p_evidence_ref: "evidence-graph:" + runId + ":" + record.source_id + ":" + q.queue_key,
-        p_certification_hash: pathHash,
-        p_certified_by: ACTOR,
-      });
-      if (pathResult.error) {
-        blocked.push({
-          source_id: record.source_id,
-          queue_key: q.queue_key,
-          path_promotion_error: pathResult.error.message,
-        });
-      } else {
-        promotedPaths.push(pathResult.data);
-      }
-    }
+    },
+  );
+  if (promotionResult.error) {
+    throw new Error("Evidence graph promotion failed: " + promotionResult.error.message);
   }
 
+  const promotion = promotionResult.data || {};
+  const promoted = [promotion];
+  const blocked = records.filter((record) =>
+    !Object.values(record.dimensions).every((dim) =>
+      dim.status === "PASS" &&
+      (dim.strength === "VERIFIED" || dim.strength === "OBSERVED")
+    )
+  );
+  const promotedPaths = [promotion];
   const blockedByReason = {};
   for (const item of blocked) {
     const reason = item.promotion_error || item.path_promotion_error || "evidence-dimensions-incomplete";
@@ -964,8 +948,8 @@ async function main() {
     edge_count: edges.length,
     source_eligible_count: eligible.length,
     source_promoted_count: promoted.length,
-    path_promoted_count: promotedPaths.length,
-    blocked_source_count: blocked.length,
+    path_promoted_count: Number(promotion.path_promoted_count || 0),
+    blocked_source_count: Number(promotion.blocked_required_source_count || blocked.length),
     write_operations_performed: true,
   }).eq("run_id", runId).throwOnError();
 
