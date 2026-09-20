@@ -41,11 +41,13 @@ function canonicalPrimitive(
     );
   }
 
-  // JSON.stringify serializes -0 as 0. Preserve that JSON semantic so
-  // semantically identical parsed request bodies receive the same hash.
+  // ECMAScript JSON number rendering is normative for GRO canonicalization.
+  // Number.prototype.toString implements the Number::toString algorithm used
+  // by JSON.stringify for finite numbers; do not substitute a language-native
+  // float repr when implementing this contract in another runtime.
   return Object.is(value, -0)
     ? "0"
-    : String(value);
+    : Number.prototype.toString.call(value);
 }
 
 /**
