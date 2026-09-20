@@ -44,6 +44,7 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(probe).toContain('execFile');
     expect(probe).toContain('--max-time');
     expect(probe).toContain('--connect-timeout');
+    expect(probe).toContain('curl exit code');
     expect(probe).toContain('expected_endpoint_count: expectedCount');
     expect(probe).not.toContain("live_global_source_universe");
     expect(probe).not.toContain("live_external_sources");
