@@ -39,7 +39,7 @@ describe("agentic economy workflow governance", () => {
         if (!source.includes("bun install --frozen-lockfile")) {
           violations.push(`${path}: Bun install is not frozen`);
         }
-        if (/\\bnpm ci\\b|\\bnpm install\\b/.test(source)) {
+        if (/\bnpm ci\b|\bnpm install\b/.test(source)) {
           violations.push(`${path}: npm install/ci dependency drift detected`);
         }
       }
@@ -52,7 +52,7 @@ describe("agentic economy workflow governance", () => {
   });
 
   it("automatically covers every current and future agentic/commercial workflow", () => {
-    expect(WORKFLOWS.length).toBeGreaterThan(0);
+    expect(AGENTIC_WORKFLOWS.length).toBeGreaterThan(0);
 
     // The governance surface is discovered from the repository itself instead
     // of a hand-maintained file list, so newly-added agentic workflows cannot
