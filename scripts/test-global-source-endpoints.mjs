@@ -69,6 +69,7 @@ async function probe(entry) {
     cache_control: null,
     age: null,
     get_status: null,
+    get_ok_transport: null,
     get_content_type: null,
     latency_ms: null,
     ok_transport: false,
@@ -128,6 +129,7 @@ async function probe(entry) {
         try { await verify.arrayBuffer(); } catch {}
         result.get_status = verify.status;
         result.get_content_type = verify.headers.get("content-type");
+        result.get_ok_transport = verify.status >= 200 && verify.status < 400;
       } catch (error) {
         result.get_error = String(error?.message ?? error);
       }
@@ -143,7 +145,26 @@ async function probe(entry) {
     const finalUrl = String(result.final_url ?? "");
     const status = result.status;
 
-    if (result.ok_transport) {
+    if (
+      result.ok_transport &&
+      result.method === "HEAD" &&
+      result.get_status !== null &&
+      result.get_ok_transport === false
+    ) {
+      result.classification = "FAIL";
+      result.classification_reason =
+        `HEAD succeeded but the verification GET returned HTTP ${result.get_status}.`;
+    } else if (
+      result.ok_transport &&
+      result.method === "HEAD" &&
+      result.get_error
+    ) {
+      result.classification = /abort|timeout/i.test(String(result.get_error))
+        ? "TIMEOUT"
+        : "FAIL";
+      result.classification_reason =
+        `HEAD succeeded but GET verification failed: ${String(result.get_error)}`;
+    } else if (result.ok_transport) {
       result.classification =
         finalUrl && finalUrl !== entry.url ? "CANONICAL_REDIRECT" : "WORKING";
       result.classification_reason =
