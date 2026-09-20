@@ -84,12 +84,16 @@ jobs:
           test "$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.live_source_endpoint_disposition_933_status')")" = "live_source_endpoint_disposition_933_status"
           echo "PASS: permanent 933 endpoint disposition view is present."
 
+      - name: Audit canonical Phase B endpoint universe
+        run: node scripts/audit-phase-b-endpoint-universe.mjs
+
       - name: Probe canonical production source universe
         run: node scripts/probe-production-source-endpoints-933.mjs
 
       - name: Import endpoint disposition evidence
         run: |
           node scripts/import-source-endpoint-evidence.mjs \
+            artifacts/phase-b-universe-audit/
             artifacts/source-endpoint-disposition-933/results.json
 
       - name: Verify permanent endpoint disposition gates
