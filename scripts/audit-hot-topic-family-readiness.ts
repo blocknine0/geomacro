@@ -1,4 +1,5 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   HOT_TOPIC_FAMILIES,
@@ -302,6 +303,7 @@ async function main() {
     },
   };
 
+  await mkdir(dirname(OUTPUT), { recursive: true });
   await writeFile(OUTPUT, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   console.log(
     JSON.stringify(
