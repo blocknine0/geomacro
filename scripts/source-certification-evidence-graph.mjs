@@ -943,7 +943,7 @@ async function main() {
   await fs.writeFile(nodesJsonPath, JSON.stringify(nodes), "utf8");
   await fs.writeFile(edgesJsonPath, JSON.stringify(edges), "utf8");
 
-  const dbScript = String.raw\`
+  const dbScript = String.raw`
     \\\\set ON_ERROR_STOP on
     \\\\pset tuples_only on
     \\\\pset format unaligned
@@ -966,7 +966,7 @@ async function main() {
     select public.promote_source_certification_evidence_graph_run(:'run_id', :'actor');
     update public.live_source_certification_evidence_runs set node_count=__NODE_COUNT__,edge_count=__EDGE_COUNT__,source_eligible_count=__ELIGIBLE_COUNT__,write_operations_performed=true where run_id=:'run_id';
     commit;
-  \`.replaceAll("__SOURCE_COUNT__", String(sources.length))
+  `.replaceAll("__SOURCE_COUNT__", String(sources.length))
      .replaceAll("__NODE_COUNT__", String(nodes.length))
      .replaceAll("__EDGE_COUNT__", String(edges.length))
      .replaceAll("__ELIGIBLE_COUNT__", String(eligible.length))
