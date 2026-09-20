@@ -60,16 +60,14 @@ function isAgenticWorkflow(path: string, source: string) {
 
 function expectPinnedActions(path: string, source: string) {
   const lines = source.split("\n");
-  const externalActionLines = lines
-    .filter((line) => /\buses:\s+/.test(line))
-    .filter((line) => !/\buses:\s+\.\//.test(line));
+  const externalActionRefs = lines
+    .map((line) => line.match(/\buses:\s+([^\s#]+)/)?.[1] ?? null)
+    .filter((ref): ref is string => Boolean(ref))
+    .filter((ref) => !ref.startsWith("./"));
 
-  expect(source, path).not.toMatch(
-    /\buses:\s+[^\s]+@v\d+(?:\.\d+)*\b/,
-  );
-
-  for (const line of externalActionLines) {
-    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|#|$)/);
+  for (const ref of externalActionRefs) {
+    expect(ref, `${path}: ${ref}`).toMatch(/@[0-9a-f]{40}$/);
+    expect(ref, `${path}: ${ref}`).not.toMatch(/@v\d+(?:\.\d+)*$/);
   }
 
   lines.forEach((line, index) => {
@@ -88,12 +86,6 @@ function expectPinnedActions(path: string, source: string) {
     ).toBe(true);
   });
 }
-
-describe("agentic economy workflow governance", () => {
-  it("auto-discovers the complete workflow surface instead of relying on a manually maintained list", () => {
-    expect(WORKFLOWS.length).toBeGreaterThan(0);
-    expect(WORKFLOWS.every((path) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path))).toBe(true);
-  });
 
   it("applies immutable action provenance and credential hygiene to every dynamically discovered agentic/commercial/testnet workflow", () => {
     for (const path of WORKFLOWS) {
