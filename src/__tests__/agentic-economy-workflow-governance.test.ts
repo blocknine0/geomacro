@@ -112,7 +112,7 @@ function expectPinnedActions(path: string) {
   for (const line of usesLines) {
     const target = line.match(/^\s*(?:-\s*)?uses:\s*(\S+)/)?.[1] ?? "";
     if (target.startsWith("./")) continue;
-    expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s*(?:#.*)?|$)/i);
+    expect(line, `${path}: ${line}`).toMatch(/^[^@\s]+@[0-9a-f]{40}$/i);
   }
 
   const lines = source.split("\n");
