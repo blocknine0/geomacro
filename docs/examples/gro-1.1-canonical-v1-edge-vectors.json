@@ -7,9 +7,9 @@
     "b": 1e21,
     "c": -0,
     "d": 5e-324,
-    "e": "😀",
-    "f": ""
+    "😀": "astral-key",
+    "": "bmp-key"
   },
-  "canonical_json": "{\"a\":1e-7,\"b\":1e+21,\"c\":0,\"d\":5e-324,\"e\":\"😀\",\"f\":\"\",\"z\":0.000001}",
-  "sha256": "7f30fb55609afc5be866ac276c9c5e21362a7cd7eeb814adb35b03e115daffad"
+  "canonical_json": "{\"a\":1e-7,\"b\":1e+21,\"c\":0,\"d\":5e-324,\"z\":0.000001,\"😀\":\"astral-key\",\"\":\"bmp-key\"}",
+  "sha256": "31e5621fc0e2cca45a9e9b4c0eac9e0c748b2dcbb03bcfd7c093580626eb8caf"
 }
