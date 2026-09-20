@@ -145,6 +145,52 @@ describe("agentic economy workflow governance", () => {
     expect(finalAcceptance).toContain("DISPATCH_SHA");
   });
 
+  it("prevents the previously observed hot-topic freshness race", () => {
+    const source = read(".github/workflows/hot-topic-family-readiness.yml");
+    expect(source).toContain("github.event_name == 'workflow_dispatch'");
+    expect(source).toContain("github.event_name == 'schedule'");
+    expect(source).toContain("github.event_name == 'workflow_run'");
+    expect(source).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(source).not.toMatch(
+      /github\.event_name == 'push'[^\n]*production-readiness|production-readiness[\s\S]{0,160}github\.event_name == 'push'/,
+    );
+  });
+
+  it("keeps partner trust-registry checks resilient to transient transport resets", () => {
+    const source = read(".github/workflows/invinoveritas-partner-preflight.yml");
+    const registryCheck = source.slice(
+      source.indexOf("Verify production signer matches deployed public trust registry"),
+      source.indexOf("Normalize requested country"),
+    );
+    expect(registryCheck).toContain("--retry 6");
+    expect(registryCheck).toContain("--retry-all-errors");
+    expect(registryCheck).toContain("--connect-timeout 10");
+    expect(registryCheck).toContain("--max-time 60");
+  });
+
+  it("prevents duplicate-state races in Eurostat promotion", () => {
+    const source = read(".github/workflows/eurostat-sovereign-fiscal-promotion.yml");
+    expect(source).toContain("id: state");
+    expect(source).toContain("activation_changed='true'");
+    expect(source).toContain("already_promoted='true'");
+    expect(source).toContain("if: steps.state.outputs.already_promoted != 'true'");
+    expect(source).toContain("if: steps.state.outputs.already_promoted == 'true'");
+    expect(source).toContain(
+      "failure() && steps.state.outputs.activation_changed == 'true'",
+    );
+  });
+
+  it("prevents Base Sepolia deployment/read-after-write races before key publication", () => {
+    const source = read(
+      ".github/workflows/deploy-risk-key-registry-base-sepolia.yml",
+    );
+    expect(source).toContain("Confirm deployed registry bytecode is visible before publishing");
+    expect(source).toContain('cast chain-id --rpc-url "$BASE_SEPOLIA_RPC_URL"');
+    expect(source).toContain('for attempt in $(seq 1 30); do');
+    expect(source).toContain('cast code "$REGISTRY" --rpc-url "$BASE_SEPOLIA_RPC_URL"');
+    expect(source).toContain("Refusing key publication until the deployment is observable");
+  });
+
   it("makes workflow changes invoke Product CI so workflow edits cannot bypass product tests", () => {
     const productCi = read(".github/workflows/product-ci.yml");
     const pullRequestBlock = productCi.split("  push:")[0];
