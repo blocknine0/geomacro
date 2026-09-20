@@ -152,7 +152,7 @@ select
    and shock_paths.n > 0
    and subzones.n = 39
    and subzone_paths.n = subzones.n * 3
-   and granular_shocks.n = 110
+   and granular_shocks.n = 111
    and granular_paths.n = granular_shocks.n * 3
    and specialist_ids.n = 20
    and country_universe.n = registry.n*21 + gov.n + stats.n + monetary.n
