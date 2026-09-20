@@ -132,6 +132,25 @@ values
 ),
 
 (
+  'nrcan_news_atom',
+  'Natural Resources Canada News Releases Atom',
+  'Natural Resources Canada',
+  'CRITICAL_MINERALS',
+  'RSS',
+  'NONE',
+  'https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada',
+  null,
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  true,
+  false,
+  'CAN',
+  'NEAR_REAL_TIME',
+  'Official Natural Resources Canada Atom feed. Broad NRCan news; used as a critical-minerals government-primary detector with downstream keyword/topic classification.'
+),
+
+(
   'doe_critical_materials_news_candidate',
   'US DOE Critical Minerals and Materials News',
   'U.S. Department of Energy',
