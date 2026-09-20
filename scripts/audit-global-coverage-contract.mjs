@@ -46,8 +46,8 @@ if (data.corridor_count !== 35) {
   failures.push(`Expected 35 strategic corridors, got ${data.corridor_count}`);
 }
 
-if (data.shock_count !== 35) {
-  failures.push(`Expected 35 required shock families, got ${data.shock_count}`);
+if (data.shock_count !== 36) {
+  failures.push(`Expected 36 required shock families, got ${data.shock_count}`);
 }
 
 if (data.unmapped_shock_count !== 0) {
