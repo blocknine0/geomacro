@@ -266,6 +266,74 @@ jobs:
           fi
 
           node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+          const fs = require('node:fs');
+
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
+
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            const freshnessWindowMs = 20 * 60 * 1000;
+
+            async function latestManifest() {
+              const { data, error } = await db
+                .from('live_fragment_manifest')
+                .select('id,source_key,stream_key,item_count,period_end,sealed_at,verification_method')
+                .eq('source_key', 'gdelt_gal')
+                .eq('stream_key', 'global-relevant')
+                .eq('verification_method', 'storage-readback-sha256')
+                .order('sealed_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (error) throw error;
+              return data ?? null;
+            }
+
+            for (let attempt = 1; attempt <= 24; attempt += 1) {
+              const candidate = await latestManifest();
+              const now = Date.now();
+              const sealedAt = Date.parse(String(candidate?.sealed_at ?? ''));
+              const periodEnd = Date.parse(String(candidate?.period_end ?? ''));
+              const freshEnough =
+                candidate &&
+                Number(candidate.item_count ?? 0) > 0 &&
+                Number.isFinite(sealedAt) &&
+                Number.isFinite(periodEnd) &&
+                now - sealedAt <= freshnessWindowMs &&
+                now - periodEnd <= freshnessWindowMs;
+
+              console.log(JSON.stringify({
+                attempt,
+                fresh_enough: Boolean(freshEnough),
+                fragment_id: candidate?.id ?? null,
+                item_count: candidate?.item_count ?? null,
+                sealed_at: candidate?.sealed_at ?? null,
+                period_end: candidate?.period_end ?? null,
+              }));
+
+              if (freshEnough) {
+                fs.appendFileSync(
+                  process.env.GITHUB_ENV,
+                  'FRESH_GDELT_FRAGMENT_ID=' + String(candidate.id) + '\n',
+                );
+                console.log('PASS: recent verified GDELT fragment is fresh enough for Federico strict corroboration.');
+                return;
+              }
+
+              if (attempt < 24) await sleep(30000);
+            }
+
+            throw new Error('No verified GDELT fragment within the required 20-minute freshness window.');
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
 
       - name: Prove exact fresh GDELT fragment is fully persisted
         shell: bash
