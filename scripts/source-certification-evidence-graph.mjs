@@ -13,7 +13,12 @@ import { createClient } from "@supabase/supabase-js";
 import { COMMERCIAL_SOURCE_RIGHTS_EVIDENCE } from "./commercial-source-rights-evidence.mjs";
 
 const PROJECT = process.env.EXPECTED_SUPABASE_PROJECT_REF || "ldpwajisioljyjtojvfx";
-const SUPABASE_URL = String(process.env.APP_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+const SUPABASE_PROJECT_ID = String(process.env.SUPABASE_PROJECT_ID || PROJECT).trim();
+const SUPABASE_URL = String(
+  process.env.APP_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
+  ("https://" + SUPABASE_PROJECT_ID + ".supabase.co")
+).trim();
 const SERVICE_ROLE_KEY = String(
   process.env.APP_SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -35,6 +40,9 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 const parsed = new URL(SUPABASE_URL);
 if (parsed.protocol !== "https:") throw new Error("Refusing non-HTTPS Supabase URL");
+if (SUPABASE_PROJECT_ID !== PROJECT) {
+  throw new Error("Refusing Supabase project ID " + SUPABASE_PROJECT_ID + "; expected " + PROJECT);
+}
 if (parsed.hostname !== PROJECT + ".supabase.co") {
   throw new Error("Refusing Supabase project " + parsed.hostname + "; expected " + PROJECT + ".supabase.co");
 }
