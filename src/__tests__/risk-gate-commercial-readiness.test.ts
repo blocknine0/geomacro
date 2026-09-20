@@ -15,3 +15,17 @@ describe("Risk Gate commercial source-network gate", () => {
     expect(error.code).toBe("RISK_GATE_SOURCE_NETWORK_NOT_READY");
   });
 });
+
+
+describe("Risk Gate API commercial wiring", () => {
+  it("wires the commercial source gate into the external evaluation handler", async () => {
+    const api = await import("../lib/risk-gate-api.server");
+    const fs = await import("node:fs/promises");
+    const source = await fs.readFile(
+      "src/lib/risk-gate-api.server.ts",
+      "utf8",
+    );
+    expect(source).toContain("assertRiskGateCommercialReadiness");
+    expect(source).toContain("RISK_GATE_SOURCE_NETWORK_NOT_READY");
+  });
+});
