@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  "supabase/migrations/043_global_source_coverage_expansion.sql",
+  "supabase/migrations/0431_global_source_coverage_expansion.sql",
   "utf8",
 );
 
