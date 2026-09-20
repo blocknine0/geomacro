@@ -50,9 +50,9 @@ select
     and coalesce(r.freshness_1800_complete, false)
   ) as source_network_launch_complete
 from public.live_source_network_100_status s
-cross join lateral (
+left join lateral (
   select * from public.live_realtime_source_freshness_status
-) r;
+) r on true;
 
 comment on view public.live_source_network_launch_status is
  'Combined source-network launch gate. Requires full source certification plus realtime GDELT GAL freshness. This is separate from inventory completeness.';
