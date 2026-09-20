@@ -39,7 +39,7 @@ export async function collectMigrationEndpointManifest(root = process.cwd()) {
   }
 
   const entries = [...urlMap.values()].sort((a, b) =>
-    a.endpoint_url.localeCompare(b.endpoint_url),
+    a.endpoint_url < b.endpoint_url ? -1 : a.endpoint_url > b.endpoint_url ? 1 : 0,
   );
   const canonicalText = entries.map((entry) => entry.endpoint_url).join("\n");
   const manifestSha256 = createHash("sha256")
