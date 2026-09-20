@@ -48,10 +48,11 @@ jobs:
       GITHUB_OIDC_AUDIENCE: https://geomacro.live/actions/live-flash-rss
 
     steps:
-      - name: Checkout current production main
+      - name: Checkout exact triggering production SHA
         uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@v2
@@ -559,6 +560,19 @@ jobs:
           set -euo pipefail
           bun scripts/invinoveritas-risk-object-preflight.ts /tmp/federico-risk-object.json             | tee /tmp/federico-preflight.json
 
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("/tmp/federico-preflight.json")
+          with path.open("r", encoding="utf-8") as handle:
+              document = json.load(handle)
+
+          if not isinstance(document, dict):
+              raise SystemExit("Federico preflight output must be exactly one JSON object")
+          print("PASS: Federico preflight output is exactly one valid JSON document")
+          PY
+
           jq -e '
             .ok == true and
             .gates.deployed_original_verification == "PASS" and
@@ -582,13 +596,9 @@ jobs:
           cp schemas/gro-1.1.schema.json /tmp/federico-handoff/gro-1.1.schema.json
           cp docs/GRO_CANONICAL_JSON_V1.md /tmp/federico-handoff/GRO_CANONICAL_JSON_V1.md
           cp docs/examples/gro-1.1-canonical-v1-test-vector.json /tmp/federico-handoff/gro-1.1-canonical-v1-test-vector.json
+          cp docs/examples/gro-1.1-canonical-v1-edge-vectors.json /tmp/federico-handoff/gro-1.1-canonical-v1-edge-vectors.json
           cp /tmp/federico-review-request.json /tmp/federico-handoff/review-request.json
           cp /tmp/federico-review-response.json /tmp/federico-handoff/review-response.json
-
-          (
-            cd /tmp/federico-handoff
-            sha256sum GRO_CANONICAL_JSON_V1.md gro-1.1-canonical-v1-test-vector.json gro-1.1.schema.json federico-risk-object.json review-request.json review-response.json > SHA256SUMS.txt
-          )
 
           jq '{
             ok,
@@ -596,6 +606,33 @@ jobs:
             object,
             live_review
           }' /tmp/federico-preflight.json > /tmp/federico-handoff/verification-summary.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("/tmp/federico-handoff/verification-summary.json")
+          with path.open("r", encoding="utf-8") as handle:
+              document = json.load(handle)
+
+          if document.get("ok") is not True:
+              raise SystemExit("verification-summary.json must record ok=true")
+          obj = document.get("object")
+          integrity = obj.get("integrity") if isinstance(obj, dict) else None
+          if not isinstance(obj, dict) or not obj.get("as_of"):
+              raise SystemExit("verification-summary.json must bind as_of to observed_at")
+          if obj.get("as_of") != obj.get("observed_at"):
+              raise SystemExit("verification-summary.json as_of must equal observed_at")
+          if not isinstance(integrity, dict) or not integrity.get("signature"):
+              raise SystemExit("verification-summary.json must include integrity.signature")
+          print("PASS: verification summary is one JSON document with as_of and signature binding")
+          PY
+
+          (
+            cd /tmp/federico-handoff
+            sha256sum GRO_CANONICAL_JSON_V1.md gro-1.1-canonical-v1-edge-vectors.json gro-1.1-canonical-v1-test-vector.json gro-1.1.schema.json federico-risk-object.json review-request.json review-response.json verification-summary.json > SHA256SUMS.txt
+            sha256sum -c SHA256SUMS.txt
+          )
 
           python3 - <<'PY'
           from pathlib import Path
@@ -606,6 +643,7 @@ jobs:
           files = [
               "GRO_CANONICAL_JSON_V1.md",
               "gro-1.1-canonical-v1-test-vector.json",
+              "gro-1.1-canonical-v1-edge-vectors.json",
               "gro-1.1.schema.json",
               "federico-risk-object.json",
               "review-request.json",
@@ -634,6 +672,7 @@ jobs:
               expected = {
                   "GRO_CANONICAL_JSON_V1.md",
                   "gro-1.1-canonical-v1-test-vector.json",
+                  "gro-1.1-canonical-v1-edge-vectors.json",
                   "gro-1.1.schema.json",
                   "federico-risk-object.json",
                   "review-request.json",
