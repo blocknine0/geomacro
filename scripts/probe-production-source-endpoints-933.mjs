@@ -164,6 +164,9 @@ async function probe(endpoint) {
     entry.get_content_type = response.content_type;
     entry.get_ok_transport = response.status !== null && response.status >= 200 && response.status < 400;
     entry.ok_transport = entry.get_ok_transport;
+    if (response.status === null) {
+      entry.error = "curl completed without an HTTP status.";
+    }
   } catch (error) {
     const code = error?.curl_exit_code ?? error?.code ?? null;
     const message = String(error?.message ?? error);
