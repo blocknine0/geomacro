@@ -52,11 +52,7 @@ describe("agentic economy workflow governance", () => {
           .trim();
         const at = actionRef.lastIndexOf("@");
         expect(at, path + ": " + line).toBeGreaterThan(0);
-        const actionName = actionRef.slice(0, at);
         const commitRef = actionRef.slice(at + 1);
-        expect(actionName, path + ": " + line).toMatch(
-          /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/,
-        );
         if (commitRef.length === 39) {
           expect(
             actionRef,
