@@ -1,35 +1,15 @@
 name: Product CI
 
 on:
+  # Product CI is the repository-wide merge/push gate. Do not scope this by
+  # paths: important agentic/economy contracts also live under supabase/,
+  # workers/, config/, schemas/ and other non-src surfaces. A path filter would
+  # let a future regression bypass the permanent governance suite.
   pull_request:
-    branches: [main]
-    paths:
-      - 'README.md'
-      - 'CLAUDE.md'
-      - 'docs/**'
-      - 'src/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bunfig.toml'
-      - 'vite.config.*'
-      - 'tsconfig*.json'
-      - '.github/workflows/product-ci.yml'
-      - '.github/workflows/**'
+
+  # Keep the same repository-wide invariant for direct pushes to main.
   push:
-    branches: [main]
-    paths:
-      - 'README.md'
-      - 'CLAUDE.md'
-      - 'docs/**'
-      - 'src/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bunfig.toml'
-      - 'vite.config.*'
-      - 'tsconfig*.json'
-      - '.github/workflows/product-ci.yml'
+
   workflow_dispatch:
 
 permissions:
