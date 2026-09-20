@@ -98,17 +98,17 @@ function expectPinnedActions(path: string) {
   const source = read(path);
   const usesLines = source
     .split("\n")
-    .filter((line) => /^\s*uses:\s*\S+/.test(line));
+    .filter((line) => /^\s*(?:-\s*)?uses:\s*\S+/.test(line));
 
   for (const line of usesLines) {
-    const target = line.match(/^\s*uses:\s*(\S+)/)?.[1] ?? "";
+    const target = line.match(/^\s*(?:-\s*)?uses:\s*(\S+)/)?.[1] ?? "";
     if (target.startsWith("./")) continue;
     expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/i);
   }
 
   const lines = source.split("\n");
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^\s*uses:\s*actions\/checkout@/i.test(lines[i])) continue;
+    if (!/^\s*(?:-\s*)?uses:\s*actions\/checkout@/i.test(lines[i])) continue;
     const window = lines.slice(i, Math.min(lines.length, i + 10)).join("\n");
     expect(window, path).toContain("persist-credentials: false");
   }
