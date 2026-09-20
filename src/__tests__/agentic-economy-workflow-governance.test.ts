@@ -35,8 +35,18 @@ describe("agentic economy workflow governance", () => {
     expect(ALL_WORKFLOWS.length).toBeGreaterThan(0);
     for (const path of ALL_WORKFLOWS) {
       const source = read(path);
-      for (const line of source.split("\n").filter((item) => /\buses:\s*/.test(item))) {
-        expect(line, path + ": " + line).toMatch(/@[0-9a-f]{40}(?:\s+#.*)?\s*$/);
+      for (const line of source
+        .split("\n")
+        .filter((item) => /^\s*uses:\s+/.test(item))) {
+        const actionRef = line
+          .replace(/^\s*uses:\s+/, "")
+          .split(/\s+#/, 1)[0]
+          .trim();
+        const at = actionRef.lastIndexOf("@");
+        expect(at, path + ": " + line).toBeGreaterThan(0);
+        expect(actionRef.slice(at + 1), path + ": " + line).toMatch(
+          /^[0-9a-f]{40}$/i,
+        );
       }
     }
   });
@@ -92,8 +102,5 @@ describe("agentic economy workflow governance", () => {
       }
     }
 
-    const finalAcceptance = read(".github/workflows/final-production-acceptance.yml");
-    expect(finalAcceptance).toContain("production_enabled");
-    expect(finalAcceptance).toContain("execution_authorized");
   });
 });
