@@ -965,7 +965,8 @@ values
 ('investment_screening_restriction','Investment screening and capital-entry restriction','HYBRID','wto_trade_monitoring','un_all_documents_rss',259200,'Foreign-investment screening and market-access restrictions.'),
 ('technology_semiconductor_export_control_shock','Technology and semiconductor export-control shock','HYBRID','wto_trade_monitoring','gdelt_v2_events',172800,'Technology restrictions, semiconductor controls and industrial-access shocks.'),
 ('capital_controls_convertibility_shock','Capital-control and convertibility shock','HYBRID','imf_data_api','world_bank_indicators',172800,'Capital controls, FX restrictions and convertibility disruption.'),
-('rare_material_long_tail_supply_shock','Rare-material long-tail supply shock','HYBRID','usgs_mcs','un_comtrade_api',259200,'Emerging strategic-material shortages and dependency shocks.')
+('rare_material_long_tail_supply_shock','Rare-material long-tail supply shock','HYBRID','usgs_mcs','un_comtrade_api',259200,'Emerging strategic-material shortages and dependency shocks.'),
+('trade_corridor_disruption','Trade-corridor disruption','HYBRID','un_comtrade_api','gdelt_v2_events',172800,'Dedicated trade-route event family kept distinct from generic supply-chain disruption.')
 on conflict (shock_id)
 do update set
   display_name = excluded.display_name,
