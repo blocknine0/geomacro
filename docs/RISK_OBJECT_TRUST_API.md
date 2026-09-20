@@ -61,6 +61,10 @@ A broken server-side verification-key registry returns 503 and does not silently
 
 A well-formed but tampered, unknown-key, revoked-key, unsupported-methodology, malformed, or expired Risk Object returns a deterministic verification report and never becomes trusted by fallback.
 
+### Current verification status is verifier-derived
+
+Consumers MUST treat the status returned by the current `/api/risk-object-keys` verification operation as authoritative for present-time trust. The signed object's embedded `verification.status` is payload metadata and MUST NOT be used as a substitute for a fresh verification result. A correctly signed artifact may retain an embedded `VERIFIED` value after its `expires_at`; the current verifier must report `EXPIRED` and consumers must use that current result. The signed artifact MUST NOT be edited merely to reflect expiry, because changing signed fields invalidates the payload signature.
+
 ## Security and execution boundary
 
 - private signing keys are never returned;
