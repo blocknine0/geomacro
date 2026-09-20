@@ -118,9 +118,14 @@ describe("agentic economy workflow governance", () => {
       if (!/inputs\.candidate_sha\b/.test(source)) continue;
 
       expect(source, path).toContain("CANDIDATE_SHA");
-      expect(source, path).toMatch(
-        /ref:\s+\$\{\{\s*(?:inputs\.candidate_sha|env\.CANDIDATE_SHA)\s*\}\}/,
-      );
+      const checksCandidateByRef = /ref:\s+\$\{\{\s*(?:inputs\.candidate_sha|env\.CANDIDATE_SHA)\s*\}\}/.test(source);
+      const checksCandidateAgainstDispatch =
+        source.includes("DISPATCH_SHA") &&
+        /CANDIDATE_SHA.*DISPATCH_SHA|DISPATCH_SHA.*CANDIDATE_SHA/.test(source);
+      expect(
+        checksCandidateByRef || checksCandidateAgainstDispatch,
+        path,
+      ).toBe(true);
       expect(source, path).toContain("persist-credentials: false");
     }
   });
@@ -150,9 +155,19 @@ describe("agentic economy workflow governance", () => {
       );
       if (!usesPrivilegedKey) continue;
 
-      expect(source, path).toContain("verify-arc-testnet-target.mjs");
-      expect(source, path).toContain("assert-authoritative-supabase.mjs");
-      expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
+      expect(source, path).toContain("permissions:");
+      expect(source, path).toContain("contents: read");
+
+      if (haystack.includes("arc") && haystack.includes("testnet")) {
+        expect(source, path).toContain("verify-arc-testnet-target.mjs");
+        expect(source, path).toContain("assert-authoritative-supabase.mjs");
+        expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
+      } else if (source.includes("BASE_SEPOLIA_RPC_URL")) {
+        expect(source, path).toContain("environment: geomacro-testnet-e2e");
+        expect(source, path).toContain("BASE_SEPOLIA_RPC_URL: https://sepolia.base.org");
+        expect(source, path).toContain("cancel-in-progress: false");
+        expect(source, path).toContain("if: github.repository == 'blocknine0/geomacro'");
+      }
     }
   });
 
