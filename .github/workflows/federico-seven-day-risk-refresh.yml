@@ -596,6 +596,7 @@ jobs:
           cp schemas/gro-1.1.schema.json /tmp/federico-handoff/gro-1.1.schema.json
           cp docs/GRO_CANONICAL_JSON_V1.md /tmp/federico-handoff/GRO_CANONICAL_JSON_V1.md
           cp docs/examples/gro-1.1-canonical-v1-test-vector.json /tmp/federico-handoff/gro-1.1-canonical-v1-test-vector.json
+          cp docs/examples/gro-1.1-canonical-v1-edge-vectors.json /tmp/federico-handoff/gro-1.1-canonical-v1-edge-vectors.json
           cp /tmp/federico-review-request.json /tmp/federico-handoff/review-request.json
           cp /tmp/federico-review-response.json /tmp/federico-handoff/review-response.json
 
@@ -640,6 +641,7 @@ jobs:
           files = [
               "GRO_CANONICAL_JSON_V1.md",
               "gro-1.1-canonical-v1-test-vector.json",
+              "gro-1.1-canonical-v1-edge-vectors.json",
               "gro-1.1.schema.json",
               "federico-risk-object.json",
               "review-request.json",
@@ -668,6 +670,7 @@ jobs:
               expected = {
                   "GRO_CANONICAL_JSON_V1.md",
                   "gro-1.1-canonical-v1-test-vector.json",
+                  "gro-1.1-canonical-v1-edge-vectors.json",
                   "gro-1.1.schema.json",
                   "federico-risk-object.json",
                   "review-request.json",
