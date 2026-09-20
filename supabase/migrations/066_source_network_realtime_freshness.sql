@@ -32,7 +32,10 @@ select
   1800::bigint as max_allowed_lag_seconds,
   (
     period_end is not null
-    and extract(epoch from (now() - period_end)) <= 1800
+    and period_end <= now()
+    and sealed_at is not null
+    and verified_at is not null
+    and extract(epoch from (now() - period_end)) between 0 and 1800
   ) as freshness_1800_complete
 from latest_gdelt;
 
