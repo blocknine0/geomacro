@@ -3,7 +3,63 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const WORKFLOW_DIR = ".github/workflows";
-const AGENTIC_PATH_RE = /agent|x402|goat|coinbase|circle|nevermined|a2a|commerce|commercial|marketplace|risk-gate|risk.?object|testnet/i;
+const AGENTIC_PATH_RE =
+  /agent|x402|goat|coinbase|circle|nevermined|a2a|commerce|commercial|marketplace|risk-gate|risk.?object|live-testnet|production-(?:acceptance|intelligence)|canary|prelisting|partner-preflight|hot-topic|federico/i;
+
+const KNOWN_AGENTIC_WORKFLOWS = [
+  ".github/workflows/product-ci.yml",
+  ".github/workflows/agent-query-production-readiness.yml",
+  ".github/workflows/coinbase-x402-adaptive-base-sepolia-paid-e2e.yml",
+  ".github/workflows/coinbase-x402-base-sepolia-acceptance.yml",
+  ".github/workflows/coinbase-x402-mainnet-readiness.yml",
+  ".github/workflows/circle-x402-prelaunch-readiness.yml",
+  ".github/workflows/nevermined-x402-sandbox-acceptance.yml",
+  ".github/workflows/goat-testnet3-provider-dry-run.yml",
+  ".github/workflows/goat-testnet3-local-paid-e2e.yml",
+  ".github/workflows/goat-testnet3-paid-artifact-replay.yml",
+  ".github/workflows/goat-testnet3-reconcile-existing.yml",
+  ".github/workflows/goat-testnet3-local-paid-readiness.yml",
+  ".github/workflows/goat-acceptance-windows.yml",
+  ".github/workflows/commercial-coordinated-launch-preflight.yml",
+  ".github/workflows/commercial-release-candidate-evidence.yml",
+  ".github/workflows/commercial-release-candidate-freeze.yml",
+  ".github/workflows/final-nonmainnet-launch-acceptance.yml",
+  ".github/workflows/final-production-acceptance.yml",
+  ".github/workflows/marketplace-listing-observation.yml",
+  ".github/workflows/marketplace-submission-evidence.yml",
+  ".github/workflows/post-listing-health.yml",
+  ".github/workflows/production-canary-cohort-acceptance.yml",
+  ".github/workflows/production-provider-canary.yml",
+  ".github/workflows/external-production-revenue-proof.yml",
+  ".github/workflows/commerce-freeze-quarantine-drill.yml",
+  ".github/workflows/commerce-safety-drill-acceptance.yml",
+  ".github/workflows/public-production-prelisting-health.yml",
+  ".github/workflows/structured-commerce-db-concurrency.yml",
+  ".github/workflows/live-testnet-developer-api-paid-e2e.yml",
+  ".github/workflows/live-testnet-authenticated-e2e.yml",
+  ".github/workflows/commercial-pilot-readiness.yml",
+  ".github/workflows/commercial-production-acceptance.yml",
+  ".github/workflows/commercial-api-production-acceptance.yml",
+  ".github/workflows/public-demo-risk-refresh.yml",
+  ".github/workflows/dan-commercial-readiness-v2.yml",
+  ".github/workflows/testnet-tester-validation.yml",
+  ".github/workflows/risk-gate-staging-load.yml",
+  ".github/workflows/risk-gate-core-resilience.yml",
+  ".github/workflows/risk-gate-testnet-acceptance.yml",
+  ".github/workflows/global-risk-gate-country-readiness.yml",
+  ".github/workflows/production-intelligence-readiness.yml",
+  ".github/workflows/commercial-country-pilot-acceptance.yml",
+  ".github/workflows/invinoveritas-partner-preflight.yml",
+  ".github/workflows/hot-topic-family-readiness.yml",
+  ".github/workflows/risk-gate-production-proof.yml",
+  ".github/workflows/ops-goat-provider-proof-free.yml",
+  ".github/workflows/ops-goat-staging-challenge-probe.yml",
+  ".github/workflows/federico-seven-day-risk-refresh.yml",
+  ".github/workflows/risk-object-key-lifecycle-ci.yml",
+  ".github/workflows/republish-country-risk-object-key-rotation.yml",
+  ".github/workflows/all-data-corridor-matrix.yml",
+];
+
 const read = (path: string) => readFileSync(path, "utf8");
 
 function workflowFiles(): string[] {
@@ -29,9 +85,13 @@ function changedWorkflowFiles(): string[] {
 }
 
 function governanceTargets(): string[] {
-  const all = workflowFiles();
-  const changed = new Set(changedWorkflowFiles());
-  return all.filter((path) => changed.has(path) || AGENTIC_PATH_RE.test(path));
+  const all = new Set(workflowFiles());
+  for (const path of KNOWN_AGENTIC_WORKFLOWS) all.add(path);
+  for (const path of all) {
+    if (AGENTIC_PATH_RE.test(path)) all.add(path);
+  }
+  for (const path of changedWorkflowFiles()) all.add(path);
+  return [...all].filter((path) => workflowFiles().includes(path));
 }
 
 function expectPinnedActions(path: string) {
@@ -55,7 +115,7 @@ function expectPinnedActions(path: string) {
 }
 
 describe("agentic economy recurrence prevention", () => {
-  it("governs every agentic/commercial workflow and every workflow changed by the current revision", () => {
+  it("governs all known agentic workflows and every workflow changed by the current revision", () => {
     const targets = governanceTargets();
     expect(targets.length, "workflow governance must never run with an empty target set").toBeGreaterThan(0);
 
@@ -73,10 +133,12 @@ describe("agentic economy recurrence prevention", () => {
   it("keeps Product CI itself inside the workflow-change protection path", () => {
     const source = read(".github/workflows/product-ci.yml");
     expect(source).toContain("'.github/workflows/**'");
+    expect(source).toContain("WORKFLOW_GOVERNANCE_BASE_SHA");
+    expect(source).toContain("scripts/db/check-migration-safety.mjs");
     expectPinnedActions(".github/workflows/product-ci.yml");
   });
 
-  it("keeps the known manual acceptance path bound to the exact candidate SHA", () => {
+  it("keeps manual acceptance bound to the exact candidate SHA", () => {
     for (const path of [
       ".github/workflows/commerce-freeze-quarantine-drill.yml",
       ".github/workflows/commerce-safety-drill-acceptance.yml",
