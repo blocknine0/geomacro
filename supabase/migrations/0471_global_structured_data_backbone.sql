@@ -15,11 +15,28 @@ country_scope=excluded.country_scope,freshness_class=excluded.freshness_class,no
 
 insert into public.live_source_coverage_targets
 (coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
-values
-('macro-uncomtrade-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','un_comtrade_api','world_bank_indicators','Global trade-flow path; useful for country/corridor exposure and mineral trade.'),
-('macro-faostat-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','faostat_api','world_bank_indicators','Food/agriculture and commodity-supply macro path.'),
-('macro-energy-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','eia_api_v2','world_bank_indicators','Energy market path; API key required and collector not yet enabled.'),
-('macro-oecd-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','oecd_sdmx_api','world_bank_indicators','OECD independent macro/statistical path.')
+values ('macro-uncomtrade-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','un_comtrade_api','world_bank_indicators','Global trade-flow path; useful for country/corridor exposure and mineral trade.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('macro-faostat-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','faostat_api','world_bank_indicators','Food/agriculture and commodity-supply macro path.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('macro-energy-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','eia_api_v2','world_bank_indicators','Energy market path; API key required and collector not yet enabled.')
+on conflict(category,scope_type,scope_code,source_class) do update set
+required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
+primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
+
+insert into public.live_source_coverage_targets
+(coverage_id,category,scope_type,scope_code,source_class,required,minimum_independent_paths,status,primary_source_id,fallback_source_id,notes)
+values ('macro-oecd-global','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','oecd_sdmx_api','world_bank_indicators','OECD independent macro/statistical path.')
 on conflict(category,scope_type,scope_code,source_class) do update set
 required=excluded.required,minimum_independent_paths=excluded.minimum_independent_paths,status=excluded.status,
 primary_source_id=excluded.primary_source_id,fallback_source_id=excluded.fallback_source_id,notes=excluded.notes,updated_at=now();
