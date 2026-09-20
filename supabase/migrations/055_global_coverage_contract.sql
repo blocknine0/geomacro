@@ -1030,7 +1030,9 @@ values
 ('technology_semiconductor_export_control_shock','geoeconomic_trade'),
 ('technology_semiconductor_export_control_shock','infrastructure_cyber_technology'),
 ('capital_controls_convertibility_shock','currency_capital_mobility'),
-('rare_material_long_tail_supply_shock','energy_commodities')
+('rare_material_long_tail_supply_shock','energy_commodities'),
+('trade_corridor_disruption','supply_chain_logistics'),
+('trade_corridor_disruption','geoeconomic_trade')
 on conflict (shock_id, module_id) do update set required = excluded.required;
 
 alter table public.live_global_shock_module_map enable row level security;
@@ -1305,7 +1307,7 @@ select
     and ct.actual = (cc.country_count * dc.domain_count)
     and rt.actual = (rc.region_count * dc.domain_count)
     and crt.actual = (crc.corridor_count * dc.domain_count)
-    and sc.shock_count = 35
+    and sc.shock_count = 36
     and su.unmapped_shock_count = 0
     and smc.shock_module_map_count > 0
     and qc.queue_count =
