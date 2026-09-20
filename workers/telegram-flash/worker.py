@@ -165,6 +165,55 @@ class NewsPageParser:
 
 DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
+        "source_id": "un_geneva_press_rss",
+        "name": "UN Geneva Press Releases RSS",
+        "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+        "event_type": "GEOPOLITICS_OFFICIAL_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 48,
+    },
+    {
+        "source_id": "un_security_council_docs_rss",
+        "name": "UN Security Council Documents RSS",
+        "url": "https://docs.un.org/rss/scdocs.xml",
+        "event_type": "GEOPOLITICS_SECURITY_DOCUMENT",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 168,
+    },
+    {
+        "source_id": "eu_council_press_rss",
+        "name": "Council of the EU Press Releases RSS",
+        "url": "https://www.consilium.europa.eu/en/rss/pressreleases.ashx",
+        "event_type": "GEOPOLITICS_EU_OFFICIAL_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 72,
+    },
+    {
+        "source_id": "ecb_press_rss",
+        "name": "ECB Press Releases RSS",
+        "url": "https://www.ecb.europa.eu/rss/press.html",
+        "event_type": "MACRO_ECB_RELEASE",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 72,
+    },
+    {
+        "source_id": "ecb_market_information_rss",
+        "name": "ECB Market Information Dissemination RSS",
+        "url": "https://mid.ecb.europa.eu/rss/mid.xml",
+        "event_type": "MACRO_MARKET_INFORMATION",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 168,
+    },
+    {
+        "source_id": "un_geneva_meeting_summaries_rss",
+        "name": "UN Geneva Meeting Summaries RSS",
+        "url": "https://www.ungeneva.org/news-media/meeting-summaries-list/rss.xml",
+        "event_type": "GEOPOLITICS_OFFICIAL_MEETING",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 168,
+    },
+
+    {
         "source_id": "aljazeera_rss",
         "name": "Al Jazeera RSS",
         "url": "https://www.aljazeera.com/xml/rss/all.xml",
