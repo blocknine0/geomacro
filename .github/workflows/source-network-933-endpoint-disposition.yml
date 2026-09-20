@@ -50,13 +50,13 @@ jobs:
 
     steps:
       - name: Checkout exact validated revision
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - name: Setup Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "22"
 
@@ -138,7 +138,7 @@ jobs:
 
       - name: Upload 933 endpoint evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: source-network-933-endpoint-disposition-${{ github.run_id }}
           path: artifacts/source-endpoint-disposition-933/
