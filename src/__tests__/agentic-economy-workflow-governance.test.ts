@@ -95,8 +95,8 @@ describe("agentic economy workflow governance", () => {
     const finalAcceptance = read(
       ".github/workflows/final-production-acceptance.yml",
     );
-    expect(finalAcceptance).toContain("production_enabled");
-    expect(finalAcceptance).toContain("execution_authorized");
+    expect(finalAcceptance).toContain("GEOMACRO_PRODUCTION_ACCEPTANCE_SHA");
+    expect(finalAcceptance).toContain("DISPATCH_SHA");
   });
 
   it("makes workflow changes invoke Product CI so workflow edits cannot bypass product tests", () => {
