@@ -7,6 +7,16 @@ const migration = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
+  it("binds the 057 government portal status view to its directory table", () => {
+    const governmentPortals = readFileSync(
+      "supabase/migrations/057_country_primary_government_portals.sql",
+      "utf8",
+    );
+    expect(governmentPortals).toContain(
+      "from public.live_country_primary_source_directory;",
+    );
+  });
+
   it("keeps the 057 government portal seed column count aligned", () => {
     const governmentPortals = readFileSync(
       "supabase/migrations/057_country_primary_government_portals.sql",
