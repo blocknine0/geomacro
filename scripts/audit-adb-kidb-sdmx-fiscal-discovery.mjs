@@ -490,7 +490,7 @@ async function main() {
 
 main().catch((error) => {
   const message = error instanceof Error ? error.message : String(error)
-  const httpMatch = message.match(/^HTTP (\\d{3}) for (.+)$/)
+  const httpMatch = message.match(/^HTTP (\d{3}) for (.+)$/)
   const httpStatus = httpMatch ? Number(httpMatch[1]) : null
   const endpoint = httpMatch ? httpMatch[2] : null
   const accessBlocked = httpStatus === 401 || httpStatus === 403
