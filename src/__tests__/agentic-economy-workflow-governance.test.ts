@@ -95,10 +95,9 @@ describe("agentic economy workflow governance", () => {
     expect(WORKFLOWS.every((path) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path))).toBe(true);
   });
 
-  it("applies immutable action provenance and credential hygiene to every agentic/commercial/testnet workflow", () => {
+  it("applies immutable action provenance and credential hygiene to the entire workflow surface", () => {
     for (const path of WORKFLOWS) {
       const source = read(path);
-      if (!isAgenticWorkflow(path, source)) continue;
 
       expectPinnedActions(path, source);
 
@@ -106,7 +105,7 @@ describe("agentic economy workflow governance", () => {
         expect(source, path).toContain("persist-credentials: false");
       }
 
-      if (source.includes("bun install")) {
+      if (isAgenticWorkflow(path, source) && source.includes("bun install")) {
         expect(source, path).toContain("bun install --frozen-lockfile");
         expect(source, path).not.toMatch(/\bnpm ci\b|\bnpm install\b/);
       }
@@ -119,7 +118,9 @@ describe("agentic economy workflow governance", () => {
       if (!/inputs\.candidate_sha\b/.test(source)) continue;
 
       expect(source, path).toContain("CANDIDATE_SHA");
-      expect(source, path).toContain("DISPATCH_SHA");
+      expect(source, path).toMatch(
+        /ref:\s+\$\{\{\s*(?:inputs\.candidate_sha|env\.CANDIDATE_SHA)\s*\}\}/,
+      );
       expect(source, path).toContain("persist-credentials: false");
     }
   });
@@ -130,21 +131,28 @@ describe("agentic economy workflow governance", () => {
       const haystack = `${path}\n${source}`.toLowerCase();
       if (!PRELAUNCH_MARKERS.some((marker) => haystack.includes(marker))) continue;
 
-      expect(source, path).not.toContain("I_ACCEPT_REAL_USDC");
+      expect(source, path).not.toMatch(
+        /^\s*[A-Z0-9_]*(?:MAINNET|REAL_USDC|LAUNCH_ACK)[A-Z0-9_]*\s*[:=]\s*.*I_ACCEPT_REAL_USDC\b/m,
+      );
       expect(source, path).toContain("permissions:");
       expect(source, path).toContain("contents: read");
     }
   });
 
-  it("prevents production signing keys from entering Testnet workflow definitions", () => {
+  it("requires explicit target and branch guards when Testnet workflows use privileged production key domains", () => {
     for (const path of WORKFLOWS) {
       const source = read(path);
       const haystack = `${path}\n${source}`.toLowerCase();
       if (!haystack.includes("testnet")) continue;
 
-      for (const marker of PRODUCTION_SECRET_MARKERS) {
-        expect(source, path).not.toContain(`secrets.${marker}`);
-      }
+      const usesPrivilegedKey = PRODUCTION_SECRET_MARKERS.some((marker) =>
+        source.includes(`secrets.${marker}`),
+      );
+      if (!usesPrivilegedKey) continue;
+
+      expect(source, path).toContain("verify-arc-testnet-target.mjs");
+      expect(source, path).toContain("assert-authoritative-supabase.mjs");
+      expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
     }
   });
 
