@@ -1,3 +1,4 @@
+# acceptance-run: commercial production acceptance harness
 #!/usr/bin/env node
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
