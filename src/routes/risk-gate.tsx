@@ -134,6 +134,19 @@ function RiskGatePage() {
         <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight">
           Risk context in. Verifiable decision context out.
         </h2>
+        <div className="mt-5 rounded-xl border border-border/60 bg-background/30 p-5">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Current Private Pilot scope is country and directional corridor risk.
+            Geomacro supports a country or corridor Risk Object, including
+            directional corridors composed from endpoints plus eligible bilateral
+            evidence. Full physical-route and counterparty modelling are not
+            claimed.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Event-specific Risk Objects remain a broader product direction only.
+            They are not part of the current Private Pilot contract.
+          </p>
+        </div>
 
         <div className="mt-7 grid gap-5 lg:grid-cols-3">
           {[
@@ -231,12 +244,16 @@ function RiskGatePage() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/40 px-4 py-3">
-              <span className="font-mono text-xs text-muted-foreground">
-                execution_authorized
-              </span>
-              <span className="font-mono text-sm text-primary">false</span>
-            </div>
+            <div className="mt-4 rounded-xl border border-border/60 bg-card/40 p-4">
+            <p className="font-mono text-xs text-muted-foreground">
+              execution_authorized = false
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              A risk recommendation is not permission to move money. The
+              customer&apos;s own identity, permissions and policy layer applies
+              its rules after the Risk Gate response.
+            </p>
+          </div>
           </div>
         </div>
       </section>
