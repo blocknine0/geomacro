@@ -37,7 +37,9 @@
     "source:endpoints:probe": "node scripts/test-global-source-endpoints.mjs",
     "source:endpoints:import": "node scripts/import-source-endpoint-evidence.mjs",
     "coverage:global:audit": "node scripts/audit-global-production-coverage.mjs",
-    "coverage:global:strict": "node scripts/audit-global-production-coverage.mjs --strict"
+    "coverage:global:strict": "node scripts/audit-global-production-coverage.mjs --strict",
+    "source:certification:census": "node scripts/audit-source-certification-census.mjs",
+    "source:certification:census:strict": "node scripts/audit-source-certification-census.mjs --strict"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
