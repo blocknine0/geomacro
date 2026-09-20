@@ -40,6 +40,14 @@ jobs:
           jq -e '.writes_performed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.production_activation_allowed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.scoring_changed == false' adb-key-indicators-fiscal-discovery.json >/dev/null
+          if jq -e '.status == "ACCESS_BLOCKED"' adb-key-indicators-fiscal-discovery.json >/dev/null; then
+            jq -e '.failure_class == "SOURCE_ACCESS_BLOCKED"' adb-key-indicators-fiscal-discovery.json >/dev/null
+            jq -e '.http_status == 401 or .http_status == 403' adb-key-indicators-fiscal-discovery.json >/dev/null
+            test -n "$(jq -r '.endpoint // empty' adb-key-indicators-fiscal-discovery.json)"
+            echo "PASS: ADB access boundary is explicitly recorded as non-promotable discovery evidence; retryable transport failure semantics are not masked."
+            exit 0
+          fi
+          jq -e '.status != "ERROR"' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.exact_series.dataflow == "DF_EXT"' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.exact_series.indicator_code == "DT_DOD_DPPG_CD"' adb-key-indicators-fiscal-discovery.json >/dev/null
           jq -e '.exact_series.label_verified == true' adb-key-indicators-fiscal-discovery.json >/dev/null
