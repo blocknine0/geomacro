@@ -47,6 +47,17 @@ Core fields:
 
 An expired artifact may remain `cryptographic_valid=true` for historical audit while `valid=false` for current use.
 
+## Canonicalization and independent verification
+
+The public canonicalization specification is:
+
+- `docs/GRO_CANONICAL_JSON_V1.md`
+- Test vector: `docs/examples/gro-1.1-canonical-v1-test-vector.json`
+
+The canonicalization identifier is `geomacro-canonical-json-v1`. The specification defines the exact signable framing, recursive key ordering, JSON serialization rules, UTF-8 byte boundary, SHA-256 payload-hash calculation, and Ed25519 signature verification procedure.
+
+Independent consumers should reproduce the canonical UTF-8 bytes and payload hash, then verify the Ed25519 signature using the public key returned by `/api/risk-object-keys`.
+
 ## Integrity boundary
 
 The public trust endpoint recalculates the signed payload hash and verifies the Ed25519 signature against the trusted key registry. It also checks that `input_hash`, `data_hash`, and `calculation_hash` are present in the signed artifact.
@@ -70,33 +81,6 @@ A well-formed but tampered, unknown-key, revoked-key, unsupported-methodology, m
 - the endpoint does not submit transactions, sign customer actions, or authorize execution;
 - Geomacro Risk Gate retains `execution_authorized=false`.
 
-## Canonicalization and independent verification
-
-The public canonicalization specification is `docs/GRO_CANONICAL_JSON_V1.md`.
-
-The deterministic test vector is `docs/examples/gro-1.1-canonical-v1-test-vector.json`, with a repository test at `src/__tests__/canonical-json-v1-test-vector.test.ts`. These define and lock the exact canonical byte framing, SHA-256 payload hash, and Ed25519 verification procedure for independent consumers.
-
-Consumers should reproduce the canonical UTF-8 bytes and payload hash, then verify the Ed25519 signature using the trusted public key returned by `/api/risk-object-keys`.
-
-## Federico strict evidence profile
-
-Federico handoff artifacts may use the signed `FEDERICO_STRICT` delivery profile. This profile is intentionally narrower than the general canonical publisher path: it uses recent `live_flash_event_families` that are actively verified, requires direct country linkage, records source URLs and source-family identities, applies a six-hour evidence-age ceiling, and applies a three-hour ceiling plus two-source (or explicitly allowlisted major-source) corroboration for high-impact conflict/military evidence.
-
-The strict profile also signs a reproducibility manifest containing the exact calculation input, score components, evidence-selection policy and data-hash projection. A receiver can recompute the input hash, data hash, score, aggregate confidence and calculation hash without receiving raw provider payloads.
-
-The artifact binds the active public Ed25519 key, the public trust-registry URL and the canonicalization specification URL inside the signed `integrity` object. Receivers should still resolve `signing_key_id` through the trusted registry and verify the signature rather than treating the embedded key as a trust root.
-## External review proof verification
-
-The Federico preflight does not treat a returned partner proof as trusted merely because `/review` returned HTTP 200. When a signed proof is returned, the preflight posts its signed event to the proof's published `/verify-proof` URL and to the first published independent verifier node, requiring both verifiers to report the proof as valid before the partner-proof gate can pass.
-
-Partner admission is separate from proof integrity: the live review must return `approve` or `approve_with_concerns` and must contain no blocker or high-severity issues before `partner_admission` can pass. A signed `reject` remains a review failure even though its proof is cryptographically valid.
-## Seven-day rolling refresh
-
-The production country Risk Object validity window is intentionally short-lived: each signed artifact carries a bounded `expires_at` based on the active Risk Object TTL. The Federico handoff uses a rolling refresh rather than extending one signed artifact across seven days.
-
-The current refresh workflow runs every two hours during the handoff window, publishes a fresh production-signed Risk Object, re-verifies the persisted payload, proves one-field tamper rejection, and stores a historical handoff artifact for that refresh alongside the fixed latest alias. The current production TTL remains three hours, leaving a one-hour freshness buffer between scheduled refreshes.
-
-Never edit or extend `expires_at` on an already-signed artifact. A new observation requires a newly generated and newly signed artifact so the canonical payload hash, signature, timestamps, and provenance remain bound together.
 ## Canonical gro-1.1 JSON Schema
 
 Repository source: `schemas/gro-1.1.schema.json`.
