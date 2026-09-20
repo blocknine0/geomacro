@@ -12,6 +12,28 @@ const dbUrl = process.env.SUPABASE_DB_URL;
 const project = process.env.EXPECTED_SUPABASE_PROJECT_REF;
 if (!dbUrl || !project) throw new Error("SUPABASE_DB_URL and EXPECTED_SUPABASE_PROJECT_REF are required");
 
+let dbUrlParsed;
+try {
+  dbUrlParsed = new URL(dbUrl);
+} catch {
+  throw new Error("SUPABASE_DB_URL must be a valid connection URL");
+}
+if (!["postgres:", "postgresql:"].includes(dbUrlParsed.protocol)) {
+  throw new Error("SUPABASE_DB_URL must use postgres:// or postgresql://");
+}
+const expectedDirectHost = `db.${project}.supabase.co`;
+const expectedPoolerHost = dbUrlParsed.hostname.endsWith(".pooler.supabase.com");
+const expectedDirectMatch =
+  dbUrlParsed.hostname === expectedDirectHost && dbUrlParsed.username === "postgres";
+const expectedPoolerMatch =
+  expectedPoolerHost && dbUrlParsed.username === `postgres.${project}`;
+if (!expectedDirectMatch && !expectedPoolerMatch) {
+  throw new Error("Refusing source-certification audit against a database outside the expected staging Supabase project.");
+}
+if (!dbUrlParsed.password || dbUrlParsed.pathname !== "/postgres") {
+  throw new Error("Invalid staging database target.");
+}
+
 const exec = promisify(execFile);
 const outDir = path.join(process.cwd(), "artifacts", "source-certification-100");
 await fs.mkdir(outDir, { recursive: true });
