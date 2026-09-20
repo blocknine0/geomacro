@@ -222,7 +222,20 @@ select
    and corridors.n=35
    and shocks.n=36
  ) as source_universe_complete,
- false as certification_gate_open;
+ false as certification_gate_open
+from countries
+cross join regions
+cross join corridors
+cross join shocks
+cross join country_rows
+cross join region_rows
+cross join corridor_rows
+cross join shock_rows
+cross join country_core_min
+cross join gov_directory
+cross join stats_directory
+cross join country_gov_paths
+cross join country_stats_paths;
 
 comment on view public.live_global_source_universe_status is
  'Internal source-universe inventory completeness only. Government/statistics directories are discovery inventories; direct certification and commercial activation remain locked.';
