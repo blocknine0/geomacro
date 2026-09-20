@@ -29,7 +29,7 @@ describe("adaptive hot-topic commercial delivery", () => {
   });
 
   it("uses a versioned governed family taxonomy for question-specific filtering", () => {
-    expect(taxonomy).toContain('HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v1"');
+    expect(taxonomy).toContain('HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v2"');
     expect(taxonomy).toContain('"military_conflict"');
     expect(taxonomy).toContain('"sanctions_export_controls"');
     expect(taxonomy).toContain('"shipping_chokepoints"');
