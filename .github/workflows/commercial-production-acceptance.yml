@@ -88,15 +88,25 @@ jobs:
           if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
             throw new Error('SUPABASE_DB_URL must use postgres:// or postgresql://');
           }
-          const directHost = `db.${ref}.supabase.co`;
-          const poolerHost = url.hostname.endsWith('.pooler.supabase.com');
-          const directMatch = url.hostname === directHost && url.username === 'postgres';
-          const poolerMatch = poolerHost && url.username === `postgres.${ref}`;
-          if (!directMatch && !poolerMatch) {
+          const directHosts = new Set([
+            `db.${ref}.supabase.co`,
+            `db.${ref}.supabase.com`,
+          ]);
+          const directHostMatch = directHosts.has(url.hostname);
+          const poolerHostMatch = url.hostname.endsWith('.pooler.supabase.com');
+          const directUserMatch = url.username === 'postgres' || url.username === `postgres.${ref}`;
+          const poolerUserMatch = url.username === `postgres.${ref}`;
+          const hostIdentityMatch =
+            (directHostMatch && directUserMatch) ||
+            (poolerHostMatch && poolerUserMatch);
+          if (!hostIdentityMatch) {
             throw new Error('Refusing database target outside geomacro-staging.');
           }
           if (!url.password || url.pathname !== '/postgres') {
             throw new Error('Invalid staging database target.');
+          }
+          if (![5432, 6543].includes(Number(url.port || 5432))) {
+            throw new Error('Unexpected Supabase database port.');
           }
           console.log('PASS: isolated geomacro-staging database identity confirmed.');
           NODE
@@ -151,7 +161,7 @@ jobs:
           retention-days: 30
 
       - name: Record acceptance proof
-        if: always() && (github.ref == 'refs/heads/hardening/source-network-risk-gate-production' || github.ref == 'refs/heads/ops/commercial-acceptance-run-20260920')
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -168,8 +178,4 @@ jobs:
             "risk_gate_acceptance": "bun scripts/accept-risk-gate-testnet.mjs"
           }
           EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ".ci-proofs/commercial-acceptance-${GITHUB_SHA}.json"
-          git commit -m "ci: record commercial acceptance result [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          cat ".ci-proofs/commercial-acceptance-${GITHUB_SHA}.json"
