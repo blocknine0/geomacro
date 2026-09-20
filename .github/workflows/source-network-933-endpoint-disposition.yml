@@ -1,0 +1,113 @@
+name: Source Network 933 Endpoint Disposition
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy country flash intelligence to Supabase
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-source-network-933-disposition
+  cancel-in-progress: false
+
+jobs:
+  disposition:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      EXPECTED_ENDPOINT_COUNT: "933"
+      SOURCE_PROBE_TIMEOUT_MS: "12000"
+      SOURCE_PROBE_CONCURRENCY: "20"
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      STRICT_ENDPOINT_COUNT: "true"
+
+    steps:
+      - name: Checkout exact production revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          node --input-type=module <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const directHost = `db.${ref}.supabase.co`;
+          const username = decodeURIComponent(db.username);
+          const directMatch = db.hostname === directHost && username === "postgres";
+          const poolerMatch = db.hostname.endsWith(".pooler.supabase.com") && username === `postgres.${ref}`;
+          if (!["postgres:", "postgresql:"].includes(db.protocol) || (!directMatch && !poolerMatch)) {
+            throw new Error("SUPABASE_DB_URL is not the authoritative production database");
+          }
+          if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
+          const api = new URL(process.env.APP_SUPABASE_URL);
+          if (api.hostname !== `${ref}.supabase.co`) throw new Error("APP_SUPABASE_URL is not the authoritative production API");
+          console.log("PASS: authoritative production DB/API identities confirmed.");
+          NODE
+
+      - name: Verify endpoint disposition migration is applied
+        run: |
+          set -euo pipefail
+          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c \
+            "select to_regclass('public.live_source_endpoint_disposition_933_status')"
+          test "$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.live_source_endpoint_disposition_933_status')")" = "live_source_endpoint_disposition_933_status"
+          echo "PASS: permanent 933 endpoint disposition view is present."
+
+      - name: Probe canonical production source universe
+        run: node scripts/probe-production-source-endpoints-933.mjs
+
+      - name: Import endpoint disposition evidence
+        run: |
+          node scripts/import-source-endpoint-evidence.mjs \
+            artifacts/source-endpoint-disposition-933/results.json
+
+      - name: Verify permanent 933 endpoint disposition gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c \
+            "select required_source_count,certification_record_count,disposition_count,unclassified_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
+          echo "${row}"
+          expected="933|933|933|0|t"
+          test "${row}" = "${expected}"
+          echo "PASS: 933/933 endpoint disposition is complete."
+
+      - name: Upload 933 endpoint evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-network-933-endpoint-disposition-${{ github.run_id }}
+          path: artifacts/source-endpoint-disposition-933/
+          if-no-files-found: error
+          retention-days: 30

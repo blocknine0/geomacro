@@ -13,6 +13,8 @@ const input = process.argv[2] ?? "artifacts/global-source-endpoint-probe/results
 const supabaseUrl = process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRole = process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+const expectedCount = Number(process.env.EXPECTED_ENDPOINT_COUNT ?? "0");
+const strictCount = process.env.STRICT_ENDPOINT_COUNT === "true";
 
 if (!supabaseUrl || !serviceRole) {
   throw new Error("APP_SUPABASE_URL/SUPABASE_URL and service-role key are required");
@@ -33,8 +35,10 @@ const { data: sources, error: sourceError } = await db
   .select("source_id,endpoint_url,canonical_url");
 if (sourceError) throw sourceError;
 
+const byId = new Map();
 const byUrl = new Map();
 for (const source of sources ?? []) {
+  byId.set(String(source.source_id), source);
   for (const url of [source.endpoint_url, source.canonical_url].filter(Boolean)) {
     byUrl.set(String(url), source);
   }
@@ -52,9 +56,11 @@ const outcome = {
 };
 
 for (const result of results) {
-  const source = byUrl.get(String(result.url));
+  const source = result.source_id
+    ? byId.get(String(result.source_id))
+    : byUrl.get(String(result.url));
   if (!source) {
-    outcome.unmatched_urls.push(String(result.url));
+    outcome.unmatched_urls.push(String(result.source_id ?? result.url));
     continue;
   }
   outcome.matched_sources += 1;
@@ -67,6 +73,7 @@ for (const result of results) {
     "WAF",
     "DEPRECATED",
     "WRONG_ENDPOINT",
+    "MISSING_ENDPOINT",
     "TIMEOUT",
     "DNS_FAILURE",
     "BLOCKED_ENVIRONMENT",
@@ -81,10 +88,15 @@ for (const result of results) {
   const endpointStatus =
     status === "WORKING" || status === "CANONICAL_REDIRECT"
       ? "PASS"
-      : status;
+      : status === "MISSING_ENDPOINT"
+        ? "WRONG_ENDPOINT"
+        : status;
 
   const update = {
     endpoint_status: endpointStatus,
+    endpoint_disposition: status,
+    endpoint_disposition_reason: result.disposition_reason ?? null,
+    endpoint_disposition_observed_at: outcome.evaluated_at,
     endpoint_url: String(source.endpoint_url ?? result.url),
     canonical_url:
       endpointStatus === "PASS"
@@ -108,6 +120,14 @@ for (const result of results) {
   if (error) throw error;
 
   outcome.updated_sources += 1;
+}
+
+if (strictCount) {
+  if (expectedCount < 1) throw new Error("EXPECTED_ENDPOINT_COUNT must be set when STRICT_ENDPOINT_COUNT=true");
+  if (results.length !== expectedCount) throw new Error(`Endpoint evidence count mismatch: expected ${expectedCount}, got ${results.length}`);
+  if (outcome.matched_sources !== expectedCount || outcome.updated_sources !== expectedCount || outcome.unmatched_urls.length || outcome.skipped.length) {
+    throw new Error(`Strict 933 endpoint evidence import failed: ${JSON.stringify(outcome)}`);
+  }
 }
 
 console.log(JSON.stringify(outcome, null, 2));
