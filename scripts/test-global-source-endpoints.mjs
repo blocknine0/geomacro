@@ -14,6 +14,7 @@ const OUT = path.join(ROOT, "artifacts", "global-source-endpoint-probe");
 const TIMEOUT_MS = Number(process.env.SOURCE_PROBE_TIMEOUT_MS ?? "12000");
 const CONCURRENCY = Number(process.env.SOURCE_PROBE_CONCURRENCY ?? "12");
 const MAX_URLS = Number(process.env.SOURCE_PROBE_MAX_URLS ?? "5000");
+const CLASSIFY = process.env.SOURCE_PROBE_CLASSIFY !== "false";
 
 await fs.mkdir(OUT, { recursive: true });
 
@@ -68,10 +69,13 @@ async function probe(entry) {
     cache_control: null,
     age: null,
     get_status: null,
+    get_ok_transport: null,
     get_content_type: null,
     latency_ms: null,
     ok_transport: false,
     error: null,
+    classification: "UNCLASSIFIED",
+    classification_reason: null,
   };
 
   const controller = new AbortController();
@@ -125,6 +129,7 @@ async function probe(entry) {
         try { await verify.arrayBuffer(); } catch {}
         result.get_status = verify.status;
         result.get_content_type = verify.headers.get("content-type");
+        result.get_ok_transport = verify.status >= 200 && verify.status < 400;
       } catch (error) {
         result.get_error = String(error?.message ?? error);
       }
@@ -135,6 +140,70 @@ async function probe(entry) {
     clearTimeout(timer);
     result.latency_ms = Date.now() - started;
   }
+  if (CLASSIFY) {
+    const errorText = String(result.error ?? result.get_error ?? "");
+    const finalUrl = String(result.final_url ?? "");
+    const status = result.status;
+
+    if (
+      result.ok_transport &&
+      result.method === "HEAD" &&
+      result.get_status !== null &&
+      result.get_ok_transport === false
+    ) {
+      result.classification = "FAIL";
+      result.classification_reason =
+        `HEAD succeeded but the verification GET returned HTTP ${result.get_status}.`;
+    } else if (
+      result.ok_transport &&
+      result.method === "HEAD" &&
+      result.get_error
+    ) {
+      result.classification = /abort|timeout/i.test(String(result.get_error))
+        ? "TIMEOUT"
+        : "FAIL";
+      result.classification_reason =
+        `HEAD succeeded but GET verification failed: ${String(result.get_error)}`;
+    } else if (result.ok_transport) {
+      result.classification =
+        finalUrl && finalUrl !== entry.url ? "CANONICAL_REDIRECT" : "WORKING";
+      result.classification_reason =
+        finalUrl && finalUrl !== entry.url
+          ? "Transport succeeded after redirect to a different final URL."
+          : "HTTP transport succeeded.";
+    } else if (status === 401 || status === 407) {
+      result.classification = "AUTH_REQUIRED";
+      result.classification_reason = `HTTP ${status} indicates authentication/proxy authorization is required.`;
+    } else if (status === 403) {
+      const haystack = `${result.status_text ?? ""} ${result.content_type ?? ""} ${finalUrl}`.toLowerCase();
+      result.classification = /(cloudflare|akamai|waf|bot|challenge|forbidden)/.test(haystack)
+        ? "WAF"
+        : "BLOCKED_ENVIRONMENT";
+      result.classification_reason =
+        result.classification === "WAF"
+          ? "HTTP 403 matched common WAF/challenge indicators."
+          : "HTTP 403 did not expose a verified machine-accessible response.";
+    } else if (status === 404) {
+      result.classification = "WRONG_ENDPOINT";
+      result.classification_reason = "HTTP 404; endpoint needs canonical/source-specific path verification.";
+    } else if (status === 410) {
+      result.classification = "DEPRECATED";
+      result.classification_reason = "HTTP 410 indicates a deliberately retired resource.";
+    } else if (status !== null && status >= 400) {
+      result.classification = "FAIL";
+      result.classification_reason = `HTTP ${status} transport failure.`;
+    } else if (/abort|timeout/i.test(errorText)) {
+      result.classification = "TIMEOUT";
+      result.classification_reason = errorText;
+    } else if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ENETUNREACH|EHOSTUNREACH|DNS/i.test(errorText)) {
+      result.classification = "DNS_FAILURE";
+      result.classification_reason = errorText;
+    } else if (errorText) {
+      result.classification = "FAIL";
+      result.classification_reason = errorText;
+    }
+  }
+
   return result;
 }
 
@@ -161,6 +230,11 @@ const summary = {
   transport_ok_count: results.filter(x => x.ok_transport).length,
   transport_not_ok_count: results.filter(x => !x.ok_transport).length,
   network_or_timeout_error_count: results.filter(x => x.error).length,
+  classifications: Object.fromEntries(
+    [...results.reduce((m, r) => { const k = String(r.classification ?? "UNCLASSIFIED"); m.set(k, (m.get(k) ?? 0) + 1); return m; }, new Map())].sort((a,b) => a[0].localeCompare(b[0]))
+  ),
+  remediation_count: results.filter(x => !["WORKING","CANONICAL_REDIRECT"].includes(x.classification)).length,
+  remediation_classes: results.filter(x => !["WORKING","CANONICAL_REDIRECT"].includes(x.classification)),
   statuses: Object.fromEntries(
     [...results.reduce((m, r) => {
       const k = String(r.status ?? "ERROR");

@@ -457,7 +457,8 @@ select
  count(*) filter (where verification_state='DISCOVERED')::bigint as discovered_rows,
  194::bigint as expected_country_baseline,
  (count(*)=194) as directory_complete,
- false as certification_gate_open;
+ false as certification_gate_open
+from public.live_country_statistics_source_directory;
 
 alter table public.live_country_statistics_source_directory enable row level security;
 revoke all on public.live_country_statistics_source_directory from public,anon,authenticated;

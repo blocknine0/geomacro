@@ -146,9 +146,46 @@ corridor_rows as (
 shock_rows as (
   select count(*)::bigint n from public.live_global_source_universe where scope_type='SHOCK'
 ),
+country_min as (
+  select count(*)::bigint n from (
+    select scope_code
+    from public.live_global_source_universe
+    where scope_type='COUNTRY'
+    group by scope_code
+    having count(*) >= 21
+  ) x
+),
+region_min as (
+  select count(*)::bigint n from (
+    select scope_code
+    from public.live_global_source_universe
+    where scope_type='REGION'
+    group by scope_code
+    having count(*) >= 3
+  ) x
+),
+corridor_min as (
+  select count(*)::bigint n from (
+    select scope_code
+    from public.live_global_source_universe
+    where scope_type='CORRIDOR'
+    group by scope_code
+    having count(*) >= 3
+  ) x
+),
+shock_min as (
+  select count(*)::bigint n from (
+    select scope_code
+    from public.live_global_source_universe
+    where scope_type='SHOCK'
+    group by scope_code
+    having count(*) >= 3
+  ) x
+),
 country_core_min as (
   select count(*)::bigint n from (
-    select scope_code from public.live_global_source_universe
+    select scope_code
+    from public.live_global_source_universe
     where scope_type='COUNTRY'
       and source_role in (
         'GLOBAL_GOVERNANCE_PRIMARY',
@@ -190,39 +227,66 @@ country_stats_paths as (
 select
  now() evaluated_at,
  countries.n country_count,
- 21::bigint backbone_sources_per_country,
+ 21::bigint country_sources_per_subject,
  country_rows.n actual_country_source_rows,
- countries.n*21::bigint backbone_expected_country_source_rows,
+ countries.n*21::bigint expected_country_source_rows,
+ country_min.n countries_meeting_minimum,
+ regions.n region_count,
+ region_rows.n actual_region_source_rows,
+ regions.n*3 expected_region_source_rows,
+ region_min.n regions_meeting_minimum,
+ corridors.n corridor_count,
+ corridor_rows.n actual_corridor_source_rows,
+ corridors.n*3 expected_corridor_source_rows,
+ corridor_min.n corridors_meeting_minimum,
+ shocks.n shock_count,
+ shock_rows.n actual_shock_source_rows,
+ shocks.n*3 expected_shock_source_rows,
+ shock_min.n shocks_meeting_minimum,
+ (
+   countries.n>0
+   and country_rows.n=countries.n*21
+   and country_min.n=countries.n
+   and regions.n=24
+   and region_rows.n=regions.n*3
+   and region_min.n=regions.n
+   and corridors.n=35
+   and corridor_rows.n=corridors.n*3
+   and corridor_min.n=corridors.n
+   and shocks.n=36
+   and shock_rows.n=shocks.n*3
+   and shock_min.n=shocks.n
+   and country_core_min.n=countries.n
+   and gov_directory.n=195
+   and stats_directory.n=194
+   and country_gov_paths.n=countries.n
+   and country_stats_paths.n=countries.n
+ ) as source_universe_complete,
+ false as certification_gate_open,
  country_core_min.n countries_meeting_backbone_minimum,
  gov_directory.n government_directory_rows,
  195::bigint expected_government_directory_rows,
  stats_directory.n statistics_directory_rows,
  194::bigint expected_statistics_directory_rows,
  country_gov_paths.n enabled_countries_with_government_path,
- country_stats_paths.n enabled_countries_with_statistics_path,
- regions.n region_count,
- region_rows.n actual_region_source_rows,
- regions.n*3 expected_region_source_rows,
- corridors.n corridor_count,
- corridor_rows.n actual_corridor_source_rows,
- corridors.n*3 expected_corridor_source_rows,
- shocks.n shock_count,
- shock_rows.n actual_shock_source_rows,
- shocks.n*3 expected_shock_source_rows,
- (
-   countries.n>0
-   and country_core_min.n=countries.n
-   and gov_directory.n=195
-   and stats_directory.n=194
-   and country_gov_paths.n=countries.n
-   and region_rows.n=regions.n*3
-   and corridor_rows.n=corridors.n*3
-   and shock_rows.n=shocks.n*3
-   and regions.n=24
-   and corridors.n=35
-   and shocks.n=36
- ) as source_universe_complete,
- false as certification_gate_open;
+ country_stats_paths.n enabled_countries_with_statistics_path
+from countries
+cross join regions
+cross join corridors
+cross join shocks
+cross join country_rows
+cross join region_rows
+cross join corridor_rows
+cross join shock_rows
+cross join country_min
+cross join region_min
+cross join corridor_min
+cross join shock_min
+cross join country_core_min
+cross join gov_directory
+cross join stats_directory
+cross join country_gov_paths
+cross join country_stats_paths;
 
 comment on view public.live_global_source_universe_status is
  'Internal source-universe inventory completeness only. Government/statistics directories are discovery inventories; direct certification and commercial activation remain locked.';

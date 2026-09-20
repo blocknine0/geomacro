@@ -1,0 +1,91 @@
+name: Source Network Certification Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/04*_global_source_coverage*.sql'
+      - 'supabase/migrations/05*_global_source*.sql'
+      - 'supabase/migrations/06*_source_network*.sql'
+      - 'supabase/migrations/06*_global_source*.sql'
+      - 'supabase/migrations/06*_critical_mineral*.sql'
+      - 'scripts/test-global-source-endpoints.mjs'
+      - 'scripts/audit-source-certification-100.mjs'
+      - 'scripts/import-source-endpoint-evidence.mjs'
+      - 'src/lib/source-certification-contract.ts'
+      - 'src/lib/risk-gate-readiness.server.ts'
+      - 'src/routes/api.risk-gate-readiness.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-endpoint-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Probe and classify every discovered source URL
+        env:
+          SOURCE_PROBE_MAX_URLS: '5000'
+          SOURCE_PROBE_TIMEOUT_MS: '12000'
+          SOURCE_PROBE_CONCURRENCY: '12'
+          SOURCE_PROBE_CLASSIFY: 'true'
+        run: bun run source:endpoints:probe
+      - name: Upload endpoint evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-network-endpoint-probe-${{ github.run_id }}
+          path: artifacts/global-source-endpoint-probe
+          if-no-files-found: error
+          retention-days: 30
+
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify source-network contracts
+        run: bunx vitest run src/__tests__/source-certification-contract.test.ts src/__tests__/global-source-coverage-migration.test.ts src/__tests__/source-network-launch-gate-static.test.ts
+
+  staging-strict-audit:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      EXPECTED_SUPABASE_PROJECT_REF: hencqxkmmcgnothotqpq
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Require isolated staging database
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SUPABASE_DB_URL:-}" ]]
+          [[ -n "${EXPECTED_SUPABASE_PROJECT_REF:-}" ]]
+      - name: Run strict source-network audit (read only)
+        run: node scripts/audit-source-certification-100.mjs --strict
+      - name: Upload staging certification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-network-certification-staging-${{ github.run_id }}
+          path: artifacts/source-certification-100
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,39 @@
+name: Risk Gate Testnet End-to-End Acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/hardening/source-network-risk-gate-production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    env:
+      RISK_GATE_STAGING_BASE_URL: ${{ vars.RISK_GATE_STAGING_BASE_URL }}
+      RISK_GATE_STAGING_API_KEY: ${{ secrets.RISK_GATE_STAGING_API_KEY }}
+      RISK_GATE_LOAD_TEST_ACK: STAGING_ONLY
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Run testnet Risk Gate acceptance
+        run: bun scripts/accept-risk-gate-testnet.mjs
+      - name: Upload testnet acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: risk-gate-testnet-acceptance-${{ github.run_id }}
+          path: artifacts/risk-gate-testnet-acceptance.json
+          if-no-files-found: warn
+          retention-days: 30

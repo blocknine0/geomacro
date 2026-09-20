@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "211bb31f5a6d8c069a432f5eeaa363afeae79279",
-  "published_baseline": "Geomacro public website approved after 2026-09-18 publish",
+  "baseline_sha": "70bbdd17e8e11ae809a23ab3ed2ac75d151ebd7f",
+  "published_baseline": "Geomacro public website approved after Risk Gate testnet capability contract and exact contractual copy",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-09-17T21:43:45Z",
+  "locked_at_utc": "2026-09-20T04:47:41Z",
   "published_source_sha": "77a12a5aacdf8df924b03ebb446cf70835279e17",
   "lock_revision": "fail-closed-self-test-v1"
 }

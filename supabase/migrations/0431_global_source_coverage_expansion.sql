@@ -371,9 +371,9 @@ values
   ('geo-global-aggregator','GEOPOLITICS','GLOBAL','GLOBAL','GLOBAL_AGGREGATOR',true,1,'COVERED','gdelt_v2','Global discovery/corroboration backbone.'),
   ('geo-un-primary','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','un_geneva_press_rss','UN official path; additional UN security/humanitarian feeds are governed separately.'),
   ('macro-wb-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'COVERED','world_bank_indicators','Global country-level macro baseline.'),
-  ('macro-bis-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','bis_rss_media_releases','BIS global financial-system signal path.'),
+  ('macro-bis-structured','MACRO','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','bis_rss_media_releases','BIS global financial-system signal path from an international primary source.'),
   ('minerals-usgs','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'COVERED','iea_critical_minerals','Global mineral supply/demand baseline.'),
-  ('minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','unctad_critical_minerals_data','Global trade-flow baseline.'),
+  ('minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','unctad_critical_minerals_data','Global trade-flow baseline from an international primary source.'),
   ('minerals-policy','CRITICAL_MINERALS','GLOBAL','GLOBAL','SPECIALIST_INDUSTRY',true,2,'PARTIAL','oecd_critical_raw_materials_restrictions','Global export-restriction intelligence.')
 on conflict (category, scope_type, scope_code, source_class)
 do update set

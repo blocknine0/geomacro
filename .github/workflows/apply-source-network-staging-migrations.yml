@@ -1,0 +1,62 @@
+name: Apply Testnet Supabase Source Network Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan pending source-network migrations, or apply them to the isolated testnet/staging project."
+        required: true
+        default: plan
+        type: choice
+        options: [plan, apply]
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/hardening/source-network-risk-gate-production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    concurrency:
+      group: geomacro-staging-source-network-migrations
+      cancel-in-progress: false
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: hencqxkmmcgnothotqpq
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Validate isolated testnet target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${SUPABASE_DB_URL:-}" ]]
+          node <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          let url;
+          try { url = new URL(process.env.SUPABASE_DB_URL); } catch { throw new Error("SUPABASE_DB_URL must be a valid connection URL"); }
+          if (!["postgres:", "postgresql:"].includes(url.protocol)) throw new Error("SUPABASE_DB_URL must use postgres:// or postgresql://");
+          const directHost = `db.${ref}.supabase.co`;
+          const poolerHost = url.hostname.endsWith(".pooler.supabase.com");
+          const directMatch = url.hostname === directHost && url.username === "postgres";
+          const poolerMatch = poolerHost && url.username === `postgres.${ref}`;
+          if (!directMatch && !poolerMatch) throw new Error("Refusing database target outside geomacro-staging.");
+          if (!url.password || url.pathname !== "/postgres") throw new Error("Invalid staging database target.");
+          console.log("PASS: isolated geomacro-staging database identity confirmed.");
+          NODE
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+      - name: Show pending staging migrations
+        run: supabase db push --db-url "${SUPABASE_DB_URL}" --dry-run
+      - name: Apply pending staging migrations
+        if: inputs.mode == 'apply'
+        run: supabase db push --db-url "${SUPABASE_DB_URL}"
+      - name: Verify staging migration state
+        if: inputs.mode == 'apply'
+        run: supabase db push --db-url "${SUPABASE_DB_URL}" --dry-run

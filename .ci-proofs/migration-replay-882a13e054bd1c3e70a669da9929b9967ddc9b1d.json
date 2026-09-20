@@ -1,0 +1,9 @@
+{
+  "suite": "geomacro-full-migration-replay",
+  "status": "PASS",
+  "commit_sha": "882a13e054bd1c3e70a669da9929b9967ddc9b1d",
+  "workflow": "Database schema safety",
+  "run_id": "35495121386",
+  "cli_version": "2.117.0",
+  "replay_command": "supabase db reset --local --no-seed"
+}

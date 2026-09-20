@@ -21,7 +21,7 @@ create table if not exists public.live_country_primary_source_directory (
 );
 
 insert into public.live_country_primary_source_directory
-(country_iso2,country_name,government_portal_url,notes)
+(country_iso2,country_name,government_portal_url)
 values
 ('AF','Afghanistan','https://mfa.gov.af'),
 ('AL','Albania','https://kryeministria.al'),
@@ -284,7 +284,8 @@ select
  count(*) filter (where verification_state='DISCOVERED')::bigint as discovered_rows,
  195::bigint as expected_195_baseline,
  (count(*)=195) as directory_complete,
- false as certification_gate_open;
+ false as certification_gate_open
+from public.live_country_primary_source_directory;
 
 alter table public.live_country_primary_source_directory enable row level security;
 revoke all on public.live_country_primary_source_directory from public,anon,authenticated;

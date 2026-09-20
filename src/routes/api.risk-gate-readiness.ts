@@ -50,6 +50,8 @@ export const Route =
                   verification_keys: false,
                   fresh_country_risk_object: false,
                   publisher_signing: false,
+                  source_network_100_complete: false,
+                  realtime_source_freshness: false,
                 },
               },
               {

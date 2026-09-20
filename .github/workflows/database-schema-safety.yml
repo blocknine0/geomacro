@@ -8,14 +8,14 @@ on:
       - '.github/workflows/database-schema-safety.yml'
       - 'package.json'
   push:
-    branches: [main]
+    branches: [main, hardening/source-network-risk-gate-production]
     paths:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
       - '.github/workflows/database-schema-safety.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   static-safety:
@@ -37,6 +37,12 @@ jobs:
           # Pin the CLI so CI does not depend on GitHub's unauthenticated
           # "latest release" lookup, which can fail under API rate limiting.
           version: 2.117.0
+      # The replay must execute the exact Git revision under test; never trust a stale checkout.
+      - name: Verify replay revision
+        run: |
+          echo "Replay revision: $(git rev-parse HEAD)"
+          git show -s --format='Replay commit: %H %s' HEAD
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Start disposable local Supabase
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - name: Replay the full migration chain from zero
@@ -44,3 +50,26 @@ jobs:
       - name: Stop disposable Supabase
         if: always()
         run: supabase stop --no-backup
+
+      - name: Record green replay proof
+        if: success() && github.ref == 'refs/heads/hardening/source-network-risk-gate-production'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-proofs
+          cat > ".ci-proofs/migration-replay-${GITHUB_SHA}.json" <<EOF
+          {
+            "suite": "geomacro-full-migration-replay",
+            "status": "PASS",
+            "commit_sha": "${GITHUB_SHA}",
+            "workflow": "${GITHUB_WORKFLOW}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "cli_version": "2.117.0",
+            "replay_command": "supabase db reset --local --no-seed"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".ci-proofs/migration-replay-${GITHUB_SHA}.json"
+          git commit -m "ci: record green migration replay proof [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
