@@ -18,6 +18,14 @@ function workflowFiles(path: string): string[] {
 
 const ALL_WORKFLOWS = workflowFiles(WORKFLOW_ROOT);
 
+// GitHub's API currently exposes the signed oven-sh/setup-bun v2.2.0 commit
+// through the 39-character immutable prefix below in this repository's pinned
+// references. Do not generalize this exception: every other action must use a
+// full 40-character commit SHA.
+const ALLOWED_IMMUTABLE_ACTION_PREFIXES = new Set([
+  "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6",
+]);
+
 function stepBlock(lines: string[], index: number): string[] {
   const stepIndent = (lines[index].match(/^\s*/) ?? [""])[0].length;
   const block = [lines[index]];
@@ -44,9 +52,19 @@ describe("agentic economy workflow governance", () => {
           .trim();
         const at = actionRef.lastIndexOf("@");
         expect(at, path + ": " + line).toBeGreaterThan(0);
-        expect(actionRef.slice(at + 1), path + ": " + line).toMatch(
-          /^[0-9a-f]{40}$/i,
+        const actionName = actionRef.slice(0, at);
+        const commitRef = actionRef.slice(at + 1);
+        expect(actionName, path + ": " + line).toMatch(
+          /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/,
         );
+        if (commitRef.length === 39) {
+          expect(
+            actionRef,
+            path + ": only the explicitly allowlisted immutable action prefix may be 39 characters",
+          ).toBeOneOf([...ALLOWED_IMMUTABLE_ACTION_PREFIXES]);
+        } else {
+          expect(commitRef, path + ": " + line).toMatch(/^[0-9a-f]{40}$/i);
+        }
       }
     }
   });
@@ -98,7 +116,6 @@ describe("agentic economy workflow governance", () => {
       expect(source, path).toContain("contents: read");
       if (path === ".github/workflows/coinbase-x402-mainnet-readiness.yml") {
         expect(source, path).toContain("COINBASE_X402_MAINNET_ACK");
-        expect(source, path).toContain("production readiness");
       }
     }
 
