@@ -67,6 +67,7 @@ for (const result of results) {
     "WAF",
     "DEPRECATED",
     "WRONG_ENDPOINT",
+    "MISSING_ENDPOINT",
     "TIMEOUT",
     "DNS_FAILURE",
     "BLOCKED_ENVIRONMENT",
@@ -81,10 +82,15 @@ for (const result of results) {
   const endpointStatus =
     status === "WORKING" || status === "CANONICAL_REDIRECT"
       ? "PASS"
-      : status;
+      : status === "MISSING_ENDPOINT"
+        ? "WRONG_ENDPOINT"
+        : status;
 
   const update = {
     endpoint_status: endpointStatus,
+    endpoint_disposition: status,
+    endpoint_disposition_reason: result.disposition_reason ?? null,
+    endpoint_disposition_observed_at: outcome.evaluated_at,
     endpoint_url: String(source.endpoint_url ?? result.url),
     canonical_url:
       endpointStatus === "PASS"
