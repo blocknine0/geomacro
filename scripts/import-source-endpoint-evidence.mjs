@@ -14,6 +14,7 @@ const supabaseUrl = process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const serviceRole = process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF;
 const expectedCount = Number(process.env.EXPECTED_ENDPOINT_COUNT ?? "0");
+const expectedActiveCount = Number(process.env.EXPECTED_ACTIVE_ENDPOINT_COUNT ?? "0");
 const strictCount = process.env.STRICT_ENDPOINT_COUNT === "true";
 
 if (!supabaseUrl || !serviceRole) {
@@ -124,9 +125,21 @@ for (const result of results) {
 
 if (strictCount) {
   if (expectedCount < 1) throw new Error("EXPECTED_ENDPOINT_COUNT must be set when STRICT_ENDPOINT_COUNT=true");
-  if (results.length !== expectedCount) throw new Error(`Endpoint evidence count mismatch: expected ${expectedCount}, got ${results.length}`);
-  if (outcome.matched_sources !== expectedCount || outcome.updated_sources !== expectedCount || outcome.unmatched_urls.length || outcome.skipped.length) {
-    throw new Error(`Strict 933 endpoint evidence import failed: ${JSON.stringify(outcome)}`);
+  const requiredResults = results.filter((result) => result.required_in_phase_b === true);
+  const activeResults = results.filter((result) => result.active_operational === true);
+  if (requiredResults.length !== expectedCount) {
+    throw new Error(`Required endpoint evidence count mismatch: expected ${expectedCount}, got ${requiredResults.length}`);
+  }
+  if (expectedActiveCount > 0 && activeResults.length !== expectedActiveCount) {
+    throw new Error(`Active endpoint evidence count mismatch: expected ${expectedActiveCount}, got ${activeResults.length}`);
+  }
+  if (
+    outcome.matched_sources !== results.length ||
+    outcome.updated_sources !== results.length ||
+    outcome.unmatched_urls.length ||
+    outcome.skipped.length
+  ) {
+    throw new Error(`Strict endpoint evidence import failed: ${JSON.stringify(outcome)}`);
   }
 }
 

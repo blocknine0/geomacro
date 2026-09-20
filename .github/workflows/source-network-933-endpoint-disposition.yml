@@ -92,16 +92,23 @@ jobs:
           node scripts/import-source-endpoint-evidence.mjs \
             artifacts/source-endpoint-disposition-933/results.json
 
-      - name: Verify permanent 933 endpoint disposition gate
+      - name: Verify permanent endpoint disposition gates
         shell: bash
         run: |
           set -euo pipefail
-          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c \
+
+          required_row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c \
             "select required_source_count,certification_record_count,disposition_count,unclassified_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
-          echo "${row}"
-          expected="933|933|933|0|t"
-          test "${row}" = "${expected}"
-          echo "PASS: 933/933 endpoint disposition is complete."
+          echo "required: ${required_row}"
+          test "${required_row}" = "933|933|933|0|t"
+
+          active_row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c \
+            "select active_source_count,certification_record_count,disposition_count,unclassified_count,active_source_endpoint_disposition_complete from public.live_active_source_endpoint_disposition_status")"
+          echo "active: ${active_row}"
+          test "${active_row##*|}" = "t"
+
+          echo "PASS: 933/933 canonical Phase B endpoint disposition is complete."
+          echo "PASS: every active operational source also has an explicit endpoint disposition."
 
       - name: Upload 933 endpoint evidence
         if: always()

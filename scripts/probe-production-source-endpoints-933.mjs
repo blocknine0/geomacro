@@ -51,6 +51,16 @@ async function sql(query) {
   return stdout.trim();
 }
 
+const universeRaw = await sql(`
+select json_build_object(
+  'required_count', (select count(distinct u.source_id)::bigint from public.live_global_source_universe u where u.required = true),
+  'active_count', (select count(*)::bigint from public.live_external_sources s where s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true),
+  'active_outside_required_count', (select count(*)::bigint from public.live_external_sources s where (s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true) and not exists (select 1 from public.live_global_source_universe u where u.source_id = s.source_id and u.required = true)),
+  'required_outside_certification_record_count', (select count(*)::bigint from public.live_global_source_universe u left join public.live_source_certification_records r on r.source_id = u.source_id where u.required = true and r.source_id is null)
+)::text
+`);
+const universe = JSON.parse(universeRaw || "{}");
+
 const rowsRaw = await sql(`
 select coalesce(json_agg(x order by x.source_id), '[]'::json)::text
 from (
@@ -61,14 +71,19 @@ from (
     s.category,
     s.provider_name,
     s.country_scope,
-    s.freshness_class
+    s.freshness_class,
+    exists (
+      select 1
+      from public.live_global_source_universe u
+      where u.source_id = r.source_id and u.required = true
+    ) as required_in_phase_b,
+    (s.enabled_for_ingestion = true or s.enabled_for_commercial_signals = true) as active_operational
   from public.live_source_certification_records r
   join public.live_external_sources s on s.source_id = r.source_id
   where exists (
     select 1
     from public.live_global_source_universe u
-    where u.source_id = r.source_id
-      and u.required = true
+    where u.source_id = r.source_id and u.required = true
   )
   or s.enabled_for_ingestion = true
   or s.enabled_for_commercial_signals = true
@@ -76,8 +91,20 @@ from (
 `);
 
 const sources = JSON.parse(rowsRaw || "[]");
-if (sources.length !== expectedCount) {
-  throw new Error(`Canonical source universe count mismatch: expected ${expectedCount}, got ${sources.length}`);
+if (Number(universe.required_count) !== expectedCount) {
+  throw new Error(`Phase B canonical required-universe mismatch: expected ${expectedCount}, got ${universe.required_count}; active sources outside required universe: ${universe.active_outside_required_count}`);
+}
+const requiredSources = sources.filter((s) => s.required_in_phase_b);
+const activeSources = sources.filter((s) => s.active_operational);
+
+if (requiredSources.length !== expectedCount) {
+  throw new Error(`Certification-record coverage mismatch for required universe: expected ${expectedCount}, got ${requiredSources.length}`);
+}
+if (new Set(activeSources.map((s) => s.source_id)).size !== activeSources.length) {
+  throw new Error("Active operational source universe contains duplicate source_id values.");
+}
+if (activeSources.some((s) => !s.endpoint_url && s.active_operational)) {
+  throw new Error("An active operational source has no registered endpoint URL.");
 }
 if (new Set(sources.map((s) => s.source_id)).size !== sources.length) {
   throw new Error("Canonical source universe contains duplicate source_id values.");
@@ -253,7 +280,14 @@ const summary = {
   evaluated_at: new Date().toISOString(),
   authoritative_project_ref: expectedProject,
   expected_endpoint_count: expectedCount,
+  canonical_required_source_count: Number(universe.required_count),
+  active_source_count: Number(universe.active_count),
+  active_source_observed_count: activeSources.length,
+  active_source_outside_required_count: Number(universe.active_outside_required_count),
+  required_outside_certification_record_count: Number(universe.required_outside_certification_record_count),
   observed_endpoint_count: results.length,
+  required_observed_count: results.filter((r) => r.required_in_phase_b).length,
+  active_observed_count: results.filter((r) => r.active_operational).length,
   disposition_count: results.filter((r) => r.disposition !== "UNCLASSIFIED").length,
   unclassified_count: results.filter((r) => r.disposition === "UNCLASSIFIED").length,
   remediation_count: results.filter((r) => !["WORKING", "CANONICAL_REDIRECT"].includes(r.disposition)).length,
@@ -265,6 +299,10 @@ await fs.writeFile(path.join(outDir, "results.json"), JSON.stringify(results, nu
 await fs.writeFile(path.join(outDir, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
 console.log(JSON.stringify(summary, null, 2));
 
-if (summary.observed_endpoint_count !== expectedCount || summary.disposition_count !== expectedCount || summary.unclassified_count !== 0) {
+if (
+  summary.required_observed_count !== expectedCount ||
+  summary.required_observed_count !== Number(universe.required_count) ||
+  summary.unclassified_count !== 0
+) {
   process.exit(1);
 }
