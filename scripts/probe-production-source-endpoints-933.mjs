@@ -145,7 +145,7 @@ async function probe(endpoint) {
     entry.ok_transport = entry.get_ok_transport;
 
     try {
-      if (response.body) await response.body.cancel();
+      if (response.body) void response.body.cancel().catch(() => {});
     } catch (error) {
       entry.get_error = String(error?.message ?? error);
       entry.ok_transport = false;
