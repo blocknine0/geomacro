@@ -190,9 +190,9 @@ country_stats_paths as (
 select
  now() evaluated_at,
  countries.n country_count,
- 21::bigint backbone_sources_per_country,
+ 21::bigint country_sources_per_subject,
  country_rows.n actual_country_source_rows,
- countries.n*21::bigint backbone_expected_country_source_rows,
+ countries.n*21::bigint expected_country_source_rows,
  country_core_min.n countries_meeting_backbone_minimum,
  gov_directory.n government_directory_rows,
  195::bigint expected_government_directory_rows,
