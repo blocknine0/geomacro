@@ -59,8 +59,8 @@ function isAgenticWorkflow(path: string, source: string) {
 }
 
 function expectPinnedActions(path: string, source: string) {
-  const externalActionLines = source
-    .split("\n")
+  const lines = source.split("\n");
+  const externalActionLines = lines
     .filter((line) => /\buses:\s+/.test(line))
     .filter((line) => !/\buses:\s+\.\//.test(line));
 
@@ -71,6 +71,22 @@ function expectPinnedActions(path: string, source: string) {
   for (const line of externalActionLines) {
     expect(line, `${path}: ${line}`).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
   }
+
+  lines.forEach((line, index) => {
+    if (!/\buses:\s+actions\/checkout@/.test(line)) return;
+
+    const block = lines.slice(index, Math.min(lines.length, index + 8));
+    const nextStep = block.slice(1).findIndex((item) =>
+      /^\s*- (?:name:|uses:)/.test(item),
+    );
+    const checkoutBlock =
+      nextStep >= 0 ? block.slice(0, nextStep + 1) : block;
+
+    expect(
+      checkoutBlock.some((item) => item.includes("persist-credentials: false")),
+      `${path}: checkout at line ${index + 1} must disable credential persistence`,
+    ).toBe(true);
+  });
 }
 
 describe("agentic economy workflow governance", () => {
