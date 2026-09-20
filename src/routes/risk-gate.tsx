@@ -249,9 +249,7 @@ function RiskGatePage() {
               execution_authorized = false
             </p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              A risk recommendation is not permission to move money. The
-              customer&apos;s own identity, permissions and policy layer applies
-              its rules after the Risk Gate response.
+              A risk recommendation is not permission to move money. The customer&apos;s own identity, permissions and policy layer applies its rules after the Risk Gate response.
             </p>
           </div>
           </div>
