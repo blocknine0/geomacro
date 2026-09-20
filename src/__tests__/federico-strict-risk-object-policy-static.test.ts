@@ -333,7 +333,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "blockerCount === 0",
     );
     expect(preflight).toContain(
-      "highCount === 0",
+      'const highCount = severityCount("high");',
+    );
+    expect(preflight).toContain(
+      'high_count: highCount,',
     );
     expect(workflow).toContain(
       '.gates.partner_admission == "PASS"',
