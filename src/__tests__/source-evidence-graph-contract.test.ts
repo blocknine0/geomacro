@@ -11,6 +11,10 @@ const runtimeMigration = fs.readFileSync(
   path.join(root, "supabase/migrations/962_source_runtime_evidence_snapshot.sql"),
   "utf8",
 );
+const promotionMigration = fs.readFileSync(
+  path.join(root, "supabase/migrations/963_source_certification_evidence_graph_set_promotion.sql"),
+  "utf8",
+);
 const script = fs.readFileSync(
   path.join(root, "scripts/source-certification-evidence-graph.mjs"),
   "utf8",
@@ -27,12 +31,14 @@ describe("permanent source evidence graph", () => {
       "live_source_certification_evidence_nodes",
       "live_source_certification_evidence_edges",
       "promote_source_certification_from_evidence_graph",
-      "promote_source_certification_evidence_graph_run",
       "EVIDENCE_GRAPH_INCOMPLETE",
       "if rights_value not in ('COMMERCIAL_OK','DERIVED_ONLY')",
     ]) {
       expect(migration).toContain(token);
     }
+    expect(promotionMigration).toContain("promote_source_certification_evidence_graph_run");
+    expect(promotionMigration).toContain("source_promoted_count");
+    expect(promotionMigration).toContain("path_promoted_count");
     for (const dimension of [
       "REGISTRY","ENDPOINT","RIGHTS","SCHEMA","FRESHNESS",
       "PROVENANCE","INDEPENDENCE","ADAPTER","RUNTIME","FALLBACK",
@@ -52,6 +58,8 @@ describe("permanent source evidence graph", () => {
     expect(script).toContain("reviewed-commercial-source-rights-manifest");
     expect(script).toContain("official-surface-rights-crawler");
     expect(script).toContain("promote_source_certification_evidence_graph_run");
+    expect(script).toContain("SUPABASE_DB_URL");
+    expect(script).toContain("direct PostgreSQL evidence persistence and promotion");
     expect(script).not.toContain("enabled_for_commercial_signals = true");
     expect(script).not.toContain("enabled_for_ingestion = true");
   });
@@ -63,5 +71,6 @@ describe("permanent source evidence graph", () => {
     expect(workflow).toContain("bun run source:certification:evidence-graph");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("schedule:");
+    expect(workflow).toContain("SUPABASE_DB_URL");
   });
 });
