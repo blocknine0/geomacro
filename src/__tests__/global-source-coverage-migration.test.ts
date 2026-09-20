@@ -11,6 +11,25 @@ const coverageContract = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
+  it("preserves the prior source-universe status column contract", () => {
+    const sourceUniverseHandoff = readFileSync(
+      "supabase/migrations/059_source_universe_certification_handoff.sql",
+      "utf8",
+    );
+    expect(sourceUniverseHandoff).toContain(
+      "21::bigint country_sources_per_subject",
+    );
+    expect(sourceUniverseHandoff).toContain(
+      "countries.n*21::bigint expected_country_source_rows",
+    );
+    expect(sourceUniverseHandoff).not.toContain(
+      "backbone_sources_per_country",
+    );
+    expect(sourceUniverseHandoff).not.toContain(
+      "backbone_expected_country_source_rows",
+    );
+  });
+
   it("binds the 059 source-universe status view to every CTE source", () => {
     const sourceUniverseHandoff = readFileSync(
       "supabase/migrations/059_source_universe_certification_handoff.sql",
