@@ -27,6 +27,7 @@ describe("permanent source evidence graph", () => {
       "live_source_certification_evidence_nodes",
       "live_source_certification_evidence_edges",
       "promote_source_certification_from_evidence_graph",
+      "promote_source_certification_evidence_graph_run",
       "EVIDENCE_GRAPH_INCOMPLETE",
       "if rights_value not in ('COMMERCIAL_OK','DERIVED_ONLY')",
     ]) {
@@ -50,7 +51,7 @@ describe("permanent source evidence graph", () => {
     expect(script).toContain("Rights are never inferred from endpoint reachability.");
     expect(script).toContain("reviewed-commercial-source-rights-manifest");
     expect(script).toContain("official-surface-rights-crawler");
-    expect(script).toContain("promote_source_certification_from_evidence_graph");
+    expect(script).toContain("promote_source_certification_evidence_graph_run");
     expect(script).not.toContain("enabled_for_commercial_signals = true");
     expect(script).not.toContain("enabled_for_ingestion = true");
   });
