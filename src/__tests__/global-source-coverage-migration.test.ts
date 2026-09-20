@@ -5,6 +5,10 @@ const migration = readFileSync(
   "supabase/migrations/0431_global_source_coverage_expansion.sql",
   "utf8",
 );
+const coverageContract = readFileSync(
+  "supabase/migrations/055_global_coverage_contract.sql",
+  "utf8",
+);
 
 describe("global source coverage migration integrity", () => {
   it("binds the 057 government portal status view to its directory table", () => {
