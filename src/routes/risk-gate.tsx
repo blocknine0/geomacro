@@ -137,10 +137,7 @@ function RiskGatePage() {
         <div className="mt-5 rounded-xl border border-border/60 bg-background/30 p-5">
           <p className="text-sm leading-relaxed text-muted-foreground">
             Current Private Pilot scope is country and directional corridor risk.
-            Geomacro supports a country or corridor Risk Object, including
-            directional corridors composed from endpoints plus eligible bilateral
-            evidence. Full physical-route and counterparty modelling are not
-            claimed.
+            Geomacro supports a country or corridor Risk Object, including directional corridors composed from endpoints plus eligible bilateral evidence. Full physical-route and counterparty modelling are not claimed.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             Event-specific Risk Objects remain a broader product direction only.
