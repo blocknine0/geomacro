@@ -165,6 +165,22 @@ class NewsPageParser:
 
 DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
+        "source_id": "un_all_documents_rss",
+        "name": "UN Documents All Documents RSS",
+        "url": "https://docs.un.org/rss/allundocs.xml",
+        "event_type": "GEOPOLITICS_UN_DOCUMENT",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 168,
+    },
+    {
+        "source_id": "un_human_rights_council_rss",
+        "name": "UN Human Rights Council RSS",
+        "url": "https://docs.un.org/rss/hrc.xml",
+        "event_type": "GEOPOLITICS_HUMAN_RIGHTS",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 168,
+    },
+    {
         "source_id": "un_geneva_press_rss",
         "name": "UN Geneva Press Releases RSS",
         "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
