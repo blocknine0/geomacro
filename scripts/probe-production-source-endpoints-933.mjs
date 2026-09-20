@@ -16,8 +16,8 @@ import { collectMigrationEndpointManifest, readEndpointManifestLock, assertEndpo
 
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF ?? "ldpwajisioljyjtojvfx";
 const expectedCount = Number(process.env.EXPECTED_ENDPOINT_COUNT ?? "933");
-const timeoutMs = Number(process.env.SOURCE_PROBE_TIMEOUT_MS ?? "12000");
-const concurrency = Math.max(1, Number(process.env.SOURCE_PROBE_CONCURRENCY ?? "20"));
+const timeoutMs = Number(process.env.SOURCE_PROBE_TIMEOUT_MS ?? "5000");
+const concurrency = Math.max(1, Number(process.env.SOURCE_PROBE_CONCURRENCY ?? "40"));
 
 const manifest = await collectMigrationEndpointManifest();
 const lock = await readEndpointManifestLock();
