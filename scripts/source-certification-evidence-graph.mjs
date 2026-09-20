@@ -963,7 +963,7 @@ async function main() {
     select r.edge_id,r.run_id,r.from_evidence_id,r.to_evidence_id,r.relation,r.observed_at
     from tmp_edges t cross join lateral jsonb_populate_recordset(null::public.live_source_certification_evidence_edges, t.payload::jsonb) r
     on conflict (edge_id) do update set run_id=excluded.run_id,from_evidence_id=excluded.from_evidence_id,to_evidence_id=excluded.to_evidence_id,relation=excluded.relation,observed_at=excluded.observed_at;
-    select public.promote_source_certification_evidence_graph_run(:'run_id', :'actor');
+    select '__PROMOTION_RESULT__' || public.promote_source_certification_evidence_graph_run(:'run_id', :'actor')::text;
     update public.live_source_certification_evidence_runs set node_count=__NODE_COUNT__,edge_count=__EDGE_COUNT__,source_eligible_count=__ELIGIBLE_COUNT__,write_operations_performed=true where run_id=:'run_id';
     commit;
   `.replaceAll("__SOURCE_COUNT__", String(sources.length))
@@ -980,6 +980,10 @@ async function main() {
       "psql",
       [
         SUPABASE_DB_URL,
+        "-X",
+        "-A",
+        "-t",
+        "-v", "ON_ERROR_STOP=1",
         "-v", "run_id=" + runId,
         "-v", "code_revision=" + CODE_REVISION,
         "-v", "evaluated_at=" + evaluatedAt,
@@ -989,9 +993,10 @@ async function main() {
       { maxBuffer: 20 * 1024 * 1024 },
     );
     const lines = String(result.stdout || "").trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const jsonLine = [...lines].reverse().find((line) => line.startsWith("{") && line.endsWith("}"));
-    if (!jsonLine) throw new Error("PostgreSQL promotion returned no JSON result");
-    return { data: JSON.parse(jsonLine) };
+    const marker = "__PROMOTION_RESULT__";
+    const markerLine = [...lines].reverse().find((line) => line.startsWith(marker));
+    if (!markerLine) throw new Error("PostgreSQL promotion returned no marked result");
+    return { data: JSON.parse(markerLine.slice(marker.length)) };
   });
 
   const promotion = promotionResult.data || {};
