@@ -13,7 +13,7 @@
 --   35 strategic corridors × 3 mineral-route source paths
 --
 -- Shock layer:
---   45+ dedicated critical-minerals shock conditions × 3 source paths
+--   43 dedicated critical-minerals shock conditions × 3 source paths
 --
 -- This is inventory completion only. Every new source remains fail-closed.
 -- =============================================================================
