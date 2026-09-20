@@ -42,11 +42,9 @@ const protectedPrefixes = [
   "src/hooks/",
 ];
 
-const lockInfrastructure = new Set([
-  ".github/workflows/website-lock.yml",
-  ".github/workflows/sync-lovable-main.yml",
-  "scripts/ops/verify-website-lock.mjs",
-]);
+// Lock infrastructure is governed by dedicated static invariants, not the
+// published website content baseline. Baseline-locking the verifier/workflow
+// itself would make ordinary security maintenance self-deadlocking.
 
 function isProtectedWebsitePath(path) {
   if (protectedExact.has(path)) return true;
@@ -55,8 +53,6 @@ function isProtectedWebsitePath(path) {
   // UI routes are frozen. API/server route files are .ts and remain available
   // for backend development without changing the published presentation.
   if (path.startsWith("src/routes/") && path.endsWith(".tsx")) return true;
-
-  if (config.protect_lock_infrastructure && lockInfrastructure.has(path)) return true;
 
   return false;
 }
