@@ -96,6 +96,8 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   "news.az": "news.az",
   "tribune.com.pk": "tribune.com.pk",
   "gulf-times.com": "gulf-times.com",
+  "japanherald.com": "japanherald.com",
+  "shanghaisun.com": "shanghaisun.com",
 } as const;
 export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
