@@ -7,6 +7,19 @@ const migration = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
+  it("keeps the 057 government portal seed column count aligned", () => {
+    const governmentPortals = readFileSync(
+      "supabase/migrations/057_country_primary_government_portals.sql",
+      "utf8",
+    );
+    expect(governmentPortals).toContain(
+      "(country_iso2,country_name,government_portal_url)\nvalues",
+    );
+    expect(governmentPortals).not.toContain(
+      "(country_iso2,country_name,government_portal_url,notes)\nvalues",
+    );
+  });
+
   it("binds every source-universe status CTE into the final view", () => {
     const sourceUniverse = readFileSync(
       "supabase/migrations/056_global_source_universe_expansion.sql",
