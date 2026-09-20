@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "scripts/audit-global-production-coverage.mjs"
+      - "scripts/audit-source-certification-census.mjs"
       - "scripts/audit-hot-topic-family-readiness.ts"
       - "src/lib/hot-topic-taxonomy.ts"
       - "supabase/migrations/**"
@@ -53,6 +54,9 @@ jobs:
       - name: Audit hot-topic taxonomy and realtime freshness
         run: bunx tsx scripts/audit-hot-topic-family-readiness.ts --require-taxonomy-complete --require-pipeline-healthy
 
+      - name: Audit exact source certification census
+        run: bun run source:certification:census
+
       - name: Audit global country, corridor and source coverage
         run: bun run coverage:global:audit
 
@@ -64,6 +68,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: global-production-coverage-${{ github.run_id }}
-          path: artifacts/global-production-coverage/
+          path: |
+            artifacts/global-production-coverage/
+            artifacts/source-certification-census/
           if-no-files-found: error
           retention-days: 30
