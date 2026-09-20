@@ -10,6 +10,7 @@ on:
       - 'scripts/db/**'
       - 'scripts/audit-source-certification-100.mjs'
       - 'scripts/test-global-source-endpoints.mjs'
+      - 'scripts/probe-registered-source-endpoints.mjs'
       - 'scripts/accept-risk-gate-testnet.mjs'
       - 'src/lib/source-certification-contract.ts'
       - 'src/lib/risk-gate-readiness.server.ts'
@@ -99,7 +100,7 @@ jobs:
           SOURCE_PROBE_TIMEOUT_MS: '5000'
           SOURCE_PROBE_CONCURRENCY: '40'
           SOURCE_PROBE_CLASSIFY: 'true'
-        run: bun run source:endpoints:probe
+        run: bun scripts/probe-registered-source-endpoints.mjs
 
       - name: Observe real GDELT GAL freshness
         shell: bash
