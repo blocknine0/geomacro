@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - hardening/source-network-risk-gate-production
+      - ops/commercial-acceptance-run-20260920
     paths:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
@@ -117,6 +118,20 @@ jobs:
           SOURCE_PROBE_CLASSIFY: 'true'
         run: bun run source:endpoints:probe
 
+      - name: Observe real GDELT GAL freshness
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/gdelt-freshness
+          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -AtF '|' -c             "select freshness_1800_complete::text, coalesce(lag_seconds::text,''), coalesce(latest_source_period_end::text,''), coalesce(latest_verified_at::text,'') from public.live_realtime_source_freshness_status"             > artifacts/gdelt-freshness/observation.tsv
+          cat artifacts/gdelt-freshness/observation.tsv
+          IFS='|' read -r fresh lag period verified < artifacts/gdelt-freshness/observation.tsv
+          test "${fresh}" = "true"
+          test -n "${period}"
+          test -n "${verified}"
+          test "${lag}" -ge 0
+          test "${lag}" -le 1800
+
       - name: Strict source certification audit
         run: node scripts/audit-source-certification-100.mjs --strict
 
@@ -136,7 +151,7 @@ jobs:
           retention-days: 30
 
       - name: Record acceptance proof
-        if: always() && github.ref == 'refs/heads/hardening/source-network-risk-gate-production'
+        if: always() && (github.ref == 'refs/heads/hardening/source-network-risk-gate-production' || github.ref == 'refs/heads/ops/commercial-acceptance-run-20260920')
         shell: bash
         run: |
           set -euo pipefail
