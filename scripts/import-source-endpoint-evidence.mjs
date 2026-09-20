@@ -56,6 +56,12 @@ async function rest(path, init = {}) {
 }
 
 const localLock = await readEndpointManifestLock();
+const currentManifest = await (async () => {
+  const module = await import("./source-endpoint-manifest.mjs");
+  const manifest = await module.collectMigrationEndpointManifest();
+  module.assertEndpointManifestLock(manifest, localLock);
+  return manifest;
+})();
 const results = JSON.parse(await fs.readFile(input, "utf8"));
 if (!Array.isArray(results) || results.length === 0) {
   throw new Error("Endpoint probe results must be a non-empty array");
@@ -76,7 +82,7 @@ if (
   dbLock.length !== 1 ||
   Number(dbLock[0].endpoint_count) !== Number(localLock.endpoint_count) ||
   String(dbLock[0].manifest_sha256) !== localLock.manifest_sha256 ||
-  String(dbLock[0].manifest_version) !== String(localLock.schema_version)
+  String(dbLock[0].manifest_version) !== String(currentManifest.schema_version)
 ) {
   throw new Error("Production endpoint manifest lock does not match the repository manifest.");
 }
