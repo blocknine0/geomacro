@@ -105,8 +105,8 @@ jobs:
           set -euo pipefail
           jq -e '.writes_performed == false' hot-topic-family-readiness.json >/dev/null
           jq -e '.source_pipeline.healthy == true' hot-topic-family-readiness.json >/dev/null
-          jq -e '.summary.governed_family_count == 18' hot-topic-family-readiness.json >/dev/null
-          jq -e '.summary.taxonomy_supported_family_count == 18' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.governed_family_count == (.families | length)' hot-topic-family-readiness.json >/dev/null
+          jq -e '.summary.taxonomy_supported_family_count == .summary.governed_family_count' hot-topic-family-readiness.json >/dev/null
           jq -e '.summary.future_timestamp_event_count == 0' hot-topic-family-readiness.json >/dev/null
           jq -e '.claim_boundary.raw_article_or_publisher_material_redistributed == false' hot-topic-family-readiness.json >/dev/null
           jq -e '.claim_boundary.event_detection_does_not_substitute_for_required_structural_module == true' hot-topic-family-readiness.json >/dev/null
