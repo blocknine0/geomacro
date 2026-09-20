@@ -63,6 +63,9 @@ jobs:
       - name: Verify committed lockfile and install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Agentic economy workflow governance
+        run: bunx vitest run src/__tests__/agentic-economy-workflow-governance.test.ts
+
       - name: App tests
         shell: bash
         run: |
