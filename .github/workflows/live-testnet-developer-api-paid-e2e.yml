@@ -42,8 +42,8 @@ jobs:
           echo 'Commercial revenue: false' >> "$GITHUB_STEP_SUMMARY"
           echo 'execution_authorized: false' >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.2
       - name: Install exact dependencies
@@ -52,7 +52,7 @@ jobs:
         run: timeout 12m bun scripts/testnet/live-developer-api-e2e.mjs
       - name: Upload sanitized Developer API E2E evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: live-testnet-developer-api-e2e-${{ github.run_id }}
           path: artifacts/testnet-developer-live-e2e/*.json
