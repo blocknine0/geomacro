@@ -96,8 +96,8 @@ jobs:
       - name: Probe all source endpoints
         env:
           SOURCE_PROBE_MAX_URLS: '5000'
-          SOURCE_PROBE_TIMEOUT_MS: '12000'
-          SOURCE_PROBE_CONCURRENCY: '12'
+          SOURCE_PROBE_TIMEOUT_MS: '5000'
+          SOURCE_PROBE_CONCURRENCY: '40'
           SOURCE_PROBE_CLASSIFY: 'true'
         run: bun run source:endpoints:probe
 
