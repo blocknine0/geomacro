@@ -1004,9 +1004,43 @@ async def run_rss() -> None:
                 )
 
         if RSS_RUN_ONCE:
-            if cycle_failed:
-                raise RuntimeError("One-shot RSS cycle failed for one or more feeds")
-            return
+            if not cycle_failed:
+                return
+
+            # A one-shot certification poll must tolerate a transient outage in
+            # one governed publisher. Retry the failed cycle a bounded number of
+            # times rather than failing the whole acceptance run immediately.
+            max_one_shot_retries = 3
+            retry_cycle = max(failure_count.values(), default=0)
+            if retry_cycle >= max_one_shot_retries:
+                failed_sources = [
+                    source_id
+                    for source_id, failures in failure_count.items()
+                    if failures > 0
+                ]
+                raise RuntimeError(
+                    "One-shot RSS cycle failed after bounded retries for: "
+                    + ", ".join(failed_sources)
+                )
+
+            delay = 5 * retry_cycle
+            print(
+                json.dumps(
+                    {
+                        "kind": "rss_retry",
+                        "retry_cycle": retry_cycle,
+                        "delay_seconds": delay,
+                        "failed_sources": [
+                            source_id
+                            for source_id, failures in failure_count.items()
+                            if failures > 0
+                        ],
+                    }
+                ),
+                flush=True,
+            )
+            await asyncio.sleep(delay)
+            continue
 
         jitter = random.uniform(0.0, min(5.0, RSS_POLL_SECONDS * 0.1))
         await asyncio.sleep(RSS_POLL_SECONDS + jitter)
