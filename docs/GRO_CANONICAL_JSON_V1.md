@@ -20,7 +20,7 @@ A Risk Object is canonicalized from its already-parsed JSON data model.
 8. Finite numbers use the ECMAScript `Number::toString` numeric rendering used by `JSON.stringify`. Non-JavaScript consumers MUST reproduce this exact decimal/exponential formatting rather than their language's native float representation.
 9. Negative zero is serialized as `0`.
 10. Values outside the JSON data model, including `undefined`, functions, symbols, and BigInt, are rejected.
-10. The canonical JSON string is encoded as UTF-8 to obtain the exact cryptographic message bytes.
+11. The canonical JSON string is encoded as UTF-8 to obtain the exact cryptographic message bytes.
 
 The normative production signing implementation is `src/lib/risk-object-signing.server.ts::canonicalRiskObjectJson`. The general-purpose helper `src/lib/canonical-json.ts` implements the same JSON data-model serialization rules.
 
