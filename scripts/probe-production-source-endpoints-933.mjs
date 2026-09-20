@@ -96,6 +96,8 @@ async function probe(endpoint) {
     first_seen_file: endpoint.first_seen_file,
     first_seen_line: endpoint.first_seen_line,
     endpoint_key: createHash("sha256").update(endpoint.endpoint_url, "utf8").digest("hex"),
+    manifest_version: "geomacro-source-endpoint-manifest-v1",
+    manifest_sha256: manifest.manifest_sha256,
     status: null,
     status_text: null,
     method: "GET",
