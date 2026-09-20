@@ -15,7 +15,7 @@ on:
       - '.github/workflows/database-schema-safety.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   static-safety:
@@ -50,3 +50,26 @@ jobs:
       - name: Stop disposable Supabase
         if: always()
         run: supabase stop --no-backup
+
+      - name: Record green replay proof
+        if: success() && github.ref == 'refs/heads/hardening/source-network-risk-gate-production'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-proofs
+          cat > ".ci-proofs/migration-replay-${GITHUB_SHA}.json" <<EOF
+          {
+            "suite": "geomacro-full-migration-replay",
+            "status": "PASS",
+            "commit_sha": "${GITHUB_SHA}",
+            "workflow": "${GITHUB_WORKFLOW}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "cli_version": "2.117.0",
+            "replay_command": "supabase db reset --local --no-seed"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".ci-proofs/migration-replay-${GITHUB_SHA}.json"
+          git commit -m "ci: record green migration replay proof [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
