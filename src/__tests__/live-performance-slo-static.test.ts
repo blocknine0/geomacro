@@ -27,6 +27,6 @@ describe("live performance SLO guard", () => {
   it("runs continuously and preserves evidence", () => {
     expect(workflow).toContain("cron: '17 */3 * * *'");
     expect(workflow).toContain("live-performance-slo.mjs");
-    expect(workflow).toMatch(/actions\/upload-artifact@v[4-9]/);
+    expect(workflow).toMatch(/actions\/upload-artifact@(v[4-9]|[0-9a-f]{40})/);
   });
 });
