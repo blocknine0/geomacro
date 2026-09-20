@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { pathToFileURL } from "node:url";
 
 export async function collectMigrationEndpointManifest(root = process.cwd()) {
   const migrationsDir = path.join(root, "supabase", "migrations");
@@ -72,7 +73,7 @@ export function assertEndpointManifestLock(manifest, lock) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const manifest = await collectMigrationEndpointManifest();
   const lock = await readEndpointManifestLock();
   assertEndpointManifestLock(manifest, lock);
