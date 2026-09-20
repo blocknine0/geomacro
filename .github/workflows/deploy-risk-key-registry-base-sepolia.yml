@@ -176,6 +176,28 @@ jobs:
           echo "deployer=$DEPLOYER" >> "$GITHUB_OUTPUT"
           echo "deploy_tx=$DEPLOY_TX" >> "$GITHUB_OUTPUT"
 
+      - name: Confirm deployed registry bytecode is visible before publishing
+        env:
+          REGISTRY: ${{ steps.deploy.outputs.registry }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHAIN_ID="$(cast chain-id --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+          test "$CHAIN_ID" = "84532" || { echo "::error::Unexpected Base Sepolia chain id: $CHAIN_ID"; exit 1; }
+
+          for attempt in $(seq 1 30); do
+            CODE="$(cast code "$REGISTRY" --rpc-url "$BASE_SEPOLIA_RPC_URL")"
+            if [ -n "$CODE" ] && [ "$CODE" != "0x" ]; then
+              echo "PASS: deployed RiskKeyRegistry bytecode is visible at $REGISTRY after $attempt check(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::RiskKeyRegistry deployment transaction succeeded but bytecode is not yet visible at $REGISTRY."
+          echo "::error::Refusing key publication until the deployment is observable on the same Base Sepolia RPC."
+          exit 1
+
       - name: Publish and activate current Ed25519 key hash
         id: publish
         env:
