@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const WORKFLOWS = [
+  ".github/workflows/product-ci.yml",
   ".github/workflows/agent-query-production-readiness.yml",
   ".github/workflows/coinbase-x402-adaptive-base-sepolia-paid-e2e.yml",
   ".github/workflows/coinbase-x402-base-sepolia-acceptance.yml",
