@@ -23,6 +23,8 @@ export type RiskGateReadiness = {
     verification_keys: boolean;
     fresh_country_risk_object: boolean;
     publisher_signing: boolean;
+    source_network_100_complete: boolean;
+    realtime_source_freshness: boolean;
   };
 };
 
@@ -88,6 +90,10 @@ export async function evaluateRiskGateReadiness(
   let auditStore = false;
   let freshCountryRiskObject =
     false;
+  let sourceNetwork100Complete =
+    false;
+  let realtimeSourceFreshness =
+    false;
 
   if (db) {
     try {
@@ -109,6 +115,29 @@ export async function evaluateRiskGateReadiness(
     }
 
     if (database) {
+      try {
+        const sourceNetworkProbe =
+          await db
+            .from(
+              "live_source_network_launch_status",
+            )
+            .select(
+              "source_network_100_complete,gdelt_gal_freshness_complete,source_network_launch_complete",
+            )
+            .maybeSingle();
+
+        sourceNetwork100Complete =
+          !sourceNetworkProbe.error &&
+          sourceNetworkProbe.data?.source_network_100_complete === true;
+
+        realtimeSourceFreshness =
+          !sourceNetworkProbe.error &&
+          sourceNetworkProbe.data?.gdelt_gal_freshness_complete === true;
+      } catch {
+        sourceNetwork100Complete = false;
+        realtimeSourceFreshness = false;
+      }
+
       try {
         const auditProbe =
           await db
@@ -175,6 +204,10 @@ export async function evaluateRiskGateReadiness(
       freshCountryRiskObject,
     publisher_signing:
       publisherSigning,
+    source_network_100_complete:
+      sourceNetwork100Complete,
+    realtime_source_freshness:
+      realtimeSourceFreshness,
   };
 
   const ready =
