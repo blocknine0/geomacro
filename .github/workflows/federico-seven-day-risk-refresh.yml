@@ -68,7 +68,7 @@ jobs:
           set -euo pipefail
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
           test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
-          oidc_response="$(curl --fail-with-body -sS \
+          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
           )"
@@ -211,7 +211,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
 
           node <<'NODE'
           const fs = require('node:fs');
@@ -364,7 +364,7 @@ jobs:
               break
             fi
 
-            [[ "${attempt}" -lt 4 ]] || {
+            [[ "${attempt}" -lt 8 ]] || {
               echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after eight targeted structure batches."
               exit 1
             }
@@ -445,7 +445,7 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
           test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
-          python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
+          python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
           cd workers/telegram-flash
           python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
@@ -471,6 +471,10 @@ jobs:
           response="$(curl --silent --show-error \
             --output /tmp/federico-corroborate.json \
             --write-out '%{http_code}' \
+            --retry 5 \
+            --retry-all-errors \
+            --retry-delay 2 \
+            --retry-max-time 120 \
             --request POST \
             --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
             --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
