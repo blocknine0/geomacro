@@ -153,17 +153,17 @@ select
   c.canonical_redirect_count,
   c.remediation_count,
   c.unclassified_count,
-  l.endpoint_count as expected_endpoint_count,
-  l.manifest_sha256 as expected_manifest_sha256,
-  c.recorded_endpoint_count,
-  c.recorded_endpoint_count as observed_endpoint_count,
-  c.working_count + c.canonical_redirect_count as transport_success_count,
   (
     l.endpoint_count = 933
     and c.recorded_endpoint_count = 933
     and c.disposition_count = 933
     and c.unclassified_count = 0
-  ) as endpoint_disposition_933_complete
+  ) as endpoint_disposition_933_complete,
+  l.endpoint_count as expected_endpoint_count,
+  l.manifest_sha256 as expected_manifest_sha256,
+  c.recorded_endpoint_count,
+  c.recorded_endpoint_count as observed_endpoint_count,
+  c.working_count + c.canonical_redirect_count as transport_success_count
 from lock l
 cross join counts c;
 comment on view public.live_source_endpoint_disposition_933_status is
