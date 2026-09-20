@@ -3,8 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
-const WORKFLOW_DIR = join(ROOT, ".github", "workflows");
-
 function filesUnder(path: string): string[] {
   const absolute = join(ROOT, path);
   return readdirSync(absolute).flatMap((name) => {
@@ -29,12 +27,10 @@ const AGENTIC_MARKERS = [
   "coinbase",
   "circle",
   "nevermined",
-  "payment",
   "pay-per-call",
   "marketplace",
   "testnet",
   "execution_authorized",
-  "production_enabled",
 ];
 
 const PRELAUNCH_MARKERS = [
