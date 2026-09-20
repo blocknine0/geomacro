@@ -193,7 +193,7 @@ select
  21::bigint country_sources_per_subject,
  country_rows.n actual_country_source_rows,
  countries.n*21::bigint expected_country_source_rows,
- country_core_min.n countries_meeting_backbone_minimum,
+ country_core_min.n countries_meeting_minimum,
  gov_directory.n government_directory_rows,
  195::bigint expected_government_directory_rows,
  stats_directory.n statistics_directory_rows,
