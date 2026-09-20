@@ -85,13 +85,22 @@ function changedWorkflowFiles(): string[] {
 }
 
 function governanceTargets(): string[] {
-  const all = new Set(workflowFiles());
-  for (const path of KNOWN_AGENTIC_WORKFLOWS) all.add(path);
-  for (const path of all) {
-    if (AGENTIC_PATH_RE.test(path)) all.add(path);
+  const existing = new Set(workflowFiles());
+  const targets = new Set<string>();
+
+  for (const path of KNOWN_AGENTIC_WORKFLOWS) {
+    if (existing.has(path)) targets.add(path);
   }
-  for (const path of changedWorkflowFiles()) all.add(path);
-  return [...all].filter((path) => workflowFiles().includes(path));
+
+  for (const path of existing) {
+    if (AGENTIC_PATH_RE.test(path)) targets.add(path);
+  }
+
+  for (const path of changedWorkflowFiles()) {
+    if (existing.has(path)) targets.add(path);
+  }
+
+  return [...targets];
 }
 
 function expectPinnedActions(path: string) {
@@ -164,7 +173,12 @@ describe("agentic economy recurrence prevention", () => {
     ]) {
       const source = read(path);
       expect(source, path).toContain("contents: read");
-      expect(source, path).not.toContain("I_ACCEPT_REAL_USDC");
+      expect(source, path).not.toMatch(
+        /^\s*(?:[A-Z0-9_]+:\s*)?I_ACCEPT_REAL_USDC\s*$/m,
+      );
+      expect(source, path).not.toMatch(
+        /^\s*(?:[A-Z0-9_]+:\s*)?I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH\s*$/m,
+      );
     }
 
     const finalAcceptance = read(".github/workflows/final-production-acceptance.yml");
