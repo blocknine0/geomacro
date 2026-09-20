@@ -49,6 +49,7 @@ describe("permanent 933 endpoint disposition contract", () => {
 
   it("persists every disposition in the permanent ledger", () => {
     expect(importer).toContain("live_source_endpoint_disposition_ledger");
+    expect(importer).toContain("zero npm-package dependencies");
     expect(importer).toContain("endpoint_key");
     expect(importer).toContain('onConflict: "manifest_sha256,endpoint_url"');
     expect(importer).toContain("endpoint_disposition");
