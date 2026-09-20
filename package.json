@@ -34,7 +34,8 @@
     "gri:source-diversity": "node scripts/check-gri-source-diversity.js",
     "gri:source-diversity:enforce": "node scripts/check-gri-source-diversity.js --enforce",
     "source:certification:audit": "node scripts/audit-source-certification-100.mjs",
-    "source:endpoints:probe": "node scripts/test-global-source-endpoints.mjs"
+    "source:endpoints:probe": "node scripts/test-global-source-endpoints.mjs",
+    "source:endpoints:import": "node scripts/import-source-endpoint-evidence.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
