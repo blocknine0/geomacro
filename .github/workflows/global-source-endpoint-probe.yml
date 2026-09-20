@@ -1,0 +1,56 @@
+name: Global Source Endpoint Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-global-source-endpoints.mjs"
+      - ".github/workflows/global-source-endpoint-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Probe all migration-referenced external URLs
+        env:
+          SOURCE_PROBE_TIMEOUT_MS: "12000"
+          SOURCE_PROBE_CONCURRENCY: "12"
+          SOURCE_PROBE_MAX_URLS: "5000"
+          SOURCE_PROBE_FAIL_ON_TRANSPORT_ERRORS: "false"
+        run: node scripts/test-global-source-endpoints.mjs
+      - name: Validate probe output
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const s = JSON.parse(fs.readFileSync("artifacts/global-source-endpoint-probe/summary.json", "utf8"));
+          const r = JSON.parse(fs.readFileSync("artifacts/global-source-endpoint-probe/results.json", "utf8"));
+          if (s.unique_url_count !== r.length) throw new Error("summary/result count mismatch");
+          if (s.transport_ok_count + s.transport_not_ok_count !== r.length) throw new Error("transport count mismatch");
+          console.log(JSON.stringify({
+            pass: true,
+            url_count: r.length,
+            transport_ok: s.transport_ok_count,
+            transport_not_ok: s.transport_not_ok_count
+          }, null, 2));
+          NODE
+      - name: Upload endpoint evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-source-endpoint-probe-${{ github.sha }}
+          path: artifacts/global-source-endpoint-probe/
+          if-no-files-found: error
+          retention-days: 30
