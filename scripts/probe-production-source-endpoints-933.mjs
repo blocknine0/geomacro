@@ -165,7 +165,9 @@ async function probe(endpoint) {
     entry.get_ok_transport = response.status !== null && response.status >= 200 && response.status < 400;
     entry.ok_transport = entry.get_ok_transport;
   } catch (error) {
-    entry.error = String(error?.message ?? error);
+    const code = error?.curl_exit_code ?? error?.code ?? null;
+    const message = String(error?.message ?? error);
+    entry.error = code !== null ? `curl exit code ${code}: ${message}` : message;
   } finally {
     entry.latency_ms = Date.now() - started;
   }
