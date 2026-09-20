@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-source-network-933-disposition-v2
+  group: geomacro-source-network-933-disposition-v3
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
         )
       }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     environment: production
     env:
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
@@ -62,6 +62,9 @@ jobs:
 
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verify curl available
+        run: curl --version
 
       - name: Validate authoritative production database target
         shell: bash

@@ -11,8 +11,12 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import { collectMigrationEndpointManifest, readEndpointManifestLock, assertEndpointManifestLock } from "./source-endpoint-manifest.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const expectedProject = process.env.EXPECTED_SUPABASE_PROJECT_REF ?? "ldpwajisioljyjtojvfx";
 const expectedCount = Number(process.env.EXPECTED_ENDPOINT_COUNT ?? "933");
@@ -71,24 +75,55 @@ function classify(result) {
   return ["UNCLASSIFIED", "No deterministic transport disposition was produced."];
 }
 
-async function fetchWithDeadline(url, init, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+async function probeWithCurl(url, timeoutMs) {
+  const timeoutSeconds = Math.max(1, Math.ceil(timeoutMs / 1000));
+  const args = [
+    "--silent",
+    "--show-error",
+    "--location",
+    "--max-time", String(timeoutSeconds),
+    "--connect-timeout", String(timeoutSeconds),
+    "--range", "0-4095",
+    "--user-agent", "Geomacro-Source-Probe/5.0",
+    "--header", "Accept: */*",
+    "--output", "/dev/null",
+    "--write-out", "%{http_code}\\t%{url_effective}\\t%{content_type}\\t%{size_download}",
+    url,
+  ];
+
   try {
-    return await Promise.race([
-      fetch(url, {
-        ...init,
-        signal: controller.signal,
-      }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Probe deadline exceeded after ${timeoutMs}ms`)), timeoutMs),
-      ),
-    ]);
-  } finally {
-    clearTimeout(timer);
+    const { stdout } = await execFileAsync("curl", args, {
+      timeout: timeoutMs + 1500,
+      killSignal: "SIGKILL",
+      maxBuffer: 16 * 1024,
+    });
+    const [statusText, finalUrl, contentType, sizeText] = String(stdout).split("\\t");
+    return {
+      status: Number(statusText || 0) || null,
+      final_url: finalUrl || url,
+      content_type: contentType || null,
+      content_length: Number(sizeText || 0) || null,
+      curl_error: null,
+    };
+  } catch (error) {
+    const stderr = String(error?.stderr ?? "").trim();
+    const message = String(error?.message ?? error);
+    const detail = stderr || message;
+    const code = error?.code ?? null;
+    const timedOut = error?.killed || code === "ETIMEDOUT" || /timed out|operation timed out/i.test(detail);
+    const dnsFailure = /could not resolve host|name or service not known|temporary failure in name resolution|getaddrinfo/i.test(detail);
+    const wrapped = new Error(
+      timedOut
+        ? `Probe deadline exceeded after ${timeoutMs}ms.`
+        : dnsFailure
+          ? `DNS resolution failed: ${detail}`
+          : detail,
+    );
+    wrapped.code = code;
+    wrapped.curl_exit_code = typeof code === "number" ? code : null;
+    throw wrapped;
   }
 }
-
 async function probe(endpoint) {
   const started = Date.now();
   const entry = {
@@ -119,40 +154,16 @@ async function probe(endpoint) {
   };
 
   try {
-    const response = await fetchWithDeadline(
-      endpoint.endpoint_url,
-      {
-        method: "GET",
-        redirect: "follow",
-        headers: {
-          "user-agent": "Geomacro-Source-Probe/4.0",
-          range: "bytes=0-4095",
-          accept: "*/*",
-        },
-      },
-      timeoutMs,
-    );
-
+    const response = await probeWithCurl(endpoint.endpoint_url, timeoutMs);
     entry.status = response.status;
-    entry.status_text = response.statusText;
-    entry.final_url = response.url;
-    entry.content_type = response.headers.get("content-type");
-    entry.content_length = response.headers.get("content-length");
-    entry.last_modified = response.headers.get("last-modified");
-    entry.etag = response.headers.get("etag");
-    entry.cache_control = response.headers.get("cache-control");
+    entry.status_text = response.status === null ? null : `HTTP ${response.status}`;
+    entry.final_url = response.final_url;
+    entry.content_type = response.content_type;
+    entry.content_length = response.content_length;
     entry.get_status = response.status;
-    entry.get_content_type = entry.content_type;
-    entry.get_ok_transport = response.status >= 200 && response.status < 400;
+    entry.get_content_type = response.content_type;
+    entry.get_ok_transport = response.status !== null && response.status >= 200 && response.status < 400;
     entry.ok_transport = entry.get_ok_transport;
-
-    try {
-      if (response.body) void response.body.cancel().catch(() => {});
-    } catch (error) {
-      entry.get_error = String(error?.message ?? error);
-      entry.ok_transport = false;
-      entry.get_ok_transport = false;
-    }
   } catch (error) {
     entry.error = String(error?.message ?? error);
   } finally {
