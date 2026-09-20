@@ -184,7 +184,8 @@ describe("agentic economy recurrence prevention", () => {
     const finalAcceptance = read(".github/workflows/final-production-acceptance.yml");
     expect(finalAcceptance).toContain("inputs.candidate_sha");
     expect(finalAcceptance).toContain("node scripts/commerce/verify-final-production-acceptance.mjs");
-    expect(read("scripts/commerce/verify-final-production-acceptance.mjs")).toContain("production_enabled");
-    expect(read("scripts/commerce/verify-final-production-acceptance.mjs")).toContain("execution_authorized");
+    const acceptanceScript = read("scripts/commerce/verify-final-production-acceptance.mjs");
+    expect(acceptanceScript).toContain("public_launch_ready: true");
+    expect(acceptanceScript).toContain("execution_authorized: false");
   });
 });
