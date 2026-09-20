@@ -78,7 +78,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
+          curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 60 \
+            https://geomacro.live/api/risk-object-keys > /tmp/geomacro-keys.json
 
           node <<'NODE'
           const fs = require('node:fs');
@@ -167,7 +168,10 @@ jobs:
         run: |
           set -euo pipefail
           REGISTER_RESPONSE="$(
-            curl --fail --silent --show-error               -X POST https://api.babyblueviper.com/register               -H 'content-type: application/json'               -d '{}'
+            curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 60 \
+              -X POST https://api.babyblueviper.com/register \
+              -H 'content-type: application/json' \
+              -d '{}'
           )"
           API_KEY="$(printf '%s' "$REGISTER_RESPONSE" | jq -r '.api_key // empty')"
           if [ -z "$API_KEY" ]; then
