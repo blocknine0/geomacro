@@ -7,6 +7,8 @@ on:
       - 'supabase/migrations/04*_global_source_coverage*.sql'
       - 'supabase/migrations/05*_global_source*.sql'
       - 'supabase/migrations/06*_source_network*.sql'
+      - 'supabase/migrations/06*_global_source*.sql'
+      - 'supabase/migrations/06*_critical_mineral*.sql'
       - 'scripts/test-global-source-endpoints.mjs'
       - 'scripts/audit-source-certification-100.mjs'
       - 'scripts/import-source-endpoint-evidence.mjs'
