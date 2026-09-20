@@ -10,7 +10,7 @@ import {
 describe("governed hot-topic taxonomy", () => {
   it("publishes a versioned definition for every family", () => {
     expect(HOT_TOPIC_TAXONOMY_VERSION).toBe("geomacro.hot-topic-family.v2");
-    expect(HOT_TOPIC_FAMILIES).toHaveLength(35);
+    expect(HOT_TOPIC_FAMILIES).toHaveLength(36);
     expect(Object.keys(HOT_TOPIC_FAMILY_DEFINITIONS).sort()).toEqual(
       [...HOT_TOPIC_FAMILIES].sort(),
     );
