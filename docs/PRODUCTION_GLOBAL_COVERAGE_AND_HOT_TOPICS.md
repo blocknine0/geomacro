@@ -110,3 +110,28 @@ If the first check fails, do not issue a payable challenge. If the final check o
 - explicit real-USDC activation authorization is provided last.
 
 The maximum-country census gate is now evidenced for the current Risk Gate country-review methodology. The remaining launch gates above stay independent. Base mainnet remains locked until all required launch gates are green and explicit owner authorization is provided last.
+
+## Permanent production coverage gate
+
+The repository now has a single read-only machine gate for the requested global scope:
+
+`bun run coverage:global:strict`
+
+The gate validates, against the authoritative production Supabase project:
+
+- the global source-inventory and source-network certification gates;
+- the 16-module country coverage matrix;
+- the regional 16-module matrix;
+- the strategic-corridor 16-module matrix;
+- the governed global-shock matrix;
+- the Critical Minerals shock-path matrix;
+- the real-time GDELT GAL ingestion cursor and 30-minute freshness ceiling.
+
+The companion hot-topic audit validates that every governed hot-topic family has a deterministic taxonomy and that the real-time backbone is healthy before a current hot-topic result can be treated as deliverable.
+
+The gate is read-only. It cannot promote sources, enable commercial rights, charge a customer, settle funds or authorize execution.
+
+The production workflow runs on main changes and hourly. A failed gate is evidence that the current global-production claim must remain closed or fail-closed until the underlying source, freshness, rights, schema, adapter or runtime condition is repaired.
+
+**Important:** a green inventory matrix is not a claim that every event on the internet is observed. A country/corridor/topic is deliverable only when its governed evidence path is current, independently supported where required, commercially eligible and within its freshness contract.
+
