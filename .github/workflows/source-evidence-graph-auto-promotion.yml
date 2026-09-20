@@ -23,7 +23,7 @@ jobs:
   source-evidence-promotion:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     environment: production
     env:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
@@ -32,7 +32,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
-      SOURCE_EVIDENCE_CONCURRENCY: "16"
+      SOURCE_EVIDENCE_CONCURRENCY: "24"
       SOURCE_EVIDENCE_TIMEOUT_MS: "12000"
       SOURCE_EVIDENCE_MAX_BODY_BYTES: "65536"
     steps:

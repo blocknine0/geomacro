@@ -327,6 +327,14 @@ function schemaEvidence(probe, source) {
   return { status: "FAIL", strength: "OBSERVED", schema_status: "FAIL", claim: "No production-safe machine schema was proven from the observed response." };
 }
 
+function governedScopeKey(row) {
+  return [
+    row.scope_type,
+    row.scope_code,
+    row.module_id || "",
+  ].join("|");
+}
+
 function explicitRightsFromText(text) {
   const clean = stripHtml(text).slice(0, 20000);
   const patterns = [
@@ -394,10 +402,9 @@ async function discoverRights(source, endpointProbe) {
     }
   }
 
-  const cache = new Map();
-  for (const url of [...candidates].slice(0, 7)) {
-    if (!cache.has(url)) cache.set(url, await httpGet(url));
-    const result = cache.get(url);
+  const urls = [...candidates].slice(0, 7);
+  const results = await Promise.all(urls.map((url) => httpGet(url)));
+  for (const result of results) {
     if (!result || !result.status || result.status < 200 || result.status >= 400) continue;
     const evidence = explicitRightsFromText(result.body);
     if (!evidence) continue;
@@ -447,7 +454,7 @@ async function discoverRights(source, endpointProbe) {
   };
 }
 
-function fallbackEvidence(source, sourcesById, queueRows) {
+function fallbackEvidence(source, queueRowsBySource, fallbackRowsByKey, sourcesById) {
   const pairs = {
     PRIMARY_MODULE: "FALLBACK_MODULE",
     FALLBACK_MODULE: "PRIMARY_MODULE",
@@ -458,8 +465,13 @@ function fallbackEvidence(source, sourcesById, queueRows) {
     SHOCK_PRIMARY: "SHOCK_FALLBACK",
     SHOCK_FALLBACK: "SHOCK_PRIMARY",
   };
-  const rows = queueRows.filter(q => q.source_id === source.source_id);
-  if (rows.length > 0 && rows.every(q => ["GOVERNMENT_PORTAL","STATISTICS_OFFICE","MONETARY_AUTHORITY"].includes(q.source_role))) {
+  const rows = queueRowsBySource.get(source.source_id) || [];
+  if (
+    rows.length > 0 &&
+    rows.every((q) =>
+      ["GOVERNMENT_PORTAL", "STATISTICS_OFFICE", "MONETARY_AUTHORITY"].includes(q.source_role)
+    )
+  ) {
     return {
       status: "PASS",
       strength: "OBSERVED",
@@ -473,33 +485,25 @@ function fallbackEvidence(source, sourcesById, queueRows) {
   for (const row of rows) {
     const role = pairs[row.source_role];
     if (!role) continue;
-    for (const q of queueRows) {
-      if (
-        q.queue_key !== row.queue_key &&
-        q.scope_type === row.scope_type &&
-        q.scope_code === row.scope_code &&
-        String(q.module_id || "") === String(row.module_id || "") &&
-        q.source_role === role &&
-        q.source_id !== source.source_id
-      ) {
-        const other = sourcesById.get(q.source_id);
-        if (other && String(other.provider_name || "") !== String(source.provider_name || "")) {
-          return {
-            status: "PASS",
-            strength: "OBSERVED",
-            fallback_status: "READY",
-            evidence_ref: "db://live_source_certification_queue/" + q.queue_key,
-            evidence_hash: sha256(JSON.stringify({
-              source_id: source.source_id,
-              queue_key: row.queue_key,
-              fallback_queue_key: q.queue_key,
-              fallback_source_id: q.source_id,
-            })),
-            claim: "A distinct-provider paired fallback path is present for at least one governed scope.",
-            details: { fallback_source_id: q.source_id, fallback_queue_key: q.queue_key },
-          };
-        }
-      }
+    const candidates = fallbackRowsByKey.get(governedScopeKey(row) + "|" + role) || [];
+    const candidate = candidates.find((q) => q.source_id !== source.source_id);
+    if (!candidate) continue;
+    const other = sourcesById.get(candidate.source_id);
+    if (other && String(other.provider_name || "") !== String(source.provider_name || "")) {
+      return {
+        status: "PASS",
+        strength: "OBSERVED",
+        fallback_status: "READY",
+        evidence_ref: "db://live_source_certification_queue/" + candidate.queue_key,
+        evidence_hash: sha256(JSON.stringify({
+          source_id: source.source_id,
+          queue_key: row.queue_key,
+          fallback_queue_key: candidate.queue_key,
+          fallback_source_id: candidate.source_id,
+        })),
+        claim: "A distinct-provider paired fallback path is present for at least one governed scope.",
+        details: { fallback_source_id: candidate.source_id, fallback_queue_key: candidate.queue_key },
+      };
     }
   }
   return {
@@ -554,6 +558,20 @@ async function main() {
 
   const sourcesById = new Map(sources.map(s => [s.source_id, s]));
   const runtimeById = new Map(runtimeRows.map(r => [r.source_id, r]));
+  const queueRowsBySource = new Map();
+  const providersByScopeKey = new Map();
+  const fallbackRowsByKey = new Map();
+  for (const row of queueRows) {
+    if (!queueRowsBySource.has(row.source_id)) queueRowsBySource.set(row.source_id, []);
+    queueRowsBySource.get(row.source_id).push(row);
+    const scopeKey = governedScopeKey(row);
+    if (!providersByScopeKey.has(scopeKey)) providersByScopeKey.set(scopeKey, new Set());
+    const source = sourcesById.get(row.source_id);
+    if (source) providersByScopeKey.get(scopeKey).add(String(source.provider_name || row.source_id));
+    const fallbackKey = scopeKey + "|" + String(row.source_role || "");
+    if (!fallbackRowsByKey.has(fallbackKey)) fallbackRowsByKey.set(fallbackKey, []);
+    fallbackRowsByKey.get(fallbackKey).push(row);
+  }
   const adapterEvidence = await loadAdapterEvidence(sources.map(s => s.source_id));
 
   const runId = "source-evidence-" + new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + CODE_REVISION.slice(0, 12);
@@ -731,24 +749,14 @@ async function main() {
         details: { provenance_status: provenancePass ? "PASS" : "FAIL" },
       });
 
-      const sourceQueues = queueRows.filter(q => q.source_id === source.source_id);
-      const peerProviders = new Set();
+      const sourceQueues = queueRowsBySource.get(source.source_id) || [];
+      const providerSet = new Set([String(source.provider_name || source.source_id)]);
       for (const row of sourceQueues) {
-        for (const candidate of queueRows) {
-          if (
-            candidate.queue_key !== row.queue_key &&
-            candidate.scope_type === row.scope_type &&
-            candidate.scope_code === row.scope_code &&
-            String(candidate.module_id || "") === String(row.module_id || "")
-          ) {
-            const other = sourcesById.get(candidate.source_id);
-            if (other && String(other.provider_name) !== String(source.provider_name)) {
-              peerProviders.add(String(other.provider_name));
-            }
-          }
-        }
+        const peers = providersByScopeKey.get(governedScopeKey(row));
+        if (!peers) continue;
+        for (const provider of peers) providerSet.add(String(provider));
       }
-      const independentCount = peerProviders.size + 1;
+      const independentCount = providerSet.size;
       nodes.push({
         evidence_id: sha256(runId + ":INDEPENDENCE:" + source.source_id),
         run_id: runId,
@@ -826,7 +834,7 @@ async function main() {
         },
       });
 
-      const fallback = fallbackEvidence(source, sourcesById, queueRows);
+      const fallback = fallbackEvidence(source, queueRowsBySource, fallbackRowsByKey, sourcesById);
       nodes.push({
         evidence_id: sha256(runId + ":FALLBACK:" + source.source_id),
         run_id: runId,
