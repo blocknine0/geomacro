@@ -9,7 +9,7 @@ describe("Testnet RSS live runner", () => {
     expect(worker).toContain('RSS_RUN_ONCE = env_bool("BREAKING_RSS_RUN_ONCE", False)');
     expect(worker).toContain("if RSS_RUN_ONCE and TELEGRAM_ENABLED:");
     expect(worker).toContain("if RSS_RUN_ONCE:");
-    expect(worker).toContain("if cycle_failed:");
+    expect(worker).toContain("if not cycle_failed:");
 
     expect(workflow).toContain("SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}");
     expect(workflow).toContain('TELEGRAM_ENABLED: "false"');
