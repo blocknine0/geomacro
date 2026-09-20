@@ -30,6 +30,7 @@ jobs:
       APP_SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
       SUPABASE_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
       SOURCE_EVIDENCE_CONCURRENCY: "24"

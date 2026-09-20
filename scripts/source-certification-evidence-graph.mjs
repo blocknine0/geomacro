@@ -10,6 +10,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { COMMERCIAL_SOURCE_RIGHTS_EVIDENCE } from "./commercial-source-rights-evidence.mjs";
 
 const PROJECT = process.env.EXPECTED_SUPABASE_PROJECT_REF || "ldpwajisioljyjtojvfx";
@@ -24,6 +26,8 @@ const SERVICE_ROLE_KEY = String(
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   "",
 ).trim();
+const SUPABASE_DB_URL = String(process.env.SUPABASE_DB_URL || "").trim();
+const execFileAsync = promisify(execFile);
 const CODE_REVISION = String(
   process.env.GITHUB_SHA || process.env.CODE_REVISION || "local",
 ).trim();
@@ -35,8 +39,18 @@ const TIMEOUT_MS = Math.max(3000, Number(process.env.SOURCE_EVIDENCE_TIMEOUT_MS 
 const MAX_BODY_BYTES = Math.max(8192, Number(process.env.SOURCE_EVIDENCE_MAX_BODY_BYTES || 65536));
 const OUT_DIR = path.join(process.cwd(), "artifacts", "source-certification-evidence-graph");
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  throw new Error("Authoritative Supabase URL and service-role key are required");
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !SUPABASE_DB_URL) {
+  throw new Error("Authoritative Supabase URL, service-role key and SUPABASE_DB_URL are required");
+}
+try {
+  const dbUrl = new URL(SUPABASE_DB_URL);
+  if (!["postgres:", "postgresql:"].includes(dbUrl.protocol)) throw new Error("invalid protocol");
+  if (!dbUrl.password) throw new Error("missing database password");
+  if (!(dbUrl.hostname === "db." + PROJECT + ".supabase.co" || dbUrl.hostname.endsWith(".pooler.supabase.com"))) {
+    throw new Error("unexpected database host");
+  }
+} catch (error) {
+  throw new Error("Invalid production SUPABASE_DB_URL: " + String(error?.message || error));
 }
 const parsed = new URL(SUPABASE_URL);
 if (parsed.protocol !== "https:") throw new Error("Refusing non-HTTPS Supabase URL");
@@ -610,16 +624,8 @@ async function main() {
   const runId = "source-evidence-" + new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + CODE_REVISION.slice(0, 12);
   const evaluatedAt = new Date().toISOString();
 
-  await withDbRetry("create evidence run", async () => {
-    await supabase.from("live_source_certification_evidence_runs").insert({
-      run_id: runId,
-      code_revision: CODE_REVISION,
-      evaluated_at: evaluatedAt,
-      source_count: sources.length,
-      write_operations_performed: true,
-    }).throwOnError();
-  });
-
+  // Evidence-run persistence is committed with the graph over the authoritative
+  // PostgreSQL connection below. Reads remain on the service-role API client.
   const records = [];
   const nodes = [];
   const edges = [];
@@ -924,28 +930,6 @@ async function main() {
   nodes.sort((a,b) => a.evidence_id.localeCompare(b.evidence_id));
   edges.sort((a,b) => a.edge_id.localeCompare(b.edge_id));
 
-  // Evidence writes are idempotent upserts keyed by deterministic evidence_id/edge_id.
-  // Keep every batch inside the same bounded retry policy used by promotion/finalization,
-  // so a transient Supabase/PostgREST connect timeout cannot discard an otherwise-complete run.
-  for (let i = 0; i < nodes.length; i += 500) {
-    const batch = nodes.slice(i, i + 500);
-    await withDbRetry("evidence node upsert batch " + String(Math.floor(i / 500) + 1), async () => {
-      await supabase
-        .from("live_source_certification_evidence_nodes")
-        .upsert(batch, { onConflict: "evidence_id", ignoreDuplicates: false })
-        .throwOnError();
-    });
-  }
-  for (let i = 0; i < edges.length; i += 500) {
-    const batch = edges.slice(i, i + 500);
-    await withDbRetry("evidence edge upsert batch " + String(Math.floor(i / 500) + 1), async () => {
-      await supabase
-        .from("live_source_certification_evidence_edges")
-        .upsert(batch, { onConflict: "edge_id", ignoreDuplicates: false })
-        .throwOnError();
-    });
-  }
-
   const eligible = records.filter(record =>
     Object.values(record.dimensions).every(dim =>
       dim.status === "PASS" &&
@@ -953,16 +937,61 @@ async function main() {
     )
   );
 
-  const promotionResult = await withDbRetry("evidence graph promotion RPC", async () => {
-    const result = await supabase.rpc(
-      "promote_source_certification_evidence_graph_run",
-      {
-        p_run_id: runId,
-        p_certified_by: ACTOR,
-      },
+  const nodesJsonPath = path.join(OUT_DIR, "nodes.json");
+  const edgesJsonPath = path.join(OUT_DIR, "edges.json");
+  const dbScriptPath = path.join(OUT_DIR, "persist-and-promote.sql");
+  await fs.writeFile(nodesJsonPath, JSON.stringify(nodes), "utf8");
+  await fs.writeFile(edgesJsonPath, JSON.stringify(edges), "utf8");
+
+  const dbScript = String.raw\`
+    \\\\set ON_ERROR_STOP on
+    \\\\pset tuples_only on
+    \\\\pset format unaligned
+    begin;
+    insert into public.live_source_certification_evidence_runs(run_id,code_revision,evaluated_at,source_count,write_operations_performed)
+    values (:'run_id', :'code_revision', :'evaluated_at'::timestamptz, __SOURCE_COUNT__, true)
+    on conflict (run_id) do update set code_revision=excluded.code_revision,evaluated_at=excluded.evaluated_at,source_count=excluded.source_count,write_operations_performed=true;
+    create temp table tmp_nodes(payload text) on commit drop;
+    create temp table tmp_edges(payload text) on commit drop;
+    \\\\copy tmp_nodes(payload) from '__NODES_PATH__'
+    \\\\copy tmp_edges(payload) from '__EDGES_PATH__'
+    insert into public.live_source_certification_evidence_nodes(evidence_id,run_id,source_id,dimension,status,evidence_strength,claim,evidence_ref,evidence_hash,observed_at,method,details)
+    select r.evidence_id,r.run_id,r.source_id,r.dimension,r.status,r.evidence_strength,r.claim,r.evidence_ref,r.evidence_hash,r.observed_at,r.method,r.details
+    from tmp_nodes t cross join lateral jsonb_populate_recordset(null::public.live_source_certification_evidence_nodes, t.payload::jsonb) r
+    on conflict (evidence_id) do update set run_id=excluded.run_id,source_id=excluded.source_id,dimension=excluded.dimension,status=excluded.status,evidence_strength=excluded.evidence_strength,claim=excluded.claim,evidence_ref=excluded.evidence_ref,evidence_hash=excluded.evidence_hash,observed_at=excluded.observed_at,method=excluded.method,details=excluded.details;
+    insert into public.live_source_certification_evidence_edges(edge_id,run_id,from_evidence_id,to_evidence_id,relation,observed_at)
+    select r.edge_id,r.run_id,r.from_evidence_id,r.to_evidence_id,r.relation,r.observed_at
+    from tmp_edges t cross join lateral jsonb_populate_recordset(null::public.live_source_certification_evidence_edges, t.payload::jsonb) r
+    on conflict (edge_id) do update set run_id=excluded.run_id,from_evidence_id=excluded.from_evidence_id,to_evidence_id=excluded.to_evidence_id,relation=excluded.relation,observed_at=excluded.observed_at;
+    select public.promote_source_certification_evidence_graph_run(:'run_id', :'actor');
+    update public.live_source_certification_evidence_runs set node_count=__NODE_COUNT__,edge_count=__EDGE_COUNT__,source_eligible_count=__ELIGIBLE_COUNT__,write_operations_performed=true where run_id=:'run_id';
+    commit;
+  \`.replaceAll("__SOURCE_COUNT__", String(sources.length))
+     .replaceAll("__NODE_COUNT__", String(nodes.length))
+     .replaceAll("__EDGE_COUNT__", String(edges.length))
+     .replaceAll("__ELIGIBLE_COUNT__", String(eligible.length))
+     .replaceAll("__NODES_PATH__", nodesJsonPath.replaceAll("'", "''"))
+     .replaceAll("__EDGES_PATH__", edgesJsonPath.replaceAll("'", "''"));
+
+  await fs.writeFile(dbScriptPath, dbScript, "utf8");
+
+  const promotionResult = await withDbRetry("direct PostgreSQL evidence persistence and promotion", async () => {
+    const result = await execFileAsync(
+      "psql",
+      [
+        SUPABASE_DB_URL,
+        "-v", "run_id=" + runId,
+        "-v", "code_revision=" + CODE_REVISION,
+        "-v", "evaluated_at=" + evaluatedAt,
+        "-v", "actor=" + ACTOR,
+        "-f", dbScriptPath,
+      ],
+      { maxBuffer: 20 * 1024 * 1024 },
     );
-    if (result.error) throw result.error;
-    return result;
+    const lines = String(result.stdout || "").trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const jsonLine = [...lines].reverse().find((line) => line.startsWith("{") && line.endsWith("}"));
+    if (!jsonLine) throw new Error("PostgreSQL promotion returned no JSON result");
+    return { data: JSON.parse(jsonLine) };
   });
 
   const promotion = promotionResult.data || {};
@@ -980,18 +1009,6 @@ async function main() {
     blockedByReason[reason] = (blockedByReason[reason] || 0) + 1;
   }
 
-  await withDbRetry("finalize evidence run", async () => {
-    await supabase.from("live_source_certification_evidence_runs").update({
-      node_count: nodes.length,
-      edge_count: edges.length,
-      source_eligible_count: eligible.length,
-      source_promoted_count: Number(promotion.source_promoted_count || promoted.length),
-      path_promoted_count: Number(promotion.path_promoted_count || 0),
-      blocked_source_count: Number(promotion.blocked_required_source_count || blocked.length),
-      write_operations_performed: true,
-    }).eq("run_id", runId).throwOnError();
-  });
-
   const summary = {
     schema_version: "geomacro-source-certification-evidence-graph-1.0",
     evaluated_at: evaluatedAt,
@@ -1003,9 +1020,9 @@ async function main() {
     node_count: nodes.length,
     edge_count: edges.length,
     source_eligible_count: eligible.length,
-    source_promoted_count: promoted.length,
-    path_promoted_count: promotedPaths.length,
-    blocked_source_count: blocked.length,
+    source_promoted_count: Number(promotion.source_promoted_count || 0),
+    path_promoted_count: Number(promotion.path_promoted_count || 0),
+    blocked_source_count: Number(promotion.blocked_required_source_count || blocked.length),
     blocked_by_reason: blockedByReason,
     write_operations_performed: true,
     promotion_rule: "Every one of REGISTRY, ENDPOINT, RIGHTS, SCHEMA, FRESHNESS, PROVENANCE, INDEPENDENCE, ADAPTER, RUNTIME and FALLBACK must be PASS with VERIFIED/OBSERVED evidence; rights must resolve to COMMERCIAL_OK or DERIVED_ONLY.",
