@@ -199,7 +199,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
         "source_id": "ecb_market_information_rss",
         "name": "ECB Market Information Dissemination RSS",
-        "url": "https://www.ecb.europa.eu/services/market-information/rss/html/index.en.html",
+        "url": "https://mid.ecb.europa.eu/rss/mid.xml",
         "event_type": "MACRO_MARKET_INFORMATION",
         "source_reliability": 98.0,
         "max_entry_age_hours": 168,
@@ -207,7 +207,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
         "source_id": "un_geneva_meeting_summaries_rss",
         "name": "UN Geneva Meeting Summaries RSS",
-        "url": "https://www.ungeneva.org/news-media/meeting-summaries/rss.xml",
+        "url": "https://www.ungeneva.org/news-media/meeting-summaries-list/rss.xml",
         "event_type": "GEOPOLITICS_OFFICIAL_MEETING",
         "source_reliability": 95.0,
         "max_entry_age_hours": 168,
