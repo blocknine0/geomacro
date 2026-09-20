@@ -1,5 +1,6 @@
 import { createHash, createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { canonicalJson } from "../lib/canonical-json";
 import { describe, expect, it } from "vitest";
 
 type TestVector = {
@@ -55,4 +56,26 @@ describe("geomacro-canonical-json-v1 test vector", () => {
     );
     expect(signatureVerified).toBe(true);
   });
+  it("locks ECMAScript number and UTF-16 ordering edge cases", () => {
+    const vector = JSON.parse(
+      readFileSync(
+        "docs/examples/gro-1.1-canonical-v1-edge-vectors.json",
+        "utf8",
+      ),
+    ) as {
+      input: unknown;
+      canonical_json: string;
+      sha256: string;
+    };
+
+    const canonical = canonicalJson(vector.input);
+    expect(canonical).toBe(vector.canonical_json);
+
+    const hash = createHash("sha256")
+      .update(canonical, "utf8")
+      .digest("hex");
+
+    expect(hash).toBe(vector.sha256);
+  });
+
 });
