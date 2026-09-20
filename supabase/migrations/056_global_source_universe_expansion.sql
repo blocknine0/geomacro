@@ -601,7 +601,19 @@ select
    and shock_rows.n=shocks.n*3
    and shock_min.n=shocks.n
  ) as source_universe_complete,
- false as certification_gate_open;
+ false as certification_gate_open
+from countries
+cross join regions
+cross join corridors
+cross join shocks
+cross join country_rows
+cross join region_rows
+cross join corridor_rows
+cross join shock_rows
+cross join country_min
+cross join region_min
+cross join corridor_min
+cross join shock_min;
 
 comment on view public.live_global_source_universe_status is
  'Internal source-universe inventory completeness only. All source certification, rights, endpoint, schema, freshness and commercial activation remain separately locked.';
