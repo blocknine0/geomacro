@@ -18,6 +18,11 @@ on:
       - "scripts/audit-hot-topic-family-readiness.ts"
       - ".github/workflows/hot-topic-family-readiness.yml"
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - "GDELT GAL Live Hot-Topic Sync"
+    types:
+      - completed
   schedule:
     - cron: "43 */2 * * *"
 
@@ -62,7 +67,8 @@ jobs:
           echo 'PASS: governed hot-topic family delivery boundary is static-safe'
 
   production-readiness:
-    if: github.event_name != 'pull_request'
+    if: >-
+      ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production

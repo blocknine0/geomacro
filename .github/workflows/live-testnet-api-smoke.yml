@@ -109,10 +109,11 @@ jobs:
             exit 1
           fi
           for marker in \
-            'Verify once. Pay only for the API call you use.' \
+            'PUBLIC TESTNET DEVELOPER API' \
             '500-credit usage cap' \
             'API Key + API Secret' \
-            'Receive HTTP 402'
+            'Receive HTTP 402' \
+            'There is no upfront Testnet USDC activation payment.'
           do
             if ! grep -Fq "$marker" "$body"; then
               echo "::error title=Hosted Testnet page is stale::Missing marker: $marker"
