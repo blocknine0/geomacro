@@ -184,6 +184,30 @@ jobs:
             supabase db push --db-url "$SUPABASE_DB_URL"
           fi
 
+      - name: Verify GitHub-to-production migration parity
+        if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          plan_log="$(mktemp)"
+          set +e
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee "$plan_log"
+          rc=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$rc" -ne 0 ]]; then
+            echo "::error title=Production parity check failed::Supabase migration dry-run returned a non-zero exit code after deployment."
+            exit "$rc"
+          fi
+
+          if grep -Eq 'Would push|would push|Pending migrations|pending migrations|Local migrations to be applied' "$plan_log"; then
+            echo "::error title=Production parity mismatch::Production still has pending local migrations after deployment."
+            cat "$plan_log"
+            exit 1
+          fi
+
+          echo "PASS: GitHub migration tree and authoritative production migration history are in parity."
+
       - name: Verify authoritative event-family schema
         if: ${{ github.event_name == 'push' || inputs.mode == 'apply' }}
         shell: bash

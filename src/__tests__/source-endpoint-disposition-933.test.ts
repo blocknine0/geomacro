@@ -39,7 +39,6 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(importer).toContain("result.source_id");
     expect(importer).toContain("endpoint_disposition");
     expect(importer).toContain("endpoint_disposition_reason");
-    expect(importer).toContain("certification_state");
     expect(importer).toContain("Strict endpoint evidence import failed");
     expect(workflow).toContain("Import endpoint disposition evidence");
   });

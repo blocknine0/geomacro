@@ -10,6 +10,8 @@ const required = [
   "EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx",
   "environment: production",
   "default: plan",
+  "Verify GitHub-to-production migration parity",
+  "supabase db push --db-url \"$SUPABASE_DB_URL\" --dry-run",
 ];
 
 for (const token of required) {
