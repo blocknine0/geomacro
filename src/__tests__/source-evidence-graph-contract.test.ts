@@ -28,7 +28,7 @@ describe("permanent source evidence graph", () => {
       "live_source_certification_evidence_edges",
       "promote_source_certification_from_evidence_graph",
       "EVIDENCE_GRAPH_INCOMPLETE",
-      "rights_status not in ('COMMERCIAL_OK','DERIVED_ONLY')",
+      "if rights_value not in ('COMMERCIAL_OK','DERIVED_ONLY')",
     ]) {
       expect(migration).toContain(token);
     }
