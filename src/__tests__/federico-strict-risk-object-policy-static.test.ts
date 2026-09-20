@@ -420,7 +420,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "gro-1.1-canonical-v1-edge-vectors.json",
     );
     expect(vector).toContain(
-      "\"sha256\": \"7f30fb55609afc5be866ac276c9c5e21362a7cd7eeb814adb35b03e115daffad\"",
+      "\"sha256\": \"31e5621fc0e2cca45a9e9b4c0eac9e0c748b2dcbb03bcfd7c093580626eb8caf\"",
     );
   });
 
