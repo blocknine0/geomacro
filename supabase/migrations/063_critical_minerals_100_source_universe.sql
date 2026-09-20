@@ -731,28 +731,41 @@ values
 create or replace view public.live_critical_minerals_100_status
 with(security_invoker=true)
 as
+with counts as (
+  select
+    (select count(*) from public.live_country_registry where enabled)::bigint country_count,
+    (select count(*) from public.live_country_critical_mineral_source_directory)::bigint country_directory_rows,
+    (select count(*) from public.live_global_source_universe where scope_type='COUNTRY' and source_role in ('CRITICAL_MINERALS_COUNTRY_PRIMARY','CRITICAL_MINERALS_GLOBAL_PRIMARY','CRITICAL_MINERALS_GLOBAL_SECONDARY'))::bigint country_core_source_rows,
+    (select count(*) from public.live_global_source_universe where scope_type='COUNTRY' and source_role='CRITICAL_MINERALS_NATIONAL')::bigint national_mineral_path_rows,
+    (select count(*) from public.live_global_source_universe where scope_type='REGION' and source_role like 'CRITICAL_MINERALS_%')::bigint regional_source_rows,
+    (select count(*) from public.live_global_source_universe where scope_type='CORRIDOR' and source_role like 'CRITICAL_MINERALS_%')::bigint corridor_source_rows,
+    (select count(*) from public.live_critical_mineral_shock_catalog where required)::bigint critical_mineral_shock_count,
+    (select count(*) from public.live_global_source_universe where scope_type='SHOCK' and source_role like 'CRITICAL_MINERALS_%')::bigint critical_mineral_shock_source_rows,
+    (select count(*) from public.live_external_sources where source_id like 'rmis_country_%')::bigint rmis_country_source_rows
+)
 select
- (select count(*) from public.live_country_registry where enabled)::bigint country_count,
- (select count(*) from public.live_country_critical_mineral_source_directory)::bigint country_directory_rows,
- (select count(*) from public.live_global_source_universe where scope_type='COUNTRY' and source_role in ('CRITICAL_MINERALS_COUNTRY_PRIMARY','CRITICAL_MINERALS_GLOBAL_PRIMARY','CRITICAL_MINERALS_GLOBAL_SECONDARY'))::bigint country_core_source_rows,
- (select count(*) from public.live_global_source_universe where scope_type='COUNTRY' and source_role='CRITICAL_MINERALS_NATIONAL')::bigint national_mineral_path_rows,
- (select count(*) from public.live_global_source_universe where scope_type='REGION' and source_role like 'CRITICAL_MINERALS_%')::bigint regional_source_rows,
- (select count(*) from public.live_global_source_universe where scope_type='CORRIDOR' and source_role like 'CRITICAL_MINERALS_%')::bigint corridor_source_rows,
- (select count(*) from public.live_critical_mineral_shock_catalog where required)::bigint critical_mineral_shock_count,
- (select count(*) from public.live_global_source_universe where scope_type='SHOCK' and source_role like 'CRITICAL_MINERALS_%')::bigint critical_mineral_shock_source_rows,
- (select count(*) from public.live_external_sources where source_id like 'rmis_country_%')::bigint rmis_country_source_rows,
- (
-   country_directory_rows = country_count
-   and country_core_source_rows = country_count * 3
-   and regional_source_rows = 24 * 3
-   and corridor_source_rows = 35 * 3
-   and critical_mineral_shock_count = 45
-   and critical_mineral_shock_source_rows = 45 * 3
-   and rmis_country_source_rows = country_count
- ) as critical_minerals_inventory_100_complete,
- false endpoint_certification_complete,
- false rights_certification_complete,
- false runtime_testing_complete;
+  counts.country_count,
+  counts.country_directory_rows,
+  counts.country_core_source_rows,
+  counts.national_mineral_path_rows,
+  counts.regional_source_rows,
+  counts.corridor_source_rows,
+  counts.critical_mineral_shock_count,
+  counts.critical_mineral_shock_source_rows,
+  counts.rmis_country_source_rows,
+  (
+    counts.country_directory_rows = counts.country_count
+    and counts.country_core_source_rows = counts.country_count * 3
+    and counts.regional_source_rows = 24 * 3
+    and counts.corridor_source_rows = 35 * 3
+    and counts.critical_mineral_shock_count = 45
+    and counts.critical_mineral_shock_source_rows = 45 * 3
+    and counts.rmis_country_source_rows = counts.country_count
+  ) as critical_minerals_inventory_100_complete,
+  false as endpoint_certification_complete,
+  false as rights_certification_complete,
+  false as runtime_testing_complete
+from counts;
 
 alter table public.live_country_critical_mineral_source_directory enable row level security;
 revoke all on public.live_country_critical_mineral_source_directory from public,anon,authenticated;
