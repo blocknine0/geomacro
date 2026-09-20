@@ -100,7 +100,7 @@ values
   'MACRO',
   'RSS',
   'NONE',
-  'https://www.ecb.europa.eu/services/market-information/rss/html/index.en.html',
+  'https://mid.ecb.europa.eu/rss/mid.xml',
   null,
   'COMMERCIAL_OK',
   false,
