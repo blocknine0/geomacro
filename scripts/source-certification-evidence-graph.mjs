@@ -944,17 +944,17 @@ async function main() {
   await fs.writeFile(edgesJsonPath, JSON.stringify(edges), "utf8");
 
   const dbScript = String.raw`
-    \\\\set ON_ERROR_STOP on
-    \\\\pset tuples_only on
-    \\\\pset format unaligned
+    \set ON_ERROR_STOP on
+    \pset tuples_only on
+    \pset format unaligned
     begin;
     insert into public.live_source_certification_evidence_runs(run_id,code_revision,evaluated_at,source_count,write_operations_performed)
     values (:'run_id', :'code_revision', :'evaluated_at'::timestamptz, __SOURCE_COUNT__, true)
     on conflict (run_id) do update set code_revision=excluded.code_revision,evaluated_at=excluded.evaluated_at,source_count=excluded.source_count,write_operations_performed=true;
     create temp table tmp_nodes(payload text) on commit drop;
     create temp table tmp_edges(payload text) on commit drop;
-    \\\\copy tmp_nodes(payload) from '__NODES_PATH__'
-    \\\\copy tmp_edges(payload) from '__EDGES_PATH__'
+    \copy tmp_nodes(payload) from '__NODES_PATH__'
+    \copy tmp_edges(payload) from '__EDGES_PATH__'
     insert into public.live_source_certification_evidence_nodes(evidence_id,run_id,source_id,dimension,status,evidence_strength,claim,evidence_ref,evidence_hash,observed_at,method,details)
     select r.evidence_id,r.run_id,r.source_id,r.dimension,r.status,r.evidence_strength,r.claim,r.evidence_ref,r.evidence_hash,r.observed_at,r.method,r.details
     from tmp_nodes t cross join lateral jsonb_populate_recordset(null::public.live_source_certification_evidence_nodes, t.payload::jsonb) r
