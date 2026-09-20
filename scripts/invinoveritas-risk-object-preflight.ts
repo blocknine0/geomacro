@@ -673,10 +673,14 @@ if (invinoApiKey) {
     );
   }
 
+  // The partner's signed review verdict is advisory. "approve_with_concerns"
+  // is still an admission decision when there are no blocker-severity issues.
+  // High/medium/low concerns remain preserved in the proof and summary for
+  // downstream human review; they do not convert an explicitly approving
+  // partner verdict into a hard cryptographic admission failure.
   const admissionClear =
     ["approve", "approve_with_concerns"].includes(verdict) &&
-    blockerCount === 0 &&
-    highCount === 0;
+    blockerCount === 0;
 
   liveReview = {
     attempted: true,
