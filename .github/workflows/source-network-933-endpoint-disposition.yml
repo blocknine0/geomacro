@@ -6,6 +6,15 @@ on:
       - Deploy country flash intelligence to Supabase
     types: [completed]
     branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/source-network-933-endpoint-disposition.yml"
+      - "scripts/probe-production-source-endpoints-933.mjs"
+      - "scripts/audit-phase-b-endpoint-universe.mjs"
+      - "scripts/import-source-endpoint-evidence.mjs"
+      - "supabase/migrations/068_permanent_933_endpoint_disposition.sql"
+      - "supabase/migrations/069_permanent_endpoint_disposition_scope_fix.sql"
   workflow_dispatch:
 
 permissions:
