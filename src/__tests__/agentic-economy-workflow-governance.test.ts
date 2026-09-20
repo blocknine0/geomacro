@@ -66,8 +66,11 @@ function expectPinnedActions(path: string, source: string) {
     .filter((ref) => !ref.startsWith("./"));
 
   for (const ref of externalActionRefs) {
-    expect(ref, `${path}: ${ref}`).toMatch(/@[0-9a-f]{40}$/);
-    expect(ref, `${path}: ${ref}`).not.toMatch(/@v\d+(?:\.\d+)*$/);
+    const at = ref.lastIndexOf("@");
+    expect(at, `${path}: missing action ref in ${ref}`).toBeGreaterThan(0);
+    const revision = ref.slice(at + 1);
+    expect(revision, `${path}: ${ref}`).toHaveLength(40);
+    expect(revision, `${path}: ${ref}`).toMatch(/^[0-9a-f]{40}$/);
   }
 
   lines.forEach((line, index) => {
