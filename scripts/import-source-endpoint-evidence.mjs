@@ -81,10 +81,20 @@ if (
   throw new Error("Production endpoint manifest lock does not match the repository manifest.");
 }
 
-const sources = await rest(
-  "live_source_certification_records?select=source_id,endpoint_url,canonical_url&limit=5000",
-);
+async function fetchAllSources() {
+  const pageSize = 500;
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await rest(
+      `live_source_certification_records?select=source_id,endpoint_url,canonical_url&limit=${pageSize}&offset=${offset}`,
+    );
+    if (!Array.isArray(page)) throw new Error("Supabase source-record response must be an array.");
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
 
+const sources = await fetchAllSources();
 const byUrl = new Map();
 for (const source of sources ?? []) {
   for (const url of [source.endpoint_url, source.canonical_url].filter(Boolean)) {
