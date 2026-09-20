@@ -11,6 +11,126 @@
 begin;
 
 -- ---------------------------------------------------------------------------
+-- Compatibility registrations for source IDs introduced by later legacy/
+-- production migrations. Registering them here preserves migration ordering;
+-- later migrations may refine these records without changing this contract.
+-- ---------------------------------------------------------------------------
+insert into public.live_external_sources (
+  source_id, source_name, provider_name, category, access_type,
+  authentication_type, base_url, licence_name, commercial_usage_status,
+  raw_redistribution_allowed, attribution_required, enabled_for_ingestion,
+  enabled_for_commercial_signals, country_scope, freshness_class, notes
+)
+values
+(
+  'gdelt_v2_events',
+  'GDELT 2.0 Event Database',
+  'GDELT Project',
+  'GEOPOLITICS',
+  'MIXED',
+  'NONE',
+  'https://data.gdeltproject.org/gdeltv2/',
+  null,
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'NEAR_REAL_TIME',
+  'Provisional registry row for the governed GDELT v2 events adapter; later production migration owns the exact state.'
+),
+(
+  'ucdp_ged',
+  'UCDP Georeferenced Event Dataset',
+  'Uppsala Conflict Data Program',
+  'GEOPOLITICS',
+  'BULK_DOWNLOAD',
+  'NONE',
+  'https://ucdp.uu.se/downloads/',
+  'CC BY 4.0',
+  'COMMERCIAL_OK',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'ANNUAL',
+  'Versioned UCDP GED structural source. Exact release/version is carried by the observation contract.'
+),
+(
+  'world_bank_wgi_political_stability',
+  'World Bank WGI Political Stability',
+  'World Bank',
+  'GEOPOLITICS',
+  'BULK_DOWNLOAD',
+  'NONE',
+  'https://www.worldbank.org/en/publication/worldwide-governance-indicators',
+  'CC BY 4.0',
+  'COMMERCIAL_OK',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'ANNUAL',
+  'Versioned WGI political-stability source. Exact revision and observation year remain part of provenance.'
+),
+(
+  'world_bank_qpsd',
+  'World Bank Quarterly Public Sector Debt',
+  'World Bank',
+  'MACRO',
+  'BULK_DOWNLOAD',
+  'NONE',
+  'https://www.worldbank.org/en/programs/debt-statistics',
+  'CC BY 4.0',
+  'COMMERCIAL_OK',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'PERIODIC',
+  'Provisional source row for QPSD; later production migration owns exact source state and coverage proof.'
+),
+(
+  'ofac_sanctions_program',
+  'OFAC Sanctions List Service',
+  'U.S. Department of the Treasury',
+  'GEOPOLITICS',
+  'MIXED',
+  'NONE',
+  'https://ofac.treasury.gov/sanctions-list-service',
+  null,
+  'REVIEW_REQUIRED',
+  false,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'NEAR_REAL_TIME',
+  'Official sanctions source candidate. Commercial reuse and exact dataset contract remain certification-gated.'
+)
+on conflict (source_id)
+do update set
+  source_name = excluded.source_name,
+  provider_name = excluded.provider_name,
+  category = excluded.category,
+  access_type = excluded.access_type,
+  authentication_type = excluded.authentication_type,
+  base_url = excluded.base_url,
+  licence_name = excluded.licence_name,
+  commercial_usage_status = excluded.commercial_usage_status,
+  raw_redistribution_allowed = excluded.raw_redistribution_allowed,
+  attribution_required = excluded.attribution_required,
+  country_scope = excluded.country_scope,
+  freshness_class = excluded.freshness_class,
+  notes = excluded.notes,
+  updated_at = now();
+
+
+-- ---------------------------------------------------------------------------
 -- 1. Additional governed source registrations required by the global matrix.
 --    All new sources remain review-gated and disabled until exact contracts,
 --    rights, endpoint and freshness checks are separately completed.
