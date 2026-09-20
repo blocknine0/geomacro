@@ -19,7 +19,7 @@ This milestone means that the planned coverage universe has an explicit source i
 | Strategic corridors/chokepoints | 35 |
 | Broad global shock families | 36 |
 | Granular operational shock conditions | 110 |
-| Specialist global source additions in this phase | 20 |
+| Specialist global source additions in this phase | 20 + category-specific mineral sources |
 | Broad region module paths | 24 × 16 |
 | Corridor module paths | 35 × 16 |
 | Granular shock source paths | 110 × 3 |
@@ -71,3 +71,8 @@ The expected state for this inventory milestone is:
 - runtime_testing_complete = false
 
 This distinction is intentional and required for production safety.
+
+
+## Critical Minerals category
+
+The Critical Minerals source inventory is now explicit at every requested layer: 195 country profiles with USGS and BGS baselines; dedicated national mineral/geoscience sources where catalogued; 24 regional mineral paths; 35 corridor mineral paths; and 43 dedicated critical-minerals shock conditions with three source paths each. The current IEA Critical Minerals Dataset 2026 is registered separately from the legacy review-gated IEA source.
