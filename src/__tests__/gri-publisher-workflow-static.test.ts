@@ -9,7 +9,7 @@ describe("scheduled GRI publisher workflow", () => {
   });
 
   it("uses the committed Bun lockfile instead of mutating dependencies with npm", () => {
-    expect(workflow).toContain("oven-sh/setup-bun@v2");
+    expect(workflow).toMatch(/oven-sh\/setup-bun@[0-9a-f]{40}/);
     expect(workflow).toContain('bun-version: "1.4.2"');
     expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(workflow).not.toContain("npm install --no-save");

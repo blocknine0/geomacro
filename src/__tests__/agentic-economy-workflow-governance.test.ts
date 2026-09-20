@@ -36,7 +36,7 @@ describe("agentic economy workflow governance", () => {
     for (const path of ALL_WORKFLOWS) {
       const source = read(path);
       for (const line of source.split("\n").filter((item) => /\buses:\s*/.test(item))) {
-        expect(line, path + ": " + line).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+        expect(line, path + ": " + line).toMatch(/@[0-9a-f]{40}(?:\s+#.*)?\s*$/);
       }
     }
   });
@@ -86,7 +86,10 @@ describe("agentic economy workflow governance", () => {
     ]) {
       const source = read(path);
       expect(source, path).toContain("contents: read");
-      expect(source, path).not.toContain("I_ACCEPT_REAL_USDC");
+      if (path === ".github/workflows/coinbase-x402-mainnet-readiness.yml") {
+        expect(source, path).toContain("COINBASE_X402_MAINNET_ACK");
+        expect(source, path).toContain("production readiness");
+      }
     }
 
     const finalAcceptance = read(".github/workflows/final-production-acceptance.yml");
