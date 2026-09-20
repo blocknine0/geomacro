@@ -51,6 +51,29 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+const DB_RETRY_ATTEMPTS = Math.max(3, Number(process.env.SOURCE_EVIDENCE_DB_RETRY_ATTEMPTS || 7));
+const DB_RETRY_BASE_MS = Math.max(1000, Number(process.env.SOURCE_EVIDENCE_DB_RETRY_BASE_MS || 2000));
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withDbRetry(label, operation) {
+  let lastError;
+  for (let attempt = 1; attempt <= DB_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt === DB_RETRY_ATTEMPTS) break;
+      const delay = Math.min(30000, DB_RETRY_BASE_MS * (2 ** (attempt - 1)));
+      console.warn("[source-evidence] retrying " + label + " after DB error (attempt " + attempt + "/" + DB_RETRY_ATTEMPTS + ", delay " + delay + "ms): " + String(error?.message || error));
+      await sleep(delay);
+    }
+  }
+  throw new Error("DB operation failed after " + DB_RETRY_ATTEMPTS + " attempts [" + label + "]: " + String(lastError?.message || lastError));
+}
+
 await fs.mkdir(OUT_DIR, { recursive: true });
 
 async function fetchAll(table, select) {
@@ -587,13 +610,15 @@ async function main() {
   const runId = "source-evidence-" + new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14) + "-" + CODE_REVISION.slice(0, 12);
   const evaluatedAt = new Date().toISOString();
 
-  await supabase.from("live_source_certification_evidence_runs").insert({
-    run_id: runId,
-    code_revision: CODE_REVISION,
-    evaluated_at: evaluatedAt,
-    source_count: sources.length,
-    write_operations_performed: true,
-  }).throwOnError();
+  await withDbRetry("create evidence run", async () => {
+    await supabase.from("live_source_certification_evidence_runs").insert({
+      run_id: runId,
+      code_revision: CODE_REVISION,
+      evaluated_at: evaluatedAt,
+      source_count: sources.length,
+      write_operations_performed: true,
+    }).throwOnError();
+  });
 
   const records = [];
   const nodes = [];
@@ -917,16 +942,17 @@ async function main() {
     )
   );
 
-  const promotionResult = await supabase.rpc(
-    "promote_source_certification_evidence_graph_run",
-    {
-      p_run_id: runId,
-      p_certified_by: ACTOR,
-    },
-  );
-  if (promotionResult.error) {
-    throw new Error("Evidence graph promotion failed: " + promotionResult.error.message);
-  }
+  const promotionResult = await withDbRetry("evidence graph promotion RPC", async () => {
+    const result = await supabase.rpc(
+      "promote_source_certification_evidence_graph_run",
+      {
+        p_run_id: runId,
+        p_certified_by: ACTOR,
+      },
+    );
+    if (result.error) throw result.error;
+    return result;
+  });
 
   const promotion = promotionResult.data || {};
   const promoted = [promotion];
@@ -943,15 +969,17 @@ async function main() {
     blockedByReason[reason] = (blockedByReason[reason] || 0) + 1;
   }
 
-  await supabase.from("live_source_certification_evidence_runs").update({
-    node_count: nodes.length,
-    edge_count: edges.length,
-    source_eligible_count: eligible.length,
-    source_promoted_count: promoted.length,
-    path_promoted_count: Number(promotion.path_promoted_count || 0),
-    blocked_source_count: Number(promotion.blocked_required_source_count || blocked.length),
-    write_operations_performed: true,
-  }).eq("run_id", runId).throwOnError();
+  await withDbRetry("finalize evidence run", async () => {
+    await supabase.from("live_source_certification_evidence_runs").update({
+      node_count: nodes.length,
+      edge_count: edges.length,
+      source_eligible_count: eligible.length,
+      source_promoted_count: Number(promotion.source_promoted_count || promoted.length),
+      path_promoted_count: Number(promotion.path_promoted_count || 0),
+      blocked_source_count: Number(promotion.blocked_required_source_count || blocked.length),
+      write_operations_performed: true,
+    }).eq("run_id", runId).throwOnError();
+  });
 
   const summary = {
     schema_version: "geomacro-source-certification-evidence-graph-1.0",
