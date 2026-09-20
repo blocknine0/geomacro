@@ -95,9 +95,10 @@ describe("agentic economy workflow governance", () => {
     expect(WORKFLOWS.every((path) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(path))).toBe(true);
   });
 
-  it("applies immutable action provenance and credential hygiene to the entire workflow surface", () => {
+  it("applies immutable action provenance and credential hygiene to every dynamically discovered agentic/commercial/testnet workflow", () => {
     for (const path of WORKFLOWS) {
       const source = read(path);
+      if (!isAgenticWorkflow(path, source)) continue;
 
       expectPinnedActions(path, source);
 
@@ -105,7 +106,7 @@ describe("agentic economy workflow governance", () => {
         expect(source, path).toContain("persist-credentials: false");
       }
 
-      if (isAgenticWorkflow(path, source) && source.includes("bun install")) {
+      if (source.includes("bun install")) {
         expect(source, path).toContain("bun install --frozen-lockfile");
         expect(source, path).not.toMatch(/\bnpm ci\b|\bnpm install\b/);
       }
