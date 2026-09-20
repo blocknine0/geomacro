@@ -67,8 +67,11 @@ jobs:
           echo 'PASS: governed hot-topic family delivery boundary is static-safe'
 
   production-readiness:
+    # Live readiness requires fresh upstream GDELT state.
+    # Source/config changes still run static validation on push; live readiness
+    # runs after a successful upstream sync, on schedule, or by explicit dispatch.
     if: >-
-      ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+      ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
