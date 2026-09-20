@@ -408,6 +408,25 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
+  it("locks runtime retry boundaries so known transient failures cannot regress into premature hard failures", () => {
+    const workflow = read(
+      ".github/workflows/federico-seven-day-risk-refresh.yml",
+    );
+
+    expect(workflow).toContain(
+      'for attempt in 1 2 3 4 5 6 7 8; do',
+    );
+    expect(workflow).toContain(
+      '[[ "${attempt}" -lt 8 ]] || {',
+    );
+    expect(workflow).toContain(
+      "--retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt",
+    );
+    expect(workflow).toContain(
+      "--retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120",
+    );
+  });
+
   it("locks the canonical edge-vector regression fixture", () => {
     const test = read(
       "src/__tests__/canonical-json-v1-test-vector.test.ts",
