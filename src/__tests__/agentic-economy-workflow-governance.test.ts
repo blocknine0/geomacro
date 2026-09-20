@@ -36,7 +36,7 @@ describe("agentic economy workflow governance", () => {
     for (const path of ALL_WORKFLOWS) {
       const source = read(path);
       for (const line of source.split("\n").filter((item) => /\buses:\s*/.test(item))) {
-        expect(line, path + ": " + line).toMatch(/@[0-9a-f]{40}(?:\s|$)/);
+        expect(line, path + ": " + line).toMatch(/@[0-9a-f]{40}(?:\s+#.*)?\s*$/);
       }
     }
   });
