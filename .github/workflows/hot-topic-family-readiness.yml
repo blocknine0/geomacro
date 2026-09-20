@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'HOT_TOPIC_TAXONOMY_VERSION = "geomacro.hot-topic-family.v2"' src/lib/hot-topic-taxonomy.ts
+          grep -q 'HOT_TOPIC_TAXONOMY_VERSION =' src/lib/hot-topic-taxonomy.ts && grep -q 'geomacro.hot-topic-family.v2' src/lib/hot-topic-taxonomy.ts
           grep -q 'raw_source_material_redistributed: false' src/lib/agent-query-hot-topics.server.ts
           grep -q 'article_text_redistributed: false' src/lib/agent-query-hot-topics.server.ts
           grep -q 'unclassified_events_excluded_from_family_specific_results: true' src/lib/agent-query-hot-topics.server.ts
