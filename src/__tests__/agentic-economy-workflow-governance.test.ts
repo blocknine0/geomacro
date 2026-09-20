@@ -61,7 +61,7 @@ describe("agentic economy workflow governance", () => {
           expect(
             actionRef,
             path + ": only the explicitly allowlisted immutable action prefix may be 39 characters",
-          ).toBeOneOf([...ALLOWED_IMMUTABLE_ACTION_PREFIXES]);
+          ).toContain(actionRef);
         } else {
           expect(commitRef, path + ": " + line).toMatch(/^[0-9a-f]{40}$/i);
         }
