@@ -153,7 +153,7 @@ jobs:
       issues: write
     steps:
       - name: Refresh issue #243 from GitHub Actions evidence
-        uses: actions/github-script@v9
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             const owner = context.repo.owner;
