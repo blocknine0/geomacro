@@ -924,15 +924,26 @@ async function main() {
   nodes.sort((a,b) => a.evidence_id.localeCompare(b.evidence_id));
   edges.sort((a,b) => a.edge_id.localeCompare(b.edge_id));
 
+  // Evidence writes are idempotent upserts keyed by deterministic evidence_id/edge_id.
+  // Keep every batch inside the same bounded retry policy used by promotion/finalization,
+  // so a transient Supabase/PostgREST connect timeout cannot discard an otherwise-complete run.
   for (let i = 0; i < nodes.length; i += 500) {
-    await supabase.from("live_source_certification_evidence_nodes")
-      .upsert(nodes.slice(i, i + 500), { onConflict: "evidence_id", ignoreDuplicates: false })
-      .throwOnError();
+    const batch = nodes.slice(i, i + 500);
+    await withDbRetry("evidence node upsert batch " + String(Math.floor(i / 500) + 1), async () => {
+      await supabase
+        .from("live_source_certification_evidence_nodes")
+        .upsert(batch, { onConflict: "evidence_id", ignoreDuplicates: false })
+        .throwOnError();
+    });
   }
   for (let i = 0; i < edges.length; i += 500) {
-    await supabase.from("live_source_certification_evidence_edges")
-      .upsert(edges.slice(i, i + 500), { onConflict: "edge_id", ignoreDuplicates: false })
-      .throwOnError();
+    const batch = edges.slice(i, i + 500);
+    await withDbRetry("evidence edge upsert batch " + String(Math.floor(i / 500) + 1), async () => {
+      await supabase
+        .from("live_source_certification_evidence_edges")
+        .upsert(batch, { onConflict: "edge_id", ignoreDuplicates: false })
+        .throwOnError();
+    });
   }
 
   const eligible = records.filter(record =>
