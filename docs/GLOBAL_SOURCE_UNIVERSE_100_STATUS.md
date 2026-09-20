@@ -75,4 +75,4 @@ This distinction is intentional and required for production safety.
 
 ## Critical Minerals category
 
-The Critical Minerals source inventory is now explicit at every requested layer: 195 country profiles with USGS and BGS baselines; dedicated national mineral/geoscience sources where catalogued; 24 regional mineral paths; 35 corridor mineral paths; and 43 dedicated critical-minerals shock conditions with three source paths each. The current IEA Critical Minerals Dataset 2026 is registered separately from the legacy review-gated IEA source.
+The Critical Minerals source inventory is now explicit at every requested layer: 195 country profiles with USGS and BGS baselines; dedicated national mineral/geoscience sources where catalogued; 24 regional mineral paths; 35 corridor mineral paths; and 45 dedicated critical-minerals shock conditions with three source paths each. The current IEA Critical Minerals Dataset 2026 is registered separately from the legacy review-gated IEA source.
