@@ -74,25 +74,41 @@ values (
   '11915e0d3eb16ba3448b0d62bf241a4f41243b78181c936583da87af8411df27',
   'unique normalized HTTP(S) URLs extracted from supabase/migrations, sorted by endpoint_url'
 )
-on conflict (lock_id) do nothing;
+on conflict (lock_id) do update
+set
+  manifest_version = case
+    when public.live_source_endpoint_manifest_lock.manifest_version = excluded.manifest_version
+     and public.live_source_endpoint_manifest_lock.endpoint_count = excluded.endpoint_count
+     and public.live_source_endpoint_manifest_lock.manifest_sha256 = excluded.manifest_sha256
+     and public.live_source_endpoint_manifest_lock.source_definition = excluded.source_definition
+    then public.live_source_endpoint_manifest_lock.manifest_version
+    else null
+  end,
+  endpoint_count = case
+    when public.live_source_endpoint_manifest_lock.manifest_version = excluded.manifest_version
+     and public.live_source_endpoint_manifest_lock.endpoint_count = excluded.endpoint_count
+     and public.live_source_endpoint_manifest_lock.manifest_sha256 = excluded.manifest_sha256
+     and public.live_source_endpoint_manifest_lock.source_definition = excluded.source_definition
+    then public.live_source_endpoint_manifest_lock.endpoint_count
+    else null
+  end,
+  manifest_sha256 = case
+    when public.live_source_endpoint_manifest_lock.manifest_version = excluded.manifest_version
+     and public.live_source_endpoint_manifest_lock.endpoint_count = excluded.endpoint_count
+     and public.live_source_endpoint_manifest_lock.manifest_sha256 = excluded.manifest_sha256
+     and public.live_source_endpoint_manifest_lock.source_definition = excluded.source_definition
+    then public.live_source_endpoint_manifest_lock.manifest_sha256
+    else null
+  end,
+  source_definition = case
+    when public.live_source_endpoint_manifest_lock.manifest_version = excluded.manifest_version
+     and public.live_source_endpoint_manifest_lock.endpoint_count = excluded.endpoint_count
+     and public.live_source_endpoint_manifest_lock.manifest_sha256 = excluded.manifest_sha256
+     and public.live_source_endpoint_manifest_lock.source_definition = excluded.source_definition
+    then public.live_source_endpoint_manifest_lock.source_definition
+    else null
+  end;
 
-do $
-declare
-  locked public.live_source_endpoint_manifest_lock%rowtype;
-begin
-  select * into locked
-  from public.live_source_endpoint_manifest_lock
-  where lock_id = 'phase-b-933-v1';
-
-  if locked.endpoint_count <> 933
-     or locked.manifest_version <> 'geomacro-source-endpoint-manifest-v1'
-     or locked.manifest_sha256 <> '11915e0d3eb16ba3448b0d62bf241a4f41243b78181c936583da87af8411df27'
-     or locked.source_definition <> 'unique normalized HTTP(S) URLs extracted from supabase/migrations, sorted by endpoint_url'
-  then
-    raise exception 'PHASE_B_ENDPOINT_MANIFEST_LOCK_DRIFT';
-  end if;
-end;
-$;
 
 create or replace view public.live_source_endpoint_disposition_933_status
 with (security_invoker=true)
