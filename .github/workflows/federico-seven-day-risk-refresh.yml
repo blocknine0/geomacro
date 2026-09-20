@@ -621,6 +621,8 @@ jobs:
           integrity = obj.get("integrity") if isinstance(obj, dict) else None
           if not isinstance(obj, dict) or not obj.get("as_of"):
               raise SystemExit("verification-summary.json must bind as_of to observed_at")
+          if obj.get("as_of") != obj.get("observed_at"):
+              raise SystemExit("verification-summary.json as_of must equal observed_at")
           if not isinstance(integrity, dict) or not integrity.get("signature"):
               raise SystemExit("verification-summary.json must include integrity.signature")
           print("PASS: verification summary is one JSON document with as_of and signature binding")
