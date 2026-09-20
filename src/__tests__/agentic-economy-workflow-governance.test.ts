@@ -87,6 +87,7 @@ function expectPinnedActions(path: string, source: string) {
   });
 }
 
+describe("agentic economy workflow governance", () => {
   it("applies immutable action provenance and credential hygiene to every dynamically discovered agentic/commercial/testnet workflow", () => {
     for (const path of WORKFLOWS) {
       const source = read(path);
