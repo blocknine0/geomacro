@@ -489,15 +489,30 @@ async function main() {
 }
 
 main().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error)
+  const httpMatch = message.match(/^HTTP (\\d{3}) for (.+)$/)
+  const httpStatus = httpMatch ? Number(httpMatch[1]) : null
+  const endpoint = httpMatch ? httpMatch[2] : null
+  const accessBlocked = httpStatus === 401 || httpStatus === 403
+
   const report = {
     schema_version: "geomacro-adb-kidb-sovereign-fiscal-shadow-error-7.0",
     generated_at: new Date().toISOString(),
+    status: accessBlocked ? "ACCESS_BLOCKED" : "ERROR",
+    failure_class: accessBlocked ? "SOURCE_ACCESS_BLOCKED" : "AUDIT_ERROR",
+    retryable: !accessBlocked,
     writes_performed: false,
     production_activation_allowed: false,
     scoring_changed: false,
-    error: error instanceof Error ? error.message : String(error),
+    http_status: httpStatus,
+    endpoint,
+    error: message,
   }
   fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + "\n")
   console.error(JSON.stringify(report, null, 2))
+  if (accessBlocked) {
+    console.log("PASS: ADB KIDB access boundary recorded as controlled discovery-only evidence; no writes, scoring, or production activation.")
+    process.exit(0)
+  }
   process.exit(1)
 })
