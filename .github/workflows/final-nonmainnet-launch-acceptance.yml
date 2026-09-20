@@ -95,12 +95,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: '1.4.2'
       - name: Install locked dependencies
@@ -154,7 +154,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Setup pinned Supabase CLI
@@ -174,7 +174,7 @@ jobs:
           bash scripts/db/disposable-backup-restore-drill.sh
       - name: Upload backup restore evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: final-nonmainnet-backup-restore-${{ github.run_id }}
           path: |
@@ -192,12 +192,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout current candidate with rollback history
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: '1.4.2'
       - name: Install current candidate dependencies
@@ -230,7 +230,7 @@ jobs:
         run: node scripts/ops/nonproduction-rollback-incident-drill.mjs
       - name: Upload rollback incident evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: final-nonmainnet-rollback-incident-${{ github.run_id }}
           path: |
@@ -245,7 +245,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout exact candidate
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Require published SHA to match dispatched main SHA
@@ -258,7 +258,7 @@ jobs:
           [[ "$PUBLISHED_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
           [[ "${PUBLISHED_SHA,,}" == "${GITHUB_SHA,,}" ]]
       - name: Setup Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '22'
       - name: Run live public surface smoke
@@ -269,7 +269,7 @@ jobs:
         run: node scripts/ops/live-launch-surface-smoke.mjs
       - name: Upload live smoke evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: final-nonmainnet-live-surface-${{ github.run_id }}
           path: artifacts/live-launch-surface-smoke.json
@@ -282,11 +282,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Setup Node 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '22'
       - name: Run outside-in non-destructive security smoke
@@ -296,7 +296,7 @@ jobs:
         run: node scripts/ops/external-surface-security-smoke.mjs
       - name: Upload external surface security evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: final-nonmainnet-external-security-${{ github.run_id }}
           path: artifacts/external-surface-security-smoke.json
@@ -322,11 +322,11 @@ jobs:
       RISK_GATE_LOAD_TEST_TIMEOUT_MS: '10000'
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: '1.4.2'
       - name: Install locked dependencies
@@ -341,7 +341,7 @@ jobs:
         run: bun x tsx scripts/load-test-risk-gate-staging.ts
       - name: Upload staging SLO evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: final-nonmainnet-staging-load-${{ github.run_id }}
           path: artifacts/risk-gate-staging-http-load.json
