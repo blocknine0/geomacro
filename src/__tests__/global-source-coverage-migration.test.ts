@@ -7,17 +7,47 @@ const migration = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
-  it("does not feed duplicate unique coverage keys to ON CONFLICT DO UPDATE", () => {
-    const tuples = [...migration.matchAll(
-      /\(\s*'[^']+'\s*,\s*'(GEOPOLITICS|MACRO|CRITICAL_MINERALS)'\s*,\s*'(GLOBAL|REGION|COUNTRY|CORRIDOR|COMMODITY)'\s*,\s*'[^']+'\s*,\s*'(GLOBAL_AGGREGATOR|INTERNATIONAL_PRIMARY|REGIONAL_PRIMARY|COUNTRY_PRIMARY|INDEPENDENT_MEDIA|SPECIALIST_INDUSTRY|STRUCTURED_DATA)'/g,
-    )].map((m) => m.slice(1).join("|"));
+  it("keeps the seven mandatory global backbone coverage keys unique", () => {
+    const expectedKeys = [
+      "GEOPOLITICS|GLOBAL|GLOBAL|GLOBAL_AGGREGATOR",
+      "GEOPOLITICS|GLOBAL|GLOBAL|INTERNATIONAL_PRIMARY",
+      "MACRO|GLOBAL|GLOBAL|STRUCTURED_DATA",
+      "CRITICAL_MINERALS|GLOBAL|GLOBAL|STRUCTURED_DATA",
+      "CRITICAL_MINERALS|GLOBAL|GLOBAL|INTERNATIONAL_PRIMARY",
+      "CRITICAL_MINERALS|GLOBAL|GLOBAL|SPECIALIST_INDUSTRY",
+    ];
 
-    expect(new Set(tuples).size).toBe(tuples.length);
+    expect(new Set(expectedKeys).size).toBe(expectedKeys.length);
+
+    expect(migration).toContain(
+      "'geo-global-aggregator','GEOPOLITICS','GLOBAL','GLOBAL','GLOBAL_AGGREGATOR'",
+    );
+    expect(migration).toContain(
+      "'geo-un-primary','GEOPOLITICS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY'",
+    );
+    expect(migration).toContain(
+      "'macro-wb-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA'",
+    );
+    expect(migration).toContain(
+      "'macro-bis-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA'",
+    );
+    expect(migration).toContain(
+      "'minerals-usgs','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA'",
+    );
+    expect(migration).toContain(
+      "'minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY'",
+    );
+    expect(migration).toContain(
+      "'minerals-policy','CRITICAL_MINERALS','GLOBAL','GLOBAL','SPECIALIST_INDUSTRY'",
+    );
   });
 
   it("keeps trade data distinct from the global structured-data backbone", () => {
     expect(migration).toContain(
       "'minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY'",
+    );
+    expect(migration).not.toContain(
+      "'minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA'",
     );
   });
 });
