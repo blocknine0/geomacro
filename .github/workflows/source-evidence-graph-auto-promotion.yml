@@ -54,9 +54,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "\${APP_SUPABASE_URL:-}"
-          test -n "\${SUPABASE_SERVICE_ROLE_KEY:-}"
-          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "\${EXPECTED_SUPABASE_PROJECT_REF}"
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
 
       - name: Build evidence graph and run guarded promotion
         run: bun run source:certification:evidence-graph
