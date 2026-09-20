@@ -102,10 +102,34 @@ async function fetchAllSources() {
 
 const sources = await fetchAllSources();
 const byUrl = new Map();
+const invalidSourceUrlCountBySource = new Map();
+
+function normalizeHttpUrl(value) {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  try {
+    const url = new URL(value.trim());
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 for (const source of sources ?? []) {
+  let invalidCount = 0;
   for (const url of [source.endpoint_url, source.canonical_url].filter(Boolean)) {
-    const normalized = new URL(String(url)).toString();
+    const normalized = normalizeHttpUrl(String(url));
+    if (!normalized) {
+      invalidCount += 1;
+      continue;
+    }
     if (!byUrl.has(normalized)) byUrl.set(normalized, source);
+  }
+  if (invalidCount > 0) {
+    invalidSourceUrlCountBySource.set(
+      String(source.source_id ?? "unknown"),
+      invalidCount,
+    );
   }
 }
 
@@ -117,6 +141,10 @@ const outcome = {
   ledger_rows_upserted: 0,
   certification_records_updated: 0,
   unmatched_source_records: 0,
+  invalid_source_url_values_skipped: [...invalidSourceUrlCountBySource.values()].reduce(
+    (sum, count) => sum + count,
+    0,
+  ),
   unclassified_rows: 0,
   write_operations_performed: true,
 };
@@ -156,7 +184,10 @@ const ledgerRows = results.map((result) => {
 
 const sourceUpdates = [];
 for (const result of results) {
-  const endpointUrl = new URL(String(result.endpoint_url)).toString();
+  const endpointUrl = normalizeHttpUrl(String(result.endpoint_url));
+  if (!endpointUrl) {
+    throw new Error("Probe result contains an invalid HTTP(S) endpoint URL.");
+  }
   const source = byUrl.get(endpointUrl);
   if (!source) {
     outcome.unmatched_source_records += 1;
