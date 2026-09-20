@@ -115,6 +115,18 @@ if (
   );
 }
 
+const observedAt =
+  typeof riskObject?.observed_at === "string" &&
+  riskObject.observed_at.trim().length > 0
+    ? riskObject.observed_at
+    : null;
+
+if (strictProfile && !observedAt) {
+  throw new Error(
+    "Federico strict Risk Object must contain observed_at for review as_of binding",
+  );
+}
+
 if (strictProfile) {
   const registryUrl =
     riskObject.integrity.trust_registry_url;
@@ -428,7 +440,8 @@ const reviewArtifact = {
   subject: riskObject.subject,
   risk: riskObject.risk,
   confidence: riskObject.confidence ?? null,
-  as_of: riskObject.as_of ?? riskObject.calculation_input?.as_of ?? null,
+  observed_at: observedAt,
+  as_of: observedAt,
   expires_at: riskObject.expires_at,
   verification: riskObject.verification ?? null,
   decision_readiness: riskObject.decision_readiness ?? null,
@@ -456,6 +469,7 @@ const reviewArtifact = {
         signing_key_id: riskObject.integrity.signing_key_id,
         signature_scheme: riskObject.integrity.signature_scheme,
         canonicalization: riskObject.integrity.canonicalization,
+        signature: riskObject.integrity.signature,
       }
     : null,
 };
@@ -730,8 +744,19 @@ console.log(
       object: {
         object_id: riskObject.object_id,
         schema_version: riskObject.schema_version,
+        observed_at: observedAt,
+        as_of: observedAt,
         expires_at: riskObject.expires_at,
         signing_key_id: riskObject?.integrity?.signing_key_id,
+        integrity: {
+          input_hash: riskObject?.integrity?.input_hash ?? null,
+          data_hash: riskObject?.integrity?.data_hash ?? null,
+          calculation_hash: riskObject?.integrity?.calculation_hash ?? null,
+          payload_hash: riskObject?.integrity?.payload_hash ?? null,
+          signature_scheme: riskObject?.integrity?.signature_scheme ?? null,
+          canonicalization: riskObject?.integrity?.canonicalization ?? null,
+          signature: riskObject?.integrity?.signature ?? null,
+        },
       },
       geomacro_verification: original.body.verification,
       tamper_verification:
