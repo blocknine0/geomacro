@@ -373,7 +373,7 @@ values
   ('macro-wb-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'COVERED','world_bank_indicators','Global country-level macro baseline.'),
   ('macro-bis-structured','MACRO','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','bis_rss_media_releases','BIS global financial-system signal path.'),
   ('minerals-usgs','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'COVERED','iea_critical_minerals','Global mineral supply/demand baseline.'),
-  ('minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','STRUCTURED_DATA',true,2,'PARTIAL','unctad_critical_minerals_data','Global trade-flow baseline.'),
+  ('minerals-trade','CRITICAL_MINERALS','GLOBAL','GLOBAL','INTERNATIONAL_PRIMARY',true,2,'PARTIAL','unctad_critical_minerals_data','Global trade-flow baseline from an international primary source.'),
   ('minerals-policy','CRITICAL_MINERALS','GLOBAL','GLOBAL','SPECIALIST_INDUSTRY',true,2,'PARTIAL','oecd_critical_raw_materials_restrictions','Global export-restriction intelligence.')
 on conflict (category, scope_type, scope_code, source_class)
 do update set
