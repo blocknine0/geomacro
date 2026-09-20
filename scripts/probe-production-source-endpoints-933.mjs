@@ -125,6 +125,7 @@ async function probe(endpoint) {
         headers: {
           "user-agent": "Geomacro-Source-Probe/4.0",
           range: "bytes=0-4095",
+          accept: "*/*",
         },
       },
       timeoutMs,
@@ -144,7 +145,7 @@ async function probe(endpoint) {
     entry.ok_transport = entry.get_ok_transport;
 
     try {
-      await response.arrayBuffer();
+      if (response.body) await response.body.cancel();
     } catch (error) {
       entry.get_error = String(error?.message ?? error);
       entry.ok_transport = false;
