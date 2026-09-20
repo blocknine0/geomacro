@@ -280,7 +280,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "event_type": "CRITICAL_MINERALS_BREAKING",
         "source_reliability": 90.0,
         "timeout_seconds": 25,
-        "retry_attempts": 1,
+        "retry_attempts": 3,
         "retry_backoff_seconds": 2,
         "fallback_url": "https://www.usgs.gov/programs/mineral-resources-program/news",
         "fallback_link_prefix": "/programs/mineral-resources-program/news/",
