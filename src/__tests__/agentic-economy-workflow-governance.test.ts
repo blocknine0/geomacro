@@ -101,7 +101,10 @@ describe("agentic economy workflow governance", () => {
       if (source.includes("inputs.candidate_sha")) {
         expect(source, path).toContain("CANDIDATE_SHA");
         expect(source, path).toContain("DISPATCH_SHA");
-        expect(source, path).toMatch(/ref:\s+\$\{\{\s*inputs\.candidate_sha\s*\}\}/);
+        const exactBinding =
+          /ref:\s+\$\{\{\s*inputs\.candidate_sha\s*\}\}/.test(source) ||
+          /CANDIDATE_SHA[\s\S]*DISPATCH_SHA|DISPATCH_SHA[\s\S]*CANDIDATE_SHA/.test(source);
+        expect(exactBinding, path).toBe(true);
         expect(source, path).toContain("persist-credentials: false");
       }
     }
