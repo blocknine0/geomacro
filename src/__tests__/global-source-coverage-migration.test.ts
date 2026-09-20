@@ -7,6 +7,15 @@ const migration = readFileSync(
 );
 
 describe("global source coverage migration integrity", () => {
+  it("binds every source-universe status CTE into the final view", () => {
+    const sourceUniverse = readFileSync(
+      "supabase/migrations/056_global_source_universe_expansion.sql",
+      "utf8",
+    );
+    expect(sourceUniverse).toContain("from countries");
+    expect(sourceUniverse).toContain("cross join shock_min");
+  });
+
   it("keeps the seven mandatory global backbone coverage keys unique", () => {
     const expectedKeys = [
       "GEOPOLITICS|GLOBAL|GLOBAL|GLOBAL_AGGREGATOR",
