@@ -9,8 +9,8 @@ import {
 
 describe("governed hot-topic taxonomy", () => {
   it("publishes a versioned definition for every family", () => {
-    expect(HOT_TOPIC_TAXONOMY_VERSION).toBe("geomacro.hot-topic-family.v1");
-    expect(HOT_TOPIC_FAMILIES).toHaveLength(18);
+    expect(HOT_TOPIC_TAXONOMY_VERSION).toBe("geomacro.hot-topic-family.v2");
+    expect(HOT_TOPIC_FAMILIES).toHaveLength(35);
     expect(Object.keys(HOT_TOPIC_FAMILY_DEFINITIONS).sort()).toEqual(
       [...HOT_TOPIC_FAMILIES].sort(),
     );
@@ -41,6 +41,24 @@ describe("governed hot-topic taxonomy", () => {
     ["earthquake and tsunami", "natural_hazards"],
     ["bank run and liquidity crisis", "banking_financial_system"],
     ["cross-border trade corridor disruption", "trade_corridor_disruption"],
+    ["cross-border payment disruption", "payments_settlement_disruption"],
+    ["customs restriction closes border crossings", "border_customs_transit_disruption"],
+    ["national electricity grid blackout", "electricity_grid_disruption"],
+    ["extreme heat and water stress", "climate_water_heat_stress"],
+    ["public health emergency outbreak", "public_health_emergency"],
+    ["refugee influx and displacement", "migration_displacement_shock"],
+    ["workers strike disrupts production", "labor_strike_workforce_disruption"],
+    ["systemic cyberattack hits critical infrastructure", "cyber_systemic_attack"],
+    ["internet shutdown cuts communications", "telecom_internet_shutdown"],
+    ["submarine cable and GNSS disruption", "submarine_cable_gnss_navigation_disruption"],
+    ["new regulatory policy and licensing restriction", "regulatory_legal_policy_shock"],
+    ["foreign influence disinformation campaign", "information_influence_disinformation_shock"],
+    ["war risk insurance withdrawal", "insurance_market_withdrawal_war_risk"],
+    ["expropriation and nationalization of assets", "expropriation_nationalization_shock"],
+    ["foreign investment screening restriction", "investment_screening_restriction"],
+    ["semiconductor export control shock", "technology_semiconductor_export_control_shock"],
+    ["capital controls and convertibility restrictions", "capital_controls_convertibility_shock"],
+    ["rare material shortage supply shock", "rare_material_long_tail_supply_shock"],
   ] as const)("maps %s to %s", (question, expected) => {
     expect(inferHotTopicFamiliesFromQuestion(question)).toContain(expected);
   });
