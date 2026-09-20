@@ -8,7 +8,7 @@ on:
       - '.github/workflows/database-schema-safety.yml'
       - 'package.json'
   push:
-    branches: [main]
+    branches: [main, hardening/source-network-risk-gate-production]
     paths:
       - 'supabase/migrations/**'
       - 'scripts/db/**'
