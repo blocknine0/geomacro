@@ -71,6 +71,24 @@ function classify(result) {
   return ["UNCLASSIFIED", "No deterministic transport disposition was produced."];
 }
 
+async function fetchWithDeadline(url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await Promise.race([
+      fetch(url, {
+        ...init,
+        signal: controller.signal,
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Probe deadline exceeded after ${timeoutMs}ms`)), timeoutMs),
+      ),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function probe(endpoint) {
   const started = Date.now();
   const entry = {
@@ -80,7 +98,7 @@ async function probe(endpoint) {
     endpoint_key: createHash("sha256").update(endpoint.endpoint_url, "utf8").digest("hex"),
     status: null,
     status_text: null,
-    method: null,
+    method: "GET",
     final_url: null,
     content_type: null,
     content_length: null,
@@ -98,32 +116,19 @@ async function probe(endpoint) {
     disposition_reason: null,
   };
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
-    let response = await fetch(entry.endpoint_url, {
-      method: "HEAD",
-      redirect: "follow",
-      signal: controller.signal,
-      headers: { "user-agent": "Geomacro-Source-Probe/3.0" },
-    });
-
-    if ([403, 405, 501].includes(response.status)) {
-      response = await fetch(entry.endpoint_url, {
+    const response = await fetchWithDeadline(
+      endpoint.endpoint_url,
+      {
         method: "GET",
         redirect: "follow",
-        signal: controller.signal,
         headers: {
-          "user-agent": "Geomacro-Source-Probe/3.0",
+          "user-agent": "Geomacro-Source-Probe/4.0",
           range: "bytes=0-4095",
         },
-      });
-      try { await response.arrayBuffer(); } catch {}
-      entry.method = "GET";
-    } else {
-      entry.method = "HEAD";
-    }
+      },
+      timeoutMs,
+    );
 
     entry.status = response.status;
     entry.status_text = response.statusText;
@@ -133,31 +138,21 @@ async function probe(endpoint) {
     entry.last_modified = response.headers.get("last-modified");
     entry.etag = response.headers.get("etag");
     entry.cache_control = response.headers.get("cache-control");
-    entry.ok_transport = response.status >= 200 && response.status < 400;
+    entry.get_status = response.status;
+    entry.get_content_type = entry.content_type;
+    entry.get_ok_transport = response.status >= 200 && response.status < 400;
+    entry.ok_transport = entry.get_ok_transport;
 
-    if (entry.method === "HEAD" && response.status === 200) {
-      try {
-        const verify = await fetch(entry.endpoint_url, {
-          method: "GET",
-          redirect: "follow",
-          signal: controller.signal,
-          headers: {
-            "user-agent": "Geomacro-Source-Probe/3.0",
-            range: "bytes=0-4095",
-          },
-        });
-        try { await verify.arrayBuffer(); } catch {}
-        entry.get_status = verify.status;
-        entry.get_content_type = verify.headers.get("content-type");
-        entry.get_ok_transport = verify.status >= 200 && verify.status < 400;
-      } catch (error) {
-        entry.get_error = String(error?.message ?? error);
-      }
+    try {
+      await response.arrayBuffer();
+    } catch (error) {
+      entry.get_error = String(error?.message ?? error);
+      entry.ok_transport = false;
+      entry.get_ok_transport = false;
     }
   } catch (error) {
     entry.error = String(error?.message ?? error);
   } finally {
-    clearTimeout(timer);
     entry.latency_ms = Date.now() - started;
   }
 
