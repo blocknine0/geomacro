@@ -1171,7 +1171,7 @@ insert into public.live_source_certification_queue (
   queue_key, scope_type, scope_code, module_id, source_role, source_id, notes
 )
 select
-  'SHOCK:' || s.shock_id || ':PRIMARY:' || s.primary_source_id,
+  'SHOCK:' || s.shock_id || ':' || m.module_id || ':PRIMARY:' || s.primary_source_id,
   'SHOCK', s.shock_id, m.module_id, 'SHOCK_PRIMARY', s.primary_source_id,
   'Shock family primary detection source. Certification intentionally queued.'
 from public.live_global_shock_taxonomy s
@@ -1184,7 +1184,7 @@ insert into public.live_source_certification_queue (
   queue_key, scope_type, scope_code, module_id, source_role, source_id, notes
 )
 select
-  'SHOCK:' || s.shock_id || ':FALLBACK:' || s.fallback_source_id,
+  'SHOCK:' || s.shock_id || ':' || m.module_id || ':FALLBACK:' || s.fallback_source_id,
   'SHOCK', s.shock_id, m.module_id, 'SHOCK_FALLBACK', s.fallback_source_id,
   'Shock family fallback detection source. Certification intentionally queued.'
 from public.live_global_shock_taxonomy s
