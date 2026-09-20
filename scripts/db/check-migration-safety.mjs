@@ -23,38 +23,63 @@ const errors = [];
 
 /*
  * ------------------------------------------------------------
- * Migration identity integrity
- *
- * Supabase tracks migration history by the full migration timestamp/stem,
- * not by an arbitrary short numeric prefix. Geomacro has legacy migrations
- * that intentionally share the same human-readable numeric prefix (for
- * example 043_* and 044_*). Treating that prefix as the remote migration ID
- * creates false CI failures and would tempt unsafe history rewrites.
- *
- * The safety gate therefore rejects only an exact duplicate migration stem.
- * Existing legacy prefixes remain untouched; new migrations retain the
- * repository's established naming track unless a reviewed history migration
- * is undertaken separately.
+ * Migration version integrity
  * ------------------------------------------------------------
  */
 
-const migrationStems = new Map();
+const migrationVersions =
+  new Map();
+
 
 for (const file of files) {
-  const stem = file.replace(/\.sql$/i, "");
-  const existing = migrationStems.get(stem) ?? [];
-  existing.push(file);
-  migrationStems.set(stem, existing);
+  const match =
+    file.match(
+      /^(\d+)_/,
+    );
+
+  if (!match) {
+    errors.push(
+      `${file}: migration filename must start with a numeric version prefix`,
+    );
+
+    continue;
+  }
+
+  const version =
+    match[1];
+
+  const existing =
+    migrationVersions.get(
+      version,
+    ) ?? [];
+
+  existing.push(
+    file,
+  );
+
+  migrationVersions.set(
+    version,
+    existing,
+  );
 }
 
-for (const [stem, stemFiles] of migrationStems.entries()) {
-  if (stemFiles.length > 1) {
+
+for (
+  const [
+    version,
+    versionFiles,
+  ]
+  of migrationVersions.entries()
+) {
+  if (
+    versionFiles.length >
+      1
+  ) {
     errors.push(
-      `duplicate migration identity ${stem}: ${stemFiles.join(", ")}`,
+      `duplicate migration version ${version}: ${versionFiles.join(', ')}`,
     );
   }
 }
-
 
 
 /*
