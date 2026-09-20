@@ -9,7 +9,7 @@ describe("website lock governance", () => {
     const verifier = read("scripts/ops/verify-website-lock.mjs");
 
     expect(workflow).toContain("permissions:\n  contents: read");
-    expect(workflow).toMatch(/uses: actions\\/checkout@[0-9a-f]{40}/);
+    expect(workflow).toMatch(/uses: actions\/checkout@[0-9a-f]{40}/);
     expect(workflow).toContain("persist-credentials: false");
     expect(workflow).toContain("node scripts/ops/verify-website-lock.mjs");
     expect(workflow).toContain("Website lock self-test failed");
