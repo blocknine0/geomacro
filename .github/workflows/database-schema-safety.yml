@@ -37,6 +37,7 @@ jobs:
           # Pin the CLI so CI does not depend on GitHub's unauthenticated
           # "latest release" lookup, which can fail under API rate limiting.
           version: 2.117.0
+      # The replay must execute the exact Git revision under test; never trust a stale checkout.
       - name: Verify replay revision
         run: |
           echo "Replay revision: $(git rev-parse HEAD)"
