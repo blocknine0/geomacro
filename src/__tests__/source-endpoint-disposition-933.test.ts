@@ -32,7 +32,7 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(lock.endpoint_count).toBe(933);
     expect(lock.manifest_sha256).toMatch(/^[0-9a-f]{64}$/);
 
-    const module = await import("../scripts/source-endpoint-manifest.mjs");
+    const module = await import("../../scripts/source-endpoint-manifest.mjs");
     const manifest = await module.collectMigrationEndpointManifest();
     expect(manifest.endpoint_count).toBe(933);
     expect(manifest.manifest_sha256).toBe(lock.manifest_sha256);
