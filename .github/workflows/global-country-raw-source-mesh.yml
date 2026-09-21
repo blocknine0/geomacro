@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-global-country-raw-source-mesh
+  group: geomacro-global-country-raw-source-mesh-v2
   cancel-in-progress: false
 
 jobs:
@@ -56,9 +56,9 @@ jobs:
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
           test -n "${LIVE_STRUCTURE_TOKEN:-}"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
-          bun --check scripts/sync-country-raw-source-mesh.mjs
-          bun --check scripts/audit-global-raw-source-coverage.mjs
-          bun --check scripts/audit-global-raw-source-runtime.mjs
+          timeout 30s node --check scripts/sync-country-raw-source-mesh.mjs
+          timeout 30s node --check scripts/audit-global-raw-source-coverage.mjs
+          timeout 30s node --check scripts/audit-global-raw-source-runtime.mjs
 
       - name: Reconcile and capture country web/API sources
         shell: bash
