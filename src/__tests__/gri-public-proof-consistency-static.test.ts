@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 const script = read("scripts/audit-gri-public-proof-consistency.mjs");
-const workflow = read(".github/workflows/gri-public-proof-consistency.yml");
+const workflow = read(".github/workflows/gri-governance.yml");
 const verifier = read("scripts/verify-gri-snapshot-v12.js");
 
 describe("GRI public proof consistency evidence", () => {
