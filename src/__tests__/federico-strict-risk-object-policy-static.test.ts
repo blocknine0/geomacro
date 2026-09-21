@@ -456,10 +456,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      'artifact_version: "geomacro-invino-review-v2"',
+      'artifact_version: "geomacro-invino-review-v3"',
     );
     expect(preflight).toContain(
-      "risk_object: riskObject",
+      "risk_object_reference:",
     );
     expect(preflight).toContain(
       'as_of_source: "risk_object.observed_at"',
