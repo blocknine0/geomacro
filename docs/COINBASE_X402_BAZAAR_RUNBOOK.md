@@ -74,7 +74,7 @@ Acceptance requires `valid: true` and `simulation.outcome: "accepted"`.
 
 ## Guarded paid E2E workflow
 
-Use `.github/workflows/coinbase-x402-base-sepolia-paid-e2e.yml` only with a dedicated Base Sepolia buyer wallet. The workflow is manual-only, hard-pinned to `https://geomacro.live/api/x402/risk`, hard-pinned to Base Sepolia USDC, and refuses any advertised amount above `0.05` USDC.
+Use `.github/workflows/coinbase-x402-base-sepolia.yml` only with a dedicated Base Sepolia buyer wallet. The workflow is manual-only, hard-pinned to `https://geomacro.live/api/x402/risk`, hard-pinned to Base Sepolia USDC, and refuses any advertised amount above `0.05` USDC.
 
 The workflow uses the existing repository Actions secret:
 
