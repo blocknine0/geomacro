@@ -353,12 +353,13 @@ jobs:
           set -euo pipefail
           test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
 
-          # The structure endpoint drains at most 60 records per call. Do not hard-code
-          # an 8-batch ceiling: a valid fresh GDELT fragment can be larger than 480
-          # records. Allow a bounded drain loop with an explicit no-progress guard.
-          max_batches=32
+          # The structure endpoint drains at most 60 records per call. Drive the
+          # loop from the immutable fragment_total returned by the endpoint itself,
+          # rather than a source-size-specific fixed batch ceiling.
+          attempt=1
           previous_remaining=-1
-          for attempt in $(seq 1 "${max_batches}"); do
+          max_batches=""
+          while true; do
             response_file="/tmp/federico-exact-structure-${attempt}.json"
             curl --fail-with-body -sS \
               --retry 3 \
@@ -374,7 +375,23 @@ jobs:
 
             jq -e '.ok == true' "${response_file}" >/dev/null
             jq '{ok,status,fragment_id,batch_size,evidence_structured,evidence_excluded,handled_before,handled_after,fragment_total,remaining,has_more}' "${response_file}"
+
+            batch_size="$(jq -r '.batch_size // 0' "${response_file}")"
+            fragment_total="$(jq -r '.fragment_total // 0' "${response_file}")"
             remaining="$(jq -r '.remaining // 0' "${response_file}")"
+
+            [[ "${batch_size}" =~ ^[0-9]+$ && "${batch_size}" -gt 0 ]] || {
+              echo "::error::Exact fresh GDELT structure returned an invalid batch_size=${batch_size}."
+              exit 1
+            }
+            [[ "${fragment_total}" =~ ^[0-9]+$ && "${fragment_total}" -gt 0 ]] || {
+              echo "::error::Exact fresh GDELT structure returned an invalid fragment_total=${fragment_total}."
+              exit 1
+            }
+
+            if [[ -z "${max_batches}" ]]; then
+              max_batches="$(( (fragment_total + batch_size - 1) / batch_size + 1 ))"
+            fi
 
             if [[ "${remaining}" == "0" ]]; then
               break
@@ -386,10 +403,11 @@ jobs:
             fi
             previous_remaining="${remaining}"
 
-            [[ "${attempt}" -lt "${max_batches}" ]] || {
-              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after ${max_batches} targeted structure batches."
+            (( attempt < max_batches )) || {
+              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after ${max_batches} derived structure batches."
               exit 1
             }
+            attempt=$((attempt + 1))
           done
 
           echo "PASS: exact fresh GDELT fragment targeted structuring completed before the persistence proof."
