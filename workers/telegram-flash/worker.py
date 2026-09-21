@@ -1056,9 +1056,7 @@ async def process_feed(
     current["modified"] = modified
 
     if transport == "rss":
-        all_entries, parse_mode = parse_rss_entries(raw, url)
-        if parse_mode == "rss_lenient":
-            transport = "rss_lenient"
+        all_entries, _parse_mode = parse_rss_entries(raw, url)
 
         # Treat HTTP 200 as transport success, not freshness success. Some
         # publishers retain legacy RSS URLs that serve archival entries.
