@@ -290,7 +290,10 @@ async function main() {
       .limit(300),
     db.from("live_strategic_corridor_catalog").select("corridor_id,display_name,corridor_type,chokepoints,monitoring_scope"),
     db.from("live_global_shock_taxonomy").select("shock_id,display_name,required").eq("required", true),
-    db.from("live_realtime_scope_targets").select("target_id,scope_type,scope_code,category,transport,source_id,target_url,query_hint,activation_mode,cadence_seconds,last_triggered_at,last_success_at,last_attempt_at,consecutive_failures").eq("enabled", true),
+    db.from("live_realtime_scope_targets")
+      .select("target_id,scope_type,scope_code,category,transport,source_id,target_url,query_hint,activation_mode,cadence_seconds,last_triggered_at,last_success_at,last_attempt_at,consecutive_failures,live_external_sources!inner(enabled_for_ingestion)")
+      .eq("enabled", true)
+      .eq("live_external_sources.enabled_for_ingestion", true),
   ]);
   if (eventsQ.error) throw eventsQ.error;
   if (corridorsQ.error) throw corridorsQ.error;

@@ -1,5 +1,46 @@
 begin;
 
+-- Seed the exact governed GDELT v2 event registration when production history
+-- does not yet contain migration 920. This keeps migration 923 idempotent and
+-- scoped without re-applying unrelated source-registry changes.
+insert into public.live_external_sources (
+  source_id,
+  source_name,
+  provider_name,
+  category,
+  access_type,
+  authentication_type,
+  base_url,
+  licence_name,
+  commercial_usage_status,
+  raw_redistribution_allowed,
+  attribution_required,
+  enabled_for_ingestion,
+  enabled_for_commercial_signals,
+  country_scope,
+  freshness_class,
+  notes
+)
+values (
+  'gdelt_v2_events',
+  'GDELT 2.0 Event Database',
+  'GDELT Project',
+  'GEOPOLITICS',
+  'BULK_DOWNLOAD',
+  'NONE',
+  'https://data.gdeltproject.org/gdeltv2/',
+  'GDELT Terms of Use - unlimited and unrestricted academic, commercial and governmental use with citation',
+  'COMMERCIAL_OK',
+  true,
+  true,
+  false,
+  false,
+  'GLOBAL',
+  'REAL_TIME_15_MIN',
+  'GDELT 2.0 event metadata is released every 15 minutes and permits commercial use and redistribution with citation. This source is event/news-derived evidence, not a substitute for authoritative conflict or government statistics. Do not redistribute underlying publisher article text.'
+)
+on conflict (source_id) do nothing;
+
 update public.live_external_sources
 set
   enabled_for_ingestion = true,

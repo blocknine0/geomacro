@@ -95,7 +95,9 @@ jobs:
       GRI_METHOD_VERSION: gri-v1.2.0
       GRI_PROOF_VERSION: gri-proof-v1.2.0
       GRI_VALIDATION_VERSION: gri-validation-v1.1.0
-      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
+      # Pull requests validate sensitivity mechanics on a moving public dataset.
+      # Keep the production scheduled gate at the strict 3-hour freshness policy.
+      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: ${{ github.event_name == 'pull_request' && '6' || '3' }}
       GRI_SENSITIVITY_ARTIFACT: artifacts/gri-v12-sensitivity.json
       GRI_VALIDATION_EVIDENCE_ARTIFACT: artifacts/gri-validation-evidence.json
     concurrency:

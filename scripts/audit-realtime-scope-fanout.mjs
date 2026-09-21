@@ -33,8 +33,9 @@ async function main() {
     db.from("live_strategic_corridor_catalog").select("corridor_id"),
     db.from("live_global_shock_taxonomy").select("shock_id").eq("required", true),
     db.from("live_realtime_scope_targets")
-      .select("target_id,scope_type,scope_code,category,transport,activation_mode,last_success_at,last_attempt_at,discovery_state,consecutive_failures")
-      .eq("enabled", true),
+      .select("target_id,scope_type,scope_code,category,transport,activation_mode,last_success_at,last_attempt_at,discovery_state,consecutive_failures,live_external_sources!inner(enabled_for_ingestion)")
+      .eq("enabled", true)
+      .eq("live_external_sources.enabled_for_ingestion", true),
     db.from("live_ingestion_cursors")
       .select("source_key,stream_key,last_success_at,status")
       .eq("source_key", "gdelt_gal").eq("stream_key", "global-relevant").maybeSingle(),
