@@ -200,7 +200,7 @@ jobs:
 
   endpoint-933-disposition:
     if: >-
-      \${{
+      ${{
         github.event_name == 'workflow_dispatch' ||
         github.event_name == 'push' ||
         (
@@ -217,9 +217,9 @@ jobs:
       EXPECTED_ENDPOINT_COUNT: "933"
       SOURCE_PROBE_TIMEOUT_MS: "5000"
       SOURCE_PROBE_CONCURRENCY: "40"
-      SUPABASE_DB_URL: \${{ secrets.SUPABASE_DB_URL }}
-      APP_SUPABASE_URL: \${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
       STRICT_ENDPOINT_COUNT: "true"
     concurrency:
       group: geomacro-source-network-933-disposition-v2
@@ -229,7 +229,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-          ref: \${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Setup Node 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
@@ -240,9 +240,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "\${SUPABASE_DB_URL:-}"
-          test -n "\${APP_SUPABASE_URL:-}"
-          test -n "\${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
           node --input-type=module <<'NODE'
           const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
           const db = new URL(process.env.SUPABASE_DB_URL);
@@ -259,8 +259,8 @@ jobs:
         run: |
           set -euo pipefail
           for relation in live_source_endpoint_manifest_lock live_source_endpoint_disposition_ledger live_source_endpoint_disposition_933_status; do
-            value="$(psql "\${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.\${relation}')")"
-            test "\${value}" = "\${relation}"
+            value="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.${relation}')")"
+            test "${value}" = "${relation}"
           done
           echo "PASS: permanent endpoint manifest lock, ledger and gate are present."
       - name: Verify canonical 933 endpoint manifest lock
@@ -277,24 +277,24 @@ jobs:
         run: |
           set -euo pipefail
           expected_hash="$(node --input-type=module -e 'import { collectMigrationEndpointManifest } from "./scripts/source-endpoint-manifest.mjs"; const m = await collectMigrationEndpointManifest(); process.stdout.write(m.manifest_sha256);')"
-          db_hash="$(psql "\${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select manifest_sha256 from public.live_source_endpoint_manifest_lock where lock_id='phase-b-933-v1'")"
-          test "\${expected_hash}" = "\${db_hash}"
-          row="$(psql "\${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
-          echo "\${row}"
-          IFS='|' read -r expected_count db_hash recorded_count disposition_count unclassified_count transport_success_count remediation_count complete <<< "\${row}"
-          test "\${expected_count}" = "933"
-          test "\${db_hash}" = "\${expected_hash}"
-          test "\${recorded_count}" = "933"
-          test "\${disposition_count}" = "933"
-          test "\${unclassified_count}" = "0"
-          test "\${complete}" = "t"
+          db_hash="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select manifest_sha256 from public.live_source_endpoint_manifest_lock where lock_id='phase-b-933-v1'")"
+          test "${expected_hash}" = "${db_hash}"
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
+          echo "${row}"
+          IFS='|' read -r expected_count db_hash recorded_count disposition_count unclassified_count transport_success_count remediation_count complete <<< "${row}"
+          test "${expected_count}" = "933"
+          test "${db_hash}" = "${expected_hash}"
+          test "${recorded_count}" = "933"
+          test "${disposition_count}" = "933"
+          test "${unclassified_count}" = "0"
+          test "${complete}" = "t"
           echo "PASS: 933/933 endpoint disposition is complete."
           echo "PASS: manifest hash is aligned between repository and production."
       - name: Upload 933 endpoint evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: source-network-933-endpoint-disposition-\${{ github.run_id }}
+          name: source-network-933-endpoint-disposition-${{ github.run_id }}
           path: artifacts/source-endpoint-disposition-933/
           if-no-files-found: error
           retention-days: 30
