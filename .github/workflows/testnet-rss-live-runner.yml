@@ -9,7 +9,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: testnet-rss-live-runner
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
