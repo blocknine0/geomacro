@@ -4,6 +4,16 @@ import { readFileSync } from "node:fs";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("Telegram raw-signal manual-review contract", () => {
+  it("keeps every ingest source behind the canonical source registry", () => {
+    const ingest = read("supabase/functions/live-flash-ingest/index.ts");
+
+    expect(ingest).toContain('from("live_external_sources")');
+    expect(ingest).toContain("enabled_for_ingestion");
+    expect(ingest).toContain("loadIngestionSource");
+    expect(ingest).not.toContain("ALLOWED_SOURCE_IDS");
+    expect(ingest).not.toContain("github_oidc_source_not_allowed");
+  });
+
   it("keeps every Telegram source behind explicit database approval", () => {
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
 
