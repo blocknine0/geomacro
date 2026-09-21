@@ -14,7 +14,7 @@ if (!APP_SUPABASE_URL || !APP_SUPABASE_SERVICE_ROLE_KEY) {
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_SOURCE = "geomacro_intelligence_orchestrator";
-const STATE_SOURCE = "gdelt_gal";
+const STATE_SOURCE = CONTROL_SOURCE;
 const STATE_PREFIX = "orchestrator:";
 const MAX_TASKS_PER_TICK = Math.max(1, Math.min(8, Number(process.env.INTELLIGENCE_ORCHESTRATOR_MAX_TASKS ?? 4)));
 const RETRY_SECONDS = Math.max(60, Math.min(900, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RETRY_SECONDS ?? 300)));
