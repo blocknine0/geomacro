@@ -109,7 +109,7 @@ describe("Testnet canonical intelligence capability parity", () => {
   it("delivers only canonical signed Risk Objects that pass the stricter commercial policy without mutating them", () => {
     const runner = read("src/lib/testnet-intelligence-capability.server.ts");
     expect(runner).toContain("createPublicSignedRiskObjectProjection");
-    expect(runner).toContain("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
+    expect(runner).toContain("containsForbiddenPublicSourceKeys");
     expect(runner).toContain("commercialVerification.deliverable");
     expect(runner).toContain("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
     expect(runner).toContain("commercial_delivery");
