@@ -512,6 +512,7 @@ corridor_targets as (
   from public.live_realtime_scope_targets
   where scope_type='CORRIDOR'
     and transport='GDELT_BURST'
+    and enabled=true
 ),
 corridor_complete as (
   select count(*)::bigint n
@@ -520,6 +521,7 @@ corridor_complete as (
     from public.live_realtime_scope_targets
     where scope_type='CORRIDOR'
       and transport='GDELT_BURST'
+      and enabled=true
     group by scope_code
     having count(*) filter (where category='GEOPOLITICS') > 0
        and count(*) filter (where category='MACRO') > 0
@@ -536,6 +538,7 @@ hot_targets as (
   from public.live_realtime_scope_targets
   where scope_type='HOT_TOPIC'
     and transport='GDELT_BURST'
+    and enabled=true
 ),
 hot_complete as (
   select count(*)::bigint n
@@ -545,6 +548,7 @@ hot_complete as (
     join public.live_global_shock_taxonomy s on s.shock_id=t.scope_code
     where t.scope_type='HOT_TOPIC'
       and t.transport='GDELT_BURST'
+      and t.enabled=true
       and s.required
     group by t.scope_code
     having count(*) filter (where t.category='GEOPOLITICS') > 0
