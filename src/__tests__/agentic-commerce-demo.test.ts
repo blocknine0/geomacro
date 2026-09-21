@@ -112,7 +112,7 @@ describe("Agentic Commerce public demo contract", () => {
     expect(refresh).toContain('delivery_profile: "PUBLIC_DEMO"');
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toContain('cron: "17 * * * *"');
-    const orchestrator = read(".github/workflows/intelligence-orchestrator.yml");
+    const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expect(orchestrator).toContain('key: "public_demo_refresh"');
   });
 
