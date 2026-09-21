@@ -1,0 +1,299 @@
+name: Source Network Governance & Endpoint Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Select one source-network operation for a manual run"
+        required: true
+        default: endpoint-probe
+        type: choice
+        options:
+          - endpoint-probe
+          - registry-audit
+          - certification
+          - endpoint-933-disposition
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-global-source-endpoints.mjs"
+      - "scripts/source-endpoint-manifest.mjs"
+      - "scripts/audit-source-certification-100.mjs"
+      - "scripts/import-source-endpoint-evidence.mjs"
+      - "scripts/probe-production-source-endpoints-933.mjs"
+      - "scripts/audit-global-source-registry-readonly.mjs"
+      - "src/lib/source-certification-contract.ts"
+      - "src/lib/risk-gate-readiness.server.ts"
+      - "src/routes/api.risk-gate-readiness.ts"
+      - "config/source-endpoint-manifest-lock.json"
+      - ".github/workflows/source-network-governance.yml"
+      - ".github/workflows/global-source-endpoint-probe.yml"
+      - ".github/workflows/global-source-registry-readonly-audit.yml"
+      - ".github/workflows/source-network-certification-audit.yml"
+      - ".github/workflows/source-network-933-endpoint-disposition.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/test-global-source-endpoints.mjs"
+      - "scripts/source-endpoint-manifest.mjs"
+      - "scripts/audit-global-source-registry-readonly.mjs"
+      - "scripts/probe-production-source-endpoints-933.mjs"
+      - "scripts/import-source-endpoint-evidence.mjs"
+      - "config/source-endpoint-manifest-lock.json"
+      - ".github/workflows/source-network-governance.yml"
+      - ".github/workflows/global-source-endpoint-probe.yml"
+      - ".github/workflows/global-source-registry-readonly-audit.yml"
+      - ".github/workflows/source-network-933-endpoint-disposition.yml"
+  workflow_run:
+    workflows:
+      - Deploy country flash intelligence to Supabase
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  endpoint-probe:
+    if: >-
+      ${{
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'endpoint-probe')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Verify canonical endpoint manifest lock
+        run: node scripts/source-endpoint-manifest.mjs
+      - name: Probe all migration-referenced external URLs
+        env:
+          SOURCE_PROBE_TIMEOUT_MS: "12000"
+          SOURCE_PROBE_CONCURRENCY: "12"
+          SOURCE_PROBE_MAX_URLS: "5000"
+          SOURCE_PROBE_FAIL_ON_TRANSPORT_ERRORS: "false"
+        run: node scripts/test-global-source-endpoints.mjs
+      - name: Validate probe output
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const s = JSON.parse(fs.readFileSync("artifacts/global-source-endpoint-probe/summary.json", "utf8"));
+          const r = JSON.parse(fs.readFileSync("artifacts/global-source-endpoint-probe/results.json", "utf8"));
+          if (s.unique_url_count !== r.length) throw new Error("summary/result count mismatch");
+          if (s.transport_ok_count + s.transport_not_ok_count !== r.length) throw new Error("transport count mismatch");
+          const lock = JSON.parse(fs.readFileSync("config/source-endpoint-manifest-lock.json", "utf8"));
+          if (s.unique_url_count !== lock.endpoint_count) throw new Error(`manifest count mismatch: expected ${lock.endpoint_count}, got ${s.unique_url_count}`);
+          console.log(JSON.stringify({pass:true,url_count:r.length,transport_ok:s.transport_ok_count,transport_not_ok:s.transport_not_ok_count},null,2));
+          NODE
+      - name: Upload endpoint evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-source-endpoint-probe-${{ github.sha }}
+          path: artifacts/global-source-endpoint-probe/
+          if-no-files-found: error
+          retention-days: 30
+
+  registry-audit:
+    if: >-
+      ${{
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'registry-audit')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Validate authoritative production database target
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_PROJECT_ID:-}"
+          test -n "${SUPABASE_DB_URL:-}"
+          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF"
+          node --input-type=module <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const directHost = `db.${ref}.supabase.co`;
+          const poolerMatch = db.hostname.endsWith(".pooler.supabase.com") && db.username === `postgres.${ref}`;
+          const directMatch = db.hostname === directHost && db.username === "postgres";
+          if (!["postgres:", "postgresql:"].includes(db.protocol) || (!directMatch && !poolerMatch)) throw new Error("SUPABASE_DB_URL is not the authoritative production database");
+          if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
+          NODE
+      - name: Run complete read-only source registry audit
+        run: node scripts/audit-global-source-registry-readonly.mjs
+      - name: Upload registry audit evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-source-registry-audit-${{ github.sha }}
+          path: artifacts/global-source-registry-audit/
+          if-no-files-found: error
+          retention-days: 30
+
+  certification:
+    if: >-
+      ${{
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'certification')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Probe and classify every discovered source URL
+        env:
+          SOURCE_PROBE_MAX_URLS: '5000'
+          SOURCE_PROBE_TIMEOUT_MS: '12000'
+          SOURCE_PROBE_CONCURRENCY: '12'
+          SOURCE_PROBE_CLASSIFY: 'true'
+        run: bun run source:endpoints:probe
+      - name: Upload endpoint evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-network-endpoint-probe-${{ github.run_id }}
+          path: artifacts/global-source-endpoint-probe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Verify source-network contracts
+        run: bunx vitest run src/__tests__/source-certification-contract.test.ts src/__tests__/global-source-coverage-migration.test.ts src/__tests__/source-network-launch-gate-static.test.ts
+      - name: Run strict source-network audit on isolated staging
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          EXPECTED_SUPABASE_PROJECT_REF: hencqxkmmcgnothotqpq
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${EXPECTED_SUPABASE_PROJECT_REF:-}"
+          node scripts/audit-source-certification-100.mjs --strict
+        timeout-minutes: 10
+      - name: Upload staging certification evidence
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-network-certification-staging-${{ github.run_id }}
+          path: artifacts/source-certification-100
+          if-no-files-found: error
+          retention-days: 30
+
+  endpoint-933-disposition:
+    if: >-
+      ${{
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'endpoint-933-disposition') ||
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_branch == 'main')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    concurrency:
+      group: geomacro-source-network-933-disposition-v2
+      cancel-in-progress: false
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      EXPECTED_ENDPOINT_COUNT: "933"
+      SOURCE_PROBE_TIMEOUT_MS: "5000"
+      SOURCE_PROBE_CONCURRENCY: "40"
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      STRICT_ENDPOINT_COUNT: "true"
+    steps:
+      - name: Checkout exact validated revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Validate authoritative production database target
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          node --input-type=module <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const username = decodeURIComponent(db.username);
+          const directMatch = db.hostname === `db.${ref}.supabase.co` && username === "postgres";
+          const poolerMatch = db.hostname.endsWith(".pooler.supabase.com") && username === `postgres.${ref}`;
+          if (!["postgres:", "postgresql:"].includes(db.protocol) || (!directMatch && !poolerMatch)) throw new Error("SUPABASE_DB_URL is not the authoritative production database");
+          if (!db.password || db.pathname !== "/postgres") throw new Error("Invalid production database URL");
+          const api = new URL(process.env.APP_SUPABASE_URL);
+          if (api.hostname !== `${ref}.supabase.co`) throw new Error("APP_SUPABASE_URL is not the authoritative production API");
+          NODE
+      - name: Verify permanent endpoint disposition schema
+        run: |
+          set -euo pipefail
+          for relation in live_source_endpoint_manifest_lock live_source_endpoint_disposition_ledger live_source_endpoint_disposition_933_status; do
+            value="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.${relation}')")"
+            test "${value}" = "${relation}"
+          done
+      - name: Verify canonical 933 endpoint manifest lock
+        run: node scripts/source-endpoint-manifest.mjs
+      - name: Probe exact canonical 933 endpoint manifest
+        run: node scripts/probe-production-source-endpoints-933.mjs
+      - name: Import endpoint disposition evidence
+        env:
+          EXPECTED_ENDPOINT_COUNT: "933"
+          STRICT_ENDPOINT_COUNT: "true"
+        run: node scripts/import-source-endpoint-evidence.mjs artifacts/source-endpoint-disposition-933/results.json
+      - name: Verify permanent 933 endpoint disposition gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_hash="$(node --input-type=module -e 'import { collectMigrationEndpointManifest } from "./scripts/source-endpoint-manifest.mjs"; const m = await collectMigrationEndpointManifest(); process.stdout.write(m.manifest_sha256);')"
+          db_hash="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select manifest_sha256 from public.live_source_endpoint_manifest_lock where lock_id='phase-b-933-v1'")"
+          test "${expected_hash}" = "${db_hash}"
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
+          IFS='|' read -r expected_count db_hash recorded_count disposition_count unclassified_count transport_success_count remediation_count complete <<< "${row}"
+          test "${expected_count}" = "933"
+          test "${db_hash}" = "${expected_hash}"
+          test "${recorded_count}" = "933"
+          test "${disposition_count}" = "933"
+          test "${unclassified_count}" = "0"
+          test "${complete}" = "t"
+          echo "PASS: 933/933 endpoint disposition is complete."
+      - name: Upload 933 endpoint evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-network-933-endpoint-disposition-${{ github.run_id }}
+          path: artifacts/source-endpoint-disposition-933/
+          if-no-files-found: error
+          retention-days: 30
