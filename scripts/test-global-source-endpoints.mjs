@@ -2,11 +2,12 @@
 /**
  * Read-only global source endpoint probe.
  *
- * Scans SQL migrations for all HTTP(S) URLs, de-duplicates them, and records
- * transport/reachability evidence. It does not grant commercial eligibility.
+ * Probes the frozen Phase-B endpoint manifest, records transport evidence, and
+ * leaves commercial/source-rights eligibility to the separate source governance.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { collectMigrationEndpointManifest } from "./source-endpoint-manifest.mjs";
 
 const ROOT = process.cwd();
 const MIGRATIONS = path.join(ROOT, "supabase", "migrations");
@@ -28,28 +29,13 @@ async function walk(dir) {
   return out;
 }
 
+const phaseBManifest = await collectMigrationEndpointManifest(ROOT);
 const files = (await walk(MIGRATIONS)).sort();
-const urlMap = new Map();
-
-for (const file of files) {
-  const source = await fs.readFile(file, "utf8");
-  for (const match of source.matchAll(/https?:\/\/[^\s'"\`\)>;]+/g)) {
-    const raw = match[0].replace(/[),.;]+$/, "");
-    try {
-      const url = new URL(raw).toString();
-      if (!urlMap.has(url)) {
-        const line = source.slice(0, match.index).split("\n").length;
-        urlMap.set(url, {
-          url,
-          first_seen_file: path.relative(ROOT, file),
-          first_seen_line: line,
-        });
-      }
-    } catch {}
-  }
-}
-
-const candidates = [...urlMap.values()];
+const candidates = phaseBManifest.entries.map((entry) => ({
+  url: entry.endpoint_url,
+  first_seen_file: entry.first_seen_file,
+  first_seen_line: entry.first_seen_line,
+}));
 if (candidates.length > MAX_URLS) {
   throw new Error(`Refusing to probe ${candidates.length} URLs; MAX is ${MAX_URLS}.`);
 }
