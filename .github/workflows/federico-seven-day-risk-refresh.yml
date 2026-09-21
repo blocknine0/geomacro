@@ -12,6 +12,7 @@ on:
       - ".github/workflows/federico-seven-day-risk-refresh.yml"
       - "workers/telegram-flash/worker.py"
       - "scripts/sync-gdelt-gal-production.mjs"
+      - "src/lib/public-demo-risk-profile.ts"
   workflow_run:
     workflows:
       - "Auto Ingest News"
