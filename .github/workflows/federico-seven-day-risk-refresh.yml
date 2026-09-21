@@ -13,6 +13,8 @@ on:
       - "workers/telegram-flash/worker.py"
       - "scripts/sync-gdelt-gal-production.mjs"
       - "src/lib/public-demo-risk-profile.ts"
+      - "src/lib/country-risk-engine.ts"
+      - "src/lib/country-risk-publisher.server.ts"
       - "scripts/invinoveritas-risk-object-preflight.ts"
   workflow_run:
     workflows:
