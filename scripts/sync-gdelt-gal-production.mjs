@@ -165,18 +165,44 @@ async function main() {
     }
 
     if (available.length === 0) {
+      const lastSuccessMs = cursorRow?.last_success_at ? Date.parse(String(cursorRow.last_success_at)) : NaN;
+      const successAgeSeconds = Number.isFinite(lastSuccessMs)
+        ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
+        : Number.POSITIVE_INFINITY;
+      const healthStatus = Number.isFinite(successAgeSeconds) && successAgeSeconds <= 30 * 60
+        ? "degraded"
+        : "failed";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
         stream_key: STREAM_KEY,
         cursor: lastStamp ? { last_source_stamp: lastStamp } : {},
-        status: "healthy",
+        status: healthStatus,
         last_attempt_at: nowIso,
-        last_success_at: nowIso,
-        consecutive_failures: 0,
+        last_success_at: cursorRow?.last_success_at ?? null,
+        consecutive_failures: Number(cursorRow?.last_success_at ? 0 : 1),
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
       if (error) throw error;
-      await emit({ ok: true, status: "no_new_gdelt_file", last_source_stamp: lastStamp });
+      const { error: runError } = await supabase.from("live_ingestion_runs").insert({
+        source_key: SOURCE_KEY,
+        stream_key: STREAM_KEY,
+        started_at: nowIso,
+        finished_at: nowIso,
+        status: "empty",
+        metrics: {
+          no_new_source_file: true,
+          last_source_stamp: lastStamp,
+          success_age_seconds: Number.isFinite(successAgeSeconds) ? Math.round(successAgeSeconds) : null,
+        },
+      });
+      if (runError) throw runError;
+      await emit({
+        ok: true,
+        status: "no_new_gdelt_file",
+        last_source_stamp: lastStamp,
+        success_age_seconds: Number.isFinite(successAgeSeconds) ? Math.round(successAgeSeconds) : null,
+        source_health_status: healthStatus,
+      });
       return;
     }
 
