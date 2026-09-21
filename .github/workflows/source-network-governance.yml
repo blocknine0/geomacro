@@ -219,7 +219,7 @@ jobs:
       SOURCE_PROBE_CONCURRENCY: "40"
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       STRICT_ENDPOINT_COUNT: "true"
     concurrency:
       group: geomacro-source-network-933-disposition-v2
