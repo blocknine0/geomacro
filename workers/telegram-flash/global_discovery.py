@@ -10,6 +10,7 @@ from telethon import TelegramClient, functions, types
 from telethon.sessions import StringSession
 
 PROJECT_REF = "ldpwajisioljyjtojvfx"
+CANONICAL_COUNTRY_TARGET_COUNT = 195
 CATEGORY_DOMAINS = {
     "GEOPOLITICS": ["GEOPOLITICS"],
     "MACRO": ["MACRO", "GEOPOLITICS"],
