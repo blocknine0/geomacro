@@ -27,11 +27,11 @@ jobs:
     timeout-minutes: 20
     environment: production
     env:
-      APP_SUPABASE_URL: ${ secrets.APP_SUPABASE_URL }
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${ secrets.SUPABASE_SERVICE_ROLE_KEY }
-      RELIEFWEB_APP_NAME: ${ secrets.RELIEFWEB_APP_NAME }
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
       OPEN_LIVE_SOURCE_SYNC_OUTPUT: open-live-source-mesh.json
-      LIVE_STRUCTURE_TOKEN: ${ secrets.LIVE_STRUCTURE_TOKEN }
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
 
     steps:
       - name: Checkout canonical main
@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY LIVE_STRUCTURE_TOKEN; do
-            test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }
+            test -n "${!name:-}" || { echo "::error::$name missing"; exit 1; }}
           done
           node scripts/db/assert-authoritative-supabase.mjs
           bun --check scripts/sync-open-live-source-mesh.mjs
