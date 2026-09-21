@@ -663,6 +663,146 @@ def fetch_feed_sync(
     ) from last_error
 
 
+class LenientFeedParser:
+    """Recover basic RSS/Atom entries when the XML is malformed but readable."""
+
+    FIELD_TAGS = {
+        "title",
+        "link",
+        "id",
+        "guid",
+        "pubdate",
+        "published",
+        "updated",
+        "created",
+        "summary",
+        "description",
+        "content:encoded",
+        "dc:date",
+    }
+
+    ENTRY_TAGS = {"item", "entry"}
+
+    def __init__(self, base_url: str):
+        from html.parser import HTMLParser
+
+        self.base_url = base_url
+        self.entries: list[dict[str, Any]] = []
+        self.current: dict[str, Any] | None = None
+        self.field: str | None = None
+        self.field_parts: list[str] = []
+
+        outer = self
+
+        class Parser(HTMLParser):
+            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+                name = tag.lower()
+                if name in outer.ENTRY_TAGS:
+                    outer.current = {}
+                    outer.field = None
+                    outer.field_parts = []
+                    return
+                if outer.current is None or name not in outer.FIELD_TAGS:
+                    return
+
+                outer.field = name
+                outer.field_parts = []
+                attributes = dict(attrs)
+                if name == "link":
+                    href = attributes.get("href")
+                    if isinstance(href, str) and href.strip():
+                        outer.current["link"] = urljoin(
+                            outer.base_url,
+                            href.strip(),
+                        )
+
+            def handle_startendtag(
+                self,
+                tag: str,
+                attrs: list[tuple[str, str | None]],
+            ) -> None:
+                self.handle_starttag(tag, attrs)
+                self.handle_endtag(tag)
+
+            def handle_data(self, data: str) -> None:
+                if outer.current is not None and outer.field is not None:
+                    outer.field_parts.append(data)
+
+            def handle_entityref(self, name: str) -> None:
+                if outer.current is not None and outer.field is not None:
+                    outer.field_parts.append(f"&{name};")
+
+            def handle_charref(self, name: str) -> None:
+                if outer.current is not None and outer.field is not None:
+                    outer.field_parts.append(f"&#{name};")
+
+            def handle_endtag(self, tag: str) -> None:
+                name = tag.lower()
+                if outer.current is None:
+                    return
+
+                if outer.field == name:
+                    value = " ".join("".join(outer.field_parts).split()).strip()
+                    if value:
+                        outer.current[name] = value[:4000]
+                    outer.field = None
+                    outer.field_parts = []
+                    return
+
+                if name not in outer.ENTRY_TAGS:
+                    return
+
+                current = outer.current
+                outer.current = None
+                outer.field = None
+                outer.field_parts = []
+
+                title = str(current.get("title", "")).strip()
+                identity = str(
+                    current.get("id")
+                    or current.get("guid")
+                    or current.get("link")
+                    or "",
+                ).strip()
+                link = str(current.get("link", "")).strip()
+                if not title or not identity:
+                    return
+
+                if link:
+                    current["link"] = urljoin(outer.base_url, link)
+                current["id"] = identity
+                outer.entries.append(current)
+
+        self._parser = Parser()
+
+    def parse(self, raw: bytes) -> list[dict[str, Any]]:
+        from html import unescape
+
+        text = raw.decode("utf-8", errors="replace")
+        self._parser.feed(unescape(text))
+        self._parser.close()
+
+        unique: dict[str, dict[str, Any]] = {}
+        for entry in self.entries:
+            identity = feed_entry_identity(entry, "__lenient__")
+            unique[identity] = entry
+        return list(unique.values())
+
+
+def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], str]:
+    parsed = feedparser.parse(raw)
+    if parsed.entries:
+        return list(parsed.entries), "rss"
+
+    if getattr(parsed, "bozo", False):
+        recovered = LenientFeedParser(base_url).parse(raw)
+        if recovered:
+            return recovered, "rss_lenient"
+
+    detail = getattr(parsed, "bozo_exception", "unknown error")
+    raise RuntimeError(f"Feed parse failed: {detail}")
+
+
 def structured_time_to_iso(value: Any) -> str | None:
     if value is None:
         return None
@@ -916,12 +1056,9 @@ async def process_feed(
     current["modified"] = modified
 
     if transport == "rss":
-        parsed = feedparser.parse(raw)
-        if getattr(parsed, "bozo", False) and not parsed.entries:
-            raise RuntimeError(
-                f"Feed parse failed: {getattr(parsed, 'bozo_exception', 'unknown error')}"
-            )
-        all_entries = list(parsed.entries)
+        all_entries, parse_mode = parse_rss_entries(raw, url)
+        if parse_mode == "rss_lenient":
+            transport = "rss_lenient"
 
         # Treat HTTP 200 as transport success, not freshness success. Some
         # publishers retain legacy RSS URLs that serve archival entries.
