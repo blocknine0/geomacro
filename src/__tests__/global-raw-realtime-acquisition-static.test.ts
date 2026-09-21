@@ -32,7 +32,7 @@ describe("global raw realtime acquisition",()=>{
     const workflow=read(".github/workflows/gdelt-gal-live-sync.yml");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).not.toContain("schedule:");
-    const orchestrator=read(".github/workflows/intelligence-orchestrator.yml");
+    const orchestrator=read("scripts/intelligence-orchestrator.mjs");
     expect(orchestrator).toContain('key: "gdelt_gal"');
   });
 });
