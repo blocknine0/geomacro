@@ -101,7 +101,7 @@ alter table public.live_source_registry
 update public.live_source_registry
 set realtime_hot_topic_enabled = case
   when source_key = 'gdelt_gal' then true
-  when source_key in ('usgs_earthquakes', 'gdacs_global_disasters') then false
+  when source_key in ('usgs_earthquakes', 'gdacs_global_disasters') then true
   else false
 end
 where source_key in (
