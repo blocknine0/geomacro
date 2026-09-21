@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("GDELT GAL cursor health semantics", () => {
-  it("records a successful no-new-file cycle as a success", () => {
+  it("records a no-new-file cycle with freshness-aware health semantics", () => {
     const script = readFileSync(
       "scripts/sync-gdelt-gal-production.mjs",
       "utf8",
@@ -13,9 +13,10 @@ describe("GDELT GAL cursor health semantics", () => {
     expect(index).toBeGreaterThanOrEqual(0);
 
     const block = script.slice(Math.max(0, index - 1800), index + 300);
-    expect(block).toContain('status: "healthy"');
+    expect(block).toContain("const healthStatus = Number.isFinite(successAgeSeconds)");
+    expect(block).toContain("status: healthStatus");
     expect(block).toContain("last_attempt_at: nowIso");
-    expect(block).toContain("last_success_at: nowIso");
-    expect(block).toContain("consecutive_failures: 0");
+    expect(block).toContain("last_success_at: cursorRow?.last_success_at ?? null");
+    expect(block).toContain("consecutive_failures: Number(cursorRow?.last_success_at ? 0 : 1)");
   });
 });
