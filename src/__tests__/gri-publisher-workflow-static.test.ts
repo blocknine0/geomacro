@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(".github/workflows/gri-governance.yml", "utf8");
+const publishJob =
+  workflow.match(/^  publish:\n([\\s\\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m)?.[0] ?? "";
 
 describe("scheduled GRI publisher workflow", () => {
   it("publishes often enough to stay inside the three-hour public proof freshness SLO", () => {
