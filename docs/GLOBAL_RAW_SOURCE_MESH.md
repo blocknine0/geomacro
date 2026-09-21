@@ -57,3 +57,39 @@ This prevents the product from waiting for a paid provider before it can observe
 `live_raw_source_runtime_100_status` means each country/category has at least one recently successful raw target inside its category-specific freshness window.
 
 Neither status means every upstream source is commercially licensed. Commercial certification is a separate product gate and remains fail-closed.
+
+## First-break to corridor/hot-topic fanout
+
+Country acquisition is the base observation mesh, but global breaking events need a second-stage scope response. The production path is now:
+
+1. GDELT GAL remains the global first-break backbone. It ingests the rolling global stream and feeds the canonical live structurer.
+2. A fresh structured event is matched against every governed strategic corridor and required global shock family.
+3. Matching scopes receive a dedicated GDELT burst query with a 15-minute window, the event headline, and the scope-specific corridor/hot-topic terms.
+4. Every burst is linked to the triggering structured event and stored as a private, SHA-256 verified, chained fragment.
+5. A small set of official operational surfaces is polled continuously for early non-media notices: UKMTO, Suez Canal Authority, Panama Canal Authority, UN Security Council, WHO Disease Outbreak News and WTO news/RSS discovery.
+6. Burst cooldown and a bounded per-run fanout cap prevent a single breaking event from turning into an uncontrolled query storm.
+
+This gives all current strategic corridors a dedicated three-category burst target and all required global shock families the same three-category burst target. It is a coverage contract plus an escalation mechanism, not a claim that every event occurring anywhere on the planet can be observed.
+
+## Source roles
+
+The source mesh is intentionally layered:
+
+- global open observation: GDELT GAL and GDELT DOC metadata
+- country primary surfaces: national government and statistics/monetary authority pages
+- route authority surfaces: canal and maritime-security authorities
+- domain authority surfaces: UN, WHO, WTO and equivalent institutional sources
+- specialist/paid redundancy: commercial providers such as Dataminr, LSEG, Kpler, Fastmarkets and Argus, enabled only after credentials and rights are proven
+- Telegram: discovery/lead signal only, with identity, rights and corroboration gates
+
+The current direct route and domain sources were verified as live official surfaces during the September 2026 source review: UKMTO publishes maritime-security alerts and incident information; the Suez Canal Authority maintains a current navigation-circulars surface; the Panama Canal Authority maintains shipping advisories; the UN Security Council publishes RSS/update resources; WHO publishes Disease Outbreak News; and WTO exposes RSS news feeds. These remain separated from commercial redistribution rights.
+
+## Truth boundary
+
+'100%' in this program means 100% of the governed target universe is represented and checked by machine gates. It does not mean 100% of real-world events, every Telegram message, every webpage, or every human report can be guaranteed. Upstream systems publish at different cadences, can be unavailable, and can omit events.
+
+The production acceptance statement should therefore use:
+
+100% target coverage + fresh global first-break backbone + event-triggered corridor/hot-topic fanout + fail-closed commercial rights
+
+rather than an absolute claim of total global event capture.
