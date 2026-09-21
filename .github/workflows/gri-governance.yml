@@ -200,7 +200,9 @@ jobs:
   publish:
     if: >-
       ${{
-        (github.event_name == 'schedule' && github.event.schedule == '50 */2 * * *') ||
+        (github.event_name == 'schedule' &&
+          github.event.schedule == '50 */2 * * *' &&
+          vars.GRI_PUBLISH_ENABLED == 'true') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish')
       }}
     runs-on: ubuntu-latest
