@@ -1,4 +1,4 @@
-name: Global Production Coverage Gate
+name: Global Coverage Readiness Gate
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
       - name: Audit global country, corridor and source coverage
         run: bun run coverage:global:audit
 
-      - name: Enforce global production coverage gate
+      - name: Enforce structural global coverage readiness
         run: bun run coverage:global:strict
 
       - name: Upload permanent coverage evidence
