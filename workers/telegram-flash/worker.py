@@ -328,6 +328,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "event_type": "MACRO_OFFICIAL_RELEASE",
         "source_reliability": 95.0,
         "country_iso3": "USA",
+        "fallback_url": "https://www.federalreserve.gov/newsevents/pressreleases/2026-press.htm",
+        "fallback_link_prefix": "/newsevents/pressreleases/",
     },
     {
         "source_id": "forexlive_rss",
@@ -794,35 +796,36 @@ def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], 
     if parsed.entries:
         return list(parsed.entries), "rss"
 
-    if getattr(parsed, "bozo", False):
-        recovered = LenientFeedParser(base_url).parse(raw)
-        if recovered:
-            from email.utils import parsedate_to_datetime
+    # Feedparser can report malformed/empty RSS without setting bozo reliably.
+    # Always attempt the bounded HTML-compatible recovery parser before failing.
+    recovered = LenientFeedParser(base_url).parse(raw)
+    if recovered:
+        from email.utils import parsedate_to_datetime
 
-            for entry in recovered:
-                for source_key, parsed_key in (
-                    ("published", "published_parsed"),
-                    ("updated", "updated_parsed"),
-                    ("created", "created_parsed"),
-                    ("dc:date", "published_parsed"),
-                ):
-                    value = entry.get(source_key)
-                    if parsed_key in entry or not isinstance(value, str):
-                        continue
+        for entry in recovered:
+            for source_key, parsed_key in (
+                ("published", "published_parsed"),
+                ("updated", "updated_parsed"),
+                ("created", "created_parsed"),
+                ("dc:date", "published_parsed"),
+            ):
+                value = entry.get(source_key)
+                if parsed_key in entry or not isinstance(value, str):
+                    continue
+                try:
+                    moment = parsedate_to_datetime(value)
+                    entry[parsed_key] = moment.utctimetuple()
+                except (TypeError, ValueError, OverflowError):
                     try:
-                        moment = parsedate_to_datetime(value)
-                        entry[parsed_key] = moment.utctimetuple()
+                        moment = datetime.fromisoformat(
+                            value.replace("Z", "+00:00")
+                        )
+                        entry[parsed_key] = moment.astimezone(
+                            timezone.utc
+                        ).utctimetuple()
                     except (TypeError, ValueError, OverflowError):
-                        try:
-                            moment = datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                            entry[parsed_key] = moment.astimezone(
-                                timezone.utc
-                            ).utctimetuple()
-                        except (TypeError, ValueError, OverflowError):
-                            continue
-            return recovered, "rss_lenient"
+                        continue
+        return recovered, "rss_lenient"
 
     detail = getattr(parsed, "bozo_exception", "unknown error")
     raise RuntimeError(f"Feed parse failed: {detail}")
@@ -1096,7 +1099,36 @@ async def process_feed(
     current["modified"] = modified
 
     if transport == "rss":
-        all_entries, _parse_mode = parse_rss_entries(raw, url)
+        try:
+            all_entries, _parse_mode = parse_rss_entries(raw, url)
+        except Exception:
+            # A reachable feed URL can still serve malformed XML or an
+            # anti-bot HTML response. When an official page fallback is
+            # configured, recover from that page instead of failing the
+            # entire one-shot collection cycle.
+            fallback_url = str(feed.get("fallback_url", "")).strip()
+            fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+            if not fallback_url or not fallback_link_prefix:
+                raise
+            fallback_status, fallback_raw = await asyncio.to_thread(
+                fetch_web_page_sync,
+                fallback_url,
+                35,
+                2,
+                3.0,
+            )
+            if fallback_status < 200 or fallback_status >= 400:
+                raise RuntimeError(
+                    f"Official fallback page HTTP {fallback_status}"
+                )
+            parser = NewsPageParser(fallback_link_prefix, fallback_url)
+            all_entries = parser.feed(fallback_raw)
+            if not all_entries:
+                raise RuntimeError(
+                    "RSS parse failed and official fallback page returned no governed news entries"
+                )
+            status = fallback_status
+            transport = "official_page_fallback"
 
         # Treat HTTP 200 as transport success, not freshness success. Some
         # publishers retain legacy RSS URLs that serve archival entries.
