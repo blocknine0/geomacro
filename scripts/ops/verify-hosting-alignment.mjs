@@ -251,7 +251,7 @@ pass("privileged diagnostics/export paths use server-only Supabase credentials")
 
 requireText("src/routes/api.health.ts", ALIGNMENT_CONTRACT, "deployment alignment contract");
 requireText("src/routes/api.health.ts", EXPECTED_SUPABASE_REF, "authoritative Supabase project marker");
-requireText(".github/workflows/live-testnet-api-smoke.yml", ALIGNMENT_CONTRACT, "live alignment smoke marker");
+requireText(".github/workflows/live-testnet-health.yml", ALIGNMENT_CONTRACT, "live alignment smoke marker");
 requireText("docs/HOSTING_ALIGNMENT.md", "Publish changes", "zero-credit publish workflow");
 
 if (!process.exitCode) {
