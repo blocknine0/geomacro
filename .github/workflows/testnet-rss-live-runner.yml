@@ -2,13 +2,7 @@ name: Testnet RSS Live Intelligence Runner
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_run:
-    workflows:
-      - "Deploy country flash intelligence to Supabase"
-    types:
-      - completed
+
 
 permissions:
   contents: read
