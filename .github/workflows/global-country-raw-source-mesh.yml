@@ -9,6 +9,7 @@ on:
     paths:
       - "scripts/sync-country-raw-source-mesh.mjs"
       - "scripts/audit-global-raw-source-coverage.mjs"
+      - "scripts/audit-global-raw-source-runtime.mjs"
       - "supabase/migrations/967_global_raw_source_coverage_mesh.sql"
       - "supabase/migrations/968_country_raw_web_snapshot_store.sql"
       - ".github/workflows/global-country-raw-source-mesh.yml"
@@ -57,6 +58,7 @@ jobs:
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
           bun --check scripts/sync-country-raw-source-mesh.mjs
           bun --check scripts/audit-global-raw-source-coverage.mjs
+          bun --check scripts/audit-global-raw-source-runtime.mjs
 
       - name: Verify 195-country three-category raw mesh
         shell: bash
@@ -89,6 +91,12 @@ jobs:
             jq -c '{fragment_id,ok,status,evidence_structured,evidence_excluded,events_created,events_updated,remaining,has_more}' "$response" | tee -a country-raw-structure-summary.ndjson
           done
           jq -n --argjson count "${#ids[@]}" '{structured_fragments:$count}' | tee country-raw-structure-summary.json
+
+      - name: Verify fresh raw runtime coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-global-raw-source-runtime.mjs
 
       - name: Prove raw source health boundaries
         shell: bash
