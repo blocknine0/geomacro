@@ -429,7 +429,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'for attempt in $(seq 1 "${max_batches}"); do',
     );
     expect(workflow).toContain(
-      '[[ "${attempt}" -lt 8 ]] || {',
+      '[[ "${attempt}" -lt "${max_batches}" ]] || {',
     );
     expect(workflow).toContain(
       "--retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt",
