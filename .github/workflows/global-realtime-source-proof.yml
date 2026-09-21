@@ -7,9 +7,6 @@ on:
       - "supabase/migrations/920_multi_source_commercial_registry.sql"
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "17 * * * *"
-
 permissions:
   contents: read
 
