@@ -421,7 +421,9 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "docs/GRO_CANONICAL_JSON_V1.md",
     );
 
-    expect(workflow).toContain("ref: ${{ github.sha }}");
+    expect(workflow).toContain(
+      "ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}",
+    );
     expect(workflow).toContain(
       "json.load(handle)",
     );
