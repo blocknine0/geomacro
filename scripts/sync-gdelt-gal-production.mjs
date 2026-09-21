@@ -170,7 +170,7 @@ async function main() {
         ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
         : Number.POSITIVE_INFINITY;
       const healthStatus = Number.isFinite(successAgeSeconds) && successAgeSeconds <= 30 * 60
-        ? "degraded"
+        ? "healthy"
         : "failed";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
