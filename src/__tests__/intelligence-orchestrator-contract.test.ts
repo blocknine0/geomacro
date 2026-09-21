@@ -30,6 +30,8 @@ describe("permanent intelligence orchestration contract", () => {
       expect(script).toContain(`key: "${task}"`);
     }
     expect(script).toContain("MAX_TASKS_PER_TICK");
+    expect(script).toContain("refreshOidcToken");
+    expect(script).toContain("timeoutMs: 2_400_000");
     expect(script).toContain("retry_pending");
     expect(script).toContain("consecutive_failures");
     expect(script).toContain('status = "degraded"');
