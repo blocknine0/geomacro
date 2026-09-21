@@ -21,7 +21,7 @@ describe("GDELT GAL production freshness workflow", () => {
   it("refreshes the canonical hot-topic discovery lane often enough for the paid freshness contract", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).not.toContain("schedule:");
-    const orchestrator = readFileSync(join(process.cwd(), ".github/workflows/intelligence-orchestrator.yml"), "utf8");
+    const orchestrator = readFileSync(join(process.cwd(), "scripts/intelligence-orchestrator.mjs"), "utf8");
     expect(orchestrator).toContain('key: "gdelt_gal"');
     expect(workflow).toContain("sync-gdelt-gal-production.mjs");
     expect(workflow).toContain("live-structure-intelligence");
