@@ -7,7 +7,7 @@ const workflow = readFileSync(
   "utf8",
 );
 const publicProofJob = workflow.match(
-  /^  public-proof:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m,
+  /^  public-proof:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\s*$)/m,
 )?.[0] ?? "";
 
 describe("GRI public proof consistency workflow contract", () => {
@@ -24,13 +24,13 @@ describe("GRI public proof consistency workflow contract", () => {
   });
 
   it("retains the persisted service-role vs public-read proof boundary", () => {
-    expect(workflow).toContain("APP_SUPABASE_ANON_KEY");
-    expect(workflow).toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(workflow).toContain("GRI_METHOD_VERSION: gri-v1.2.0");
-    expect(workflow).toContain("GRI_PROOF_VERSION: gri-proof-v1.2.0");
-    expect(workflow).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
-    expect(workflow).toContain("Audit persisted public/service GRI parity");
-    expect(workflow).toContain("Independently recompute persisted proof");
-    expect(workflow).toContain("retention-days: 90");
+    expect(publicProofJob).toContain("APP_SUPABASE_ANON_KEY");
+    expect(publicProofJob).toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(publicProofJob).toContain("GRI_METHOD_VERSION: gri-v1.2.0");
+    expect(publicProofJob).toContain("GRI_PROOF_VERSION: gri-proof-v1.2.0");
+    expect(publicProofJob).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
+    expect(publicProofJob).toContain("Audit persisted public/service GRI parity");
+    expect(publicProofJob).toContain("Independently recompute persisted proof");
+    expect(publicProofJob).toContain("retention-days: 90");
   });
 });
