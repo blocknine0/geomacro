@@ -21,7 +21,6 @@ describe("permanent intelligence orchestration contract", () => {
       "open_realtime_mesh",
       "gdelt_v2",
       "country_raw_mesh",
-      "open_realtime_mesh",
       "rss_live",
       "realtime_fanout",
       "telegram_discovery",
@@ -55,6 +54,7 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/auto-ingest-news.yml",
       ".github/workflows/source-evidence-graph-auto-promotion.yml",
       ".github/workflows/federico-seven-day-risk-refresh.yml",
+      ".github/workflows/open-realtime-source-mesh.yml",
     ]) {
       const source = read(path);
       expect(source, path).toContain("workflow_dispatch:");
