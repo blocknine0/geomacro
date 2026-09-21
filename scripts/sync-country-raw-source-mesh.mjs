@@ -14,8 +14,55 @@ function pageTitle(html){const m=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
 function links(html,base,limit=80){const out=[];const seen=new Set();const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;let m;const host=new URL(base).hostname;while((m=re.exec(html))&&out.length<limit){try{const u=new URL(m[1],base);if(!/^https?:$/.test(u.protocol)||u.hostname!==host)continue;const t=txt(m[2].replace(/<[^>]+>/g," "));if(t.length<8||seen.has(u.href)||!/(news|press|media|release|statement|announcement|update|bulletin|publication|202[4-9]|latest|minister|econom|trade|mineral|mine|energy|security)/i.test(u.href))continue;seen.add(u.href);out.push({u:u.href,t:t.slice(0,800)});}catch{}}return out;}
 async function fetchUrl(url){const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow"});return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),final:r.url||url,bytes:Buffer.from(await r.arrayBuffer())};}
 async function mark(db,t,p){const{error}=await db.from("live_raw_source_targets").update({...p,updated_at:new Date().toISOString()}).eq("target_id",t.target_id);if(error)throw error;}
-async function saveSnapshot(db,t,when,f){const b=f.bytes.length>4194304?f.bytes.subarray(0,4194304):f.bytes,h=hash(b),c=gzipSync(b),path="raw/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+h.slice(0,16)+".gz";const up=await db.storage.from(BUCKET).upload(path,c,{contentType:"application/gzip",upsert:false});if(up.error&&!/already exists/i.test(up.error.message))throw up.error;const{data,error}=await db.from("live_raw_source_snapshots").insert({target_id:t.target_id,country_iso3:t.country_iso3,category:t.category,fetched_at:when,source_url:f.final,http_status:f.status,content_type:f.ct,etag:f.etag,last_modified:f.lm,storage_bucket:BUCKET,object_path:path,byte_count:b.length,content_sha256:h,parser_status:/json|xml/i.test(f.ct)?"STRUCTURED_PAYLOAD":/html/i.test(f.ct)?"HTML_LINKS_EXTRACTED":"RAW_CAPTURED",extracted_item_count:0}).select("snapshot_id").single();if(error)throw error;return data.snapshot_id;}
-async function saveFragment(db,t,when,rows){if(!rows.length)return null;const body=Buffer.from(rows.map(x=>JSON.stringify(x)).join("\n")+"\n");const comp=gzipSync(body),h=hash(body),ch=hash(comp);const prev=await db.from("live_fragment_manifest").select("compressed_sha256").eq("source_key",SOURCE).eq("stream_key",t.target_id).order("period_end",{ascending:false}).limit(1).maybeSingle();if(prev.error)throw prev.error;const path="fragments/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+ch.slice(0,16)+".ndjson.gz";const up=await db.storage.from(BUCKET).upload(path,comp,{contentType:"application/gzip",upsert:false});if(up.error&&!/already exists/i.test(up.error.message))throw up.error;const{data,error}=await db.from("live_fragment_manifest").insert({source_key:SOURCE,stream_key:t.target_id,storage_bucket:BUCKET,object_path:path,schema_version:"live-evidence-v1.0.0",compression:"gzip",period_start:when,period_end:when,item_count:rows.length,uncompressed_bytes:body.length,compressed_bytes:comp.length,payload_sha256:h,compressed_sha256:ch,previous_fragment_sha256:prev.data?.compressed_sha256??null,chain_sha256:hash((prev.data?.compressed_sha256??"GENESIS")+":"+ch),topics:[t.category.toLowerCase()],countries:[t.country_iso3],source_domains:[...new Set(rows.map(x=>x.h))],sealed_at:when,verified_at:when,verification_method:"storage-readback-sha256"}).select("id").single();if(error)throw error;return data.id;}
+async function saveSnapshot(db,t,when,f){
+  const b=f.bytes.length>4194304?f.bytes.subarray(0,4194304):f.bytes;
+  const h=hash(b);
+  const compressed=gzipSync(b);
+  const path="raw/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+h.slice(0,16)+".gz";
+  const up=await db.storage.from(BUCKET).upload(path,compressed,{contentType:"application/gzip",upsert:false});
+  if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
+  const readback=await db.storage.from(BUCKET).download(path);
+  if(readback.error||!readback.data)throw readback.error??new Error("RAW_SNAPSHOT_READBACK_FAILED");
+  const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
+  if(hash(readbackBytes)!==hash(compressed))throw new Error("RAW_SNAPSHOT_READBACK_HASH_MISMATCH");
+  const{data,error}=await db.from("live_raw_source_snapshots").insert({
+    target_id:t.target_id,country_iso3:t.country_iso3,category:t.category,fetched_at:when,
+    source_url:f.final,http_status:f.status,content_type:f.ct,etag:f.etag,last_modified:f.lm,
+    storage_bucket:BUCKET,object_path:path,byte_count:b.length,content_sha256:h,
+    parser_status:/json|xml/i.test(f.ct)?"STRUCTURED_PAYLOAD":/html/i.test(f.ct)?"HTML_LINKS_EXTRACTED":"RAW_CAPTURED",
+    extracted_item_count:0
+  }).select("snapshot_id").single();
+  if(error)throw error;
+  return data.snapshot_id;
+}
+async function saveFragment(db,t,when,rows){
+  if(!rows.length)return null;
+  const body=Buffer.from(rows.map(x=>JSON.stringify(x)).join("\n")+"\n");
+  const comp=gzipSync(body),h=hash(body),ch=hash(comp);
+  const prev=await db.from("live_fragment_manifest").select("compressed_sha256")
+    .eq("source_key",SOURCE).eq("stream_key",t.target_id)
+    .order("period_end",{ascending:false}).limit(1).maybeSingle();
+  if(prev.error)throw prev.error;
+  const path="fragments/v1/"+t.country_iso3+"/"+t.category.toLowerCase()+"/"+safe(t.target_id)+"/"+when.replace(/[:.]/g,"-")+"-"+ch.slice(0,16)+".ndjson.gz";
+  const up=await db.storage.from(BUCKET).upload(path,comp,{contentType:"application/gzip",upsert:false});
+  if(up.error&&!/already exists/i.test(up.error.message))throw up.error;
+  const readback=await db.storage.from(BUCKET).download(path);
+  if(readback.error||!readback.data)throw readback.error??new Error("RAW_FRAGMENT_READBACK_FAILED");
+  const readbackBytes=Buffer.from(await readback.data.arrayBuffer());
+  if(hash(readbackBytes)!==ch)throw new Error("RAW_FRAGMENT_READBACK_HASH_MISMATCH");
+  const chain=hash((prev.data?.compressed_sha256??"GENESIS")+":"+ch);
+  const{data,error}=await db.from("live_fragment_manifest").insert({
+    source_key:SOURCE,stream_key:t.target_id,storage_bucket:BUCKET,object_path:path,
+    schema_version:"live-evidence-v1.0.0",compression:"gzip",period_start:when,period_end:when,
+    item_count:rows.length,uncompressed_bytes:body.length,compressed_bytes:comp.length,
+    payload_sha256:h,compressed_sha256:ch,previous_fragment_sha256:prev.data?.compressed_sha256??null,
+    chain_sha256:chain,topics:[t.category.toLowerCase()],countries:[t.country_iso3],
+    source_domains:[...new Set(rows.map(x=>x.h))],sealed_at:when,verified_at:when,
+    verification_method:"storage-readback-sha256"
+  }).select("id").single();
+  if(error)throw error;
+  return data.id;
+}
 async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const now=Date.now();const countriesQuery=await db.from("live_country_registry").select("iso3,iso2").eq("enabled",true);
   if(countriesQuery.error)throw countriesQuery.error;
   const countryIso2=new Map((countriesQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
