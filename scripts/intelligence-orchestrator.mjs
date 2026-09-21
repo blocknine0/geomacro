@@ -335,7 +335,13 @@ async function runTask(task, state) {
   }
 
   if (!hasAllEnv(task.requiredEnv)) {
-    if (task.oidcAudience) {
+    state.cursor.next_due_at = new Date(Date.now() + RETRY_SECONDS * 1000).toISOString();
+    state.cursor.skipped_reason = "required_environment_not_present";
+    await upsertState(task, { ...state, status: "degraded", last_attempt_at: now });
+    return { task: task.key, status: "degraded", reason: "required_environment_not_present" };
+  }
+
+  if (task.oidcAudience) {
     const tokenReady = await refreshOidcToken(task.oidcAudience);
     if (!tokenReady) {
       state.status = "degraded";
@@ -346,12 +352,6 @@ async function runTask(task, state) {
       await upsertState(task, state);
       return { task: task.key, status: "degraded", reason: "OIDC_TOKEN_REFRESH_FAILED" };
     }
-  }
-
-  state.cursor.next_due_at = new Date(Date.now() + RETRY_SECONDS * 1000).toISOString();
-    state.cursor.skipped_reason = "required_environment_not_present";
-    await upsertState(task, { ...state, status: "degraded", last_attempt_at: now });
-    return { task: task.key, status: "degraded", reason: "required_environment_not_present" };
   }
 
   state.cursor.next_due_at = new Date(Date.now() + RETRY_SECONDS * 1000).toISOString();
