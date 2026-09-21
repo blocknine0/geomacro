@@ -15,7 +15,7 @@ describe("global country raw source mesh",()=>{
     expect(audit).toContain("canonicalIso3.length!==195");
     expect(audit).toContain("live_country_primary_source_directory");
     expect(audit).toContain("expected_total_targets:195*(3+4+6)");
-    expect(audit).toContain("for(const iso of canonicalIso3)");
+    expect(audit).toContain("for(const iso of canonicalIso3) {");
   });
 
   it("keeps commercial promotion separate from raw capture",()=>{
