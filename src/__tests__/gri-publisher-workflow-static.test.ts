@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const workflow = readFileSync(".github/workflows/publish-gri.yml", "utf8");
+const workflow = readFileSync(".github/workflows/gri-governance.yml", "utf8");
 
 describe("scheduled GRI publisher workflow", () => {
   it("publishes often enough to stay inside the three-hour public proof freshness SLO", () => {
