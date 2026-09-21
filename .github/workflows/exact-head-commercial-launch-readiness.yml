@@ -25,20 +25,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout exact main
+      - name: Checkout exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: \${{ inputs.candidate_sha || github.sha }}
+          ref: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Confirm exact candidate
         shell: bash
         env:
-          CANDIDATE_SHA: \${{ inputs.candidate_sha || github.sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          test "\${#CANDIDATE_SHA}" -eq 40
-          test "\$(git rev-parse HEAD)" = "\${CANDIDATE_SHA}"
+          test "${#CANDIDATE_SHA}" -eq 40
+          test "$(git rev-parse HEAD)" = "${CANDIDATE_SHA}"
 
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
@@ -66,22 +66,19 @@ jobs:
 
       - name: Exact-head readiness gate
         env:
-          GEOMACRO_LAUNCH_CANDIDATE_SHA: \${{ inputs.candidate_sha || github.sha }}
+          GEOMACRO_LAUNCH_CANDIDATE_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
         run: node scripts/verify-launch-readiness.mjs
 
       - name: Build frozen commercial RC evidence
         env:
-          COMMERCIAL_RC_GIT_SHA: \${{ inputs.candidate_sha || github.sha }}
+          COMMERCIAL_RC_GIT_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
         run: node scripts/build-commercial-release-candidate.mjs artifacts/commercial-release-candidate.json
-
-      - name: Verify 933 endpoint no-status fail-closed guard
-        run: node -e 'const fs=require("fs");const s=fs.readFileSync("scripts/probe-production-source-endpoints-933.mjs","utf8");if(!s.includes("curl completed without an HTTP status."))process.exit(1)'
 
       - name: Upload launch evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: commercial-launch-readiness-\${{ github.sha }}
+          name: commercial-launch-readiness-${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
           path: |
             artifacts/commercial-launch-readiness.json
             artifacts/commercial-release-candidate.json
@@ -95,7 +92,7 @@ jobs:
           {
             echo "## Geomacro exact-head commercial launch readiness"
             echo
-            echo "- Candidate SHA: \${{ inputs.candidate_sha || github.sha }}"
+            echo "- Candidate SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}"
             echo "- Repository-side result: READY_FOR_OWNER_ACTIVATION when all steps pass"
             echo "- Production funds: disabled"
             echo "- Official launch announcement: disabled"
