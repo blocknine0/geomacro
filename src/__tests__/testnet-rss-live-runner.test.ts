@@ -20,7 +20,7 @@ describe("Testnet RSS live runner", () => {
     expect(workflow).toContain('BREAKING_RSS_RUN_ONCE: "true"');
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).not.toContain("schedule:");
-    const orchestrator = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
     expect(orchestrator).toContain('key: "rss_live"');
     expect(productionEntryPoint).toContain("import worker");
     expect(productionEntryPoint).not.toContain("PRODUCTION_RSS_FEEDS");
