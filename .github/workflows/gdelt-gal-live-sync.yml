@@ -35,6 +35,7 @@ on:
 # Final live-window refresh anchor: produce fresh fragment for Federation strict acceptance.
 # Final source-family-map-v2 certification refresh anchor.
 # Final source-family-map-v3 certification refresh anchor.
+# Launch acceptance: force one fresh production GDELT cycle after final main merge.
 # Final concurrency-fix certification anchor.
 # Trigger a fresh canonical GDELT certification cycle for Federico strict handoff closure.
 
