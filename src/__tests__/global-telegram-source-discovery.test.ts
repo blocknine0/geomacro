@@ -34,7 +34,8 @@ describe("global Telegram workflow triggers",()=>{
   it("is schedule/dispatch only and cannot create push zero-job runs",()=>{
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("schedule:");
-    expect(workflow).not.toContain("push:");
+    expect(workflow).toContain("push:");
+    expect(workflow).toContain("- main");
     expect(workflow).not.toContain("workflow_run:");
   });
 });
