@@ -321,6 +321,121 @@ on conflict (target_id) do update set
   cadence_seconds=excluded.cadence_seconds,
   updated_at=now();
 
+
+-- Keep the target universe future-proof: newly added corridors or shock families
+-- automatically receive all three category burst targets.
+create or replace function public.sync_live_realtime_corridor_targets()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  insert into public.live_realtime_scope_targets (
+    target_id, scope_type, scope_code, category, transport, source_id,
+    activation_mode, cadence_seconds, query_hint, notes
+  )
+  select
+    'CORRIDOR:GDELT_BURST:' || new.corridor_id || ':' || cat.category,
+    'CORRIDOR',
+    new.corridor_id,
+    cat.category,
+    'GDELT_BURST',
+    'gdelt_v2_events',
+    'ON_BREAK',
+    900,
+    new.display_name || ' ' || array_to_string(new.chokepoints, ' '),
+    'Break-triggered corridor corroboration/enrichment target.'
+  from (
+    values ('GEOPOLITICS'::text),('MACRO'::text),('CRITICAL_MINERALS'::text)
+  ) as cat(category)
+  where new.corridor_id is not null
+  on conflict (target_id) do update
+    set query_hint = excluded.query_hint,
+        updated_at = now();
+  return new;
+end;
+$;
+
+drop trigger if exists trg_sync_live_realtime_corridor_targets
+  on public.live_strategic_corridor_catalog;
+
+create trigger trg_sync_live_realtime_corridor_targets
+after insert or update of display_name, chokepoints
+on public.live_strategic_corridor_catalog
+for each row
+execute function public.sync_live_realtime_corridor_targets();
+
+create or replace function public.sync_live_realtime_hot_topic_targets()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  if new.required then
+    insert into public.live_realtime_scope_targets (
+      target_id, scope_type, scope_code, category, transport, source_id,
+      activation_mode, cadence_seconds, query_hint, notes
+    )
+    select
+      'HOT_TOPIC:GDELT_BURST:' || new.shock_id || ':' || cat.category,
+      'HOT_TOPIC',
+      new.shock_id,
+      cat.category,
+      'GDELT_BURST',
+      'gdelt_v2_events',
+      'ON_BREAK',
+      900,
+      new.display_name || ' ' || replace(new.shock_id, '_', ' '),
+      'Break-triggered hot-topic corroboration/enrichment target.'
+    from (
+      values ('GEOPOLITICS'::text),('MACRO'::text),('CRITICAL_MINERALS'::text)
+    ) as cat(category)
+    on conflict (target_id) do update
+      set query_hint = excluded.query_hint,
+          updated_at = now();
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists trg_sync_live_realtime_hot_topic_targets
+  on public.live_global_shock_taxonomy;
+
+create trigger trg_sync_live_realtime_hot_topic_targets
+after insert or update of required, display_name
+on public.live_global_shock_taxonomy
+for each row
+execute function public.sync_live_realtime_hot_topic_targets();
+
+-- Official minerals news surface adds a dedicated near-realtime global
+-- critical-minerals direct target. It is supplemental to country minerals mesh.
+insert into public.live_realtime_scope_targets (
+  target_id, scope_type, scope_code, category, transport, source_id,
+  target_url, activation_mode, cadence_seconds, query_hint, notes
+)
+values (
+  'HOT_TOPIC:WEB:USGS_MINERALS:CRITICAL_MINERALS',
+  'HOT_TOPIC',
+  'critical_minerals_rare_earth_disruption',
+  'CRITICAL_MINERALS',
+  'WEB_DIRECT',
+  'usgs_minerals_news_rss',
+  'https://www.usgs.gov/programs/mineral-resources-program/news',
+  'CONTINUOUS',
+  600,
+  'critical minerals rare earth lithium cobalt nickel graphite mining',
+  'Official USGS Mineral Resources Program news surface; source reuse remains rights-gated.'
+)
+on conflict (target_id) do update set
+  source_id = excluded.source_id,
+  target_url = excluded.target_url,
+  query_hint = excluded.query_hint,
+  activation_mode = excluded.activation_mode,
+  cadence_seconds = excluded.cadence_seconds,
+  updated_at = now();
+
 create table if not exists public.live_realtime_escalation_queue (
   queue_id uuid primary key default gen_random_uuid(),
   scope_type text not null
