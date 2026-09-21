@@ -71,6 +71,13 @@ jobs:
           src/__tests__/commercial-source-rights-evidence-parity.test.js
           src/__tests__/commercial-source-rights-runtime-migration.test.js
           src/__tests__/source-endpoint-disposition-933.test.ts
+          src/__tests__/gri-public-proof-consistency-static.test.ts
+          src/__tests__/gri-public-proof-workflow-contract.test.js
+          src/__tests__/risk-object-signing.test.ts
+          src/__tests__/risk-object-independent-trust.test.ts
+          src/__tests__/risk-object-public-verification-route.test.ts
+          src/__tests__/canonical-json-v1-test-vector.test.ts
+          src/__tests__/federico-strict-risk-object-policy-static.test.ts
 
       - name: Exact-head readiness gate
         env:
