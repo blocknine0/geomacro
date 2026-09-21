@@ -343,6 +343,36 @@ Deno.serve(async request => {
     return jsonResponse(401, { ok: false, error: "unauthorized" })
   }
 
+  let requestedCountryIso3: string | null = null
+
+  try {
+    const bodyText = await request.text()
+    if (bodyText.trim()) {
+      const body = JSON.parse(bodyText)
+      const rawCountry = body &&
+        typeof body === "object" &&
+        typeof body.country_iso3 === "string"
+          ? body.country_iso3
+          : ""
+
+      if (rawCountry.trim()) {
+        const normalizedCountry = rawCountry.trim().toUpperCase()
+        if (!/^[A-Z]{3}$/.test(normalizedCountry)) {
+          return jsonResponse(400, {
+            ok: false,
+            error: "invalid_country_iso3",
+          })
+        }
+        requestedCountryIso3 = normalizedCountry
+      }
+    }
+  } catch {
+    return jsonResponse(400, {
+      ok: false,
+      error: "invalid_json",
+    })
+  }
+
   if (
     new URL(request.url).searchParams.get("mode") ===
       "health"
@@ -389,19 +419,70 @@ Deno.serve(async request => {
   // recently VERIFIED flashes as corroboration references. This preserves
   // strict evidence semantics and prevents scheduled runs from reprocessing
   // the entire six-hour history.
-  const candidateResult = await db
-    .from("live_flash_events")
-    .select(
-      "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
-    )
-    .gte("ingested_at", candidateCutoff)
-    .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
-    .order("ingested_at", { ascending: false })
-    .limit(CORROBORATION_CANDIDATE_LIMIT)
+  let candidateRows: Array<Record<string, unknown>> = []
 
-  if (candidateResult.error) {
-    console.error(candidateResult.error)
-    return jsonResponse(500, { ok: false, error: "candidate_query_failed" })
+  if (requestedCountryIso3) {
+    const countryFlashResult = await db
+      .from("live_flash_event_countries")
+      .select("flash_id")
+      .eq("country_iso3", requestedCountryIso3)
+      .limit(CORROBORATION_CANDIDATE_LIMIT * 4)
+
+    if (countryFlashResult.error) {
+      console.error(countryFlashResult.error)
+      return jsonResponse(500, {
+        ok: false,
+        error: "candidate_country_query_failed",
+      })
+    }
+
+    const targetFlashIds = [
+      ...new Set(
+        (countryFlashResult.data ?? [])
+          .map(row => String(row.flash_id ?? "").trim())
+          .filter(Boolean),
+      ),
+    ]
+
+    if (targetFlashIds.length) {
+      const targetCandidateResult = await db
+        .from("live_flash_events")
+        .select(
+          "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
+        )
+        .in("flash_id", targetFlashIds)
+        .gte("ingested_at", candidateCutoff)
+        .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
+        .order("ingested_at", { ascending: false })
+        .limit(CORROBORATION_CANDIDATE_LIMIT)
+
+      if (targetCandidateResult.error) {
+        console.error(targetCandidateResult.error)
+        return jsonResponse(500, {
+          ok: false,
+          error: "candidate_query_failed",
+        })
+      }
+
+      candidateRows = (targetCandidateResult.data ?? []) as Array<Record<string, unknown>>
+    }
+  } else {
+    const candidateResult = await db
+      .from("live_flash_events")
+      .select(
+        "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
+      )
+      .gte("ingested_at", candidateCutoff)
+      .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
+      .order("ingested_at", { ascending: false })
+      .limit(CORROBORATION_CANDIDATE_LIMIT)
+
+    if (candidateResult.error) {
+      console.error(candidateResult.error)
+      return jsonResponse(500, { ok: false, error: "candidate_query_failed" })
+    }
+
+    candidateRows = (candidateResult.data ?? []) as Array<Record<string, unknown>>
   }
 
   const referenceResult = await db
@@ -419,7 +500,7 @@ Deno.serve(async request => {
     return jsonResponse(500, { ok: false, error: "reference_query_failed" })
   }
 
-  const candidateFlashes = (candidateResult.data ?? []) as Flash[]
+  const candidateFlashes = candidateRows as Flash[]
   const referenceFlashes = (referenceResult.data ?? []) as Flash[]
   const flashes = [
     ...new Map(
@@ -1000,5 +1081,9 @@ Deno.serve(async request => {
     unverified,
     edges_written: edgesWritten,
     structured_events_seen: structuredEvents.length,
+    candidate_scope: requestedCountryIso3
+      ? "country"
+      : "global",
+    candidate_country_iso3: requestedCountryIso3,
   })
 })
