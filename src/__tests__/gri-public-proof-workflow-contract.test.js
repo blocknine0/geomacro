@@ -19,11 +19,13 @@ const jobBlock = (source, name) => {
 const publicProofJob = jobBlock(workflow, "public-proof");
 
 describe("GRI public proof consistency workflow contract", () => {
-  it("keeps manual, scheduled and relevant main-change revalidation", () => {
+  it("keeps manual proof while scheduling is owned by the master orchestrator", () => {
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain('cron: "23 */2 * * *"');
-    expect(workflow).toContain("push:");
-    expect(workflow).toContain("branches: [main]");
+    expect(workflow).not.toContain("23 */2 * * *");
+    expect(workflow).not.toContain("push:");
+    const orchestrator = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    expect(orchestrator).toContain('key: "gri_publish"');
     expect(workflow).toContain("scripts/audit-gri-public-proof-consistency.mjs");
     expect(workflow).toContain("scripts/verify-gri-snapshot-v12.js");
     expect(workflow).toContain("scripts/lib/gri-*.js");
