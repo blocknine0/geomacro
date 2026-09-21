@@ -19,6 +19,8 @@ describe("RSS worker source selection contract", () => {
     expect(worker).toContain("feeds = RSS_FEEDS");
     expect(worker).toContain('"feeds": [feed["source_id"] for feed in feeds]');
     expect(worker).toContain('"kind": "rss_poll"');
+    expect(worker).toContain('"kind": "rss_source_complete"');
+    expect(worker).toContain('"ok": True');
   });
 
   it("applies a non-zero minimum retry budget uniformly to configured feeds", () => {
