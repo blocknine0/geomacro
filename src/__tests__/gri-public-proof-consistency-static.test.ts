@@ -47,7 +47,7 @@ describe("GRI public proof consistency evidence", () => {
     expect(workflow).toContain('cron: "23 */2 * * *"');
     expect(workflow).toContain("workflow_dispatch");
     expect(workflow).toContain("contents: read");
-    expect(workflow).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
+    expect(publicProofJob).toContain("GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '3' || '6' }}");
     expect(workflow).toContain("audit-gri-public-proof-consistency.mjs");
     expect(workflow).toContain("verify-gri-snapshot-v12.js --snapshot-id");
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
