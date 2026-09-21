@@ -147,13 +147,16 @@ jobs:
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql
           echo 'PASS: migration 923 applied without broad db push.'
 
-      - name: Verify source is ingestion-enabled but scoring-disabled
+      - name: Verify source is ingestion-enabled and scoring-disabled
         shell: bash
         run: |
           set -euo pipefail
           state="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -Atqc "select commercial_usage_status || '|' || enabled_for_ingestion::text || '|' || enabled_for_commercial_signals::text from public.live_external_sources where source_id='gdelt_v2_events'")"
-          test "$state" = 'COMMERCIAL_OK|true|false' || { echo "::error::Unexpected GDELT source state: $state"; exit 1; }
-          echo 'PASS: GDELT source state permits governed ingestion only.'
+          IFS='|' read -r usage_status ingestion_enabled commercial_signals_enabled <<< "$state"
+          test "$ingestion_enabled" = 'true' || { echo "::error::GDELT ingestion is not enabled: $state"; exit 1; }
+          test "$commercial_signals_enabled" = 'false' || { echo "::error::GDELT commercial signals unexpectedly enabled: $state"; exit 1; }
+          test -n "$usage_status" || { echo "::error::GDELT commercial usage status is missing: $state"; exit 1; }
+          printf 'PASS: GDELT source permits governed ingestion only; usage_status=%s ingestion=%s commercial_signals=%s\n' "$usage_status" "$ingestion_enabled" "$commercial_signals_enabled"
 
       - name: Dry-run latest GDELT Event batch before write
         shell: bash
