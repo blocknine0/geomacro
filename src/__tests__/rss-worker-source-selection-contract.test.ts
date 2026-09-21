@@ -35,4 +35,16 @@ describe("RSS worker source selection contract", () => {
     expect(worker).toContain("asyncio.gather(");
     expect(worker).toContain("*(process_one_feed(feed) for feed in feeds)");
   });
+
+  it("recovers readable malformed RSS or Atom XML without weakening fail-closed behavior", () => {
+    const worker = read("workers/telegram-flash/worker.py");
+    expect(worker).toContain("class LenientFeedParser:");
+    expect(worker).toContain('from html.parser import HTMLParser');
+    expect(worker).toContain("parse_rss_entries(");
+    expect(worker).toContain("getattr(parsed, "bozo", False)");
+    expect(worker).toContain("if recovered:");
+    expect(worker).toContain("Feed parse failed:");
+    expect(worker).toContain("parsedate_to_datetime");
+    expect(worker).toContain("datetime.fromisoformat");
+  });
 });
