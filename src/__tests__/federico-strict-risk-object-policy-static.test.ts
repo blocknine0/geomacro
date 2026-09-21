@@ -155,10 +155,16 @@ describe("Federico strict Risk Object acceptance policy", () => {
       '"source_id": "scmp_china_rss"',
     );
     expect(ingest).toContain(
-      '"xinhua_english_china_rss"',
+      'from("live_external_sources")',
     );
     expect(ingest).toContain(
-      '"scmp_china_rss"',
+      "enabled_for_ingestion",
+    );
+    expect(ingest).not.toContain(
+      "ALLOWED_SOURCE_IDS",
+    );
+    expect(ingest).not.toContain(
+      "github_oidc_source_not_allowed",
     );
     expect(policy).toContain(
       'xinhua_english_china_rss: "xinhua_english_china"',
