@@ -1,3 +1,4 @@
+# Candidate identity is always the PR head SHA or an explicitly supplied exact main SHA.
 name: Exact-Head Commercial Launch Readiness
 
 on:
