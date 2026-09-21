@@ -25,7 +25,7 @@ describe("permanent live authenticated Testnet E2E harness", () => {
 
   it("keeps automatic scheduled runs quote-only unless explicitly paid", () => {
     expect(workflow).toContain("vars.GEOMACRO_TESTNET_E2E_ENABLED == 'true'");
-    expect(workflow).toContain("inputs.mode || 'quote_only'");
+    expect(workflow).toContain("inputs.e2e_mode || 'quote_only'");
     expect(script).toContain('MODE === "paid"');
     expect(script).toContain('ACK === "GEOMACRO_TESTNET_USDC"');
     expect(script).toContain("MAX_USDC");
