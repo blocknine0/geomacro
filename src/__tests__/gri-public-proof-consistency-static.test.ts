@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 const script = read("scripts/audit-gri-public-proof-consistency.mjs");
 const workflow = read(".github/workflows/gri-governance.yml");
 const publicProofJob =
-  workflow.match(/^  public-proof:\n([\\s\\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m)?.[0] ?? "";
+  workflow.match(/^  public-proof:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m)?.[0] ?? "";
 const verifier = read("scripts/verify-gri-snapshot-v12.js");
 
 describe("GRI public proof consistency evidence", () => {
