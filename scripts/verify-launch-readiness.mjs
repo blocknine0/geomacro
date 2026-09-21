@@ -26,8 +26,9 @@ async function readJson(relativePath) {
   return JSON.parse(await read(relativePath));
 }
 
+const failures = [];
 function need(condition, message) {
-  if (!condition) throw new Error(message);
+  if (!condition) failures.push(message);
 }
 
 const launch = await readJson("config/commercial-launch-manifest.json");
@@ -147,6 +148,10 @@ const requiredFiles = [
   "docs/COMMERCIAL_LAUNCH_STRICT_EVIDENCE.md",
 ];
 for (const file of requiredFiles) need((await read(file)).trim().length > 0, "required launch control file empty: " + file);
+
+if (failures.length > 0) {
+  throw new Error("Launch readiness failures:\n- " + failures.join("\n- "));
+}
 
 const tracked = [
   "config/commercial-launch-manifest.json",
