@@ -10,9 +10,10 @@ describe("permanent intelligence orchestration contract", () => {
     const workflow = read(".github/workflows/intelligence-orchestrator.yml");
     const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
-    expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
-    expect(orchestrator).toContain("cancel-in-progress: false");
-    expect(orchestrator).not.toContain("workflow_run:");
+    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).not.toContain("workflow_run:");
+    expect(orchestrator).toContain("const TASKS = [");
   });
 
   it("keeps live intelligence adapters due-based and serial", () => {
@@ -28,11 +29,11 @@ describe("permanent intelligence orchestration contract", () => {
       "news_ingest",
       "gri_publish",
       "source_evidence",
-    ])
-    expect(script).toContain('key: "production_readiness"');
-    expect(script).toContain('key: "public_demo_refresh"'); {
+    ]) {
       expect(script).toContain(`key: "${task}"`);
     }
+    expect(script).toContain('key: "production_readiness"');
+    expect(script).toContain('key: "public_demo_refresh"');
     expect(script).toContain("MAX_TASKS_PER_TICK");
     expect(script).toContain('key: "production_readiness"');
     expect(script).toContain('key: "public_demo_refresh"');
