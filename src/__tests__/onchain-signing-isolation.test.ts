@@ -8,15 +8,12 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const STATE_CHANGING = [
   ".github/workflows/security-monitor.yml",
   ".github/workflows/auto-create-markets.yml",
-  ".github/workflows/auto-finalize-markets.yml",
-  ".github/workflows/auto-resolve-markets.yml",
-  ".github/workflows/auto-resolve-disputes.yml",
+  ".github/workflows/market-lifecycle.yml",
   ".github/workflows/auto-recovery.yml",
 ];
 
 const READ_WRITE_INDEXERS = [
-  ".github/workflows/sync-lifecycle.yml",
-  ".github/workflows/sync-stakes.yml",
+  ".github/workflows/market-lifecycle.yml",
 ];
 
 const ADMIN_VERIFY_ONLY = [
@@ -52,8 +49,7 @@ describe("onchain signing isolation", () => {
   it("serializes every signing trust domain without cancelling in-flight transactions", () => {
     for (const path of [
       ".github/workflows/auto-create-markets.yml",
-      ".github/workflows/auto-finalize-markets.yml",
-      ".github/workflows/auto-resolve-markets.yml",
+      ".github/workflows/market-lifecycle.yml",
       ".github/workflows/auto-recovery.yml",
     ]) {
       const source = read(path);
@@ -61,9 +57,10 @@ describe("onchain signing isolation", () => {
       expect(source, path).toContain("cancel-in-progress: false");
     }
 
-    const jury = read(".github/workflows/auto-resolve-disputes.yml");
-    expect(jury).toContain("group: arc-jury-wallet-state-change");
-    expect(jury).toContain("cancel-in-progress: false");
+    const lifecycle = read(".github/workflows/market-lifecycle.yml");
+    expect(lifecycle).toContain("group: arc-owner-wallet-state-change");
+    expect(lifecycle).toContain("group: arc-jury-wallet-state-change");
+    expect(lifecycle).toContain("cancel-in-progress: false");
 
     const guardian = read(".github/workflows/security-monitor.yml");
     expect(guardian).toContain("group: arc-guardian-wallet-state-change");
