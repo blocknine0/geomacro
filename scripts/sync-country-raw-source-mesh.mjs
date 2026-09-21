@@ -4,7 +4,14 @@ import { createClient } from "@supabase/supabase-js";
 
 const REF="ldpwajisioljyjtojvfx", SOURCE="country_raw_web_mesh", BUCKET="geomacro-live-intelligence";
 const LIMIT=Math.max(1,Math.min(10000,Number(process.env.RAW_SOURCE_SYNC_MAX_TARGETS??5000)));
-const CONCURRENCY=Math.max(4,Math.min(48,Number(process.env.RAW_SOURCE_SYNC_CONCURRENCY??32)));
+const CONCURRENCY=Math.max(4,Math.min(16,Number(process.env.RAW_SOURCE_SYNC_CONCURRENCY??16)));
+const RETRY_ATTEMPTS=4;
+const FAILURE_RETRY_SECONDS=300;
+const HOST_MIN_INTERVAL_MS=new Map([
+  ["api.gdeltproject.org",500],
+  ["api.worldbank.org",300],
+  ["www.usgs.gov",300],
+]);
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
 const projectRef=(u)=>{try{return new URL(u).hostname.split(".")[0]??"";}catch{return "";}};
 const hash=(b)=>createHash("sha256").update(b).digest("hex");
@@ -38,7 +45,56 @@ function rssItems(xml, baseUrl, limit=100){
   }
   return out;
 }
-async function fetchUrl(url){const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow"});return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),final:r.url||url,bytes:Buffer.from(await r.arrayBuffer())};}
+const sleep=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));
+const hostTails=new Map();
+const hostLastStart=new Map();
+async function withHostPacing(url,fn){
+  const host=new URL(url).hostname.toLowerCase();
+  const prior=hostTails.get(host)??Promise.resolve();
+  let release;
+  const current=new Promise((resolve)=>{release=resolve;});
+  hostTails.set(host,current);
+  await prior;
+  try{
+    const minInterval=HOST_MIN_INTERVAL_MS.get(host)??150;
+    const wait=minInterval-(Date.now()-(hostLastStart.get(host)??0));
+    if(wait>0)await sleep(wait);
+    hostLastStart.set(host,Date.now());
+    return await fn();
+  }finally{
+    release();
+    if(hostTails.get(host)===current)hostTails.delete(host);
+  }
+}
+function retryAfterMs(value){
+  const raw=String(value??"").trim();
+  if(!raw)return null;
+  const seconds=Number(raw);
+  if(Number.isFinite(seconds))return Math.max(1000,Math.min(120000,seconds*1000));
+  const at=Date.parse(raw);
+  return Number.isFinite(at)?Math.max(1000,Math.min(120000,at-Date.now())):null;
+}
+async function fetchUrl(url){
+  const retryable=new Set([408,425,429,500,502,503,504]);
+  let lastError;
+  for(let attempt=1;attempt<=RETRY_ATTEMPTS;attempt++){
+    try{
+      const result=await withHostPacing(url,async()=>{
+        const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow"});
+        const bytes=Buffer.from(await r.arrayBuffer());
+        return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),retryAfter:r.headers.get("retry-after"),final:r.url||url,bytes};
+      });
+      if(!retryable.has(result.status)||attempt===RETRY_ATTEMPTS)return result;
+      const delay=retryAfterMs(result.retryAfter)??Math.min(20000,1500*(2**(attempt-1)));
+      await sleep(delay);
+    }catch(error){
+      lastError=error;
+      if(attempt===RETRY_ATTEMPTS)throw error;
+      await sleep(Math.min(20000,1500*(2**(attempt-1))));
+    }
+  }
+  throw lastError??new Error("RAW_SOURCE_FETCH_FAILED");
+}
 async function mark(db,t,p){const{error}=await db.from("live_raw_source_targets").update({...p,updated_at:new Date().toISOString()}).eq("target_id",t.target_id);if(error)throw error;}
 async function saveSnapshot(db,t,when,f){
   const b=f.bytes.length>4194304?f.bytes.subarray(0,4194304):f.bytes;
@@ -92,9 +148,9 @@ async function saveFragment(db,t,when,rows){
 async function ensureCoverageTargets(db) {
   const expected = { GEOPOLITICS: 3, MACRO: 4, CRITICAL_MINERALS: 6 };
   const anchors = {
-    GEOPOLITICS: { id: (iso) => "GEO:COVERAGE_FALLBACK:" + iso, source_id: "gdelt_v2", transport: "GLOBAL_FALLBACK", target_url: "https://www.gdeltproject.org/", display_name: (country) => "GDELT coverage fallback - " + country, cadence_seconds: 300, priority: 1, notes: "Priority-1 country coverage anchor. Country-specific query is constructed by the worker; upstream national endpoints remain optional redundancy." },
-    MACRO: { id: (iso) => "MACRO:COVERAGE_FALLBACK:" + iso, source_id: "world_bank_indicators", transport: "GLOBAL_FALLBACK", target_url: "https://api.worldbank.org/v2/", display_name: (country) => "World Bank coverage fallback - " + country, cadence_seconds: 900, priority: 1, notes: "Priority-1 country coverage anchor using the country-specific World Bank API. National statistics and monetary-authority sources remain independent redundancy." },
-    CRITICAL_MINERALS: { id: (iso) => "MINERALS:COVERAGE_FALLBACK:" + iso, source_id: "usgs_mcs", transport: "GLOBAL_FALLBACK", target_url: "https://www.usgs.gov/centers/national-minerals-information-center/data", display_name: (country) => "USGS minerals coverage fallback - " + country, cadence_seconds: 3600, priority: 1, notes: "Priority-1 country coverage anchor using the global USGS minerals baseline. RMIS and national minerals sources remain independent redundancy." }
+    GEOPOLITICS: { id: (iso) => "GEO:COVERAGE_FALLBACK:" + iso, source_id: "gdelt_v2", transport: "GLOBAL_FALLBACK", target_url: "https://www.gdeltproject.org/", display_name: (country) => "GDELT coverage fallback - " + country, cadence_seconds: 1800, priority: 1, notes: "Priority-1 country coverage anchor. Country-specific query is constructed by the worker; upstream national endpoints remain optional redundancy." },
+    MACRO: { id: (iso) => "MACRO:COVERAGE_FALLBACK:" + iso, source_id: "world_bank_indicators", transport: "GLOBAL_FALLBACK", target_url: "https://api.worldbank.org/v2/", display_name: (country) => "World Bank coverage fallback - " + country, cadence_seconds: 7200, priority: 1, notes: "Priority-1 country coverage anchor using the country-specific World Bank API. National statistics and monetary-authority sources remain independent redundancy." },
+    CRITICAL_MINERALS: { id: (iso) => "MINERALS:COVERAGE_FALLBACK:" + iso, source_id: "usgs_mcs", transport: "GLOBAL_FALLBACK", target_url: "https://www.usgs.gov/centers/national-minerals-information-center/data", display_name: (country) => "USGS minerals coverage fallback - " + country, cadence_seconds: 14400, priority: 1, notes: "Priority-1 country coverage anchor using the global USGS minerals baseline. RMIS and national minerals sources remain independent redundancy." }
   };
   const [directoryQuery, registryQuery] = await Promise.all([
     db.from("live_country_primary_source_directory").select("country_iso2,country_name").order("country_iso2", { ascending: true }),
@@ -112,9 +168,16 @@ async function ensureCoverageTargets(db) {
     throw new Error("Expected exactly 195 canonical countries from the government-portal baseline; resolved " + new Set(countries.map((row) => row.iso3)).size);
   }
   const canonicalIso3 = countries.map((row) => row.iso3);
-  const existingQuery = await db.from("live_raw_source_targets").select("target_id,country_iso3,category,enabled").eq("enabled", true).in("country_iso3", canonicalIso3).in("category", Object.keys(expected));
-  if (existingQuery.error) throw existingQuery.error;
-  const existing = existingQuery.data ?? [];
+  const existing=[];
+  for(let from=0;;from+=1000){
+    const pageQuery=await db.from("live_raw_source_targets")
+      .select("target_id,country_iso3,category,enabled")
+      .eq("enabled", true).in("country_iso3", canonicalIso3).in("category", Object.keys(expected))
+      .order("target_id", {ascending:true}).range(from,from+999);
+    if(pageQuery.error)throw pageQuery.error;
+    existing.push(...(pageQuery.data??[]));
+    if((pageQuery.data??[]).length<1000)break;
+  }
   const ids = new Set(existing.map((row) => String(row.target_id)));
   const counts = new Map();
   for (const row of existing) {
@@ -156,7 +219,7 @@ async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),
   const countryIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
   const canonicalIso3=new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean));
   if(canonicalIso3.size!==195)throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.size);
-  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>!t.last_attempt_at||!Number.isFinite(Date.parse(String(t.last_attempt_at)))||Date.parse(String(t.last_attempt_at))+Number(t.cadence_seconds)*1000<=now);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).not("target_id","like","%MESH_FILLER%").order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>{const last=Date.parse(String(t.last_attempt_at??""));const retrySeconds=Number(t.consecutive_failures??0)>0?FAILURE_RETRY_SECONDS:Number(t.cadence_seconds);return !Number.isFinite(last)||last+retrySeconds*1000<=now;});let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
         if(t.source_id==="gdelt_v2"){
           const iso2=countryIso2.get(String(t.country_iso3));
           if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
