@@ -18,13 +18,22 @@ function rssItems(xml, baseUrl, limit=100){
   const blocks=[...text.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)];
   for(const match of blocks.slice(0,limit)){
     const block=match[1]??"";
-    const read=(name)=>{const m=block.match(new RegExp("<"+name+"(?:\\\\:[^\\\\s>]+)?(?:\\\\s[^>]*)?>[\\\\s\\\\S]*?<\\\\/"+name+">","i"));return txt(m?.[0]?.replace(new RegExp("^<[^>]+>|<\\\\/[^>]+>$","gi")," "));};
-    const title=read("title");
+    const title=txt(block.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g," "));
     const linkMatch=block.match(/<link[^>]*(?:href=["']([^"']+)["']|>([^<]+)<\/link>)/i);
-    let u=linkMatch?.[1]??linkMatch?.[2]??baseUrl;
-    try{u=new URL(u,baseUrl).toString();}catch{u=baseUrl;}
-    const date=read("pubDate")||read("published")||read("updated")||new Date().toISOString();
-    const desc=read("description")||read("summary")||"";
+    const uRaw=linkMatch?.[1]??linkMatch?.[2]??baseUrl;
+    let u=uRaw;
+    try{u=new URL(uRaw,baseUrl).toString();}catch{u=baseUrl;}
+    const date=txt(
+      block.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i)?.[1]
+      ?? block.match(/<published[^>]*>([\s\S]*?)<\/published>/i)?.[1]
+      ?? block.match(/<updated[^>]*>([\s\S]*?)<\/updated>/i)?.[1]
+      ?? ""
+    ) || new Date().toISOString();
+    const desc=txt(
+      block.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1]
+      ?? block.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i)?.[1]
+      ?? ""
+    );
     if(title)out.push({u,t:title.slice(0,800),d:date,x:desc.slice(0,2400)});
   }
   return out;
