@@ -175,7 +175,7 @@ describe("GRI v1.2 sensitivity contract", () => {
 
   it("keeps live evidence read-only and blocks predictive or institutional-grade claim upgrades", () => {
     const workflow = readFileSync(
-      ".github/workflows/gri-calibration-sensitivity-evidence.yml",
+      ".github/workflows/gri-governance.yml",
       "utf8",
     );
     const sensitivityAudit = readFileSync(
