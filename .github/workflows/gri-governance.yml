@@ -286,7 +286,7 @@ jobs:
           exit "$code"
       - name: Install GRI runtime dependencies for recovery
         if: ${{ steps.freshness.outputs.stale == 'true' }}
-        run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Correlate canonical GRI events into immutable stories
         if: ${{ steps.freshness.outputs.stale == 'true' }}
         env:
@@ -331,7 +331,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install validation runtime dependencies
-        run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Ingest benchmark observations
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -408,7 +408,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install runtime dependencies
-        run: npm install --no-save --ignore-scripts @supabase/supabase-js dotenv
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Replay fixed GRI methodology over historical event store
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -452,7 +452,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install dependencies
-        run: npm install @supabase/supabase-js groq-sdk node-fetch dotenv
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Build immutable GRI story ledger
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
