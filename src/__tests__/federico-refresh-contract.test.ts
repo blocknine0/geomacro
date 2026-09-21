@@ -5,6 +5,15 @@ import { join } from "node:path";
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
 describe("Federico refresh contract", () => {
+  it("keeps the strict source-family map versioned and covers newly observed GDELT identities", () => {
+    const profile = read("src/lib/public-demo-risk-profile.ts");
+    expect(profile).toContain("federico-source-family-map-v5");
+    expect(profile).toContain('"mymixfm.com": "mymixfm.com"');
+    expect(profile).toContain('"wtvbam.com": "wtvbam.com"');
+    expect(profile).toContain('"wiky.com": "wiky.com"');
+    expect(profile).toContain('"kelo.com": "kelo.com"');
+  });
+
   it("runs on relevant main changes as well as scheduled/workflow-run triggers", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     expect(workflow).toContain("push:");
