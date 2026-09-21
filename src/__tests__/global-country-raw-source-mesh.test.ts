@@ -36,7 +36,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("MESH_FILLER:");
     expect(worker).toContain("RETRY_ATTEMPTS=4");
     expect(worker).toContain("retry-after");
-    expect(worker).toContain("api.gdeltproject.org",);
+    expect(worker).toContain("api.gdeltproject.org");
   });
 
   it("runs every five minutes against authoritative production",()=>{
@@ -54,7 +54,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("live_country_primary_source_directory");
     expect(worker).toContain("Expected exactly 195 canonical countries from the government-portal baseline");
     expect(worker).toContain("inserted_targets");
-    expect(worker).toContain(".not("target_id","like","%MESH_FILLER%")");
+    expect(worker).toContain('.not("target_id","like","%MESH_FILLER%")');
     expect(worker).toContain("for(let from=0;;from+=1000)");
   });
 
