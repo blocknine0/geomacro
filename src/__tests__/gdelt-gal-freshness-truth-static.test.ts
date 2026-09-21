@@ -12,6 +12,8 @@ describe("GDELT GAL freshness truth",()=>{
     const block=worker.slice(idx, worker.indexOf('const batchSeen',idx));
     expect(block).toContain("last_success_at: cursorRow?.last_success_at ?? null");
     expect(block).toContain("status: healthStatus");
+    expect(block).toContain('? "healthy"');
+    expect(block).toContain(': "failed"');
     expect(block).toContain('status: "empty"');
     expect(block).not.toContain("last_success_at: nowIso");
   });
