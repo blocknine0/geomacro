@@ -1971,7 +1971,7 @@ function choosePrimaryCountry(
 
 function resolveDomain(
   text: string,
-  _ingestTopics: string[] | undefined,
+  ingestTopics: string[] | undefined,
 ) {
   const scores = {
     geopolitics:
@@ -2018,6 +2018,42 @@ function resolveDomain(
   );
 
   if (ranked[0].score === 0) {
+    const normalizedTopics = new Set(
+      (ingestTopics ?? []).map((topic) => String(topic).trim().toLowerCase()),
+    );
+
+    if (normalizedTopics.has("rare_earth") || normalizedTopics.has("critical_minerals")) {
+      return {
+        domain: "rare_earth" as Domain,
+        scores,
+        method: "source_declared_critical_mineral_signal",
+      };
+    }
+
+    if (normalizedTopics.has("macro")) {
+      return {
+        domain: "macro" as Domain,
+        scores,
+        method: "source_declared_macro_signal",
+      };
+    }
+
+    if (normalizedTopics.has("geopolitics")) {
+      return {
+        domain: "geopolitics" as Domain,
+        scores,
+        method: "source_declared_geopolitical_signal",
+      };
+    }
+
+    if (normalizedTopics.has("natural_hazards")) {
+      return {
+        domain: "multi" as Domain,
+        scores,
+        method: "source_declared_natural_hazard_signal",
+      };
+    }
+
     return {
       domain:
         "multi" as Domain,
