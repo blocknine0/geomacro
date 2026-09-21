@@ -5,6 +5,16 @@ const read = (path: string) => readFileSync(path, "utf8");
 
 const script = read("scripts/audit-gri-public-proof-consistency.mjs");
 const workflow = read(".github/workflows/gri-governance.yml");
+const jobBlock = (source, name) => {
+  const header = `  ${name}:\n`;
+  const start = source.indexOf(header);
+  if (start < 0) return "";
+  const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+  let next = boundary.exec(source);
+  while (next && next.index <= start) next = boundary.exec(source);
+  const end = next ? next.index : source.length;
+  return source.slice(start, end);
+};
 const publicProofJob =
   workflow.match(/^  public-proof:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\s*$)/m)?.[0] ?? "";
 const verifier = read("scripts/verify-gri-snapshot-v12.js");
