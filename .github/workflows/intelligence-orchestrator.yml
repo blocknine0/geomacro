@@ -4,13 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "7,22,37,52 * * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/intelligence-orchestrator.yml"
-      - "scripts/intelligence-orchestrator.mjs"
-      - "supabase/migrations/971_intelligence_orchestrator_control.sql"
 
 permissions:
   contents: read
