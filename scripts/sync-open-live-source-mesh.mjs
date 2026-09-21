@@ -160,6 +160,91 @@ async function sourceRecordsGdacs(now) {
   };
 }
 
+async function sourceRecordsNasaFirms(now) {
+  const mapKey = String(process.env.NASA_FIRMS_MAP_KEY ?? "").trim();
+  if (!mapKey) {
+    return {
+      source_key: "nasa_firms_fire",
+      stream_key: "active-fire",
+      records: [],
+      skipped: true,
+      skip_reason: "NASA_FIRMS_MAP_KEY_NOT_CONFIGURED",
+      period_start: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+      period_end: now,
+    };
+  }
+
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(mapKey)}/MODIS_NRT/world/1`;
+  const response = await fetch(url, {
+    headers: {
+      accept: "text/csv",
+      "user-agent": "Geomacro-RealTime-Source-Mesh/1.0",
+    },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status} from NASA FIRMS`);
+  const csv = await response.text();
+  const lines = csv.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) {
+    return {
+      source_key: "nasa_firms_fire",
+      stream_key: "active-fire",
+      records: [],
+      skipped: false,
+      period_start: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+      period_end: now,
+    };
+  }
+
+  const header = lines[0].split(",");
+  const idx = new Map(header.map((name, position) => [name.trim(), position]));
+  const value = (fields, name) => {
+    const position = idx.get(name);
+    return position === undefined ? "" : fields[position]?.trim() ?? "";
+  };
+
+  const records = [];
+  for (const line of lines.slice(1)) {
+    const fields = line.split(",");
+    const lat = value(fields, "latitude");
+    const lon = value(fields, "longitude");
+    const acqDate = value(fields, "acq_date");
+    const acqTime = value(fields, "acq_time");
+    const confidence = value(fields, "confidence");
+    if (!lat || !lon || !acqDate) continue;
+
+    const publishedAt = isoFrom(`${acqDate}T${(acqTime || "0000").padStart(4, "0").slice(0, 2)}:${(acqTime || "0000").padStart(4, "0").slice(2)}:00Z`, now);
+    const fingerprint = `nasa_firms:${acqDate}:${acqTime}:${lat}:${lon}`;
+    const title = `NASA FIRMS active fire ${lat},${lon}`;
+    const description = [
+      `Latitude: ${lat}.`,
+      `Longitude: ${lon}.`,
+      confidence ? `Confidence: ${confidence}.` : "",
+      value(fields, "frp") ? `FRP: ${value(fields, "frp")} MW.` : "",
+    ].filter(Boolean).join(" ");
+
+    const normalized = record(
+      fingerprint,
+      "https://firms.modaps.eosdis.nasa.gov/",
+      "firms.modaps.eosdis.nasa.gov",
+      "NASA FIRMS",
+      title,
+      description,
+      publishedAt,
+      ["natural_hazards", "macro"],
+    );
+    if (normalized) records.push(normalized);
+  }
+
+  return {
+    source_key: "nasa_firms_fire",
+    stream_key: "active-fire",
+    records,
+    skipped: false,
+    period_start: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+    period_end: now,
+  };
+}
+
 async function sourceRecordsReliefWeb(now) {
   const appName = String(process.env.RELIEFWEB_APP_NAME ?? "").trim();
   if (!appName) {
@@ -387,6 +472,7 @@ async function main() {
   const sources = [
     await sourceRecordsUsGs(now),
     await sourceRecordsGdacs(now),
+    await sourceRecordsNasaFirms(now),
     await sourceRecordsReliefWeb(now),
   ];
 
