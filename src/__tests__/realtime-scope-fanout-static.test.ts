@@ -43,5 +43,9 @@ describe("realtime corridor and hot-topic fanout contract", () => {
     expect(workflow).toContain('"GDELT GAL Live Hot-Topic Sync"');
     expect(workflow).toContain('cron: "*/5 * * * *"');
     expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain("${{ secrets.APP_SUPABASE_URL }}");
+    expect(workflow).toContain("${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}");
+    expect(workflow).not.toContain("\\${{ secrets.APP_SUPABASE_URL }}");
+    expect(workflow).not.toContain("\\${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}");
   });
 });
