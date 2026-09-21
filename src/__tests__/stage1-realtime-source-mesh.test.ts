@@ -38,7 +38,8 @@ describe("Stage 1 realtime source mesh", () => {
   });
 
   it("keeps source identities server-side", () => {
-    expect(mesh).toContain("internal_only");
+    expect(sourceMigration).toContain("raw_storage_policy");
+    expect(sourceMigration).toContain("internal_only");
     expect(workflow).toContain("operational evidence");
   });
 
