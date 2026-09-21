@@ -6,7 +6,10 @@ const APP_SUPABASE_URL = String(process.env.APP_SUPABASE_URL ?? process.env.SUPA
 const LIVE_STRUCTURE_TOKEN = String(process.env.LIVE_STRUCTURE_TOKEN ?? "").trim();
 const MAX_CYCLES = Math.max(1, Math.min(24, Number(process.env.LIVE_STRUCTURE_MAX_CYCLES ?? 12)));
 const RETRIES = Math.max(1, Math.min(5, Number(process.env.LIVE_STRUCTURE_RETRIES ?? 3)));
-const IDS_FILE = String(process.env.STRUCTURE_FRAGMENT_IDS_FILE ?? "").trim();
+const argIndex = process.argv.indexOf("--fragment-ids-file");
+const IDS_FILE = String(
+  argIndex >= 0 ? process.argv[argIndex + 1] ?? "" : process.env.STRUCTURE_FRAGMENT_IDS_FILE ?? "",
+).trim();
 
 if (!APP_SUPABASE_URL || !LIVE_STRUCTURE_TOKEN) {
   throw new Error("LIVE_STRUCTURE_CREDENTIALS_REQUIRED");
