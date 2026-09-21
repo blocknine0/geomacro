@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: gdelt-gal-live-hot-topic-production
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
