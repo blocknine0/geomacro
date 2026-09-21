@@ -32,7 +32,7 @@ jobs:
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       RAW_SOURCE_SYNC_MAX_TARGETS: "650"
-      RAW_SOURCE_SYNC_CONCURRENCY: "32"
+      RAW_SOURCE_SYNC_CONCURRENCY: "16"
 
     steps:
       - name: Checkout canonical main
