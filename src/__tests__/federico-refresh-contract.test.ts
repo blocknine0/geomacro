@@ -51,5 +51,15 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain('event.get("kind") == "rss_error"');
     expect(workflow).not.toContain("xinhua_english_china_rss");
     expect(workflow).not.toContain("federal_reserve_press_rss");
+    expect(workflow).toContain("last_state");
+    expect(workflow).toContain("remained failed after the worker's bounded recovery policy");
+  });
+
+  it("derives GDELT drain bounds from the actual fragment response", () => {
+    const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
+    expect(workflow).toContain("fragment_total=\"$(jq -r '.fragment_total // 0' \"${response_file}\")\"");
+    expect(workflow).toContain("batch_size=\"$(jq -r '.batch_size // 0' \"${response_file}\")\"");
+    expect(workflow).not.toContain("max_batches=32");
+    expect(workflow).not.toContain('for attempt in $(seq 1 "${max_batches}"); do');
   });
 });
