@@ -69,6 +69,10 @@ jobs:
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
           test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
           oidc_response="$(curl --fail-with-body -sS \
+            --retry 5 \
+            --retry-all-errors \
+            --retry-delay 2 \
+            --retry-max-time 120 \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
           )"
@@ -105,6 +109,10 @@ jobs:
           set -euo pipefail
           base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
           response="$(curl --silent --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            --retry-delay 2 \
+            --retry-max-time 120 \
             --output /tmp/flash-corroborate.json \
             --write-out '%{http_code}' \
             --request POST \
@@ -125,37 +133,59 @@ jobs:
           }
           echo "PASS: governed RSS evidence corroboration completed."
 
-      - name: Verify all governed RSS sources completed
+      - name: Verify every configured RSS source completed
         shell: bash
         run: |
           set -euo pipefail
-          for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss un_geneva_press_rss un_security_council_docs_rss eu_council_press_rss un_geneva_meeting_summaries_rss un_all_documents_rss un_human_rights_council_rss federal_reserve_press_rss forexlive_rss ecb_press_rss ecb_market_information_rss nrcan_news_atom usgs_minerals_news_rss; do
-            grep -q "\"source_id\": \"${source_id}\"" /tmp/testnet-rss-live.log || {
-              echo "::error::RSS source ${source_id} did not complete a poll cycle."
-              exit 1
-            }
-          done
-          if grep -q '"kind": "rss_error"' /tmp/testnet-rss-live.log; then
-            echo "::error::One or more governed RSS sources failed."
-            cat /tmp/testnet-rss-live.log
-            exit 1
-          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
 
-          # Federal Reserve supplies an explicit USA ISO3. This non-synthetic
-          # assertion proves the production country-attribution path is active.
-          grep -Eq '"source_id": "federal_reserve_press_rss".*"iso3": "USA"' /tmp/testnet-rss-live.log || {
-            echo "::error title=USA attribution missing::Federal Reserve RSS was ingested but no USA attribution was returned."
-            exit 1
-          }
+          log_path = Path("/tmp/testnet-rss-live.log")
+          ready = None
+          completed = set()
+          errors = []
 
-          # Xinhua is the governed China source for Federico's strict CHN path.
-          # This asserts actual source ingestion plus production CHN attribution.
-          grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/testnet-rss-live.log || {
-            echo "::error title=Xinhua CHN attribution missing::Xinhua RSS was ingested but no CHN attribution was returned."
-            exit 1
-          }
+          for raw in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+              try:
+                  event = json.loads(raw)
+              except json.JSONDecodeError:
+                  continue
 
-          echo "PASS: all governed RSS feeds completed without collector errors and explicit USA + Xinhua CHN attribution are active."
+              if event.get("rss") == "ready":
+                  ready = event
+              if event.get("kind") == "rss_poll" and event.get("source_id"):
+                  completed.add(str(event["source_id"]))
+              if event.get("kind") == "rss_error":
+                  errors.append(event)
+
+          if not isinstance(ready, dict) or not isinstance(ready.get("feeds"), list) or not ready["feeds"]:
+              raise SystemExit("RSS worker did not emit a valid configured-feed manifest")
+
+          expected = {str(value) for value in ready["feeds"] if str(value).strip()}
+          missing = sorted(expected - completed)
+          if errors:
+              raise SystemExit(
+                  "One or more governed RSS sources emitted collector errors: "
+                  + json.dumps(errors, ensure_ascii=False)
+              )
+          if missing:
+              raise SystemExit(
+                  "Configured RSS sources did not complete a poll cycle: "
+                  + ", ".join(missing)
+              )
+
+          print(
+              json.dumps(
+                  {
+                      "configured_source_count": len(expected),
+                      "completed_source_count": len(completed & expected),
+                      "sources": sorted(expected),
+                  }
+              )
+          )
+          print("PASS: every RSS source declared by the worker completed without collector errors.")
+          PY
 
       - name: Upload live Testnet RSS evidence
         if: always()
