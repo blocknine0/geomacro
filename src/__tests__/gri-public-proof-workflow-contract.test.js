@@ -12,7 +12,7 @@ const publicProofJob = workflow.match(
 
 describe("GRI public proof consistency workflow contract", () => {
   it("keeps manual, scheduled and relevant main-change revalidation", () => {
-    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain('cron: "23 */2 * * *"');
     expect(workflow).toContain("push:");
     expect(workflow).toContain("branches: [main]");
