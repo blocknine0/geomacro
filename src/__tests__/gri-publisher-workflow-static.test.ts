@@ -18,7 +18,7 @@ describe("scheduled GRI publisher workflow", () => {
   it("keeps publish manual-only because the master orchestrator owns cadence", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toContain('cron: "50 */2 * * *"');
-    const orchestrator = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
     expect(orchestrator).toContain('key: "gri_publish"');
     expect(orchestrator).toContain("cadenceSeconds: 7200");
   });
