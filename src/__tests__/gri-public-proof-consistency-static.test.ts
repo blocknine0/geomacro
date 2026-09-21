@@ -15,8 +15,7 @@ const jobBlock = (source, name) => {
   const end = next ? next.index : source.length;
   return source.slice(start, end);
 };
-const publicProofJob =
-  workflow.match(/^  public-proof:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\s*$)/m)?.[0] ?? "";
+const publicProofJob = jobBlock(workflow, "public-proof");
 const verifier = read("scripts/verify-gri-snapshot-v12.js");
 
 describe("GRI public proof consistency evidence", () => {
