@@ -48,7 +48,7 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("Verify every configured RSS source completed");
     expect(workflow).toContain("event.get('rss') == 'ready'");
     expect(workflow).toContain("event.get('kind') in {'rss_source_complete', 'rss_error'}");
-    expect(workflow).not.toContain("xinhua_english_china_rss");
+    expect(workflow).toContain('--data \'{"country_iso3":"CHN"}\'');    expect(workflow).not.toContain("xinhua_english_china_rss");
     expect(workflow).not.toContain("federal_reserve_press_rss");
     expect(workflow).toContain("last_state");
     expect(workflow).toContain("remained failed after the worker's bounded recovery policy");
