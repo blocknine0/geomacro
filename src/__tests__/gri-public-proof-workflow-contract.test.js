@@ -23,7 +23,7 @@ describe("GRI public proof consistency workflow contract", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).not.toContain("23 */2 * * *");
     expect(workflow).not.toContain("push:");
-    const orchestrator = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
     expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
     expect(orchestrator).toContain('key: "gri_publish"');
     expect(workflow).toContain("scripts/audit-gri-public-proof-consistency.mjs");
