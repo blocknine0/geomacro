@@ -11,7 +11,7 @@ describe("RSS worker source selection contract", () => {
     expect(worker).toContain("unknown source IDs");
     expect(worker).toContain('"source_filter": requested_source_ids');
     expect(worker).toContain("feeds = [");
-    expect(worker).toContain("for feed in feeds:");
+    expect(worker).toContain("process_one_feed(feed) for feed in feeds");
   });
 
   it("keeps the default runtime source set registry-driven", () => {
