@@ -33,7 +33,7 @@ def supabase_request(method: str, path: str, body: Any | None = None) -> Any:
         "Authorization": f"Bearer {key}",
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Prefer": "return=minimal",
+        "Prefer": "resolution=ignore-duplicates,return=minimal",
     }
     payload = None
     if body is not None:
