@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const worker = fs.readFileSync("workers/telegram-flash/global_discovery.py","utf8");
-const workflow = fs.readFileSync(".github/workflows/global-telegram-source-discovery.yml","utf8");
+const workflow = fs.readFileSync(".github/workflows/global-telegram-source-discovery-scheduled.yml","utf8");
 const migration = fs.readFileSync("supabase/migrations/969_telegram_global_discovery_metadata.sql","utf8");
 
 describe("global Telegram source discovery",()=>{
@@ -26,5 +26,15 @@ describe("global Telegram source discovery",()=>{
     expect(workflow).toContain('cron: "*/30 * * * *"');
     expect(migration).toContain("discovery_country_iso3");
     expect(migration).toContain("discovery_category");
+  });
+});
+
+
+describe("global Telegram workflow triggers",()=>{
+  it("is schedule/dispatch only and cannot create push zero-job runs",()=>{
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("schedule:");
+    expect(workflow).not.toContain("push:");
+    expect(workflow).not.toContain("workflow_run:");
   });
 });

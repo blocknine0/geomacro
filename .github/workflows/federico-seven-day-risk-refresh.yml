@@ -430,6 +430,22 @@ jobs:
           });
           NODE
 
+      - name: Refresh scoped GitHub OIDC token immediately before governed RSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || { echo "::error::GitHub OIDC request URL missing"; exit 1; }
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" || { echo "::error::GitHub OIDC request token missing"; exit 1; }
+          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}"
+          )"
+          token="$(printf "%s" "$oidc_response" | jq -er ".value")"
+          test -n "$token"
+          echo "::add-mask::$token"
+          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "$token" >> "$GITHUB_ENV"
+          echo "PASS: refreshed scoped GitHub OIDC token immediately before Federico RSS corroboration."
+
       - name: Re-poll governed RSS after fresh GDELT structure
         env:
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
@@ -439,12 +455,14 @@ jobs:
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
+          BREAKING_RSS_SOURCE_IDS: "aljazeera_rss,bbc_world_rss,xinhua_english_china_rss,scmp_china_rss,federal_reserve_press_rss,forexlive_rss,usgs_minerals_news_rss"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
           test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
+          test -n "${BREAKING_RSS_SOURCE_IDS:-}" || { echo "::error::BREAKING_RSS_SOURCE_IDS missing"; exit 1; }
           python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
           cd workers/telegram-flash
           python worker.py 2>&1 | tee /tmp/federico-rss-live.log

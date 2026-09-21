@@ -1,4 +1,4 @@
-name: Global Telegram Raw Source Discovery
+name: Global Telegram Raw Source Discovery (Scheduled)
 
 on:
   workflow_dispatch:

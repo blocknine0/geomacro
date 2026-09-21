@@ -111,15 +111,15 @@ If the first check fails, do not issue a payable challenge. If the final check o
 
 The maximum-country census gate is now evidenced for the current Risk Gate country-review methodology. The remaining launch gates above stay independent. Base mainnet remains locked until all required launch gates are green and explicit owner authorization is provided last.
 
-## Permanent production coverage gate
+## Permanent global coverage readiness gate
 
-The repository now has a single read-only machine gate for the requested global scope:
+The repository has a single read-only machine gate for structural global coverage and realtime readiness. This gate is intentionally separate from commercial source certification:
 
 `bun run coverage:global:strict`
 
 The gate validates, against the authoritative production Supabase project:
 
-- the global source-inventory and source-network certification gates;
+- the global source inventory and structural source-network state as diagnostics; commercial certification remains a separate fail-closed gate;
 - the 16-module country coverage matrix;
 - the regional 16-module matrix;
 - the strategic-corridor 16-module matrix;
@@ -131,7 +131,7 @@ The companion hot-topic audit validates that every governed hot-topic family has
 
 The gate is read-only. It cannot promote sources, enable commercial rights, charge a customer, settle funds or authorize execution.
 
-The production workflow runs on main changes and hourly. A failed gate is evidence that the current global-production claim must remain closed or fail-closed until the underlying source, freshness, rights, schema, adapter or runtime condition is repaired.
+The coverage workflow runs on main changes and hourly. A failed gate means the structural global-coverage readiness contract or realtime backbone is not currently satisfied. Commercial source certification is reported separately and must remain fail-closed unless its independent certification gate passes.
 
 **Important:** a green inventory matrix is not a claim that every event on the internet is observed. A country/corridor/topic is deliverable only when its governed evidence path is current, independently supported where required, commercially eligible and within its freshness contract.
 
