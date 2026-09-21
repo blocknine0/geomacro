@@ -40,6 +40,13 @@ const security = await read("src/lib/provider-real-funds-security.server.ts");
 const delivery = await read("src/lib/agent-commerce-delivery.server.ts");
 const deliveryTest = await read("src/__tests__/agent-commerce-delivery-ledger-static.test.ts");
 const sourceEligibility = await read("src/lib/commercial-source-eligibility.server.ts");
+const griConsistencyTest = await read("src/__tests__/gri-public-proof-consistency-static.test.ts");
+const griWorkflowTest = await read("src/__tests__/gri-public-proof-workflow-contract.test.js");
+const riskSigningTest = await read("src/__tests__/risk-object-signing.test.ts");
+const riskTrustTest = await read("src/__tests__/risk-object-independent-trust.test.ts");
+const riskPublicTest = await read("src/__tests__/risk-object-public-verification-route.test.ts");
+const canonicalRiskTest = await read("src/__tests__/canonical-json-v1-test-vector.test.ts");
+const federicoPolicyTest = await read("src/__tests__/federico-strict-risk-object-policy-static.test.ts");
 const rightsEvidence = await read("scripts/commercial-source-rights-evidence.mjs");
 const rightsTest = await read("src/__tests__/commercial-source-rights-evidence-parity.test.js");
 const circle = await read("src/lib/circle-gateway-x402-production.server.ts");
@@ -108,6 +115,17 @@ need(sourceEligibility.includes("COMMERCIAL_OK"), "commercial source eligibility
 need(sourceEligibility.includes("raw_redistribution_allowed"), "raw redistribution boundary missing");
 need(rightsEvidence.includes("DERIVED_ONLY"), "derived-only source rights state missing");
 need(rightsTest.includes("COMMERCIAL_OK"), "source-rights parity regression test missing");
+
+need(griConsistencyTest.includes("gri-v1.2.0"), "GRI proof consistency test missing");
+need(griConsistencyTest.includes("gri-proof-v1.2.0"), "GRI proof version test missing");
+need(griWorkflowTest.includes("GRI_METHOD_VERSION: gri-v1.2.0"), "GRI workflow version contract missing");
+need(griWorkflowTest.includes("GRI_PROOF_VERSION: gri-proof-v1.2.0"), "GRI workflow proof contract missing");
+need(riskSigningTest.includes("fails verification after payload tampering"), "Risk Object tamper rejection test missing");
+need(riskSigningTest.includes("is deterministic for identical object and key"), "Risk Object deterministic signing test missing");
+need(riskTrustTest.includes("binds observed_at inside the signed canonical payload"), "Risk Object observation binding test missing");
+need(riskPublicTest.includes("prevents caching verification outcomes"), "Risk Object public verification route test missing");
+need(canonicalRiskTest.includes("reproduces the documented payload hash and Ed25519 signature"), "Risk Object canonical vector test missing");
+need(federicoPolicyTest.includes("locks Federico handoff artifact integrity and exact-SHA reproducibility"), "Federico exact-SHA handoff test missing");
 
 need(buildRc.includes("production_activation_performed: false"), "RC generator activation boundary missing");
 need(buildRc.includes("official_launch_announced: false"), "RC generator launch boundary missing");
