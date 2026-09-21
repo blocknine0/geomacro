@@ -381,7 +381,7 @@ async function main() {
   const supabase = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const now = new Date().toISOString();
+  const now = new Date();
 
   const results = [];
   const sources = [
@@ -411,7 +411,7 @@ async function main() {
 
   const output = {
     ok: true,
-    generated_at: now,
+    generated_at: now.toISOString(),
     sources: results,
   };
   if (OUTPUT) await writeFile(OUTPUT, JSON.stringify(output, null, 2) + "\n", "utf8");
