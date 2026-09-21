@@ -59,6 +59,8 @@ describe("Federico refresh contract", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     expect(workflow).toContain("fragment_total=\"$(jq -r '.fragment_total // 0' \"${response_file}\")\"");
     expect(workflow).toContain("batch_size=\"$(jq -r '.batch_size // 0' \"${response_file}\")\"");
+    expect(workflow).toContain("status=\"$(jq -r '.status // \"\"' \"${response_file}\")\"");
+    expect(workflow).toContain('if [[ "${status}" == "nothing_new" ]]; then');
     expect(workflow).not.toContain("max_batches=32");
     expect(workflow).not.toContain('for attempt in $(seq 1 "${max_batches}"); do');
   });
