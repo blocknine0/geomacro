@@ -427,6 +427,19 @@ values (
   600,
   'critical minerals rare earth lithium cobalt nickel graphite mining',
   'Official USGS Mineral Resources Program news surface; source reuse remains rights-gated.'
+),
+(
+  'CORRIDOR:WEB:IMO:MARITIME:GEOPOLITICS',
+  'CORRIDOR',
+  'ALL_MARITIME_CORRIDORS',
+  'GEOPOLITICS',
+  'WEB_DIRECT',
+  'imo_maritime_safety_information',
+  'https://www.imo.org/en/OurWork/Safety/Pages/Maritime-Safety-Information.aspx',
+  'CONTINUOUS',
+  600,
+  'maritime safety information navigational warnings maritime security',
+  'Official IMO Maritime Safety Information surface; route-specific reuse remains rights-gated.'
 )
 on conflict (target_id) do update set
   source_id = excluded.source_id,
