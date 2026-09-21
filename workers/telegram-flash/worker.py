@@ -1075,6 +1075,21 @@ async def process_feed(
         transport = "official_page_fallback"
 
     if status == 304:
+        print(
+            json.dumps(
+                {
+                    "kind": "rss_source_complete",
+                    "source_id": source_id,
+                    "ok": True,
+                    "http_status": 304,
+                    "transport": transport,
+                    "entries_seen": 0,
+                    "new_items": 0,
+                    "up_to_date": True,
+                }
+            ),
+            flush=True,
+        )
         return
 
     current["etag"] = etag
@@ -1225,6 +1240,18 @@ async def process_feed(
 
     current["bootstrapped"] = True
 
+    completion = {
+        "kind": "rss_source_complete",
+        "source_id": source_id,
+        "ok": True,
+        "http_status": status,
+        "transport": transport,
+        "entries_seen": len(entries),
+        "new_items": new_count,
+        "priority_items_selected": priority_items_selected,
+    }
+
+    print(json.dumps(completion), flush=True)
     print(
         json.dumps(
             {
