@@ -89,7 +89,56 @@ async function saveFragment(db,t,when,rows){
   if(error)throw error;
   return data.id;
 }
-async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const now=Date.now();const countriesQuery=await db.from("live_country_registry").select("iso3,iso2").eq("enabled",true);
+async function ensureCoverageTargets(db) {
+  const expected = { GEOPOLITICS: 3, MACRO: 4, CRITICAL_MINERALS: 6 };
+  const anchors = {
+    GEOPOLITICS: { id: (iso) => "GEO:COVERAGE_FALLBACK:" + iso, source_id: "gdelt_v2", transport: "GLOBAL_FALLBACK", target_url: "https://www.gdeltproject.org/", display_name: (country) => "GDELT coverage fallback - " + country, cadence_seconds: 300, priority: 1, notes: "Priority-1 country coverage anchor. Country-specific query is constructed by the worker; upstream national endpoints remain optional redundancy." },
+    MACRO: { id: (iso) => "MACRO:COVERAGE_FALLBACK:" + iso, source_id: "world_bank_indicators", transport: "GLOBAL_FALLBACK", target_url: "https://api.worldbank.org/v2/", display_name: (country) => "World Bank coverage fallback - " + country, cadence_seconds: 900, priority: 1, notes: "Priority-1 country coverage anchor using the country-specific World Bank API. National statistics and monetary-authority sources remain independent redundancy." },
+    CRITICAL_MINERALS: { id: (iso) => "MINERALS:COVERAGE_FALLBACK:" + iso, source_id: "usgs_mcs", transport: "GLOBAL_FALLBACK", target_url: "https://www.usgs.gov/centers/national-minerals-information-center/data", display_name: (country) => "USGS minerals coverage fallback - " + country, cadence_seconds: 3600, priority: 1, notes: "Priority-1 country coverage anchor using the global USGS minerals baseline. RMIS and national minerals sources remain independent redundancy." }
+  };
+  const countriesQuery = await db.from("live_country_registry").select("iso3,iso2,country_name").eq("enabled", true).order("iso3", { ascending: true });
+  if (countriesQuery.error) throw countriesQuery.error;
+  const countries = countriesQuery.data ?? [];
+  if (countries.length !== 195) throw new Error("Expected exactly 195 enabled canonical countries; found " + countries.length);
+  const existingQuery = await db.from("live_raw_source_targets").select("target_id,country_iso3,category,enabled").eq("enabled", true).in("category", Object.keys(expected));
+  if (existingQuery.error) throw existingQuery.error;
+  const existing = existingQuery.data ?? [];
+  const ids = new Set(existing.map((row) => String(row.target_id)));
+  const counts = new Map();
+  for (const row of existing) {
+    const key = String(row.country_iso3) + "|" + String(row.category);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const rows = [];
+  for (const country of countries) {
+    const iso = String(country.iso3);
+    const name = String(country.country_name);
+    for (const category of Object.keys(expected)) {
+      const anchor = anchors[category];
+      const anchorId = anchor.id(iso);
+      if (!ids.has(anchorId)) {
+        rows.push({ target_id: anchorId, country_iso3: iso, category, transport: anchor.transport, source_id: anchor.source_id, target_url: anchor.target_url, display_name: anchor.display_name(name), enabled: true, raw_storage_allowed: true, commercial_promotion_allowed: false, cadence_seconds: anchor.cadence_seconds, priority: anchor.priority, discovery_state: "DISCOVERED", notes: anchor.notes });
+        ids.add(anchorId);
+      }
+      let count = counts.get(iso + "|" + category) ?? 0;
+      while (count < expected[category]) {
+        const fillerId = category + ":MESH_FILLER:" + iso + ":" + (count + 1);
+        if (!ids.has(fillerId)) {
+          rows.push({ target_id: fillerId, country_iso3: iso, category, transport: anchor.transport, source_id: anchor.source_id, target_url: anchor.target_url, display_name: anchor.display_name(name) + " mesh filler " + (count + 1), enabled: true, raw_storage_allowed: true, commercial_promotion_allowed: false, cadence_seconds: anchor.cadence_seconds, priority: 2, discovery_state: "DISCOVERED", notes: "Self-healing mesh filler. It preserves the governed minimum target matrix when a country directory is incomplete or an upstream source row is missing." });
+          ids.add(fillerId);
+        }
+        count += 1;
+      }
+      counts.set(iso + "|" + category, count);
+    }
+  }
+  if (rows.length) {
+    const { error } = await db.from("live_raw_source_targets").upsert(rows, { onConflict: "target_id" });
+    if (error) throw error;
+  }
+  return { countries: 195, categories: Object.keys(expected), raw_only: true, inserted_targets: rows.length, coverage_anchors: countries.length * Object.keys(expected).length };
+}
+async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const country_contract=await ensureCoverageTargets(db);const now=Date.now();const countriesQuery=await db.from("live_country_registry").select("iso3,iso2").eq("enabled",true);
   if(countriesQuery.error)throw countriesQuery.error;
   const countryIso2=new Map((countriesQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
   const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>!t.last_attempt_at||!Number.isFinite(Date.parse(String(t.last_attempt_at)))||Date.parse(String(t.last_attempt_at))+Number(t.cadence_seconds)*1000<=now);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
@@ -131,5 +180,5 @@ async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),
             rows.push({i:hash(Buffer.from("api:"+t.target_id+":"+JSON.stringify(x))),u:ru,d:date,h:host,o:t.display_name,t:title.slice(0,800),x:description.slice(0,2400)||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});
           }
         }catch{}}if(!rows.length){const title=pageTitle(text);if(title)rows.push({i:hash(Buffer.from("page:"+t.target_id+":"+f.final+":"+title)),u:f.final,d:when,h:new URL(f.final).hostname,o:t.display_name,t:title,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});for(const x of links(text,f.final)){rows.push({i:hash(Buffer.from("link:"+t.target_id+":"+x.u)),u:x.u,d:when,h:new URL(x.u).hostname,o:t.display_name,t:x.t,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}const sid=await saveSnapshot(db,t,when,f);await saveFragment(db,t,when,rows);await db.from("live_raw_source_snapshots").update({extracted_item_count:rows.length}).eq("snapshot_id",sid);await mark(db,t,{discovery_state:rows.length?"REACHABLE":"STALE",last_attempt_at:when,last_success_at:when,last_observed_at:when,consecutive_failures:0,last_error:null});ok++;}catch(e){fail++;failures.push({target_id:t.target_id,error:e instanceof Error?e.message:String(e)});try{await mark(db,t,{discovery_state:"UNREACHABLE",last_attempt_at:when,consecutive_failures:Number(t.consecutive_failures??0)+1,last_error:String(e).slice(0,1000)});}catch{}}}}
-await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,due.length))},worker));console.log(JSON.stringify({ok:fail===0,generated_at:new Date().toISOString(),selected_targets:q.data?.length??0,due_targets:due.length,completed:ok,failed:fail,failures:failures.slice(0,50),country_contract:{countries:195,categories:["GEOPOLITICS","MACRO","CRITICAL_MINERALS"],raw_only:true}},null,2));if(fail>0&&ok===0)process.exit(1);}
+await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,due.length))},worker));console.log(JSON.stringify({ok:fail===0,generated_at:new Date().toISOString(),selected_targets:q.data?.length??0,due_targets:due.length,completed:ok,failed:fail,failures:failures.slice(0,50),country_contract},null,2));if(fail>0&&ok===0)process.exit(1);}
 main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});

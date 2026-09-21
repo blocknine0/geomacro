@@ -26,6 +26,10 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("worldbank.org/v2/country/");
     expect(worker).toContain("api.gdeltproject.org/api/v2/doc/doc");
     expect(worker).toContain("sourcecountry:");
+    expect(worker).toContain("GEO:COVERAGE_FALLBACK:");
+    expect(worker).toContain("MACRO:COVERAGE_FALLBACK:");
+    expect(worker).toContain("MINERALS:COVERAGE_FALLBACK:");
+    expect(worker).toContain("MESH_FILLER:");
   });
 
   it("runs every five minutes against authoritative production",()=>{
@@ -33,6 +37,15 @@ describe("global country raw source mesh",()=>{
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("sync-country-raw-source-mesh.mjs");
     expect(workflow).toContain("live-structure-intelligence");
+    expect(workflow.indexOf("Reconcile and capture country web/API sources")).toBeLessThan(
+      workflow.indexOf("Verify 195-country three-category raw mesh"),
+    );
+  });
+
+  it("self-heals missing directory targets without weakening commercial rights",()=>{
+    expect(worker).toContain("commercial_promotion_allowed: false");
+    expect(worker).toContain("Expected exactly 195 enabled canonical countries");
+    expect(worker).toContain("inserted_targets");
   });
 
   it("keeps raw bytes private and hashed",()=>{

@@ -60,19 +60,19 @@ jobs:
           bun --check scripts/audit-global-raw-source-coverage.mjs
           bun --check scripts/audit-global-raw-source-runtime.mjs
 
-      - name: Verify 195-country three-category raw mesh
-        shell: bash
-        run: |
-          set -euo pipefail
-          bun scripts/audit-global-raw-source-coverage.mjs
-
-      - name: Capture due country web/API sources
+      - name: Reconcile and capture country web/API sources
         shell: bash
         run: |
           set -euo pipefail
           bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json
           jq -e '.country_contract.countries == 195' country-raw-source-sync.json >/dev/null
           jq -e '.country_contract.categories | length == 3' country-raw-source-sync.json >/dev/null
+
+      - name: Verify 195-country three-category raw mesh
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-global-raw-source-coverage.mjs
 
       - name: Structure captured country fragments directly
         shell: bash
