@@ -1,25 +1,8 @@
 name: GDELT V2 Event Governed Sync
 
 on:
-  pull_request:
-    paths:
-      - "scripts/ingest-gdelt-v2-events-live.mjs"
-      - "scripts/lib-live-source-utils.mjs"
-      - "scripts/commercial-source-policy.mjs"
-      - "supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql"
-      - ".github/workflows/gdelt-v2-event-sync.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "scripts/ingest-gdelt-v2-events-live.mjs"
-      - "scripts/lib-live-source-utils.mjs"
-      - "scripts/commercial-source-policy.mjs"
-      - "supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql"
-      - ".github/workflows/gdelt-v2-event-sync.yml"
-  workflow_dispatch:
-  schedule:
-    - cron: "12,27,42,57 * * * *"
+  workflow_dispatch: {}
+
 
 permissions:
   contents: read
