@@ -114,7 +114,7 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).toContain("commercialVerification.deliverable");
     expect(runner).toContain("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
     expect(runner).toContain("commercial_delivery");
-    expect(runner).toContain("risk_object: publicRiskObject(stored)");
+    expect(runner).toContain("risk_object: publicRiskObjectAttestation({ subject, object: stored })");
     expect(runner).toContain("risk_object: publicRiskObject(object)");
     expect(runner).not.toContain("corridor_context: object.corridor_context ?? null");
     expect(runner).not.toContain("evidence: object.evidence.map");
@@ -158,5 +158,23 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).toContain("public_verification");
     expect(runner).toContain("commercial_delivery");
     expect(runner).toContain("containsForbiddenPublicSourceKeys");
+  });
+});
+
+
+describe("commercial source privacy", () => {
+  it("does not return internal structural source identifiers", () => {
+    expect(runner).not.toContain("source_id: row.source_id");
+    expect(runner).not.toContain("source_record_id: row.source_record_id");
+    expect(runner).not.toContain("source_urls: row.source_urls");
+    expect(runner).not.toContain("source_families: row.source_families");
+  });
+
+  it("rejects source identity keys inside full Risk Objects at the public boundary", () => {
+    expect(runner).toContain("source_ids");
+    expect(runner).toContain("source_record_ids");
+    expect(runner).toContain("source_urls");
+    expect(runner).toContain("source_families");
+    expect(runner).toContain("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
   });
 });
