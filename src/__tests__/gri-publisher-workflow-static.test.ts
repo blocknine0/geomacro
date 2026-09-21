@@ -12,8 +12,7 @@ const jobBlock = (source, name) => {
   const end = next ? next.index : source.length;
   return source.slice(start, end);
 };
-const publishJob =
-  workflow.match(/^  publish:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\s*$)/m)?.[0] ?? "";
+const publishJob = jobBlock(workflow, "publish");
 
 describe("scheduled GRI publisher workflow", () => {
   it("publishes often enough to stay inside the three-hour public proof freshness SLO", () => {
