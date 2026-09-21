@@ -16,9 +16,9 @@ const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_SOURCE = "geomacro_intelligence_orchestrator";
 const STATE_SOURCE = CONTROL_SOURCE;
 const STATE_PREFIX = "orchestrator:";
-const MAX_TASKS_PER_TICK = Math.max(1, Math.min(8, Number(process.env.INTELLIGENCE_ORCHESTRATOR_MAX_TASKS ?? 4)));
+const MAX_TASKS_PER_TICK = Math.max(1, Math.min(8, Number(process.env.INTELLIGENCE_ORCHESTRATOR_MAX_TASKS ?? 3)));
 const RETRY_SECONDS = Math.max(60, Math.min(900, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RETRY_SECONDS ?? 300)));
-const TASK_TIMEOUT_MS = Math.max(60_000, Math.min(1_800_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_TIMEOUT_MS ?? 900_000)));
+const TASK_TIMEOUT_MS = Math.max(60_000, Math.min(3_600_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_TIMEOUT_MS ?? 1_500_000)));
 
 function projectRef(url) {
   try {
@@ -63,7 +63,8 @@ const TASKS = [
     cadenceSeconds: 900,
     offsetSeconds: 540,
     priority: 30,
-    requiredEnv: ["GEOMACRO_FLASH_OIDC_TOKEN"],
+    oidcAudience: "https://geomacro.live/actions/live-flash-rss",
+    requiredEnv: [],
     steps: [["python", ["worker.py"], "workers/telegram-flash"]],
   },
   {
@@ -90,6 +91,7 @@ const TASKS = [
     offsetSeconds: 1800,
     priority: 60,
     requiredEnv: ["GUARDIAN_API_KEY"],
+    timeoutMs: 1_800_000,
     steps: [
       ["node", ["scripts/ingest-news.js"], "."],
       ["node", ["scripts/export-admitted-events-for-structure.mjs"], "."],
@@ -116,6 +118,7 @@ const TASKS = [
     offsetSeconds: 7200,
     priority: 80,
     requiredEnv: ["SUPABASE_DB_URL"],
+    timeoutMs: 2_400_000,
     steps: [["bun", ["run", "source:certification:evidence-graph"], "."]],
   },
 ];
@@ -136,6 +139,26 @@ function isPast(value, nowMs) {
 
 function hasAllEnv(requiredEnv = []) {
   return requiredEnv.every((name) => String(process.env[name] ?? "").trim().length > 0);
+}
+
+async function refreshOidcToken(audience) {
+  if (!audience) return true;
+  const requestUrl = String(process.env.ACTIONS_ID_TOKEN_REQUEST_URL ?? "").trim();
+  const requestToken = String(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN ?? "").trim();
+  if (!requestUrl || !requestToken) {
+    return false;
+  }
+
+  const response = await fetch(
+    `${requestUrl}&audience=${encodeURIComponent(audience)}`,
+    { headers: { authorization: `bearer ${requestToken}` } },
+  );
+  if (!response.ok) return false;
+  const payload = await response.json();
+  const token = String(payload?.value ?? "").trim();
+  if (!token) return false;
+  process.env.GEOMACRO_FLASH_OIDC_TOKEN = token;
+  return true;
 }
 
 function runStep(command, args, cwd, timeoutMs) {
@@ -256,7 +279,20 @@ async function runTask(task, state) {
   }
 
   if (!hasAllEnv(task.requiredEnv)) {
-    state.cursor.next_due_at = new Date(Date.now() + RETRY_SECONDS * 1000).toISOString();
+    if (task.oidcAudience) {
+    const tokenReady = await refreshOidcToken(task.oidcAudience);
+    if (!tokenReady) {
+      state.status = "degraded";
+      state.consecutive_failures += 1;
+      state.cursor.last_error = "OIDC_TOKEN_REFRESH_FAILED";
+      state.cursor.retry_pending = true;
+      state.cursor.next_due_at = new Date(Date.now() + RETRY_SECONDS * 1000).toISOString();
+      await upsertState(task, state);
+      return { task: task.key, status: "degraded", reason: "OIDC_TOKEN_REFRESH_FAILED" };
+    }
+  }
+
+  state.cursor.next_due_at = new Date(Date.now() + RETRY_SECONDS * 1000).toISOString();
     state.cursor.skipped_reason = "required_environment_not_present";
     await upsertState(task, { ...state, status: "degraded", last_attempt_at: now });
     return { task: task.key, status: "degraded", reason: "required_environment_not_present" };
@@ -273,7 +309,7 @@ async function runTask(task, state) {
 
   for (let index = 0; index < task.steps.length; index += 1) {
     const [command, args, cwd] = task.steps[index];
-    result = await runStep(command, args, cwd, TASK_TIMEOUT_MS);
+    result = await runStep(command, args, cwd, task.timeoutMs ?? TASK_TIMEOUT_MS);
     if (!result.ok) {
       failedStep = {
         index,
