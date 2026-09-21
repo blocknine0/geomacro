@@ -43,7 +43,7 @@ describe("realtime corridor and hot-topic fanout contract", () => {
     expect(workflow).not.toContain("workflows:");
     expect(workflow).not.toContain('cron: "*/5 * * * *"');
     expect(workflow).not.toContain("workflow_run:");
-    const orchestrator = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
     expect(orchestrator).toContain('key: "realtime_fanout"');
     expect(workflow).toContain("${{ secrets.APP_SUPABASE_URL }}");
     expect(workflow).toContain("${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}");
