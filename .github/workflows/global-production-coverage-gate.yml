@@ -52,7 +52,17 @@ jobs:
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
 
       - name: Audit hot-topic taxonomy and realtime freshness
-        run: bunx tsx scripts/audit-hot-topic-family-readiness.ts --require-taxonomy-complete --require-pipeline-healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Scheduled/manual readiness is strict on the live GDELT freshness window.
+          # Push-triggered coverage checks validate the taxonomy/coverage contract
+          # without turning a code push into an artificial data-freshness failure.
+          args=(--require-taxonomy-complete)
+          if [[ "$GITHUB_EVENT_NAME" != "push" ]]; then
+            args+=(--require-pipeline-healthy)
+          fi
+          bunx tsx scripts/audit-hot-topic-family-readiness.ts "${args[@]}"
 
       - name: Audit exact source certification census
         run: bun run source:certification:census
