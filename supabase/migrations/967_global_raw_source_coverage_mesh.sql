@@ -333,6 +333,65 @@ on conflict (target_id) do update set
   display_name=excluded.display_name,
   updated_at=now();
 
+
+-- Close the national-statistics directory exception with the official
+-- government portal as an explicit raw release fallback.
+insert into public.live_raw_source_targets (
+  target_id,country_iso3,category,transport,source_id,target_url,
+  display_name,raw_storage_allowed,commercial_promotion_allowed,
+  cadence_seconds,priority,notes
+)
+select
+  'MACRO:STATS_GOV_FALLBACK:' || r.iso3,
+  r.iso3,
+  'MACRO',
+  'WEB',
+  'gov_portal_' || lower(g.country_iso2),
+  g.government_portal_url,
+  'Government statistics-release fallback - ' || g.country_name,
+  true,false,900,20,
+  'Used only when a dedicated national statistics-office directory row is absent.'
+from public.live_country_registry r
+join public.live_country_primary_source_directory g
+  on upper(g.country_iso2)=upper(r.iso2)
+left join public.live_country_statistics_source_directory s
+  on upper(s.country_iso2)=upper(r.iso2)
+where r.enabled
+  and s.country_iso2 is null
+on conflict (target_id) do update set
+  source_id=excluded.source_id,
+  target_url=excluded.target_url,
+  display_name=excluded.display_name,
+  updated_at=now();
+
+-- Every country also gets an explicit national government web target in the
+-- critical-minerals domain for current mining/policy/news discovery.
+insert into public.live_raw_source_targets (
+  target_id,country_iso3,category,transport,source_id,target_url,
+  display_name,raw_storage_allowed,commercial_promotion_allowed,
+  cadence_seconds,priority,notes
+)
+select
+  'MINERALS:GOV_WEB:' || r.iso3,
+  r.iso3,
+  'CRITICAL_MINERALS',
+  'WEB',
+  'gov_portal_' || lower(g.country_iso2),
+  g.government_portal_url,
+  'Government minerals/policy discovery - ' || g.country_name,
+  true,false,900,35,
+  'Broad national discovery source only; no mineral metric is inferred without an explicit source parser.'
+from public.live_country_registry r
+join public.live_country_primary_source_directory g
+  on upper(g.country_iso2)=upper(r.iso2)
+where r.enabled
+on conflict (target_id) do update set
+  source_id=excluded.source_id,
+  target_url=excluded.target_url,
+  display_name=excluded.display_name,
+  updated_at=now();
+
+
 create or replace view public.live_raw_source_coverage_100_status
 with (security_invoker=true)
 as
@@ -344,7 +403,7 @@ with registry as (
 expected as (
   select
     registry.n enabled_country_count,
-    registry.n * 8::bigint expected_target_rows,
+    registry.n * 13::bigint expected_target_rows,
     count(*)::bigint actual_target_rows
   from registry
   left join public.live_raw_source_targets t on true
