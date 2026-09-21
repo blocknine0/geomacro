@@ -171,6 +171,10 @@ const sourceUniverseRequired = new Set(
   sourceUniverse.filter(r => bool(r.required)).map(r => String(r.universe_id)),
 ).size;
 
+const commercialSourceNetworkReady =
+  bool(network?.source_network_100_complete) &&
+  bool(launch?.source_network_launch_complete);
+
 const result = {
   schema_version: "geomacro-global-production-coverage-gate-1.0",
   generated_at: generatedAt,
@@ -235,13 +239,17 @@ const result = {
     "unsupported_subjects_must_fail_closed": true,
     "no_payment_or_settlement_is_enabled_by_this_audit": true,
   },
+  commercial_readiness: {
+    source_network_100_complete: bool(network?.source_network_100_complete),
+    source_network_launch_complete: bool(launch?.source_network_launch_complete),
+    commercial_source_network_ready: commercialSourceNetworkReady,
+    note: "Commercial source certification remains a separate fail-closed gate and is not required to prove structural global coverage or realtime backbone health.",
+  },
   writes_performed: false,
 };
 
-result.ready_for_global_production_claim =
+result.ready_for_global_coverage_claim =
   result.structural.inventory_100 &&
-  result.structural.source_network_100 &&
-  result.structural.source_network_launch &&
   result.structural.country_matrix_complete &&
   result.structural.region_matrix_complete &&
   result.structural.corridor_matrix_complete &&
@@ -249,10 +257,21 @@ result.ready_for_global_production_claim =
   result.structural.critical_mineral_shock_paths_complete &&
   result.realtime.healthy;
 
+// Kept as an explicit diagnostic so no consumer can mistake structural coverage
+// readiness for commercial source certification readiness.
+result.ready_for_global_production_claim =
+  result.ready_for_global_coverage_claim &&
+  result.commercial_readiness.commercial_source_network_ready;
+
 await fs.mkdir(path.dirname(OUTPUT), { recursive: true });
 await fs.writeFile(OUTPUT, JSON.stringify(result, null, 2) + "\n", "utf8");
 console.log(JSON.stringify(result, null, 2));
 
-if (process.argv.includes("--strict") && !result.ready_for_global_production_claim) {
+if (process.argv.includes("--strict") && !result.ready_for_global_coverage_claim) {
+  console.error("Global coverage strict gate failed: structural target coverage and/or realtime backbone is not currently healthy.");
   process.exit(1);
+}
+
+if (process.argv.includes("--strict")) {
+  console.log("PASS: structural global coverage is ready; commercial source certification remains separately fail-closed.");
 }
