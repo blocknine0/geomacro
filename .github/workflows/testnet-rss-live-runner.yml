@@ -144,6 +144,7 @@ jobs:
           log_path = Path('/tmp/testnet-rss-live.log')
           ready = None
           last_state = {}
+          had_error = set()
 
           for raw in log_path.read_text(encoding='utf-8', errors='replace').splitlines():
               try:
@@ -155,6 +156,8 @@ jobs:
                   ready = event
               if event.get('kind') in {'rss_poll', 'rss_error'} and event.get('source_id'):
                   source_id = str(event['source_id'])
+                  if event.get('kind') == 'rss_error':
+                      had_error.add(source_id)
                   last_state[source_id] = 'success' if event.get('kind') == 'rss_poll' else 'error'
 
           if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
@@ -177,7 +180,7 @@ jobs:
           print(json.dumps({
               'configured_source_count': len(expected),
               'completed_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success']),
-              'recovered_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success']),
+              'recovered_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success' and source_id in had_error]),
               'sources': sorted(expected),
           }))
           print('PASS: every RSS source declared by the worker completed successfully; transient failures are considered recovered when a later poll succeeds.')
