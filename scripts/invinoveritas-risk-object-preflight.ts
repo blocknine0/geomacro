@@ -437,44 +437,9 @@ if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
  */
 const reviewArtifact = {
   artifact_version: "geomacro-invino-review-v2",
-  object_id: riskObject.object_id,
-  schema_version: riskObject.schema_version,
-  issuer: riskObject.issuer,
-  subject: riskObject.subject,
-  risk: riskObject.risk,
-  confidence: riskObject.confidence ?? null,
-  observed_at: observedAt,
   as_of: observedAt,
-  expires_at: riskObject.expires_at,
-  verification: riskObject.verification ?? null,
-  decision_readiness: riskObject.decision_readiness ?? null,
-  commercial_eligibility: riskObject.commercial_eligibility ?? null,
-  evidence_summary: riskObject.evidence_summary ?? null,
-  attribution: riskObject.attribution ?? null,
-  score_components: riskObject.score_components ?? null,
-  calculation: riskObject.calculation_input
-    ? {
-        as_of: riskObject.calculation_input.as_of,
-        event_count: Array.isArray(riskObject.calculation_input.events)
-          ? riskObject.calculation_input.events.length
-          : riskObject.calculation_input.event_count ?? null,
-        lookback_hours: riskObject.calculation_input.lookback_hours ?? null,
-        half_life_hours: riskObject.calculation_input.half_life_hours ?? null,
-        methodology: riskObject.calculation_input.methodology ?? null,
-      }
-    : null,
-  integrity: riskObject.integrity
-    ? {
-        data_hash: riskObject.integrity.data_hash,
-        input_hash: riskObject.integrity.input_hash,
-        payload_hash: riskObject.integrity.payload_hash,
-        calculation_hash: riskObject.integrity.calculation_hash,
-        signing_key_id: riskObject.integrity.signing_key_id,
-        signature_scheme: riskObject.integrity.signature_scheme,
-        canonicalization: riskObject.integrity.canonicalization,
-        signature: riskObject.integrity.signature,
-      }
-    : null,
+  as_of_source: "risk_object.observed_at",
+  risk_object: riskObject,
 };
 
 const reviewArtifactText = JSON.stringify(reviewArtifact);
