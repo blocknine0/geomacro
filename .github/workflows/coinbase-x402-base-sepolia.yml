@@ -295,7 +295,7 @@ jobs:
           echo "Base mainnet acknowledgement changed: false" >> "$GITHUB_STEP_SUMMARY"
 
   paid-e2e:
-    if: ${{ github.actor == 'blocknine0' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'paid-e2e' && github.actor == 'blocknine0' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
