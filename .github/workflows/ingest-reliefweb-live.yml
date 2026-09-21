@@ -6,7 +6,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ingest-reliefweb-live
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
