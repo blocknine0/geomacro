@@ -471,15 +471,48 @@ if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
  *
  * sign=true requests the portable signed review proof.
  * hash_only keeps the reviewed content out of public disclosure surfaces.
- * The review envelope contains the complete signed Risk Object unchanged and
- * binds as_of directly to its observed_at value so the partner proof commits
- * to the exact signed object rather than a compact summary projection.
+ * The review envelope contains a compact, cryptographically bound projection
+ * of the signed Risk Object. The full signed object is verified independently
+ * before submission; payload_hash and signing_key_id bind this review context
+ * back to that exact object without exceeding the partner artifact limit.
  */
+const evidenceRefs = Array.isArray(riskObject.evidence)
+  ? riskObject.evidence.slice(0, 8).map((item) => ({
+      event_id: item?.event_id ?? null,
+      title: item?.title ?? null,
+      severity: item?.severity ?? null,
+      confidence: item?.confidence ?? null,
+      source_ids: Array.isArray(item?.source_ids) ? item.source_ids.slice(0, 8) : [],
+      source_families: Array.isArray(item?.source_families) ? item.source_families.slice(0, 8) : [],
+      last_seen_at: item?.last_seen_at ?? null,
+      corroboration_status: item?.corroboration_status ?? null,
+    }))
+  : [];
+
 const reviewArtifact = {
-  artifact_version: "geomacro-invino-review-v2",
+  artifact_version: "geomacro-invino-review-v3",
   as_of: observedAt,
   as_of_source: "risk_object.observed_at",
-  risk_object: riskObject,
+  risk_object_reference: {
+    object_id: riskObject.object_id,
+    schema_version: riskObject.schema_version,
+    payload_hash: riskObject.integrity?.payload_hash ?? null,
+    signing_key_id: riskObject.integrity?.signing_key_id ?? null,
+    signature_scheme: riskObject.integrity?.signature_scheme ?? null,
+  },
+  risk_state: {
+    subject: riskObject.subject,
+    generated_at: riskObject.generated_at,
+    observed_at: riskObject.observed_at,
+    expires_at: riskObject.expires_at,
+    risk: riskObject.risk,
+    confidence: riskObject.confidence,
+    attribution: Array.isArray(riskObject.attribution) ? riskObject.attribution : [],
+    evidence_summary: riskObject.evidence_summary ?? null,
+    evidence_references: evidenceRefs,
+    verification: riskObject.verification,
+    commercial_eligibility: riskObject.commercial_eligibility,
+  },
 };
 
 const reviewArtifactText = JSON.stringify(reviewArtifact);
@@ -494,7 +527,7 @@ const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
   context:
-    "Pre-action external risk context from Geomacro. The review artifact contains the complete signed gro-1.1 Risk Object unchanged, plus as_of derived directly from risk_object.observed_at. Preserve the nested signed object exactly as received. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
+    "Pre-action external risk context from Geomacro. The review artifact is a compact projection cryptographically bound to the independently verified signed gro-1.1 Risk Object through object_id, payload_hash and signing_key_id, with as_of derived directly from risk_object.observed_at. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
   sign: true,
   confidentiality_tier: "hash_only",
 };
