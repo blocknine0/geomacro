@@ -154,20 +154,21 @@ jobs:
 
               if event.get("rss") == "ready":
                   ready = event
-              if event.get("kind") == "rss_poll" and event.get("source_id"):
-                  completed.add(str(event["source_id"]))
-              if event.get("kind") == "rss_error":
-                  errors.append(event)
+              if event.get("kind") in {"rss_poll", "rss_error"} and event.get("source_id"):
+                  last_state[str(event["source_id"])] = (
+                      "success" if event.get("kind") == "rss_poll" else "error"
+                  )
 
           if not isinstance(ready, dict) or not isinstance(ready.get("feeds"), list) or not ready["feeds"]:
               raise SystemExit("RSS worker did not emit a valid configured-feed manifest")
 
           expected = {str(value) for value in ready["feeds"] if str(value).strip()}
-          missing = sorted(expected - completed)
-          if errors:
+          missing = sorted(source_id for source_id in expected if last_state.get(source_id) != "success")
+          unresolved = sorted(source_id for source_id in expected if last_state.get(source_id) == "error")
+          if unresolved:
               raise SystemExit(
-                  "One or more governed RSS sources emitted collector errors: "
-                  + json.dumps(errors, ensure_ascii=False)
+                  "RSS sources remained failed after the worker's bounded recovery policy: "
+                  + ", ".join(unresolved)
               )
           if missing:
               raise SystemExit(
@@ -179,7 +180,8 @@ jobs:
               json.dumps(
                   {
                       "configured_source_count": len(expected),
-                      "completed_source_count": len(completed & expected),
+                      "completed_source_count": len([source_id for source_id in expected if last_state.get(source_id) == "success"]),
+                  "recovered_source_count": len([source_id for source_id in expected if last_state.get(source_id) == "success"]),
                       "sources": sorted(expected),
                   }
               )
