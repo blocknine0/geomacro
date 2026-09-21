@@ -5,7 +5,9 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches:
+      - main
+      - launch/final-production-readiness
   workflow_dispatch:
     inputs:
       candidate_sha:
