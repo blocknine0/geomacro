@@ -329,7 +329,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 begin
   insert into public.live_realtime_scope_targets (
     target_id, scope_type, scope_code, category, transport, source_id,
@@ -355,7 +355,7 @@ begin
         updated_at = now();
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists trg_sync_live_realtime_corridor_targets
   on public.live_strategic_corridor_catalog;
@@ -371,7 +371,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 begin
   if new.required then
     insert into public.live_realtime_scope_targets (
@@ -398,7 +398,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists trg_sync_live_realtime_hot_topic_targets
   on public.live_global_shock_taxonomy;
