@@ -17,6 +17,14 @@ const jobBlock = (source, name) => {
   return source.slice(start, end);
 };
 const publicProofJob = jobBlock(workflow, "public-proof");
+const orchestratorWorkflow = readFileSync(
+  ".github/workflows/intelligence-orchestrator.yml",
+  "utf8",
+);
+const orchestrator = readFileSync(
+  "scripts/intelligence-orchestrator.mjs",
+  "utf8",
+);
 
 describe("GRI public proof consistency workflow contract", () => {
   it("keeps manual proof while scheduling is owned by the master orchestrator", () => {
