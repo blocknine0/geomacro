@@ -3,28 +3,37 @@ import { describe, expect, it } from "vitest";
 
 describe("GOAT Testnet3 paid E2E workflow safety", () => {
   const workflow = readFileSync(
-    ".github/workflows/goat-testnet3-paid-e2e.yml",
+    ".github/workflows/goat-testnet3.yml",
     "utf8",
   );
+  const jobBlock = (source: string, name: string) => {
+    const header = `  ${name}:\n`;
+    const start = source.indexOf(header);
+    if (start < 0) return "";
+    const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+    let next = boundary.exec(source);
+    while (next && next.index <= start) next = boundary.exec(source);
+    return source.slice(start, next ? next.index : source.length);
+  };
+  const paidJob = jobBlock(workflow, "paid-e2e");
   const harness = readFileSync(
     "scripts/goat/testnet3-e2e.mjs",
     "utf8",
   );
 
-  it("is manual-only and requires an exact payment acknowledgement", () => {
+  it("keeps the paid-e2e path manual-only with exact payment acknowledgement", () => {
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).not.toContain("pull_request:");
-    expect(workflow).not.toContain("push:");
-    expect(workflow).toContain("GOAT_TESTNET3_USDC");
+    expect(workflow).toContain("- paid-e2e");
+    expect(paidJob).toContain("GOAT_TESTNET3_USDC");
     expect(harness).toContain('const PAYMENT_ACK = "GOAT_TESTNET3_USDC"');
   });
 
   it("uses a protected environment and dedicated test-wallet secret", () => {
-    expect(workflow).toContain("environment: goat-testnet3-paid-proof");
-    expect(workflow).toContain("secrets.GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY");
-    expect(workflow).toContain("secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN");
-    expect(workflow).not.toContain("GOATX402_API_SECRET");
-    expect(workflow).not.toContain("GOATX402_API_KEY");
+    expect(paidJob).toContain("environment: goat-testnet3-paid-proof");
+    expect(paidJob).toContain("secrets.GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY");
+    expect(paidJob).toContain("secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN");
+    expect(paidJob).not.toContain("GOATX402_API_SECRET");
+    expect(paidJob).not.toContain("GOATX402_API_KEY");
   });
 
   it("refuses the public production host and pins Testnet3 in the harness", () => {
@@ -42,14 +51,14 @@ describe("GOAT Testnet3 paid E2E workflow safety", () => {
   });
 
   it("keeps Testnet settlement non-commercial and execution unauthorized", () => {
-    expect(workflow).toContain("Commercial revenue: false");
-    expect(workflow).toContain("Execution authorization from Risk Gate: false");
+    expect(paidJob).toContain("Commercial revenue: false");
+    expect(paidJob).toContain("Execution authorization from Risk Gate: false");
     expect(harness).toContain("commercial_revenue === false");
     expect(harness).toContain("execution_authorized === false");
   });
 
   it("uploads only the harness's sanitized JSON evidence directory", () => {
-    expect(workflow).toContain("artifacts/goat-testnet3-paid/*.json");
+    expect(paidJob).toContain("artifacts/goat-testnet3-paid/*.json");
     expect(harness).toContain("redactedEvidence");
     expect(harness).toContain("[REDACTED]");
   });

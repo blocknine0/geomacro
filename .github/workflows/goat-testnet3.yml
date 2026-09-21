@@ -1,0 +1,352 @@
+name: GOAT Testnet3 Payment & Provider Evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/routes/api.goat.pilot.artifact.ts'
+      - 'scripts/goat/testnet3-paid-artifact-replay.mjs'
+      - 'scripts/goat/testnet3-provider-dry-run.mjs'
+      - 'src/lib/goat-flow.server.ts'
+      - 'src/lib/goat-pilot-*'
+      - 'src/routes/api.goat.pilot.*'
+      - '.github/workflows/goat-testnet3.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/goat/testnet3-provider-dry-run.mjs'
+      - 'src/lib/goat-flow.server.ts'
+      - 'src/lib/goat-pilot-*'
+      - 'src/routes/api.goat.pilot.*'
+      - 'src/__tests__/goat-*'
+      - '.github/workflows/goat-testnet3.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Select one GOAT Testnet3 evidence operation"
+        required: true
+        default: paid-e2e
+        type: choice
+        options:
+          - paid-e2e
+          - paid-artifact-replay
+          - provider-dry-run
+          - reconcile-existing
+      confirmation:
+        description: "For paid-e2e only: GOAT_TESTNET3_USDC"
+        required: false
+        type: string
+      client_request_id:
+        description: "For paid-e2e/reconcile-existing: exact deterministic client request ID"
+        required: false
+        type: string
+      transaction_hash:
+        description: "For reconcile-existing only: exact already-broadcast Testnet3 transaction hash"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  paid-e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'paid-e2e' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: goat-testnet3-paid-proof
+    concurrency:
+      group: goat-testnet3-paid-e2e
+      cancel-in-progress: false
+    env:
+      GEOMACRO_GOAT_PILOT_BASE_URL: ${{ secrets.GEOMACRO_GOAT_PILOT_BASE_URL }}
+      GEOMACRO_GOAT_PILOT_EXPECTED_HOST: ${{ secrets.GEOMACRO_GOAT_PILOT_EXPECTED_HOST }}
+      GEOMACRO_GOAT_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY }}
+      GEOMACRO_GOAT_TEST_PAYER_ADDRESS: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_ADDRESS }}
+      GEOMACRO_GOAT_TESTNET_E2E_ACK: ${{ inputs.confirmation }}
+      GEOMACRO_GOAT_CLIENT_REQUEST_ID: ${{ inputs.client_request_id }}
+      GEOMACRO_GOAT_E2E_ARTIFACT_DIR: artifacts/goat-testnet3-paid
+    steps:
+      - name: Validate explicit Testnet payment acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GEOMACRO_GOAT_TESTNET_E2E_ACK" = "GOAT_TESTNET3_USDC"
+          echo "Explicit Testnet3 payment acknowledgement accepted." >> "$GITHUB_STEP_SUMMARY"
+          echo "This run is testnet proof only and cannot be counted as commercial revenue." >> "$GITHUB_STEP_SUMMARY"
+      - name: Validate protected staging secrets without printing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in GEOMACRO_GOAT_PILOT_BASE_URL GEOMACRO_GOAT_PILOT_EXPECTED_HOST GEOMACRO_GOAT_PILOT_ACCESS_TOKEN GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured in the protected goat-testnet3-paid-proof environment."
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+      - name: Checkout exact workflow ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile
+      - name: Execute one explicitly acknowledged paid Testnet3 E2E
+        run: node scripts/goat/testnet3-e2e.mjs
+      - name: Upload sanitized paid-proof evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: goat-testnet3-paid-proof-${{ github.run_id }}
+          path: artifacts/goat-testnet3-paid/*.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record proof boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Network: GOAT Testnet3 / eip155:48816" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Buyer-wallet custody by Geomacro: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Execution authorization from Risk Gate: false" >> "$GITHUB_STEP_SUMMARY"
+
+  paid-artifact-replay:
+    if: ${{ (github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'paid-artifact-replay') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: goat-testnet3-paid-proof
+    concurrency:
+      group: goat-testnet3-paid-artifact-replay
+      cancel-in-progress: false
+    env:
+      GOATX402_ENVIRONMENT: testnet3
+      GOATX402_API_URL: https://flow-api.testnet3.goat.network
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GOATX402_PILOT_TOKEN_SYMBOL: USDC
+      GOATX402_PILOT_AMOUNT_ATOMIC: '100000'
+      GOATX402_MAINNET_COMMERCIAL_ENABLED: 'false'
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      GEOMACRO_GOAT_PILOT_BASE_URL: http://127.0.0.1:4173
+      GEOMACRO_GOAT_PILOT_EXPECTED_HOST: 127.0.0.1
+      GEOMACRO_GOAT_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GEOMACRO_GOAT_TEST_PAYER_ADDRESS: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_ADDRESS }}
+      GEOMACRO_GOAT_CLIENT_REQUEST_ID: geomacro-goat-local-e2e-20260911-01
+      GEOMACRO_GOAT_EXPECTED_TX_HASH: "0x08e7e6751d67893839778742e47355a0a702087954d8fea0576e48879ab7cbd7"
+      GEOMACRO_GOAT_E2E_ARTIFACT_DIR: artifacts/goat-testnet3-paid-artifact-replay
+    steps:
+      - name: Checkout current source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install exact dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate required secrets without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GOATX402_API_KEY GOATX402_API_SECRET GOATX402_MERCHANT_ID GOATX402_PILOT_ACCESS_TOKEN APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 GEOMACRO_GOAT_TEST_PAYER_ADDRESS; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+          test "$RISK_OBJECT_SIGNING_KEY_ID" = "geomacro-risk-2026-02"
+      - name: Derive matching Risk Object public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({ key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'), format: 'der', type: 'pkcs8' });
+          if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('Risk Object signing key must be Ed25519');
+          const publicB64 = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n');
+          NODE
+      - name: Start isolated local Geomacro server
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run dev --host 127.0.0.1 --port 4173 > /tmp/geomacro-local.log 2>&1 &
+          echo $! > /tmp/geomacro-local.pid
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4173/ >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then tail -200 /tmp/geomacro-local.log || true; echo "::error::Local Geomacro server did not become ready"; exit 1; fi
+      - name: Verify existing paid entitlement and canonical Risk Object
+        run: node scripts/goat/testnet3-paid-artifact-replay.mjs
+      - name: Upload sanitized proof evidence
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: goat-testnet3-paid-artifact-replay-${{ github.run_id }}
+          path: artifacts/goat-testnet3-paid-artifact-replay/*.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record proof boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "Network: GOAT Testnet3 / eip155:48816" >> "$GITHUB_STEP_SUMMARY"
+          echo "Existing payment reused: true" >> "$GITHUB_STEP_SUMMARY"
+          echo "Second payment submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Expected tx: 0x08e7e6751d67893839778742e47355a0a702087954d8fea0576e48879ab7cbd7" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Execution authorization from Risk Gate: false" >> "$GITHUB_STEP_SUMMARY"
+
+  provider-dry-run:
+    if: ${{ (github.event_name == 'pull_request') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'provider-dry-run') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: goat-testnet3-provider-dry-run-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_DRY_RUN_AMOUNT_ATOMIC: '100000'
+      GOATX402_DRY_RUN_ARTIFACT_DIR: artifacts/goat-testnet3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Check secure merchant configuration
+        id: config
+        shell: bash
+        run: |
+          if [ -n "$GOATX402_API_KEY" ] && [ -n "$GOATX402_API_SECRET" ] && [ -n "$GOATX402_MERCHANT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "GOAT Testnet3 merchant secrets are configured for this repository context." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "GOAT Testnet3 live provider dry run was not executed because one or more required repository secrets are unavailable in this workflow context." >> "$GITHUB_STEP_SUMMARY"
+            echo "No merchant credential value was printed or inferred." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Run no-payment Testnet3 provider dry run
+        if: steps.config.outputs.configured == 'true'
+        run: node scripts/goat/testnet3-provider-dry-run.mjs
+      - name: Upload sanitized provider evidence
+        if: steps.config.outputs.configured == 'true' && success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: goat-testnet3-provider-dry-run-${{ github.run_id }}
+          path: artifacts/goat-testnet3/*.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Record no-payment boundary
+        if: steps.config.outputs.configured == 'true'
+        shell: bash
+        run: |
+          echo "Transaction submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "The dry run creates a GOAT Testnet3 402 challenge with a random payer address that has no private key, then performs an authenticated order read only." >> "$GITHUB_STEP_SUMMARY"
+
+  reconcile-existing:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'reconcile-existing' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: goat-testnet3-paid-proof
+    concurrency:
+      group: goat-testnet3-reconcile-existing-${{ inputs.client_request_id }}
+      cancel-in-progress: false
+    env:
+      GOATX402_ENVIRONMENT: testnet3
+      GOATX402_API_URL: https://flow-api.testnet3.goat.network
+      GOATX402_API_KEY: ${{ secrets.GOATX402_API_KEY }}
+      GOATX402_API_SECRET: ${{ secrets.GOATX402_API_SECRET }}
+      GOATX402_MERCHANT_ID: ${{ secrets.GOATX402_MERCHANT_ID }}
+      GOATX402_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GOATX402_PILOT_TOKEN_SYMBOL: USDC
+      GOATX402_PILOT_AMOUNT_ATOMIC: '100000'
+      GOATX402_MAINNET_COMMERCIAL_ENABLED: 'false'
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      GEOMACRO_GOAT_PILOT_BASE_URL: http://127.0.0.1:4173
+      GEOMACRO_GOAT_PILOT_ACCESS_TOKEN: ${{ secrets.GEOMACRO_GOAT_PILOT_ACCESS_TOKEN }}
+      GEOMACRO_GOAT_TEST_PAYER_ADDRESS: ${{ secrets.GEOMACRO_GOAT_TEST_PAYER_ADDRESS }}
+      GEOMACRO_GOAT_CLIENT_REQUEST_ID: ${{ inputs.client_request_id }}
+      GEOMACRO_GOAT_EXISTING_TX_HASH: ${{ inputs.transaction_hash }}
+      GEOMACRO_GOAT_E2E_ARTIFACT_DIR: artifacts/goat-testnet3-reconcile
+    steps:
+      - name: Record reconciliation-only safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_GOAT_CLIENT_REQUEST_ID"
+          test -n "$GEOMACRO_GOAT_EXISTING_TX_HASH"
+          echo "Mode: reconcile existing Testnet3 payment" >> "$GITHUB_STEP_SUMMARY"
+          echo "New token transfer submitted: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Payer private key loaded: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+      - name: Checkout current main source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Validate reconciliation prerequisites without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GOATX402_API_KEY GOATX402_API_SECRET GOATX402_MERCHANT_ID GOATX402_PILOT_ACCESS_TOKEN APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 GEOMACRO_GOAT_TEST_PAYER_ADDRESS; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+          if [ -n "${GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY:-}" ]; then echo "::error::payer private key must not be present in reconciliation runtime"; exit 1; fi
+      - name: Derive matching Risk Object public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require('node:crypto');
+          const fs = require('node:fs');
+          const privateKey = createPrivateKey({ key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'), format: 'der', type: 'pkcs8' });
+          const publicB64 = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n');
+          NODE
+      - name: Start isolated local Geomacro server
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run dev --host 127.0.0.1 --port 4173 > /tmp/geomacro-local.log 2>&1 &
+          ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:4173/ >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then tail -200 /tmp/geomacro-local.log || true; echo "::error::Local Geomacro server did not become ready"; exit 1; fi
+      - name: Reconcile exact existing payment without sending another transfer
+        run: node scripts/goat/testnet3-reconcile-existing.mjs
+      - name: Upload sanitized reconciliation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: goat-testnet3-existing-payment-reconciliation-${{ github.run_id }}
+          path: artifacts/goat-testnet3-reconcile/*.json
+          if-no-files-found: warn
+          retention-days: 90
