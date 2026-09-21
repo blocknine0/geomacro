@@ -23,6 +23,40 @@ async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),
         if(t.source_id==="gdelt_v2"){
           const iso2=countryIso2.get(String(t.country_iso3));
           if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
-        }if(!u)throw new Error("RAW_SOURCE_TARGET_URL_MISSING");const f=await fetchUrl(u);if(f.status<200||f.status>=300)throw new Error("HTTP_"+f.status);const text=f.bytes.toString("utf8"),rows=[];if(/json/i.test(f.ct)){try{const p=JSON.parse(text),a=Array.isArray(p)?p:Array.isArray(p?.data)?p.data:[];for(const x of a.slice(0,100)){const title=txt(x?.title??x?.name??x?.indicator_name??x?.event_type??"");if(!title)continue;const ru=txt(x?.url??x?.link??f.final);rows.push({i:hash(Buffer.from("api:"+t.target_id+":"+JSON.stringify(x))),u:ru,d:txt(x?.published_at??x?.updated_at??x?.date??x?.period_end)||when,h:new URL(ru).hostname,o:t.display_name,t:title,x:txt(x?.summary??x?.description??x?.value_text??"").slice(0,2400)||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}catch{}}if(!rows.length){const title=pageTitle(text);if(title)rows.push({i:hash(Buffer.from("page:"+t.target_id+":"+f.final+":"+title)),u:f.final,d:when,h:new URL(f.final).hostname,o:t.display_name,t:title,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});for(const x of links(text,f.final)){rows.push({i:hash(Buffer.from("link:"+t.target_id+":"+x.u)),u:x.u,d:when,h:new URL(x.u).hostname,o:t.display_name,t:x.t,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}const sid=await saveSnapshot(db,t,when,f);await saveFragment(db,t,when,rows);await db.from("live_raw_source_snapshots").update({extracted_item_count:rows.length}).eq("snapshot_id",sid);await mark(db,t,{discovery_state:rows.length?"REACHABLE":"STALE",last_attempt_at:when,last_success_at:when,last_observed_at:when,consecutive_failures:0,last_error:null});ok++;}catch(e){fail++;failures.push({target_id:t.target_id,error:e instanceof Error?e.message:String(e)});try{await mark(db,t,{discovery_state:"UNREACHABLE",last_attempt_at:when,consecutive_failures:Number(t.consecutive_failures??0)+1,last_error:String(e).slice(0,1000)});}catch{}}}}
+        }if(!u)throw new Error("RAW_SOURCE_TARGET_URL_MISSING");const f=await fetchUrl(u);if(f.status<200||f.status>=300)throw new Error("HTTP_"+f.status);const text=f.bytes.toString("utf8"),rows=[];if(/json/i.test(f.ct)){try{
+          const p=JSON.parse(text);
+          const a=Array.isArray(p?.articles)
+            ? p.articles
+            : Array.isArray(p?.data)
+              ? p.data
+              : Array.isArray(p) && Array.isArray(p[1])
+                ? p[1]
+                : Array.isArray(p)
+                  ? p
+                  : [];
+          for(const x of a.slice(0,100)){
+            const title=t.source_id==="world_bank_indicators"
+              ? txt((x?.indicator?.value??"World Bank indicator")+" "+(x?.date??""))
+              : t.source_id==="gdelt_v2"
+                ? txt(x?.title??"")
+                : txt(x?.title??x?.name??x?.indicator_name??x?.event_type??"");
+            if(!title)continue;
+            const ru=txt(x?.url??x?.link??x?.source_url??f.final);
+            let host="";
+            try{host=new URL(ru).hostname;}catch{continue;}
+            const dateRaw=t.source_id==="gdelt_v2"
+              ? txt(x?.seendate??x?.published_at??x?.socialimage_lastupdate??"")
+              : txt(x?.published_at??x?.updated_at??x?.date??x?.period_end??"");
+            let date=when;
+            if(/^\\d{14}Z?$/.test(dateRaw)){
+              const z=dateRaw.replace(/Z$/,"");
+              date=z.slice(0,4)+"-"+z.slice(4,6)+"-"+z.slice(6,8)+"T"+z.slice(9,11)+":"+z.slice(11,13)+":"+z.slice(13,15)+"Z";
+            }else if(dateRaw) date=dateRaw;
+            const description=t.source_id==="world_bank_indicators"
+              ? txt(String(x?.value??"")+" "+String(x?.unit??""))
+              : txt(x?.summary??x?.description??x?.value_text??"");
+            rows.push({i:hash(Buffer.from("api:"+t.target_id+":"+JSON.stringify(x))),u:ru,d:date,h:host,o:t.display_name,t:title.slice(0,800),x:description.slice(0,2400)||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});
+          }
+        }catch{}}if(!rows.length){const title=pageTitle(text);if(title)rows.push({i:hash(Buffer.from("page:"+t.target_id+":"+f.final+":"+title)),u:f.final,d:when,h:new URL(f.final).hostname,o:t.display_name,t:title,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});for(const x of links(text,f.final)){rows.push({i:hash(Buffer.from("link:"+t.target_id+":"+x.u)),u:x.u,d:when,h:new URL(x.u).hostname,o:t.display_name,t:x.t,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}const sid=await saveSnapshot(db,t,when,f);await saveFragment(db,t,when,rows);await db.from("live_raw_source_snapshots").update({extracted_item_count:rows.length}).eq("snapshot_id",sid);await mark(db,t,{discovery_state:rows.length?"REACHABLE":"STALE",last_attempt_at:when,last_success_at:when,last_observed_at:when,consecutive_failures:0,last_error:null});ok++;}catch(e){fail++;failures.push({target_id:t.target_id,error:e instanceof Error?e.message:String(e)});try{await mark(db,t,{discovery_state:"UNREACHABLE",last_attempt_at:when,consecutive_failures:Number(t.consecutive_failures??0)+1,last_error:String(e).slice(0,1000)});}catch{}}}}
 await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,due.length))},worker));console.log(JSON.stringify({ok:fail===0,generated_at:new Date().toISOString(),selected_targets:q.data?.length??0,due_targets:due.length,completed:ok,failed:fail,failures:failures.slice(0,50),country_contract:{countries:195,categories:["GEOPOLITICS","MACRO","CRITICAL_MINERALS"],raw_only:true}},null,2));if(fail>0&&ok===0)process.exit(1);}
 main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});
