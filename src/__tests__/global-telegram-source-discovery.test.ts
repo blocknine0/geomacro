@@ -10,7 +10,7 @@ describe("global Telegram source discovery",()=>{
     expect(worker).toContain("live_raw_source_targets");
     expect(worker).toContain("TELEGRAM_DISCOVERY");
     expect(worker).toContain("contacts.SearchRequest");
-    expect(worker).toContain("195");
+    expect(worker).toContain("CANONICAL_COUNTRY_TARGET_COUNT = 195");
   });
 
   it("only creates pending review candidates",()=>{
