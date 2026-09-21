@@ -5,6 +5,13 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 */2 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/federico-seven-day-risk-refresh.yml"
+      - "workers/telegram-flash/worker.py"
+      - "scripts/sync-gdelt-gal-production.mjs"
   workflow_run:
     workflows:
       - "Auto Ingest News"
