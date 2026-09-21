@@ -17,13 +17,22 @@ async function main() {
   if(projectRef(url)!=="ldpwajisioljyjtojvfx") throw new Error("Non-authoritative Supabase project");
 
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
-  const {data:targets,error}=await db.from("live_raw_source_targets")
-    .select("country_iso3,category,last_success_at,discovery_state")
-    .eq("enabled",true);
-  if(error) throw error;
+  const [directoryQuery, registryQuery, targetQuery] = await Promise.all([
+    db.from("live_country_primary_source_directory").select("country_iso2").order("country_iso2", { ascending: true }),
+    db.from("live_country_registry").select("iso3,iso2").eq("enabled", true),
+    db.from("live_raw_source_targets").select("country_iso3,category,last_success_at,discovery_state").eq("enabled",true),
+  ]);
+  if(directoryQuery.error) throw directoryQuery.error;
+  if(registryQuery.error) throw registryQuery.error;
+  if(targetQuery.error) throw targetQuery.error;
+  const registryByIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso2).toUpperCase(),String(x.iso3)]));
+  const canonicalIso3=[...new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean))].sort();
+  if(canonicalIso3.length!==195) throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.length);
+  const canonicalSet=new Set(canonicalIso3);
+  const targets=(targetQuery.data??[]).filter((row)=>canonicalSet.has(String(row.country_iso3)));
 
   const missing=[];
-  for(const iso of [...new Set((targets??[]).map(x=>String(x.country_iso3)))].sort()) {
+  for(const iso of canonicalIso3) {
     for(const category of Object.keys(WINDOWS_SECONDS)) {
       const rows=(targets??[]).filter(x=>x.country_iso3===iso&&x.category===category&&x.last_success_at);
       const latest=rows.map(x=>Date.parse(String(x.last_success_at))).filter(Number.isFinite).sort((a,b)=>b-a)[0];
@@ -34,7 +43,7 @@ async function main() {
     }
   }
 
-  const countryCount=new Set((targets??[]).map(x=>String(x.country_iso3))).size;
+  const countryCount=canonicalIso3.length;
   const output={
     ok:countryCount===195&&missing.length===0,
     enabled_countries:countryCount,

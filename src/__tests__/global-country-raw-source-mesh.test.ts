@@ -12,8 +12,10 @@ describe("global country raw source mesh",()=>{
     for(const value of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS","195","13","raw_source_coverage_100_complete"]){
       expect(migration).toContain(value);
     }
-    expect(audit).toContain("countries.length===195");
+    expect(audit).toContain("canonicalIso3.length!==195");
+    expect(audit).toContain("live_country_primary_source_directory");
     expect(audit).toContain("expected_total_targets:195*(3+4+6)");
+    expect(audit).toContain("for(const iso of canonicalIso3)");
   });
 
   it("keeps commercial promotion separate from raw capture",()=>{
@@ -44,7 +46,8 @@ describe("global country raw source mesh",()=>{
 
   it("self-heals missing directory targets without weakening commercial rights",()=>{
     expect(worker).toContain("commercial_promotion_allowed: false");
-    expect(worker).toContain("Expected exactly 195 enabled canonical countries");
+    expect(worker).toContain("live_country_primary_source_directory");
+    expect(worker).toContain("Expected exactly 195 canonical countries from the government-portal baseline");
     expect(worker).toContain("inserted_targets");
   });
 
