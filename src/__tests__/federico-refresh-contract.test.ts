@@ -25,10 +25,12 @@ describe("Federico refresh contract", () => {
     expect(profile).toContain("?? normalized");
   });
 
-  it("runs on relevant main changes as well as scheduled/workflow-run triggers", () => {
+  it("is manual-only because partner refresh cadence is no longer a live intelligence cron", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
-    expect(workflow).toContain("push:");
-    expect(workflow).toContain("- main");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).not.toContain("push:");
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("workflow_run:");
     expect(workflow).toContain(".github/workflows/federico-seven-day-risk-refresh.yml");
     expect(workflow).toContain("scripts/invinoveritas-risk-object-preflight.ts");
     expect(workflow).toContain("src/lib/country-risk-engine.ts");
