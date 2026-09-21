@@ -19,7 +19,7 @@ const directSync = readFileSync(
 
 describe("GDELT GAL production freshness workflow", () => {
   it("refreshes the canonical hot-topic discovery lane often enough for the paid freshness contract", () => {
-    expect(workflow).toContain('cron: "4,19,34,49 * * * *"');
+    expect(workflow).toContain('cron: "*/5 * * * *"');
     expect(workflow).toContain("sync-gdelt-gal-production.mjs");
     expect(workflow).toContain("live-structure-intelligence");
     expect(audit).toContain("const PIPELINE_MAX_LAG_SECONDS = 30 * 60");

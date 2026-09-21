@@ -4,12 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "*/30 * * * *"
-  push:
-    branches: [main]
-    paths:
-      - "workers/telegram-flash/global_discovery.py"
-      - "supabase/migrations/969_telegram_global_discovery_metadata.sql"
-      - ".github/workflows/global-telegram-source-discovery.yml"
 
 permissions:
   contents: read
