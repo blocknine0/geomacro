@@ -2,6 +2,9 @@ name: Global Telegram Raw Source Discovery (Scheduled)
 
 on:
   workflow_dispatch: {}
+  push:
+    paths:
+      - ".github/workflows/global-telegram-source-discovery-scheduled.yml"
 
 
 permissions:
