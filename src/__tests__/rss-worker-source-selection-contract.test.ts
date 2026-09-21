@@ -41,7 +41,7 @@ describe("RSS worker source selection contract", () => {
     expect(worker).toContain("class LenientFeedParser:");
     expect(worker).toContain('from html.parser import HTMLParser');
     expect(worker).toContain("parse_rss_entries(");
-    expect(worker).toContain("getattr(parsed, "bozo", False)");
+    expect(worker).toContain('getattr(parsed, "bozo", False)');
     expect(worker).toContain("if recovered:");
     expect(worker).toContain("Feed parse failed:");
     expect(worker).toContain("parsedate_to_datetime");
