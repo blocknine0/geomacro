@@ -22,7 +22,20 @@ export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
 export type AgenticDemoRunOptions = {
   mode?: "PUBLIC_SANDBOX" | "X402_PAID" | "GOAT_X402_PAID";
   recordTelemetry?: boolean;
-  
+  requestId?: string;
+  payment?: {
+    required: boolean;
+    provider?: "circle_gateway_x402" | "goat_flow_x402";
+    asset?: string;
+    network?: string;
+    amount_atomic?: string;
+    amount_usdc?: string;
+    payer?: string | null;
+    settlement_reference?: string | null;
+    note?: string;
+  };
+};
+
 async function loadStoredRiskObject(objectId: string) {
   const db = requireRiskSupabase();
   const { data, error } = await db
