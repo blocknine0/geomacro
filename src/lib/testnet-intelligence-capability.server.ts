@@ -390,7 +390,7 @@ export async function runCanonicalTestnetIntelligence(input: {
     const { object, verification, commercialVerification } = await loadVerifiedRiskObject(subject);
     return {
       data: {
-        risk_object: publicRiskObject(object),
+        risk_object: publicRiskObjectAttestation({ subject, object }),
         public_verification: verification,
         commercial_delivery: publicCommercialDelivery(commercialVerification),
         execution_authorized: false,
