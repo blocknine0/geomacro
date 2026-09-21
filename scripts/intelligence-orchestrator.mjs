@@ -52,6 +52,15 @@ const TASKS = [
     steps: [["bun", ["scripts/ingest-gdelt-v2-events-live.mjs", "--write"], "."]],
   },
   {
+    key: "open_realtime_mesh",
+    cadenceSeconds: 900,
+    offsetSeconds: 240,
+    priority: 15,
+    requiredEnv: ["RELIEFWEB_APP_NAME", "LIVE_STRUCTURE_TOKEN"],
+    timeoutMs: 1_200_000,
+    steps: [["bun", ["scripts/sync-open-live-source-mesh.mjs"], "."]],
+  },
+  {
     key: "country_raw_mesh",
     cadenceSeconds: 900,
     offsetSeconds: 360,
