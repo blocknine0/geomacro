@@ -376,9 +376,17 @@ jobs:
             jq -e '.ok == true' "${response_file}" >/dev/null
             jq '{ok,status,fragment_id,batch_size,evidence_structured,evidence_excluded,handled_before,handled_after,fragment_total,remaining,has_more}' "${response_file}"
 
+            status="$(jq -r '.status // ""' "${response_file}")"
             batch_size="$(jq -r '.batch_size // 0' "${response_file}")"
             fragment_total="$(jq -r '.fragment_total // 0' "${response_file}")"
             remaining="$(jq -r '.remaining // 0' "${response_file}")"
+
+            # A fragment that is already completely structured is a valid
+            # terminal state and exposes no batch metadata. Persistence is
+            # proven by the following exact-count readback gate.
+            if [[ "${status}" == "nothing_new" ]]; then
+              break
+            fi
 
             [[ "${batch_size}" =~ ^[0-9]+$ && "${batch_size}" -gt 0 ]] || {
               echo "::error::Exact fresh GDELT structure returned an invalid batch_size=${batch_size}."
