@@ -16,7 +16,6 @@ const BUN_LOCKED_RUNTIME_WORKFLOWS = [
   ".github/workflows/auto-resolve-disputes.yml",
   ".github/workflows/Auto-generate-briefings.yml",
   ".github/workflows/propose-v2-upgrade.yml",
-  ".github/workflows/deploy-v2-implementation.yml",
   ".github/workflows/execute-v2-upgrade.yml",
   ".github/workflows/fund-v2-liquidity.yml",
 ];
