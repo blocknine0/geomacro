@@ -389,6 +389,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "Risk Object must contain observed_at for review as_of binding",
     );
     expect(preflight).toContain(
+      "console.error",
+    );
+    expect(preflight).not.toContain(
+      "console.log(\n    JSON.stringify({\n      partner_review_issues",
+    );
+    expect(preflight).toContain(
       "as_of: observedAt",
     );
     expect(preflight).toContain(
