@@ -44,7 +44,7 @@ insert into public.live_external_sources (
 )
 values
 (
-  'ukmto_security_alerts',
+  'ukmto_msi',
   'UKMTO Maritime Security Alerts',
   'United Kingdom Maritime Trade Operations',
   'GEOPOLITICS',
@@ -62,7 +62,7 @@ values
   'Official maritime security alert surface for the Middle East and Indian Ocean reporting area. Raw internal acquisition only; commercial use remains source-rights gated.'
 ),
 (
-  'suez_navigation_circulars',
+  'suez_canal_navigation',
   'Suez Canal Authority Navigation Circulars',
   'Suez Canal Authority',
   'GEOPOLITICS',
@@ -80,7 +80,7 @@ values
   'Official canal navigation circular surface.'
 ),
 (
-  'panama_shipping_advisories',
+  'panama_canal_notices_to_shipping',
   'Panama Canal Authority Shipping Advisories',
   'Panama Canal Authority',
   'GEOPOLITICS',
@@ -98,7 +98,7 @@ values
   'Official Panama Canal advisory surface.'
 ),
 (
-  'un_security_council_rss',
+  'un_security_council_docs_rss',
   'UN Security Council RSS and updates',
   'United Nations Security Council',
   'GEOPOLITICS',
@@ -274,28 +274,28 @@ values
 (
   'CORRIDOR:WEB:UKMTO:MARITIME:GEOPOLITICS',
   'CORRIDOR', 'ALL_MARITIME_CORRIDORS', 'GEOPOLITICS', 'WEB_DIRECT',
-  'ukmto_security_alerts', 'https://www.ukmto.org/',
+  'ukmto_msi', 'https://www.ukmto.org/',
   'CONTINUOUS', 300, 'maritime security alert incident warning',
   'Operational maritime-security notice surface. Scope fanout attaches matching evidence to affected corridors.'
 ),
 (
   'CORRIDOR:WEB:SUEZ:GEOPOLITICS',
   'CORRIDOR', 'SUEZ_RED_SEA', 'GEOPOLITICS', 'WEB_DIRECT',
-  'suez_navigation_circulars', 'https://www.suezcanal.gov.eg/English/Navigation/NavigationCirculars/Pages/default.aspx',
+  'suez_canal_navigation', 'https://www.suezcanal.gov.eg/English/Navigation/NavigationCirculars/Pages/default.aspx',
   'CONTINUOUS', 300, 'Suez Canal navigation circular',
   'Official route authority surface.'
 ),
 (
   'CORRIDOR:WEB:PANAMA:GEOPOLITICS',
   'CORRIDOR', 'PANAMA_CANAL', 'GEOPOLITICS', 'WEB_DIRECT',
-  'panama_shipping_advisories', 'https://pancanal.com/en/advisories-to-shipping/',
+  'panama_canal_notices_to_shipping', 'https://pancanal.com/en/advisories-to-shipping/',
   'CONTINUOUS', 300, 'Panama Canal shipping advisory',
   'Official route authority surface.'
 ),
 (
   'HOT_TOPIC:WEB:UNSC:GEOPOLITICS',
   'HOT_TOPIC', 'armed_conflict_escalation', 'GEOPOLITICS', 'WEB_DIRECT',
-  'un_security_council_rss', 'https://main.un.org/securitycouncil/en/rss',
+  'un_security_council_docs_rss', 'https://main.un.org/securitycouncil/en/rss',
   'CONTINUOUS', 300, 'security council conflict sanctions ceasefire',
   'Official UN Security Council updates.'
 ),
