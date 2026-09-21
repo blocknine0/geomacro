@@ -1,0 +1,299 @@
+name: Arc Testnet Market Lifecycle & Indexing
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Select one Arc Testnet market maintenance operation"
+        required: true
+        default: sync-lifecycle
+        type: choice
+        options:
+          - sync-lifecycle
+          - sync-stakes
+          - finalize-markets
+          - resolve-markets
+          - resolve-disputes
+  schedule:
+    - cron: "5 */2 * * *"
+    - cron: "15 */2 * * *"
+    - cron: "25 */2 * * *"
+    - cron: "30 */2 * * *"
+    - cron: "45 */2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  sync-lifecycle:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        (
+          (github.event_name == 'schedule' && github.event.schedule == '5 */2 * * *') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'sync-lifecycle')
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: sync-lifecycle
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify Arc Testnet and contract target
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Run one bounded lifecycle sync
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
+          SYNC_MULTICALL_CHUNK_SIZE: "150"
+          RUN_TIME_BUDGET_MS: "360000"
+        run: node scripts/sync-lifecycle.js
+
+  sync-stakes:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        (
+          (github.event_name == 'schedule' && github.event.schedule == '25 */2 * * *') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'sync-stakes')
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: sync-stakes
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify Arc Testnet and contract target
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: bun scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: bun scripts/db/assert-authoritative-supabase.mjs
+      - name: Sync stake index
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
+          DEPLOY_BLOCK_V2: ${{ vars.DEPLOY_BLOCK_V2 }}
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DEPLOY_BLOCK: ${{ vars.DEPLOY_BLOCK }}
+        run: bun scripts/sync-stakes.js
+
+  finalize-markets:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        (
+          (github.event_name == 'schedule' && github.event.schedule == '15 */2 * * *') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'finalize-markets')
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: arc-owner-wallet-state-change
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify Arc Testnet and contract before exposing owner credentials
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target before privileged writes
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Run market finalization script
+        env:
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
+          MAX_EVENTS_PER_RUN: "150"
+          RUN_TIME_BUDGET_MS: "360000"
+        run: node scripts/finalize-markets.js
+
+  resolve-markets:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        (
+          (github.event_name == 'schedule' && github.event.schedule == '30 */2 * * *') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-markets')
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: arc-owner-wallet-state-change
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify Arc Testnet and contract before exposing owner credentials
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target before privileged writes
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Run market resolution script
+        env:
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          MAX_RESOLUTIONS_PER_RUN: "15"
+          MAX_EVENTS_PER_RUN: "20"
+          RUN_TIME_BUDGET_MS: "360000"
+        run: node scripts/resolve-markets.js
+
+  resolve-disputes:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        (
+          (github.event_name == 'schedule' && github.event.schedule == '45 */2 * * *') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'resolve-disputes')
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: arc-jury-wallet-state-change
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked runtime dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify Arc Testnet and contract before exposing jury credentials
+        env:
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+        run: node scripts/ops/verify-arc-testnet-target.mjs
+      - name: Verify authoritative Supabase target before privileged writes
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+        run: node scripts/db/assert-authoritative-supabase.mjs
+      - name: Run dispute resolution script
+        env:
+          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
+          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
+          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
+          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
+          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          JURY_PRIVATE_KEY_1: ${{ secrets.JURY_PRIVATE_KEY_1 }}
+          JURY_PRIVATE_KEY_2: ${{ secrets.JURY_PRIVATE_KEY_2 }}
+          JURY_PRIVATE_KEY_3: ${{ secrets.JURY_PRIVATE_KEY_3 }}
+          JURY_PRIVATE_KEY_4: ${{ secrets.JURY_PRIVATE_KEY_4 }}
+          JURY_PRIVATE_KEY_5: ${{ secrets.JURY_PRIVATE_KEY_5 }}
+          MAX_DISPUTES_PER_RUN: "5"
+          MAX_MARKETS_SCANNED_PER_RUN: "100"
+          RUN_TIME_BUDGET_MS: "360000"
+        run: node scripts/resolve-disputes.js

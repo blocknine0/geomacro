@@ -19,9 +19,20 @@ describe("permanent 933 endpoint disposition contract", () => {
     "utf8",
   );
   const workflow = readFileSync(
-    ".github/workflows/source-network-933-endpoint-disposition.yml",
+    ".github/workflows/source-network-governance.yml",
     "utf8",
   );
+  const jobBlock = (source: string, name: string) => {
+    const header = `  ${name}:\n`;
+    const start = source.indexOf(header);
+    if (start < 0) return "";
+    const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+    let next = boundary.exec(source);
+    while (next && next.index <= start) next = boundary.exec(source);
+    const end = next ? next.index : source.length;
+    return source.slice(start, end);
+  };
+  const dispositionJob = jobBlock(workflow, "endpoint-933-disposition");
   const migration = readFileSync(
     "supabase/migrations/070_permanent_endpoint_disposition_ledger.sql",
     "utf8",
@@ -65,14 +76,16 @@ describe("permanent 933 endpoint disposition contract", () => {
   });
 
   it("makes the production gate fail closed at 933/933/0 unclassified", () => {
-    expect(workflow).toContain("Verify canonical 933 endpoint manifest lock");
-    expect(workflow).toContain("Import endpoint disposition evidence");
-    expect(workflow).toContain("Verify permanent 933 endpoint disposition gate");
-    expect(workflow).toContain("expected_endpoint_count");
-    expect(workflow).toContain("unclassified_count");
-    expect(workflow).toContain("endpoint_disposition_933_complete");
-    expect(workflow).toContain("live_source_endpoint_manifest_lock");
-    expect(workflow).toContain("live_source_endpoint_disposition_ledger");
+    expect(dispositionJob).toContain("Verify canonical 933 endpoint manifest lock");
+    expect(dispositionJob).toContain("Import endpoint disposition evidence");
+    expect(dispositionJob).toContain("Verify permanent 933 endpoint disposition gate");
+    expect(dispositionJob).toContain("expected_endpoint_count");
+    expect(dispositionJob).toContain("unclassified_count");
+    expect(dispositionJob).toContain("endpoint_disposition_933_complete");
+    expect(dispositionJob).toContain("live_source_endpoint_manifest_lock");
+    expect(dispositionJob).toContain("live_source_endpoint_disposition_ledger");
+    expect(workflow).toContain("workflow_run:");
+    expect(workflow).toContain("Deploy country flash intelligence to Supabase");
   });
 
   it("never treats endpoint reachability as commercial certification", () => {
