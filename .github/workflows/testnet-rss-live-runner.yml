@@ -154,11 +154,13 @@ jobs:
 
               if event.get('rss') == 'ready':
                   ready = event
-              if event.get('kind') in {'rss_poll', 'rss_error'} and event.get('source_id'):
+              if event.get('kind') in {'rss_source_complete', 'rss_error'} and event.get('source_id'):
                   source_id = str(event['source_id'])
                   if event.get('kind') == 'rss_error':
                       had_error.add(source_id)
-                  last_state[source_id] = 'success' if event.get('kind') == 'rss_poll' else 'error'
+                      last_state[source_id] = 'error'
+                  elif event.get('ok') is True:
+                      last_state[source_id] = 'success'
 
           if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
               raise SystemExit('RSS worker did not emit a valid configured-feed manifest')
