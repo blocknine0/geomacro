@@ -445,6 +445,6 @@ select
 from per_country;
 
 comment on view public.live_raw_source_coverage_100_status is
-  'Raw internal source-coverage gate: every enabled canonical country has governed web/global/Telegram-discovery source targets in all three production categories. Commercial rights/certification are intentionally separate gates.';
+  'Raw internal source-coverage gate: every enabled canonical country has a complete 13-target mesh spanning national web, global fallbacks and Telegram discovery across GEOPOLITICS, MACRO and CRITICAL_MINERALS. Commercial rights/certification are intentionally separate gates.';
 
 commit;
