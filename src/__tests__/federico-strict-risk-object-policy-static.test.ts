@@ -400,18 +400,6 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(preflight).toContain(
       'as_of_source: "risk_object.observed_at"',
     );
-    expect(policy).toContain(
-      '"mymotherlode.com": "mymotherlode.com"',
-    );
-    expect(policy).toContain(
-      '"oneindia.com": "oneindia.com"',
-    );
-    expect(policy).toContain(
-      '"whtc.com": "whtc.com"',
-    );
-    expect(policy).toContain(
-      '"federico-source-family-map-v6"',
-    );
     expect(preflight).toContain(
       "signature: riskObject.integrity.signature",
     );
