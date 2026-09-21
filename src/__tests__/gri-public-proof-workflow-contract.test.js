@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(
-  ".github/workflows/gri-public-proof-consistency.yml",
+  ".github/workflows/gri-governance.yml",
   "utf8",
 );
 
