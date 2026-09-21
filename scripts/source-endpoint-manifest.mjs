@@ -25,7 +25,10 @@ export async function collectMigrationEndpointManifest(root = process.cwd()) {
     "967_global_raw_source_coverage_mesh.sql",
     "968_country_raw_web_snapshot_store.sql",
     "969_telegram_global_discovery_metadata.sql",
+    "970_realtime_scope_fanout_mesh.sql",
   ]);
+  // Phase-B endpoint census remains frozen at 933; Stage-1 realtime fanout
+  // has its own source/target governance and is audited separately.
   const sourceFiles = files.filter((file) => !excludedMigrationNames.has(path.basename(file)));
   const urlMap = new Map();
 
