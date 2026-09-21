@@ -6,6 +6,9 @@ const workflow = readFileSync(
   ".github/workflows/gri-governance.yml",
   "utf8",
 );
+const publicProofJob = workflow.match(
+  /^  public-proof:\n([\\s\\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m,
+)?.[0] ?? "";
 
 describe("GRI public proof consistency workflow contract", () => {
   it("keeps manual, scheduled and relevant main-change revalidation", () => {
