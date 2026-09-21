@@ -18,6 +18,7 @@ describe("permanent intelligence orchestration contract", () => {
     const script = read("scripts/intelligence-orchestrator.mjs");
     for (const task of [
       "gdelt_gal",
+      "open_realtime_mesh",
       "gdelt_v2",
       "country_raw_mesh",
       "open_realtime_mesh",
@@ -31,6 +32,9 @@ describe("permanent intelligence orchestration contract", () => {
       expect(script).toContain(`key: "${task}"`);
     }
     expect(script).toContain("MAX_TASKS_PER_TICK");
+    expect(script).toContain("drain-live-structure.mjs");
+    expect(script).toContain("run-rss-live-cycle.mjs");
+    expect(script).toContain("reconcile-structured-event-commercial-rights.mjs");
     expect(script).toContain("offsetSeconds: 240");
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
