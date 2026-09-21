@@ -39,9 +39,6 @@ on:
       - "scripts/import-source-endpoint-evidence.mjs"
       - "config/source-endpoint-manifest-lock.json"
       - ".github/workflows/source-network-governance.yml"
-      - ".github/workflows/global-source-endpoint-probe.yml"
-      - ".github/workflows/global-source-registry-readonly-audit.yml"
-      - ".github/workflows/source-network-933-endpoint-disposition.yml"
   workflow_run:
     workflows:
       - Deploy country flash intelligence to Supabase
