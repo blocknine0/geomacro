@@ -6,7 +6,7 @@ const script = readFileSync(
   "utf8",
 );
 const workflow = readFileSync(
-  ".github/workflows/coinbase-x402-base-sepolia-paid-e2e.yml",
+  ".github/workflows/coinbase-x402-base-sepolia.yml",
   "utf8",
 );
 
