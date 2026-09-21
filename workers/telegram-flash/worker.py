@@ -38,6 +38,16 @@ def parse_channels(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def parse_optional_source_ids(value: str | None) -> list[str] | None:
+    if value is None or not value.strip():
+        return None
+    return list(dict.fromkeys(
+        item.strip()
+        for item in value.split(",")
+        if item.strip()
+    ))
+
+
 def parse_reliability() -> dict[str, float]:
     raw = os.environ.get("TELEGRAM_SOURCE_RELIABILITY_JSON", "{}").strip()
     try:
@@ -1054,13 +1064,36 @@ async def run_rss() -> None:
     state: dict[str, dict[str, Any]] = {}
     failure_count: dict[str, int] = {}
 
+    requested_source_ids = parse_optional_source_ids(
+        os.environ.get("BREAKING_RSS_SOURCE_IDS")
+    )
+    feeds = RSS_FEEDS
+    if requested_source_ids is not None:
+        configured = {str(feed["source_id"]) for feed in RSS_FEEDS}
+        unknown = sorted(set(requested_source_ids) - configured)
+        if unknown:
+            raise RuntimeError(
+                "BREAKING_RSS_SOURCE_IDS contains unknown source IDs: "
+                + ", ".join(unknown)
+            )
+        selected = set(requested_source_ids)
+        feeds = [
+            feed for feed in RSS_FEEDS
+            if str(feed["source_id"]) in selected
+        ]
+        if not feeds:
+            raise RuntimeError(
+                "BREAKING_RSS_SOURCE_IDS selected no configured RSS feeds"
+            )
+
     print(
         json.dumps(
             {
                 "rss": "ready",
-                "feeds": [feed["source_id"] for feed in RSS_FEEDS],
+                "feeds": [feed["source_id"] for feed in feeds],
                 "poll_seconds": RSS_POLL_SECONDS,
                 "run_once": RSS_RUN_ONCE,
+                "source_filter": requested_source_ids,
             }
         ),
         flush=True,
@@ -1069,7 +1102,7 @@ async def run_rss() -> None:
     while True:
         cycle_failed = False
 
-        for feed in RSS_FEEDS:
+        for feed in feeds:
             source_id = str(feed["source_id"])
             try:
                 await process_feed(feed, state)
