@@ -170,7 +170,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "Verify every configured RSS source completed",
     );
     expect(rssWorkflow).toContain(
-      'event.get("kind") in {"rss_poll", "rss_error"}',
+      "if event.get('kind') in {'rss_poll', 'rss_error'}",
     );
     expect(rssWorkflow).not.toContain(
       "xinhua_english_china_rss",
