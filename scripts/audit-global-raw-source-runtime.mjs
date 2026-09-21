@@ -32,7 +32,7 @@ async function main() {
   const targets=(targetQuery.data??[]).filter((row)=>canonicalSet.has(String(row.country_iso3)));
 
   const missing=[];
-  for(const iso of [...new Set((targets??[]).map(x=>String(x.country_iso3)))].sort()) {
+  for(const iso of canonicalIso3) {
     for(const category of Object.keys(WINDOWS_SECONDS)) {
       const rows=(targets??[]).filter(x=>x.country_iso3===iso&&x.category===category&&x.last_success_at);
       const latest=rows.map(x=>Date.parse(String(x.last_success_at))).filter(Number.isFinite).sort((a,b)=>b-a)[0];
