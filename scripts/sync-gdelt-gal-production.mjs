@@ -11,6 +11,7 @@ const SCHEMA_VERSION = "live-evidence-v1.0.0";
 const LOOKBACK_MINUTES = 35;
 const MAX_SOURCE_FILES_PER_RUN = 8;
 const FINGERPRINT_TTL_DAYS = 30;
+const FRESH_SUCCESS_WINDOW_SECONDS = 30 * 60;
 const OUTPUT = process.env.GDELT_GAL_SYNC_OUTPUT ?? null;
 
 const TOPIC_PATTERNS = {
@@ -169,8 +170,8 @@ async function main() {
       const successAgeSeconds = Number.isFinite(lastSuccessMs)
         ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
         : Number.POSITIVE_INFINITY;
-      const healthStatus = Number.isFinite(successAgeSeconds) && successAgeSeconds <= 30 * 60
-        ? "degraded"
+      const healthStatus = Number.isFinite(successAgeSeconds) && successAgeSeconds <= FRESH_SUCCESS_WINDOW_SECONDS
+        ? "healthy"
         : "failed";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
