@@ -7,11 +7,14 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 describe("Federico refresh contract", () => {
   it("keeps the strict source-family map versioned and covers newly observed GDELT identities", () => {
     const profile = read("src/lib/public-demo-risk-profile.ts");
-    expect(profile).toContain("federico-source-family-map-v5");
+    expect(profile).toContain("federico-source-family-map-v6");
     expect(profile).toContain('"mymixfm.com": "mymixfm.com"');
     expect(profile).toContain('"wtvbam.com": "wtvbam.com"');
     expect(profile).toContain('"wiky.com": "wiky.com"');
     expect(profile).toContain('"kelo.com": "kelo.com"');
+    expect(profile).toContain('"mymotherlode.com": "mymotherlode.com"');
+    expect(profile).toContain('"oneindia.com": "oneindia.com"');
+    expect(profile).toContain('"whtc.com": "whtc.com"');
   });
 
   it("runs on relevant main changes as well as scheduled/workflow-run triggers", () => {
