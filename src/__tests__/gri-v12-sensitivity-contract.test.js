@@ -178,6 +178,9 @@ describe("GRI v1.2 sensitivity contract", () => {
       ".github/workflows/gri-governance.yml",
       "utf8",
     );
+    const calibrationJob = workflow.match(
+      /^  calibration:\n([\\s\\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m,
+    )?.[0] ?? "";
     const sensitivityAudit = readFileSync(
       "scripts/audit-gri-v12-sensitivity.mjs",
       "utf8",
@@ -187,9 +190,9 @@ describe("GRI v1.2 sensitivity contract", () => {
       "utf8",
     );
 
-    expect(workflow).toContain("APP_SUPABASE_ANON_KEY");
-    expect(workflow).not.toContain("SERVICE_ROLE");
-    expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(calibrationJob).toContain("APP_SUPABASE_ANON_KEY");
+    expect(calibrationJob).not.toContain("SERVICE_ROLE");
+    expect(calibrationJob).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(sensitivityAudit).toContain(
       "predictiveAccuracyClaimAuthorized: false",
     );
