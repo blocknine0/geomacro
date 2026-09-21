@@ -49,11 +49,10 @@ export type AgentHotTopicResult = {
   requested_families: HotTopicFamily[];
   matched_families: HotTopicFamily[];
   source_pipeline: {
-    source_key: typeof HOT_TOPIC_SOURCE_KEY;
-    stream_key: typeof HOT_TOPIC_STREAM_KEY;
     status: string | null;
     last_success_at: string | null;
     lag_seconds: number | null;
+    active_source_count: number;
   };
   subject: AgentQueryPlan["subjects"][number];
   current_event_signal: boolean;
@@ -266,10 +265,6 @@ export async function loadAgentHotTopics(input: {
   const pipelineHealthy =
     sourceLag.length > 0 &&
     sourceLag.every((item) => item.healthy && item.lagSeconds !== null && item.lagSeconds <= item.allowedLagSeconds);
-  const latestSuccessMs = sourceLag
-    .map((item) => item.lagSeconds)
-    .filter((value): value is number => value !== null)
-    .sort((a, b) => a - b)[0];
   const worstLagSeconds = sourceLag.length
     ? Math.max(...sourceLag.map((item) => item.lagSeconds ?? Number.POSITIVE_INFINITY))
     : null;
