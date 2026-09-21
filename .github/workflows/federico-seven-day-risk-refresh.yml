@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: federico-seven-day-risk-refresh
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
