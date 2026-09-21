@@ -70,7 +70,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(grep -Fxc 'as $' supabase/migrations/970_realtime_scope_fanout_mesh.sql)" -ge 2
-          test "$(grep -Fxc '$;' supabase/migrations/970_realtime_scope_fanout_mesh.sql)" -ge 2
-          ! grep -Fqx 'as 
- supabase/migrations/970_realtime_scope_fanout_mesh.sql
+          as_count="$(grep -Fxc 'as $' supabase/migrations/970_realtime_scope_fanout_mesh.sql || true)"
+          dollar_count="$(grep -Fxc '$;' supabase/migrations/970_realtime_scope_fanout_mesh.sql || true)"
+          test "$as_count" -ge 2
+          test "$dollar_count" -ge 2
+          if grep -Fqx 'as ' supabase/migrations/970_realtime_scope_fanout_mesh.sql; then
+            echo 'Malformed PL/pgSQL function terminator detected.'
+            exit 1
+          fi
