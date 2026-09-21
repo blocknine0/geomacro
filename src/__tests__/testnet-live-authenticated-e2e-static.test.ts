@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const script = readFileSync("scripts/testnet/live-authenticated-e2e.mjs", "utf8");
-const workflow = readFileSync(".github/workflows/live-testnet-authenticated-e2e.yml", "utf8");
+const workflow = readFileSync(".github/workflows/live-testnet-health.yml", "utf8");
 
 describe("permanent live authenticated Testnet E2E harness", () => {
   it("covers real wallet sign-in, 402 quote, paid retry and replay safety", () => {
