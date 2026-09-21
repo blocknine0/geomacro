@@ -70,6 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(grep -c '^as \\$\\$$' supabase/migrations/970_realtime_scope_fanout_mesh.sql)" -ge 2
-          test "$(grep -c '^\\$\\$;' supabase/migrations/970_realtime_scope_fanout_mesh.sql)" -ge 2
-          ! grep -q '^as \\$' supabase/migrations/970_realtime_scope_fanout_mesh.sql
+          test "$(grep -Fxc 'as $' supabase/migrations/970_realtime_scope_fanout_mesh.sql)" -ge 2
+          test "$(grep -Fxc '$;' supabase/migrations/970_realtime_scope_fanout_mesh.sql)" -ge 2
+          ! grep -Fqx 'as 
+ supabase/migrations/970_realtime_scope_fanout_mesh.sql
