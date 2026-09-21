@@ -1971,7 +1971,7 @@ function choosePrimaryCountry(
 
 function resolveDomain(
   text: string,
-  _ingestTopics: string[] | undefined,
+  ingestTopics: string[] | undefined,
 ) {
   const scores = {
     geopolitics:
@@ -2018,6 +2018,42 @@ function resolveDomain(
   );
 
   if (ranked[0].score === 0) {
+    const normalizedTopics = new Set(
+      (ingestTopics ?? []).map((topic) => String(topic).trim().toLowerCase()),
+    );
+
+    if (normalizedTopics.has("rare_earth") || normalizedTopics.has("critical_minerals")) {
+      return {
+        domain: "rare_earth" as Domain,
+        scores,
+        method: "source_declared_critical_mineral_signal",
+      };
+    }
+
+    if (normalizedTopics.has("macro")) {
+      return {
+        domain: "macro" as Domain,
+        scores,
+        method: "source_declared_macro_signal",
+      };
+    }
+
+    if (normalizedTopics.has("geopolitics")) {
+      return {
+        domain: "geopolitics" as Domain,
+        scores,
+        method: "source_declared_geopolitical_signal",
+      };
+    }
+
+    if (normalizedTopics.has("natural_hazards")) {
+      return {
+        domain: "multi" as Domain,
+        scores,
+        method: "source_declared_natural_hazard_signal",
+      };
+    }
+
     return {
       domain:
         "multi" as Domain,
@@ -2062,6 +2098,7 @@ function professionalRelevance(
     ReturnType<
       typeof resolveDomain
     >,
+  ingestTopics?: string[],
 ) {
   const maxSignal =
     Math.max(
@@ -2431,12 +2468,20 @@ function professionalRelevance(
     };
   }
 
-  // Description-only single keyword
-  // is not enough for professional
-  // structured intelligence.
+  const sourceDeclaredSignal = (ingestTopics ?? []).some((topic) =>
+    ["geopolitics", "macro", "rare_earth", "critical_minerals", "natural_hazards"].includes(
+      String(topic).trim().toLowerCase(),
+    ),
+  );
+
+  // A governed source adapter may classify an otherwise sparse machine record
+  // (for example an earthquake feed) before normalization. That source-owned
+  // category is accepted as a signal, but all existing noise filters still run.
+
   if (
     titleSignal === 0 &&
-    maxSignal < 2
+    maxSignal < 2 &&
+    !sourceDeclaredSignal
   ) {
     return {
       relevant: false,
@@ -3018,21 +3063,13 @@ Deno.serve(async (req) => {
           "live_fragment_manifest",
         )
         .select(
-          "id,object_path,item_count,period_end,verified_at",
+          "id,object_path,item_count,source_key,stream_key,period_end,verified_at",
         )
         .eq(
           "id",
           requestedFragmentId,
         )
-        .eq(
-          "source_key",
-          "gdelt_gal",
-        )
-        .eq(
-          "stream_key",
-          "global-relevant",
-        )
-        .eq(
+.eq(
           "verification_method",
           "storage-readback-sha256",
         )
@@ -3760,6 +3797,7 @@ Deno.serve(async (req) => {
           signalTitle,
           record.l,
           domainDecision,
+          record.q,
         );
 
       if (!quality.relevant) {

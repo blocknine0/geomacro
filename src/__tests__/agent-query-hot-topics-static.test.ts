@@ -13,7 +13,7 @@ describe("adaptive hot-topic commercial delivery", () => {
     expect(loader).toContain('from("live_country_registry")');
     expect(loader).toContain('from("live_ingestion_cursors")');
     expect(loader).toContain('HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS = 30 * 60');
-    expect(loader).toContain('cursor.data.status !== "healthy"');
+    expect(loader).toContain('pipelineHealthy');
     expect(loader).toContain('HOT_TOPIC_PIPELINE_UNHEALTHY');
     expect(loader).toContain('HOT_TOPIC_PIPELINE_STALE');
   });

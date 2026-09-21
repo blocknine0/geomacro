@@ -108,14 +108,13 @@ describe("Testnet canonical intelligence capability parity", () => {
 
   it("delivers only canonical signed Risk Objects that pass the stricter commercial policy without mutating them", () => {
     const runner = read("src/lib/testnet-intelligence-capability.server.ts");
-    expect(runner).toContain("export function publicRiskObject");
-    expect(runner).toContain("return object;");
-    expect(runner).toContain("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
+    expect(runner).toContain("createPublicSignedRiskObjectProjection");
+    expect(runner).toContain("containsForbiddenPublicSourceKeys");
     expect(runner).toContain("commercialVerification.deliverable");
     expect(runner).toContain("SIGNED_RISK_OBJECT_NOT_COMMERCIALLY_DELIVERABLE");
     expect(runner).toContain("commercial_delivery");
-    expect(runner).toContain("risk_object: publicRiskObject(stored)");
-    expect(runner).toContain("risk_object: publicRiskObject(object)");
+    expect(runner).toContain("risk_object: createPublicSignedRiskObjectProjection(stored)");
+    expect(runner).toContain("risk_object: createPublicSignedRiskObjectProjection(object)");
     expect(runner).not.toContain("corridor_context: object.corridor_context ?? null");
     expect(runner).not.toContain("evidence: object.evidence.map");
   });
@@ -158,5 +157,11 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).toContain("public_verification");
     expect(runner).toContain("commercial_delivery");
     expect(runner).toContain("containsForbiddenPublicSourceKeys");
+    expect(runner).toContain("source_id");
+    expect(runner).toContain("source_record_id");
+    expect(runner).toContain("source_urls");
+    expect(runner).toContain("source_families");
+    expect(runner).toContain("source_record_ids");
+    expect(runner).toContain('risk_object: createPublicSignedRiskObjectProjection(stored)');
   });
 });

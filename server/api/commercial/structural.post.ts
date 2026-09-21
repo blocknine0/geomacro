@@ -78,9 +78,6 @@ type StructuralSubject = z.infer<typeof requestSchema>["subject"];
 
 function publicObservation(row: StructuralObservation) {
   return {
-    observation_id: row.observation_id,
-    source_id: row.source_id,
-    source_record_id: row.source_record_id,
     dimension: row.dimension,
     country_iso3: row.country_iso3,
     partner_country_iso3: row.partner_country_iso3,
@@ -110,7 +107,6 @@ function commercialPayload(
   const effectiveObservationLimit = digest ? Math.min(3, observationLimit) : observationLimit;
   const observations = context.observations.slice(0, effectiveObservationLimit).map(publicObservation);
   const coverage = context.metadata.coverage.map((row) => ({
-    source_id: row.source_id,
     dimension: row.dimension,
     country_iso3: row.country_iso3,
     coverage_year: row.coverage_year,

@@ -18,7 +18,7 @@ on:
       - ".github/workflows/gdelt-gal-live-sync.yml"
   workflow_dispatch:
   schedule:
-    - cron: "4,19,34,49 * * * *"
+    - cron: "*/5 * * * *"
 
 # Certification trigger: successful fresh GDELT completion must exercise Federico strict acceptance.
 

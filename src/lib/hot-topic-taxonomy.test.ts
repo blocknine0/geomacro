@@ -18,7 +18,7 @@ describe("governed hot-topic taxonomy", () => {
       const definition = HOT_TOPIC_FAMILY_DEFINITIONS[family];
       expect(definition.family).toBe(family);
       expect(definition.default_max_age_seconds).toBeGreaterThan(0);
-      expect(definition.event_detection_source).toBe("gdelt_structured_derived");
+      expect(definition.event_detection_source).toBe("multi_source_realtime_derived");
     }
   });
 

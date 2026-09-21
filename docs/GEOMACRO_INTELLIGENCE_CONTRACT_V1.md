@@ -101,6 +101,12 @@ Current natural-language requests without an explicit historical `as_of` are aut
 
 Historical requests remain explicit and are not silently mixed with current live developments.
 
+## Commercial source boundary
+
+Commercial machine and human responses contain derived Geomacro intelligence only. They do not expose upstream source URLs, publisher/provider names, internal source IDs, source record IDs, source families, raw provider payloads, raw article text or internal provenance blobs. Those remain server-side for governance, reproducibility and commercial-use enforcement.
+
+A source may be added to the internal acquisition mesh without changing the customer contract. New sources must enter through the same normalized evidence-fragment and commercial-eligibility gates before their derived intelligence becomes chargeable.
+
 ## Machine response
 
 The canonical machine resource remains:

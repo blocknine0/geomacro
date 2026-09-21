@@ -905,7 +905,7 @@ alter table public.live_corridor_module_coverage_targets enable row level securi
 
 -- ---------------------------------------------------------------------------
 -- 6. Expanded global shock taxonomy.
---    35 families. Every family is mapped to at least one 16-module owner and
+--    36 families. Every family is mapped to at least one 16-module owner and
 --    has primary/fallback detection paths. This is detection taxonomy only.
 -- ---------------------------------------------------------------------------
 create table if not exists public.live_global_shock_taxonomy (

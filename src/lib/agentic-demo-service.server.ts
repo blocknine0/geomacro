@@ -14,6 +14,7 @@ import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { publicRiskObjectTrustDiscovery } from "./risk-object-trust-discovery.server";
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import { PUBLIC_DEMO_RISK_PROFILE_REASON } from "./public-demo-risk-profile";
+import { createPublicSignedRiskObjectProjection } from "./risk-object-public-projection.server";
 
 export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
 export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
@@ -21,12 +22,6 @@ export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
 export type AgenticDemoRunOptions = {
   mode?: "PUBLIC_SANDBOX" | "X402_PAID" | "GOAT_X402_PAID";
   recordTelemetry?: boolean;
-  /**
-   * Optional server-controlled correlation ID. Commercial partner integrations
-   * can reuse their durable request UUID so the paid order, Risk Gate audit and
-   * delivered intelligence all share one traceable identity. Public callers do
-   * not control this field through the API.
-   */
   requestId?: string;
   payment?: {
     required: boolean;
@@ -40,42 +35,6 @@ export type AgenticDemoRunOptions = {
     note?: string;
   };
 };
-
-function assertSupportedDemoSubject(input: AgenticDemoRequest) {
-  if (input.subject.type === "country") {
-    if (
-      !DEMO_ALLOWED_COUNTRIES.includes(
-        input.subject.country_iso3 as (typeof DEMO_ALLOWED_COUNTRIES)[number],
-      )
-    ) {
-      throw new Error(
-        `Public demo currently supports country subjects: ${DEMO_ALLOWED_COUNTRIES.join(", ")}`,
-      );
-    }
-    return;
-  }
-
-  const corridor = `${input.subject.origin_country_iso3}>${input.subject.destination_country_iso3}`;
-  if (
-    !DEMO_ALLOWED_CORRIDORS.includes(
-      corridor as (typeof DEMO_ALLOWED_CORRIDORS)[number],
-    )
-  ) {
-    throw new Error(
-      `Public demo currently supports corridors: ${DEMO_ALLOWED_CORRIDORS.join(", ")}`,
-    );
-  }
-}
-
-/**
- * A signed Risk Object must be delivered byte-for-field complete.
- *
- * Do not project/whitelist fields here: removing signed fields produces an
- * object whose payload hash/signature can no longer be independently verified.
- */
-function publicRiskObject(object: GeomacroRiskObject) {
-  return object;
-}
 
 async function loadStoredRiskObject(objectId: string) {
   const db = requireRiskSupabase();
@@ -158,7 +117,7 @@ async function loadRiskObject(
 
   if (mode === "PUBLIC_SANDBOX" && object.subject.type === "corridor") {
     await assertPublicSandboxCorridorDeliverable(object);
-    return publicRiskObject(object);
+    return createPublicSignedRiskObjectProjection(object);
   }
 
   const commercialVerification = verifyCommercialRiskObjectArtifact(object);
@@ -166,7 +125,7 @@ async function loadRiskObject(
     throw new Error("COMMERCIAL_RISK_OBJECT_NOT_DELIVERABLE");
   }
 
-  return publicRiskObject(object);
+  return createPublicSignedRiskObjectProjection(object);
 }
 
 async function loadGriContext() {

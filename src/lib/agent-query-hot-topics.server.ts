@@ -6,8 +6,6 @@ import {
 } from "./hot-topic-taxonomy";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
-const HOT_TOPIC_SOURCE_KEY = "gdelt_gal";
-const HOT_TOPIC_STREAM_KEY = "global-relevant";
 const HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS = 30 * 60;
 const MAX_RECENT_ROWS = 500;
 const MAX_DELIVERED_EVENTS = 25;
@@ -51,11 +49,10 @@ export type AgentHotTopicResult = {
   requested_families: HotTopicFamily[];
   matched_families: HotTopicFamily[];
   source_pipeline: {
-    source_key: typeof HOT_TOPIC_SOURCE_KEY;
-    stream_key: typeof HOT_TOPIC_STREAM_KEY;
     status: string | null;
     last_success_at: string | null;
     lag_seconds: number | null;
+    active_source_count: number;
   };
   subject: AgentQueryPlan["subjects"][number];
   current_event_signal: boolean;
@@ -195,7 +192,7 @@ export async function loadAgentHotTopics(input: {
       checked_at: checkedAt,
       requested_families: requestedFamilies,
       matched_families: [],
-      source_pipeline: { source_key: HOT_TOPIC_SOURCE_KEY, stream_key: HOT_TOPIC_STREAM_KEY, status: null, last_success_at: null, lag_seconds: null },
+      source_pipeline: { status: null, last_success_at: null, lag_seconds: null, active_source_count: 0 },
       subject: input.subject,
       current_event_signal: false,
       commercially_deliverable_event_count: 0,
@@ -220,7 +217,7 @@ export async function loadAgentHotTopics(input: {
       checked_at: checkedAt,
       requested_families: requestedFamilies,
       matched_families: [],
-      source_pipeline: { source_key: HOT_TOPIC_SOURCE_KEY, stream_key: HOT_TOPIC_STREAM_KEY, status: null, last_success_at: null, lag_seconds: null },
+      source_pipeline: { status: null, last_success_at: null, lag_seconds: null, active_source_count: 0 },
       subject: input.subject,
       current_event_signal: false,
       commercially_deliverable_event_count: 0,
@@ -230,24 +227,62 @@ export async function loadAgentHotTopics(input: {
     };
   }
 
-  const cursor = await db
-    .from("live_ingestion_cursors")
-    .select("status,last_success_at,last_item_at")
-    .eq("source_key", HOT_TOPIC_SOURCE_KEY)
-    .eq("stream_key", HOT_TOPIC_STREAM_KEY)
-    .maybeSingle();
-  if (cursor.error) throw cursor.error;
-  const lastSuccess = cursor.data?.last_success_at ? Date.parse(String(cursor.data.last_success_at)) : NaN;
-  const lagSeconds = Number.isFinite(lastSuccess) ? Math.max(0, Math.floor((now.getTime() - lastSuccess) / 1000)) : null;
+  const { data: sourceRows, error: sourceRowsError } = await db
+    .from("live_source_registry")
+    .select("source_key,cadence_seconds")
+    .eq("enabled", true)
+    .eq("realtime_hot_topic_enabled", true);
+  if (sourceRowsError) throw sourceRowsError;
+
+  const sourceKeys = (sourceRows ?? []).map((row: { source_key: string }) => String(row.source_key));
+  const { data: cursorRows, error: cursorRowsError } = sourceKeys.length
+    ? await db
+        .from("live_ingestion_cursors")
+        .select("source_key,status,last_success_at")
+        .in("source_key", sourceKeys)
+    : { data: [], error: null };
+  if (cursorRowsError) throw cursorRowsError;
+
+  const cursorBySource = new Map(
+    (cursorRows ?? []).map((row: { source_key: string; status?: string | null; last_success_at?: string | null }) => [
+      String(row.source_key),
+      row,
+    ]),
+  );
+
+  const sourceLag = sourceRows.map((source: { source_key: string; cadence_seconds: number }) => {
+    const cursor = cursorBySource.get(String(source.source_key));
+    const lastSuccess = cursor?.last_success_at ? Date.parse(String(cursor.last_success_at)) : NaN;
+    return {
+      sourceKey: String(source.source_key),
+      healthy: cursor?.status === "healthy" && Number.isFinite(lastSuccess),
+      lagSeconds: Number.isFinite(lastSuccess)
+        ? Math.max(0, Math.floor((now.getTime() - lastSuccess) / 1000))
+        : null,
+      allowedLagSeconds: Math.max(HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS, Number(source.cadence_seconds || 0) * 3),
+    };
+  });
+  const pipelineHealthy =
+    sourceLag.length > 0 &&
+    sourceLag.every((item) => item.healthy && item.lagSeconds !== null && item.lagSeconds <= item.allowedLagSeconds);
+  const worstLagSeconds = sourceLag.length
+    ? Math.max(...sourceLag.map((item) => item.lagSeconds ?? Number.POSITIVE_INFINITY))
+    : null;
+  const lastSuccessAt = sourceLag.length
+    ? (cursorRows ?? [])
+        .map((row: { last_success_at?: string | null }) => row.last_success_at ? String(row.last_success_at) : null)
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) ?? null
+    : null;
   const pipeline = {
-    source_key: HOT_TOPIC_SOURCE_KEY,
-    stream_key: HOT_TOPIC_STREAM_KEY,
-    status: cursor.data?.status ? String(cursor.data.status) : null,
-    last_success_at: cursor.data?.last_success_at ? String(cursor.data.last_success_at) : null,
-    lag_seconds: lagSeconds,
+    status: pipelineHealthy ? "healthy" : "degraded",
+    last_success_at: lastSuccessAt,
+    lag_seconds: Number.isFinite(worstLagSeconds ?? NaN) ? worstLagSeconds : null,
+    active_source_count: sourceRows.length,
   } as const;
 
-  if (!cursor.data || cursor.data.status !== "healthy") {
+  if (!pipelineHealthy) {
     return {
       deliverable: false,
       code: "HOT_TOPIC_PIPELINE_UNHEALTHY",
@@ -263,7 +298,7 @@ export async function loadAgentHotTopics(input: {
       limitations: baseLimitations(input.subject),
     };
   }
-  if (lagSeconds === null || lagSeconds > HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS) {
+  if (pipeline.lag_seconds === null || pipeline.lag_seconds > HOT_TOPIC_PIPELINE_MAX_LAG_SECONDS) {
     return {
       deliverable: false,
       code: "HOT_TOPIC_PIPELINE_STALE",

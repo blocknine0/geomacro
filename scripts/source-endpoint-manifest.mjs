@@ -18,9 +18,18 @@ export async function collectMigrationEndpointManifest(root = process.cwd()) {
   }
 
   const files = (await walk(migrationsDir)).sort();
+  const excludedMigrationNames = new Set([
+    "964_stage1_realtime_source_mesh.sql",
+    "965_stage1_provider_expansion_catalog.sql",
+    "966_commercial_provider_source_type.sql",
+    "967_global_raw_source_coverage_mesh.sql",
+    "968_country_raw_web_snapshot_store.sql",
+    "969_telegram_global_discovery_metadata.sql",
+  ]);
+  const sourceFiles = files.filter((file) => !excludedMigrationNames.has(path.basename(file)));
   const urlMap = new Map();
 
-  for (const file of files) {
+  for (const file of sourceFiles) {
     const source = await fs.readFile(file, "utf8");
     for (const match of source.matchAll(/https?:\/\/[^\s'"\`\)>;]+/g)) {
       const raw = match[0].replace(/[),.;]+$/, "");

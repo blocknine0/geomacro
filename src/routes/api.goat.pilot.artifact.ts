@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requireGoatPilotAccess } from "../lib/goat-pilot-auth.server";
 import { requireRiskSupabase } from "../lib/risk-supabase.server";
 import { verifyPublicRiskObjectArtifact } from "../lib/risk-object-verification.server";
+import { createPublicSignedRiskObjectProjection } from "../lib/risk-object-public-projection.server";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const CLIENT_REQUEST_ID_RE = /^[A-Za-z0-9._:-]{1,256}$/;
@@ -40,7 +41,7 @@ function containsForbiddenPublicSourceKeys(value: unknown): boolean {
   if (!record) return false;
 
   for (const [key, child] of Object.entries(record)) {
-    if (/^(source_url|source_name|publisher|publisher_name|raw_payload|raw_content)$/i.test(key)) {
+    if (/^(source_url|source_name|publisher|publisher_name|source_id|source_record_id|source_ids|source_record_ids|source_families|source_urls|content_hashes|evidence_refs|raw_payload|raw_content)$/i.test(key)) {
       return true;
     }
     if (containsForbiddenPublicSourceKeys(child)) return true;
@@ -150,7 +151,9 @@ async function handlePost(request: Request) {
     return jsonResponse({ ok: false, error: "RISK_OBJECT_NOT_FOUND", execution_authorized: false }, 404);
   }
 
-  if (containsForbiddenPublicSourceKeys(storedRiskObject.payload)) {
+  const deliveredRiskObject = createPublicSignedRiskObjectProjection(storedRiskObject.payload);
+
+  if (containsForbiddenPublicSourceKeys(deliveredRiskObject)) {
     return jsonResponse({ ok: false, error: "RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION", execution_authorized: false }, 503);
   }
 
@@ -167,7 +170,7 @@ async function handlePost(request: Request) {
   }
 
   const verification = verifyPublicRiskObjectArtifact(
-    storedRiskObject.payload,
+    deliveredRiskObject,
     { now: deliveredAt },
   );
   if (!verification.valid || !verification.cryptographic_valid) {
@@ -193,7 +196,7 @@ async function handlePost(request: Request) {
       fulfilled_at: fulfillment.delivered_at,
       commercial_revenue: false,
     },
-    risk_object: storedRiskObject.payload,
+    risk_object: deliveredRiskObject,
     verification,
     execution_authorized: false,
   });

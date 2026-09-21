@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "../lib/agent-query-plan";
-import { checkAgentQueryDeliverability } from "../lib/agent-query-deliverability.server";
+import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "../lib/agent-query-response.server";
 import {
@@ -270,7 +270,7 @@ export const Route = createFileRoute("/api/x402/intelligence")({
           return json({ ok: false, chargeable: false, error: { code: "AVAILABILITY_CHECK_UNAVAILABLE", message: "Deliverability could not be proven. Payment is disabled for this request." }, execution_authorized: false }, 503);
         }
         if (!availability.deliverable) {
-          return json({ ok: false, chargeable: false, payment_required_now: false, availability, error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
+          return json({ ok: false, chargeable: false, payment_required_now: false, availability: publicAgentQueryAvailability(availability), error: { code: availability.code, message: "Requested intelligence is not currently fully deliverable; no payment is accepted." }, execution_authorized: false }, 422);
         }
 
         const paymentHeader = request.headers.get("payment-signature");
@@ -342,7 +342,7 @@ export const Route = createFileRoute("/api/x402/intelligence")({
         if (!finalAvailability.deliverable) {
           await releaseCoinbaseX402DeliveryForRetry({ paymentFingerprint, claimToken, failureCode: `FINAL_${finalAvailability.code}` });
           if (usageReservation.enforced) await releaseCoinbaseX402AgentUsage(paymentFingerprint);
-          return json({ ok: false, chargeable: false, availability: finalAvailability, error: { code: `FINAL_${finalAvailability.code}`, message: "Required data changed before settlement; no payment was taken." }, execution_authorized: false }, 409);
+          return json({ ok: false, chargeable: false, availability: publicAgentQueryAvailability(finalAvailability), error: { code: `FINAL_${finalAvailability.code}`, message: "Required data changed before settlement; no payment was taken." }, execution_authorized: false }, 409);
         }
 
         const requestId = randomUUID();

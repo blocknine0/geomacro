@@ -246,3 +246,32 @@ export async function checkAgentQueryDeliverability(
     subjects,
   };
 }
+
+
+export function publicAgentQueryAvailability(
+  result: AgentQueryDeliverability,
+): Omit<AgentQueryDeliverability, "source_contracts" | "subjects"> & {
+  subjects: Array<{
+    subject: AgentQueryPlan["subjects"][number];
+    status: StructuralContext["status"];
+    available_modules: string[];
+    latest_evidence_at: string | null;
+  }>;
+  ineligible_source_count: number;
+} {
+  return {
+    deliverable: result.deliverable,
+    code: result.code,
+    query_plan_hash: result.query_plan_hash,
+    checked_at: result.checked_at,
+    missing_modules: result.missing_modules,
+    stale_modules: result.stale_modules,
+    ineligible_source_count: result.ineligible_source_ids.length,
+    subjects: result.subjects.map((subject) => ({
+      subject: subject.subject,
+      status: subject.status,
+      available_modules: subject.available_modules,
+      latest_evidence_at: subject.latest_evidence_at,
+    })),
+  };
+}

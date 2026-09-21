@@ -46,7 +46,7 @@ export type HotTopicFamilyDefinition = {
   family: HotTopicFamily;
   label: string;
   default_max_age_seconds: number;
-  event_detection_source: "gdelt_structured_derived";
+  event_detection_source: "multi_source_realtime_derived";
   authoritative_confirmation:
     | "STRUCTURAL_MODULE_WHEN_REQUESTED"
     | "DIRECT_SOURCE_SUPPLEMENT_AVAILABLE"
@@ -598,7 +598,7 @@ export const HOT_TOPIC_FAMILY_DEFINITIONS: Readonly<
       family,
       {
         family,
-        event_detection_source: "gdelt_structured_derived" as const,
+        event_detection_source: "multi_source_realtime_derived" as const,
         label: FAMILY_POLICY[family].label,
         default_max_age_seconds:
           FAMILY_POLICY[family].default_max_age_seconds,

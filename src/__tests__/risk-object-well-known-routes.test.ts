@@ -41,7 +41,7 @@ describe("Risk Object well-known trust surfaces", () => {
     const coinbase = read("src/routes/api.x402.risk.ts");
 
     expect(coinbase).toContain("runAgenticPreflightDemo");
-    expect(agentic).toContain("return object;");
+    expect(agentic).toContain("createPublicSignedRiskObjectProjection(object)");
     expect(agentic).toContain("risk_object: riskObject");
     expect(agentic).toContain("risk_object_trust: publicRiskObjectTrustDiscovery()");
     expect(agentic).toContain("verifyCommercialRiskObjectArtifact");
