@@ -107,7 +107,6 @@ function commercialPayload(
   const effectiveObservationLimit = digest ? Math.min(3, observationLimit) : observationLimit;
   const observations = context.observations.slice(0, effectiveObservationLimit).map(publicObservation);
   const coverage = context.metadata.coverage.map((row) => ({
-    source_id: row.source_id,
     dimension: row.dimension,
     country_iso3: row.country_iso3,
     coverage_year: row.coverage_year,
