@@ -10,7 +10,7 @@ describe("Testnet RSS live runner", () => {
     expect(worker).toContain('RSS_RUN_ONCE = env_bool("BREAKING_RSS_RUN_ONCE", False)');
     expect(worker).toContain("if RSS_RUN_ONCE and TELEGRAM_ENABLED:");
     expect(worker).toContain("if RSS_RUN_ONCE:");
-    expect(worker).toContain("if not cycle_failed:");
+    expect(worker).toContain("if not failed_sources:");
     expect(worker).toContain("asyncio.gather(");
     expect(worker).toContain("http.client.IncompleteRead");
 
