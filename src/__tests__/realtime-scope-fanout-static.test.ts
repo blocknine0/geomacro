@@ -14,6 +14,9 @@ describe("realtime corridor and hot-topic fanout contract", () => {
     expect(migration).toContain("CORRIDOR:GDELT_BURST:");
     expect(migration).toContain("HOT_TOPIC:GDELT_BURST:");
     expect(migration).toContain("realtime_scope_contract_100_complete");
+    expect(migration).toContain("as $");
+    expect(migration).not.toContain("as $\nbegin");
+    expect(migration).not.toContain("\n$;");
   });
 
   it("uses the global GDELT stream as first-break backbone and only bursts on mapped events", () => {
