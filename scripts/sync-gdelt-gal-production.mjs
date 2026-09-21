@@ -9,6 +9,7 @@ const STREAM_KEY = "global-relevant";
 const BUCKET = "geomacro-live-intelligence";
 const SCHEMA_VERSION = "live-evidence-v1.0.0";
 const LOOKBACK_MINUTES = 35;
+// Launch acceptance refresh anchor: force one fresh production execution after final main merge.
 const MAX_SOURCE_FILES_PER_RUN = 8;
 const FINGERPRINT_TTL_DAYS = 30;
 const OUTPUT = process.env.GDELT_GAL_SYNC_OUTPUT ?? null;
