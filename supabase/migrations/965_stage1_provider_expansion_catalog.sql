@@ -51,7 +51,7 @@ values
   'LSEG',
   'news_discovery',
   'https://developers.lseg.com/en/product/news/mrn_realtime_news',
-  false, 5, 'internal_only', false, true, true,
+  false, 60, 'internal_only', false, true, true,
   'https://developers.lseg.com/en/product/news/mrn_realtime_news',
   'Premium low-latency Reuters/LSEG machine-readable news connector candidate. Contract-specific use and redistribution restrictions apply.',
   'REVIEW_REQUIRED',
