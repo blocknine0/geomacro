@@ -392,6 +392,56 @@ on conflict (target_id) do update set
   updated_at=now();
 
 
+
+create or replace view public.live_raw_source_runtime_100_status
+with (security_invoker=true)
+as
+with country_category as (
+  select
+    r.iso3,
+    cat.category,
+    count(t.target_id)::bigint target_count,
+    max(t.last_success_at) latest_success_at,
+    min(t.discovery_state) filter (where t.last_success_at is not null) min_state
+  from public.live_country_registry r
+  cross join (
+    values
+      ('GEOPOLITICS'::text, 1800::bigint),
+      ('MACRO'::text, 7200::bigint),
+      ('CRITICAL_MINERALS'::text, 14400::bigint)
+  ) as cat(category, max_age_seconds)
+  left join public.live_raw_source_targets t
+    on t.country_iso3 = r.iso3
+   and t.category = cat.category
+   and t.enabled = true
+  where r.enabled = true
+  group by r.iso3, cat.category
+),
+country_status as (
+  select
+    iso3,
+    bool_and(
+      target_count > 0
+      and latest_success_at is not null
+      and latest_success_at >= now() - make_interval(secs => case category
+        when 'GEOPOLITICS' then 1800
+        when 'MACRO' then 7200
+        else 14400
+      end)
+    ) as complete
+  from country_category
+  group by iso3
+)
+select
+  now() evaluated_at,
+  count(*)::bigint enabled_countries,
+  count(*) filter (where complete)::bigint countries_with_fresh_raw_runtime,
+  (count(*) = 195 and count(*) filter (where complete) = 195) as raw_runtime_100_complete
+from country_status;
+
+comment on view public.live_raw_source_runtime_100_status is
+  'Operational raw-runtime gate: every enabled canonical country must have at least one successful recent raw target in each of GEOPOLITICS, MACRO and CRITICAL_MINERALS. Licensed/commercial rights are separate.';
+
 create or replace view public.live_raw_source_coverage_100_status
 with (security_invoker=true)
 as
