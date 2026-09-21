@@ -4,7 +4,7 @@ Geomacro's raw acquisition layer is deliberately independent from commercial lic
 
 ## Coverage contract
 
-The canonical enabled-country registry contains 195 countries. Each country has a governed raw acquisition mesh across:
+The canonical raw-country baseline is the 195-country government-portal directory, resolved against the enabled country registry. The broader registry may contain additional enabled areas for other product layers; those are outside this 195-country raw mesh contract. Each country has a governed raw acquisition mesh across:
 
 - GEOPOLITICS
 - MACRO
@@ -54,7 +54,7 @@ This prevents the product from waiting for a paid provider before it can observe
 
 ## Self-healing coverage
 
-The country mesh is not dependent on every national directory entry being present or reachable. The worker validates that the authoritative production registry contains exactly 195 enabled canonical countries, ensures a priority-1 fallback anchor exists for GEOPOLITICS, MACRO and CRITICAL_MINERALS for every country, and fills missing target rows up to the governed minimum of 3, 4 and 6 respectively. These fallback rows remain raw-only and `commercial_promotion_allowed=false`.
+The country mesh is not dependent on every national directory entry being present or reachable. The worker validates that the authoritative production government-portal baseline resolves to exactly 195 canonical countries, ensures a priority-1 fallback anchor exists for GEOPOLITICS, MACRO and CRITICAL_MINERALS for every country, and fills missing target rows up to the governed minimum of 3, 4 and 6 respectively. These fallback rows remain raw-only and `commercial_promotion_allowed=false`.
 
 The runtime gate still requires a recent successful raw target in all three categories for every country. No failure is hidden by changing freshness thresholds, disabling TLS verification, or treating an unreachable upstream source as a success.
 
