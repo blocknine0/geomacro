@@ -409,6 +409,9 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(policy).toContain(
       '"whtc.com": "whtc.com"',
     );
+    expect(policy).toContain(
+      '"federico-source-family-map-v6"',
+    );
     expect(preflight).toContain(
       "signature: riskObject.integrity.signature",
     );
