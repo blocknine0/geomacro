@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-global-telegram-discovery
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
