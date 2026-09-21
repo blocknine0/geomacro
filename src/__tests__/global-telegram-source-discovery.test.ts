@@ -25,7 +25,7 @@ describe("global Telegram source discovery",()=>{
     expect(workflow).toContain("Global Telegram Raw Source Discovery");
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).not.toContain('cron: "*/30 * * * *"');
-    const orchestrator = fs.readFileSync(".github/workflows/intelligence-orchestrator.yml","utf8");
+    const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs","utf8");
     expect(orchestrator).toContain('key: "telegram_discovery"');
     expect(migration).toContain("discovery_country_iso3");
     expect(migration).toContain("discovery_category");
