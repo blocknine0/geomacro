@@ -38,12 +38,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@e797f83bcb11b83ae66f8b6e8ddf9fcae0f15c2b # v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
 
       - name: Install Telegram discovery dependencies
-        run: pip install --require-hashes -r workers/telegram-flash/requirements.txt
+        run: pip install -r workers/telegram-flash/requirements.txt
 
       - name: Validate authoritative environment
         shell: bash
