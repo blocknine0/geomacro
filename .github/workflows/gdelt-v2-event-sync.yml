@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: gdelt-v2-event-sync-${{ github.event.pull_request.number || github.ref }}
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
