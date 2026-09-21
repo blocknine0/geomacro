@@ -2,6 +2,16 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workflow = readFileSync(".github/workflows/gri-governance.yml", "utf8");
+const jobBlock = (source, name) => {
+  const header = `  ${name}:\n`;
+  const start = source.indexOf(header);
+  if (start < 0) return "";
+  const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+  let next = boundary.exec(source);
+  while (next && next.index <= start) next = boundary.exec(source);
+  const end = next ? next.index : source.length;
+  return source.slice(start, end);
+};
 const publishJob =
   workflow.match(/^  publish:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\s*$)/m)?.[0] ?? "";
 
