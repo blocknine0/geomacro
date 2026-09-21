@@ -350,6 +350,22 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "priority_max_items": 5,
     },
     {
+        "source_id": "bis_rss_media_releases",
+        "name": "BIS Media Releases RSS",
+        "url": "https://www.bis.org/doclist/all_pressrels.rss",
+        "event_type": "MACRO_BIS_RELEASE",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 168,
+    },
+    {
+        "source_id": "bis_rss_central_banker_speeches",
+        "name": "BIS Central Bankers Speeches RSS",
+        "url": "https://www.bis.org/doclist/cbspeeches.rss",
+        "event_type": "MACRO_BIS_SPEECH",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 168,
+    },
+    {
         "source_id": "nrcan_news_atom",
         "name": "Natural Resources Canada News Releases Atom",
         "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
