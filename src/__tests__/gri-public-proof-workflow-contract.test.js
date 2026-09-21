@@ -36,7 +36,7 @@ describe("GRI public proof consistency workflow contract", () => {
     expect(publicProofJob).toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(publicProofJob).toContain("GRI_METHOD_VERSION: gri-v1.2.0");
     expect(publicProofJob).toContain("GRI_PROOF_VERSION: gri-proof-v1.2.0");
-    expect(publicProofJob).toContain('GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"');
+    expect(publicProofJob).toContain("GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '3' || '6' }}");
     expect(publicProofJob).toContain("Audit persisted public/service GRI parity");
     expect(publicProofJob).toContain("Independently recompute persisted proof");
     expect(publicProofJob).toContain("retention-days: 90");
