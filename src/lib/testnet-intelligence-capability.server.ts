@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { answerQuestion } from "./ask-intelligence.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
+import { createPublicSignedRiskObjectProjection } from "./risk-object-public-projection.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { corridorSubjectId } from "./corridor-risk-engine";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
@@ -103,17 +104,6 @@ function containsForbiddenPublicSourceKeys(value: unknown): boolean {
     if (containsForbiddenPublicSourceKeys(child)) return true;
   }
   return false;
-}
-
-export function publicRiskObject(object: GeomacroRiskObject): GeomacroRiskObject {
-  if (containsForbiddenPublicSourceKeys(object)) {
-    throw new Error("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
-  }
-
-  // A signed GRO must be delivered byte-for-byte at the object shape level.
-  // Projecting or adding fields changes the canonical payload hash and makes
-  // the returned artifact impossible for a client to verify independently.
-  return object;
 }
 
 function publicCommercialDelivery(
@@ -301,7 +291,7 @@ async function riskGateBundle(
       policy_preset: request.policy_preset,
       policy,
       risk_gate: result.response,
-      risk_object: publicRiskObjectAttestation({ subject, object: stored }),
+      risk_object: createPublicSignedRiskObjectProjection(stored),
       risk_object_verification: commercialVerification.public_verification,
       commercial_delivery: publicCommercialDelivery(commercialVerification),
       structural_context: structural.payload,
@@ -390,7 +380,7 @@ export async function runCanonicalTestnetIntelligence(input: {
     const { object, verification, commercialVerification } = await loadVerifiedRiskObject(subject);
     return {
       data: {
-        risk_object: publicRiskObjectAttestation({ subject, object }),
+        risk_object: createPublicSignedRiskObjectProjection(object),
         public_verification: verification,
         commercial_delivery: publicCommercialDelivery(commercialVerification),
         execution_authorized: false,
