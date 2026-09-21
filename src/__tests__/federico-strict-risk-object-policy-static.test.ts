@@ -392,6 +392,24 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
+      'artifact_version: "geomacro-invino-review-v2"',
+    );
+    expect(preflight).toContain(
+      "risk_object: riskObject",
+    );
+    expect(preflight).toContain(
+      'as_of_source: "risk_object.observed_at"',
+    );
+    expect(policy).toContain(
+      '"mymotherlode.com": "mymotherlode.com"',
+    );
+    expect(policy).toContain(
+      '"oneindia.com": "oneindia.com"',
+    );
+    expect(policy).toContain(
+      '"whtc.com": "whtc.com"',
+    );
+    expect(preflight).toContain(
       "signature: riskObject.integrity.signature",
     );
     expect(canonicalSpec).toContain(
