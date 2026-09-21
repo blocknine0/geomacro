@@ -351,7 +351,12 @@ jobs:
           set -euo pipefail
           test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
 
-          for attempt in 1 2 3 4 5 6 7 8; do
+          # The structure endpoint drains at most 60 records per call. Do not hard-code
+          # an 8-batch ceiling: a valid fresh GDELT fragment can be larger than 480
+          # records. Allow a bounded drain loop with an explicit no-progress guard.
+          max_batches=32
+          previous_remaining=-1
+          for attempt in $(seq 1 "${max_batches}"); do
             response_file="/tmp/federico-exact-structure-${attempt}.json"
             curl --fail-with-body -sS \
               --retry 3 \
@@ -373,8 +378,14 @@ jobs:
               break
             fi
 
-            [[ "${attempt}" -lt 8 ]] || {
-              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after eight targeted structure batches."
+            if [[ "${remaining}" -ge "${previous_remaining}" && "${previous_remaining}" -ge 0 ]]; then
+              echo "::error::Exact fresh GDELT structure made no progress: remaining=${remaining}, previous=${previous_remaining}."
+              exit 1
+            fi
+            previous_remaining="${remaining}"
+
+            [[ "${attempt}" -lt "${max_batches}" ]] || {
+              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after ${max_batches} targeted structure batches."
               exit 1
             }
           done
