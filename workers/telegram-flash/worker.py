@@ -797,6 +797,31 @@ def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], 
     if getattr(parsed, "bozo", False):
         recovered = LenientFeedParser(base_url).parse(raw)
         if recovered:
+            from email.utils import parsedate_to_datetime
+
+            for entry in recovered:
+                for source_key, parsed_key in (
+                    ("published", "published_parsed"),
+                    ("updated", "updated_parsed"),
+                    ("created", "created_parsed"),
+                    ("dc:date", "published_parsed"),
+                ):
+                    value = entry.get(source_key)
+                    if parsed_key in entry or not isinstance(value, str):
+                        continue
+                    try:
+                        moment = parsedate_to_datetime(value)
+                        entry[parsed_key] = moment.utctimetuple()
+                    except (TypeError, ValueError, OverflowError):
+                        try:
+                            moment = datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
+                            entry[parsed_key] = moment.astimezone(
+                                timezone.utc
+                            ).utctimetuple()
+                        except (TypeError, ValueError, OverflowError):
+                            continue
             return recovered, "rss_lenient"
 
     detail = getattr(parsed, "bozo_exception", "unknown error")
