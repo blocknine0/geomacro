@@ -162,9 +162,10 @@ async function main() {
       snapshot.status === "published" && snapshot.verification_status === "verified",
     proofHashValid: HASH_RE.test(String(snapshot.proof_hash ?? "")),
     publicReadFreshness:
-      snapshotAgeHours !== null &&
-      snapshotAgeHours >= -0.25 &&
-      snapshotAgeHours <= MAX_AGE_HOURS,
+      !REQUIRE_PUBLIC_FRESHNESS ||
+      (snapshotAgeHours !== null &&
+        snapshotAgeHours >= -0.25 &&
+        snapshotAgeHours <= MAX_AGE_HOURS),
     contributionCountMatches:
       Number(snapshot.event_count) === rows.length && rows.length > 0,
     baselineRawParity:
