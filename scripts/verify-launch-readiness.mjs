@@ -115,7 +115,7 @@ need(sourceEligibility.includes("COMMERCIAL_OK"), "commercial source eligibility
 need(sourceEligibility.includes("raw_redistribution_allowed"), "raw redistribution boundary missing");
 need(rightsEvidence.includes("DERIVED_ONLY"), "derived-only source rights state missing");
 need(
-  rightsTest.includes("commercial_usage_status") &&
+  rightsTest.includes("approved_status") &&
     rightsTest.includes("DERIVED_ONLY") &&
     rightsTest.includes("raw_redistribution_allowed"),
   "source-rights parity regression test missing",
