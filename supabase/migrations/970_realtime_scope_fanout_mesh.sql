@@ -309,7 +309,7 @@ values
 (
   'HOT_TOPIC:WEB:WTO:MACRO',
   'HOT_TOPIC', 'tariffs_trade_restrictions', 'MACRO', 'WEB_DIRECT',
-  'wto_news_updates', 'https://www.wto.org/english/res_e/res_e.htm',
+  'wto_news_updates', 'https://www.wto.org/english/news_e/news26_e/news26_e.htm',
   'CONTINUOUS', 600, 'tariff trade restriction export control',
   'Official WTO news/RSS discovery surface.'
 )
