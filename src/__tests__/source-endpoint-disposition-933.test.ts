@@ -19,7 +19,7 @@ describe("permanent 933 endpoint disposition contract", () => {
     "utf8",
   );
   const workflow = readFileSync(
-    ".github/workflows/source-network-933-endpoint-disposition.yml",
+    ".github/workflows/source-network-governance.yml",
     "utf8",
   );
   const migration = readFileSync(
