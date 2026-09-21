@@ -41,7 +41,7 @@ function containsForbiddenPublicSourceKeys(value: unknown): boolean {
   if (!record) return false;
 
   for (const [key, child] of Object.entries(record)) {
-    if (/^(source_url|source_name|publisher|publisher_name|raw_payload|raw_content)$/i.test(key)) {
+    if (/^(source_url|source_name|publisher|publisher_name|source_id|source_record_id|source_ids|source_record_ids|source_families|source_urls|content_hashes|evidence_refs|raw_payload|raw_content)$/i.test(key)) {
       return true;
     }
     if (containsForbiddenPublicSourceKeys(child)) return true;
