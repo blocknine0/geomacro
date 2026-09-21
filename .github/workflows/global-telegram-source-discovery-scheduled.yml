@@ -20,7 +20,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  trigger-guard:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Accept main execution or safely no-op for non-main push
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            echo "PASS: production Telegram discovery invocation is on canonical main."
+          else
+            echo "INFO: non-main workflow invocation detected; production discovery is intentionally skipped."
+          fi
+
   discover:
+    needs: trigger-guard
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
