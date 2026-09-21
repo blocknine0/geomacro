@@ -19,6 +19,20 @@ import { createPublicSignedRiskObjectProjection } from "./risk-object-public-pro
 export const DEMO_ALLOWED_COUNTRIES = ["USA", "CHN"] as const;
 export const DEMO_ALLOWED_CORRIDORS = ["USA>CHN", "CHN>USA"] as const;
 
+function assertSupportedDemoSubject(subject: AgenticDemoRequest): void {
+  if (subject.subject.type === "country") {
+    if (!DEMO_ALLOWED_COUNTRIES.includes(subject.subject.country_iso3 as (typeof DEMO_ALLOWED_COUNTRIES)[number])) {
+      throw new Error("DEMO_COUNTRY_NOT_SUPPORTED");
+    }
+    return;
+  }
+
+  const corridor = `${subject.subject.origin_country_iso3}>${subject.subject.destination_country_iso3}`;
+  if (!DEMO_ALLOWED_CORRIDORS.includes(corridor as (typeof DEMO_ALLOWED_CORRIDORS)[number])) {
+    throw new Error("DEMO_CORRIDOR_NOT_SUPPORTED");
+  }
+}
+
 export type AgenticDemoRunOptions = {
   mode?: "PUBLIC_SANDBOX" | "X402_PAID" | "GOAT_X402_PAID";
   recordTelemetry?: boolean;
