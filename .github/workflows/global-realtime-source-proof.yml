@@ -7,6 +7,10 @@ on:
       - "supabase/migrations/920_multi_source_commercial_registry.sql"
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
+concurrency:
+  group: geomacro-intelligence-orchestrator
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
