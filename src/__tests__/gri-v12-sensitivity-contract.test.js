@@ -179,7 +179,7 @@ describe("GRI v1.2 sensitivity contract", () => {
       "utf8",
     );
     const calibrationJob = workflow.match(
-      /^  calibration:\n([\\s\\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m,
+      /^  calibration:\n([\s\S]*?)(?=\n  [a-z0-9_-]+:\n|\\s*$)/m,
     )?.[0] ?? "";
     const sensitivityAudit = readFileSync(
       "scripts/audit-gri-v12-sensitivity.mjs",
