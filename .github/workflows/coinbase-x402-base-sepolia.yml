@@ -53,15 +53,23 @@ jobs:
           grep -q 'eip155:84532' "$file"
           grep -q '0x036CbD53842c5426634e7929541eC2318f3dCF7e' "$file"
 
+          # Validate only the public-acceptance job. The consolidated file also contains
+          # separately guarded paid test jobs, so scanning the entire YAML would
+          # incorrectly flag legitimate paid-proof secrets.
+          public_job="$(awk '
+            /^  public-acceptance:/ { in_job=1 }
+            in_job { print }
+            in_job && /^  [A-Za-z0-9_-]+:/ && $0 !~ /^  public-acceptance:/ { exit }
+          ' "$file")"
           forbidden_cdp="CDP_API_KEY_"'SECRET'
           forbidden_private="PRIVATE_"'KEY'
           forbidden_seed="SEED_"'PHRASE'
           forbidden_mnemonic="MNEMO"'NIC'
-          if grep -Fq "$forbidden_cdp" "$file" || \
-             grep -Fq "$forbidden_private" "$file" || \
-             grep -Fq "$forbidden_seed" "$file" || \
-             grep -Fq "$forbidden_mnemonic" "$file"; then
-            echo "::error title=Secret-free acceptance violated::This public acceptance workflow must never require payment signing or private credentials."
+          if printf '%s\n' "$public_job" | grep -Fq "$forbidden_cdp" || \
+             printf '%s\n' "$public_job" | grep -Fq "$forbidden_private" || \
+             printf '%s\n' "$public_job" | grep -Fq "$forbidden_seed" || \
+             printf '%s\n' "$public_job" | grep -Fq "$forbidden_mnemonic"; then
+            echo "::error title=Secret-free acceptance violated::This public acceptance job must never require payment signing or private credentials."
             exit 1
           fi
           echo "PASS: public Base Sepolia acceptance workflow is main-only and secret-free."
