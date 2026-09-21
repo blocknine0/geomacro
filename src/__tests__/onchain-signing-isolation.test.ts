@@ -21,7 +21,6 @@ const READ_WRITE_INDEXERS = [
 
 const ADMIN_VERIFY_ONLY = [
   ".github/workflows/propose-v2-upgrade.yml",
-  ".github/workflows/deploy-v2-implementation.yml",
   ".github/workflows/execute-v2-upgrade.yml",
   ".github/workflows/fund-v2-liquidity.yml",
 ];
