@@ -46,7 +46,7 @@ describe("GRI public proof consistency evidence", () => {
   it("runs as a read-only manual proof while the master orchestrator owns cadence", () => {
     expect(workflow).toContain("workflow_dispatch");
     expect(workflow).not.toContain('cron: "23 */2 * * *"');
-    const orchestrator = read(".github/workflows/intelligence-orchestrator.yml");
+    const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expect(orchestrator).toContain('key: "gri_publish"');
     expect(workflow).toContain("workflow_dispatch");
     expect(workflow).toContain("contents: read");
