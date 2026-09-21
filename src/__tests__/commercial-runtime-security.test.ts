@@ -8,12 +8,9 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const BUN_LOCKED_RUNTIME_WORKFLOWS = [
   ".github/workflows/auto-ingest-news.yml",
   ".github/workflows/security-monitor.yml",
-  ".github/workflows/sync-lifecycle.yml",
+  ".github/workflows/market-lifecycle.yml",
   ".github/workflows/auto-recovery.yml",
   ".github/workflows/auto-create-markets.yml",
-  ".github/workflows/auto-finalize-markets.yml",
-  ".github/workflows/auto-resolve-markets.yml",
-  ".github/workflows/auto-resolve-disputes.yml",
   ".github/workflows/Auto-generate-briefings.yml",
   ".github/workflows/propose-v2-upgrade.yml",
   ".github/workflows/execute-v2-upgrade.yml",
