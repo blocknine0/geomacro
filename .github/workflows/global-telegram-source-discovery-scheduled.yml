@@ -1,11 +1,8 @@
 name: Global Telegram Raw Source Discovery (Scheduled)
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "*/30 * * * *"
-  # Discovery runs on a controlled schedule or explicit operator dispatch.
-  # It is intentionally decoupled from application pushes.
+  workflow_dispatch: {}
+
 
 permissions:
   contents: read
