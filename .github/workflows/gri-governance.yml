@@ -55,23 +55,6 @@ on:
       - 'supabase/migrations/**'
       - 'package.json'
       - 'bun.lock'
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/audit-gri-v12-sensitivity.mjs'
-      - 'scripts/audit-gri-validation-evidence.mjs'
-      - 'scripts/lib/gri-sensitivity-v12.js'
-      - 'scripts/audit-gri-public-proof-consistency.mjs'
-      - 'scripts/verify-gri-snapshot-v12.js'
-      - 'scripts/lib/gri-*.js'
-      - 'scripts/check-gri-freshness.mjs'
-      - 'scripts/ingest-gri-benchmarks.js'
-      - 'scripts/validate-gri-v12.js'
-      - 'scripts/ingest-news.js'
-      - 'docs/GRI_CALIBRATION_SENSITIVITY_EVIDENCE.md'
-      - 'supabase/migrations/**'
-      - 'package.json'
-      - 'bun.lock'
 
 permissions:
   contents: read
