@@ -24,9 +24,9 @@ describe("Testnet RSS live runner", () => {
     expect(worker).toContain('"source_id": "bis_rss_media_releases"');
     expect(worker).toContain('"source_id": "bis_rss_central_banker_speeches"');
     expect(workflow).toContain("Verify every configured RSS source completed");
-    expect(workflow).toContain('event.get("rss") == "ready"');
-    expect(workflow).toContain('event.get("kind") == "rss_poll"');
-    expect(workflow).toContain('event.get("kind") == "rss_error"');
+    expect(workflow).toContain("event.get('rss') == 'ready'");
+    expect(workflow).toContain("event.get('kind') == 'rss_poll'");
+    expect(workflow).toContain("event.get('kind') == 'rss_error'");
     expect(workflow).toContain("had_error = set()");
     expect(workflow).toContain("recovered_source_count");
     expect(workflow).toContain("last_state.get(source_id) == 'success'");
