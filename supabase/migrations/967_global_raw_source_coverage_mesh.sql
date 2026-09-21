@@ -226,7 +226,7 @@ select
   r.iso3,
   'CRITICAL_MINERALS',
   'WEB',
-  null,
+  d.rmis_country_profile_url,
   'jrc_rmis_supply_chain',
   'RMIS country minerals profile - ' || r.name,
   true,false,1800,10,
