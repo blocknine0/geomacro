@@ -80,7 +80,7 @@ select
   'GLOBAL_FALLBACK',
   'gdelt_v2',
   'https://www.gdeltproject.org/',
-  'GDELT global event fallback - ' || r.name,
+  'GDELT global event fallback - ' || r.country_name,
   true,false,300,20,
   'Global fallback for country-level event discovery when national web/Telegram sources do not publish machine-readable material.'
 from public.live_country_registry r
@@ -101,10 +101,10 @@ select
   'GEOPOLITICS',
   'TELEGRAM_DISCOVERY',
   lower(
-    r.name ||
+    r.country_name ||
     ' government OR ministry OR presidency OR parliament OR breaking news'
   ),
-  'Telegram public-channel discovery - ' || r.name,
+  'Telegram public-channel discovery - ' || r.country_name,
   true,false,300,30,
   'Discovery only. Candidate channels are inserted into the manual review queue; this target never bypasses Telegram source approval.'
 from public.live_country_registry r
@@ -129,7 +129,7 @@ select
   'WEB',
   'stats_office_' || lower(d.country_iso2),
   d.office_url,
-  'National statistics office - ' || r.name,
+  'National statistics office - ' || r.country_name,
   true,false,900,10,
   'Raw macro release source. Dataset rights and exact machine adapter remain separately governed.'
 from public.live_country_registry r
@@ -154,7 +154,7 @@ select
   'WEB',
   'monetary_' || lower(d.country_iso2),
   d.authority_url,
-  'Monetary authority - ' || r.name,
+  'Monetary authority - ' || r.country_name,
   true,false,300,15,
   'Raw monetary-policy/release source. Commercial promotion remains rights/methodology gated.'
 from public.live_country_registry r
@@ -179,7 +179,7 @@ select
   'GLOBAL_FALLBACK',
   'world_bank_indicators',
   'https://api.worldbank.org/v2/',
-  'World Bank macro/global fallback - ' || r.name,
+  'World Bank macro/global fallback - ' || r.country_name,
   true,false,900,25,
   'Open global macro fallback used for country coverage and gap discovery.'
 from public.live_country_registry r
@@ -200,10 +200,10 @@ select
   'MACRO',
   'TELEGRAM_DISCOVERY',
   lower(
-    r.name ||
+    r.country_name ||
     ' central bank OR interest rates OR inflation OR GDP OR currency OR markets'
   ),
-  'Telegram macro discovery - ' || r.name,
+  'Telegram macro discovery - ' || r.country_name,
   true,false,300,35,
   'Discovery only. Candidate channels go to manual Telegram review.'
 from public.live_country_registry r
@@ -228,7 +228,7 @@ select
   'WEB',
   d.rmis_country_profile_url,
   'jrc_rmis_supply_chain',
-  'RMIS country minerals profile - ' || r.name,
+  'RMIS country minerals profile - ' || r.country_name,
   true,false,1800,10,
   'Country-level minerals profile. Exact page availability and rights remain separately governed.'
 from public.live_country_registry r
@@ -254,7 +254,7 @@ select
   'GLOBAL_FALLBACK',
   'usgs_mcs',
   'https://www.usgs.gov/centers/national-minerals-information-center/data',
-  'USGS minerals baseline - ' || r.name,
+  'USGS minerals baseline - ' || r.country_name,
   true,false,3600,20,
   'Global country-comparable minerals baseline and current publication source.'
 from public.live_country_registry r
@@ -276,7 +276,7 @@ select
   'GLOBAL_FALLBACK',
   'bgs_world_minerals',
   'https://www.bgs.ac.uk/mineralsuk/statistics/worldStatistics.html',
-  'BGS world minerals fallback - ' || r.name,
+  'BGS world minerals fallback - ' || r.country_name,
   true,false,3600,25,
   'Global minerals fallback. Commercial reuse remains separately gated.'
 from public.live_country_registry r
@@ -299,7 +299,7 @@ select
   'GLOBAL_FALLBACK',
   'usgs_minerals_news_rss',
   'https://www.usgs.gov/news/minerals/feed',
-  'USGS minerals news - ' || r.name,
+  'USGS minerals news - ' || r.country_name,
   true,false,300,30,
   'Near-real-time minerals event lead fallback.'
 from public.live_country_registry r
@@ -320,10 +320,10 @@ select
   'CRITICAL_MINERALS',
   'TELEGRAM_DISCOVERY',
   lower(
-    r.name ||
+    r.country_name ||
     ' lithium OR cobalt OR nickel OR graphite OR rare earth OR mining OR minerals'
   ),
-  'Telegram minerals discovery - ' || r.name,
+  'Telegram minerals discovery - ' || r.country_name,
   true,false,300,40,
   'Discovery only. Candidate channels go to manual Telegram review.'
 from public.live_country_registry r
