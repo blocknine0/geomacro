@@ -201,6 +201,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'eq("country_iso3", requestedCountryIso3)',
     );
     expect(corroborator).toContain(
+      '.contains("countries", [requestedCountryIso3])',
+    );
+    expect(corroborator).toContain(
+      'structured_scope',
+    );
+    expect(corroborator).toContain(
       "CORROBORATION_REFERENCE_LIMIT = 600",
     );
     expect(corroborator).toContain(

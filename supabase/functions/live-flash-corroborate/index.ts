@@ -546,21 +546,66 @@ Deno.serve(async request => {
   let structuredEvents: StructuredEvent[] = []
 
   if (!SIGNAL_DB_MODE) {
-    const structuredResult = await db
-      .from("live_structured_events")
-      .select(
-        "id,title,summary,primary_country,countries,last_seen_at,last_observed_at,first_seen_at,independent_source_count",
-      )
-      .gte("last_observed_at", cutoff)
-      .order("last_observed_at", { ascending: false })
-      .limit(CORROBORATION_STRUCTURED_EVENT_LIMIT)
+    if (requestedCountryIso3) {
+      const structuredSelect =
+        "id,title,summary,primary_country,countries,last_seen_at,last_observed_at,first_seen_at,independent_source_count"
 
-    if (structuredResult.error) {
-      console.error(structuredResult.error)
-      return jsonResponse(500, { ok: false, error: "structured_query_failed" })
+      const [primaryResult, countrySetResult] = await Promise.all([
+        db
+          .from("live_structured_events")
+          .select(structuredSelect)
+          .eq("primary_country", requestedCountryIso3)
+          .gte("last_observed_at", cutoff)
+          .order("last_observed_at", { ascending: false })
+          .limit(CORROBORATION_STRUCTURED_EVENT_LIMIT),
+        db
+          .from("live_structured_events")
+          .select(structuredSelect)
+          .contains("countries", [requestedCountryIso3])
+          .gte("last_observed_at", cutoff)
+          .order("last_observed_at", { ascending: false })
+          .limit(CORROBORATION_STRUCTURED_EVENT_LIMIT),
+      ])
+
+      if (primaryResult.error || countrySetResult.error) {
+        console.error(primaryResult.error ?? countrySetResult.error)
+        return jsonResponse(500, {
+          ok: false,
+          error: "structured_query_failed",
+        })
+      }
+
+      structuredEvents = [
+        ...new Map(
+          [
+            ...(primaryResult.data ?? []),
+            ...(countrySetResult.data ?? []),
+          ].map(row => [row.id, row]),
+        ).values(),
+      ]
+        .sort(
+          (left, right) =>
+            Date.parse(String(right.last_observed_at ?? right.last_seen_at ?? "")) -
+            Date.parse(String(left.last_observed_at ?? left.last_seen_at ?? "")),
+        )
+        .slice(0, CORROBORATION_STRUCTURED_EVENT_LIMIT) as StructuredEvent[]
+    } else {
+      const structuredResult = await db
+        .from("live_structured_events")
+        .select(
+          "id,title,summary,primary_country,countries,last_seen_at,last_observed_at,first_seen_at,independent_source_count",
+        )
+        .gte("last_observed_at", cutoff)
+        .order("last_observed_at", { ascending: false })
+        .limit(CORROBORATION_STRUCTURED_EVENT_LIMIT)
+
+      if (structuredResult.error) {
+        console.error(structuredResult.error)
+        return jsonResponse(500, { ok: false, error: "structured_query_failed" })
+      }
+
+      structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
     }
-
-    structuredEvents = (structuredResult.data ?? []) as StructuredEvent[]
   }
 
   const familyCutoff = new Date(Date.now() - 24 * 60 * 60_000).toISOString()
@@ -1085,5 +1130,8 @@ Deno.serve(async request => {
       ? "country"
       : "global",
     candidate_country_iso3: requestedCountryIso3,
+    structured_scope: requestedCountryIso3
+      ? "country"
+      : "global",
   })
 })
