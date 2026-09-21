@@ -33,6 +33,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(policy).toContain(
       'country_bridge_attribution_v1',
     );
+    expect(policy).toContain(
+      'federico-source-family-map-v8',
+    );
+    expect(policy).toContain(
+      '?? normalized',
+    );
   });
 
   it("pins the two-independent-source Federico verification contract", () => {
@@ -308,6 +314,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "Reproducibility manifest input_hash mismatch",
     );
     expect(preflight).toContain(
+      "federicoStrictSourceFamilyForId",
+    );
+    expect(preflight).toContain(
+      "source identity is absent from its signed runtime map",
+    );
+    expect(preflight).toContain(
       "partner_proof_verification",
     );
     expect(preflight).toContain(
@@ -346,6 +358,12 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(workflow).toContain(
       "FEDERICO_STRICT",
+    );
+    expect(workflow).toContain(
+      "src/lib/country-risk-engine.ts",
+    );
+    expect(workflow).toContain(
+      "src/lib/country-risk-publisher.server.ts",
     );
     expect(schemaGuard).toContain(
       "live_flash_event_families",

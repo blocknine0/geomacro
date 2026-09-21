@@ -19,6 +19,7 @@ import {
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION,
   FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
+  federicoStrictSourceFamilyForId,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
 } from "./public-demo-risk-profile";
 
@@ -1327,7 +1328,17 @@ export async function buildCountryRiskObject(
 
       source_family_map:
         strictProfile
-          ? { ...FEDERICO_STRICT_SOURCE_FAMILY_BY_ID }
+          ? {
+              ...FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
+              ...Object.fromEntries(
+                evidence.flatMap((item) =>
+                  item.source_ids.map((sourceId) => [
+                    sourceId,
+                    federicoStrictSourceFamilyForId(sourceId),
+                  ]),
+                ),
+              ),
+            }
           : {},
     },
     calculation_input:

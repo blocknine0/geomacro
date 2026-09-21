@@ -40,7 +40,7 @@ import {
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
   FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_MAJOR_SOURCE_IDS,
-  FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
+  federicoStrictSourceFamilyForId,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
   riskObjectCalculationNamespace,
@@ -410,12 +410,7 @@ function flashSourceFamily(
   sourceId: string,
   _sourceChannel: string | null,
 ) {
-  return (
-    FEDERICO_STRICT_SOURCE_FAMILY_BY_ID[
-      sourceId as keyof typeof FEDERICO_STRICT_SOURCE_FAMILY_BY_ID
-    ] ??
-    `unmapped:${sourceId}`
-  );
+  return federicoStrictSourceFamilyForId(sourceId);
 }
 
 function flashDomain(

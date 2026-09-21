@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 describe("Federico refresh contract", () => {
   it("keeps the strict source-family map versioned and covers newly observed GDELT identities", () => {
     const profile = read("src/lib/public-demo-risk-profile.ts");
-    expect(profile).toContain("federico-source-family-map-v7");
+    expect(profile).toContain("federico-source-family-map-v8");
     expect(profile).toContain('"mymixfm.com": "mymixfm.com"');
     expect(profile).toContain('"wtvbam.com": "wtvbam.com"');
     expect(profile).toContain('"wiky.com": "wiky.com"');
@@ -19,12 +19,20 @@ describe("Federico refresh contract", () => {
     expect(profile).toContain('"koreaherald.com": "koreaherald.com"');
   });
 
+  it("keeps new governed hostname identities self-describing", () => {
+    const profile = read("src/lib/public-demo-risk-profile.ts");
+    expect(profile).toContain("federicoStrictSourceFamilyForId");
+    expect(profile).toContain("?? normalized");
+  });
+
   it("runs on relevant main changes as well as scheduled/workflow-run triggers", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     expect(workflow).toContain("push:");
     expect(workflow).toContain("- main");
     expect(workflow).toContain(".github/workflows/federico-seven-day-risk-refresh.yml");
     expect(workflow).toContain("scripts/invinoveritas-risk-object-preflight.ts");
+    expect(workflow).toContain("src/lib/country-risk-engine.ts");
+    expect(workflow).toContain("src/lib/country-risk-publisher.server.ts");
   });
 
   it("refreshes OIDC immediately before strict RSS corroboration", () => {

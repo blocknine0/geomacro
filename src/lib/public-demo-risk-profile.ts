@@ -22,7 +22,7 @@ export const FEDERICO_STRICT_RELEVANCE_METHOD =
   "country_bridge_attribution_v1" as const;
 
 export const FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION =
-  "federico-source-family-map-v7" as const;
+  "federico-source-family-map-v8" as const;
 
 export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   telegram_mtproto_flash: "telegram_network",
@@ -108,6 +108,22 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   "hani.co.kr": "hani.co.kr",
   "koreaherald.com": "koreaherald.com",
 } as const;
+
+export function federicoStrictSourceFamilyForId(
+  sourceId: string,
+) {
+  const normalized = sourceId.trim().toLowerCase();
+  if (!normalized) {
+    return normalized;
+  }
+
+  return (
+    FEDERICO_STRICT_SOURCE_FAMILY_BY_ID[
+      normalized as keyof typeof FEDERICO_STRICT_SOURCE_FAMILY_BY_ID
+    ] ?? normalized
+  );
+}
+
 export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
 ] as const;
