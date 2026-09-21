@@ -35,6 +35,9 @@ describe("final non-mainnet launch acceptance contract", () => {
     expect(live).toContain('"/.well-known/x402.json"');
     expect(live).toContain('evidence.result = "FAIL"');
     expect(live).toContain("persistEvidence();");
+    expect(live).toContain("resolvePublicHost");
+    expect(live).toContain("curl-pinned-public-dns");
+    expect(live).toContain("public_dns");
 
     expect(security).toContain("destructive_testing: false");
     expect(security).toContain("payment_performed: false");
