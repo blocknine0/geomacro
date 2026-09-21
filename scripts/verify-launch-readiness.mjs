@@ -94,8 +94,8 @@ need(security.includes("goat_mainnet"), "provider security gate missing GOAT");
 need(delivery.includes("claimAgentCommerceDelivery"), "delivery claim boundary missing");
 need(delivery.includes("completeAgentCommerceDelivery"), "delivery completion boundary missing");
 need(delivery.includes("releaseAgentCommerceDelivery"), "delivery release/quarantine boundary missing");
-need(deliveryTest.includes("idempot"), "delivery idempotency regression test missing");
-need(deliveryTest.includes("concurrent"), "delivery concurrency regression test missing");
+need(deliveryTest.includes("replay-safe"), "delivery replay-safety regression test missing");
+need(deliveryTest.includes("no automatic recharge"), "delivery duplicate-charge protection regression test missing");
 
 need(circle.includes("verifyCircleGatewayProduction"), "Circle verification path missing");
 need(circle.includes("settleCircleGatewayProduction"), "Circle settlement path missing");
