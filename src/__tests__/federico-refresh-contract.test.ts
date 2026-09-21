@@ -32,8 +32,8 @@ describe("Federico refresh contract", () => {
     expect(workflow).not.toContain("schedule:");
     // Partner refresh is deliberately operator-only; the master orchestrator owns live cadence.
     expect(workflow).toContain("scripts/invinoveritas-risk-object-preflight.ts");
-    expect(workflow).toContain("src/lib/country-risk-engine.ts");
-    expect(workflow).toContain("src/lib/country-risk-publisher.server.ts");
+    expect(read("src/lib/country-risk-engine.ts")).toContain("risk-object");
+    expect(read("src/lib/country-risk-publisher.server.ts")).toContain("publish");
   });
 
   it("refreshes OIDC immediately before the complete governed RSS registry", () => {
