@@ -52,19 +52,6 @@ const GITHUB_OIDC_ALLOWED_EVENTS = new Set([
 const SIGNAL_DB_MODE =
   Deno.env.get("SIGNAL_DB_MODE") === "true"
 
-const ALLOWED_SOURCE_IDS =
-  new Set([
-    "telegram_mtproto_flash",
-    "aljazeera_rss",
-    "bbc_world_rss",
-    "federal_reserve_press_rss",
-    "xinhua_english_china_rss",
-    "scmp_china_rss",
-    "forexlive_rss",
-    "mining_com_rss",
-    "usgs_minerals_news_rss",
-  ])
-
 const ALLOWED_VERIFICATION_STATUSES =
   new Set([
     "UNVERIFIED",
@@ -91,6 +78,13 @@ type CountryRow = {
   country_name: string
   aliases: string[] | null
   demonyms: string[] | null
+}
+
+type IngestionSourceRecord = {
+  source_id: string
+  enabled_for_ingestion: boolean
+  commercial_usage_status: string | null
+  attribution_required: boolean | null
 }
 
 type CountryMatch = {
@@ -547,6 +541,25 @@ async function sha256Hex(
     .join("")
 }
 
+async function loadIngestionSource(sourceId: string) {
+  const result =
+    await db
+      .from("live_external_sources")
+      .select(
+        "source_id,enabled_for_ingestion,commercial_usage_status,attribution_required"
+      )
+      .eq("source_id", sourceId)
+      .maybeSingle()
+
+  if (result.error) {
+    throw result.error
+  }
+
+  return (
+    result.data as IngestionSourceRecord | null
+  )
+}
+
 async function loadCountries() {
   const now =
     Date.now()
@@ -880,31 +893,15 @@ Deno.serve(async request => {
     )
   }
 
+  const ingestionSource =
+    await loadIngestionSource(sourceId)
+
   if (
-    githubOidcAuthorized &&
-    ![
-      "aljazeera_rss",
-      "bbc_world_rss",
-      "federal_reserve_press_rss",
-      "xinhua_english_china_rss",
-      "scmp_china_rss",
-      "forexlive_rss",
-      "usgs_minerals_news_rss",
-    ].includes(sourceId)
+    !ingestionSource ||
+    ingestionSource.enabled_for_ingestion !== true
   ) {
     return jsonResponse(
       403,
-      {
-        ok: false,
-        error:
-          "github_oidc_source_not_allowed",
-      },
-    )
-  }
-
-  if (!ALLOWED_SOURCE_IDS.has(sourceId)) {
-    return jsonResponse(
-      400,
       {
         ok: false,
         error:
