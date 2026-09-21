@@ -81,7 +81,7 @@ select
   'gdelt_v2',
   'https://www.gdeltproject.org/',
   'GDELT global event fallback - ' || r.name,
-  true,false,60,20,
+  true,false,300,20,
   'Global fallback for country-level event discovery when national web/Telegram sources do not publish machine-readable material.'
 from public.live_country_registry r
 where r.enabled
