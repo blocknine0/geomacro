@@ -38,6 +38,8 @@ describe("Federico refresh contract", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     const ids = "aljazeera_rss,bbc_world_rss,xinhua_english_china_rss,scmp_china_rss,federal_reserve_press_rss,forexlive_rss,usgs_minerals_news_rss";
     expect(workflow).toContain(ids);
-    expect(workflow).toContain("for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do");
+    expect(workflow).toContain('for source_id in "${rss_sources[@]}"; do');
+    expect(workflow).toContain("for source_attempt in 1 2 3 4; do");
+    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS="${source_id}" python worker.py');
   });
 });
