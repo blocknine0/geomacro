@@ -61,10 +61,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bun --check scripts/sync-country-raw-source-mesh.mjs
-          bun --check scripts/sync-gdelt-gal-production.mjs
-          bun --check scripts/sync-realtime-scope-fanout.mjs
-          bun --check scripts/audit-realtime-scope-fanout.mjs
+          node --check scripts/sync-country-raw-source-mesh.mjs
+          node --check scripts/sync-gdelt-gal-production.mjs
+          node --check scripts/sync-realtime-scope-fanout.mjs
+          node --check scripts/audit-realtime-scope-fanout.mjs
 
       - name: Verify migration function quoting
         shell: bash
