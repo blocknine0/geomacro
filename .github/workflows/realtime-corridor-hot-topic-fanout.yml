@@ -32,8 +32,8 @@ jobs:
     timeout-minutes: 12
     environment: production
     env:
-      APP_SUPABASE_URL: \${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       REALTIME_FANOUT_MAX_BURSTS: "16"
 
     steps:
