@@ -4,6 +4,10 @@ on:
   workflow_dispatch: {}
 
 
+concurrency:
+  group: geomacro-intelligence-orchestrator
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
