@@ -22,6 +22,7 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("push:");
     expect(workflow).toContain("- main");
     expect(workflow).toContain(".github/workflows/federico-seven-day-risk-refresh.yml");
+    expect(workflow).toContain("scripts/invinoveritas-risk-object-preflight.ts");
   });
 
   it("refreshes OIDC immediately before strict RSS corroboration", () => {

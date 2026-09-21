@@ -13,6 +13,7 @@ on:
       - "workers/telegram-flash/worker.py"
       - "scripts/sync-gdelt-gal-production.mjs"
       - "src/lib/public-demo-risk-profile.ts"
+      - "scripts/invinoveritas-risk-object-preflight.ts"
   workflow_run:
     workflows:
       - "Auto Ingest News"
