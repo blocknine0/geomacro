@@ -30,8 +30,7 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("workflow_dispatch: {}");
     expect(workflow).not.toContain("push:");
     expect(workflow).not.toContain("schedule:");
-    expect(workflow).not.toContain("workflow_run:");
-    expect(workflow).toContain(".github/workflows/federico-seven-day-risk-refresh.yml");
+    // Partner refresh is deliberately operator-only; the master orchestrator owns live cadence.
     expect(workflow).toContain("scripts/invinoveritas-risk-object-preflight.ts");
     expect(workflow).toContain("src/lib/country-risk-engine.ts");
     expect(workflow).toContain("src/lib/country-risk-publisher.server.ts");
