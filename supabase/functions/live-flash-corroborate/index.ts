@@ -368,8 +368,21 @@ Deno.serve(async request => {
   }
 
   const CORROBORATION_LOOKBACK_HOURS = 6
+  const CORROBORATION_CANDIDATE_WINDOW_MINUTES = 90
+  const CORROBORATION_CANDIDATE_LIMIT = 120
+  const CORROBORATION_REFERENCE_LIMIT = 600
+  const CORROBORATION_STRUCTURED_EVENT_LIMIT = 300
+
   const cutoff = new Date(
     Date.now() - CORROBORATION_LOOKBACK_HOURS * 60 * 60_000,
+  ).toISOString()
+
+  // Keep the verification work queue bounded. The runner invokes this endpoint
+  // repeatedly, so reprocessing six hours of UNVERIFIED/CORROBORATING rows on
+  // every call creates an O(n^2) hot path and can exceed the platform's idle
+  // timeout. Older candidates remain eligible for later scheduled cycles.
+  const candidateCutoff = new Date(
+    Date.now() - CORROBORATION_CANDIDATE_WINDOW_MINUTES * 60_000,
   ).toISOString()
 
   // Process only fresh unverified/corroborating candidates, while keeping
@@ -381,10 +394,10 @@ Deno.serve(async request => {
     .select(
       "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
     )
-    .gte("ingested_at", cutoff)
+    .gte("ingested_at", candidateCutoff)
     .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
     .order("ingested_at", { ascending: false })
-    .limit(500)
+    .limit(CORROBORATION_CANDIDATE_LIMIT)
 
   if (candidateResult.error) {
     console.error(candidateResult.error)
@@ -399,7 +412,7 @@ Deno.serve(async request => {
     .gte("ingested_at", cutoff)
     .eq("verification_status", "VERIFIED")
     .order("ingested_at", { ascending: false })
-    .limit(1000)
+    .limit(CORROBORATION_REFERENCE_LIMIT)
 
   if (referenceResult.error) {
     console.error(referenceResult.error)
@@ -459,7 +472,7 @@ Deno.serve(async request => {
       )
       .gte("last_observed_at", cutoff)
       .order("last_observed_at", { ascending: false })
-      .limit(500)
+      .limit(CORROBORATION_STRUCTURED_EVENT_LIMIT)
 
     if (structuredResult.error) {
       console.error(structuredResult.error)

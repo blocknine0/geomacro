@@ -184,6 +184,22 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(rssWorkflow).not.toContain(
       "scmp_china_rss",
     );
+
+    const corroborator = read(
+      "supabase/functions/live-flash-corroborate/index.ts",
+    );
+    expect(corroborator).toContain(
+      "CORROBORATION_CANDIDATE_WINDOW_MINUTES = 90",
+    );
+    expect(corroborator).toContain(
+      "CORROBORATION_CANDIDATE_LIMIT = 120",
+    );
+    expect(corroborator).toContain(
+      "CORROBORATION_REFERENCE_LIMIT = 600",
+    );
+    expect(corroborator).toContain(
+      "Older candidates remain eligible for later scheduled cycles.",
+    );
   });
 
   it("keeps production migration deployment safe for known out-of-order history", () => {
