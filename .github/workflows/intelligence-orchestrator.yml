@@ -15,47 +15,47 @@ concurrency:
 
 jobs:
   orchestrate:
-    if: \${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
     env:
-      APP_SUPABASE_URL: \${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_URL: \${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_PROJECT_ID: \${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_URL: \${{ secrets.SUPABASE_DB_URL }}
-      LIVE_STRUCTURE_TOKEN: \${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      RISK_OBJECT_SIGNING_KEY_ID: \${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: \${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: \${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
-      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: \${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
-      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: \${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
-      INVINO_API_KEY: \${{ secrets.INVINO_API_KEY }}
-      GUARDIAN_API_KEY: \${{ secrets.GUARDIAN_API_KEY }}
-      GROQ_API_KEY: \${{ secrets.GROQ_API_KEY }}
-      GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
-      MISTRAL_API_KEY: \${{ secrets.MISTRAL_API_KEY }}
-      CEREBRAS_API_KEY: \${{ secrets.CEREBRAS_API_KEY }}
-      TELEGRAM_API_ID: \${{ secrets.TELEGRAM_API_ID }}
-      TELEGRAM_API_HASH: \${{ secrets.TELEGRAM_API_HASH }}
-      TELEGRAM_SESSION: \${{ secrets.TELEGRAM_SESSION }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
       LIVE_STRUCTURE_MAX_ATTEMPTS: "4"
       LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: "90000"
-      GROQ_MODEL: \${{ vars.GROQ_MODEL }}
-      CEREBRAS_MODEL: \${{ vars.CEREBRAS_MODEL }}
-      GEMINI_MODEL: \${{ vars.GEMINI_MODEL }}
-      GEMINI_MODEL_ORDER: \${{ vars.GEMINI_MODEL_ORDER }}
-      MISTRAL_MODEL: \${{ vars.MISTRAL_MODEL }}
-      CLASSIFIER_PROVIDER_ORDER: \${{ vars.CLASSIFIER_PROVIDER_ORDER }}
-      GUARDIAN_QUERY_BUDGET_PER_CATEGORY: \${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}
-      GUARDIAN_QUERY_ROTATION_HOURS: \${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}
-      GROQ_BATCH_DELAY_MS: \${{ vars.GROQ_BATCH_DELAY_MS }}
-      GROQ_MAX_REQUESTS_PER_RUN: \${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
-      GROQ_MIN_REMAINING_REQUESTS: \${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
-      GROQ_MIN_REMAINING_TOKENS: \${{ vars.GROQ_MIN_REMAINING_TOKENS }}
-      GRI_PUBLISH_ENABLED: \${{ vars.GRI_PUBLISH_ENABLED }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+      CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+      MISTRAL_MODEL: ${{ vars.MISTRAL_MODEL }}
+      CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+      GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}
+      GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}
+      GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
+      GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
+      GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
+      GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
+      GRI_PUBLISH_ENABLED: ${{ vars.GRI_PUBLISH_ENABLED }}
       BREAKING_RSS_ENABLED: "true"
       BREAKING_RSS_RUN_ONCE: "true"
       BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
@@ -97,23 +97,23 @@ jobs:
           GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
         run: |
           set -euo pipefail
-          test -n "\${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
-          test -n "\${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
-          response="\$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-            -H "Authorization: bearer \${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "\${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=\${GITHUB_OIDC_AUDIENCE}")"
-          token="\$(printf "%s" "\$response" | jq -er ".value")"
-          echo "::add-mask::\$token"
-          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\\n" "\$token" >> "\$GITHUB_ENV"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+          response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+          token="$(printf "%s" "$response" | jq -er ".value")"
+          echo "::add-mask::$token"
+          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\\n" "$token" >> "$GITHUB_ENV"
           echo "PASS: scoped RSS OIDC token acquired."
 
       - name: Validate scheduler runtime
         shell: bash
         run: |
           set -euo pipefail
-          test -n "\${APP_SUPABASE_URL:-}"
-          test -n "\${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
-          test "\$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
           node --check scripts/intelligence-orchestrator.mjs
           echo "PASS: authoritative scheduler runtime validated."
 
@@ -134,16 +134,16 @@ jobs:
               echo "## Geomacro Intelligence Orchestrator"
               echo
               jq . intelligence-orchestrator.json
-            } >> "\$GITHUB_STEP_SUMMARY"
+            } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Scheduler summary was not produced." >> "\$GITHUB_STEP_SUMMARY"
+            echo "Scheduler summary was not produced." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload scheduler evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: intelligence-orchestrator-\${{ github.run_id }}
+          name: intelligence-orchestrator-${{ github.run_id }}
           path: intelligence-orchestrator.json
           if-no-files-found: warn
           retention-days: 30
