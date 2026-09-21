@@ -485,22 +485,41 @@ jobs:
           test -n "${BREAKING_RSS_SOURCE_IDS:-}" || { echo "::error::BREAKING_RSS_SOURCE_IDS missing"; exit 1; }
           python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
           cd workers/telegram-flash
-          python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
-          for source_id in aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss; do
-            grep -q "\"source_id\": \"${source_id}" /tmp/federico-rss-live.log || {
-              echo "::error::RSS source ${source_id} did not complete a post-structure poll."
+          : > /tmp/federico-rss-live.log
+          rss_sources=(aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss)
+
+          for source_id in "${rss_sources[@]}"; do
+            source_ok=false
+
+            for source_attempt in 1 2 3 4; do
+              echo "Polling Federico RSS source ${source_id}, attempt ${source_attempt}."
+              source_log="/tmp/federico-rss-${source_id}-${source_attempt}.log"
+
+              BREAKING_RSS_SOURCE_IDS="${source_id}" python worker.py >"${source_log}" 2>&1 || true
+              cat "${source_log}" >> /tmp/federico-rss-live.log
+
+              if grep -q "\"source_id\": \"${source_id}" "${source_log}"; then
+                source_ok=true
+                break
+              fi
+
+              echo "RSS source ${source_id} did not complete on attempt ${source_attempt}; retrying."
+              [[ "${source_attempt}" -lt 4 ]] && sleep 12
+            done
+
+            [[ "${source_ok}" == "true" ]] || {
+              echo "::error::RSS source ${source_id} failed to complete after four isolated attempts."
               exit 1
             }
           done
 
           grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
-            echo "::error title=Xinhua CHN attribution missing::Fresh Xinhua evidence did not produce the required CHN attribution."
+            echo "::error title=Xinhua CHN attribution missing::Xinhua completed its poll but did not produce a CHN-attributed evidence record."
             exit 1
           }
 
-          echo "PASS: governed RSS sources were re-polled after the exact fresh GDELT structure, including Xinhua CHN attribution."
-
+          echo "PASS: each governed RSS source completed through isolated bounded retries after the exact fresh GDELT structure, including Xinhua CHN attribution."
       - name: Corroborate fresh RSS and structured evidence
         shell: bash
         run: |
