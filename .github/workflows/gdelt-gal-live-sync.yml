@@ -115,36 +115,91 @@ jobs:
             jq -c '{ok,status,fragments_considered:(.fragments_considered // 0),fragments_processed:(.fragments_processed // 0),evidence_rows:(.evidence_rows // 0),event_rows:(.event_rows // 0),events_created:(.events_created // 0),events_updated:(.events_updated // 0)}' "$response_file" | tee -a structure-sync-summary.ndjson
           done
 
-      - name: Reconcile stored event eligibility from authoritative provenance view
+      - name: Reconcile stored event eligibility for this GDELT cycle
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
+          const fs = require('node:fs');
           const { createClient } = require('@supabase/supabase-js');
           const db = createClient(
             process.env.APP_SUPABASE_URL,
             process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
             { auth: { persistSession: false, autoRefreshToken: false } },
           );
+
+          const fragmentIds = [...new Set(
+            fs.readFileSync('structure-sync-summary.ndjson', 'utf8')
+              .split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .flatMap((line) => {
+                try {
+                  const row = JSON.parse(line);
+                  return typeof row.fragment_id === 'string' ? [row.fragment_id] : [];
+                } catch {
+                  return [];
+                }
+              }),
+          )];
+
           (async () => {
-            const { data: rights, error } = await db
-              .from('live_structured_event_commercial_rights_evaluation')
-              .select('event_id,evaluated_status,reason_codes');
-            if (error) throw error;
-            let changed = 0;
-            for (const row of rights ?? []) {
-              const { error: updateError } = await db
-                .from('live_structured_events')
-                .update({
-                  commercial_eligibility_status: row.evaluated_status,
-                  commercial_eligibility_reason_codes: row.reason_codes ?? [],
-                })
-                .eq('id', row.event_id);
-              if (updateError) throw updateError;
-              changed += 1;
+            if (fragmentIds.length === 0) {
+              console.log(JSON.stringify({
+                fragment_ids: [],
+                impacted_event_count: 0,
+                rights_rows_reconciled: 0,
+              }));
+              return;
             }
-            console.log(JSON.stringify({ rights_rows_reconciled: changed }));
-          })().catch((error) => { console.error(error); process.exit(1); });
+
+            const { data: evidence, error: evidenceError } = await db
+              .from('live_structured_event_evidence')
+              .select('event_id')
+              .in('fragment_id', fragmentIds);
+            if (evidenceError) throw evidenceError;
+
+            const eventIds = [...new Set(
+              (evidence ?? [])
+                .map((row) => row.event_id)
+                .filter((id) => typeof id === 'string' && id.length > 0),
+            )];
+
+            let reconciled = 0;
+            for (let offset = 0; offset < eventIds.length; offset += 100) {
+              const chunk = eventIds.slice(offset, offset + 100);
+              const { data: rights, error: rightsError } = await db
+                .from('live_structured_event_commercial_rights_evaluation')
+                .select('event_id,evaluated_status,reason_codes')
+                .in('event_id', chunk);
+              if (rightsError) throw rightsError;
+
+              const concurrency = 20;
+              for (let i = 0; i < (rights ?? []).length; i += concurrency) {
+                const batch = rights.slice(i, i + concurrency);
+                await Promise.all(batch.map(async (row) => {
+                  const { error: updateError } = await db
+                    .from('live_structured_events')
+                    .update({
+                      commercial_eligibility_status: row.evaluated_status,
+                      commercial_eligibility_reason_codes: row.reason_codes ?? [],
+                    })
+                    .eq('id', row.event_id);
+                  if (updateError) throw updateError;
+                }));
+                reconciled += batch.length;
+              }
+            }
+
+            console.log(JSON.stringify({
+              fragment_ids: fragmentIds,
+              impacted_event_count: eventIds.length,
+              rights_rows_reconciled: reconciled,
+            }));
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
           NODE
 
       - name: Prove paid hot-topic boundary after sync
