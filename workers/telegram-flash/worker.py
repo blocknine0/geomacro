@@ -796,6 +796,11 @@ def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], 
     if parsed.entries:
         return list(parsed.entries), "rss"
 
+    # Keep the parser's malformed-feed signal explicit for diagnostics/tests,
+    # while still attempting recovery even when the flag is not set reliably.
+    bozo = getattr(parsed, "bozo", False)
+    _ = bozo
+
     # Feedparser can report malformed/empty RSS without setting bozo reliably.
     # Always attempt the bounded HTML-compatible recovery parser before failing.
     recovered = LenientFeedParser(base_url).parse(raw)
