@@ -34,6 +34,8 @@ The worker selects due country targets, fetches official web/API/global fallback
 
 The system does not assume every upstream source is always reachable. Redundancy is the coverage mechanism.
 
+Each country/category also has a priority-1 coverage anchor maintained by the worker. When a national directory row is absent, the worker creates a governed global fallback target and mesh-filler rows as needed to restore the minimum target matrix. The coverage anchors are selected before normal due-source work, so one unreachable national site cannot make the entire country/category runtime coverage stale.
+
 ## Telegram
 
 Telegram is a lead/discovery channel, not an automatic truth source.
@@ -49,6 +51,12 @@ No Telegram item directly becomes GRI, Risk Gate or paid customer truth without 
 Premium providers remain optional redundancy and latency upgrades. Their registry entries stay disabled until credentials and source-specific commercial terms exist.
 
 This prevents the product from waiting for a paid provider before it can observe current developments.
+
+## Self-healing coverage
+
+The country mesh is not dependent on every national directory entry being present or reachable. The worker validates that the authoritative production registry contains exactly 195 enabled canonical countries, ensures a priority-1 fallback anchor exists for GEOPOLITICS, MACRO and CRITICAL_MINERALS for every country, and fills missing target rows up to the governed minimum of 3, 4 and 6 respectively. These fallback rows remain raw-only and `commercial_promotion_allowed=false`.
+
+The runtime gate still requires a recent successful raw target in all three categories for every country. No failure is hidden by changing freshness thresholds, disabling TLS verification, or treating an unreachable upstream source as a success.
 
 ## 100% meaning
 
