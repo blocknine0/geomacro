@@ -158,5 +158,11 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).toContain("public_verification");
     expect(runner).toContain("commercial_delivery");
     expect(runner).toContain("containsForbiddenPublicSourceKeys");
+    expect(runner).toContain("source_id");
+    expect(runner).toContain("source_record_id");
+    expect(runner).toContain("source_urls");
+    expect(runner).toContain("source_families");
+    expect(runner).toContain("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
+    expect(runner).toContain('risk_object: publicRiskObjectAttestation({ subject, object: stored })');
   });
 });
