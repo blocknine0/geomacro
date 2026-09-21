@@ -147,7 +147,7 @@ jobs:
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/923_enable_gdelt_v2_event_ingestion.sql
           echo 'PASS: migration 923 applied without broad db push.'
 
-      - name: Verify source is ingestion-enabled but scoring-disabled
+      - name: Verify source is ingestion-enabled and scoring-disabled
         shell: bash
         run: |
           set -euo pipefail
