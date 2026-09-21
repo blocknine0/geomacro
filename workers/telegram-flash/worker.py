@@ -103,10 +103,6 @@ USER_AGENT = os.environ.get(
     "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
 ).strip()
 
-FIXED_RSS_COUNTRIES: dict[str, str] = {
-    "federal_reserve_press_rss": "USA",
-}
-
 HIGH_CONFIDENCE_HEADLINE_COUNTRIES: list[tuple[str, str]] = [
     ("CHN", r"\b(?:china|chinese|beijing|prc|pboc|people'?s republic of china)\b"),
 ]
@@ -1030,10 +1026,7 @@ async def process_feed(
             },
         }
 
-        country_iso3 = (
-            feed.get("country_iso3")
-            or FIXED_RSS_COUNTRIES.get(source_id)
-        )
+        country_iso3 = feed.get("country_iso3")
         if isinstance(country_iso3, str) and len(country_iso3) == 3:
             payload["country_iso3"] = country_iso3
         else:
