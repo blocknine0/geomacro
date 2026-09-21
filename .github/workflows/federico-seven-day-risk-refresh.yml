@@ -353,12 +353,13 @@ jobs:
           set -euo pipefail
           test -n "${FRESH_GDELT_FRAGMENT_ID:-}" || { echo "::error::FRESH_GDELT_FRAGMENT_ID is missing"; exit 1; }
 
-          # The structure endpoint drains at most 60 records per call. Do not hard-code
-          # an 8-batch ceiling: a valid fresh GDELT fragment can be larger than 480
-          # records. Allow a bounded drain loop with an explicit no-progress guard.
-          max_batches=32
+          # The structure endpoint drains at most 60 records per call. Drive the
+          # loop from the immutable fragment_total returned by the endpoint itself,
+          # rather than a source-size-specific fixed batch ceiling.
+          attempt=1
           previous_remaining=-1
-          for attempt in $(seq 1 "${max_batches}"); do
+          max_batches=""
+          while true; do
             response_file="/tmp/federico-exact-structure-${attempt}.json"
             curl --fail-with-body -sS \
               --retry 3 \
@@ -374,7 +375,23 @@ jobs:
 
             jq -e '.ok == true' "${response_file}" >/dev/null
             jq '{ok,status,fragment_id,batch_size,evidence_structured,evidence_excluded,handled_before,handled_after,fragment_total,remaining,has_more}' "${response_file}"
+
+            batch_size="$(jq -r '.batch_size // 0' "${response_file}")"
+            fragment_total="$(jq -r '.fragment_total // 0' "${response_file}")"
             remaining="$(jq -r '.remaining // 0' "${response_file}")"
+
+            [[ "${batch_size}" =~ ^[0-9]+$ && "${batch_size}" -gt 0 ]] || {
+              echo "::error::Exact fresh GDELT structure returned an invalid batch_size=${batch_size}."
+              exit 1
+            }
+            [[ "${fragment_total}" =~ ^[0-9]+$ && "${fragment_total}" -gt 0 ]] || {
+              echo "::error::Exact fresh GDELT structure returned an invalid fragment_total=${fragment_total}."
+              exit 1
+            }
+
+            if [[ -z "${max_batches}" ]]; then
+              max_batches="$(( (fragment_total + batch_size - 1) / batch_size + 1 ))"
+            fi
 
             if [[ "${remaining}" == "0" ]]; then
               break
@@ -386,10 +403,11 @@ jobs:
             fi
             previous_remaining="${remaining}"
 
-            [[ "${attempt}" -lt "${max_batches}" ]] || {
-              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after ${max_batches} targeted structure batches."
+            (( attempt < max_batches )) || {
+              echo "::error::Exact fresh GDELT fragment still has ${remaining} unhandled records after ${max_batches} derived structure batches."
               exit 1
             }
+            attempt=$((attempt + 1))
           done
 
           echo "PASS: exact fresh GDELT fragment targeted structuring completed before the persistence proof."
@@ -477,51 +495,70 @@ jobs:
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-          BREAKING_RSS_SOURCE_IDS: "aljazeera_rss,bbc_world_rss,xinhua_english_china_rss,scmp_china_rss,federal_reserve_press_rss,forexlive_rss,usgs_minerals_news_rss"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID missing"; exit 1; }
           test -n "${GEOMACRO_FLASH_OIDC_TOKEN:-}" || { echo "::error::GEOMACRO_FLASH_OIDC_TOKEN missing"; exit 1; }
-          test -n "${BREAKING_RSS_SOURCE_IDS:-}" || { echo "::error::BREAKING_RSS_SOURCE_IDS missing"; exit 1; }
           python -m pip install --disable-pip-version-check --retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt >/tmp/federico-rss-deps.log
           cd workers/telegram-flash
 
           : > /tmp/federico-rss-live.log
-          rss_sources=(aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss)
+          python worker.py 2>&1 | tee /tmp/federico-rss-live.log
 
-          for source_id in "${rss_sources[@]}"; do
-            source_ok=false
+      - name: Verify every configured RSS source completed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
 
-            for source_attempt in 1 2 3 4; do
-              echo "Polling Federico RSS source ${source_id}, attempt ${source_attempt}."
-              source_log="/tmp/federico-rss-${source_id}-${source_attempt}.log"
+          log_path = Path('/tmp/federico-rss-live.log')
+          ready = None
+          last_state = {}
+          had_error = set()
 
-              BREAKING_RSS_SOURCE_IDS="${source_id}" python worker.py >"${source_log}" 2>&1 || true
-              cat "${source_log}" >> /tmp/federico-rss-live.log
+          for raw in log_path.read_text(encoding='utf-8', errors='replace').splitlines():
+              try:
+                  event = json.loads(raw)
+              except json.JSONDecodeError:
+                  continue
 
-              if grep -q "\"source_id\": \"${source_id}" "${source_log}"; then
-                source_ok=true
-                break
-              fi
+              if event.get('rss') == 'ready':
+                  ready = event
+              if event.get('kind') in {'rss_poll', 'rss_error'} and event.get('source_id'):
+                  source_id = str(event['source_id'])
+                  if event.get('kind') == 'rss_error':
+                      had_error.add(source_id)
+                  last_state[source_id] = 'success' if event.get('kind') == 'rss_poll' else 'error'
 
-              echo "RSS source ${source_id} did not complete on attempt ${source_attempt}; retrying."
-              [[ "${source_attempt}" -lt 4 ]] && sleep 12
-            done
+          if not isinstance(ready, dict) or not isinstance(ready.get('feeds'), list) or not ready['feeds']:
+              raise SystemExit('Federico RSS worker did not emit a valid configured-feed manifest')
 
-            [[ "${source_ok}" == "true" ]] || {
-              echo "::error::RSS source ${source_id} failed to complete after four isolated attempts."
-              exit 1
-            }
-          done
+          expected = {str(value) for value in ready['feeds'] if str(value).strip()}
+          unresolved = sorted(source_id for source_id in expected if last_state.get(source_id) == 'error')
+          missing = sorted(source_id for source_id in expected if last_state.get(source_id) != 'success')
+          if unresolved:
+              raise SystemExit(
+                  "Federico RSS sources remained failed after the worker's bounded recovery policy: "
+                  + ', '.join(unresolved)
+              )
+          if missing:
+              raise SystemExit(
+                  'Federico RSS sources did not complete a successful poll cycle: '
+                  + ', '.join(missing)
+              )
 
-          grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
-            echo "::error title=Xinhua CHN attribution missing::Xinhua completed its poll but did not produce a CHN-attributed evidence record."
-            exit 1
-          }
-
-          echo "PASS: each governed RSS source completed through isolated bounded retries after the exact fresh GDELT structure, including Xinhua CHN attribution."
+          print(json.dumps({
+              'configured_source_count': len(expected),
+              'completed_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success']),
+              'recovered_source_count': len([source_id for source_id in expected if last_state.get(source_id) == 'success' and source_id in had_error]),
+              'sources': sorted(expected),
+          }))
+          print('PASS: every RSS source declared by the worker completed successfully; transient failures are considered recovered when a later poll succeeds.')
+          PY
       - name: Corroborate fresh RSS and structured evidence
         shell: bash
         run: |

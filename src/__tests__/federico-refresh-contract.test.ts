@@ -35,19 +35,31 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("src/lib/country-risk-publisher.server.ts");
   });
 
-  it("refreshes OIDC immediately before strict RSS corroboration", () => {
+  it("refreshes OIDC immediately before the complete governed RSS registry", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
     expect(workflow).toContain("Refresh scoped GitHub OIDC token immediately before governed RSS");
     expect(workflow).toContain("GEOMACRO_FLASH_OIDC_TOKEN=%s");
-    expect(workflow).toContain("BREAKING_RSS_SOURCE_IDS:");
+    expect(workflow).not.toContain("BREAKING_RSS_SOURCE_IDS:");
   });
 
-  it("limits the strict Federico RSS run to its asserted corroboration cohort", () => {
+  it("verifies every RSS source generically from the worker manifest", () => {
     const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
-    const ids = "aljazeera_rss,bbc_world_rss,xinhua_english_china_rss,scmp_china_rss,federal_reserve_press_rss,forexlive_rss,usgs_minerals_news_rss";
-    expect(workflow).toContain(ids);
-    expect(workflow).toContain('for source_id in "${rss_sources[@]}"; do');
-    expect(workflow).toContain("for source_attempt in 1 2 3 4; do");
-    expect(workflow).toContain('BREAKING_RSS_SOURCE_IDS="${source_id}" python worker.py');
+    expect(workflow).toContain("python worker.py 2>&1 | tee /tmp/federico-rss-live.log");
+    expect(workflow).toContain("Verify every configured RSS source completed");
+    expect(workflow).toContain("event.get('rss') == 'ready'");
+    expect(workflow).toContain("event.get('kind') == 'rss_poll'");
+    expect(workflow).toContain("event.get('kind') == 'rss_error'");
+    expect(workflow).not.toContain("xinhua_english_china_rss");
+    expect(workflow).not.toContain("federal_reserve_press_rss");
+    expect(workflow).toContain("last_state");
+    expect(workflow).toContain("remained failed after the worker's bounded recovery policy");
+  });
+
+  it("derives GDELT drain bounds from the actual fragment response", () => {
+    const workflow = read(".github/workflows/federico-seven-day-risk-refresh.yml");
+    expect(workflow).toContain("fragment_total=\"$(jq -r '.fragment_total // 0' \"${response_file}\")\"");
+    expect(workflow).toContain("batch_size=\"$(jq -r '.batch_size // 0' \"${response_file}\")\"");
+    expect(workflow).not.toContain("max_batches=32");
+    expect(workflow).not.toContain('for attempt in $(seq 1 "${max_batches}"); do');
   });
 });

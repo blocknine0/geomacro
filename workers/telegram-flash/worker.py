@@ -8,6 +8,7 @@ import re
 import socket
 import sys
 import time
+import http.client
 import urllib.error
 import urllib.request
 from urllib.parse import urljoin
@@ -101,10 +102,6 @@ USER_AGENT = os.environ.get(
     "BREAKING_FEED_USER_AGENT",
     "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
 ).strip()
-
-FIXED_RSS_COUNTRIES: dict[str, str] = {
-    "federal_reserve_press_rss": "USA",
-}
 
 HIGH_CONFIDENCE_HEADLINE_COUNTRIES: list[tuple[str, str]] = [
     ("CHN", r"\b(?:china|chinese|beijing|prc|pboc|people'?s republic of china)\b"),
@@ -349,6 +346,22 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "priority_max_items": 5,
     },
     {
+        "source_id": "bis_rss_media_releases",
+        "name": "BIS Media Releases RSS",
+        "url": "https://www.bis.org/doclist/all_pressrels.rss",
+        "event_type": "MACRO_BIS_RELEASE",
+        "source_reliability": 98.0,
+        "max_entry_age_hours": 168,
+    },
+    {
+        "source_id": "bis_rss_central_banker_speeches",
+        "name": "BIS Central Bankers Speeches RSS",
+        "url": "https://www.bis.org/doclist/cbspeeches.rss",
+        "event_type": "MACRO_BIS_SPEECH",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 168,
+    },
+    {
         "source_id": "nrcan_news_atom",
         "name": "Natural Resources Canada News Releases Atom",
         "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
@@ -460,8 +473,8 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
         retry_attempts = item.get("retry_attempts")
         if retry_attempts is not None:
             feed["retry_attempts"] = max(
-                0,
-                min(3, int(retry_attempts)),
+                2,
+                min(5, int(retry_attempts)),
             )
 
         retry_backoff_seconds = item.get("retry_backoff_seconds")
@@ -573,7 +586,16 @@ def fetch_web_page_sync(
                 last_error = exc
             else:
                 raise RuntimeError(f"Web page HTTP {exc.code}: {detail[:500]}") from exc
-        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+        except (
+            TimeoutError,
+            socket.timeout,
+            urllib.error.URLError,
+            http.client.IncompleteRead,
+            ConnectionError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            BrokenPipeError,
+        ) as exc:
             last_error = exc
 
         if attempt < retry_attempts:
@@ -589,7 +611,7 @@ def fetch_feed_sync(
     etag: str | None,
     modified: str | None,
     timeout_seconds: int = 20,
-    retry_attempts: int = 0,
+    retry_attempts: int = 2,
     retry_backoff_seconds: float = 1.0,
 ) -> tuple[int, bytes, str | None, str | None]:
     headers = {
@@ -621,7 +643,16 @@ def fetch_feed_sync(
                 last_error = exc
             else:
                 raise RuntimeError(f"Feed HTTP {exc.code}: {detail[:500]}") from exc
-        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+        except (
+            TimeoutError,
+            socket.timeout,
+            urllib.error.URLError,
+            http.client.IncompleteRead,
+            ConnectionError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            BrokenPipeError,
+        ) as exc:
             last_error = exc
 
         if attempt < retry_attempts:
@@ -860,7 +891,7 @@ async def process_feed(
             current["etag"],
             current["modified"],
             int(feed.get("timeout_seconds", 20)),
-            int(feed.get("retry_attempts", 0)),
+            max(2, int(feed.get("retry_attempts", 2))),
             float(feed.get("retry_backoff_seconds", 1.0)),
         )
     except Exception as primary_error:
@@ -995,10 +1026,7 @@ async def process_feed(
             },
         }
 
-        country_iso3 = (
-            feed.get("country_iso3")
-            or FIXED_RSS_COUNTRIES.get(source_id)
-        )
+        country_iso3 = feed.get("country_iso3")
         if isinstance(country_iso3, str) and len(country_iso3) == 3:
             payload["country_iso3"] = country_iso3
         else:
@@ -1099,49 +1127,51 @@ async def run_rss() -> None:
         flush=True,
     )
 
-    while True:
-        cycle_failed = False
+    async def process_one_feed(feed: dict[str, Any]) -> str | None:
+        source_id = str(feed["source_id"])
+        try:
+            await process_feed(feed, state)
+            failure_count[source_id] = 0
+            return None
+        except Exception as exc:
+            failure_count[source_id] = failure_count.get(source_id, 0) + 1
+            print(
+                json.dumps(
+                    {
+                        "kind": "rss_error",
+                        "source_id": source_id,
+                        "failures": failure_count[source_id],
+                        "error": str(exc),
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            return source_id
 
-        for feed in feeds:
-            source_id = str(feed["source_id"])
-            try:
-                await process_feed(feed, state)
-                failure_count[source_id] = 0
-            except Exception as exc:
-                cycle_failed = True
-                failure_count[source_id] = failure_count.get(source_id, 0) + 1
-                print(
-                    json.dumps(
-                        {
-                            "kind": "rss_error",
-                            "source_id": source_id,
-                            "failures": failure_count[source_id],
-                            "error": str(exc),
-                        },
-                        ensure_ascii=False,
-                    ),
-                    file=sys.stderr,
-                    flush=True,
-                )
+    while True:
+        failed_sources = [
+            source_id
+            for source_id in await asyncio.gather(
+                *(process_one_feed(feed) for feed in feeds)
+            )
+            if source_id is not None
+        ]
 
         if RSS_RUN_ONCE:
-            if not cycle_failed:
+            if not failed_sources:
                 return
 
-            # A one-shot certification poll must tolerate a transient outage in
-            # one governed publisher. Retry the failed cycle a bounded number of
-            # times rather than failing the whole acceptance run immediately.
+            retry_cycle = max(
+                (failure_count.get(source_id, 0) for source_id in failed_sources),
+                default=0,
+            )
             max_one_shot_retries = 3
-            retry_cycle = max(failure_count.values(), default=0)
             if retry_cycle >= max_one_shot_retries:
-                failed_sources = [
-                    source_id
-                    for source_id, failures in failure_count.items()
-                    if failures > 0
-                ]
                 raise RuntimeError(
                     "One-shot RSS cycle failed after bounded retries for: "
-                    + ", ".join(failed_sources)
+                    + ", ".join(sorted(failed_sources))
                 )
 
             delay = 5 * retry_cycle
@@ -1151,11 +1181,7 @@ async def run_rss() -> None:
                         "kind": "rss_retry",
                         "retry_cycle": retry_cycle,
                         "delay_seconds": delay,
-                        "failed_sources": [
-                            source_id
-                            for source_id, failures in failure_count.items()
-                            if failures > 0
-                        ],
+                        "failed_sources": sorted(failed_sources),
                     }
                 ),
                 flush=True,

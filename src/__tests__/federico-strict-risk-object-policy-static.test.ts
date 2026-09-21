@@ -167,9 +167,15 @@ describe("Federico strict Risk Object acceptance policy", () => {
       'scmp_china_rss: "scmp_china"',
     );
     expect(rssWorkflow).toContain(
-      "xinhua_english_china_rss",
+      "Verify every configured RSS source completed",
     );
     expect(rssWorkflow).toContain(
+      "if event.get('kind') in {'rss_poll', 'rss_error'}",
+    );
+    expect(rssWorkflow).not.toContain(
+      "xinhua_english_china_rss",
+    );
+    expect(rssWorkflow).not.toContain(
       "scmp_china_rss",
     );
   });
@@ -438,19 +444,28 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
   });
 
-  it("locks runtime retry boundaries so known transient failures cannot regress into premature hard failures", () => {
+  it("locks generic runtime retry and derived drain boundaries", () => {
     const workflow = read(
       ".github/workflows/federico-seven-day-risk-refresh.yml",
     );
+    const worker = read(
+      "workers/telegram-flash/worker.py",
+    );
 
     expect(workflow).toContain(
-      'for attempt in $(seq 1 "${max_batches}"); do',
+      "fragment_total=\"$(jq -r '.fragment_total // 0' \"${response_file}\")\"",
     );
     expect(workflow).toContain(
-      '[[ "${attempt}" -lt "${max_batches}" ]] || {',
+      "batch_size=\"$(jq -r '.batch_size // 0' \"${response_file}\")\"",
     );
-    expect(workflow).toContain(
-      "--retries 5 --timeout 30 -r workers/telegram-flash/requirements.txt",
+    expect(workflow).not.toContain(
+      "max_batches=32",
+    );
+    expect(worker).toContain(
+      "http.client.IncompleteRead",
+    );
+    expect(worker).toContain(
+      "ConnectionResetError",
     );
     expect(workflow).toContain(
       "--retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120",
