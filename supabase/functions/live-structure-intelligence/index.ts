@@ -2098,6 +2098,7 @@ function professionalRelevance(
     ReturnType<
       typeof resolveDomain
     >,
+  ingestTopics?: string[],
 ) {
   const maxSignal =
     Math.max(
@@ -2467,12 +2468,20 @@ function professionalRelevance(
     };
   }
 
-  // Description-only single keyword
-  // is not enough for professional
-  // structured intelligence.
+  const sourceDeclaredSignal = (ingestTopics ?? []).some((topic) =>
+    ["geopolitics", "macro", "rare_earth", "critical_minerals", "natural_hazards"].includes(
+      String(topic).trim().toLowerCase(),
+    ),
+  );
+
+  // A governed source adapter may classify an otherwise sparse machine record
+  // (for example an earthquake feed) before normalization. That source-owned
+  // category is accepted as a signal, but all existing noise filters still run.
+
   if (
     titleSignal === 0 &&
-    maxSignal < 2
+    maxSignal < 2 &&
+    !sourceDeclaredSignal
   ) {
     return {
       relevant: false,
@@ -3788,6 +3797,7 @@ Deno.serve(async (req) => {
           signalTitle,
           record.l,
           domainDecision,
+          record.q,
         );
 
       if (!quality.relevant) {
