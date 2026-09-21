@@ -940,8 +940,8 @@ async function main() {
   const nodesJsonPath = path.join(OUT_DIR, "nodes.json");
   const edgesJsonPath = path.join(OUT_DIR, "edges.json");
   const dbScriptPath = path.join(OUT_DIR, "persist-and-promote.sql");
-  await fs.writeFile(nodesJsonPath, JSON.stringify(nodes).replaceAll("\\\\", "\\\\\\\\"), "utf8");
-  await fs.writeFile(edgesJsonPath, JSON.stringify(edges).replaceAll("\\\\", "\\\\\\\\"), "utf8");
+  await fs.writeFile(nodesJsonPath, JSON.stringify(nodes).replaceAll("\\", "\\\\"), "utf8");
+  await fs.writeFile(edgesJsonPath, JSON.stringify(edges).replaceAll("\\", "\\\\"), "utf8");
 
   const dbScript = String.raw`
     \set ON_ERROR_STOP on
