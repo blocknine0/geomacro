@@ -10,20 +10,17 @@ describe("Testnet RSS live runner", () => {
     expect(worker).toContain("if RSS_RUN_ONCE and TELEGRAM_ENABLED:");
     expect(worker).toContain("if RSS_RUN_ONCE:");
     expect(worker).toContain("if not cycle_failed:");
+    expect(worker).toContain("asyncio.gather(");
+    expect(worker).toContain("http.client.IncompleteRead");
 
     expect(workflow).toContain("SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}");
     expect(workflow).toContain('TELEGRAM_ENABLED: "false"');
     expect(workflow).toContain('BREAKING_RSS_ENABLED: "true"');
     expect(workflow).toContain('BREAKING_RSS_RUN_ONCE: "true"');
     expect(workflow).toContain('cron: "*/15 * * * *"');
-    for (const sourceId of [
-      "aljazeera_rss",
-      "bbc_world_rss",
-      "federal_reserve_press_rss",
-      "forexlive_rss",
-      "usgs_minerals_news_rss",
-    ]) {
-      expect(workflow).toContain(sourceId);
-    }
+    expect(workflow).toContain("Verify every configured RSS source completed");
+    expect(workflow).toContain('event.get("rss") == "ready"');
+    expect(workflow).toContain('event.get("kind") == "rss_poll"');
+    expect(workflow).toContain('event.get("kind") == "rss_error"');
   });
 });
