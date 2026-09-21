@@ -4,13 +4,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "*/30 * * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/global-telegram-source-discovery-scheduled.yml"
-      - "workers/telegram-flash/global_discovery.py"
-      - "supabase/migrations/969_telegram_global_discovery_metadata.sql"
+  # Discovery runs on a controlled schedule or explicit operator dispatch.
+  # It is intentionally decoupled from application pushes.
 
 permissions:
   contents: read
