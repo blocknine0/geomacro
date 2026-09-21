@@ -19,7 +19,7 @@ describe("global country raw source mesh",()=>{
   it("keeps commercial promotion separate from raw capture",()=>{
     expect(migration).toContain("commercial_promotion_allowed boolean not null default false");
     expect(worker).toContain("country_raw_web_mesh");
-    expect(snapshot).toContain("Private raw web acquisition snapshots");
+    expect(snapshot).toContain("live_raw_source_snapshots");
   });
 
   it("uses country-aware global fallbacks",()=>{
