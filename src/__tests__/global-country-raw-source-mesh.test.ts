@@ -18,7 +18,7 @@ describe("global country raw source mesh",()=>{
 
   it("keeps commercial promotion separate from raw capture",()=>{
     expect(migration).toContain("commercial_promotion_allowed boolean not null default false");
-    expect(worker).toContain("RAW source acquisition");
+    expect(worker).toContain("country_raw_web_mesh");
     expect(snapshot).toContain("Private raw web acquisition snapshots");
   });
 
@@ -39,6 +39,6 @@ describe("global country raw source mesh",()=>{
     expect(snapshot).toContain("content_sha256");
     expect(snapshot).toContain("storage_bucket");
     expect(snapshot).toContain("live_raw_source_snapshots");
-    expect(worker).toContain("contentType:"application/gzip"");
+    expect(worker).toContain('contentType:"application/gzip"');
   });
 });
