@@ -57,7 +57,7 @@ describe("canonical one-data multi-delivery architecture", () => {
     expect(machine).toContain("getLatestCompatibleCorridorRiskObject");
     expect(machine).toContain("verifyCommercialRiskObjectArtifact");
     expect(machine).toContain("commercialVerification.deliverable");
-    expect(machine).toContain("return object;");
+    expect(machine).toContain("createPublicSignedRiskObjectProjection");
     expect(agentic).toContain("verifyCommercialRiskObjectArtifact");
     expect(agentic).toContain("COMMERCIAL_RISK_OBJECT_NOT_DELIVERABLE");
   });
