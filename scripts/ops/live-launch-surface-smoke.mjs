@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import process from "node:process";
+import { execFileSync } from "node:child_process";
+import { resolvePublicHost } from "./public-dns-resolve.mjs";
 
 const baseUrl = (process.env.GEOMACRO_LIVE_BASE_URL || "https://geomacro.live").replace(/\/$/, "");
 const expectedHost = process.env.GEOMACRO_LIVE_EXPECTED_HOST || "geomacro.live";
@@ -17,26 +19,72 @@ if (expectedDeployedSha) {
   assert(/^[0-9a-f]{40}$/.test(expectedDeployedSha), "GEOMACRO_EXPECTED_DEPLOYED_SHA must be a full 40-character commit SHA");
 }
 
+let publicDnsEvidence = null;
+
+function curlPinned(url, ip, accept) {
+  const started = performance.now();
+  const headersFile = "/tmp/geomacro-launch-headers.txt";
+  const text = execFileSync("curl", [
+    "--silent", "--show-error",
+    "--connect-timeout", "5",
+    "--max-time", String(Math.ceil(timeoutMs / 1000)),
+    "--resolve", expectedHost + ":443:" + ip,
+    "--url", url,
+    "--location",
+    "-H", "accept: " + accept,
+    "-H", "user-agent: GeomacroLaunchAcceptance/1.3",
+    "-D", headersFile,
+  ], { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+  const headers = fs.readFileSync(headersFile, "utf8");
+  const statuses = [...headers.matchAll(/^HTTP\/\S+\s+(\d{3})/gm)];
+  return {
+    path: new URL(url).pathname,
+    status: Number(statuses.at(-1)?.[1] || 0),
+    contentType: headers.match(/^content-type:\s*([^\r\n]+)/im)?.[1]?.trim() || "",
+    elapsedMs: Number((performance.now() - started).toFixed(2)),
+    response: null,
+    text,
+    pinned_ip: ip,
+    transport: "curl-pinned-public-dns",
+  };
+}
+
 async function get(path, accept = "*/*") {
   const started = performance.now();
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: "GET",
-    redirect: "follow",
-    headers: {
-      accept,
-      "user-agent": "GeomacroLaunchAcceptance/1.2",
-    },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  const text = await response.text();
-  return {
-    path,
-    status: response.status,
-    contentType: response.headers.get("content-type") || "",
-    elapsedMs: Number((performance.now() - started).toFixed(2)),
-    response,
-    text,
-  };
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        accept,
+        "user-agent": "GeomacroLaunchAcceptance/1.2",
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const text = await response.text();
+    return {
+      path,
+      status: response.status,
+      contentType: response.headers.get("content-type") || "",
+      elapsedMs: Number((performance.now() - started).toFixed(2)),
+      response,
+      text,
+      transport: "native-fetch",
+    };
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    if (!/ENOTFOUND|EAI_AGAIN|DNS|fetch failed|getaddrinfo|network/i.test(message)) throw error;
+    publicDnsEvidence ||= resolvePublicHost(expectedHost);
+    let lastError = null;
+    for (const ip of [...publicDnsEvidence.ipv4, ...publicDnsEvidence.ipv6]) {
+      try {
+        return curlPinned(`${baseUrl}${path}`, ip, accept);
+      } catch (pinError) {
+        lastError = pinError;
+      }
+    }
+    throw new Error("Native DNS failed and public-DNS pinned HTTPS probes failed: " + message + "; last=" + String(lastError?.message ?? lastError ?? "none"));
+  }
 }
 
 const htmlPaths = [
@@ -185,6 +233,7 @@ try {
   assert(typeof openapi?.openapi === "string", "OpenAPI document missing version");
   assert(openapi?.paths && Object.keys(openapi.paths).length > 0, "OpenAPI document has no paths");
 
+  evidence.public_dns = publicDnsEvidence;
   evidence.result = "PASS";
   persistEvidence();
   console.log(`PASS: live launch surface smoke passed for ${htmlPaths.length} public routes, 1 public API surface and ${requiredDiscoveryPaths.length} required discovery resources.`);
