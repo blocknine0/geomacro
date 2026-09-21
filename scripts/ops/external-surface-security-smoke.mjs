@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import process from "node:process";
+import { execFileSync } from "node:child_process";
+import { resolvePublicHost } from "./public-dns-resolve.mjs";
 
 const baseUrl = (process.env.GEOMACRO_EXTERNAL_SECURITY_BASE_URL || "https://geomacro.live").replace(/\/$/, "");
 const expectedHost = process.env.GEOMACRO_EXTERNAL_SECURITY_EXPECTED_HOST || "geomacro.live";
@@ -13,18 +15,71 @@ const url = new URL(baseUrl);
 assert(url.protocol === "https:", "External security smoke requires HTTPS");
 assert(url.hostname === expectedHost, `Refusing unexpected host ${url.hostname}`);
 
+let publicDnsEvidence = null;
+
+function curlPinned(url, ip, init) {
+  const headersFile = "/tmp/geomacro-security-headers.txt";
+  const args = [
+    "--silent", "--show-error",
+    "--connect-timeout", "5", "--max-time", String(Math.ceil(timeoutMs / 1000)),
+    "--resolve", expectedHost + ":443:" + ip,
+    "--url", url,
+    "-H", "user-agent: GeomacroExternalSurfaceSecurity/1.2",
+    "-D", headersFile,
+  ];
+  for (const [key, value] of Object.entries(init.headers || {})) args.push("-H", key + ": " + value);
+  if (String(init.method || "GET").toUpperCase() === "HEAD") args.push("--head");
+  const text = execFileSync("curl", args, { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+  const headers = fs.readFileSync(headersFile, "utf8");
+  const statuses = [...headers.matchAll(/^HTTP\/\S+\s+(\d{3})/gm)];
+  const responseHeaders = new Map();
+  for (const line of headers.split(/\r?\n/)) {
+    const idx = line.indexOf(":");
+    if (idx > 0) responseHeaders.set(line.slice(0, idx).toLowerCase(), line.slice(idx + 1).trim());
+  }
+  return {
+    status: Number(statuses.at(-1)?.[1] || 0),
+    text,
+    headers: responseHeaders,
+    transport: "curl-pinned-public-dns",
+  };
+}
+
 async function request(path, init = {}) {
-  const response = await fetch(`${baseUrl}${path}`, {
-    redirect: "follow",
-    signal: AbortSignal.timeout(timeoutMs),
-    headers: {
-      "user-agent": "GeomacroExternalSurfaceSecurity/1.1",
-      ...(init.headers || {}),
-    },
-    ...init,
-  });
-  const text = await response.text();
-  return { response, text };
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        "user-agent": "GeomacroExternalSurfaceSecurity/1.1",
+        ...(init.headers || {}),
+      },
+      ...init,
+    });
+    const text = await response.text();
+    return { response, text, transport: "native-fetch" };
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    if (!/ENOTFOUND|EAI_AGAIN|DNS|fetch failed|getaddrinfo|network/i.test(message)) throw error;
+    publicDnsEvidence ||= resolvePublicHost(expectedHost);
+    let lastError = null;
+    for (const ip of [...publicDnsEvidence.ipv4, ...publicDnsEvidence.ipv6]) {
+      try {
+        const result = curlPinned(`${baseUrl}${path}`, ip, init);
+        return {
+          response: {
+            status: result.status,
+            headers: { get: (name) => result.headers.get(name.toLowerCase()) || null },
+          },
+          text: result.text,
+          transport: result.transport,
+        };
+      } catch (pinError) {
+        lastError = pinError;
+      }
+    }
+    throw new Error("Native DNS failed and public-DNS pinned HTTPS probes failed: " + message + "; last=" + String(lastError?.message ?? lastError ?? "none"));
+  }
 }
 
 const home = await request("/");
@@ -118,6 +173,7 @@ const evidence = {
   credentialed_testing: false,
   payment_performed: false,
   production_activation_performed: false,
+  public_dns: publicDnsEvidence,
   checks: {
     https_only: true,
     hsts: true,
