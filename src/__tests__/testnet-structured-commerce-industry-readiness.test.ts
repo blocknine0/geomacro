@@ -69,6 +69,8 @@ describe("structured-commerce industry-readiness invariants", () => {
     expect(structuralRoute).toContain('STRUCTURAL_RESPONSE_SCHEMA_VERSION = "geomacro-structural-intelligence-v1.0.0"');
     expect(structuralRoute).toContain("commercially_eligible_source_rows_only: true");
     expect(structuralRoute).toContain("raw_provider_payloads_included: false");
+    expect(structuralRoute).not.toContain("source_id: row.source_id");
+    expect(structuralRoute).not.toContain("source_record_id: row.source_record_id");
     expect(structuralRoute).toContain("raw_data_included: policy.product.raw_data_included");
     expect(structuralRoute).toContain("private_warehouse_access: policy.product.private_warehouse_access");
     expect(structuralRoute).toContain("execution_authorized: policy.product.execution_authorized");
