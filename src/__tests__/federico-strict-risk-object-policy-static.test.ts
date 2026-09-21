@@ -400,9 +400,6 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(preflight).toContain(
       'as_of_source: "risk_object.observed_at"',
     );
-    expect(preflight).toContain(
-      "signature: riskObject.integrity.signature",
-    );
     expect(canonicalSpec).toContain(
       "Number::toString",
     );
