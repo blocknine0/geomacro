@@ -33,16 +33,32 @@ function expectPinnedActions(path: string) {
   }
 }
 
+function jobBlock(source: string, name: string) {
+  const header = `  ${name}:\n`;
+  const start = source.indexOf(header);
+  if (start < 0) return "";
+  const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+  let next = boundary.exec(source);
+  while (next && next.index <= start) next = boundary.exec(source);
+  return source.slice(start, next ? next.index : source.length);
+}
+
 describe("onchain signing isolation", () => {
   it("hardens state-changing Arc workflows before credentials are exposed", () => {
     for (const path of STATE_CHANGING) {
       const source = read(path);
       expect(source, path).toContain("permissions:\n  contents: read");
-      expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
       expectPinnedActions(path);
       expect(source, path).not.toMatch(/\bnpm install\b/);
-      expect(source, path).toContain("verify-arc-testnet-target.mjs");
-      expect(source, path).toContain("assert-authoritative-supabase.mjs");
+      const blocks = path === ".github/workflows/market-lifecycle.yml"
+        ? ["finalize-markets", "resolve-markets", "resolve-disputes"].map((name) => jobBlock(source, name))
+        : [source];
+      for (const block of blocks) {
+        expect(block, path).not.toBe("");
+        expect(block, path).toContain("github.ref == 'refs/heads/main'");
+        expect(block, path).toContain("verify-arc-testnet-target.mjs");
+        expect(block, path).toContain("assert-authoritative-supabase.mjs");
+      }
     }
   });
 
@@ -71,11 +87,17 @@ describe("onchain signing isolation", () => {
     for (const path of READ_WRITE_INDEXERS) {
       const source = read(path);
       expect(source, path).toContain("permissions:\n  contents: read");
-      expect(source, path).toContain("if: github.ref == 'refs/heads/main'");
       expectPinnedActions(path);
-      expect(source, path).toContain("verify-arc-testnet-target.mjs");
-      expect(source, path).toContain("assert-authoritative-supabase.mjs");
-      expect(source, path).not.toMatch(/secrets\.(?:OWNER|GUARDIAN|JURY|TREASURY|LIQUIDITY|DEPLOYER)_PRIVATE_KEY/);
+      const blocks = path === ".github/workflows/market-lifecycle.yml"
+        ? ["sync-lifecycle", "sync-stakes"].map((name) => jobBlock(source, name))
+        : [source];
+      for (const block of blocks) {
+        expect(block, path).not.toBe("");
+        expect(block, path).toContain("github.ref == 'refs/heads/main'");
+        expect(block, path).toContain("verify-arc-testnet-target.mjs");
+        expect(block, path).toContain("assert-authoritative-supabase.mjs");
+        expect(block, path).not.toMatch(/secrets\.(?:OWNER|GUARDIAN|JURY|TREASURY|LIQUIDITY|DEPLOYER)_PRIVATE_KEY/);
+      }
     }
   });
 
