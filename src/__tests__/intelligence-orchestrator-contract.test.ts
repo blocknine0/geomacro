@@ -7,8 +7,9 @@ function read(path: string) {
 
 describe("permanent intelligence orchestration contract", () => {
   it("has exactly one scheduled intelligence heartbeat", () => {
-    const orchestrator = read(".github/workflows/intelligence-orchestrator.yml");
-    expect(orchestrator).toContain('cron: "7,22,37,52 * * * *"');
+    const workflow = read(".github/workflows/intelligence-orchestrator.yml");
+    const orchestrator = read("scripts/intelligence-orchestrator.mjs");
+    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
     expect(orchestrator).toContain("group: geomacro-intelligence-orchestrator");
     expect(orchestrator).toContain("cancel-in-progress: false");
     expect(orchestrator).not.toContain("workflow_run:");
@@ -33,6 +34,8 @@ describe("permanent intelligence orchestration contract", () => {
       expect(script).toContain(`key: "${task}"`);
     }
     expect(script).toContain("MAX_TASKS_PER_TICK");
+    expect(script).toContain('key: "production_readiness"');
+    expect(script).toContain('key: "public_demo_refresh"');
     expect(script).toContain("drain-live-structure.mjs");
     expect(script).toContain("run-rss-live-cycle.mjs");
     expect(script).toContain("reconcile-structured-event-commercial-rights.mjs");
