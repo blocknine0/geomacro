@@ -631,7 +631,16 @@ def fetch_feed_sync(
                 last_error = exc
             else:
                 raise RuntimeError(f"Feed HTTP {exc.code}: {detail[:500]}") from exc
-        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+        except (
+            TimeoutError,
+            socket.timeout,
+            urllib.error.URLError,
+            http.client.IncompleteRead,
+            ConnectionError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            BrokenPipeError,
+        ) as exc:
             last_error = exc
 
         if attempt < retry_attempts:
