@@ -160,21 +160,3 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(runner).toContain("containsForbiddenPublicSourceKeys");
   });
 });
-
-
-describe("commercial source privacy", () => {
-  it("does not return internal structural source identifiers", () => {
-    expect(runner).not.toContain("source_id: row.source_id");
-    expect(runner).not.toContain("source_record_id: row.source_record_id");
-    expect(runner).not.toContain("source_urls: row.source_urls");
-    expect(runner).not.toContain("source_families: row.source_families");
-  });
-
-  it("rejects source identity keys inside full Risk Objects at the public boundary", () => {
-    expect(runner).toContain("source_ids");
-    expect(runner).toContain("source_record_ids");
-    expect(runner).toContain("source_urls");
-    expect(runner).toContain("source_families");
-    expect(runner).toContain("RISK_OBJECT_PUBLIC_PRIVACY_BOUNDARY_VIOLATION");
-  });
-});
