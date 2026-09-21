@@ -22,6 +22,9 @@ import {
   createHash,
 } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import {
+  federicoStrictSourceFamilyForId,
+} from "../src/lib/public-demo-risk-profile";
 
 const file = process.argv[2];
 if (!file) {
@@ -343,25 +346,62 @@ if (strictProfile) {
       ),
     );
 
-  if (
-    evidence.some(
-      (item: any) =>
-        (item.source_ids ?? []).some(
-          (sourceId: string) =>
-            !Object.prototype.hasOwnProperty.call(
-              configuredSourceFamilyMap,
-              sourceId,
-            ),
-        ) ||
-        (item.source_families ?? []).some(
-          (family: string) =>
-            !configuredSourceFamilies.has(family),
-        )
-    )
-  ) {
-    throw new Error(
-      "Federico strict evidence contains an unmapped source identity: " + JSON.stringify(evidence.map((item: any) => ({ source_ids: item.source_ids, source_families: item.source_families }))),
+  for (const item of evidence) {
+    const sourceIds = Array.isArray(item.source_ids)
+      ? item.source_ids.map(String).map((value: string) => value.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const sourceFamilies = Array.isArray(item.source_families)
+      ? item.source_families.map(String).map((value: string) => value.trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    for (const sourceId of sourceIds) {
+      const configuredFamily = configuredSourceFamilyMap[sourceId];
+      const resolvedFamily = federicoStrictSourceFamilyForId(sourceId);
+
+      if (!configuredFamily) {
+        throw new Error(
+          "Federico strict evidence source identity is absent from its signed runtime map: " +
+            JSON.stringify({ source_id: sourceId, source_family: resolvedFamily }),
+        );
+      }
+
+      if (configuredFamily !== resolvedFamily) {
+        throw new Error(
+          "Federico strict source-family resolution mismatch: " +
+            JSON.stringify({
+              source_id: sourceId,
+              configured_family: configuredFamily,
+              resolved_family: resolvedFamily,
+            }),
+        );
+      }
+
+      if (!configuredSourceFamilies.has(configuredFamily)) {
+        throw new Error(
+          "Federico strict evidence contains a source family absent from its signed runtime map: " +
+            JSON.stringify({ source_id: sourceId, source_family: configuredFamily }),
+        );
+      }
+    }
+
+    const expectedFamilies = new Set(
+      sourceIds.map((sourceId: string) =>
+        federicoStrictSourceFamilyForId(sourceId),
+      ),
     );
+
+    for (const family of sourceFamilies) {
+      if (!configuredSourceFamilies.has(family) || !expectedFamilies.has(family)) {
+        throw new Error(
+          "Federico strict evidence contains an invalid source-family identity: " +
+            JSON.stringify({
+              source_ids: sourceIds,
+              source_families: sourceFamilies,
+              invalid_family: family,
+            }),
+        );
+      }
+    }
   }
 
   if (
