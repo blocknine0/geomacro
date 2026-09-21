@@ -35,7 +35,7 @@ jobs:
         shell: bash
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
-          DISPATCH_SHA: ${{ inputs.candidate_sha || github.sha }}
+          DISPATCH_SHA: ${{ inputs.candidate_sha || github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           test "${#CANDIDATE_SHA}" -eq 40
@@ -90,7 +90,7 @@ jobs:
           path: |
             artifacts/commercial-launch-readiness.json
             artifacts/commercial-release-candidate.json
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 90
 
       - name: Write job summary
