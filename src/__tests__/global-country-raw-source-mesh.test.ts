@@ -28,6 +28,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("worldbank.org/v2/country/");
     expect(worker).toContain("api.gdeltproject.org/api/v2/doc/doc");
     expect(worker).toContain("sourcecountry:");
+    expect(worker).toContain("const countryIso2=new Map");
     expect(worker).toContain("GEO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MACRO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MINERALS:COVERAGE_FALLBACK:");
