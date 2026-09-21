@@ -15,6 +15,7 @@ describe("global country raw source mesh",()=>{
     expect(audit).toContain("canonicalIso3.length!==195");
     expect(audit).toContain("live_country_primary_source_directory");
     expect(audit).toContain("expected_total_targets:195*(3+4+6)");
+    expect(audit).toContain("for(let from=0;;from+=1000)");
     expect(audit).toContain("for(const iso of canonicalIso3) {");
   });
 
@@ -33,6 +34,9 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("MACRO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MINERALS:COVERAGE_FALLBACK:");
     expect(worker).toContain("MESH_FILLER:");
+    expect(worker).toContain("RETRY_ATTEMPTS=4");
+    expect(worker).toContain("retry-after");
+    expect(worker).toContain("api.gdeltproject.org",);
   });
 
   it("runs every five minutes against authoritative production",()=>{
@@ -50,6 +54,8 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("live_country_primary_source_directory");
     expect(worker).toContain("Expected exactly 195 canonical countries from the government-portal baseline");
     expect(worker).toContain("inserted_targets");
+    expect(worker).toContain(".not("target_id","like","%MESH_FILLER%")");
+    expect(worker).toContain("for(let from=0;;from+=1000)");
   });
 
   it("keeps raw bytes private and hashed",()=>{
