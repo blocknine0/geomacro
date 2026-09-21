@@ -39,7 +39,23 @@ values (
   'REAL_TIME_15_MIN',
   'GDELT 2.0 event metadata is released every 15 minutes and permits commercial use and redistribution with citation. This source is event/news-derived evidence, not a substitute for authoritative conflict or government statistics. Do not redistribute underlying publisher article text.'
 )
-on conflict (source_id) do nothing;
+on conflict (source_id) do update set
+  source_name = excluded.source_name,
+  provider_name = excluded.provider_name,
+  category = excluded.category,
+  access_type = excluded.access_type,
+  authentication_type = excluded.authentication_type,
+  base_url = excluded.base_url,
+  licence_name = excluded.licence_name,
+  commercial_usage_status = excluded.commercial_usage_status,
+  raw_redistribution_allowed = excluded.raw_redistribution_allowed,
+  attribution_required = excluded.attribution_required,
+  enabled_for_ingestion = false,
+  enabled_for_commercial_signals = false,
+  country_scope = excluded.country_scope,
+  freshness_class = excluded.freshness_class,
+  notes = excluded.notes,
+  updated_at = now();
 
 update public.live_external_sources
 set
