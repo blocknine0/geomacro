@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          file=".github/workflows/coinbase-x402-base-sepolia-acceptance.yml"
+          file=".github/workflows/coinbase-x402-base-sepolia.yml"
           grep -q 'workflow_dispatch:' "$file"
           grep -q "github.ref == 'refs/heads/main'" "$file"
           grep -q 'https://geomacro.live/api/x402/risk' "$file"
@@ -68,7 +68,6 @@ jobs:
 
   public-acceptance:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'public-acceptance' && github.ref == 'refs/heads/main' }}
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
