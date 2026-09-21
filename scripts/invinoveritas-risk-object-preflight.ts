@@ -544,7 +544,7 @@ if (invinoApiKey) {
   const mediumCount = severityCount("medium");
   const lowCount = severityCount("low");
 
-  console.log(
+  console.error(
     JSON.stringify({
       partner_review_issues: issues.map((issue: any) => ({
         severity: String(issue?.severity ?? "").toLowerCase(),
