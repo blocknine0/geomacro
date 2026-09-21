@@ -20,6 +20,7 @@ describe("permanent intelligence orchestration contract", () => {
       "gdelt_gal",
       "gdelt_v2",
       "country_raw_mesh",
+      "open_realtime_mesh",
       "rss_live",
       "realtime_fanout",
       "telegram_discovery",
@@ -30,6 +31,7 @@ describe("permanent intelligence orchestration contract", () => {
       expect(script).toContain(`key: "${task}"`);
     }
     expect(script).toContain("MAX_TASKS_PER_TICK");
+    expect(script).toContain("offsetSeconds: 240");
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
     expect(script).toContain("retry_pending");
