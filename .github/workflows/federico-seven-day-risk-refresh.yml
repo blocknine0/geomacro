@@ -585,7 +585,7 @@ jobs:
             --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
             --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
             --header 'Content-Type: application/json' \
-            --data '{}' \
+            --data '{"country_iso3":"CHN"}' \
             "${base}/live-flash-corroborate")"
           cat /tmp/federico-corroborate.json
           echo
