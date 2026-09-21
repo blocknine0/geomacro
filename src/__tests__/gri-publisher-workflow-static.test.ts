@@ -15,8 +15,12 @@ const jobBlock = (source, name) => {
 const publishJob = jobBlock(workflow, "publish");
 
 describe("scheduled GRI publisher workflow", () => {
-  it("publishes often enough to stay inside the three-hour public proof freshness SLO", () => {
-    expect(workflow).toContain('cron: "50 */2 * * *"');
+  it("keeps publish manual-only because the master orchestrator owns cadence", () => {
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain('cron: "50 */2 * * *"');
+    const orchestrator = readFileSync(".github/workflows/intelligence-orchestrator.yml", "utf8");
+    expect(orchestrator).toContain('key: "gri_publish"');
+    expect(orchestrator).toContain("cadenceSeconds: 7200");
   });
 
   it("uses the committed Bun lockfile instead of mutating dependencies with npm", () => {
