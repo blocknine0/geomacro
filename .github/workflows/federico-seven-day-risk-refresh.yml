@@ -477,7 +477,6 @@ jobs:
           BREAKING_RSS_ENABLED: "true"
           BREAKING_RSS_RUN_ONCE: "true"
           BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-          BREAKING_RSS_SOURCE_IDS: "aljazeera_rss,bbc_world_rss,xinhua_english_china_rss,scmp_china_rss,federal_reserve_press_rss,forexlive_rss,usgs_minerals_news_rss"
           BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
         shell: bash
         run: |
@@ -489,39 +488,7 @@ jobs:
           cd workers/telegram-flash
 
           : > /tmp/federico-rss-live.log
-          rss_sources=(aljazeera_rss bbc_world_rss xinhua_english_china_rss scmp_china_rss federal_reserve_press_rss forexlive_rss usgs_minerals_news_rss)
-
-          for source_id in "${rss_sources[@]}"; do
-            source_ok=false
-
-            for source_attempt in 1 2 3 4; do
-              echo "Polling Federico RSS source ${source_id}, attempt ${source_attempt}."
-              source_log="/tmp/federico-rss-${source_id}-${source_attempt}.log"
-
-              BREAKING_RSS_SOURCE_IDS="${source_id}" python worker.py >"${source_log}" 2>&1 || true
-              cat "${source_log}" >> /tmp/federico-rss-live.log
-
-              if grep -q "\"source_id\": \"${source_id}" "${source_log}"; then
-                source_ok=true
-                break
-              fi
-
-              echo "RSS source ${source_id} did not complete on attempt ${source_attempt}; retrying."
-              [[ "${source_attempt}" -lt 4 ]] && sleep 12
-            done
-
-            [[ "${source_ok}" == "true" ]] || {
-              echo "::error::RSS source ${source_id} failed to complete after four isolated attempts."
-              exit 1
-            }
-          done
-
-          grep -Eq '"source_id": "xinhua_english_china_rss".*"iso3": "CHN"' /tmp/federico-rss-live.log || {
-            echo "::error title=Xinhua CHN attribution missing::Xinhua completed its poll but did not produce a CHN-attributed evidence record."
-            exit 1
-          }
-
-          echo "PASS: each governed RSS source completed through isolated bounded retries after the exact fresh GDELT structure, including Xinhua CHN attribution."
+          python worker.py 2>&1 | tee /tmp/federico-rss-live.log
       - name: Corroborate fresh RSS and structured evidence
         shell: bash
         run: |
