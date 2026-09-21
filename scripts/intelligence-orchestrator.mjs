@@ -142,6 +142,33 @@ const TASKS = [
     ],
   },
   {
+    key: "production_readiness",
+    cadenceSeconds: 7200,
+    offsetSeconds: 3600,
+    priority: 85,
+    timeoutMs: 1_500_000,
+    steps: [
+      ["bun", ["scripts/global-risk-gate-country-census.ts", "--require-any-accepted"], "."],
+      ["node", ["scripts/audit-global-realtime-source-freshness.mjs"], "."],
+      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
+    ],
+  },
+  {
+    key: "public_demo_refresh",
+    cadenceSeconds: 3600,
+    offsetSeconds: 900,
+    priority: 90,
+    timeoutMs: 1_200_000,
+    requiredEnv: [
+      "RISK_OBJECT_SIGNING_KEY_ID",
+      "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64",
+    ],
+    steps: [
+      ["bun", ["scripts/refresh-public-demo-risk-objects.ts"], "."],
+      ["node", ["scripts/verify-public-demo-live.mjs"], "."],
+    ],
+  },
+  {
     key: "source_evidence",
     cadenceSeconds: 21600,
     offsetSeconds: 7200,
