@@ -1,0 +1,268 @@
+name: Live Testnet Health & E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Select one Testnet health/E2E operation"
+        required: true
+        default: live-smoke
+        type: choice
+        options:
+          - live-smoke
+          - authenticated-e2e
+          - developer-paid-e2e
+          - dashboard-smoke
+      e2e_mode:
+        description: "Authenticated E2E mode"
+        required: false
+        default: quote_only
+        type: choice
+        options:
+          - quote_only
+          - paid
+      chain_key:
+        description: "Authenticated E2E payment chain"
+        required: false
+        default: arcTestnet
+        type: choice
+        options:
+          - arcTestnet
+          - baseSepolia
+          - polygonAmoy
+      confirmation:
+        description: "For paid authenticated E2E only, type exactly GEOMACRO_TESTNET_USDC"
+        required: false
+        type: string
+  schedule:
+    - cron: "*/15 * * * *"
+    - cron: "23 */6 * * *"
+    - cron: "41 2 * * *"
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-testnet-health.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'live-smoke') ||
+        github.event_name == 'push'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://geomacro.live
+    steps:
+      - name: Verify live /api/health alignment contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/health")"
+          test "$code" = "200" || { cat "$body" || true; exit 1; }
+          grep -Fq '"alignment_contract":"github-main-external-supabase-lovable-v1"' "$body"
+          grep -Fq '"source_authority":"github-main"' "$body"
+          grep -Fq '"database_authority":"external-supabase"' "$body"
+          grep -Fq '"supabase_project_ref":"ldpwajisioljyjtojvfx"' "$body"
+      - name: Verify public Risk Object trust registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/risk-object-keys")"
+          test "$code" = "200" || { cat "$body" || true; exit 1; }
+          node - "$body" <<'NODE'
+          const fs=require('node:fs');
+          const body=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          if(body?.ok!==true || !Array.isArray(body?.keys) || body.keys.length===0) throw new Error('Invalid Risk Object trust registry');
+          const active=body.keys.filter(k=>k?.status==='active');
+          if(active.length===0) throw new Error('No active Risk Object trust key');
+          for(const key of active){
+            if(typeof key.key_id!=='string' || typeof key.public_key_spki_b64!=='string' || !key.public_key_spki_b64) throw new Error('Active trust key missing public metadata');
+          }
+          NODE
+      - name: Verify public Testnet developer manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet/manifest")"
+          test "$code" = "200" || { cat "$body" || true; exit 1; }
+          for marker in '"api_version":"testnet-intelligence-v1.0.0"' '"intelligence_query"' '"gri_read"' '"structural_country_digest"' '"structural_corridor_digest"' '"structural_country_profile"' '"structural_corridor_profile"' '"signed_risk_object"' '"risk_gate_bundle"' '"full_machine_decision_bundle":"risk_gate_bundle"'; do grep -Fq "$marker" "$body"; done
+      - name: Verify Testnet access page
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 4 --retry-all-errors --retry-delay 3 -sS -o "$body" -w '%{http_code}' "$BASE_URL/testnet-access")"
+          test "$code" = "200" || { head -c 500 "$body" || true; exit 1; }
+          for marker in 'PUBLIC TESTNET DEVELOPER API' '500-credit usage cap' 'API Key + API Secret' 'Receive HTTP 402' 'There is no upfront Testnet USDC activation payment.'; do grep -Fq "$marker" "$body"; done
+      - name: Verify unauthenticated account/config/intelligence boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet/account")"; test "$code" = "401"; grep -Fq 'COMMERCIAL_API_KEY_REQUIRED' "$body"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' "$BASE_URL/api/testnet-tester/config")"; test "$code" = "401"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' -H 'content-type: application/json' --data '{"request_id":"live-smoke-unauth-001","capability":"gri_read","subject":{"type":"global"}}' "$BASE_URL/api/testnet/intelligence")"; test "$code" = "401"; grep -Fq 'COMMERCIAL_API_KEY_REQUIRED' "$body"
+          if grep -Eqi 'receiver_address|credits_remaining|grant_id|gmk_test_|gms_test_|display_score|raw_score|risk_object|payment_event_id|capability_prices' "$body"; then exit 1; fi
+      - name: Verify paired Testnet credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 3 --retry-all-errors --retry-delay 2 -sS -o "$body" -w '%{http_code}' -H 'content-type: application/json' -H 'x-geomacro-api-key: gmk_test_invalid_but_long_enough_1234567890' --data '{"request_id":"live-smoke-half-auth-001","capability":"gri_read","subject":{"type":"global"}}' "$BASE_URL/api/testnet/intelligence")"
+          test "$code" = "401"
+          grep -Fq 'TESTNET_API_KEY_SECRET_REQUIRED' "$body"
+      - name: Verify public intelligence API exposes no premium data unauthenticated
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PASS: live Testnet developer API discovery and unauthenticated security boundaries."
+
+  authenticated-e2e:
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '23 */6 * * *' && vars.GEOMACRO_TESTNET_E2E_ENABLED == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'authenticated-e2e')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: geomacro-testnet-e2e
+    concurrency:
+      group: live-testnet-authenticated-e2e
+      cancel-in-progress: false
+    env:
+      GEOMACRO_TESTNET_E2E_BASE_URL: https://geomacro.live
+      GEOMACRO_TESTNET_E2E_EXPECTED_HOST: geomacro.live
+      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
+      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
+      GEOMACRO_TESTNET_E2E_MODE: ${{ inputs.e2e_mode || 'quote_only' }}
+      GEOMACRO_TESTNET_E2E_CHAIN_KEY: ${{ inputs.chain_key || 'arcTestnet' }}
+      GEOMACRO_TESTNET_E2E_ACK: ${{ inputs.confirmation || '' }}
+      GEOMACRO_TESTNET_E2E_MAX_USDC: '0.5'
+      GEOMACRO_TESTNET_E2E_ARTIFACT_DIR: artifacts/testnet-live-e2e
+    steps:
+      - name: Validate dedicated E2E wallet configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_TESTNET_E2E_PRIVATE_KEY"
+          if [ "$GEOMACRO_TESTNET_E2E_MODE" = "paid" ] && [ "$GEOMACRO_TESTNET_E2E_ACK" != "GEOMACRO_TESTNET_USDC" ]; then exit 1; fi
+          echo "Mode: $GEOMACRO_TESTNET_E2E_MODE" >> "$GITHUB_STEP_SUMMARY"
+          echo "Chain: $GEOMACRO_TESTNET_E2E_CHAIN_KEY" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false" >> "$GITHUB_STEP_SUMMARY"
+          echo "Risk Gate execution authorization: false" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install exact dependencies
+        run: timeout 5m bun install --frozen-lockfile
+      - name: Run real wallet authenticated Testnet E2E
+        run: timeout 8m bun scripts/testnet/live-authenticated-e2e.mjs
+      - name: Upload sanitized E2E evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-testnet-authenticated-e2e-${{ github.run_id }}
+          path: artifacts/testnet-live-e2e/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  developer-paid-e2e:
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '41 2 * * *' && vars.GEOMACRO_TESTNET_DEVELOPER_E2E_ENABLED == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: geomacro-testnet-e2e
+    concurrency:
+      group: live-testnet-developer-api-paid-e2e
+      cancel-in-progress: false
+    env:
+      GEOMACRO_TESTNET_E2E_BASE_URL: https://geomacro.live
+      GEOMACRO_TESTNET_E2E_EXPECTED_HOST: geomacro.live
+      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
+      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
+      GEOMACRO_TESTNET_DEVELOPER_API_KEY: ${{ secrets.GEOMACRO_TESTNET_DEVELOPER_API_KEY }}
+      GEOMACRO_TESTNET_DEVELOPER_API_SECRET: ${{ secrets.GEOMACRO_TESTNET_DEVELOPER_API_SECRET }}
+      GEOMACRO_TESTNET_E2E_CHAIN_KEY: arcTestnet
+      GEOMACRO_TESTNET_E2E_MAX_USDC: '0.5'
+      GEOMACRO_TESTNET_E2E_ARTIFACT_DIR: artifacts/testnet-developer-live-e2e
+    steps:
+      - name: Validate dedicated Developer E2E configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GEOMACRO_TESTNET_E2E_PRIVATE_KEY GEOMACRO_TESTNET_DEVELOPER_API_KEY GEOMACRO_TESTNET_DEVELOPER_API_SECRET; do test -n "${!name:-}"; done
+          echo "Developer paid E2E uses only the dedicated Testnet wallet and Testnet USDC." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install exact dependencies
+        run: timeout 5m bun install --frozen-lockfile --ignore-scripts
+      - name: Run real-wallet Developer API E2E
+        run: timeout 12m bun scripts/testnet/live-developer-api-e2e.mjs
+      - name: Upload sanitized Developer API E2E evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: live-testnet-developer-api-e2e-${{ github.run_id }}
+          path: artifacts/testnet-developer-live-e2e/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  dashboard-smoke:
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '17 */6 * * *') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'dashboard-smoke')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: testnet-dashboard-live-smoke
+      cancel-in-progress: true
+    env:
+      BACKEND_BASE_URL: https://geomacro.live
+      DASHBOARD_URL: https://blocknine0.github.io/geomacro-testnet-dashboard/
+    steps:
+      - name: Verify public dashboard feed for 7D, 30D and 90D
+        shell: bash
+        run: |
+          set -euo pipefail
+          for days in 7 30 90; do
+            body="$(mktemp)"; headers="$(mktemp)"
+            code="$(curl -L --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 --max-time 60 -sS -D "$headers" -o "$body" -w '%{http_code}' "$BACKEND_BASE_URL/api/testnet/dashboard?days=$days")"
+            test "$code" = "200"
+            grep -Eqi '^content-type:.*application/json' "$headers"
+            grep -Eqi '^access-control-allow-origin:[[:space:]]*\*' "$headers"
+            grep -Eqi '^cache-control:.*public' "$headers"
+            jq -e --argjson days "$days" '.ok == true and .data.window.days == $days and .data.program.environment == "testnet" and .data.program.identity_model == "wallet_first_eip4361" and .data.program.payment_model == "pay_per_call" and .data.program.payment_asset == "USDC" and .data.program.commercial_revenue == false and .data.program.execution_authorized == false and .data.boundaries.public_read_only == true and .data.boundaries.customer_identity_exposed == false and .data.boundaries.wallet_address_exposed == false and .data.boundaries.transaction_hash_exposed == false and .data.boundaries.request_id_exposed == false and .data.boundaries.subject_or_query_exposed == false and .data.boundaries.raw_credentials_exposed == false and .data.boundaries.raw_request_body_exposed == false and .data.boundaries.upstream_news_source_identity_exposed == false and .data.boundaries.testnet_counts_as_commercial_revenue == false and .data.overview.execution_authorized_violation_count == 0 and ([.data.recent_activity[]? | .execution_authorized == false] | all) and ([.data.recent_payments[]? | .commercial_revenue == false] | all)' "$body" >/dev/null
+          done
+      - name: Verify public dashboard page deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"
+          code="$(curl -L --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 --max-time 60 -sS -o "$body" -w '%{http_code}' "$DASHBOARD_URL")"
+          test "$code" = "200"
+          grep -Fq 'Testnet operations dashboard' "$body"
+          grep -Fq "https://geomacro.live/api/testnet/dashboard" "$body"
+          grep -Fq 'Testnet activity is technical proof only and is never reported as commercial revenue.' "$body"
+          ! grep -Eqi 'service[_ -]?role|SUPABASE_SERVICE_ROLE|private[_ -]?key|gmk_test_[A-Za-z0-9_-]{16,}|gms_test_[A-Za-z0-9_-]{16,}' "$body"
