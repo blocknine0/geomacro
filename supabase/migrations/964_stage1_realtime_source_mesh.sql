@@ -95,4 +95,21 @@ on conflict (source_key) do update set
   commercial_reviewed_at = excluded.commercial_reviewed_at,
   updated_at = now();
 
+alter table public.live_source_registry
+  add column if not exists realtime_hot_topic_enabled boolean not null default false;
+
+update public.live_source_registry
+set realtime_hot_topic_enabled = case
+  when source_key = 'gdelt_gal' then true
+  when source_key in ('usgs_earthquakes', 'gdacs_global_disasters') then false
+  else false
+end
+where source_key in (
+  'gdelt_gal',
+  'usgs_earthquakes',
+  'gdacs_global_disasters',
+  'reliefweb_reports'
+);
+
+
 commit;
