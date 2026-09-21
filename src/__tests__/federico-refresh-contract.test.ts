@@ -48,7 +48,10 @@ describe("Federico refresh contract", () => {
     expect(workflow).toContain("Verify every configured RSS source completed");
     expect(workflow).toContain("event.get('rss') == 'ready'");
     expect(workflow).toContain("event.get('kind') in {'rss_source_complete', 'rss_error'}");
-    expect(workflow).toContain('--data \'{"country_iso3":"CHN"}\'');    expect(workflow).toContain(
+    expect(workflow).toContain('--data \'{"country_iso3":"CHN"}\'');    const corroborator = read(
+      "supabase/functions/live-flash-corroborate/index.ts",
+    );
+    expect(corroborator).toContain(
       "candidate_country_iso3",
     );
     expect(workflow).not.toContain("xinhua_english_china_rss");
