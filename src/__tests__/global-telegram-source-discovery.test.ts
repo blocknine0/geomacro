@@ -37,5 +37,7 @@ describe("global Telegram workflow triggers",()=>{
     expect(workflow).toContain("push:");
     expect(workflow).toContain("- main");
     expect(workflow).not.toContain("workflow_run:");
+    expect(workflow).toContain("trigger-guard:");
+    expect(workflow).toContain("needs: trigger-guard");
   });
 });
