@@ -27,7 +27,9 @@ describe("permanent intelligence orchestration contract", () => {
       "news_ingest",
       "gri_publish",
       "source_evidence",
-    ]) {
+    ])
+    expect(script).toContain('key: "production_readiness"');
+    expect(script).toContain('key: "public_demo_refresh"'); {
       expect(script).toContain(`key: "${task}"`);
     }
     expect(script).toContain("MAX_TASKS_PER_TICK");
@@ -55,6 +57,10 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/source-evidence-graph-auto-promotion.yml",
       ".github/workflows/federico-seven-day-risk-refresh.yml",
       ".github/workflows/open-realtime-source-mesh.yml",
+      ".github/workflows/ingest-reliefweb-live.yml",
+      ".github/workflows/global-realtime-source-proof.yml",
+      ".github/workflows/production-intelligence-readiness.yml",
+      ".github/workflows/public-demo-risk-refresh.yml",
     ]) {
       const source = read(path);
       expect(source, path).toContain("workflow_dispatch:");
