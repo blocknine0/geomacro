@@ -42,6 +42,7 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(probe).toContain('collectMigrationEndpointManifest');
     expect(probe).toContain('assertEndpointManifestLock');
     expect(probe).toContain('expected_endpoint_count: expectedCount');
+    expect(probe).toContain("curl completed without an HTTP status");
     expect(probe).not.toContain("live_global_source_universe");
     expect(probe).not.toContain("live_external_sources");
     expect(probe).toContain("write_operations_performed: false");
