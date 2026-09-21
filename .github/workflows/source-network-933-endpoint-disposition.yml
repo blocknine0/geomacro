@@ -1,0 +1,146 @@
+name: Source Network 933 Endpoint Disposition
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy country flash intelligence to Supabase
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/source-network-933-endpoint-disposition.yml"
+      - "scripts/probe-production-source-endpoints-933.mjs"
+      - "scripts/source-endpoint-manifest.mjs"
+      - "scripts/import-source-endpoint-evidence.mjs"
+      - "config/source-endpoint-manifest-lock.json"
+      - "supabase/migrations/070_permanent_endpoint_disposition_ledger.sql"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-source-network-933-disposition-v2
+  cancel-in-progress: false
+
+jobs:
+  disposition:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'push' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      EXPECTED_ENDPOINT_COUNT: "933"
+      SOURCE_PROBE_TIMEOUT_MS: "5000"
+      SOURCE_PROBE_CONCURRENCY: "40"
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      STRICT_ENDPOINT_COUNT: "true"
+
+    steps:
+      - name: Checkout exact validated revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Validate authoritative production database target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}"
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          node --input-type=module <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const username = decodeURIComponent(db.username);
+          const directMatch =
+            db.hostname === `db.${ref}.supabase.co` &&
+            username === "postgres";
+          const poolerMatch =
+            db.hostname.endsWith(".pooler.supabase.com") &&
+            username === `postgres.${ref}`;
+          if (!["postgres:", "postgresql:"].includes(db.protocol) || (!directMatch && !poolerMatch)) {
+            throw new Error("SUPABASE_DB_URL is not the authoritative production database");
+          }
+          if (!db.password || db.pathname !== "/postgres") {
+            throw new Error("Invalid production database URL");
+          }
+          const api = new URL(process.env.APP_SUPABASE_URL);
+          if (api.hostname !== `${ref}.supabase.co`) {
+            throw new Error("APP_SUPABASE_URL is not the authoritative production API");
+          }
+          console.log("PASS: authoritative production DB/API identities confirmed.");
+          NODE
+
+      - name: Verify permanent endpoint disposition schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          for relation in live_source_endpoint_manifest_lock live_source_endpoint_disposition_ledger live_source_endpoint_disposition_933_status; do
+            value="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select to_regclass('public.${relation}')")"
+            test "${value}" = "${relation}"
+          done
+          echo "PASS: permanent endpoint manifest lock, ledger and gate are present."
+
+      - name: Verify canonical 933 endpoint manifest lock
+        run: node scripts/source-endpoint-manifest.mjs
+
+      - name: Probe exact canonical 933 endpoint manifest
+        run: node scripts/probe-production-source-endpoints-933.mjs
+
+      - name: Import endpoint disposition evidence
+        env:
+          EXPECTED_ENDPOINT_COUNT: "933"
+          STRICT_ENDPOINT_COUNT: "true"
+        run: node scripts/import-source-endpoint-evidence.mjs artifacts/source-endpoint-disposition-933/results.json
+
+      - name: Verify permanent 933 endpoint disposition gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_hash="$(node --input-type=module -e 'import { collectMigrationEndpointManifest } from "./scripts/source-endpoint-manifest.mjs"; const m = await collectMigrationEndpointManifest(); process.stdout.write(m.manifest_sha256);')"
+          db_hash="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select manifest_sha256 from public.live_source_endpoint_manifest_lock where lock_id='phase-b-933-v1'")"
+          test "${expected_hash}" = "${db_hash}"
+
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
+          echo "${row}"
+          IFS='|' read -r expected_count db_hash recorded_count disposition_count unclassified_count transport_success_count remediation_count complete <<< "${row}"
+          test "${expected_count}" = "933"
+          test "${db_hash}" = "${expected_hash}"
+          test "${recorded_count}" = "933"
+          test "${disposition_count}" = "933"
+          test "${unclassified_count}" = "0"
+          test "${complete}" = "t"
+          echo "PASS: 933/933 endpoint disposition is complete."
+          echo "PASS: manifest hash is aligned between repository and production."
+
+      - name: Upload 933 endpoint evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-network-933-endpoint-disposition-${{ github.run_id }}
+          path: artifacts/source-endpoint-disposition-933/
+          if-no-files-found: error
+          retention-days: 30
