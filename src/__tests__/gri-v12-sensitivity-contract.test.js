@@ -175,9 +175,20 @@ describe("GRI v1.2 sensitivity contract", () => {
 
   it("keeps live evidence read-only and blocks predictive or institutional-grade claim upgrades", () => {
     const workflow = readFileSync(
-      ".github/workflows/gri-calibration-sensitivity-evidence.yml",
+      ".github/workflows/gri-governance.yml",
       "utf8",
     );
+    const jobBlock = (source, name) => {
+      const header = `  ${name}:\n`;
+      const start = source.indexOf(header);
+      if (start < 0) return "";
+      const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+      let next = boundary.exec(source);
+      while (next && next.index <= start) next = boundary.exec(source);
+      const end = next ? next.index : source.length;
+      return source.slice(start, end);
+    };
+    const calibrationJob = jobBlock(workflow, "calibration");
     const sensitivityAudit = readFileSync(
       "scripts/audit-gri-v12-sensitivity.mjs",
       "utf8",
@@ -187,9 +198,9 @@ describe("GRI v1.2 sensitivity contract", () => {
       "utf8",
     );
 
-    expect(workflow).toContain("APP_SUPABASE_ANON_KEY");
-    expect(workflow).not.toContain("SERVICE_ROLE");
-    expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(calibrationJob).toContain("APP_SUPABASE_ANON_KEY");
+    expect(calibrationJob).not.toContain("SERVICE_ROLE");
+    expect(calibrationJob).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(sensitivityAudit).toContain(
       "predictiveAccuracyClaimAuthorized: false",
     );

@@ -32,7 +32,7 @@ on:
       - "supabase/migrations/928_testnet_developer_credential_lifecycle.sql"
       - "scripts/testnet/**"
       - "scripts/ops/live-performance-slo.mjs"
-      - ".github/workflows/live-testnet-authenticated-e2e.yml"
+      - ".github/workflows/live-testnet-health.yml"
       - ".github/workflows/live-performance-slo.yml"
       - ".github/workflows/testnet-tester-validation.yml"
   workflow_dispatch:

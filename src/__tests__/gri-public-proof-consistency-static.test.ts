@@ -4,7 +4,18 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 const script = read("scripts/audit-gri-public-proof-consistency.mjs");
-const workflow = read(".github/workflows/gri-public-proof-consistency.yml");
+const workflow = read(".github/workflows/gri-governance.yml");
+const jobBlock = (source, name) => {
+  const header = `  ${name}:\n`;
+  const start = source.indexOf(header);
+  if (start < 0) return "";
+  const boundary = /^  [A-Za-z0-9_-]+:\n/gm;
+  let next = boundary.exec(source);
+  while (next && next.index <= start) next = boundary.exec(source);
+  const end = next ? next.index : source.length;
+  return source.slice(start, end);
+};
+const publicProofJob = jobBlock(workflow, "public-proof");
 const verifier = read("scripts/verify-gri-snapshot-v12.js");
 
 describe("GRI public proof consistency evidence", () => {
@@ -42,11 +53,11 @@ describe("GRI public proof consistency evidence", () => {
     expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     expect(workflow).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(workflow).toContain("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
-    expect(workflow).not.toContain("npm install --no-save");
-    expect(workflow).not.toContain("compute-gri-v12.js");
-    expect(workflow).not.toContain("cluster-gri-stories-v12.js");
-    expect(workflow).not.toContain("insert(");
-    expect(workflow).not.toContain("upsert(");
+    expect(publicProofJob).not.toContain("npm install --no-save");
+    expect(publicProofJob).not.toContain("compute-gri-v12.js");
+    expect(publicProofJob).not.toContain("cluster-gri-stories-v12.js");
+    expect(publicProofJob).not.toContain("insert(");
+    expect(publicProofJob).not.toContain("upsert(");
     expect(verifier).toContain("const snapshotArg = args.indexOf('--snapshot-id')");
   });
 });

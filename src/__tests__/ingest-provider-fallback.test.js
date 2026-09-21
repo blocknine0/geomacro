@@ -19,7 +19,7 @@ const envExample = readFileSync(
 
 const workflows = [
   '../../.github/workflows/auto-ingest-news.yml',
-  '../../.github/workflows/reclassify-gri-evidence.yml',
+  '../../.github/workflows/gri-governance.yml',
 ].map((relativePath) =>
   readFileSync(
     new URL(

@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("live Testnet API smoke contract", () => {
   it("checks the permanent public/developer page and unauthenticated fail-closed boundaries without moving funds", () => {
-    const workflow = read(".github/workflows/live-testnet-api-smoke.yml");
+    const workflow = read(".github/workflows/live-testnet-health.yml");
     const script = read("scripts/test-live-testnet-api-smoke.mjs");
     const accessPage = read("src/routes/testnet-access.tsx");
     const publicAccess = read("src/lib/testnet-public-access-contract.ts");

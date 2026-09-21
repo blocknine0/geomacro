@@ -124,7 +124,7 @@ jobs:
           db_hash="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -At -c "select manifest_sha256 from public.live_source_endpoint_manifest_lock where lock_id='phase-b-933-v1'")"
           test "${expected_hash}" = "${db_hash}"
 
-          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c             "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
+          row="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -X -AtF '|' -c "select expected_endpoint_count,expected_manifest_sha256,recorded_endpoint_count,disposition_count,unclassified_count,transport_success_count,remediation_count,endpoint_disposition_933_complete from public.live_source_endpoint_disposition_933_status")"
           echo "${row}"
           IFS='|' read -r expected_count db_hash recorded_count disposition_count unclassified_count transport_success_count remediation_count complete <<< "${row}"
           test "${expected_count}" = "933"
