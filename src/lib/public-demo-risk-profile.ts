@@ -22,7 +22,7 @@ export const FEDERICO_STRICT_RELEVANCE_METHOD =
   "country_bridge_attribution_v1" as const;
 
 export const FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION =
-  "federico-source-family-map-v5" as const;
+  "federico-source-family-map-v6" as const;
 
 export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   telegram_mtproto_flash: "telegram_network",
@@ -100,6 +100,9 @@ export const FEDERICO_STRICT_SOURCE_FAMILY_BY_ID = {
   "wtvbam.com": "wtvbam.com",
   "wiky.com": "wiky.com",
   "kelo.com": "kelo.com",
+  "mymotherlode.com": "mymotherlode.com",
+  "oneindia.com": "oneindia.com",
+  "whtc.com": "whtc.com",
   "japanherald.com": "japanherald.com",
   "shanghaisun.com": "shanghaisun.com",
 } as const;
