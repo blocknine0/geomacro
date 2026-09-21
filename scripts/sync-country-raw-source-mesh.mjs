@@ -12,6 +12,23 @@ const txt=(v)=>String(v??"").replace(/\s+/g," ").trim();
 const safe=(v)=>String(v).replace(/[^A-Za-z0-9._-]+/g,"_").slice(0,160);
 function pageTitle(html){const m=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);return txt(m?.[1]?.replace(/<[^>]+>/g," ")).slice(0,800);}
 function links(html,base,limit=80){const out=[];const seen=new Set();const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;let m;const host=new URL(base).hostname;while((m=re.exec(html))&&out.length<limit){try{const u=new URL(m[1],base);if(!/^https?:$/.test(u.protocol)||u.hostname!==host)continue;const t=txt(m[2].replace(/<[^>]+>/g," "));if(t.length<8||seen.has(u.href)||!/(news|press|media|release|statement|announcement|update|bulletin|publication|202[4-9]|latest|minister|econom|trade|mineral|mine|energy|security)/i.test(u.href))continue;seen.add(u.href);out.push({u:u.href,t:t.slice(0,800)});}catch{}}return out;}
+function rssItems(xml, baseUrl, limit=100){
+  const out=[];
+  const text=String(xml);
+  const blocks=[...text.matchAll(/<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)];
+  for(const match of blocks.slice(0,limit)){
+    const block=match[1]??"";
+    const read=(name)=>{const m=block.match(new RegExp("<"+name+"(?:\\\\:[^\\\\s>]+)?(?:\\\\s[^>]*)?>[\\\\s\\\\S]*?<\\\\/"+name+">","i"));return txt(m?.[0]?.replace(new RegExp("^<[^>]+>|<\\\\/[^>]+>$","gi")," "));};
+    const title=read("title");
+    const linkMatch=block.match(/<link[^>]*(?:href=["']([^"']+)["']|>([^<]+)<\/link>)/i);
+    let u=linkMatch?.[1]??linkMatch?.[2]??baseUrl;
+    try{u=new URL(u,baseUrl).toString();}catch{u=baseUrl;}
+    const date=read("pubDate")||read("published")||read("updated")||new Date().toISOString();
+    const desc=read("description")||read("summary")||"";
+    if(title)out.push({u,t:title.slice(0,800),d:date,x:desc.slice(0,2400)});
+  }
+  return out;
+}
 async function fetchUrl(url){const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow"});return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),final:r.url||url,bytes:Buffer.from(await r.arrayBuffer())};}
 async function mark(db,t,p){const{error}=await db.from("live_raw_source_targets").update({...p,updated_at:new Date().toISOString()}).eq("target_id",t.target_id);if(error)throw error;}
 async function saveSnapshot(db,t,when,f){
@@ -66,11 +83,11 @@ async function saveFragment(db,t,when,rows){
 async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const now=Date.now();const countriesQuery=await db.from("live_country_registry").select("iso3,iso2").eq("enabled",true);
   if(countriesQuery.error)throw countriesQuery.error;
   const countryIso2=new Map((countriesQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
-  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("transport",["WEB","GLOBAL_FALLBACK"]).order("priority",{ascending:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>!t.last_attempt_at||!Number.isFinite(Date.parse(String(t.last_attempt_at)))||Date.parse(String(t.last_attempt_at))+Number(t.cadence_seconds)*1000<=now);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).order("priority",{ascending:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>!t.last_attempt_at||!Number.isFinite(Date.parse(String(t.last_attempt_at)))||Date.parse(String(t.last_attempt_at))+Number(t.cadence_seconds)*1000<=now);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
         if(t.source_id==="gdelt_v2"){
           const iso2=countryIso2.get(String(t.country_iso3));
           if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
-        }if(!u)throw new Error("RAW_SOURCE_TARGET_URL_MISSING");const f=await fetchUrl(u);if(f.status<200||f.status>=300)throw new Error("HTTP_"+f.status);const text=f.bytes.toString("utf8"),rows=[];if(/json/i.test(f.ct)){try{
+        }if(!u)throw new Error("RAW_SOURCE_TARGET_URL_MISSING");const f=await fetchUrl(u);if(f.status<200||f.status>=300)throw new Error("HTTP_"+f.status);const text=f.bytes.toString("utf8"),rows=[];if(/xml|rss|atom/i.test(f.ct)||/<(?:rss|feed)\b/i.test(text)){for(const x of rssItems(text,f.final)){let host="";try{host=new URL(x.u).hostname;}catch{continue;}rows.push({i:hash(Buffer.from("rss:"+t.target_id+":"+x.u)),u:x.u,d:x.d||when,h:host,o:t.display_name,t:x.t,x:x.x||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}if(/json/i.test(f.ct)){try{
           const p=JSON.parse(text);
           const a=Array.isArray(p?.articles)
             ? p.articles
