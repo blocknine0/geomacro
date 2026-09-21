@@ -30,6 +30,9 @@ describe("global raw realtime acquisition",()=>{
     expect(migration).toContain("'GEO:GLOBAL:GDELT:'");
     expect(migration).toContain("true,false,300,20");
     const workflow=read(".github/workflows/gdelt-gal-live-sync.yml");
-    expect(workflow).toContain('cron: "*/5 * * * *"');
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).not.toContain("schedule:");
+    const orchestrator=read(".github/workflows/intelligence-orchestrator.yml");
+    expect(orchestrator).toContain('key: "gdelt_gal"');
   });
 });
