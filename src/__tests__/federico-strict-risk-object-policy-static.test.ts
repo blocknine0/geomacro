@@ -392,7 +392,13 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      "signature: riskObject.integrity.signature",
+      'artifact_version: "geomacro-invino-review-v2"',
+    );
+    expect(preflight).toContain(
+      "risk_object: riskObject",
+    );
+    expect(preflight).toContain(
+      'as_of_source: "risk_object.observed_at"',
     );
     expect(canonicalSpec).toContain(
       "Number::toString",
