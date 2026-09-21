@@ -42,13 +42,21 @@ const TASKS = [
     cadenceSeconds: 900,
     offsetSeconds: 0,
     priority: 10,
-    steps: [["bun", ["scripts/sync-gdelt-gal-production.mjs"], "."]],
+    timeoutMs: 1_200_000,
+    requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
+    steps: [
+      ["bun", ["scripts/sync-gdelt-gal-production.mjs"], "."],
+      ["node", ["scripts/drain-live-structure.mjs"], "."],
+      ["node", ["scripts/reconcile-structured-event-commercial-rights.mjs"], "."],
+      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
+    ],
   },
   {
     key: "gdelt_v2",
     cadenceSeconds: 900,
     offsetSeconds: 180,
     priority: 11,
+    timeoutMs: 900_000,
     steps: [["bun", ["scripts/ingest-gdelt-v2-events-live.mjs", "--write"], "."]],
   },
   {
@@ -56,16 +64,26 @@ const TASKS = [
     cadenceSeconds: 900,
     offsetSeconds: 240,
     priority: 15,
-    requiredEnv: ["RELIEFWEB_APP_NAME", "LIVE_STRUCTURE_TOKEN"],
+    requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
     timeoutMs: 1_200_000,
-    steps: [["bun", ["scripts/sync-open-live-source-mesh.mjs"], "."]],
+    steps: [
+      ["bun", ["scripts/sync-open-live-source-mesh.mjs"], "."],
+      ["node", ["scripts/drain-live-structure.mjs"], "."],
+    ],
   },
   {
     key: "country_raw_mesh",
     cadenceSeconds: 900,
     offsetSeconds: 360,
     priority: 20,
-    steps: [["bun", ["scripts/sync-country-raw-source-mesh.mjs"], "."]],
+    requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
+    timeoutMs: 1_500_000,
+    steps: [
+      ["bash", ["-lc", "bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json"], "."],
+      ["node", ["scripts/drain-live-structure.mjs", "--fragment-ids-file", "country-raw-source-sync.json"], "."],
+      ["bun", ["scripts/audit-global-raw-source-coverage.mjs"], "."],
+      ["bun", ["scripts/audit-global-raw-source-runtime.mjs"], "."],
+    ],
   },
   {
     key: "rss_live",
@@ -74,13 +92,15 @@ const TASKS = [
     priority: 30,
     oidcAudience: "https://geomacro.live/actions/live-flash-rss",
     requiredEnv: [],
-    steps: [["python", ["worker.py"], "workers/telegram-flash"]],
+    timeoutMs: 1_200_000,
+    steps: [["node", ["scripts/run-rss-live-cycle.mjs"], "."]],
   },
   {
     key: "realtime_fanout",
     cadenceSeconds: 900,
     offsetSeconds: 720,
     priority: 40,
+    timeoutMs: 900_000,
     steps: [
       ["bun", ["scripts/sync-realtime-scope-fanout.mjs"], "."],
       ["bun", ["scripts/audit-realtime-scope-fanout.mjs"], "."],
@@ -389,18 +409,18 @@ async function main() {
     }
   }
 
-  const due = TASKS
+  const dueAll = TASKS
     .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
     .filter(({ task, state }) => isPast(state.cursor.next_due_at, nowMs))
-    .sort((a, b) => a.task.priority - b.task.priority)
-    .slice(0, MAX_TASKS_PER_TICK);
+    .sort((a, b) => a.task.priority - b.task.priority);
+  const due = dueAll.slice(0, MAX_TASKS_PER_TICK);
 
   const results = [];
   for (const item of due) {
     results.push(await runTask(item.task, item.state));
   }
 
-  const deferredCount = Math.max(0, due.length - MAX_TASKS_PER_TICK);
+  const deferredCount = Math.max(0, dueAll.length - MAX_TASKS_PER_TICK);
   const summary = {
     ok: true,
     orchestrator: CONTROL_SOURCE,
