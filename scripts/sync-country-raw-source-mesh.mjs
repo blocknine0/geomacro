@@ -96,11 +96,23 @@ async function ensureCoverageTargets(db) {
     MACRO: { id: (iso) => "MACRO:COVERAGE_FALLBACK:" + iso, source_id: "world_bank_indicators", transport: "GLOBAL_FALLBACK", target_url: "https://api.worldbank.org/v2/", display_name: (country) => "World Bank coverage fallback - " + country, cadence_seconds: 900, priority: 1, notes: "Priority-1 country coverage anchor using the country-specific World Bank API. National statistics and monetary-authority sources remain independent redundancy." },
     CRITICAL_MINERALS: { id: (iso) => "MINERALS:COVERAGE_FALLBACK:" + iso, source_id: "usgs_mcs", transport: "GLOBAL_FALLBACK", target_url: "https://www.usgs.gov/centers/national-minerals-information-center/data", display_name: (country) => "USGS minerals coverage fallback - " + country, cadence_seconds: 3600, priority: 1, notes: "Priority-1 country coverage anchor using the global USGS minerals baseline. RMIS and national minerals sources remain independent redundancy." }
   };
-  const countriesQuery = await db.from("live_country_registry").select("iso3,iso2,country_name").eq("enabled", true).order("iso3", { ascending: true });
-  if (countriesQuery.error) throw countriesQuery.error;
-  const countries = countriesQuery.data ?? [];
-  if (countries.length !== 195) throw new Error("Expected exactly 195 enabled canonical countries; found " + countries.length);
-  const existingQuery = await db.from("live_raw_source_targets").select("target_id,country_iso3,category,enabled").eq("enabled", true).in("category", Object.keys(expected));
+  const [directoryQuery, registryQuery] = await Promise.all([
+    db.from("live_country_primary_source_directory").select("country_iso2,country_name").order("country_iso2", { ascending: true }),
+    db.from("live_country_registry").select("iso3,iso2,country_name").eq("enabled", true).order("iso3", { ascending: true }),
+  ]);
+  if (directoryQuery.error) throw directoryQuery.error;
+  if (registryQuery.error) throw registryQuery.error;
+  const registryByIso2 = new Map((registryQuery.data ?? []).map((row) => [String(row.iso2).toUpperCase(), row]));
+  const countries = (directoryQuery.data ?? []).map((row) => {
+    const iso2 = String(row.country_iso2).toUpperCase();
+    const registry = registryByIso2.get(iso2);
+    return registry ? { iso3: String(registry.iso3), iso2, country_name: String(row.country_name) } : null;
+  }).filter(Boolean);
+  if (new Set(countries.map((row) => row.iso3)).size !== 195) {
+    throw new Error("Expected exactly 195 canonical countries from the government-portal baseline; resolved " + new Set(countries.map((row) => row.iso3)).size);
+  }
+  const canonicalIso3 = countries.map((row) => row.iso3);
+  const existingQuery = await db.from("live_raw_source_targets").select("target_id,country_iso3,category,enabled").eq("enabled", true).in("country_iso3", canonicalIso3).in("category", Object.keys(expected));
   if (existingQuery.error) throw existingQuery.error;
   const existing = existingQuery.data ?? [];
   const ids = new Set(existing.map((row) => String(row.target_id)));
@@ -138,10 +150,12 @@ async function ensureCoverageTargets(db) {
   }
   return { countries: 195, categories: Object.keys(expected), raw_only: true, inserted_targets: rows.length, coverage_anchors: countries.length * Object.keys(expected).length };
 }
-async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const country_contract=await ensureCoverageTargets(db);const now=Date.now();const countriesQuery=await db.from("live_country_registry").select("iso3,iso2").eq("enabled",true);
-  if(countriesQuery.error)throw countriesQuery.error;
-  const countryIso2=new Map((countriesQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
-  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>!t.last_attempt_at||!Number.isFinite(Date.parse(String(t.last_attempt_at)))||Date.parse(String(t.last_attempt_at))+Number(t.cadence_seconds)*1000<=now);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const country_contract=await ensureCoverageTargets(db);const now=Date.now();const [directoryQuery,registryQuery]=await Promise.all([db.from("live_country_primary_source_directory").select("country_iso2"),db.from("live_country_registry").select("iso3,iso2").eq("enabled",true)]);
+  if(directoryQuery.error)throw directoryQuery.error;if(registryQuery.error)throw registryQuery.error;
+  const registryByIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso2).toUpperCase(),String(x.iso3)]));
+  const canonicalIso3=new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean));
+  if(canonicalIso3.size!==195)throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.size);
+  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>!t.last_attempt_at||!Number.isFinite(Date.parse(String(t.last_attempt_at)))||Date.parse(String(t.last_attempt_at))+Number(t.cadence_seconds)*1000<=now);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
         if(t.source_id==="gdelt_v2"){
           const iso2=countryIso2.get(String(t.country_iso3));
           if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
