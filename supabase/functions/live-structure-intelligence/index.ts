@@ -3018,21 +3018,13 @@ Deno.serve(async (req) => {
           "live_fragment_manifest",
         )
         .select(
-          "id,object_path,item_count,period_end,verified_at",
+          "id,object_path,item_count,source_key,stream_key,period_end,verified_at",
         )
         .eq(
           "id",
           requestedFragmentId,
         )
-        .eq(
-          "source_key",
-          "gdelt_gal",
-        )
-        .eq(
-          "stream_key",
-          "global-relevant",
-        )
-        .eq(
+.eq(
           "verification_method",
           "storage-readback-sha256",
         )
