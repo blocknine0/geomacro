@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: realtime-corridor-hot-topic-fanout
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
