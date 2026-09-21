@@ -1,3 +1,5 @@
+name: Source Network Governance & Endpoint Evidence
+
 on:
   workflow_dispatch:
     inputs:
