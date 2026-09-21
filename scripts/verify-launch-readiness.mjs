@@ -114,7 +114,12 @@ need(circleRoute.includes("manualReview: true"), "Circle manual-review settlemen
 need(sourceEligibility.includes("COMMERCIAL_OK"), "commercial source eligibility gate missing");
 need(sourceEligibility.includes("raw_redistribution_allowed"), "raw redistribution boundary missing");
 need(rightsEvidence.includes("DERIVED_ONLY"), "derived-only source rights state missing");
-need(rightsTest.includes("COMMERCIAL_OK"), "source-rights parity regression test missing");
+need(
+  rightsTest.includes("commercial_usage_status") &&
+    rightsTest.includes("DERIVED_ONLY") &&
+    rightsTest.includes("raw_redistribution_allowed"),
+  "source-rights parity regression test missing",
+);
 
 need(griConsistencyTest.includes("gri-v1.2.0"), "GRI proof consistency test missing");
 need(griConsistencyTest.includes("gri-proof-v1.2.0"), "GRI proof version test missing");
