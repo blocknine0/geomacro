@@ -2,23 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   applyIntelFilters,
   buildPublicIntelligence,
-  type IntelEvent,
 } from "./use-intelligence";
+import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
 const NOW = Date.parse("2026-09-22T12:00:00.000Z");
 
-function row(overrides: Partial<IntelEvent> = {}): IntelEvent {
+function row(overrides: Partial<PublicIntelligenceRow> = {}): PublicIntelligenceRow {
   return {
     id: "event",
-    title: "Event",
+    source_title: "Event",
     summary: null,
     category: "geopolitics",
     severity: 50,
     delta: 5,
-    sourceName: null,
-    createdAt: "2026-09-22T11:00:00.000Z",
-    publishedAt: "2026-09-22T11:00:00.000Z",
-    isCurrent: false,
+    created_at: "2026-09-22T11:00:00.000Z",
+    published_at: "2026-09-22T11:00:00.000Z",
     ...overrides,
   };
 }
