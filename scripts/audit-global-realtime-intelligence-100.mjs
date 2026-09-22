@@ -70,7 +70,9 @@ const data = await Promise.all([
   one(db, "live_realtime_scope_100_status"),
   all(db, "live_country_registry", "iso3,enabled", q => q.eq("enabled", true)),
   all(db, "live_raw_source_targets", "target_id,country_iso3,category,transport,source_id,enabled,last_success_at,last_attempt_at,discovery_state,consecutive_failures", q => q.eq("enabled", true)),
-  all(db, "live_realtime_scope_targets", "target_id,scope_type,scope_code,category,transport,source_id,enabled,activation_mode,last_success_at,last_attempt_at,discovery_state,consecutive_failures", q => q.eq("enabled", true)),
+  all(db, "live_realtime_scope_targets", "target_id,scope_type,scope_code,category,transport,source_id,enabled,activation_mode,last_success_at,last_attempt_at,discovery_state,consecutive_failures,live_external_sources!inner(enabled_for_ingestion)", q => q.eq("enabled", true).eq("live_external_sources.enabled_for_ingestion", true)),
+  all(db, "live_strategic_corridor_catalog", "corridor_id"),
+  all(db, "live_global_shock_taxonomy", "shock_id,required", q => q.eq("required", true)),
   all(db, "live_ingestion_cursors", "source_key,stream_key,status,last_success_at,last_item_at,consecutive_failures,updated_at"),
   all(db, "live_source_certification_records", "source_id,certification_state,endpoint_status,rights_status,schema_status,freshness_status,provenance_status,independence_status,adapter_status,runtime_status,fallback_status,certification_hash,certified_at"),
   all(db, "live_source_certification_queue", "queue_key,source_id,scope_type,scope_code,certification_state,fail_closed,endpoint_check,rights_check,schema_check,freshness_check,independence_check"),
@@ -86,10 +88,12 @@ const scopeStatus = data[5];
 const countries = data[6];
 const rawTargets = data[7];
 const scopeTargets = data[8];
-const cursors = data[9];
-const certRecords = data[10];
-const certQueue = data[11];
-const sourceUniverse = data[12];
+const corridorCatalog = data[9];
+const shockCatalog = data[10];
+const cursors = data[11];
+const certRecords = data[12];
+const certQueue = data[13];
+const sourceUniverse = data[14];
 
 const enabledCountries = countries.map(r => String(r.iso3 || "").toUpperCase()).filter(Boolean);
 const countrySet = new Set(enabledCountries);
@@ -143,8 +147,8 @@ const orchestratorFailed = orchestratorChecks.filter(r => !r.pass);
 
 const burstTargets = scopeTargets.filter(r => r.transport === "GDELT_BURST");
 const directTargets = scopeTargets.filter(r => r.transport === "WEB_DIRECT");
-const corridorIds = Array.from(new Set(burstTargets.filter(r => r.scope_type === "CORRIDOR").map(r => String(r.scope_code))));
-const hotTopicIds = Array.from(new Set(burstTargets.filter(r => r.scope_type === "HOT_TOPIC").map(r => String(r.scope_code))));
+const corridorIds = Array.from(new Set(corridorCatalog.map(r => String(r.corridor_id || "")).filter(Boolean)));
+const hotTopicIds = Array.from(new Set(shockCatalog.map(r => String(r.shock_id || "")).filter(Boolean)));
 const missingBurst = [];
 for (const item of [
   { type: "CORRIDOR", scopes: corridorIds },
@@ -152,7 +156,11 @@ for (const item of [
 ]) {
   for (const scope of item.scopes) {
     for (const category of CATEGORIES) {
-      if (!burstTargets.some(r => r.scope_type === item.type && r.scope_code === scope && r.category === category)) {
+      if (!burstTargets.some(r =>
+        r.scope_type === item.type &&
+        String(r.scope_code) === scope &&
+        r.category === category
+      )) {
         missingBurst.push({ scope_type: item.type, scope_code: scope, category });
       }
     }
