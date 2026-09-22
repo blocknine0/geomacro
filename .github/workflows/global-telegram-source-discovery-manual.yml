@@ -2,6 +2,7 @@ name: Global Telegram Raw Source Discovery (Manual Recovery)
 
 on:
   workflow_dispatch: {}
+  workflow_call: {}
 
 
 permissions:
@@ -16,7 +17,7 @@ jobs:
     if: github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-latest
     steps:
-      - name: Accept canonical main manual execution
+      - name: Accept canonical main manual or reusable execution
         shell: bash
         run: |
           set -euo pipefail
