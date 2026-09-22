@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   getPublicIntelligence,
+  PUBLIC_INTELLIGENCE_CATEGORIES,
   type PublicIntelligenceRow,
 } from "@/lib/public-intelligence.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
@@ -179,7 +180,9 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     fading: falling.length > 0 ? falling.slice(0, 5) : null,
     emerging: emergingPool && emergingPool.length > 0 ? emergingPool.slice(0, 5) : null,
     emergingMedian: med === null ? null : Math.round(med),
-    categories: categoryCounts.map((c) => c.category),
+    // The public taxonomy is fixed even when a source category has no current
+    // rows. Counts remain evidence-driven and only include observed categories.
+    categories: [...PUBLIC_INTELLIGENCE_CATEGORIES],
     categoryCounts,
     latest: [...rows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
   };
