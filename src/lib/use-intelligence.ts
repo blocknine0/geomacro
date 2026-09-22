@@ -25,6 +25,8 @@ export type IntelEvent = {
   sourceName: null;
   createdAt: string;
   publishedAt: string | null;
+  /** True only when published/recorded time falls inside the current 24h window. */
+  isCurrent: boolean;
 };
 
 export type IntelStatus = "loading" | "ready" | "updating" | "error";
@@ -94,6 +96,7 @@ function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
     sourceName: null,
     createdAt: String(r.created_at),
     publishedAt: r.published_at ?? null,
+    isCurrent: false,
   }));
 }
 
@@ -102,7 +105,11 @@ function build(rows: IntelEvent[], now: number): Intelligence {
   // only the fallback for records that genuinely have no publication timestamp.
   // This prevents a newly imported historical article from masquerading as a
   // current development merely because the row was inserted today.
-  const in24h = rows.filter((r) => timeOf(r) >= now - DAY && timeOf(r) <= now);
+  const markedRows = rows.map((row) => ({
+    ...row,
+    isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now,
+  }));
+  const in24h = markedRows.filter((r) => r.isCurrent);
   const usedFallbackWindow = in24h.length === 0;
   const recent = [...rows]
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
@@ -158,7 +165,10 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .sort((a, b) => b.avgSeverity - a.avgSeverity || b.count - a.count);
 
   return {
-    all: rows,
+    // Keep the complete 30-day read set so explicit search can still inspect
+    // historical records, while applyIntelFilters hides non-current rows from
+    // the default "live" view.
+    all: markedRows,
     today: [...in24h]
       .sort((a, b) => timeOf(b) - timeOf(a))
       .slice(0, 12),
@@ -246,7 +256,8 @@ export function applyIntelFilters(
   { category, query, sort }: { category: string; query: string; sort: IntelSort },
 ): IntelEvent[] {
   const q = query.trim().toLowerCase();
-  let out = rows;
+  const explicitResearch = Boolean(q) || category !== "all";
+  let out = explicitResearch ? rows : rows.filter((r) => r.isCurrent);
   if (category !== "all") out = out.filter((r) => (r.category ?? "").trim() === category);
   if (q) {
     out = out.filter(
@@ -265,7 +276,7 @@ export function applyIntelFilters(
 
 /** Fastest-moving sort is only offered when real severity changes exist. */
 export function availableSorts(rows: IntelEvent[]): IntelSort[] {
-  const hasMovement = rows.some((r) => r.delta !== null && r.delta !== 0);
+  const hasMovement = rows.some((r) => r.isCurrent && r.delta !== null && r.delta !== 0);
   return hasMovement ? ["risk", "newest", "moving"] : ["risk", "newest"];
 }
 
