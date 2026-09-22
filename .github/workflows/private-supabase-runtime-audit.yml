@@ -1,0 +1,94 @@
+name: Private Supabase Runtime Audit
+
+on:
+  workflow_dispatch: {}
+  
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-private-supabase-runtime-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify authoritative Supabase target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          node scripts/db/assert-authoritative-supabase.mjs
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
+
+      - name: Audit private raw-source runtime coverage
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-raw-source-runtime.mjs | tee private-supabase-runtime-audit.json
+
+      - name: Diagnose latest private structuring failure safely
+        if: always()
+        run: |
+          set -euo pipefail
+          node scripts/diagnose-live-structure-runtime.mjs | tee private-structuring-runtime-diagnostic.json
+
+      - name: Publish sanitized audit summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Private Supabase Runtime Audit"
+            echo
+            if [ -f private-supabase-runtime-audit.json ]; then
+              jq . private-supabase-runtime-audit.json
+            else
+              echo "Raw-source runtime audit did not produce a result."
+            fi
+            echo
+            if [ -f private-structuring-runtime-diagnostic.json ]; then
+              jq . private-structuring-runtime-diagnostic.json
+            else
+              echo "Structuring diagnostic did not produce a result."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload private runtime evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: private-supabase-runtime-audit-${{ github.run_id }}
+          path: |
+            private-supabase-runtime-audit.json
+            private-structuring-runtime-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 30
