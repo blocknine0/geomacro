@@ -1,7 +1,7 @@
 # Geomacro Intelligence Orchestration Contract
 
 **Status:** permanent production scheduling architecture
-**Version:** 1.0
+**Version:** 1.1
 
 ## Purpose
 
@@ -21,6 +21,7 @@ The master heartbeat is every 15 minutes at minute 7, 22, 37 and 52 UTC. A persi
 8. Upstream source rights remain separate from scheduler state.
 9. Commercial eligibility remains fail-closed and is never inferred from endpoint reachability.
 10. Manual payment, launch-acceptance and administrative workflows remain outside the intelligence scheduler.
+11. Missing scheduler state is seeded as immediately due on the first heartbeat; the global task cap bounds bootstrap execution so stale production freshness is not deferred to a future aligned slot.
 
 ## Task cadence
 
