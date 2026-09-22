@@ -137,9 +137,12 @@ async function main() {
     process.exit(1);
   }
 
+  const fragmentIdsFile = `${OUTPUT_DIR}/fragment-ids.json`;
+  await writeJson(fragmentIdsFile, [String(syncPayload.fragment_id)]);
+
   const structure = await run(
     "node",
-    ["scripts/drain-live-structure.mjs"],
+    ["scripts/drain-live-structure.mjs", "--fragment-ids-file", fragmentIdsFile],
     {
       GDELT_GAL_CYCLE_STARTED_AT: CYCLE_START,
       GDELT_GAL_EXPECTED_FRAGMENT_ID: String(syncPayload.fragment_id),
