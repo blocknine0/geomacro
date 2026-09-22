@@ -198,7 +198,7 @@ jobs:
           node scripts/audit-realtime-scope-fanout.mjs
           node scripts/audit-global-realtime-source-freshness.mjs
           node scripts/audit-source-certification-census.mjs
-          node scripts/audit-global-production-coverage.mjs --strict
+          node scripts/audit-global-realtime-intelligence-100.mjs
 
           jq -e '
             .scope.country_category_cells == 585
