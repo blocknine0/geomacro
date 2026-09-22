@@ -27,11 +27,7 @@ permissions:
 
 jobs:
   calibration:
-    if: >-
-      ${{
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'schedule' && github.event.schedule == '41 4 * * 1') ||
-      }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'schedule' && github.event.schedule == '41 4 * * 1') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -87,33 +83,3 @@ jobs:
             artifacts/gri-v12-sensitivity.json
           if-no-files-found: warn
           retention-days: 90
-
-  public-proof:
-    if: >-
-      ${{
-        github.event_name == 'workflow_dispatch' && inputs.mode == 'public-proof'
-      }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      GRI_METHOD_VERSION: gri-v1.2.0
-      GRI_PROOF_VERSION: gri-proof-v1.2.0
-      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
-      GRI_CONSISTENCY_ARTIFACT: artifacts/gri-public-proof-consistency.json
-    concurrency:
-      group: gri-public-proof-consistency
-      cancel-in-progress: false
-    steps:
-      - name: Checkout canonical source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: "22"
-      - name: Audit persisted public/service GRI parity
-        run: node scripts/audit-
