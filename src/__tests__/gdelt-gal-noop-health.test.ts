@@ -17,6 +17,8 @@ describe("GDELT GAL cursor health semantics", () => {
     expect(block).toContain("status: healthStatus");
     expect(block).toContain("last_attempt_at: nowIso");
     expect(block).toContain("last_success_at: cursorRow?.last_success_at ?? null");
-    expect(block).toContain("consecutive_failures: Number(cursorRow?.last_success_at ? 0 : 1)");
+    expect(block).toContain("consecutive_failures: failures");
+    expect(block).toContain('last_failure_class: failureClass');
+    expect(block).toContain('failureClass = "UPSTREAM_SOURCE_DELAYED"');
   });
 });
