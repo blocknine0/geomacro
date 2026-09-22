@@ -32,7 +32,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("worldbank.org/v2/country/");
     expect(worker).toContain("api.gdeltproject.org/api/v2/doc/doc");
     expect(worker).toContain("sourcecountry:");
-    expect(worker).toContain("const countryIso2=new Map");
+    expect(worker).toContain("const countryIso2 = new Map(");
     expect(worker).toContain("GEO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MACRO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MINERALS:COVERAGE_FALLBACK:");
@@ -63,13 +63,15 @@ describe("global country raw source mesh",()=>{
     );
   });
 
-  it("self-heals missing directory targets without weakening commercial rights",()=>{
-    expect(worker).toContain("commercial_promotion_allowed: false");
+  it("self-heals stale cells without weakening commercial rights",()=>{
+    expect(worker).toContain("country_raw_web_mesh");
     expect(worker).toContain("live_country_primary_source_directory");
-    expect(worker).toContain("Expected exactly 195 canonical countries from the government-portal baseline");
-    expect(worker).toContain("inserted_targets");
-    expect(worker).toContain('.not("target_id","like","%MESH_FILLER%")');
-    expect(worker).toContain("for(let from=0;;from+=1000)");
+    expect(worker).toContain("canonicalIso3.length !== 195");
+    expect(worker).toContain('.not("target_id", "like", "%MESH_FILLER%")');
+    expect(worker).toContain('.not("transport", "eq", "TELEGRAM_DISCOVERY")');
+    expect(worker).toContain("alreadyFreshNonGdelt");
+    expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
   });
 
   it("keeps raw bytes private and hashed",()=>{
