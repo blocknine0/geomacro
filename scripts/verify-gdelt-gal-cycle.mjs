@@ -197,6 +197,15 @@ async function main() {
       lag_seconds: hotLag,
       recent_event_count: Number(hotTopic?.summary?.recent_event_count ?? 0),
       commercially_deliverable_event_count: Number(hotTopic?.summary?.commercially_deliverable_event_count ?? 0),
+      generated_at: hotTopic.generated_at,
+      writes_performed: hotTopic.writes_performed,
+      claim_boundary: {
+        raw_source_material_redistributed: claimBoundary.raw_source_material_redistributed,
+        only_verified_or_derived_only_structured_events_are_deliverable:
+          claimBoundary.only_verified_or_derived_only_structured_events_are_deliverable,
+        current_signal_with_only_blocked_rights_is_not_chargeable_for_hot_topics:
+          claimBoundary.current_signal_with_only_blocked_rights_is_not_chargeable_for_hot_topics,
+      },
     },
     acceptance: {
       cursor_refreshed_by_current_cycle: true,
@@ -204,6 +213,8 @@ async function main() {
       fragment_reached_structured_event_layer: true,
       structured_event_rights_reconciled: true,
       hot_topic_pipeline_healthy: true,
+      hot_topic_claim_boundary_safe: true,
+      hot_topic_report_read_only: true,
       lag_within_1800_seconds: lagSeconds <= MAX_LAG_SECONDS && periodEndLagSeconds <= MAX_LAG_SECONDS && hotLag <= MAX_LAG_SECONDS,
       writes_performed_by_verifier: false,
     },
