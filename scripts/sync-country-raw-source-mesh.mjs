@@ -286,6 +286,12 @@ async function main() {
     : ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
   if (!categories.length) throw new Error("RAW_SOURCE_CATEGORY_ALLOWLIST_EMPTY");
   const windows = { GEOPOLITICS: 1800, MACRO: 7200, CRITICAL_MINERALS: 14400 };
+  // Refresh before the exact freshness boundary so a long run cannot age a cell
+  // from fresh-at-start into stale-at-final-audit. The audit thresholds remain exact.
+  const freshnessSafetyMarginSeconds = Math.max(
+    60,
+    Math.min(900, Number(process.env.RAW_SOURCE_FRESHNESS_SAFETY_MARGIN_SECONDS ?? 600)),
+  );
 
   const [directoryQuery, registryQuery] = await Promise.all([
     db.from("live_country_primary_source_directory").select("country_iso2"),
@@ -364,8 +370,12 @@ async function main() {
   const isGdelt = (row) => /gdelt/i.test(String(row.source_id ?? ""));
   const isFresh = (row, category) => {
     const timestamp = Date.parse(String(row.last_success_at ?? ""));
+    const refreshBeforeBoundarySeconds = Math.max(
+      60,
+      windows[category] - freshnessSafetyMarginSeconds,
+    );
     return Number.isFinite(timestamp) &&
-      nowMs - timestamp <= windows[category] * 1000 &&
+      nowMs - timestamp <= refreshBeforeBoundarySeconds * 1000 &&
       row.discovery_state !== "UNREACHABLE" &&
       row.discovery_state !== "STALE";
   };
