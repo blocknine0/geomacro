@@ -17,11 +17,17 @@ describe("global realtime intelligence 100 gate contract", () => {
     ]) expect(script).toContain(marker);
     expect(script).toContain("writes_performed: false");
     expect(script).toContain("process.argv.includes(\"--strict\")");
+    expect(script).toContain("live_strategic_corridor_catalog");
+    expect(script).toContain("live_global_shock_taxonomy");
   });
 
   it("is wired to the production Supabase project and schedule", () => {
     const workflow = readFileSync(".github/workflows/global-realtime-intelligence-100-gate.yml", "utf8");
     expect(workflow).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");
+    expect(workflow).toContain("pull_request:");
+    expect(workflow).toContain("github.event.pull_request.head.sha");
+    expect(workflow).toContain("github.event.workflow_run.head_sha");
+    expect(workflow).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(workflow).toContain("schedule:");
     expect(workflow).toContain("bun run realtime:intelligence:100 -- --strict");
   });
