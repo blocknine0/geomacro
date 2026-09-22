@@ -20,6 +20,8 @@ describe("GDELT GAL canonical fresh-cycle contract", () => {
     expect(verifier).toContain("fragment_reached_structured_event_layer");
     expect(verifier).toContain("structured_event_rights_reconciled");
     expect(verifier).toContain("hot_topic_pipeline_healthy");
+    expect(verifier).toContain("source-stamp lag exceeds 1800s");
+    expect(verifier).toContain("source_lag_within_1800_seconds");
     expect(verifier).toContain("lag_within_1800_seconds");
   });
 
