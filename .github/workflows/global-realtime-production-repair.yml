@@ -202,7 +202,6 @@ jobs:
       GRI_PUBLISH_ENABLED: false
       RAW_SOURCE_SYNC_CONCURRENCY: 16
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
-    env:
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
       INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
     steps:
