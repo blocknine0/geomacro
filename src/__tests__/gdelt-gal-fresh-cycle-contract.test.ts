@@ -29,6 +29,7 @@ describe("GDELT GAL canonical fresh-cycle contract", () => {
     expect(cycle).toContain("UPSTREAM_TEMPORARY_OUTAGE");
     expect(cycle).toContain("UPSTREAM_SOURCE_DELAYED");
     expect(cycle).toContain("BACKOFF_SECONDS * attempt * 1000");
+    expect(cycle).toContain("/HTTP (429|5\\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN/i");
     expect(cycle).toContain("failure_class");
     expect(sync).toContain("function classifyFailure(error)");
     expect(sync).toContain('return "UPSTREAM_TEMPORARY_OUTAGE"');
