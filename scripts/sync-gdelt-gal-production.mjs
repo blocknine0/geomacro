@@ -130,6 +130,14 @@ function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
   };
 }
 
+function classifyFailure(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/fetch failed|HTTP (429|5\\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|UND_ERR_CONNECT/i.test(message)) {
+    return "UPSTREAM_TEMPORARY_OUTAGE";
+  }
+  return "PIPELINE_FAILURE";
+}
+
 async function emit(result) {
   if (OUTPUT) await writeFile(OUTPUT, `${JSON.stringify(result, null, 2)}\n`, "utf8");
   console.log(JSON.stringify(result));
@@ -170,17 +178,20 @@ async function main() {
       const successAgeSeconds = Number.isFinite(lastSuccessMs)
         ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
         : Number.POSITIVE_INFINITY;
-      const healthStatus = Number.isFinite(successAgeSeconds) && successAgeSeconds <= FRESH_SUCCESS_WINDOW_SECONDS
-        ? "healthy"
-        : "failed";
+      const failures = Number(cursorRow?.consecutive_failures ?? 0) + 1;
+      const healthStatus = failures >= 3 ? "failed" : "degraded";
+      const failureClass = "UPSTREAM_SOURCE_DELAYED";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
         stream_key: STREAM_KEY,
-        cursor: lastStamp ? { last_source_stamp: lastStamp } : {},
+        cursor: {
+          ...(lastStamp ? { last_source_stamp: lastStamp } : {}),
+          last_failure_class: failureClass,
+        },
         status: healthStatus,
         last_attempt_at: nowIso,
         last_success_at: cursorRow?.last_success_at ?? null,
-        consecutive_failures: Number(cursorRow?.last_success_at ? 0 : 1),
+        consecutive_failures: failures,
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
       if (error) throw error;
@@ -198,12 +209,14 @@ async function main() {
       });
       if (runError) throw runError;
       await emit({
-        ok: true,
+        ok: false,
         status: "no_new_gdelt_file",
+        failure_class: failureClass,
         last_source_stamp: lastStamp,
         success_age_seconds: Number.isFinite(successAgeSeconds) ? Math.round(successAgeSeconds) : null,
         source_health_status: healthStatus,
       });
+      process.exitCode = 1;
       return;
     }
 
@@ -394,6 +407,7 @@ async function main() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const failureClass = classifyFailure(error);
     const { data: existing } = await supabase
       .from("live_ingestion_cursors")
       .select("consecutive_failures,cursor")
@@ -405,7 +419,10 @@ async function main() {
     await supabase.from("live_ingestion_cursors").upsert({
       source_key: SOURCE_KEY,
       stream_key: STREAM_KEY,
-      cursor: existing?.cursor ?? {},
+      cursor: {
+        ...(existing?.cursor ?? {}),
+        last_failure_class: failureClass,
+      },
       status: failures >= 3 ? "failed" : "degraded",
       last_attempt_at: nowIso,
       consecutive_failures: failures,
@@ -418,11 +435,16 @@ async function main() {
       started_at: nowIso,
       finished_at: new Date().toISOString(),
       status: "failed",
-      error_code: "INGEST_FAILED",
+      error_code: failureClass,
       error_detail: message.slice(0, 2000),
     });
 
-    await emit({ ok: false, status: "INGEST_FAILED", detail: "Internal ingestion failure. See private run diagnostics." });
+    await emit({
+      ok: false,
+      status: "INGEST_FAILED",
+      failure_class: failureClass,
+      detail: "Internal ingestion failure. See private run diagnostics.",
+    });
     process.exitCode = 1;
   }
 }
