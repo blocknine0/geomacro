@@ -107,16 +107,19 @@ async function main() {
         .select("event_id,evaluated_status,reason_codes")
         .in("event_id", chunk),
       db.from("live_structured_events")
-        .select("id,commercial_eligibility_status,commercial_eligibility_reason_codes")
+        .select("id,last_observed_at,commercial_eligibility_status,commercial_eligibility_reason_codes")
         .in("id", chunk),
     ]);
     if (rightsError) throw rightsError;
     if (eventsError) throw eventsError;
 
     const rightsMap = new Map((rights ?? []).map((row) => [String(row.event_id), row]));
-    for (const event of events ?? []) {
-      const right = rightsMap.get(String(event.id));
-      if (!right) throw new Error(`Missing commercial-rights evaluation for structured event ${event.id}`);
+    const eventsMap = new Map((events ?? []).map((row) => [String(row.id), row]));
+    for (const eventId of chunk) {
+      const event = eventsMap.get(eventId);
+      if (!event) throw new Error(`Structured event ${eventId} referenced by fresh evidence is missing`);
+      const right = rightsMap.get(eventId);
+      if (!right) throw new Error(`Missing commercial-rights evaluation for structured event ${eventId}`);
       eventsChecked += 1;
       if (
         String(event.commercial_eligibility_status ?? "") !== String(right.evaluated_status ?? "")
@@ -128,12 +131,14 @@ async function main() {
     }
   }
 
-  if (eventsChecked === 0) throw new Error("Fresh GDELT GAL evidence is not represented by structured events");
+  if (eventsChecked !== eventIds.length) throw new Error(`Fresh GDELT GAL evidence/event coverage mismatch: evidence=${eventIds.length}, structured=${eventsChecked}`);
   if (rightsMismatches > 0) {
     throw new Error(`Structured-event commercial eligibility reconciliation mismatch count: ${rightsMismatches}`);
   }
 
   const hotTopic = JSON.parse(await fs.readFile(HOT_TOPIC_OUTPUT, "utf8"));
+  const hotGeneratedMs = requireDate(hotTopic?.generated_at, "hot-topic audit.generated_at");
+  if (hotGeneratedMs < cycleStartMs) throw new Error("Hot-topic audit predates the current GDELT GAL cycle");
   const hotPipeline = hotTopic?.pipeline ?? {};
   const hotLag = Number(hotPipeline?.lag_seconds);
   if (hotPipeline?.healthy !== true) throw new Error("Hot-topic audit did not report pipeline.healthy=true");
