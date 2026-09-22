@@ -370,9 +370,42 @@ async function handle(request: Request) {
 
   try {
     const snapshots = data as AnyRow[]
-    const latest = snapshots[0]
-    const verified = verifySnapshot(latest, now)
-    const indices = buildIndices(snapshots, latest, verified.latestAt)
+
+    // Prefer the newest fully verified published snapshot. A malformed or
+    // partially verified newer publication must not erase the last-known-good
+    // public reading when an older verified package is still available.
+    let latest: AnyRow | null = null
+    let verified: ReturnType<typeof verifySnapshot> | null = null
+    let lastRejectedReason = "none"
+
+    for (const snapshot of snapshots) {
+      try {
+        verified = verifySnapshot(snapshot, now)
+        latest = snapshot
+        break
+      } catch (error) {
+        lastRejectedReason =
+          error instanceof Error ? error.message : String(error)
+      }
+    }
+
+    if (!latest || !verified) {
+      throw new Error(`no_verified_published_snapshot: ${lastRejectedReason}`)
+    }
+
+    // Historical charts must also stay on the verified lineage. A newer
+    // malformed publication can remain in the database without becoming a
+    // displayed proof/history point.
+    const verifiedSnapshots = snapshots.filter(
+      (snapshot) =>
+        snapshot.verification_status === "verified" &&
+        snapshot.methodology_version === METHOD_VERSION &&
+        snapshot.proof_version === PROOF_VERSION &&
+        snapshot.story_correlation_version === STORY_VERSION &&
+        snapshot.story_correlation_prompt_version === STORY_PROMPT_VERSION,
+    )
+
+    const indices = buildIndices(verifiedSnapshots, latest, verified.latestAt)
     const drivers = buildLegacyDrivers(latest)
     const recentEvents = await loadRecentEvents(now)
 
