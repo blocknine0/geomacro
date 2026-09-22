@@ -10,7 +10,7 @@ describe("GDELT GAL production sync contract", () => {
     const workflow = read(".github/workflows/gdelt-gal-live-sync.yml");
     const sync = read("scripts/sync-gdelt-gal-production.mjs");
 
-    expect(workflow).toContain("scripts/sync-gdelt-gal-production.mjs");
+    expect(workflow).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(workflow).not.toContain("LIVE_INGEST_TOKEN");
     expect(sync).toContain('const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx"');
     expect(sync).toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
@@ -37,9 +37,9 @@ describe("GDELT GAL production sync contract", () => {
   it("keeps sanitized artifacts separate from raw source material", () => {
     const workflow = read(".github/workflows/gdelt-gal-live-sync.yml");
 
-    expect(workflow).toContain("gdelt-gal-sync-summary.ndjson");
-    expect(workflow).toContain("structure-sync-summary.ndjson");
-    expect(workflow).toContain("agent-hot-topic-readiness-after-sync.json");
+    expect(workflow).toContain("gdelt-gal-cycle.log");
+    expect(workflow).toContain("gdelt-gal-cycle/*.json");
+    expect(workflow).toContain("gdelt-gal-cycle/*.log");
     expect(workflow).not.toContain("*.ndjson.gz");
   });
 });
