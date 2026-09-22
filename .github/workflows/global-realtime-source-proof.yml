@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 concurrency:
   group: geomacro-global-realtime-source-proof
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -201,6 +201,13 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
+
+      - name: Final GDELT first-break and scope fanout convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/run-gdelt-gal-cycle.mjs
+          bun scripts/sync-realtime-scope-fanout.mjs
 
       - name: Final raw freshness convergence
         shell: bash
