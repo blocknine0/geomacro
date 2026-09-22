@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildPublicIntelligence, type IntelEvent } from "./use-intelligence";
+import {
+  applyIntelFilters,
+  buildPublicIntelligence,
+  type IntelEvent,
+} from "./use-intelligence";
 
 const NOW = Date.parse("2026-09-22T12:00:00.000Z");
 
@@ -14,6 +18,7 @@ function row(overrides: Partial<IntelEvent> = {}): IntelEvent {
     sourceName: null,
     createdAt: "2026-09-22T11:00:00.000Z",
     publishedAt: "2026-09-22T11:00:00.000Z",
+    isCurrent: false,
     ...overrides,
   };
 }
@@ -40,6 +45,20 @@ describe("public intelligence recency contract", () => {
     expect(result.today.map((event) => event.id)).toEqual(["current-event"]);
     expect(result.topRisks.map((event) => event.id)).toEqual(["current-event"]);
     expect(result.usedFallbackWindow).toBe(false);
+
+    const defaultView = applyIntelFilters(result.all, {
+      category: "all",
+      query: "",
+      sort: "risk",
+    });
+    expect(defaultView.map((event) => event.id)).toEqual(["current-event"]);
+
+    const explicitResearch = applyIntelFilters(result.all, {
+      category: "all",
+      query: "historical",
+      sort: "risk",
+    });
+    expect(explicitResearch.map((event) => event.id)).toEqual(["historical-import"]);
   });
 
   it("keeps historical records available for explicit research/search without treating them as current risk topics", () => {
