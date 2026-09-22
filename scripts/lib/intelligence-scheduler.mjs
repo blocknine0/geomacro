@@ -1,4 +1,13 @@
 export const DEFAULT_MAX_TASKS_PER_TICK = 8;
+export const DEFAULT_HEARTBEAT_BUDGET_MS = 50 * 60 * 1000;
+export const DEFAULT_HEARTBEAT_RESERVE_MS = 5 * 60 * 1000;
+
+export function taskFitsWithinBudget(taskTimeoutMs, remainingMs, reserveMs = DEFAULT_HEARTBEAT_RESERVE_MS) {
+  return Number.isFinite(taskTimeoutMs)
+    && Number.isFinite(remainingMs)
+    && Number.isFinite(reserveMs)
+    && remainingMs >= taskTimeoutMs + reserveMs;
+}
 
 export function orderDueTasks(dueItems) {
   return [...dueItems].sort((a, b) => {

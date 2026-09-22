@@ -2,7 +2,13 @@
 
 import { spawn } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
-import { DEFAULT_MAX_TASKS_PER_TICK, orderDueTasks } from "./lib/intelligence-scheduler.mjs";
+import {
+  DEFAULT_HEARTBEAT_BUDGET_MS,
+  DEFAULT_HEARTBEAT_RESERVE_MS,
+  DEFAULT_MAX_TASKS_PER_TICK,
+  orderDueTasks,
+  taskFitsWithinBudget,
+} from "./lib/intelligence-scheduler.mjs";
 
 const APP_SUPABASE_URL = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
 const APP_SUPABASE_SERVICE_ROLE_KEY = String(
@@ -20,6 +26,8 @@ const STATE_PREFIX = "orchestrator:";
 const MAX_TASKS_PER_TICK = Math.max(1, Math.min(8, Number(process.env.INTELLIGENCE_ORCHESTRATOR_MAX_TASKS ?? DEFAULT_MAX_TASKS_PER_TICK)));
 const RETRY_SECONDS = Math.max(60, Math.min(900, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RETRY_SECONDS ?? 300)));
 const TASK_TIMEOUT_MS = Math.max(60_000, Math.min(3_600_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_TIMEOUT_MS ?? 1_500_000)));
+const HEARTBEAT_BUDGET_MS = Math.max(10 * 60_000, Math.min(50 * 60_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_BUDGET_MS ?? DEFAULT_HEARTBEAT_BUDGET_MS)));
+const HEARTBEAT_RESERVE_MS = Math.max(60_000, Math.min(10 * 60_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RESERVE_MS ?? DEFAULT_HEARTBEAT_RESERVE_MS)));
 
 function projectRef(url) {
   try {
@@ -203,10 +211,18 @@ async function refreshOidcToken(audience) {
     return false;
   }
 
-  const response = await fetch(
-    `${requestUrl}&audience=${encodeURIComponent(audience)}`,
-    { headers: { authorization: `bearer ${requestToken}` } },
-  );
+  let response;
+  try {
+    response = await fetch(
+      `${requestUrl}&audience=${encodeURIComponent(audience)}`,
+      {
+        headers: { authorization: `bearer ${requestToken}` },
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+  } catch {
+    return false;
+  }
   if (!response.ok) return false;
   const payload = await response.json();
   const token = String(payload?.value ?? "").trim();
@@ -479,9 +495,24 @@ async function main() {
       .filter(({ task, state }) => isPast(state.cursor.next_due_at, nowMs)),
   );
   const due = dueAll.slice(0, MAX_TASKS_PER_TICK);
+  const executionStartedAt = Date.now();
+  const executionDeadlineAt = executionStartedAt + HEARTBEAT_BUDGET_MS;
 
   const results = [];
+  const budgetDeferredTasks = [];
   for (const item of due) {
+    const remainingMs = executionDeadlineAt - Date.now();
+    const taskTimeoutMs = item.task.timeoutMs ?? TASK_TIMEOUT_MS;
+    if (!taskFitsWithinBudget(taskTimeoutMs, remainingMs, HEARTBEAT_RESERVE_MS)) {
+      budgetDeferredTasks.push({
+        task: item.task.key,
+        status: "deferred",
+        reason: "HEARTBEAT_EXECUTION_BUDGET",
+        required_ms: taskTimeoutMs + HEARTBEAT_RESERVE_MS,
+        remaining_ms: Math.max(0, remainingMs),
+      });
+      continue;
+    }
     results.push(await runTask(item.task, item.state));
   }
 
@@ -499,6 +530,10 @@ async function main() {
     scheduler_internal_failures_remain_fail_closed: true,
     bootstrap_seeds_are_immediately_due: true,
     deferred_count: deferredCount,
+    heartbeat_budget_ms: HEARTBEAT_BUDGET_MS,
+    heartbeat_reserve_ms: HEARTBEAT_RESERVE_MS,
+    execution_elapsed_ms: Date.now() - executionStartedAt,
+    budget_deferred_tasks: budgetDeferredTasks,
   };
 
   console.log(JSON.stringify(summary, null, 2));
