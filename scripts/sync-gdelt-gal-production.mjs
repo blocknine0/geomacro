@@ -132,7 +132,7 @@ function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
 
 function classifyFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
-  if (/fetch failed|HTTP (429|5\\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|UND_ERR_CONNECT/i.test(message)) {
+  if (/fetch failed|HTTP (429|5\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|UND_ERR_CONNECT/i.test(message)) {
     return "UPSTREAM_TEMPORARY_OUTAGE";
   }
   return "PIPELINE_FAILURE";
