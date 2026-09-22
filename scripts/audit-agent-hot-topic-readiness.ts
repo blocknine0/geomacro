@@ -76,11 +76,42 @@ async function main() {
   const sourceStampMs = sourceStampToMs(sourceStamp);
   const pipelineLagSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, Math.floor((now.getTime() - lastSuccessMs) / 1000)) : null;
   const sourceLagSeconds = Number.isFinite(sourceStampMs) ? Math.max(0, Math.floor((now.getTime() - sourceStampMs) / 1000)) : null;
+
+  const { data: latestFragment, error: latestFragmentError } = await db
+    .from("live_fragment_manifest")
+    .select("id,sealed_at,period_end,item_count")
+    .eq("source_key", SOURCE_KEY)
+    .eq("stream_key", STREAM_KEY)
+    .order("period_end", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestFragmentError) throw latestFragmentError;
+
+  const latestFragmentPeriodEndMs = latestFragment?.period_end ? Date.parse(String(latestFragment.period_end)) : NaN;
+  const latestFragmentLagSeconds = Number.isFinite(latestFragmentPeriodEndMs)
+    ? Math.max(0, Math.floor((now.getTime() - latestFragmentPeriodEndMs) / 1000))
+    : null;
+  let latestFragmentEvidenceCount = 0;
+  if (latestFragment?.id) {
+    const { count, error: latestFragmentEvidenceError } = await db
+      .from("live_structured_event_evidence")
+      .select("event_id", { count: "exact", head: true })
+      .eq("fragment_id", latestFragment.id);
+    if (latestFragmentEvidenceError) throw latestFragmentEvidenceError;
+    latestFragmentEvidenceCount = Number(count ?? 0);
+  }
+
   const pipelineHealthy = cursor?.status === "healthy"
     && pipelineLagSeconds !== null
     && pipelineLagSeconds <= PIPELINE_MAX_LAG_SECONDS
     && sourceLagSeconds !== null
-    && sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS;
+    && sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+    && latestFragment?.id
+    && latestFragment?.sealed_at
+    && latestFragment?.item_count > 0
+    && latestFragmentLagSeconds !== null
+    && latestFragmentLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+    && latestFragmentEvidenceCount > 0;
 
   const events = await fetchAll(
     db,
@@ -172,6 +203,11 @@ async function main() {
       consecutive_failures: cursor?.consecutive_failures ?? null,
       lag_seconds: pipelineLagSeconds,
       source_lag_seconds: sourceLagSeconds,
+      latest_fragment_id: latestFragment?.id ?? null,
+      latest_fragment_period_end: latestFragment?.period_end ?? null,
+      latest_fragment_lag_seconds: latestFragmentLagSeconds,
+      latest_fragment_item_count: Number(latestFragment?.item_count ?? 0),
+      latest_fragment_structured_evidence_count: latestFragmentEvidenceCount,
       max_lag_seconds: PIPELINE_MAX_LAG_SECONDS,
       healthy: pipelineHealthy,
     },
