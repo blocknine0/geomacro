@@ -138,6 +138,28 @@ jobs:
           echo "::add-mask::${token}"
           printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "${token}" >> "${GITHUB_ENV}"
 
+      - name: Inspect scoped OIDC claims
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, os
+          token = os.environ["GEOMACRO_FLASH_OIDC_TOKEN"]
+          payload = token.split(".", 2)[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload.encode()))
+          print(json.dumps({
+            "repository": claims.get("repository"),
+            "ref": claims.get("ref"),
+            "event_name": claims.get("event_name"),
+            "workflow": claims.get("workflow"),
+            "workflow_ref": claims.get("workflow_ref"),
+            "job_workflow_ref": claims.get("job_workflow_ref"),
+            "head_ref": claims.get("head_ref"),
+            "base_ref": claims.get("base_ref")
+          }, indent=2, sort_keys=True))
+          PY
+
       - name: Smoke-check realtime corroboration OIDC
         shell: bash
         run: |
