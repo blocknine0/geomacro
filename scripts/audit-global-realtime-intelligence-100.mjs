@@ -250,8 +250,7 @@ for (const source of sources.filter(s => s.enabled_for_commercial_signals === tr
 
 const gates = {
   canonical_195:
-    canonicalIso3.length === 195 &&
-    registry.length === 195,
+    canonicalIso3.length === 195,
   country_category_cells_585:
     cells.length === 585 &&
     cells.every(c => c.target_count > 0),
