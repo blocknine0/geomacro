@@ -48,8 +48,8 @@ describe("GDELT GAL production freshness workflow", () => {
     const verifier = readFileSync(join(process.cwd(), "scripts/verify-gdelt-gal-cycle.mjs"), "utf8");
     expect(cycle).toContain("audit-agent-hot-topic-readiness.ts");
     expect(verifier).toContain("pipeline.healthy=true");
-    expect(workflow).toContain(".pipeline.healthy == true");
-    expect(workflow).toContain(".claim_boundary.raw_source_material_redistributed == false");
-    expect(workflow).toContain(".claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true");
+    expect(workflow).toContain(".verification.acceptance.hot_topic_pipeline_healthy == true");
+    expect(workflow).toContain(".verification.acceptance.structured_event_rights_reconciled == true");
+    expect(workflow).toContain(".verification.acceptance.writes_performed_by_verifier == false");
   });
 });
