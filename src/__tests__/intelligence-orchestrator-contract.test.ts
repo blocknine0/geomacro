@@ -11,6 +11,8 @@ describe("permanent intelligence orchestration contract", () => {
     const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
     expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain("oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
+    expect(workflow).not.toContain("oven-sh/setup-bun@0c5077e51419868618aaae5fe8019c62421857d6");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).not.toContain("workflow_run:");
     expect(orchestrator).toContain("const TASKS = [");
