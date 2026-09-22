@@ -49,6 +49,16 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("for (const item of due)");
   });
 
+  it("makes missing scheduler state immediately due without creating a first-run herd", () => {
+    const script = read("scripts/intelligence-orchestrator.mjs");
+    expect(script).toContain("function bootstrapStateForTask(task, nowMs)");
+    expect(script).toContain("state.cursor.next_due_at = new Date(nowMs).toISOString()");
+    expect(script).toContain("state.cursor.bootstrap_pending = true");
+    expect(script).toContain("state.cursor.bootstrap_pending = false");
+    expect(script).toContain("MAX_TASKS_PER_TICK prevents the bootstrap from becoming a thundering herd");
+    expect(script).toContain("bootstrap_seeds_are_immediately_due: true");
+  });
+
   it("moves the high-frequency intelligence workflows to operator-only recovery mode", () => {
     for (const path of [
       ".github/workflows/global-country-raw-source-mesh.yml",
