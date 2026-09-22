@@ -28,6 +28,18 @@ const RETRY_SECONDS = Math.max(60, Math.min(900, Number(process.env.INTELLIGENCE
 const TASK_TIMEOUT_MS = Math.max(60_000, Math.min(3_600_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_TIMEOUT_MS ?? 1_500_000)));
 const HEARTBEAT_BUDGET_MS = Math.max(10 * 60_000, Math.min(50 * 60_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_BUDGET_MS ?? DEFAULT_HEARTBEAT_BUDGET_MS)));
 const HEARTBEAT_RESERVE_MS = Math.max(60_000, Math.min(10 * 60_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RESERVE_MS ?? DEFAULT_HEARTBEAT_RESERVE_MS)));
+const DB_REQUEST_TIMEOUT_MS = Math.max(
+  5_000,
+  Math.min(120_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_DB_TIMEOUT_MS ?? 30_000)),
+);
+
+function fetchWithTimeout(input, init = {}) {
+  const timeoutSignal = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
+  const signal = init?.signal
+    ? AbortSignal.any([init.signal, timeoutSignal])
+    : timeoutSignal;
+  return fetch(input, { ...init, signal });
+}
 
 function projectRef(url) {
   try {
@@ -43,6 +55,7 @@ if (projectRef(APP_SUPABASE_URL) !== PROJECT_REF) {
 
 const db = createClient(APP_SUPABASE_URL, APP_SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: fetchWithTimeout },
 });
 
 const TASKS = [
@@ -237,7 +250,21 @@ function runStep(command, args, cwd, timeoutMs) {
       cwd,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
     });
+
+    const killProcessGroup = (signal) => {
+      if (!child.pid) return;
+      try {
+        process.kill(-child.pid, signal);
+      } catch {
+        try {
+          child.kill(signal);
+        } catch {
+          // Child already exited.
+        }
+      }
+    };
 
     let stdout = "";
     let stderr = "";
@@ -259,8 +286,8 @@ function runStep(command, args, cwd, timeoutMs) {
 
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
-      setTimeout(() => child.kill("SIGKILL"), 10_000).unref();
+      killProcessGroup("SIGTERM");
+      setTimeout(() => killProcessGroup("SIGKILL"), 10_000).unref();
     }, timeoutMs);
 
     child.on("close", (code, signal) => {
