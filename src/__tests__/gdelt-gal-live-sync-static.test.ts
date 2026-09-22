@@ -29,6 +29,10 @@ describe("GDELT GAL production freshness workflow", () => {
     expect(audit).toContain("const sourceStamp = cursor?.cursor?.last_source_stamp");
     expect(audit).toContain("source_lag_seconds: sourceLagSeconds");
     expect(audit).toContain("sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS");
+    expect(audit).toContain('from("live_fragment_manifest")');
+    expect(audit).toContain('from("live_structured_event_evidence")');
+    expect(audit).toContain("latestFragmentEvidenceCount > 0");
+    expect(audit).toContain("const pipelineHealthy = Boolean(");
   });
 
   it("validates the authoritative production target and uses only configured scoped credentials", () => {
