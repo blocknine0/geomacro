@@ -67,7 +67,7 @@ function syncFailureIsRetryable(payload, processResult) {
   return failureClass === "UPSTREAM_TEMPORARY_OUTAGE"
     || failureClass === "UPSTREAM_SOURCE_DELAYED"
     || status === "no_new_gdelt_file"
-    || /fetch failed|HTTP (429|5\\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(
+    || /HTTP (429|5\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(
       String(processResult?.stderr ?? ""),
     );
 }
