@@ -333,6 +333,17 @@ Deno.serve(async request => {
         workflowRef ===
           "blocknine0/geomacro/.github/workflows/global-realtime-production-repair.yml@refs/heads/fix/global-realtime-source-runtime"
 
+      const pr833WorkflowAuthorized =
+        typeof payload.event_name === "string" &&
+        payload.event_name === "pull_request" &&
+        payload.ref === "refs/pull/833/merge" &&
+        (
+          workflowRef ===
+            "blocknine0/geomacro/.github/workflows/global-realtime-source-proof.yml@refs/pull/833/merge" ||
+          payload.workflow === "global-realtime-source-proof.yml" ||
+          payload.workflow === "Global Realtime Source Proof"
+        )
+
       githubOidcAuthorized =
         payload.repository ===
           GITHUB_OIDC_REPOSITORY &&
@@ -342,8 +353,12 @@ Deno.serve(async request => {
           payload.event_name,
         ) &&
         (
+          (
+            payload.ref === "refs/heads/main" &&
+            workflowFileAuthorized
+          ) ||
           workflowRefBranchAuthorized ||
-          workflowFileAuthorized
+          pr833WorkflowAuthorized
         )
     } catch {
       githubOidcAuthorized = false
