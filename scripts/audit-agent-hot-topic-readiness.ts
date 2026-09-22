@@ -101,17 +101,19 @@ async function main() {
     latestFragmentEvidenceCount = Number(count ?? 0);
   }
 
-  const pipelineHealthy = cursor?.status === "healthy"
-    && pipelineLagSeconds !== null
-    && pipelineLagSeconds <= PIPELINE_MAX_LAG_SECONDS
-    && sourceLagSeconds !== null
-    && sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS
-    && latestFragment?.id
-    && latestFragment?.sealed_at
-    && latestFragment?.item_count > 0
-    && latestFragmentLagSeconds !== null
-    && latestFragmentLagSeconds <= PIPELINE_MAX_LAG_SECONDS
-    && latestFragmentEvidenceCount > 0;
+  const pipelineHealthy = Boolean(
+    cursor?.status === "healthy"
+      && pipelineLagSeconds !== null
+      && pipelineLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+      && sourceLagSeconds !== null
+      && sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+      && Boolean(latestFragment?.id)
+      && Boolean(latestFragment?.sealed_at)
+      && Number(latestFragment?.item_count ?? 0) > 0
+      && latestFragmentLagSeconds !== null
+      && latestFragmentLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+      && latestFragmentEvidenceCount > 0,
+  );
 
   const events = await fetchAll(
     db,
