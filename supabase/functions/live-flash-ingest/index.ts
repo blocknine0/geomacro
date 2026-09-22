@@ -179,20 +179,6 @@ async function verifyGitHubActionsOidc(
         },
       )
 
-    if (
-      payload.repository !==
-        GITHUB_OIDC_REPOSITORY ||
-      payload.ref !==
-        "refs/heads/main" ||
-      typeof payload.event_name !==
-        "string" ||
-      !GITHUB_OIDC_ALLOWED_EVENTS.has(
-        payload.event_name,
-      )
-    ) {
-      return false
-    }
-
     const workflowRef =
       typeof payload.job_workflow_ref ===
         "string"
@@ -213,6 +199,34 @@ async function verifyGitHubActionsOidc(
       GITHUB_OIDC_WORKFLOW_FILES.has(
         payload.workflow,
       )
+    
+    const pr833WorkflowAuthorized =
+      typeof payload.event_name === "string" &&
+      payload.event_name === "pull_request" &&
+      payload.ref === "refs/pull/833/merge" &&
+      (
+        workflowRef ===
+          "blocknine0/geomacro/.github/workflows/global-realtime-source-proof.yml@refs/pull/833/merge" ||
+        payload.workflow === "global-realtime-source-proof.yml" ||
+        payload.workflow === "Global Realtime Source Proof"
+      )
+
+    if (
+      !(
+        payload.repository === GITHUB_OIDC_REPOSITORY &&
+        (
+          (
+            payload.ref === "refs/heads/main" &&
+            typeof payload.event_name === "string" &&
+            GITHUB_OIDC_ALLOWED_EVENTS.has(payload.event_name) &&
+            (workflowRefAuthorized || workflowFileAuthorized)
+          ) ||
+          pr833WorkflowAuthorized
+        )
+      )
+    ) {
+      return false
+    )
 
     return (
       workflowRefAuthorized ||
