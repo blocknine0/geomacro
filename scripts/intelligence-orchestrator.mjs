@@ -2,6 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
+import { DEFAULT_MAX_TASKS_PER_TICK, orderDueTasks } from "./lib/intelligence-scheduler.mjs";
 
 const APP_SUPABASE_URL = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
 const APP_SUPABASE_SERVICE_ROLE_KEY = String(
@@ -16,7 +17,7 @@ const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_SOURCE = "geomacro_intelligence_orchestrator";
 const STATE_SOURCE = CONTROL_SOURCE;
 const STATE_PREFIX = "orchestrator:";
-const MAX_TASKS_PER_TICK = Math.max(1, Math.min(8, Number(process.env.INTELLIGENCE_ORCHESTRATOR_MAX_TASKS ?? 8)));
+const MAX_TASKS_PER_TICK = Math.max(1, Math.min(8, Number(process.env.INTELLIGENCE_ORCHESTRATOR_MAX_TASKS ?? DEFAULT_MAX_TASKS_PER_TICK)));
 const RETRY_SECONDS = Math.max(60, Math.min(900, Number(process.env.INTELLIGENCE_ORCHESTRATOR_RETRY_SECONDS ?? 300)));
 const TASK_TIMEOUT_MS = Math.max(60_000, Math.min(3_600_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_TIMEOUT_MS ?? 1_500_000)));
 
@@ -472,15 +473,11 @@ async function main() {
     }
   }
 
-  const dueAll = TASKS
-    .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
-    .filter(({ task, state }) => isPast(state.cursor.next_due_at, nowMs))
-    .sort((a, b) => {
-      const aDueAt = Date.parse(a.state.cursor.next_due_at);
-      const bDueAt = Date.parse(b.state.cursor.next_due_at);
-      if (aDueAt !== bDueAt) return aDueAt - bDueAt;
-      return a.task.priority - b.task.priority;
-    });
+  const dueAll = orderDueTasks(
+    TASKS
+      .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
+      .filter(({ task, state }) => isPast(state.cursor.next_due_at, nowMs)),
+  );
   const due = dueAll.slice(0, MAX_TASKS_PER_TICK);
 
   const results = [];
