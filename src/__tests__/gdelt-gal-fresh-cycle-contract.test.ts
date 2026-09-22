@@ -13,12 +13,14 @@ describe("GDELT GAL canonical fresh-cycle contract", () => {
     expect(cycle).toContain("scripts/reconcile-structured-event-commercial-rights.mjs");
     expect(cycle).toContain("scripts/audit-agent-hot-topic-readiness.ts");
     expect(cycle).toContain("scripts/verify-gdelt-gal-cycle.mjs");
-    expect(cycle).toContain('status !== "sealed"');
+    expect(cycle).toContain('syncPayload?.status !== "sealed"');
     expect(cycle).toContain("fragment-ids.json");
-    expect(cycle).toContain("fragment_reached_structured_event_layer");
-    expect(cycle).toContain("structured_event_rights_reconciled");
-    expect(cycle).toContain("hot_topic_pipeline_healthy");
-    expect(cycle).toContain("lag_within_1800_seconds");
+    expect(cycle).toContain("scripts/verify-gdelt-gal-cycle.mjs");
+    const verifier = read("scripts/verify-gdelt-gal-cycle.mjs");
+    expect(verifier).toContain("fragment_reached_structured_event_layer");
+    expect(verifier).toContain("structured_event_rights_reconciled");
+    expect(verifier).toContain("hot_topic_pipeline_healthy");
+    expect(verifier).toContain("lag_within_1800_seconds");
   });
 
   it("retries upstream delay with bounded exponential backoff and classifies pipeline failures separately", () => {
