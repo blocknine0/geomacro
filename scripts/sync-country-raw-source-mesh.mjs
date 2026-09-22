@@ -8,7 +8,7 @@ const CONCURRENCY=Math.max(4,Math.min(16,Number(process.env.RAW_SOURCE_SYNC_CONC
 const RETRY_ATTEMPTS=4;
 const FAILURE_RETRY_SECONDS=300;
 const HOST_MIN_INTERVAL_MS=new Map([
-  ["api.gdeltproject.org",500],
+  ["api.gdeltproject.org",2000],
   ["api.worldbank.org",300],
   ["www.usgs.gov",300],
 ]);
@@ -85,7 +85,7 @@ async function fetchUrl(url){
         return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),retryAfter:r.headers.get("retry-after"),final:r.url||url,bytes};
       });
       if(!retryable.has(result.status)||attempt===RETRY_ATTEMPTS)return result;
-      const delay=retryAfterMs(result.retryAfter)??Math.min(20000,1500*(2**(attempt-1)));
+      const delay=retryAfterMs(result.retryAfter)??Math.min(30000,5000*(2**(attempt-1)));
       await sleep(delay);
     }catch(error){
       lastError=error;
@@ -219,7 +219,7 @@ async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),
   const countryIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
   const canonicalIso3=new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean));
   if(canonicalIso3.size!==195)throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.size);
-  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).not("target_id","like","%MESH_FILLER%").order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>{const last=Date.parse(String(t.last_attempt_at??""));const retrySeconds=Number(t.consecutive_failures??0)>0?FAILURE_RETRY_SECONDS:Number(t.cadence_seconds);return !Number.isFinite(last)||last+retrySeconds*1000<=now;});let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).not("target_id","like","%MESH_FILLER%").order("priority",{ascending:true,nullsFirst:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>{const last=Date.parse(String(t.last_attempt_at??""));const retrySeconds=Number(t.consecutive_failures??0)>0?FAILURE_RETRY_SECONDS:Number(t.cadence_seconds);return !Number.isFinite(last)||last+retrySeconds*1000<=now;});let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
         if(t.source_id==="gdelt_v2"){
           const iso2=countryIso2.get(String(t.country_iso3));
           if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
