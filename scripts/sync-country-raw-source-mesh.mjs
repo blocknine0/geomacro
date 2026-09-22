@@ -13,6 +13,13 @@ const HOST_MIN_INTERVAL_MS=new Map([
   ["www.usgs.gov",300],
 ]);
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
+const SOURCE_HTTP_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_HTTP_TIMEOUT_MS??30000)));
+const DB_REQUEST_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_DB_TIMEOUT_MS??30000)));
+function fetchWithTimeout(input,init={}){
+  const timeout=AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
+  const signal=init?.signal?AbortSignal.any([init.signal,timeout]):timeout;
+  return fetch(input,{...init,signal});
+}
 const projectRef=(u)=>{try{return new URL(u).hostname.split(".")[0]??"";}catch{return "";}};
 const hash=(b)=>createHash("sha256").update(b).digest("hex");
 const txt=(v)=>String(v??"").replace(/\s+/g," ").trim();
@@ -80,7 +87,7 @@ async function fetchUrl(url){
   for(let attempt=1;attempt<=RETRY_ATTEMPTS;attempt++){
     try{
       const result=await withHostPacing(url,async()=>{
-        const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow"});
+        const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow",signal:AbortSignal.timeout(SOURCE_HTTP_TIMEOUT_MS)});
         const bytes=Buffer.from(await r.arrayBuffer());
         return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),retryAfter:r.headers.get("retry-after"),final:r.url||url,bytes};
       });
