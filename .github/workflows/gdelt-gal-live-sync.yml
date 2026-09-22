@@ -66,6 +66,8 @@ jobs:
           jq -e '.verification.acceptance.fragment_reached_structured_event_layer == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.structured_event_rights_reconciled == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.hot_topic_pipeline_healthy == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
+          jq -e '.verification.acceptance.hot_topic_claim_boundary_safe == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
+          jq -e '.verification.acceptance.hot_topic_report_read_only == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.writes_performed_by_verifier == false' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
 
       - name: Upload sanitized GDELT GAL cycle evidence
