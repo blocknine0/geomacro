@@ -23,4 +23,13 @@ describe("global production coverage gate semantics", () => {
     expect(strictBlock).not.toContain("source_network_100_complete");
     expect(strictBlock).not.toContain("source_network_launch_complete");
   });
+
+  it("defers realtime freshness only for post-merge push validation", () => {
+    const workflow = read(".github/workflows/global-production-coverage-gate.yml");
+    expect(workflow).toContain("if: github.event_name != 'push'");
+    expect(workflow).toContain("if: github.event_name == 'push'");
+    expect(workflow).toContain("post-merge structural coverage validation is running before the first scheduled intelligence cycle");
+    expect(workflow).toContain('cron: "17 * * * *"');
+    expect(workflow).toContain("workflow_dispatch");
+  });
 });
