@@ -83,7 +83,6 @@ jobs:
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
       INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
       GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
-      FLASH_INGEST_TOKEN: ${{ secrets.FLASH_INGEST_TOKEN }}
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -139,12 +138,12 @@ jobs:
           echo "::add-mask::${token}"
           printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "${token}" >> "${GITHUB_ENV}"
 
-      - name: Smoke-check realtime corroboration production auth
+      - name: Smoke-check realtime corroboration OIDC
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${FLASH_INGEST_TOKEN}"
-          code="$(curl --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 --output /tmp/realtime-corroborate-health.json --write-out '%{http_code}' -X POST -H "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" -H 'Content-Type: application/json' "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
+          test -n "${GEOMACRO_FLASH_OIDC_TOKEN}"
+          code="$(curl --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 --output /tmp/realtime-corroborate-health.json --write-out '%{http_code}' -X POST -H "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" -H "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" -H 'Content-Type: application/json' "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
           cat /tmp/realtime-corroborate-health.json
           test "${code}" = "200"
           grep -q '"authenticated":true' /tmp/realtime-corroborate-health.json
