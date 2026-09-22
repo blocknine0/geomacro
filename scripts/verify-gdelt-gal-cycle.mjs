@@ -148,6 +148,19 @@ async function main() {
   if (Number(hotTopic?.summary?.recent_event_count ?? 0) <= 0) {
     throw new Error("Hot-topic audit found no recent structured event signal after fresh GDELT cycle");
   }
+  if (hotTopic?.writes_performed !== false) {
+    throw new Error("Hot-topic audit must be read-only for the fresh-cycle proof");
+  }
+  const claimBoundary = hotTopic?.claim_boundary ?? {};
+  if (claimBoundary.raw_source_material_redistributed !== false) {
+    throw new Error("Hot-topic claim boundary permits raw source redistribution");
+  }
+  if (claimBoundary.only_verified_or_derived_only_structured_events_are_deliverable !== true) {
+    throw new Error("Hot-topic claim boundary does not restrict delivery to verified or derived structured events");
+  }
+  if (claimBoundary.current_signal_with_only_blocked_rights_is_not_chargeable_for_hot_topics !== true) {
+    throw new Error("Hot-topic claim boundary allows blocked-rights current signal to be chargeable");
+  }
 
   const verification = {
     schema_version: "geomacro-gdelt-gal-fresh-cycle-verification-1.0",
