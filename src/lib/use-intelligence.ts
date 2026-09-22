@@ -31,8 +31,10 @@ export type IntelStatus = "loading" | "ready" | "updating" | "error";
 
 export type Intelligence = {
   all: IntelEvent[];
-  /** Last 24h, or the most recent rows when the day is quiet. */
+  /** Events whose published/recorded time falls inside the current 24h window. */
   today: IntelEvent[];
+  /** Most recent available records used only when the current window is empty. */
+  recent: IntelEvent[];
   usedFallbackWindow: boolean;
   topRisks: IntelEvent[];
   /** null when no row in the window carries a real severity change. */
@@ -75,7 +77,10 @@ function median(values: number[]): number | null {
 }
 
 function timeOf(e: IntelEvent) {
-  return new Date(e.publishedAt ?? e.createdAt).getTime();
+  const published = e.publishedAt ? new Date(e.publishedAt).getTime() : NaN;
+  if (Number.isFinite(published)) return published;
+  const created = new Date(e.createdAt).getTime();
+  return Number.isFinite(created) ? created : -Infinity;
 }
 
 function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
@@ -93,14 +98,26 @@ function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
 }
 
 function build(rows: IntelEvent[], now: number): Intelligence {
-  const in24h = rows.filter((r) => new Date(r.createdAt).getTime() >= now - DAY);
+  // Publication time is the primary "current" clock. Ingestion-created_at is
+  // only the fallback for records that genuinely have no publication timestamp.
+  // This prevents a newly imported historical article from masquerading as a
+  // current development merely because the row was inserted today.
+  const in24h = rows.filter((r) => timeOf(r) >= now - DAY && timeOf(r) <= now);
   const usedFallbackWindow = in24h.length === 0;
-  const pool = usedFallbackWindow ? rows.slice(0, 24) : in24h;
+  const recent = [...rows]
+    .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
+    .sort((a, b) => timeOf(b) - timeOf(a))
+    .slice(0, 24);
+  const pool = usedFallbackWindow ? recent : in24h;
 
-  const scored = pool.filter((r) => r.severity !== null);
-  const topRisks = [...scored].sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0)).slice(0, 8);
+  // "Current risk topics" must never use the quiet-day fallback. A historical
+  // record is useful for research, but it is not a current risk topic.
+  const currentScored = in24h.filter((r) => r.severity !== null);
+  const topRisks = [...currentScored]
+    .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
+    .slice(0, 8);
 
-  const moved = pool.filter((r) => r.delta !== null && r.delta !== 0);
+  const moved = in24h.filter((r) => r.delta !== null && r.delta !== 0);
   const rising = moved
     .filter((r) => (r.delta ?? 0) > 0)
     .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0));
@@ -108,15 +125,16 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((r) => (r.delta ?? 0) < 0)
     .sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0));
 
-  const med = median(scored.map((r) => r.severity as number));
+  const med = median(currentScored.map((r) => r.severity as number));
   const emergingPool =
     med === null
       ? null
-      : pool.filter(
+      : in24h.filter(
           (r) =>
             r.severity !== null &&
             r.severity >= med &&
-            new Date(r.createdAt).getTime() >= now - EMERGING_WINDOW,
+            timeOf(r) >= now - EMERGING_WINDOW &&
+            timeOf(r) <= now,
         );
 
   const counts = new Map<string, { count: number; sum: number; scored: number }>();
@@ -141,7 +159,10 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 
   return {
     all: rows,
-    today: [...pool].sort((a, b) => (b.severity ?? -1) - (a.severity ?? -1)).slice(0, 12),
+    today: [...in24h]
+      .sort((a, b) => timeOf(b) - timeOf(a))
+      .slice(0, 12),
+    recent,
     usedFallbackWindow,
     topRisks,
     fastestMoving: rising.length > 0 ? rising.slice(0, 5) : null,
