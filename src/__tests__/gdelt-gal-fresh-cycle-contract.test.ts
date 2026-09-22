@@ -51,8 +51,9 @@ describe("GDELT GAL canonical fresh-cycle contract", () => {
   it("keeps manual recovery on the exact same canonical cycle", () => {
     const workflow = read(".github/workflows/gdelt-gal-live-sync.yml");
     expect(workflow).toContain("scripts/run-gdelt-gal-cycle.mjs");
-    expect(workflow).not.toContain("scripts/sync-gdelt-gal-production.mjs");
-    expect(workflow).not.toContain("scripts/reconcile-structured-event-commercial-rights.mjs");
+    expect(workflow).not.toContain("bun scripts/sync-gdelt-gal-production.mjs");
+    expect(workflow).not.toContain("node scripts/sync-gdelt-gal-production.mjs");
+    expect(workflow).not.toContain("node scripts/reconcile-structured-event-commercial-rights.mjs");
     expect(workflow).not.toContain("live-structure-intelligence");
     expect(workflow).not.toContain("schedule:");
   });
