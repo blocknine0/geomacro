@@ -67,6 +67,10 @@ const privateRevenueLedgerExport = readFileSync(
   join(process.cwd(), "scripts/ops/export-private-commercial-revenue-ledger.mjs"),
   "utf8",
 );
+const federicoPreflight = readFileSync(
+  join(process.cwd(), "scripts/invinoveritas-risk-object-preflight.ts"),
+  "utf8",
+);
 const privateRevenueLedgerReadinessMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/949_private_revenue_ledger_readiness.sql"),
   "utf8",
@@ -386,6 +390,39 @@ describe("private revenue ledger production runtime gate", () => {
     );
     expect(finalProductionAcceptance).toContain(
       "private_revenue_ledger_append_only_and_hash_chain_verified: true",
+    );
+  });
+});
+
+
+describe("Federico exact external-evidence review binding", () => {
+  it("supplies the exact signed Risk Object as deterministic external evidence", () => {
+    expect(federicoPreflight).toContain(
+      'const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));',
+    );
+    expect(federicoPreflight).toContain(
+      'const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);',
+    );
+    expect(federicoPreflight).toContain(
+      'evidence_type: "signed_risk_object"',
+    );
+    expect(federicoPreflight).toContain(
+      "validity_until: riskObject.expires_at",
+    );
+    expect(federicoPreflight).toContain(
+      "external_evidence: externalEvidence",
+    );
+  });
+
+  it("binds review timing to the Risk Object observation timestamp", () => {
+    expect(federicoPreflight).toContain(
+      "observed_at: observedAt",
+    );
+    expect(federicoPreflight).toContain(
+      "externalEvidence.observed_at !== observedAt",
+    );
+    expect(federicoPreflight).toContain(
+      "externalEvidence.validity_until !== riskObject.expires_at",
     );
   });
 });
