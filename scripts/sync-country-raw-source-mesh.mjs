@@ -375,6 +375,7 @@ async function main() {
   let failedCells = 0;
   let targetAttempts = 0;
   const failures = [];
+  const fragmentIds = [];
 
   async function processTarget(t, countryIso3) {
     const when = new Date().toISOString();
@@ -586,7 +587,7 @@ async function main() {
     }
 
     const snapshotId = await saveSnapshot(db, t, when, fetched);
-    await saveFragment(db, t, when, extracted);
+    const fragmentId = await saveFragment(db, t, when, extracted);
     await db
       .from("live_raw_source_snapshots")
       .update({ extracted_item_count: extracted.length })
@@ -606,6 +607,7 @@ async function main() {
       .eq("target_id", t.target_id);
 
     if (updateError) throw updateError;
+    return fragmentId;
   }
 
   async function worker() {
@@ -622,7 +624,8 @@ async function main() {
         attempted.push(target.target_id);
 
         try {
-          await processTarget(target, cell.country_iso3);
+          const fragmentId = await processTarget(target, cell.country_iso3);
+          if (fragmentId) fragmentIds.push(String(fragmentId));
           cellSucceeded = true;
           successfulCells += 1;
           break;
@@ -684,6 +687,7 @@ async function main() {
     missing_non_gdelt_paths: noNonGdeltPath,
     target_attempts: targetAttempts,
     failures: failures.slice(0, 100),
+    fragment_ids: [...new Set(fragmentIds)],
     country_contract: countryContract,
     runtime_contract: {
       freshness_windows_seconds: windows,
