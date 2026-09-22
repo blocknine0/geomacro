@@ -44,6 +44,8 @@ jobs:
       GRI_PUBLISH_ENABLED: false
       RAW_SOURCE_SYNC_CONCURRENCY: 6
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
+      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+      GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
 
     steps:
       - name: Checkout repair revision
@@ -157,9 +159,17 @@ jobs:
         env:
           INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
+          INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,rss_live,realtime_fanout
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-repair.log
+
+      - name: Final GDELT first-break and scope fanout convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/run-gdelt-gal-cycle.mjs
+          bun scripts/sync-realtime-scope-fanout.mjs
 
       - name: Final freshness convergence after orchestrator
         run: |
