@@ -167,8 +167,8 @@ jobs:
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
               export RAW_SOURCE_CATEGORY_ALLOWLIST="$category"
-              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-\${category}.json" 2>&1
-            ) > "category-final-\${category}.log" 2>&1 &
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-${category}.json" 2>&1
+            ) > "category-final-${category}.log" 2>&1 &
           done
           wait
           node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-final-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
@@ -178,8 +178,8 @@ jobs:
           set -euo pipefail
           for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
             (
-              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-final-\${category}.json"
-            ) >> "category-final-\${category}.log" 2>&1 &
+              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-final-${category}.json"
+            ) >> "category-final-${category}.log" 2>&1 &
           done
           wait
 
