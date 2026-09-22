@@ -51,8 +51,7 @@ async function main() {
       const window=WINDOWS_SECONDS[category];
       const freshRows=nonGdeltRows.filter(x=>{
         const timestamp=Date.parse(String(x.last_success_at));
-        return Number.isFinite(timestamp)&&Date.now()-timestamp<=window*1000&&
-          x.discovery_state!=="UNREACHABLE"&&x.discovery_state!=="STALE";
+        return Number.isFinite(timestamp)&&Date.now()-timestamp<=window*1000;
       });
       if(!freshRows.length) {
         const latest=nonGdeltRows
