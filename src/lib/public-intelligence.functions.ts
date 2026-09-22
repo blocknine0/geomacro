@@ -81,7 +81,7 @@ export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRo
     supabase
       .from("live_flash_event_families")
       .select(
-        "family_id,signal_category,canonical_headline,last_seen_at,latest_flash_id,current_status",
+        "family_id,signal_category,canonical_headline,last_seen_at,current_status",
       )
       .eq("current_status", "ACTIVE")
       .in("signal_category", [...PUBLIC_INTELLIGENCE_CATEGORIES])
@@ -132,35 +132,37 @@ export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRo
       .filter((category): category is string => Boolean(category)),
   );
 
-  const familyIds = (familyResult.data ?? [])
-    .map((row) => String(row.latest_flash_id ?? ""))
-    .filter(Boolean);
-
+  const familyIds = (familyResult.data ?? []).map((row) => String(row.family_id));
   const verifiedFlashRows =
     familyIds.length === 0
       ? []
       : await supabase
           .from("live_flash_events")
-          .select("flash_id,headline,published_at,ingested_at,severity,verification_status,signal_category")
-          .in("flash_id", familyIds)
+          .select("flash_id,event_family_id,headline,published_at,ingested_at,severity,verification_status,signal_category")
+          .in("event_family_id", familyIds)
           .eq("verification_status", "VERIFIED")
           .in("signal_category", [...PUBLIC_INTELLIGENCE_CATEGORIES])
-          .gte("published_at", since24h)
-          .order("published_at", { ascending: false });
+          .gte("ingested_at", since24h)
+          .order("ingested_at", { ascending: false })
+          .limit(1000);
 
   if (verifiedFlashRows.error) {
     console.error("[public-intelligence] verified flash read failed", verifiedFlashRows.error.message);
     throw new Error("Intelligence feed unavailable");
   }
 
-  const verifiedFlashById = new Map(
-    (verifiedFlashRows.data ?? []).map((row) => [String(row.flash_id), row]),
-  );
+  const verifiedFlashByFamily = new Map<string, (typeof verifiedFlashRows.data)[number]>();
+  for (const row of verifiedFlashRows.data ?? []) {
+    const familyId = String(row.event_family_id ?? "");
+    if (familyId && !verifiedFlashByFamily.has(familyId)) {
+      verifiedFlashByFamily.set(familyId, row);
+    }
+  }
 
   const familyFallbackRows: PublicIntelligenceRow[] = [];
   for (const family of familyResult.data ?? []) {
     const category = normalizeCategory(family.signal_category);
-    const flash = verifiedFlashById.get(String(family.latest_flash_id ?? ""));
+    const flash = verifiedFlashByFamily.get(String(family.family_id));
     if (!category || !flash || structuredCategories.has(category)) continue;
 
     const observedAt = flash.published_at ?? flash.ingested_at ?? family.last_seen_at;
