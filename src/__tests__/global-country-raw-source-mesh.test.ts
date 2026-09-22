@@ -72,6 +72,10 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("alreadyFreshNonGdelt");
     expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
     expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
+    expect(worker).toContain("un_security_council_docs_rss");
+    expect(worker).toContain("ukmto_maritime_security");
+    expect(worker).toContain("GEO:GLOBAL:UNSC_RSS:");
+    expect(worker).toContain("GEO:GLOBAL:UKMTO:");
     expect(worker).toContain("const fragmentId = await saveFragment");
     expect(worker).toContain("fragment_ids: [...new Set(fragmentIds)]");
   });
