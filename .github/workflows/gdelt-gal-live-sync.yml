@@ -61,6 +61,7 @@ jobs:
           node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-cycle.log
           grep -q 'PASS: GDELT GAL FRESH CYCLE COMPLETE; CURSOR, FRAGMENT, STRUCTURE, RIGHTS AND HOT-TOPIC HEALTH VERIFIED' gdelt-gal-cycle.log
           jq -e '.ok == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
+          jq -e '.verification.acceptance.source_lag_within_1800_seconds == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.lag_within_1800_seconds == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.fresh_fragment_created == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
           jq -e '.verification.acceptance.fragment_reached_structured_event_layer == true' gdelt-gal-cycle/gdelt-gal-cycle-summary.json >/dev/null
