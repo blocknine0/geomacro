@@ -26,6 +26,11 @@ describe("GDELT GAL production sync contract", () => {
     expect(sync).toContain("live_fragment_manifest");
     expect(sync).toContain("live_ingestion_runs");
     expect(sync).toContain("last_success_at: nowIso");
+    expect(sync).toContain("function classifyFailure(error)");
+    expect(sync).toContain('return "UPSTREAM_TEMPORARY_OUTAGE"');
+    expect(sync).toContain('return "PIPELINE_FAILURE"');
+    expect(sync).toContain("last_failure_class");
+    expect(sync).toContain("error_code: failureClass");
     expect(sync).toContain('status: failures >= 3 ? "failed" : "degraded"');
   });
 
