@@ -106,12 +106,21 @@ function candidateStamps(now = new Date()) {
 
 async function fetchGalFile(stamp) {
   const sourceUrl = `https://storage.googleapis.com/data.gdeltproject.org/gdeltv3/gal/${stamp}.gal.json.gz`;
-  const response = await fetch(sourceUrl, { headers: { "user-agent": "Geomacro-Live-Intelligence/1.0" } });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`GDELT ${stamp}: HTTP ${response.status}`);
-  const compressed = Buffer.from(await response.arrayBuffer());
-  const text = gunzipSync(compressed).toString("utf8");
-  return { stamp, sourceUrl, compressed, text };
+  try {
+    const response = await fetch(sourceUrl, {
+      headers: { "user-agent": "Geomacro-Live-Intelligence/1.0" },
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`GDELT_UPSTREAM_HTTP_${response.status}`);
+    }
+    const compressed = Buffer.from(await response.arrayBuffer());
+    const text = gunzipSync(compressed).toString("utf8");
+    return { stamp, sourceUrl, compressed, text };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`GDELT_UPSTREAM_FETCH: ${message}`);
+  }
 }
 
 function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
@@ -132,7 +141,7 @@ function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
 
 function classifyFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
-  if (/fetch failed|HTTP (429|5\d{2})|ECONN|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|UND_ERR_CONNECT/i.test(message)) {
+  if (/GDELT_UPSTREAM_(?:HTTP_(?:429|5\d{2})|FETCH)/i.test(message)) {
     return "UPSTREAM_TEMPORARY_OUTAGE";
   }
   return "PIPELINE_FAILURE";
@@ -201,6 +210,8 @@ async function main() {
         started_at: nowIso,
         finished_at: nowIso,
         status: "empty",
+        error_code: failureClass,
+        error_detail: "GDELT GAL produced no new source file during this cycle",
         metrics: {
           no_new_source_file: true,
           last_source_stamp: lastStamp,
