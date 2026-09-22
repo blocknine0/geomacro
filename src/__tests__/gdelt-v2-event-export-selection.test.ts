@@ -36,6 +36,15 @@ describe("GDELT V2 live event export selection", () => {
       "GDELT lastupdate advertises a future Event export",
     );
     expect(script).toContain(
+      'const GDELT_AS_OF = String(process.env.GDELT_AS_OF ?? "").trim()',
+    );
+    expect(script).toContain(
+      "const effectiveAsOf = GDELT_AS_OF ? asOf : new Date()",
+    );
+    expect(script).toContain(
+      "current wall clock on every availability poll",
+    );
+    expect(script).toContain(
       "setTimeout(resolve, 10_000)",
     );
   });
