@@ -18,5 +18,7 @@ describe("GDELT GAL freshness truth",()=>{
     expect(block).toContain(': "failed"');
     expect(block).toContain('status: "empty"');
     expect(block).not.toContain("last_success_at: nowIso");
+    expect(block).toContain('failureClass = "UPSTREAM_SOURCE_DELAYED"');
+    expect(block).toContain("consecutive_failures: failures");
   });
 });
