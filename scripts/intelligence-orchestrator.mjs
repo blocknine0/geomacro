@@ -327,11 +327,25 @@ function normalizedState(task, row, nowMs) {
 function bootstrapStateForTask(task, nowMs) {
   const state = normalizedState(task, null, nowMs);
 
-  // Missing scheduler state must never defer first-run recovery behind the
-  // next aligned cadence. MAX_TASKS_PER_TICK bounds bootstrap execution.
+  // Missing or never-attempted seed state must never defer first-run recovery
+  // behind the next aligned cadence. MAX_TASKS_PER_TICK bounds bootstrap execution.
   state.cursor.next_due_at = new Date(nowMs).toISOString();
   state.cursor.bootstrap_pending = true;
   return state;
+}
+
+function shouldBootstrapState(row) {
+  if (!row) return true;
+  const cursor = row?.cursor && typeof row.cursor === "object" ? row.cursor : {};
+
+  // Recover rows created by the pre-fix bootstrap logic, but never re-bootstrap
+  // a task that has already been attempted or explicitly disabled.
+  if (cursor.bootstrap_pending === true) return true;
+  if (cursor.bootstrap_pending === false) return false;
+  if (row.status !== "unknown") return false;
+  if (row.last_attempt_at || row.last_success_at) return false;
+  if (cursor.skipped_reason === "task_disabled_by_configuration") return false;
+  return true;
 }
 
 async function runTask(task, state) {
@@ -434,7 +448,7 @@ async function main() {
   // MAX_TASKS_PER_TICK prevents the bootstrap from becoming a thundering herd.
   for (const task of TASKS) {
     const key = STATE_PREFIX + task.key;
-    if (!states.has(key)) {
+    if (shouldBootstrapState(states.get(key))) {
       const state = bootstrapStateForTask(task, nowMs);
       await upsertState(task, state);
       states.set(key, {
