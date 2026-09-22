@@ -98,7 +98,7 @@ function stampToDate(stamp) {
 
 function candidateStamps(now = new Date()) {
   const out = [];
-  for (let i = LOOKBACK_MINUTES; i >= 1; i -= 1) {
+  for (let i = 1; i <= LOOKBACK_MINUTES; i += 1) {
     out.push(utcMinuteStamp(new Date(now.getTime() - i * 60_000)));
   }
   return out;
@@ -341,7 +341,7 @@ async function main() {
 
     const previousFragmentSha256 = previous?.compressed_sha256 ?? null;
     const chainSha256 = sha256Hex(`${previousFragmentSha256 ?? "GENESIS"}:${compressedSha256}`);
-    const sortedStamps = available.map((item) => item.stamp).sort();
+    const sortedStamps = freshAvailable.map((item) => item.stamp).sort();
     const periodStart = stampToDate(sortedStamps[0]);
     const periodEnd = stampToDate(latestStamp);
     const yyyy = latestStamp.slice(0, 4);
