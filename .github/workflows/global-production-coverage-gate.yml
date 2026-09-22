@@ -12,7 +12,7 @@ on:
       - ".github/workflows/global-production-coverage-gate.yml"
   schedule:
     - cron: "17 * * * *"
-  workflow_dispatch:
+  workflow_dispatch
 
 permissions:
   contents: read
@@ -52,7 +52,14 @@ jobs:
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
 
       - name: Audit hot-topic taxonomy and realtime freshness
+        if: github.event_name != 'push'
         run: bunx tsx scripts/audit-hot-topic-family-readiness.ts --require-taxonomy-complete --require-pipeline-healthy
+
+      - name: Record post-merge freshness deferral
+        if: github.event_name == 'push'
+        run: |
+          echo "INFO: post-merge structural coverage validation is running before the first scheduled intelligence cycle."
+          echo "INFO: realtime/hot-topic freshness remains fail-closed on scheduled and manual production audits."
 
       - name: Audit exact source certification census
         run: bun run source:certification:census
