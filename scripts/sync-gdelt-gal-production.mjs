@@ -165,7 +165,7 @@ async function main() {
   try {
     const { data: cursorRow, error: cursorError } = await supabase
       .from("live_ingestion_cursors")
-      .select("cursor,last_success_at")
+      .select("cursor,last_success_at,consecutive_failures")
       .eq("source_key", SOURCE_KEY)
       .eq("stream_key", STREAM_KEY)
       .maybeSingle();
