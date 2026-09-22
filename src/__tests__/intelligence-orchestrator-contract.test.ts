@@ -49,6 +49,9 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("consecutive_failures");
     expect(script).toContain('status = "degraded"');
     expect(script).toContain("for (const item of due)");
+    expect(script).toContain("process.stderr.write(text)");
+    expect(script).not.toContain("process.stdout.write(text)");
+    expect(script).toContain("console.log(JSON.stringify(summary, null, 2));");
   });
 
   it("makes missing scheduler state immediately due without creating a first-run herd", () => {
