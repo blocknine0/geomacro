@@ -56,7 +56,7 @@ jobs:
       TELEGRAM_ENABLED: false
       GRI_PUBLISH_ENABLED: false
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
-      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,country_raw_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
+      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
       RAW_SOURCE_SYNC_CONCURRENCY: 16
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
 
@@ -110,13 +110,25 @@ jobs:
           test "$code" = "200"
           grep -q '"ok":true' /tmp/realtime-corroborate-health.json
 
-      - name: Run launch-critical realtime repair tasks
+      - name: Refresh all 195 x 3 raw source runtime cells first
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync.json
+          node scripts/drain-live-structure.mjs --fragment-ids-file country-raw-source-sync.json
+          node scripts/audit-global-raw-source-coverage.mjs
+          node scripts/audit-global-raw-source-runtime.mjs
+
+      - name: Verify non-GDELT independence before the remaining realtime tasks
+        run: timeout 8m node scripts/audit-gdelt-dependency-live.mjs
+
+      - name: Run remaining launch-critical realtime repair tasks
         shell: bash
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-repair.log
 
-      - name: Verify three-category country runtime
+      - name: Verify three-category country runtime again
         run: timeout 8m node scripts/audit-global-raw-source-runtime.mjs
 
       - name: Verify GDELT independence
