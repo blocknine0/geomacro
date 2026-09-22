@@ -101,10 +101,15 @@ async function fetchAll(table, select, configure) {
 const generatedAt = new Date().toISOString();
 const nowMs = Date.parse(generatedAt);
 
-const [countries, targets] = await Promise.all([
+const [directory, countries, targets] = await Promise.all([
+  fetchAll(
+    "live_country_primary_source_directory",
+    "country_iso2",
+    q => q.order("country_iso2", { ascending: true }),
+  ),
   fetchAll(
     "live_country_registry",
-    "iso3,enabled",
+    "iso3,iso2,enabled",
     q => q.eq("enabled", true),
   ),
   fetchAll(
@@ -128,10 +133,17 @@ const [countries, targets] = await Promise.all([
   ),
 ]);
 
-const enabledCountries = countries
-  .map(row => String(row.iso3 ?? "").trim().toUpperCase())
-  .filter(Boolean)
-  .sort();
+const registryByIso2 = new Map(
+  countries.map(row => [
+    String(row.iso2 ?? "").trim().toUpperCase(),
+    String(row.iso3 ?? "").trim().toUpperCase(),
+  ]),
+);
+const enabledCountries = [...new Set(
+  directory
+    .map(row => registryByIso2.get(String(row.country_iso2 ?? "").trim().toUpperCase()))
+    .filter(Boolean),
+)].sort();
 
 const validTargets = targets.filter(row =>
   enabledCountries.includes(String(row.country_iso3 ?? "").toUpperCase()) &&
