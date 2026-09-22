@@ -218,9 +218,27 @@ const gates = [
   },
   {
     serial: 2, gate: "RAW_SOURCE_MATRIX_195x3",
-    pass: bool(rawCoverage && rawCoverage.raw_source_coverage_100_complete) && rawStructuralMissing.length === 0,
-    evidence: { view: rawCoverage, structural_missing_cells: rawStructuralMissing.map(c => ({ country_iso3: c.country_iso3, category: c.category })) }
+    pass: bool(rawCoverage && rawCoverage.raw_source_coverage_100_complete) &&
+      rawStructuralMissing.length === 0 &&
+      Array.from(cells.values()).every(c => {
+        const expected = c.category === "GEOPOLITICS" ? 3 : c.category === "MACRO" ? 4 : 6;
+        return c.configured.length >= expected;
+      }),
+    evidence: {
+      view: rawCoverage,
+      structural_missing_cells: rawStructuralMissing.map(c => ({ country_iso3: c.country_iso3, category: c.category })),
+      topology_failures: Array.from(cells.values()).filter(c => {
+        const expected = c.category === "GEOPOLITICS" ? 3 : c.category === "MACRO" ? 4 : 6;
+        return c.configured.length < expected;
+      }).map(c => ({
+        country_iso3: c.country_iso3,
+        category: c.category,
+        configured_target_count: c.configured.length,
+        minimum_target_count: c.category === "GEOPOLITICS" ? 3 : c.category === "MACRO" ? 4 : 6
+      }))
+    }
   },
+
   {
     serial: 3, gate: "RAW_RUNTIME_FRESH_195x3",
     pass: bool(rawRuntime && rawRuntime.raw_runtime_100_complete) && rawMissing.length === 0,
