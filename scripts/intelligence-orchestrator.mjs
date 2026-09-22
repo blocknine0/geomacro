@@ -413,7 +413,7 @@ async function runTask(task, state) {
       errorText,
     ].join("\n");
     const failureClass = diagnosticText.match(
-      /(?:^|\\n)GDELT_GAL_FAILURE_CLASS=([A-Z0-9_]+)/,
+      /(?:^|\n)GDELT_GAL_FAILURE_CLASS=([A-Z0-9_]+)/,
     )?.[1] ?? null;
 
     state.status = "degraded";
