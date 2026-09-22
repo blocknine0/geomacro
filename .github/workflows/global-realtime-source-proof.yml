@@ -8,7 +8,7 @@ on:
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
 concurrency:
-  group: geomacro-global-realtime-source-proof
+  group: geomacro-global-realtime-source-proof-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 permissions:
