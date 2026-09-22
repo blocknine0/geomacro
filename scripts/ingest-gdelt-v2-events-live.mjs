@@ -249,8 +249,15 @@ async function loadCurrentlyAvailableExport(asOf) {
     )
     const lastUpdateText = await lastUpdateResponse.text()
 
+    // In live mode, GDELT_AS_OF is intentionally moving while we wait because
+    // the rolling manifest may advertise the next five-minute export early.
+    // An explicitly supplied GDELT_AS_OF remains immutable for deterministic
+    // historical/replay runs.
+    const selectionAsOf =
+      process.env.GDELT_AS_OF === undefined ? new Date() : asOf
+
     try {
-      return parseLastUpdate(lastUpdateText, asOf)
+      return parseLastUpdate(lastUpdateText, selectionAsOf)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error)
