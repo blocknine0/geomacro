@@ -1,0 +1,359 @@
+name: GRI Manual Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Select exactly one GRI operation for a manual run"
+        required: true
+        default: public-proof
+        type: choice
+        options:
+          - public-proof
+          - publish
+          - calibration
+          - freshness-recovery
+          - validate
+          - reclassify
+          - replay
+          - cluster
+      full_history:
+        description: "For validate mode only, backfill all available FRED history before validation"
+        required: false
+        default: false
+        type: boolean
+      start:
+        description: "For replay mode only, replay start timestamp/date"
+        required: false
+        type: string
+      end:
+        description: "For replay mode only, replay end timestamp/date"
+        required: false
+        type: string
+      cadence_hours:
+        description: "For replay mode only, snapshot cadence in hours"
+        required: false
+        default: "24"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  public-proof:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' && inputs.mode == 'public-proof'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GRI_METHOD_VERSION: gri-v1.2.0
+      GRI_PROOF_VERSION: gri-proof-v1.2.0
+      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
+      GRI_CONSISTENCY_ARTIFACT: artifacts/gri-public-proof-consistency.json
+    concurrency:
+      group: gri-public-proof-consistency
+      cancel-in-progress: false
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Audit persisted public/service GRI parity
+        run: node scripts/audit-gri-public-proof-consistency.mjs
+      - name: Resolve audited snapshot id
+        id: snapshot
+        shell: bash
+        run: |
+          snapshot_id="$(node -e 'const e=require("./artifacts/gri-public-proof-consistency.json"); if(!e.snapshotId) process.exit(1); process.stdout.write(e.snapshotId)')"
+          echo "id=$snapshot_id" >> "$GITHUB_OUTPUT"
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install locked verifier dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Independently recompute persisted proof
+        run: |
+          node scripts/verify-gri-snapshot-v12.js --snapshot-id "${{ steps.snapshot.outputs.id }}"             > artifacts/gri-public-proof-verifier.json
+      - name: Upload sanitized GRI consistency evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: gri-public-proof-consistency-${{ github.run_id }}
+          path: |
+            artifacts/gri-public-proof-consistency.json
+            artifacts/gri-public-proof-verifier.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  publish:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+    concurrency:
+      group: gri-production-publisher
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install locked GRI runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Correlate canonical GRI events into immutable stories
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+        run: node scripts/cluster-gri-stories-v12.js
+      - name: Compute, reconcile and publish immutable GRI v1.2 snapshot
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/compute-gri-v12.js
+      - name: Independently verify the latest published proof package
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/verify-gri-snapshot-v12.js
+
+  freshness-recovery:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'freshness-recovery' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: gri-production-publisher
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Check current verified GRI freshness
+        id: freshness
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GRI_METHOD_VERSION: gri-v1.2.0
+          GRI_PROOF_VERSION: gri-proof-v1.2.0
+          GRI_WATCHDOG_MAX_AGE_HOURS: "5"
+        shell: bash
+        run: |
+          set +e
+          node scripts/check-gri-freshness.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" -eq 10 ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Freshness checker failed with exit code $code. Refusing to guess GRI state."
+          exit "$code"
+      - name: Install GRI runtime dependencies for recovery
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Correlate canonical GRI events into immutable stories
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+        run: node scripts/cluster-gri-stories-v12.js
+      - name: Compute and publish immutable GRI v1.2 snapshot
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/compute-gri-v12.js
+      - name: Independently verify recovered proof package
+        if: ${{ steps.freshness.outputs.stale == 'true' }}
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/verify-gri-snapshot-v12.js
+
+  validate:
+    if: >-
+      ${{
+        (github.event_name == 'schedule' && github.event.schedule == '35 3 * * *') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'validate')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: gri-validation
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Install validation runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Ingest benchmark observations
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ "${{ inputs.full_history }}" = "true" ]; then
+            node scripts/ingest-gri-benchmarks.js --full-history
+          else
+            node scripts/ingest-gri-benchmarks.js --days 45
+          fi
+      - name: Run versioned empirical validation
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/validate-gri-v12.js
+
+  reclassify:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'reclassify' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Reclassify existing GRI evidence
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
+          MISTRAL_MODEL: ${{ vars.MISTRAL_MODEL }}
+          CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+          GROQ_BATCH_SIZE: ${{ vars.GROQ_BATCH_SIZE }}
+          GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
+          GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
+          GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
+          GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
+          GROQ_MAX_WAIT_MS: ${{ vars.GROQ_MAX_WAIT_MS }}
+          MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}
+          MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
+          MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
+        run: |
+          set -o pipefail
+          node scripts/ingest-news.js --reclassify-existing 2>&1 | tee /tmp/gri-reclassification.log
+          if grep -q "Reassessment classification failed" /tmp/gri-reclassification.log; then
+            echo "Reclassification provider failure detected."
+            exit 1
+          fi
+
+  replay:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'replay' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: gri-retrospective-replay
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Install runtime dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Replay fixed GRI methodology over historical event store
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+          CADENCE: ${{ inputs.cadence_hours }}
+        run: |
+          ARGS=(--cadence-hours "$CADENCE")
+          if [ -n "$START" ]; then ARGS+=(--start "$START"); fi
+          if [ -n "$END" ]; then ARGS+=(--end "$END"); fi
+          node scripts/replay-gri-history-v12.js "${ARGS[@]}"
+      - name: Validate retrospective replay separately from live OOS evidence
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          RUN_ID=$(node - <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+          const sb=createClient(process.env.APP_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+          const {data,error}=await sb.from('gri_replay_runs').select('id').eq('status','published').order('published_at',{ascending:false}).limit(1).single();
+          if(error) throw error;
+          process.stdout.write(data.id);
+          NODE
+          )
+          node scripts/validate-gri-v12.js --replay-run "$RUN_ID"
+
+  cluster:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'cluster' }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gri-story-correlation
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Build immutable GRI story ledger
+        env:
+          SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
+        run: node scripts/cluster-gri-stories-v12.js
