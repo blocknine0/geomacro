@@ -6,6 +6,19 @@ const ROOT = process.cwd();
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("public intelligence routing contract", () => {
+  it("reads canonical structured and verified live intelligence before legacy events", () => {
+    const publicRead = read("src/lib/public-intelligence.functions.ts");
+
+    expect(publicRead).toContain('from("live_structured_events")');
+    expect(publicRead).toContain('from("live_flash_event_families")');
+    expect(publicRead).toContain('from("live_flash_events")');
+    expect(publicRead).toContain('eq("verification_status", "VERIFIED")');
+    expect(publicRead).toContain('from("events")');
+    expect(publicRead).toContain("structuredCategories");
+    expect(publicRead).toContain("fallbackCategories");
+  });
+
+
   it("provides a real public event-detail route for Intelligence and Ask Geomacro evidence links", () => {
     expect(existsSync(join(ROOT, "src/routes/event.$eventId.tsx"))).toBe(true);
 

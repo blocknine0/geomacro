@@ -3,7 +3,10 @@ import {
   applyIntelFilters,
   buildPublicIntelligence,
 } from "./use-intelligence";
-import type { PublicIntelligenceRow } from "./public-intelligence.functions";
+import {
+  PUBLIC_INTELLIGENCE_CATEGORIES,
+  type PublicIntelligenceRow,
+} from "./public-intelligence.functions";
 
 const NOW = Date.parse("2026-09-22T12:00:00.000Z");
 
@@ -22,6 +25,20 @@ function row(overrides: Partial<PublicIntelligenceRow> = {}): PublicIntelligence
 }
 
 describe("public intelligence recency contract", () => {
+  it("keeps all three public intelligence categories available even when one is temporarily empty", () => {
+    const result = buildPublicIntelligence(
+      [
+        row({
+          category: "macro",
+          source_title: "Macro event",
+        }),
+      ],
+      NOW,
+    );
+
+    expect(result.categories).toEqual([...PUBLIC_INTELLIGENCE_CATEGORIES]);
+    expect(result.categoryCounts.map((item) => item.category)).toEqual(["macro"]);
+  });
   it("uses publication time instead of ingestion time for the current 24h window", () => {
     const historical = row({
       id: "historical-import",

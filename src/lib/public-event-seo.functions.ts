@@ -34,5 +34,28 @@ export const getPublicEventSeoDetail = createServerFn({ method: "GET" })
       return null;
     }
 
-    return (result.data as PublicEventDetail | null) ?? null;
+    if (result.data) return result.data as PublicEventDetail;
+
+    const structured = await supabase
+      .from("live_structured_events")
+      .select("id,title,summary,domain,severity,confidence,last_seen_at,first_seen_at,created_at")
+      .eq("id", data.eventId)
+      .maybeSingle();
+
+    if (structured.error || !structured.data) {
+      return null;
+    }
+
+    return {
+      id: String(structured.data.id),
+      source_title: structured.data.title ? String(structured.data.title) : null,
+      summary: structured.data.summary ? String(structured.data.summary) : null,
+      narrative: null,
+      category: String(structured.data.domain),
+      severity: Number.isFinite(Number(structured.data.severity)) ? Number(structured.data.severity) : null,
+      confidence: Number.isFinite(Number(structured.data.confidence)) ? Number(structured.data.confidence) : null,
+      delta: null,
+      published_at: structured.data.last_seen_at ? String(structured.data.last_seen_at) : null,
+      created_at: String(structured.data.created_at ?? structured.data.first_seen_at ?? structured.data.last_seen_at),
+    };
   });
