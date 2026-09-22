@@ -232,7 +232,9 @@ function runStep(command, args, cwd, timeoutMs) {
     child.stdout.on("data", (chunk) => {
       const text = String(chunk);
       stdout += text;
-      process.stdout.write(text);
+      // Child task output is diagnostic stream data. Keep stdout reserved for the
+      // single machine-readable orchestrator summary consumed by the workflow.
+      process.stderr.write(text);
     });
 
     child.stderr.on("data", (chunk) => {

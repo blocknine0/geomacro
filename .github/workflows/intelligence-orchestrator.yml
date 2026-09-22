@@ -109,7 +109,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/intelligence-orchestrator.mjs | tee intelligence-orchestrator.json
+          node scripts/intelligence-orchestrator.mjs > intelligence-orchestrator.json
+          jq -e . intelligence-orchestrator.json > /dev/null
+          cat intelligence-orchestrator.json
 
       - name: Publish scheduler summary
         if: always()
