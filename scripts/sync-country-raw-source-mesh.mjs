@@ -226,7 +226,14 @@ async function main() {
 
   const countryContract = await ensureCoverageTargets(db);
   const nowMs = Date.now();
-  const categories = ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
+  const requestedCategories = String(process.env.RAW_SOURCE_CATEGORY_ALLOWLIST ?? "")
+    .split(",")
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  const categories = requestedCategories.length
+    ? requestedCategories.filter((value) => ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"].includes(value))
+    : ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
+  if (!categories.length) throw new Error("RAW_SOURCE_CATEGORY_ALLOWLIST_EMPTY");
   const windows = { GEOPOLITICS: 1800, MACRO: 7200, CRITICAL_MINERALS: 14400 };
 
   const [directoryQuery, registryQuery] = await Promise.all([
@@ -679,6 +686,8 @@ async function main() {
     ok: failedCells === 0 && noNonGdeltPath.length === 0,
     generated_at: new Date().toISOString(),
     canonical_countries: canonicalIso3.length,
+    categories,
+    expected_cells: canonicalIso3.length * categories.length,
     candidate_targets: rows.length,
     work_cells: work.length,
     already_fresh_non_gdelt_cells: alreadyFreshNonGdelt.length,
