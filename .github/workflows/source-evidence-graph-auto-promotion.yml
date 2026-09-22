@@ -1,20 +1,12 @@
 name: Source Evidence Graph and Automated Certification Promotion
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/source-evidence-graph-auto-promotion.yml'
-      - 'scripts/source-certification-evidence-graph.mjs'
-      - 'supabase/migrations/961_source_certification_evidence_graph.sql'
-      - 'supabase/migrations/962_source_runtime_evidence_snapshot.sql'
-      - 'src/__tests__/source-evidence-graph-contract.test.ts'
-  workflow_run:
-    workflows: ["Deploy country flash intelligence to Supabase"]
-    types: [completed]
-  schedule:
-    - cron: "43 */6 * * *"
-  workflow_dispatch:
+  workflow_dispatch: {}
+
+
+concurrency:
+  group: geomacro-intelligence-orchestrator
+  cancel-in-progress: false
 
 permissions:
   contents: read

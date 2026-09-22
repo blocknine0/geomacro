@@ -1,33 +1,12 @@
 name: Production Intelligence Readiness
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "scripts/global-risk-gate-country-census.ts"
-      - "scripts/audit-agent-hot-topic-readiness.ts"
-      - "scripts/audit-global-realtime-source-freshness.mjs"
-      - "src/lib/agent-query-hot-topics.server.ts"
-      - "src/lib/agent-query-deliverability.server.ts"
-      - "src/lib/risk-gate-v2-request-readiness.ts"
-      - "supabase/migrations/928_hot_topic_claims.sql"
-      - "supabase/migrations/929_hot_topic_claim_identity.sql"
-      - ".github/workflows/production-intelligence-readiness.yml"
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - "GDELT GAL Live Hot-Topic Sync"
-    types:
-      - completed
-  schedule:
-    - cron: "33 */2 * * *"
-
 permissions:
   contents: read
 
 concurrency:
-  group: production-intelligence-readiness
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:

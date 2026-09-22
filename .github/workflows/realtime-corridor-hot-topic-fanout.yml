@@ -1,20 +1,14 @@
 name: Realtime Corridor and Hot-Topic Fanout
 
 on:
-  workflow_dispatch:
-  workflow_run:
-    workflows:
-      - "GDELT GAL Live Hot-Topic Sync"
-    types:
-      - completed
-  schedule:
-    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
 
 permissions:
   contents: read
 
 concurrency:
-  group: realtime-corridor-hot-topic-fanout
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:

@@ -23,7 +23,10 @@ describe("global Telegram source discovery",()=>{
 
   it("runs independently of licensed commercial source activation",()=>{
     expect(workflow).toContain("Global Telegram Raw Source Discovery");
-    expect(workflow).toContain('cron: "*/30 * * * *"');
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).not.toContain('cron: "*/30 * * * *"');
+    const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs","utf8");
+    expect(orchestrator).toContain('key: "telegram_discovery"');
     expect(migration).toContain("discovery_country_iso3");
     expect(migration).toContain("discovery_category");
   });
@@ -33,7 +36,7 @@ describe("global Telegram source discovery",()=>{
 describe("global Telegram workflow triggers",()=>{
   it("is schedule/dispatch only and cannot create push zero-job runs",()=>{
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("schedule:");
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("push:");
     expect(workflow).not.toContain("workflow_run:");
     expect(workflow).toContain("trigger-guard:");

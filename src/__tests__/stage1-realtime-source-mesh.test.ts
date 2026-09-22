@@ -31,8 +31,11 @@ describe("Stage 1 realtime source mesh", () => {
     expect(providerMigration).toContain("KPLER_API_CREDENTIAL");
   });
 
-  it("runs continuously and structures multiple source fragments", () => {
-    expect(workflow).toContain('cron: "*/5 * * * *"');
+  it("is operator-only because the master orchestrator owns cadence", () => {
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
+    const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
+    expect(orchestrator).toContain('key: "open_realtime_mesh"');
     expect(workflow).toContain("scripts/sync-open-live-source-mesh.mjs");
     expect(workflow).toContain("live-structure-intelligence");
   });

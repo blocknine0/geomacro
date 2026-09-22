@@ -65,12 +65,12 @@ describe("permanent source evidence graph", () => {
   });
 
   it("runs permanently against authoritative production after successful DB deploy", () => {
-    expect(workflow).toContain('workflows: ["Deploy country flash intelligence to Supabase"]');
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).not.toContain("workflow_run:");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx");
     expect(workflow).toContain("bun run source:certification:evidence-graph");
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("schedule:");
     expect(workflow).toContain("SUPABASE_DB_URL");
   });
 });

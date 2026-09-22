@@ -2,20 +2,14 @@ name: Testnet RSS Live Intelligence Runner
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_run:
-    workflows:
-      - "Deploy country flash intelligence to Supabase"
-    types:
-      - completed
+
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: testnet-rss-live-runner
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:

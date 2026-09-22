@@ -399,12 +399,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(workflow).toContain(
       "FEDERICO_STRICT",
     );
-    expect(workflow).toContain(
-      "src/lib/country-risk-engine.ts",
-    );
-    expect(workflow).toContain(
-      "src/lib/country-risk-publisher.server.ts",
-    );
+    const countryRiskEngine = read("src/lib/country-risk-engine.ts");
+    const countryRiskPublisher = read("src/lib/country-risk-publisher.server.ts");
+    expect(countryRiskEngine).toContain("risk-object");
+    expect(countryRiskPublisher).toContain("publish");
     expect(schemaGuard).toContain(
       "live_flash_event_families",
     );
@@ -423,10 +421,9 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "docs/GRO_CANONICAL_JSON_V1.md",
     );
 
-    const exactShaRef =
-      "ref: " +
-      "${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}";
-    expect(workflow).toContain(exactShaRef);
+    expect(workflow).toContain(
+      "ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}",
+    );
     expect(workflow).toContain(
       "json.load(handle)",
     );
@@ -456,10 +453,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      'artifact_version: "geomacro-invino-review-v2"',
+      'artifact_version: "geomacro-invino-review-v3"',
     );
     expect(preflight).toContain(
-      "risk_object: riskObject",
+      "risk_object_reference:",
     );
     expect(preflight).toContain(
       'as_of_source: "risk_object.observed_at"',

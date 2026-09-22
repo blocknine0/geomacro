@@ -2,14 +2,11 @@ name: Ingest ReliefWeb live metadata
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 * * * *"
-
 permissions:
   contents: read
 
 concurrency:
-  group: ingest-reliefweb-live
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:

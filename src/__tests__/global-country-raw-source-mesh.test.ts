@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const migration = fs.readFileSync("supabase/migrations/967_global_raw_source_coverage_mesh.sql","utf8");
 const worker = fs.readFileSync("scripts/sync-country-raw-source-mesh.mjs","utf8");
 const audit = fs.readFileSync("scripts/audit-global-raw-source-coverage.mjs","utf8");
+const runtimeAudit = fs.readFileSync("scripts/audit-global-raw-source-runtime.mjs","utf8");
 const workflow = fs.readFileSync(".github/workflows/global-country-raw-source-mesh.yml","utf8");
 const snapshot = fs.readFileSync("supabase/migrations/968_country_raw_web_snapshot_store.sql","utf8");
 
@@ -16,7 +17,8 @@ describe("global country raw source mesh",()=>{
     expect(audit).toContain("live_country_primary_source_directory");
     expect(audit).toContain("expected_total_targets:195*(3+4+6)");
     expect(audit).toContain("for(let from=0;;from+=1000)");
-    expect(audit).toContain("for(const iso of countries){");
+    expect(worker).toContain("for (const country of countries)");
+    expect(runtimeAudit).toContain("for(const iso of canonicalIso3)");
   });
 
   it("keeps commercial promotion separate from raw capture",()=>{
@@ -39,8 +41,9 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("api.gdeltproject.org");
   });
 
-  it("runs every five minutes against authoritative production",()=>{
-    expect(workflow).toContain('cron: "*/5 * * * *"');
+  it("is operator-driven because the master orchestrator owns scheduling",()=>{
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).toContain("sync-country-raw-source-mesh.mjs");
     expect(workflow).toContain("live-structure-intelligence");

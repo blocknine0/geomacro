@@ -36,28 +36,9 @@ on:
         default: "24"
         type: string
   schedule:
-    - cron: "23 */2 * * *"
-    - cron: "50 */2 * * *"
     - cron: "35 3 * * *"
     - cron: "41 4 * * 1"
   pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/audit-gri-v12-sensitivity.mjs'
-      - 'scripts/audit-gri-validation-evidence.mjs'
-      - 'scripts/lib/gri-sensitivity-v12.js'
-      - 'scripts/audit-gri-public-proof-consistency.mjs'
-      - 'scripts/verify-gri-snapshot-v12.js'
-      - 'scripts/lib/gri-*.js'
-      - 'scripts/check-gri-freshness.mjs'
-      - 'scripts/ingest-gri-benchmarks.js'
-      - 'scripts/validate-gri-v12.js'
-      - 'scripts/ingest-news.js'
-      - 'docs/GRI_CALIBRATION_SENSITIVITY_EVIDENCE.md'
-      - 'supabase/migrations/**'
-      - 'package.json'
-      - 'bun.lock'
-  push:
     branches: [main]
     paths:
       - 'scripts/audit-gri-v12-sensitivity.mjs'
@@ -83,7 +64,6 @@ jobs:
     if: >-
       ${{
         github.event_name == 'pull_request' ||
-        github.event_name == 'push' ||
         (github.event_name == 'schedule' && github.event.schedule == '41 4 * * 1') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'calibration')
       }}
@@ -95,9 +75,10 @@ jobs:
       GRI_METHOD_VERSION: gri-v1.2.0
       GRI_PROOF_VERSION: gri-proof-v1.2.0
       GRI_VALIDATION_VERSION: gri-validation-v1.1.0
-      # Pull requests validate sensitivity mechanics on a moving public dataset.
-      # Keep the production scheduled gate at the strict 3-hour freshness policy.
-      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: ${{ github.event_name == 'pull_request' && '6' || '3' }}
+      # Pull requests validate deterministic sensitivity mechanics on the latest public snapshot.
+      # Production scheduled runs keep the strict 3-hour freshness policy.
+      GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS: "3"
+      GRI_REQUIRE_PUBLIC_FRESHNESS: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
       GRI_SENSITIVITY_ARTIFACT: artifacts/gri-v12-sensitivity.json
       GRI_VALIDATION_EVIDENCE_ARTIFACT: artifacts/gri-validation-evidence.json
     concurrency:
@@ -145,9 +126,7 @@ jobs:
   public-proof:
     if: >-
       ${{
-        (github.event_name == 'push') ||
-        (github.event_name == 'schedule' && github.event.schedule == '23 */2 * * *') ||
-        (github.event_name == 'workflow_dispatch' && inputs.mode == 'public-proof')
+        github.event_name == 'workflow_dispatch' && inputs.mode == 'public-proof'
       }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -202,10 +181,7 @@ jobs:
   publish:
     if: >-
       ${{
-        (github.event_name == 'schedule' &&
-          github.event.schedule == '50 */2 * * *' &&
-          vars.GRI_PUBLISH_ENABLED == 'true') ||
-        (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish')
+        github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

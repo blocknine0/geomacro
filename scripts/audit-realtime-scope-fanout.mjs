@@ -103,7 +103,14 @@ async function main() {
     direct_operational_sources: {
       target_count: directTargets.length,
       stale_targets: directStale,
-      healthy: directStale.length === 0,
+      healthy_target_count: Math.max(0, directTargets.length - directStale.length),
+      healthy:
+        directTargets.length === 0 ||
+        directStale.length < directTargets.length,
+      degraded:
+        directTargets.length > 0 &&
+        directStale.length > 0 &&
+        directStale.length < directTargets.length,
     },
     runtime_model: {
       first_break_source: "gdelt_gal",

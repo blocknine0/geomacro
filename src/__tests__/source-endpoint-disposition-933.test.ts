@@ -84,8 +84,9 @@ describe("permanent 933 endpoint disposition contract", () => {
     expect(dispositionJob).toContain("endpoint_disposition_933_complete");
     expect(dispositionJob).toContain("live_source_endpoint_manifest_lock");
     expect(dispositionJob).toContain("live_source_endpoint_disposition_ledger");
-    expect(workflow).toContain("workflow_run:");
-    expect(workflow).toContain("Deploy country flash intelligence to Supabase");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("workflow_run:");
+    expect(workflow).toContain("inputs.mode == 'endpoint-933-disposition'");
   });
 
   it("never treats endpoint reachability as commercial certification", () => {

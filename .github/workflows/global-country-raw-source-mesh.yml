@@ -1,24 +1,13 @@
 name: Global Country Raw Source Mesh
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
-  push:
-    branches: [main]
-    paths:
-      - "scripts/sync-country-raw-source-mesh.mjs"
-      - "scripts/audit-global-raw-source-coverage.mjs"
-      - "scripts/audit-global-raw-source-runtime.mjs"
-      - "supabase/migrations/967_global_raw_source_coverage_mesh.sql"
-      - "supabase/migrations/968_country_raw_web_snapshot_store.sql"
-      - ".github/workflows/global-country-raw-source-mesh.yml"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
 
 concurrency:
-  group: geomacro-global-country-raw-source-mesh-v2
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:

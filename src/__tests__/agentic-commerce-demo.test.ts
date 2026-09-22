@@ -110,7 +110,10 @@ describe("Agentic Commerce public demo contract", () => {
     expect(store).toContain("PUBLIC_DEMO_RISK_PROFILE_REASON");
     expect(store).toContain('profile === "PUBLIC_DEMO"');
     expect(refresh).toContain('delivery_profile: "PUBLIC_DEMO"');
-    expect(workflow).toContain('cron: "17 * * * *"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain('cron: "17 * * * *"');
+    const orchestrator = read("scripts/intelligence-orchestrator.mjs");
+    expect(orchestrator).toContain('key: "public_demo_refresh"');
   });
 
   it("protects TanStack server functions with CSRF middleware", () => {

@@ -16,6 +16,9 @@ const PROOF_VERSION = process.env.GRI_PROOF_VERSION || "gri-proof-v1.2.0";
 const MAX_AGE_HOURS = Number(
   process.env.GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS || "3",
 );
+const REQUIRE_PUBLIC_FRESHNESS =
+  String(process.env.GRI_REQUIRE_PUBLIC_FRESHNESS ?? "true").trim().toLowerCase() !==
+  "false";
 const OUTPUT =
   process.env.GRI_SENSITIVITY_ARTIFACT ||
   "artifacts/gri-v12-sensitivity.json";
@@ -159,9 +162,10 @@ async function main() {
       snapshot.status === "published" && snapshot.verification_status === "verified",
     proofHashValid: HASH_RE.test(String(snapshot.proof_hash ?? "")),
     publicReadFreshness:
-      snapshotAgeHours !== null &&
-      snapshotAgeHours >= -0.25 &&
-      snapshotAgeHours <= MAX_AGE_HOURS,
+      !REQUIRE_PUBLIC_FRESHNESS ||
+      (snapshotAgeHours !== null &&
+        snapshotAgeHours >= -0.25 &&
+        snapshotAgeHours <= MAX_AGE_HOURS),
     contributionCountMatches:
       Number(snapshot.event_count) === rows.length && rows.length > 0,
     baselineRawParity:

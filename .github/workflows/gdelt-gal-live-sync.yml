@@ -1,24 +1,8 @@
 name: GDELT GAL Live Hot-Topic Sync
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "scripts/sync-gdelt-gal-production.mjs"
-      - "supabase/functions/live-structure-intelligence/**"
-      - "scripts/audit-agent-hot-topic-readiness.ts"
-      - "supabase/migrations/049_structured_event_source_rights_view.sql"
-      - "supabase/migrations/050_structured_event_commercial_rights_sync.sql"
-      - "supabase/migrations/051_internal_handoff_source_rights_resolution.sql"
-      - "supabase/migrations/052_admitted_event_derived_delivery_policy.sql"
-      - "supabase/migrations/955_realtime_event_family_lifecycle.sql"
-      - "supabase/migrations/956_event_family_version_ledger.sql"
-      - "supabase/migrations/957_repair_federico_event_family_schema.sql"
-      - ".github/workflows/gdelt-gal-live-sync.yml"
-  workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
 
 # Certification trigger: successful fresh GDELT completion must exercise Federico strict acceptance.
 
@@ -43,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: gdelt-gal-live-hot-topic-production
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:

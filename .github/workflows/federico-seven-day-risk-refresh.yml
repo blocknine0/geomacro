@@ -2,29 +2,8 @@ name: Federico Continuous Testnet Risk Object Refresh
 # Continuous testnet acceptance and partner-refresh path. Publication remains fail-closed on all strict evidence gates.
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "17 */2 * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/federico-seven-day-risk-refresh.yml"
-      - "workers/telegram-flash/worker.py"
-      - "scripts/sync-gdelt-gal-production.mjs"
-      - "src/lib/public-demo-risk-profile.ts"
-      - "src/lib/country-risk-engine.ts"
-      - "src/lib/country-risk-publisher.server.ts"
-      - "scripts/invinoveritas-risk-object-preflight.ts"
-  workflow_run:
-    workflows:
-      - "Auto Ingest News"
-      - "Testnet RSS Live Intelligence Runner"
-      - "Deploy country flash intelligence to Supabase"
-      - "Deploy live structure intelligence edge"
-      - "GDELT GAL Live Hot-Topic Sync"
-    types:
-      - completed
+  workflow_dispatch: {}
+
 
 permissions:
   contents: read
@@ -32,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: federico-seven-day-risk-refresh
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
