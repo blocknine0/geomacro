@@ -412,6 +412,9 @@ describe("Federico exact external-evidence review binding", () => {
     expect(federicoPreflight).toContain(
       "external_evidence: externalEvidence",
     );
+    expect(federicoPreflight).toContain(
+      "record_sha256: externalEvidence.record_sha256",
+    );
   });
 
   it("binds review timing to the Risk Object observation timestamp", () => {
