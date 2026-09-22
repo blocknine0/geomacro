@@ -47,6 +47,8 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
     expect(script).toContain("retry_pending");
+    expect(script).toContain("GDELT_GAL_FAILURE_CLASS");
+    expect(script).toContain("failure_class: failureClass");
     expect(script).toContain("consecutive_failures");
     expect(script).toContain('status = "degraded"');
     expect(script).toContain("for (const item of due)");
