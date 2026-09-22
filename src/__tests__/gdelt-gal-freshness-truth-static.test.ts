@@ -7,7 +7,7 @@ const read=(path:string)=>readFileSync(join(process.cwd(),path),"utf8");
 describe("GDELT GAL freshness truth",()=>{
   it("does not refresh last_success_at when no new source file exists",()=>{
     const worker=read("scripts/sync-gdelt-gal-production.mjs");
-    const idx=worker.indexOf('if (available.length === 0) {');
+    const idx=worker.indexOf('if (freshAvailable.length === 0) {');
     expect(idx).toBeGreaterThanOrEqual(0);
     const block=worker.slice(idx, worker.indexOf('const batchSeen',idx));
     expect(block).toContain("last_success_at: cursorRow?.last_success_at ?? null");
