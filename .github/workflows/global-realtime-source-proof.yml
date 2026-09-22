@@ -136,7 +136,7 @@ jobs:
           token="$(printf "%s" "${oidc_response}" | jq -er ".value")"
           test -n "${token}"
           echo "::add-mask::${token}"
-          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\\n" "${token}" >> "${GITHUB_ENV}"
+          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "${token}" >> "${GITHUB_ENV}"
 
       - name: Smoke-check realtime corroboration OIDC
         run: |
