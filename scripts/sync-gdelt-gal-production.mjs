@@ -182,7 +182,13 @@ async function main() {
       if (available.length >= MAX_SOURCE_FILES_PER_RUN) break;
     }
 
-    if (available.length === 0) {
+    const freshAvailable = available.filter((file) => {
+      const sourceMs = stampToDate(file.stamp).getTime();
+      const ageSeconds = Math.max(0, (now.getTime() - sourceMs) / 1000);
+      return ageSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;
+    });
+
+    if (freshAvailable.length === 0) {
       const lastSuccessMs = cursorRow?.last_success_at ? Date.parse(String(cursorRow.last_success_at)) : NaN;
       const successAgeSeconds = Number.isFinite(lastSuccessMs)
         ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
@@ -237,7 +243,7 @@ async function main() {
     let itemsRejected = 0;
     let sameBatchDuplicate = 0;
 
-    for (const file of available) {
+    for (const file of freshAvailable) {
       for (const line of file.text.split("\n")) {
         if (!line.trim()) continue;
         itemsSeen += 1;
@@ -268,7 +274,7 @@ async function main() {
 
     const accepted = candidates.filter((item) => !existing.has(item.fingerprint));
     const databaseDuplicate = candidates.length - accepted.length;
-    const latestStamp = available.map((item) => item.stamp).sort().at(-1);
+    const latestStamp = freshAvailable.map((item) => item.stamp).sort().at(-1);
 
     if (accepted.length === 0) {
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
@@ -285,7 +291,7 @@ async function main() {
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
       if (error) throw error;
-      await emit({ ok: true, status: "all_duplicates_or_irrelevant", files_seen: available.length, items_seen: itemsSeen, relevant_candidates: candidates.length, latest_source_stamp: latestStamp });
+      await emit({ ok: true, status: "all_duplicates_or_irrelevant", files_seen: freshAvailable.length, items_seen: itemsSeen, relevant_candidates: candidates.length, latest_source_stamp: latestStamp });
       return;
     }
 
@@ -383,7 +389,7 @@ async function main() {
       items_rejected: itemsRejected,
       fragment_id: manifest.id,
       metrics: {
-        source_files: available.length,
+        source_files: freshAvailable.length,
         source_stamps: sortedStamps,
         relevant_candidates: candidates.length,
         compression_ratio: payloadBytes.byteLength === 0 ? null : Number((compressedBytes.byteLength / payloadBytes.byteLength).toFixed(6)),
@@ -411,7 +417,7 @@ async function main() {
       ok: true,
       status: "sealed",
       fragment_id: manifest.id,
-      source_files: available.length,
+      source_files: freshAvailable.length,
       items_seen: itemsSeen,
       items_accepted: accepted.length,
       items_duplicate: sameBatchDuplicate + databaseDuplicate,
