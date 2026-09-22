@@ -26,7 +26,7 @@ async function main() {
   const targetRows=[];
   for(let from=0;;from+=1000){
     const targetQuery=await db.from("live_raw_source_targets")
-      .select("country_iso3,category,last_success_at,discovery_state").eq("enabled",true)
+      .select("country_iso3,category,source_id,transport,last_success_at,discovery_state").eq("enabled",true)
       .order("target_id", {ascending:true}).range(from,from+999);
     if(targetQuery.error) throw targetQuery.error;
     targetRows.push(...(targetQuery.data??[]));
@@ -41,11 +41,31 @@ async function main() {
   const missing=[];
   for(const iso of canonicalIso3) {
     for(const category of Object.keys(WINDOWS_SECONDS)) {
-      const rows=(targets??[]).filter(x=>x.country_iso3===iso&&x.category===category&&x.last_success_at);
-      const latest=rows.map(x=>Date.parse(String(x.last_success_at))).filter(Number.isFinite).sort((a,b)=>b-a)[0];
+      const rows=(targets??[]).filter(x=>
+        x.country_iso3===iso&&
+        x.category===category&&
+        x.last_success_at&&
+        x.transport!=="TELEGRAM_DISCOVERY"
+      );
+      const nonGdeltRows=rows.filter(x=>!/gdelt/i.test(String(x.source_id??"")));
       const window=WINDOWS_SECONDS[category];
-      if(!Number.isFinite(latest)||Date.now()-latest>window*1000) {
-        missing.push({iso,category,latest_success_at:Number.isFinite(latest)?new Date(latest).toISOString():null,window_seconds:window});
+      const freshRows=nonGdeltRows.filter(x=>{
+        const timestamp=Date.parse(String(x.last_success_at));
+        return Number.isFinite(timestamp)&&Date.now()-timestamp<=window*1000&&
+          x.discovery_state!=="UNREACHABLE"&&x.discovery_state!=="STALE";
+      });
+      if(!freshRows.length) {
+        const latest=nonGdeltRows
+          .map(x=>Date.parse(String(x.last_success_at)))
+          .filter(Number.isFinite)
+          .sort((a,b)=>b-a)[0];
+        missing.push({
+          iso,
+          category,
+          latest_success_at:Number.isFinite(latest)?new Date(latest).toISOString():null,
+          window_seconds:window,
+          non_gdelt_candidate_count:nonGdeltRows.length,
+        });
       }
     }
   }
