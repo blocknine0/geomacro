@@ -229,6 +229,7 @@ async function verifyGitHubActionsOidc(
     )
 
     return (
+      pr833WorkflowAuthorized ||
       workflowRefAuthorized ||
       workflowFileAuthorized
     )
