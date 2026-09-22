@@ -7,6 +7,7 @@ const audit = fs.readFileSync("scripts/audit-global-raw-source-coverage.mjs","ut
 const runtimeAudit = fs.readFileSync("scripts/audit-global-raw-source-runtime.mjs","utf8");
 const workflow = fs.readFileSync(".github/workflows/global-country-raw-source-mesh.yml","utf8");
 const snapshot = fs.readFileSync("supabase/migrations/968_country_raw_web_snapshot_store.sql","utf8");
+const corroborate = fs.readFileSync("supabase/functions/live-flash-corroborate/index.ts","utf8");
 
 describe("global country raw source mesh",()=>{
   it("defines all three categories and a 195-country contract",()=>{
@@ -39,6 +40,16 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("RETRY_ATTEMPTS=4");
     expect(worker).toContain("retry-after");
     expect(worker).toContain("api.gdeltproject.org");
+    expect(worker).toContain("alreadyFreshNonGdelt");
+    expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
+    expect(worker).toContain("nonGdeltCandidates");
+  });
+
+  it("keeps realtime RSS corroboration authorized for the master orchestrator",()=>{
+    expect(corroborate).toContain("intelligence-orchestrator.yml@refs/heads/main");
+    expect(corroborate).toContain('"intelligence-orchestrator.yml"');
+    expect(corroborate).toContain('https://geomacro.live/actions/live-flash-rss');
   });
 
   it("is operator-driven because the master orchestrator owns scheduling",()=>{
