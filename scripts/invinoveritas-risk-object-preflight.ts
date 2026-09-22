@@ -834,6 +834,13 @@ console.log(
         confidentiality_tier: reviewRequest.confidentiality_tier,
         context: reviewRequest.context,
         artifact_bytes: reviewArtifactBytes,
+        external_evidence: {
+          source: externalEvidence.source,
+          evidence_type: externalEvidence.evidence_type,
+          record_sha256: externalEvidence.record_sha256,
+          observed_at: externalEvidence.observed_at,
+          validity_until: externalEvidence.validity_until,
+        },
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
       },
