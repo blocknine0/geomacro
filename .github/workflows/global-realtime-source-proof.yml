@@ -8,8 +8,8 @@ on:
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
 concurrency:
-  group: geomacro-intelligence-orchestrator
-  cancel-in-progress: false
+  group: geomacro-global-realtime-source-proof
+  cancel-in-progress: true
 
 permissions:
   contents: read
