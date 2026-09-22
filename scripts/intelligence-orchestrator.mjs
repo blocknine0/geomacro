@@ -45,10 +45,7 @@ const TASKS = [
     timeoutMs: 1_200_000,
     requiredEnv: ["LIVE_STRUCTURE_TOKEN"],
     steps: [
-      ["bun", ["scripts/sync-gdelt-gal-production.mjs"], "."],
-      ["node", ["scripts/drain-live-structure.mjs"], "."],
-      ["node", ["scripts/reconcile-structured-event-commercial-rights.mjs"], "."],
-      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
+      ["node", ["scripts/run-gdelt-gal-cycle.mjs"], "."],
     ],
   },
   {
