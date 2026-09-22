@@ -33,6 +33,12 @@ describe("GDELT V2 live event export selection", () => {
       "GDELT_MAX_AVAILABILITY_WAIT_MINUTES",
     );
     expect(script).toContain(
+      "process.env.GDELT_AS_OF === undefined ? new Date() : asOf",
+    );
+    expect(script).toContain(
+      "An explicitly supplied GDELT_AS_OF remains immutable",
+    );
+    expect(script).toContain(
       "GDELT lastupdate advertises a future Event export",
     );
     expect(script).toContain(
