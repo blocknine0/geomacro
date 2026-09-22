@@ -274,7 +274,10 @@ async function main() {
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
         stream_key: STREAM_KEY,
-        cursor: { last_source_stamp: latestStamp },
+        cursor: {
+          last_source_stamp: latestStamp,
+          last_failure_class: null,
+        },
         status: "healthy",
         last_attempt_at: nowIso,
         last_success_at: nowIso,
@@ -391,7 +394,10 @@ async function main() {
     const { error: cursorUpdateError } = await supabase.from("live_ingestion_cursors").upsert({
       source_key: SOURCE_KEY,
       stream_key: STREAM_KEY,
-      cursor: { last_source_stamp: latestStamp },
+      cursor: {
+        last_source_stamp: latestStamp,
+        last_failure_class: null,
+      },
       status: "healthy",
       last_attempt_at: nowIso,
       last_success_at: nowIso,
