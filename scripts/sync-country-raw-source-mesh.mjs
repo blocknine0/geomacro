@@ -8,7 +8,7 @@ const CONCURRENCY=Math.max(4,Math.min(16,Number(process.env.RAW_SOURCE_SYNC_CONC
 const RETRY_ATTEMPTS=4;
 const FAILURE_RETRY_SECONDS=300;
 const HOST_MIN_INTERVAL_MS=new Map([
-  ["api.gdeltproject.org",500],
+  ["api.gdeltproject.org",2000],
   ["api.worldbank.org",300],
   ["www.usgs.gov",300],
 ]);
@@ -85,7 +85,7 @@ async function fetchUrl(url){
         return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),retryAfter:r.headers.get("retry-after"),final:r.url||url,bytes};
       });
       if(!retryable.has(result.status)||attempt===RETRY_ATTEMPTS)return result;
-      const delay=retryAfterMs(result.retryAfter)??Math.min(20000,1500*(2**(attempt-1)));
+      const delay=retryAfterMs(result.retryAfter)??Math.min(30000,5000*(2**(attempt-1)));
       await sleep(delay);
     }catch(error){
       lastError=error;
@@ -219,7 +219,14 @@ async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),
   const countryIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
   const canonicalIso3=new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean));
   if(canonicalIso3.size!==195)throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.size);
-  const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).not("target_id","like","%MESH_FILLER%").order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true}).limit(LIMIT);if(q.error)throw q.error;const due=(q.data??[]).filter(t=>{const last=Date.parse(String(t.last_attempt_at??""));const retrySeconds=Number(t.consecutive_failures??0)>0?FAILURE_RETRY_SECONDS:Number(t.cadence_seconds);return !Number.isFinite(last)||last+retrySeconds*1000<=now;});let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+  const due=[];let selectedTargets=0;
+  for(let from=0;;from+=1000){
+    const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).not("target_id","like","%MESH_FILLER%").order("priority",{ascending:true,nullsFirst:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("target_id",{ascending:true}).range(from,from+999);if(q.error)throw q.error;
+    const page=q.data??[];selectedTargets+=page.length;
+    for(const t of page){const last=Date.parse(String(t.last_attempt_at??""));const retrySeconds=Number(t.consecutive_failures??0)>0?FAILURE_RETRY_SECONDS:Number(t.cadence_seconds);if(!Number.isFinite(last)||last+retrySeconds*1000<=now)due.push(t);if(due.length>=LIMIT)break;}
+    if(due.length>=LIMIT||page.length<1000)break;
+  }
+  due.splice(LIMIT);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
         if(t.source_id==="gdelt_v2"){
           const iso2=countryIso2.get(String(t.country_iso3));
           if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
@@ -258,5 +265,5 @@ async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),
             rows.push({i:hash(Buffer.from("api:"+t.target_id+":"+JSON.stringify(x))),u:ru,d:date,h:host,o:t.display_name,t:title.slice(0,800),x:description.slice(0,2400)||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});
           }
         }catch{}}if(!rows.length){const title=pageTitle(text);if(title)rows.push({i:hash(Buffer.from("page:"+t.target_id+":"+f.final+":"+title)),u:f.final,d:when,h:new URL(f.final).hostname,o:t.display_name,t:title,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});for(const x of links(text,f.final)){rows.push({i:hash(Buffer.from("link:"+t.target_id+":"+x.u)),u:x.u,d:when,h:new URL(x.u).hostname,o:t.display_name,t:x.t,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}const sid=await saveSnapshot(db,t,when,f);await saveFragment(db,t,when,rows);await db.from("live_raw_source_snapshots").update({extracted_item_count:rows.length}).eq("snapshot_id",sid);await mark(db,t,{discovery_state:rows.length?"REACHABLE":"STALE",last_attempt_at:when,last_success_at:when,last_observed_at:when,consecutive_failures:0,last_error:null});ok++;}catch(e){fail++;failures.push({target_id:t.target_id,error:e instanceof Error?e.message:String(e)});try{await mark(db,t,{discovery_state:"UNREACHABLE",last_attempt_at:when,consecutive_failures:Number(t.consecutive_failures??0)+1,last_error:String(e).slice(0,1000)});}catch{}}}}
-await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,due.length))},worker));console.log(JSON.stringify({ok:fail===0,generated_at:new Date().toISOString(),selected_targets:q.data?.length??0,due_targets:due.length,completed:ok,failed:fail,failures:failures.slice(0,50),country_contract},null,2));if(fail>0&&ok===0)process.exit(1);}
+await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,due.length))},worker));console.log(JSON.stringify({ok:fail===0,generated_at:new Date().toISOString(),selected_targets:selectedTargets,due_targets:due.length,completed:ok,failed:fail,failures:failures.slice(0,50),country_contract},null,2));if(fail>0&&ok===0)process.exit(1);}
 main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});
