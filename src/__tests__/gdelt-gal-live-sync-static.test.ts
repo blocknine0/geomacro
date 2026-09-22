@@ -26,6 +26,9 @@ describe("GDELT GAL production freshness workflow", () => {
     expect(workflow).toContain("run-gdelt-gal-cycle.mjs");
     expect(workflow).not.toContain("schedule:");
     expect(audit).toContain("const PIPELINE_MAX_LAG_SECONDS = 30 * 60");
+    expect(audit).toContain("const sourceStamp = cursor?.cursor?.last_source_stamp");
+    expect(audit).toContain("source_lag_seconds: sourceLagSeconds");
+    expect(audit).toContain("sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS");
   });
 
   it("validates the authoritative production target and uses only configured scoped credentials", () => {
