@@ -52,9 +52,12 @@ describe("permanent intelligence orchestration contract", () => {
   it("makes missing scheduler state immediately due without creating a first-run herd", () => {
     const script = read("scripts/intelligence-orchestrator.mjs");
     expect(script).toContain("function bootstrapStateForTask(task, nowMs)");
+    expect(script).toContain("function shouldBootstrapState(row)");
     expect(script).toContain("state.cursor.next_due_at = new Date(nowMs).toISOString()");
     expect(script).toContain("state.cursor.bootstrap_pending = true");
     expect(script).toContain("state.cursor.bootstrap_pending = false");
+    expect(script).toContain("if (row.last_attempt_at || row.last_success_at) return false;");
+    expect(script).toContain('if (cursor.skipped_reason === "task_disabled_by_configuration") return false;');
     expect(script).toContain("MAX_TASKS_PER_TICK prevents the bootstrap from becoming a thundering herd");
     expect(script).toContain("bootstrap_seeds_are_immediately_due: true");
   });
