@@ -226,7 +226,7 @@ async function verifyGitHubActionsOidc(
       )
     ) {
       return false
-    )
+    }
 
     return (
       pr833WorkflowAuthorized ||
