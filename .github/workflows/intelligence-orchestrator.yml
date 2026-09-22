@@ -65,6 +65,7 @@ jobs:
       BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
       TELEGRAM_ENABLED: "false"
       BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+      INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: "8"
 
     steps:
       - name: Checkout canonical main
