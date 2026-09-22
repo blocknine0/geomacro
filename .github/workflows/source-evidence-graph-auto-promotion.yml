@@ -2,6 +2,9 @@ name: Source Evidence Graph and Automated Certification Promotion
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - audit/global-realtime-intelligence-100
 
 
 concurrency:
