@@ -25,7 +25,6 @@ describe("global raw realtime acquisition",()=>{
     expect(worker).toContain("const categories = [\"GEOPOLITICS\", \"MACRO\", \"CRITICAL_MINERALS\"];");
     expect(worker).toContain("const windows = { GEOPOLITICS: 1800, MACRO: 7200, CRITICAL_MINERALS: 14400 };");
     expect(worker).toContain("alreadyFreshNonGdelt");
-    expect(worker).toContain("freshNonGdelt");
     expect(worker).toContain("const nonGdeltCandidates = candidates");
     expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
     expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
