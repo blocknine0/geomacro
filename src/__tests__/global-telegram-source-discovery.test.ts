@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const worker = fs.readFileSync("workers/telegram-flash/global_discovery.py","utf8");
-const workflow = fs.readFileSync(".github/workflows/global-telegram-source-discovery-scheduled.yml","utf8");
+const workflow = fs.readFileSync(".github/workflows/global-telegram-source-discovery-manual.yml","utf8");
 const migration = fs.readFileSync("supabase/migrations/969_telegram_global_discovery_metadata.sql","utf8");
 
 describe("global Telegram source discovery",()=>{
