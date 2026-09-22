@@ -151,7 +151,17 @@ export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRo
     throw new Error("Intelligence feed unavailable");
   }
 
-  const verifiedFlashByFamily = new Map<string, (typeof verifiedFlashRows.data)[number]>();
+  type VerifiedFlashRow = {
+    flash_id: string;
+    event_family_id: string | null;
+    headline: string | null;
+    published_at: string | null;
+    ingested_at: string;
+    severity: number | null;
+    verification_status: string;
+    signal_category: string;
+  };
+  const verifiedFlashByFamily = new Map<string, VerifiedFlashRow>();
   for (const row of verifiedFlashRows.data ?? []) {
     const familyId = String(row.event_family_id ?? "");
     if (familyId && !verifiedFlashByFamily.has(familyId)) {
