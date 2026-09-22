@@ -30,6 +30,9 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain('snapshot.verification_status !== "verified"');
     expect(edge).toContain("reconciliation_residual_invalid");
     expect(edge).toContain("change_residual_invalid");
+    expect(edge).toContain("Prefer the newest fully verified published snapshot");
+    expect(edge).toContain("no_verified_published_snapshot");
+    expect(edge).toContain("const verifiedSnapshots = snapshots.filter");
   });
 
   it("uses score-to-score change for standalone indices, not old combined contribution-point change", () => {
