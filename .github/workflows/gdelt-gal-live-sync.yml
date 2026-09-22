@@ -1,7 +1,7 @@
 name: GDELT GAL Live Hot-Topic Sync
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 # The scheduled execution path is the canonical intelligence orchestrator.
 # This workflow is operator-only recovery/certification and invokes the exact
