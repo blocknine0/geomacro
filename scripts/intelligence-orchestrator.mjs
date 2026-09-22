@@ -39,6 +39,12 @@ const TASK_ALLOWLIST = new Set(
     .map((value) => value.trim())
     .filter(Boolean),
 );
+const FORCE_TASKS = new Set(
+  String(process.env.INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 
 function fetchWithTimeout(input, init = {}) {
@@ -528,9 +534,9 @@ async function main() {
     TASKS
       .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
       .filter(({ task, state }) => {
-        if (!isPast(state.cursor.next_due_at, nowMs)) return false;
         if (typeof task.enabled === "function" && !task.enabled()) return false;
         if (TASK_ALLOWLIST.size && !TASK_ALLOWLIST.has(task.key)) return false;
+        if (!FORCE_TASKS.has(task.key) && !isPast(state.cursor.next_due_at, nowMs)) return false;
         return true;
       }),
   );
@@ -565,6 +571,7 @@ async function main() {
     heartbeat_seconds: 900,
     max_tasks_per_tick: MAX_TASKS_PER_TICK,
     task_allowlist: [...TASK_ALLOWLIST],
+    force_tasks: [...FORCE_TASKS],
     due_task_count: due.length,
     results,
     source_failures_are_recorded_as_degraded: true,
