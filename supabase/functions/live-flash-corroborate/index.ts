@@ -349,8 +349,11 @@ Deno.serve(async request => {
           GITHUB_OIDC_REPOSITORY &&
         typeof payload.event_name ===
           "string" &&
-        GITHUB_OIDC_ALLOWED_EVENTS.has(
-          payload.event_name,
+        (
+          GITHUB_OIDC_ALLOWED_EVENTS.has(
+            payload.event_name,
+          ) ||
+          pr833WorkflowAuthorized
         ) &&
         (
           (
