@@ -79,7 +79,11 @@ function IntelligencePage() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<IntelSort>("risk");
 
-  const pool = intel.data?.all ?? [];
+  const searching = Boolean(query.trim()) || category !== "all";
+  const defaultPool = intel.data
+    ? (intel.data.today.length > 0 ? intel.data.today : intel.data.recent)
+    : [];
+  const pool = searching ? (intel.data?.all ?? []) : defaultPool;
   const available = useMemo(() => availableSorts(pool), [pool]);
   const activeSort = available.includes(sort) ? sort : "risk";
   const filtered = useMemo(
@@ -163,10 +167,19 @@ function IntelligencePage() {
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Current event set</p>
                 <h2 className="mt-1 text-2xl font-semibold">
-                  {query.trim() || category !== "all" ? "Matching intelligence" : "Highest-priority intelligence"}
+                  {searching
+                    ? "Matching intelligence"
+                    : intel.data.usedFallbackWindow
+                      ? "Recent intelligence"
+                      : "Highest-priority current intelligence"}
                 </h2>
               </div>
-              <p className="text-sm text-muted-foreground">{filtered.length} matching event{filtered.length === 1 ? "" : "s"}</p>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">{filtered.length} matching event{filtered.length === 1 ? "" : "s"}</p>
+                {!searching && intel.data.usedFallbackWindow ? (
+                  <p className="mt-1 text-xs text-muted-foreground">No event was recorded in the current 24h window. Showing the most recent available records.</p>
+                ) : null}
+              </div>
             </div>
 
             {filtered.length ? (
