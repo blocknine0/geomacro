@@ -7,7 +7,6 @@ import {
   PUBLIC_INTELLIGENCE_CATEGORIES,
   type PublicIntelligenceRow,
 } from "./public-intelligence.functions";
-import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 
 const NOW = Date.parse("2026-09-22T12:00:00.000Z");
 
