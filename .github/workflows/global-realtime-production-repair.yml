@@ -1,0 +1,113 @@
+name: Global Realtime Production Repair
+
+on:
+  push:
+    branches:
+      - fix/global-realtime-source-runtime
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type RUN_GLOBAL_REALTIME_PRODUCTION_REPAIR"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: global-realtime-production-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'RUN_GLOBAL_REALTIME_PRODUCTION_REPAIR') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      GEOMACRO_FLASH_INGEST_URL: ${{ secrets.GEOMACRO_FLASH_INGEST_URL }}
+      GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.GEOMACRO_FLASH_INGEST_TOKEN }}
+      GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
+      RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
+      NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      LIVE_STRUCTURE_MAX_ATTEMPTS: 4
+      LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: 90000
+      BREAKING_RSS_ENABLED: true
+      BREAKING_RSS_RUN_ONCE: true
+      TELEGRAM_ENABLED: false
+      GRI_PUBLISH_ENABLED: false
+      INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
+      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,country_raw_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
+      RAW_SOURCE_SYNC_CONCURRENCY: 16
+      RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
+
+    steps:
+      - name: Checkout repair revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify authoritative production target
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          node -e 'const u=new URL(process.env.APP_SUPABASE_URL); if(u.hostname.split(".")[0]!=="ldpwajisioljyjtojvfx") process.exit(1);'
+
+      - name: Run launch-critical realtime repair tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-repair.log
+
+      - name: Verify three-category country runtime
+        run: timeout 8m node scripts/audit-global-raw-source-runtime.mjs
+
+      - name: Verify GDELT independence
+        run: timeout 8m node scripts/audit-gdelt-dependency-live.mjs
+
+      - name: Verify realtime scope fanout
+        run: timeout 8m node scripts/audit-realtime-scope-fanout.mjs
+
+      - name: Run final Global Realtime Intelligence 100 gate
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/global-realtime-intelligence-100
+          node scripts/audit-global-realtime-intelligence-100.mjs --strict
+
+      - name: Upload repair evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-realtime-production-repair-${{ github.sha }}
+          path: |
+            intelligence-orchestrator-repair.log
+            artifacts/global-realtime-intelligence-100/gate.json
+          if-no-files-found: warn
+          retention-days: 30
