@@ -22,13 +22,16 @@ describe("global raw realtime acquisition",()=>{
 
   it("refreshes stale three-category cells through independent non-GDELT candidates",()=>{
     const worker=read("scripts/sync-country-raw-source-mesh.mjs");
-    expect(worker).toContain("const categories = [\"GEOPOLITICS\", \"MACRO\", \"CRITICAL_MINERALS\"];");
-    expect(worker).toContain("const windows = { GEOPOLITICS: 1800, MACRO: 7200, CRITICAL_MINERALS: 14400 };");
+    expect(worker).toContain('"GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"');
+    expect(worker).toContain("GEOPOLITICS: 1800");
+    expect(worker).toContain("MACRO: 7200");
+    expect(worker).toContain("CRITICAL_MINERALS: 14400");
     expect(worker).toContain("alreadyFreshNonGdelt");
     expect(worker).toContain("const nonGdeltCandidates = candidates");
     expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
     expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
     expect(worker).toContain("await Promise.all(");
+    expect(worker).toContain("RAW_SOURCE_CATEGORY_ALLOWLIST");
     expect(worker).toContain("processed_cells: successfulCells");
   });
 
