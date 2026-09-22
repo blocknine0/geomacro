@@ -519,7 +519,11 @@ async function main() {
   const dueAll = orderDueTasks(
     TASKS
       .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
-      .filter(({ task, state }) => isPast(state.cursor.next_due_at, nowMs)),
+      .filter(({ task, state }) => {
+        if (!isPast(state.cursor.next_due_at, nowMs)) return false;
+        if (typeof task.enabled === "function" && !task.enabled()) return false;
+        return true;
+      }),
   );
   const due = dueAll.slice(0, MAX_TASKS_PER_TICK);
   const executionStartedAt = Date.now();
