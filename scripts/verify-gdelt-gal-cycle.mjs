@@ -23,6 +23,19 @@ function requireDate(value, label) {
   return ms;
 }
 
+function requireSourceStampMs(stamp, label) {
+  const value = String(stamp ?? "").trim();
+  if (!/^\d{14}$/.test(value)) throw new Error(`Missing or invalid ${label}`);
+  return Date.UTC(
+    Number(value.slice(0, 4)),
+    Number(value.slice(4, 6)) - 1,
+    Number(value.slice(6, 8)),
+    Number(value.slice(8, 10)),
+    Number(value.slice(10, 12)),
+    Number(value.slice(12, 14)),
+  );
+}
+
 async function main() {
   if (!CYCLE_STARTED_AT || !EXPECTED_FRAGMENT_ID || !EXPECTED_SOURCE_STAMP || !HOT_TOPIC_OUTPUT) {
     throw new Error("GDELT_GAL_CYCLE_VERIFICATION_CONTEXT_REQUIRED");
@@ -46,15 +59,20 @@ async function main() {
   if (cursorError) throw cursorError;
 
   const lastSuccessMs = requireDate(cursor?.last_success_at, "GDELT GAL cursor.last_success_at");
-  const lagSeconds = Math.max(0, Math.floor((now.getTime() - lastSuccessMs) / 1000));
+  const pipelineLagSeconds = Math.max(0, Math.floor((now.getTime() - lastSuccessMs) / 1000));
   const cursorStamp = String(cursor?.cursor?.last_source_stamp ?? "");
+  const sourceStampMs = requireSourceStampMs(cursorStamp, "GDELT GAL cursor.last_source_stamp");
+  const sourceLagSeconds = Math.max(0, Math.floor((now.getTime() - sourceStampMs) / 1000));
   if (cursor?.status !== "healthy") throw new Error(`GDELT GAL cursor status is ${cursor?.status ?? "missing"}`);
   if (lastSuccessMs < cycleStartMs) throw new Error("GDELT GAL cursor was not refreshed by this cycle");
   if (cursorStamp !== EXPECTED_SOURCE_STAMP) {
     throw new Error(`GDELT GAL cursor stamp mismatch: expected ${EXPECTED_SOURCE_STAMP}, got ${cursorStamp}`);
   }
-  if (lagSeconds > MAX_LAG_SECONDS) {
-    throw new Error(`GDELT GAL cursor freshness lag exceeds 1800s: ${lagSeconds}`);
+  if (pipelineLagSeconds > MAX_LAG_SECONDS) {
+    throw new Error(`GDELT GAL pipeline completion lag exceeds 1800s: ${pipelineLagSeconds}`);
+  }
+  if (sourceLagSeconds > MAX_LAG_SECONDS) {
+    throw new Error(`GDELT GAL source-stamp lag exceeds 1800s: ${sourceLagSeconds}`);
   }
 
   const { data: fragment, error: fragmentError } = await db
@@ -172,7 +190,8 @@ async function main() {
       cursor_last_success_at: cursor.last_success_at,
       cursor_last_item_at: cursor.last_item_at,
       cursor_last_source_stamp: cursorStamp,
-      cursor_lag_seconds: lagSeconds,
+      pipeline_completion_lag_seconds: pipelineLagSeconds,
+      source_lag_seconds: sourceLagSeconds,
       max_lag_seconds: MAX_LAG_SECONDS,
     },
     fragment: {
@@ -215,7 +234,11 @@ async function main() {
       hot_topic_pipeline_healthy: true,
       hot_topic_claim_boundary_safe: true,
       hot_topic_report_read_only: true,
-      lag_within_1800_seconds: lagSeconds <= MAX_LAG_SECONDS && periodEndLagSeconds <= MAX_LAG_SECONDS && hotLag <= MAX_LAG_SECONDS,
+      source_lag_within_1800_seconds: sourceLagSeconds <= MAX_LAG_SECONDS,
+      lag_within_1800_seconds: sourceLagSeconds <= MAX_LAG_SECONDS
+        && pipelineLagSeconds <= MAX_LAG_SECONDS
+        && periodEndLagSeconds <= MAX_LAG_SECONDS
+        && hotLag <= MAX_LAG_SECONDS,
       writes_performed_by_verifier: false,
     },
   };
