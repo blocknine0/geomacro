@@ -32,6 +32,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GEOMACRO_FLASH_INGEST_URL: ${{ secrets.GEOMACRO_FLASH_INGEST_URL }}
       GEOMACRO_FLASH_INGEST_TOKEN: ${{ secrets.GEOMACRO_FLASH_INGEST_TOKEN }}
@@ -79,6 +80,38 @@ jobs:
           test -n "${APP_SUPABASE_URL}"
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
           node -e 'const u=new URL(process.env.APP_SUPABASE_URL); if(u.hostname.split(".")[0]!=="ldpwajisioljyjtojvfx") process.exit(1);'
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+        with:
+          version: 2.117.0
+
+      - name: Deploy realtime flash functions to authoritative production
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN}"
+          test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+          supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
+          supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
+
+      - name: Smoke-check deployed corroboration authentication
+        shell: bash
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+          response="$(curl --fail-with-body -sS             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://geomacro.live/actions/live-flash-rss")"
+          token="$(printf "%s" "$response" | jq -er ".value")"
+          test -n "$token"
+          echo "::add-mask::$token"
+          code="$(curl --silent --show-error --output /tmp/realtime-corroborate-health.json --write-out '%{http_code}'             -X POST             -H "Authorization: Bearer $token"             -H "x-geomacro-github-oidc-token: $token"             -H 'Content-Type: application/json'             "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
+          cat /tmp/realtime-corroborate-health.json
+          test "$code" = "200"
+          grep -q '"ok":true' /tmp/realtime-corroborate-health.json
 
       - name: Run launch-critical realtime repair tasks
         shell: bash
