@@ -34,8 +34,9 @@ describe("global Telegram source discovery",()=>{
 
 
 describe("global Telegram workflow triggers",()=>{
-  it("is schedule/dispatch only and cannot create push zero-job runs",()=>{
+  it("is dispatch/call only and avoids the GitHub dispatch-only push bug",()=>{
     expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("workflow_call:");
     expect(workflow).not.toContain("schedule:");
     expect(workflow).not.toContain("push:");
     expect(workflow).not.toContain("workflow_run:");
