@@ -17,7 +17,7 @@ jobs:
   orchestrate:
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 55
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -110,7 +110,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/intelligence-orchestrator.mjs > intelligence-orchestrator.json
+          timeout --signal=TERM --kill-after=30s 52m node scripts/intelligence-orchestrator.mjs > intelligence-orchestrator.json
           jq -e . intelligence-orchestrator.json > /dev/null
           cat intelligence-orchestrator.json
 
