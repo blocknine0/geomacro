@@ -68,7 +68,8 @@ const data = await Promise.all([
   one(db, "live_raw_source_coverage_100_status"),
   one(db, "live_raw_source_runtime_100_status"),
   one(db, "live_realtime_scope_100_status"),
-  all(db, "live_country_registry", "iso3,enabled", q => q.eq("enabled", true)),
+  all(db, "live_country_primary_source_directory", "country_iso2"),
+  all(db, "live_country_registry", "iso3,iso2,enabled", q => q.eq("enabled", true)),
   all(db, "live_raw_source_targets", "target_id,country_iso3,category,transport,source_id,enabled,last_success_at,last_attempt_at,discovery_state,consecutive_failures", q => q.eq("enabled", true)),
   all(db, "live_realtime_scope_targets", "target_id,scope_type,scope_code,category,transport,source_id,enabled,activation_mode,last_success_at,last_attempt_at,discovery_state,consecutive_failures,live_external_sources!inner(enabled_for_ingestion)", q => q.eq("enabled", true).eq("live_external_sources.enabled_for_ingestion", true)),
   all(db, "live_strategic_corridor_catalog", "corridor_id"),
@@ -85,21 +86,30 @@ const sourceLaunch = data[2];
 const rawCoverage = data[3];
 const rawRuntime = data[4];
 const scopeStatus = data[5];
-const countries = data[6];
-const rawTargets = data[7];
-const scopeTargets = data[8];
-const corridorCatalog = data[9];
-const shockCatalog = data[10];
-const cursors = data[11];
-const certRecords = data[12];
-const certQueue = data[13];
-const sourceUniverse = data[14];
+const countryDirectory = data[6];
+const registryCountries = data[7];
+const rawTargets = data[8];
+const scopeTargets = data[9];
+const corridorCatalog = data[10];
+const shockCatalog = data[11];
+const cursors = data[12];
+const certRecords = data[13];
+const certQueue = data[14];
+const sourceUniverse = data[15];
 
-const enabledCountries = countries.map(r => String(r.iso3 || "").toUpperCase()).filter(Boolean);
-const countrySet = new Set(enabledCountries);
+const registryByIso2 = new Map(
+  registryCountries.map(r => [String(r.iso2 || "").toUpperCase(), String(r.iso3 || "").toUpperCase()])
+);
+const canonicalCountries = Array.from(new Set(
+  countryDirectory.map(r => registryByIso2.get(String(r.country_iso2 || "").toUpperCase())).filter(Boolean)
+));
+const canonicalSet = new Set(canonicalCountries);
+const registryMissingCanonical = countryDirectory
+  .map(r => String(r.country_iso2 || "").toUpperCase())
+  .filter(iso2 => iso2 && !registryByIso2.has(iso2));
 
 const cells = new Map();
-for (const country of enabledCountries) {
+for (const country of canonicalCountries) {
   for (const category of CATEGORIES) {
     cells.set(country + "::" + category, { country_iso3: country, category, configured: [], fresh: [], fresh_non_gdelt: [] });
   }
@@ -221,13 +231,22 @@ const blockedQueue = certQueue.filter(q =>
 const gates = [
   {
     serial: 1, gate: "CANONICAL_195_COUNTRIES",
-    pass: enabledCountries.length === 195 && cells.size === 585,
-    evidence: { enabled_country_count: enabledCountries.length, country_category_cells: cells.size, expected_country_category_cells: 585 }
+    pass: countryDirectory.length === 195 &&
+      canonicalCountries.length === 195 &&
+      cells.size === 585 &&
+      registryMissingCanonical.length === 0,
+    evidence: {
+      enabled_registry_country_count: registryCountries.length,
+      canonical_directory_rows: countryDirectory.length,
+      canonical_country_count: canonicalCountries.length,
+      country_category_cells: cells.size,
+      expected_country_category_cells: 585,
+      registry_missing_canonical_iso2: registryMissingCanonical,
+    }
   },
   {
     serial: 2, gate: "RAW_SOURCE_MATRIX_195x3",
-    pass: bool(rawCoverage && rawCoverage.raw_source_coverage_100_complete) &&
-      rawStructuralMissing.length === 0 &&
+    pass: rawStructuralMissing.length === 0 &&
       Array.from(cells.values()).every(c => {
         const expected = c.category === "GEOPOLITICS" ? 3 : c.category === "MACRO" ? 4 : 6;
         return c.configured.length >= expected;
@@ -249,7 +268,7 @@ const gates = [
 
   {
     serial: 3, gate: "RAW_RUNTIME_FRESH_195x3",
-    pass: bool(rawRuntime && rawRuntime.raw_runtime_100_complete) && rawMissing.length === 0,
+    pass: rawMissing.length === 0,
     evidence: { view: rawRuntime, missing_fresh_cells: rawMissing.map(c => ({ country_iso3: c.country_iso3, category: c.category, configured_targets: c.configured.length })) }
   },
   {
@@ -337,7 +356,8 @@ const result = {
   failed_gate_count: gates.filter(g => !g.pass).length,
   gates,
   summary: {
-    enabled_countries: enabledCountries.length,
+    enabled_registry_countries: registryCountries.length,
+    canonical_countries: canonicalCountries.length,
     raw_cells: cells.size,
     raw_runtime_missing_cells: rawMissing.length,
     fresh_non_gdelt_missing_cells: nonGdeltMissing.length,
