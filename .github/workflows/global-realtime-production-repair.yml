@@ -116,6 +116,28 @@ jobs:
           done
           wait
 
+      - name: Final freshness convergence pass after structure drain
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              export RAW_SOURCE_CATEGORY_ALLOWLIST="$category"
+              export RAW_SOURCE_FRESHNESS_SAFETY_MARGIN_SECONDS="0"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-convergence-${category}.json" 2>&1
+            ) > "category-convergence-${category}.log" 2>&1 &
+          done
+          wait
+          node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-convergence-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
+
+      - name: Drain final freshness convergence fragments in parallel
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-convergence-${category}.json"
+            ) >> "category-convergence-${category}.log" 2>&1 &
+          done
+          wait
       - name: Verify three-category runtime and GDELT independence
         run: |
           set -euo pipefail
@@ -140,7 +162,89 @@ jobs:
       - name: Run strict Global Realtime Intelligence 100 gate
         run: |
           set -euo pipefail
-          node scripts/audit-global-realtime-intelligence-100.mjs --strict
+          node scripts/audit-global-raw-source-runtime.mjs
+          node scripts/audit-gdelt-dependency-live.mjs --strict
+          node scripts/audit-realtime-scope-fanout.mjs
+          node scripts/audit-global-realtime-source-freshness.mjs
+          node scripts/audit-source-certification-census.mjs
+          node scripts/audit-global-production-coverage.mjs --strict
+
+          jq -e '
+            .scope.country_category_cells == 585
+            and .scope.expected_country_category_cells == 585
+            and .summary.runtime_gdelt_independent_cells == 585
+            and .summary.gdelt_only_cells == 0
+            and .summary.missing_cells == 0
+            and .summary.runtime_non_gdelt_gaps == 0
+          ' artifacts/gdelt-dependency-audit/audit.json >/dev/null
+
+          jq -e '
+            all(.[]; (.enabled_for_commercial_signals != true or .certification_state == "CERTIFIED"))
+          ' artifacts/source-certification-census/sources.json >/dev/null
+
+          jq -e '
+            all(.[];
+              (.fail_closed == true)
+              or (
+                .certification_state == "CERTIFIED"
+                and .endpoint_check == "PASS"
+                and (.rights_check == "COMMERCIAL_OK" or .rights_check == "DERIVED_ONLY")
+                and .schema_check == "PASS"
+                and .freshness_check == "PASS"
+                and .independence_check == "PASS"
+              )
+            )
+          ' artifacts/source-certification-census/paths.json >/dev/null
+
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+
+          const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") {
+            throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+          }
+
+          const requiredTasks = [
+            "gdelt_gal",
+            "gdelt_v2",
+            "open_realtime_mesh",
+            "rss_live",
+            "realtime_fanout",
+            "production_readiness",
+            "source_evidence",
+          ];
+          const db = createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const { data, error } = await db
+            .from("live_ingestion_cursors")
+            .select("stream_key,status,last_success_at,consecutive_failures,cursor")
+            .in("stream_key", requiredTasks.map((task) => "orchestrator:" + task));
+          if (error) throw error;
+
+          const rows = new Map((data ?? []).map((row) => [String(row.stream_key), row]));
+          const bad = [];
+          for (const task of requiredTasks) {
+            const row = rows.get("orchestrator:" + task);
+            const cursor = row?.cursor && typeof row.cursor === "object" ? row.cursor : {};
+            if (!row) bad.push({ task, reason: "missing_state" });
+            else if (row.status !== "healthy") bad.push({ task, reason: "status", status: row.status });
+            else if (Number(row.consecutive_failures ?? 0) !== 0) bad.push({ task, reason: "consecutive_failures", value: row.consecutive_failures });
+            else if (cursor.retry_pending === true) bad.push({ task, reason: "retry_pending" });
+            else if (!row.last_success_at) bad.push({ task, reason: "missing_last_success_at" });
+          }
+          if (bad.length) {
+            console.error(JSON.stringify({ ok: false, bad }, null, 2));
+            process.exit(1);
+          }
+          console.log(JSON.stringify({
+            ok: true,
+            orchestrator_continuity: "GREEN",
+            required_tasks: requiredTasks,
+          }));
+          NODE
 
       - name: Upload final evidence
         if: always()
