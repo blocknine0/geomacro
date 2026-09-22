@@ -407,9 +407,19 @@ async function runTask(task, state) {
 
   if (failedStep) {
     const errorText = JSON.stringify(failedStep).slice(0, 6000);
+    const diagnosticText = [
+      result?.stdout ?? "",
+      result?.stderr ?? "",
+      errorText,
+    ].join("\n");
+    const failureClass = diagnosticText.match(
+      /(?:^|\\n)GDELT_GAL_FAILURE_CLASS=([A-Z0-9_]+)/,
+    )?.[1] ?? null;
+
     state.status = "degraded";
     state.consecutive_failures += 1;
     state.cursor.last_error = errorText;
+    state.cursor.last_failure_class = failureClass;
     state.cursor.retry_pending = true;
     await upsertState(task, state);
     return {
@@ -417,6 +427,7 @@ async function runTask(task, state) {
       status: "degraded",
       duration_ms: Date.now() - started,
       failed_step: failedStep,
+      failure_class: failureClass,
     };
   }
 
