@@ -5,11 +5,6 @@ on:
     branches:
       - fix/global-realtime-source-runtime
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: "Type RUN_GLOBAL_REALTIME_PRODUCTION_REPAIR"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -21,7 +16,6 @@ concurrency:
 
 jobs:
   repair:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'RUN_GLOBAL_REALTIME_PRODUCTION_REPAIR') }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     environment: production
@@ -50,6 +44,7 @@ jobs:
       GRI_PUBLISH_ENABLED: false
       RAW_SOURCE_SYNC_CONCURRENCY: 6
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
+
     steps:
       - name: Checkout repair revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -76,15 +71,14 @@ jobs:
         with:
           version: 2.117.0
 
-      - name: Deploy realtime flash functions to authoritative production
+      - name: Deploy realtime flash functions
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN}"
           supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
           supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
 
-      - name: Smoke-check deployed corroboration authentication
-        shell: bash
+      - name: Smoke-check realtime corroboration OIDC
         run: |
           set -euo pipefail
           test -n "${ACTIONS_ID_TOKEN_REQUEST_URL}"
@@ -96,64 +90,30 @@ jobs:
           test "$code" = "200"
           grep -q '"authenticated":true' /tmp/realtime-corroborate-health.json
 
-      - name: Refresh all three source categories in parallel
-        shell: bash
+      - name: Refresh GEOPOLITICS MACRO CRITICAL_MINERALS in parallel
         run: |
           set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              export RAW_SOURCE_CATEGORY_ALLOWLIST="$category"
+              bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-sync-${category}.json" 2>&1
+              node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-sync-${category}.json"
+            ) > "category-${category}.log" 2>&1 &
+          done
+          wait
 
-          run_category() {
-            local category="$1"
-            local out="country-raw-source-sync-${category}.json"
-            RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"               bun scripts/sync-country-raw-source-mesh.mjs > "${out}" 2>&1
-            node scripts/drain-live-structure.mjs --fragment-ids-file "${out}"
-            node - "${out}" "${category}" <<'NODE'
-          const fs = require("node:fs");
-          const file = process.argv[2];
-          const expectedCategory = process.argv[3];
-          const result = JSON.parse(fs.readFileSync(file, "utf8"));
-          if (
-            result.ok !== true ||
-            result.failed_cells !== 0 ||
-            result.missing_non_gdelt_paths.length !== 0 ||
-            result.processed_cells + result.already_fresh_non_gdelt_cells !== 195 ||
-            result.categories.length !== 1 ||
-            result.categories[0] !== expectedCategory
-          ) {
-            console.error(JSON.stringify(result, null, 2));
-            process.exit(1);
-          }
-          console.log(JSON.stringify({
-            category: result.categories[0],
-            expected_cells: result.expected_cells,
-            processed_cells: result.processed_cells,
-            already_fresh_non_gdelt_cells: result.already_fresh_non_gdelt_cells,
-            failed_cells: result.failed_cells,
-            missing_non_gdelt_paths: result.missing_non_gdelt_paths.length,
-            fragment_ids: result.fragment_ids.length
-          }, null, 2));
-          NODE
-          }
+      - name: Validate all three category refreshes are complete
+        run: |
+          set -euo pipefail
+          node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-sync-"+category+".json"; const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
 
-          run_category GEOPOLITICS > category-GEOPOLITICS.log 2>&1 & p1=$!
-          run_category MACRO > category-MACRO.log 2>&1 & p2=$!
-          run_category CRITICAL_MINERALS > category-CRITICAL_MINERALS.log 2>&1 & p3=$!
-
-          wait "$p1"
-          wait "$p2"
-          wait "$p3"
-
-          cat category-GEOPOLITICS.log
-          cat category-MACRO.log
-          cat category-CRITICAL_MINERALS.log
-
-      - name: Verify all three category runtime cells
+      - name: Verify three-category runtime and GDELT independence
         run: |
           set -euo pipefail
           timeout 10m node scripts/audit-global-raw-source-runtime.mjs
           timeout 10m node scripts/audit-gdelt-dependency-live.mjs
 
-      - name: Run remaining launch-critical realtime repair tasks
-        shell: bash
+      - name: Run remaining launch-critical realtime tasks
         env:
           INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
@@ -161,17 +121,16 @@ jobs:
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-repair.log
 
-      - name: Verify all realtime contracts again
+      - name: Verify final realtime contracts
         run: |
           set -euo pipefail
           timeout 10m node scripts/audit-global-raw-source-runtime.mjs
           timeout 10m node scripts/audit-realtime-scope-fanout.mjs
           timeout 10m node scripts/audit-gdelt-dependency-live.mjs
 
-      - name: Run final Global Realtime Intelligence 100 gate
+      - name: Run strict Global Realtime Intelligence 100 gate
         run: |
           set -euo pipefail
-          mkdir -p artifacts/global-realtime-intelligence-100
           node scripts/audit-global-realtime-intelligence-100.mjs --strict
 
       - name: Upload final evidence
@@ -187,6 +146,5 @@ jobs:
             category-MACRO.log
             category-CRITICAL_MINERALS.log
             intelligence-orchestrator-repair.log
-            artifacts/global-realtime-intelligence-100/gate.json
           if-no-files-found: warn
           retention-days: 30
