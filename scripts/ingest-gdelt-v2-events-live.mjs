@@ -17,7 +17,8 @@ const LAST_UPDATE_URL = "https://data.gdeltproject.org/gdeltv2/lastupdate.txt"
 const FIPS_LOOKUP_URL = "https://www.gdeltproject.org/data/lookups/FIPS.country.txt"
 const WRITE = process.argv.includes("--write")
 const MAX_BATCH_AGE_MINUTES = Number(process.env.GDELT_MAX_BATCH_AGE_MINUTES ?? 60)
-const NOW = new Date(process.env.GDELT_AS_OF ?? Date.now())
+const GDELT_AS_OF = String(process.env.GDELT_AS_OF ?? "").trim()
+const NOW = new Date(GDELT_AS_OF || Date.now())
 const EXPECTED_COLUMN_COUNT = 61
 const FILTER_CONTRACT_VERSION = "gdelt-conflict-root-filter-v1"
 const CONFLICT_ROOT_CODES = new Set(["13", "14", "15", "16", "17", "18", "19", "20"])
@@ -250,8 +251,14 @@ async function loadCurrentlyAvailableExport(asOf) {
     )
     const lastUpdateText = await lastUpdateResponse.text()
 
+    // Live runs must re-evaluate against the current wall clock on every
+    // availability poll. A five-minute GDELT export can be "future" at the
+    // first read and become available during the bounded wait. An explicit
+    // GDELT_AS_OF remains immutable for deterministic replay/testing.
+    const effectiveAsOf = GDELT_AS_OF ? asOf : new Date()
+
     try {
-      return parseLastUpdate(lastUpdateText, asOf)
+      return parseLastUpdate(lastUpdateText, effectiveAsOf)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error)
@@ -274,7 +281,7 @@ async function loadCurrentlyAvailableExport(asOf) {
     }
 
     console.log(
-      "GDELT lastupdate advertises a future Event export; waiting for an export that is available at or before as-of time.",
+      "GDELT lastupdate advertises a future Event export; waiting for an export that is available at or before the current as-of time.",
     )
 
     await new Promise((resolve) => setTimeout(resolve, 10_000))
@@ -329,7 +336,8 @@ const sourceRegistration = await loadSourceRegistration(db)
 if (WRITE) assertWriteGovernance(sourceRegistration)
 
 const exportMeta = await loadCurrentlyAvailableExport(NOW)
-const batchAgeMinutes = ageMinutes(exportMeta.batchIso, NOW)
+const batchAgeAsOf = GDELT_AS_OF ? NOW : new Date()
+const batchAgeMinutes = ageMinutes(exportMeta.batchIso, batchAgeAsOf)
 if (batchAgeMinutes > MAX_BATCH_AGE_MINUTES) {
   throw new Error(`GDELT Event batch is stale: ${batchAgeMinutes.toFixed(2)} minutes old`)
 }
