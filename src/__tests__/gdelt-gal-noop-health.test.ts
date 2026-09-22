@@ -13,7 +13,7 @@ describe("GDELT GAL cursor health semantics", () => {
     expect(index).toBeGreaterThanOrEqual(0);
 
     const block = script.slice(Math.max(0, index - 1800), index + 300);
-    expect(block).toContain('const const failureClass = "UPSTREAM_SOURCE_DELAYED"');
+    expect(block).toContain('const failureClass = "UPSTREAM_SOURCE_DELAYED"');
     expect(block).toContain("const healthStatus = failures >= 3 ? \"failed\" : \"degraded\"");
     expect(block).toContain("status: healthStatus");
     expect(block).toContain("last_attempt_at: nowIso");
