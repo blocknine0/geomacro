@@ -117,7 +117,7 @@ for (const country of canonicalCountries) {
 for (const row of rawTargets) {
   const keyCell = String(row.country_iso3 || "").toUpperCase() + "::" + String(row.category || "");
   const cell = cells.get(keyCell);
-  if (!cell || !countrySet.has(cell.country_iso3)) continue;
+  if (!cell || !canonicalSet.has(cell.country_iso3)) continue;
   cell.configured.push(row);
   if (fresh(row.last_success_at, RAW_WINDOWS[cell.category], now)) {
     cell.fresh.push(row);
