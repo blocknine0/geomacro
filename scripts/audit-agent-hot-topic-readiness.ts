@@ -13,6 +13,19 @@ function projectRef(url: string) {
   try { return new URL(url).hostname.split(".")[0] ?? ""; } catch { return ""; }
 }
 
+function sourceStampToMs(stamp: unknown) {
+  const value = String(stamp ?? "").trim();
+  if (!/^\d{14}$/.test(value)) return NaN;
+  return Date.UTC(
+    Number(value.slice(0, 4)),
+    Number(value.slice(4, 6)) - 1,
+    Number(value.slice(6, 8)),
+    Number(value.slice(8, 10)),
+    Number(value.slice(10, 12)),
+    Number(value.slice(12, 14)),
+  );
+}
+
 function normalizeCountries(row: Record<string, unknown>) {
   const result = new Set<string>();
   const primary = String(row.primary_country ?? "").trim().toUpperCase();
@@ -53,14 +66,54 @@ async function main() {
 
   const { data: cursor, error: cursorError } = await db
     .from("live_ingestion_cursors")
-    .select("status,last_success_at,last_item_at,consecutive_failures")
+    .select("cursor,status,last_success_at,last_item_at,consecutive_failures")
     .eq("source_key", SOURCE_KEY)
     .eq("stream_key", STREAM_KEY)
     .maybeSingle();
   if (cursorError) throw cursorError;
   const lastSuccessMs = cursor?.last_success_at ? Date.parse(String(cursor.last_success_at)) : NaN;
+  const sourceStamp = cursor?.cursor?.last_source_stamp;
+  const sourceStampMs = sourceStampToMs(sourceStamp);
   const pipelineLagSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, Math.floor((now.getTime() - lastSuccessMs) / 1000)) : null;
-  const pipelineHealthy = cursor?.status === "healthy" && pipelineLagSeconds !== null && pipelineLagSeconds <= PIPELINE_MAX_LAG_SECONDS;
+  const sourceLagSeconds = Number.isFinite(sourceStampMs) ? Math.max(0, Math.floor((now.getTime() - sourceStampMs) / 1000)) : null;
+
+  const { data: latestFragment, error: latestFragmentError } = await db
+    .from("live_fragment_manifest")
+    .select("id,sealed_at,period_end,item_count")
+    .eq("source_key", SOURCE_KEY)
+    .eq("stream_key", STREAM_KEY)
+    .order("period_end", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestFragmentError) throw latestFragmentError;
+
+  const latestFragmentPeriodEndMs = latestFragment?.period_end ? Date.parse(String(latestFragment.period_end)) : NaN;
+  const latestFragmentLagSeconds = Number.isFinite(latestFragmentPeriodEndMs)
+    ? Math.max(0, Math.floor((now.getTime() - latestFragmentPeriodEndMs) / 1000))
+    : null;
+  let latestFragmentEvidenceCount = 0;
+  if (latestFragment?.id) {
+    const { count, error: latestFragmentEvidenceError } = await db
+      .from("live_structured_event_evidence")
+      .select("event_id", { count: "exact", head: true })
+      .eq("fragment_id", latestFragment.id);
+    if (latestFragmentEvidenceError) throw latestFragmentEvidenceError;
+    latestFragmentEvidenceCount = Number(count ?? 0);
+  }
+
+  const pipelineHealthy = Boolean(
+    cursor?.status === "healthy"
+      && pipelineLagSeconds !== null
+      && pipelineLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+      && sourceLagSeconds !== null
+      && sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+      && Boolean(latestFragment?.id)
+      && Boolean(latestFragment?.sealed_at)
+      && Number(latestFragment?.item_count ?? 0) > 0
+      && latestFragmentLagSeconds !== null
+      && latestFragmentLagSeconds <= PIPELINE_MAX_LAG_SECONDS
+      && latestFragmentEvidenceCount > 0,
+  );
 
   const events = await fetchAll(
     db,
@@ -148,8 +201,15 @@ async function main() {
       status: cursor?.status ?? null,
       last_success_at: cursor?.last_success_at ?? null,
       last_item_at: cursor?.last_item_at ?? null,
+      last_source_stamp: sourceStamp ?? null,
       consecutive_failures: cursor?.consecutive_failures ?? null,
       lag_seconds: pipelineLagSeconds,
+      source_lag_seconds: sourceLagSeconds,
+      latest_fragment_id: latestFragment?.id ?? null,
+      latest_fragment_period_end: latestFragment?.period_end ?? null,
+      latest_fragment_lag_seconds: latestFragmentLagSeconds,
+      latest_fragment_item_count: Number(latestFragment?.item_count ?? 0),
+      latest_fragment_structured_evidence_count: latestFragmentEvidenceCount,
       max_lag_seconds: PIPELINE_MAX_LAG_SECONDS,
       healthy: pipelineHealthy,
     },

@@ -98,7 +98,7 @@ function stampToDate(stamp) {
 
 function candidateStamps(now = new Date()) {
   const out = [];
-  for (let i = LOOKBACK_MINUTES; i >= 1; i -= 1) {
+  for (let i = 1; i <= LOOKBACK_MINUTES; i += 1) {
     out.push(utcMinuteStamp(new Date(now.getTime() - i * 60_000)));
   }
   return out;
@@ -106,12 +106,21 @@ function candidateStamps(now = new Date()) {
 
 async function fetchGalFile(stamp) {
   const sourceUrl = `https://storage.googleapis.com/data.gdeltproject.org/gdeltv3/gal/${stamp}.gal.json.gz`;
-  const response = await fetch(sourceUrl, { headers: { "user-agent": "Geomacro-Live-Intelligence/1.0" } });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`GDELT ${stamp}: HTTP ${response.status}`);
-  const compressed = Buffer.from(await response.arrayBuffer());
-  const text = gunzipSync(compressed).toString("utf8");
-  return { stamp, sourceUrl, compressed, text };
+  try {
+    const response = await fetch(sourceUrl, {
+      headers: { "user-agent": "Geomacro-Live-Intelligence/1.0" },
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`GDELT_UPSTREAM_HTTP_${response.status}`);
+    }
+    const compressed = Buffer.from(await response.arrayBuffer());
+    const text = gunzipSync(compressed).toString("utf8");
+    return { stamp, sourceUrl, compressed, text };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`GDELT_UPSTREAM_FETCH: ${message}`);
+  }
 }
 
 function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
@@ -128,6 +137,14 @@ function compactRow(row, canonicalUrl, fingerprint, topics, sourceStamp) {
     q: topics,
     g: sourceStamp,
   };
+}
+
+function classifyFailure(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/GDELT_UPSTREAM_(?:HTTP_(?:429|5\d{2})|FETCH)/i.test(message)) {
+    return "UPSTREAM_TEMPORARY_OUTAGE";
+  }
+  return "PIPELINE_FAILURE";
 }
 
 async function emit(result) {
@@ -148,7 +165,7 @@ async function main() {
   try {
     const { data: cursorRow, error: cursorError } = await supabase
       .from("live_ingestion_cursors")
-      .select("cursor,last_success_at")
+      .select("cursor,last_success_at,consecutive_failures")
       .eq("source_key", SOURCE_KEY)
       .eq("stream_key", STREAM_KEY)
       .maybeSingle();
@@ -165,22 +182,31 @@ async function main() {
       if (available.length >= MAX_SOURCE_FILES_PER_RUN) break;
     }
 
-    if (available.length === 0) {
+    const freshAvailable = available.filter((file) => {
+      const sourceMs = stampToDate(file.stamp).getTime();
+      const ageSeconds = Math.max(0, (now.getTime() - sourceMs) / 1000);
+      return ageSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;
+    });
+
+    if (freshAvailable.length === 0) {
       const lastSuccessMs = cursorRow?.last_success_at ? Date.parse(String(cursorRow.last_success_at)) : NaN;
       const successAgeSeconds = Number.isFinite(lastSuccessMs)
         ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
         : Number.POSITIVE_INFINITY;
-      const healthStatus = Number.isFinite(successAgeSeconds) && successAgeSeconds <= FRESH_SUCCESS_WINDOW_SECONDS
-        ? "healthy"
-        : "failed";
+      const failures = Number(cursorRow?.consecutive_failures ?? 0) + 1;
+      const healthStatus = failures >= 3 ? "failed" : "degraded";
+      const failureClass = "UPSTREAM_SOURCE_DELAYED";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
         stream_key: STREAM_KEY,
-        cursor: lastStamp ? { last_source_stamp: lastStamp } : {},
+        cursor: {
+          ...(lastStamp ? { last_source_stamp: lastStamp } : {}),
+          last_failure_class: failureClass,
+        },
         status: healthStatus,
         last_attempt_at: nowIso,
         last_success_at: cursorRow?.last_success_at ?? null,
-        consecutive_failures: Number(cursorRow?.last_success_at ? 0 : 1),
+        consecutive_failures: failures,
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
       if (error) throw error;
@@ -190,6 +216,8 @@ async function main() {
         started_at: nowIso,
         finished_at: nowIso,
         status: "empty",
+        error_code: failureClass,
+        error_detail: "GDELT GAL produced no new source file during this cycle",
         metrics: {
           no_new_source_file: true,
           last_source_stamp: lastStamp,
@@ -198,12 +226,14 @@ async function main() {
       });
       if (runError) throw runError;
       await emit({
-        ok: true,
+        ok: false,
         status: "no_new_gdelt_file",
+        failure_class: failureClass,
         last_source_stamp: lastStamp,
         success_age_seconds: Number.isFinite(successAgeSeconds) ? Math.round(successAgeSeconds) : null,
         source_health_status: healthStatus,
       });
+      process.exitCode = 1;
       return;
     }
 
@@ -213,7 +243,7 @@ async function main() {
     let itemsRejected = 0;
     let sameBatchDuplicate = 0;
 
-    for (const file of available) {
+    for (const file of freshAvailable) {
       for (const line of file.text.split("\n")) {
         if (!line.trim()) continue;
         itemsSeen += 1;
@@ -244,21 +274,52 @@ async function main() {
 
     const accepted = candidates.filter((item) => !existing.has(item.fingerprint));
     const databaseDuplicate = candidates.length - accepted.length;
-    const latestStamp = available.map((item) => item.stamp).sort().at(-1);
+    const latestStamp = freshAvailable.map((item) => item.stamp).sort().at(-1);
 
     if (accepted.length === 0) {
+      const failures = Number(cursorRow?.consecutive_failures ?? 0) + 1;
+      const failureClass = "PIPELINE_FAILURE";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
         stream_key: STREAM_KEY,
-        cursor: { last_source_stamp: latestStamp },
-        status: "healthy",
+        cursor: {
+          last_source_stamp: latestStamp,
+          last_failure_class: failureClass,
+        },
+        status: failures >= 3 ? "failed" : "degraded",
         last_attempt_at: nowIso,
-        last_success_at: nowIso,
-        consecutive_failures: 0,
+        last_success_at: cursorRow?.last_success_at ?? null,
+        consecutive_failures: failures,
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
       if (error) throw error;
-      await emit({ ok: true, status: "all_duplicates_or_irrelevant", files_seen: available.length, items_seen: itemsSeen, relevant_candidates: candidates.length, latest_source_stamp: latestStamp });
+      const { error: runError } = await supabase.from("live_ingestion_runs").insert({
+        source_key: SOURCE_KEY,
+        stream_key: STREAM_KEY,
+        started_at: nowIso,
+        finished_at: nowIso,
+        status: "empty",
+        error_code: failureClass,
+        error_detail: "GDELT GAL produced no new relevant fragment items during this cycle",
+        metrics: {
+          no_new_relevant_items: true,
+          files_seen: freshAvailable.length,
+          items_seen: itemsSeen,
+          relevant_candidates: candidates.length,
+          latest_source_stamp: latestStamp,
+        },
+      });
+      if (runError) throw runError;
+      await emit({
+        ok: false,
+        status: "all_duplicates_or_irrelevant",
+        failure_class: failureClass,
+        files_seen: freshAvailable.length,
+        items_seen: itemsSeen,
+        relevant_candidates: candidates.length,
+        latest_source_stamp: latestStamp,
+      });
+      process.exitCode = 1;
       return;
     }
 
@@ -280,7 +341,7 @@ async function main() {
 
     const previousFragmentSha256 = previous?.compressed_sha256 ?? null;
     const chainSha256 = sha256Hex(`${previousFragmentSha256 ?? "GENESIS"}:${compressedSha256}`);
-    const sortedStamps = available.map((item) => item.stamp).sort();
+    const sortedStamps = freshAvailable.map((item) => item.stamp).sort();
     const periodStart = stampToDate(sortedStamps[0]);
     const periodEnd = stampToDate(latestStamp);
     const yyyy = latestStamp.slice(0, 4);
@@ -356,7 +417,7 @@ async function main() {
       items_rejected: itemsRejected,
       fragment_id: manifest.id,
       metrics: {
-        source_files: available.length,
+        source_files: freshAvailable.length,
         source_stamps: sortedStamps,
         relevant_candidates: candidates.length,
         compression_ratio: payloadBytes.byteLength === 0 ? null : Number((compressedBytes.byteLength / payloadBytes.byteLength).toFixed(6)),
@@ -367,7 +428,10 @@ async function main() {
     const { error: cursorUpdateError } = await supabase.from("live_ingestion_cursors").upsert({
       source_key: SOURCE_KEY,
       stream_key: STREAM_KEY,
-      cursor: { last_source_stamp: latestStamp },
+      cursor: {
+        last_source_stamp: latestStamp,
+        last_failure_class: null,
+      },
       status: "healthy",
       last_attempt_at: nowIso,
       last_success_at: nowIso,
@@ -381,7 +445,7 @@ async function main() {
       ok: true,
       status: "sealed",
       fragment_id: manifest.id,
-      source_files: available.length,
+      source_files: freshAvailable.length,
       items_seen: itemsSeen,
       items_accepted: accepted.length,
       items_duplicate: sameBatchDuplicate + databaseDuplicate,
@@ -394,6 +458,7 @@ async function main() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const failureClass = classifyFailure(error);
     const { data: existing } = await supabase
       .from("live_ingestion_cursors")
       .select("consecutive_failures,cursor")
@@ -405,7 +470,10 @@ async function main() {
     await supabase.from("live_ingestion_cursors").upsert({
       source_key: SOURCE_KEY,
       stream_key: STREAM_KEY,
-      cursor: existing?.cursor ?? {},
+      cursor: {
+        ...(existing?.cursor ?? {}),
+        last_failure_class: failureClass,
+      },
       status: failures >= 3 ? "failed" : "degraded",
       last_attempt_at: nowIso,
       consecutive_failures: failures,
@@ -418,11 +486,16 @@ async function main() {
       started_at: nowIso,
       finished_at: new Date().toISOString(),
       status: "failed",
-      error_code: "INGEST_FAILED",
+      error_code: failureClass,
       error_detail: message.slice(0, 2000),
     });
 
-    await emit({ ok: false, status: "INGEST_FAILED", detail: "Internal ingestion failure. See private run diagnostics." });
+    await emit({
+      ok: false,
+      status: "INGEST_FAILED",
+      failure_class: failureClass,
+      detail: "Internal ingestion failure. See private run diagnostics.",
+    });
     process.exitCode = 1;
   }
 }

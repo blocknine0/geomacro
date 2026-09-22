@@ -40,12 +40,16 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain('key: "production_readiness"');
     expect(script).toContain('key: "public_demo_refresh"');
     expect(script).toContain("drain-live-structure.mjs");
+    expect(script).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(script).toContain("run-rss-live-cycle.mjs");
-    expect(script).toContain("reconcile-structured-event-commercial-rights.mjs");
+    const gdeltCycle = read("scripts/run-gdelt-gal-cycle.mjs");
+    expect(gdeltCycle).toContain("reconcile-structured-event-commercial-rights.mjs");
     expect(script).toContain("offsetSeconds: 240");
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
     expect(script).toContain("retry_pending");
+    expect(script).toContain("GDELT_GAL_FAILURE_CLASS");
+    expect(script).toContain("failure_class: failureClass");
     expect(script).toContain("consecutive_failures");
     expect(script).toContain('status = "degraded"');
     expect(script).toContain("for (const item of due)");

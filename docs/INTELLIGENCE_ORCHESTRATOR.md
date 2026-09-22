@@ -39,6 +39,8 @@ The master heartbeat is every 15 minutes at minute 7, 22, 37 and 52 UTC. A persi
 
 These are scheduler cadences, not claims about upstream publication frequency.
 
+For `gdelt_gal`, a successful scheduler task is stricter than child-process exit code: `scripts/run-gdelt-gal-cycle.mjs` must ingest a fresh source window, create a sealed fragment, structure that exact fragment, reconcile commercial eligibility, pass the hot-topic freshness audit, and prove cursor/fragment/event/rights state against the authoritative database. A cycle without a fresh fragment is not considered successful.
+
 ## Recovery behavior
 
 A missed GitHub heartbeat does not imply a missed source interval. Each adapter must use its own persisted source cursor/release state and deduplicate observations. A task that fails receives a bounded retry schedule and does not reset the source cursor until a successful persistence cycle completes.

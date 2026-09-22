@@ -23,30 +23,40 @@ describe("GDELT GAL production freshness workflow", () => {
     expect(workflow).not.toContain("schedule:");
     const orchestrator = readFileSync(join(process.cwd(), "scripts/intelligence-orchestrator.mjs"), "utf8");
     expect(orchestrator).toContain('key: "gdelt_gal"');
-    expect(workflow).toContain("sync-gdelt-gal-production.mjs");
-    expect(workflow).toContain("live-structure-intelligence");
+    expect(workflow).toContain("run-gdelt-gal-cycle.mjs");
+    expect(workflow).not.toContain("schedule:");
     expect(audit).toContain("const PIPELINE_MAX_LAG_SECONDS = 30 * 60");
+    expect(audit).toContain("const sourceStamp = cursor?.cursor?.last_source_stamp");
+    expect(audit).toContain("source_lag_seconds: sourceLagSeconds");
+    expect(audit).toContain("sourceLagSeconds <= PIPELINE_MAX_LAG_SECONDS");
+    expect(audit).toContain('from("live_fragment_manifest")');
+    expect(audit).toContain('from("live_structured_event_evidence")');
+    expect(audit).toContain("latestFragmentEvidenceCount > 0");
+    expect(audit).toContain("const pipelineHealthy = Boolean(");
   });
 
   it("validates the authoritative production target and uses only configured scoped credentials", () => {
     expect(workflow).toContain("node scripts/db/assert-authoritative-supabase.mjs");
     expect(workflow).toContain("LIVE_STRUCTURE_TOKEN");
-    expect(workflow).toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(workflow).toContain("APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}");
     expect(workflow).not.toContain("LIVE_INGEST_TOKEN");
     expect(directSync).toContain('const AUTHORITATIVE_PROJECT_REF = "ldpwajisioljyjtojvfx"');
     expect(directSync).toContain("APP_SUPABASE_SERVICE_ROLE_KEY");
   });
 
   it("reconciles eligibility only from the authoritative provenance evaluation", () => {
-    expect(workflow).toContain("live_structured_event_commercial_rights_evaluation");
-    expect(workflow).toContain("commercial_eligibility_status: row.evaluated_status");
-    expect(workflow).toContain("commercial_eligibility_reason_codes: row.reason_codes ?? []");
+    const cycle = readFileSync(join(process.cwd(), "scripts/run-gdelt-gal-cycle.mjs"), "utf8");
+    expect(cycle).toContain("reconcile-structured-event-commercial-rights.mjs");
+    expect(cycle).toContain("scripts/verify-gdelt-gal-cycle.mjs");
   });
 
   it("fails the acceptance proof when the paid hot-topic boundary is unhealthy", () => {
-    expect(workflow).toContain("audit-agent-hot-topic-readiness.ts --require-pipeline-healthy");
-    expect(workflow).toContain(".pipeline.healthy == true");
-    expect(workflow).toContain(".claim_boundary.raw_source_material_redistributed == false");
-    expect(workflow).toContain(".claim_boundary.only_verified_or_derived_only_structured_events_are_deliverable == true");
+    const cycle = readFileSync(join(process.cwd(), "scripts/run-gdelt-gal-cycle.mjs"), "utf8");
+    const verifier = readFileSync(join(process.cwd(), "scripts/verify-gdelt-gal-cycle.mjs"), "utf8");
+    expect(cycle).toContain("audit-agent-hot-topic-readiness.ts");
+    expect(verifier).toContain("pipeline.healthy=true");
+    expect(workflow).toContain(".verification.acceptance.hot_topic_pipeline_healthy == true");
+    expect(workflow).toContain(".verification.acceptance.structured_event_rights_reconciled == true");
+    expect(workflow).toContain(".verification.acceptance.writes_performed_by_verifier == false");
   });
 });
