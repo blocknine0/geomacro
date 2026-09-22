@@ -2,7 +2,6 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const worker = fs.readFileSync("workers/telegram-flash/global_discovery.py","utf8");
-const workflow = fs.readFileSync(".github/workflows/global-telegram-source-discovery-manual.yml","utf8");
 const migration = fs.readFileSync("supabase/migrations/969_telegram_global_discovery_metadata.sql","utf8");
 
 describe("global Telegram source discovery",()=>{
@@ -21,10 +20,7 @@ describe("global Telegram source discovery",()=>{
     expect(worker).toContain("resolution=ignore-duplicates");
   });
 
-  it("runs independently of licensed commercial source activation",()=>{
-    expect(workflow).toContain("Global Telegram Raw Source Discovery");
-    expect(workflow).toContain("workflow_dispatch: {}");
-    expect(workflow).not.toContain('cron: "*/30 * * * *"');
+  it("runs through the canonical intelligence orchestrator without a dedicated GitHub workflow",()=>{
     const orchestrator = fs.readFileSync("scripts/intelligence-orchestrator.mjs","utf8");
     expect(orchestrator).toContain('key: "telegram_discovery"');
     expect(migration).toContain("discovery_country_iso3");
@@ -32,15 +28,3 @@ describe("global Telegram source discovery",()=>{
   });
 });
 
-
-describe("global Telegram workflow triggers",()=>{
-  it("is dispatch/call only and avoids the GitHub dispatch-only push bug",()=>{
-    expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("workflow_call:");
-    expect(workflow).not.toContain("schedule:");
-    expect(workflow).not.toContain("push:");
-    expect(workflow).not.toContain("workflow_run:");
-    expect(workflow).toContain("trigger-guard:");
-    expect(workflow).toContain("needs: trigger-guard");
-  });
-});
