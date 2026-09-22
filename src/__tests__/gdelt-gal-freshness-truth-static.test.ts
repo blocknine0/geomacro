@@ -13,6 +13,8 @@ describe("GDELT GAL freshness truth",()=>{
     expect(block).toContain("last_success_at: cursorRow?.last_success_at ?? null");
     expect(block).toContain("status: healthStatus");
     expect(worker).toContain("FRESH_SUCCESS_WINDOW_SECONDS = 30 * 60");
+    expect(worker).toContain("const freshAvailable = available.filter((file) => {");
+    expect(worker).toContain("return ageSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;");
     expect(worker).toContain('.select("cursor,last_success_at,consecutive_failures")');
     expect(block).toContain('const failureClass = "UPSTREAM_SOURCE_DELAYED"');
     expect(block).toContain("status: healthStatus");
