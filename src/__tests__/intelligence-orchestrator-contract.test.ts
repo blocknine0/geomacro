@@ -42,7 +42,8 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("drain-live-structure.mjs");
     expect(script).toContain("scripts/run-gdelt-gal-cycle.mjs");
     expect(script).toContain("run-rss-live-cycle.mjs");
-    expect(script).toContain("reconcile-structured-event-commercial-rights.mjs");
+    const gdeltCycle = read("scripts/run-gdelt-gal-cycle.mjs");
+    expect(gdeltCycle).toContain("reconcile-structured-event-commercial-rights.mjs");
     expect(script).toContain("offsetSeconds: 240");
     expect(script).toContain("refreshOidcToken");
     expect(script).toContain("timeoutMs: 2_400_000");
