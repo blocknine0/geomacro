@@ -277,21 +277,49 @@ async function main() {
     const latestStamp = freshAvailable.map((item) => item.stamp).sort().at(-1);
 
     if (accepted.length === 0) {
+      const failures = Number(cursorRow?.consecutive_failures ?? 0) + 1;
+      const failureClass = "PIPELINE_FAILURE";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
         stream_key: STREAM_KEY,
         cursor: {
           last_source_stamp: latestStamp,
-          last_failure_class: null,
+          last_failure_class: failureClass,
         },
-        status: "healthy",
+        status: failures >= 3 ? "failed" : "degraded",
         last_attempt_at: nowIso,
-        last_success_at: nowIso,
-        consecutive_failures: 0,
+        last_success_at: cursorRow?.last_success_at ?? null,
+        consecutive_failures: failures,
         updated_at: nowIso,
       }, { onConflict: "source_key,stream_key" });
       if (error) throw error;
-      await emit({ ok: true, status: "all_duplicates_or_irrelevant", files_seen: freshAvailable.length, items_seen: itemsSeen, relevant_candidates: candidates.length, latest_source_stamp: latestStamp });
+      const { error: runError } = await supabase.from("live_ingestion_runs").insert({
+        source_key: SOURCE_KEY,
+        stream_key: STREAM_KEY,
+        started_at: nowIso,
+        finished_at: nowIso,
+        status: "empty",
+        error_code: failureClass,
+        error_detail: "GDELT GAL produced no new relevant fragment items during this cycle",
+        metrics: {
+          no_new_relevant_items: true,
+          files_seen: freshAvailable.length,
+          items_seen: itemsSeen,
+          relevant_candidates: candidates.length,
+          latest_source_stamp: latestStamp,
+        },
+      });
+      if (runError) throw runError;
+      await emit({
+        ok: false,
+        status: "all_duplicates_or_irrelevant",
+        failure_class: failureClass,
+        files_seen: freshAvailable.length,
+        items_seen: itemsSeen,
+        relevant_candidates: candidates.length,
+        latest_source_stamp: latestStamp,
+      });
+      process.exitCode = 1;
       return;
     }
 
