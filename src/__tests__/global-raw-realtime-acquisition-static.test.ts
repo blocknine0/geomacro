@@ -19,10 +19,15 @@ describe("global raw realtime acquisition",()=>{
     expect(worker).toContain("function rssItems");
   });
 
-  it("cannot starve lower-priority countries by stopping at the first 600 rows",()=>{
+  it("prioritizes due targets without letting not-due rows consume the bounded batch",()=>{
     const worker=read("scripts/sync-country-raw-source-mesh.mjs");
     expect(worker).toContain("RAW_SOURCE_SYNC_MAX_TARGETS??5000");
-    expect(worker).toContain('.order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true})');
+    expect(worker).toContain("for(let from=0;;from+=1000)");
+    expect(worker).toContain('.order("priority",{ascending:true,nullsFirst:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("target_id",{ascending:true}).range(from,from+999)');
+    expect(worker).toContain("if(due.length>=LIMIT||page.length<1000)break;");
+    expect(worker).toContain("due.splice(LIMIT);");
+    expect(worker).not.toContain('.order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true})');
+    expect(worker).not.toContain(".limit(LIMIT);if(q.error)throw q.error;const due=");
   });
 
   it("keeps GDELT country fallback as a fallback, not the global first-break backbone",()=>{
