@@ -83,7 +83,9 @@ jobs:
       LIVE_STRUCTURE_DRAIN_CONCURRENCY: 8
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
       INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
+      INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,rss_live,realtime_fanout
       GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
+      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
