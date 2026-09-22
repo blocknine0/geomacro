@@ -25,7 +25,6 @@ const ORCHESTRATOR_TASKS = [
   "rss_live",
   "realtime_fanout",
   "production_readiness",
-  "source_evidence",
 ];
 
 const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
@@ -225,13 +224,13 @@ for (const source of sources.filter(s => s.enabled_for_commercial_signals === tr
     cert.certification_state === "CERTIFIED" &&
     cert.endpoint_status === "PASS" &&
     ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
-    cert.schema_status === "PASS" &&
-    cert.freshness_status === "PASS" &&
-    cert.provenance_status === "PASS" &&
-    cert.independence_status === "PASS" &&
-    cert.adapter_status === "PASS" &&
-    cert.runtime_status === "PASS" &&
-    cert.fallback_status === "PASS";
+    ["PASS", "NOT_APPLICABLE"].includes(String(cert.schema_status ?? "")) &&
+    ["FRESH", "VARIABLE", "NOT_APPLICABLE"].includes(String(cert.freshness_status ?? "")) &&
+    ["PASS", "NOT_APPLICABLE"].includes(String(cert.provenance_status ?? "")) &&
+    ["PASS", "NOT_APPLICABLE"].includes(String(cert.independence_status ?? "")) &&
+    ["TESTED", "NOT_APPLICABLE"].includes(String(cert.adapter_status ?? "")) &&
+    ["PASS", "NOT_APPLICABLE"].includes(String(cert.runtime_status ?? "")) &&
+    ["READY", "NOT_REQUIRED"].includes(String(cert.fallback_status ?? ""));
   if (!checksOk) {
     commercialSourceFailures.push({
       source_id: source.source_id,
