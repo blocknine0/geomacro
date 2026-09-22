@@ -324,8 +324,33 @@ function normalizedState(task, row, nowMs) {
   };
 }
 
+function bootstrapStateForTask(task, nowMs) {
+  const state = normalizedState(task, null, nowMs);
+
+  // Missing or never-attempted seed state must never defer first-run recovery
+  // behind the next aligned cadence. MAX_TASKS_PER_TICK bounds bootstrap execution.
+  state.cursor.next_due_at = new Date(nowMs).toISOString();
+  state.cursor.bootstrap_pending = true;
+  return state;
+}
+
+function shouldBootstrapState(row) {
+  if (!row) return true;
+  const cursor = row?.cursor && typeof row.cursor === "object" ? row.cursor : {};
+
+  // Recover rows created by the pre-fix bootstrap logic, but never re-bootstrap
+  // a task that has already been attempted or explicitly disabled.
+  if (cursor.bootstrap_pending === true) return true;
+  if (cursor.bootstrap_pending === false) return false;
+  if (row.status !== "unknown") return false;
+  if (row.last_attempt_at || row.last_success_at) return false;
+  if (cursor.skipped_reason === "task_disabled_by_configuration") return false;
+  return true;
+}
+
 async function runTask(task, state) {
   const now = new Date().toISOString();
+  state.cursor.bootstrap_pending = false;
 
   if (typeof task.enabled === "function" && !task.enabled()) {
     state.cursor.next_due_at = new Date(alignedDueAt(task, Date.now())).toISOString();
@@ -418,12 +443,13 @@ async function main() {
   const now = new Date(nowMs).toISOString();
   const states = await loadStates();
 
-  // Seed all task state without executing immediately. This prevents a first
-  // heartbeat from creating an artificial thundering herd.
+  // Seed missing task state as immediately due. This lets a first heartbeat
+  // repair stale production freshness instead of waiting for a future slot.
+  // MAX_TASKS_PER_TICK prevents the bootstrap from becoming a thundering herd.
   for (const task of TASKS) {
     const key = STATE_PREFIX + task.key;
-    if (!states.has(key)) {
-      const state = normalizedState(task, null, nowMs);
+    if (shouldBootstrapState(states.get(key))) {
+      const state = bootstrapStateForTask(task, nowMs);
       await upsertState(task, state);
       states.set(key, {
         stream_key: key,
@@ -459,6 +485,7 @@ async function main() {
     results,
     source_failures_are_recorded_as_degraded: true,
     scheduler_internal_failures_remain_fail_closed: true,
+    bootstrap_seeds_are_immediately_due: true,
     deferred_count: deferredCount,
   };
 
