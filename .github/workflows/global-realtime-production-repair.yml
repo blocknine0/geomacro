@@ -20,10 +20,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bootstrap:
+  repair:
     if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm == 'RUN_GLOBAL_REALTIME_PRODUCTION_REPAIR') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 55
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -35,8 +35,6 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
-      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
       RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
       NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
@@ -50,36 +48,41 @@ jobs:
       BREAKING_RSS_RUN_ONCE: true
       TELEGRAM_ENABLED: false
       GRI_PUBLISH_ENABLED: false
-      RAW_SOURCE_SYNC_CONCURRENCY: 16
+      RAW_SOURCE_SYNC_CONCURRENCY: 6
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
     steps:
       - name: Checkout repair revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+
       - name: Setup Bun 1.4.2
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.2
+
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+
       - name: Verify authoritative production target
         run: |
           set -euo pipefail
           test -n "${APP_SUPABASE_URL}"
           test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
           test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
-          node -e 'const u=new URL(process.env.APP_SUPABASE_URL); if(u.hostname.split(".")[0]!=="ldpwajisioljyjtojvfx") process.exit(1);'
+
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
         with:
           version: 2.117.0
+
       - name: Deploy realtime flash functions to authoritative production
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN}"
           supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
           supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
+
       - name: Smoke-check deployed corroboration authentication
         shell: bash
         run: |
@@ -93,154 +96,96 @@ jobs:
           test "$code" = "200"
           grep -q '"authenticated":true' /tmp/realtime-corroborate-health.json
 
-  raw_runtime:
-    needs: bootstrap
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        category:
-          - GEOPOLITICS
-          - MACRO
-          - CRITICAL_MINERALS
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: production
-    env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
-      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
-      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
-      NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-      LIVE_STRUCTURE_MAX_ATTEMPTS: 4
-      LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: 90000
-      BREAKING_RSS_ENABLED: true
-      BREAKING_RSS_RUN_ONCE: true
-      TELEGRAM_ENABLED: false
-      GRI_PUBLISH_ENABLED: false
-      RAW_SOURCE_SYNC_CONCURRENCY: 16
-      RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
-    steps:
-      - name: Checkout repair revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: 1.4.2
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify authoritative production target
-        run: |
-          set -euo pipefail
-          test -n "${APP_SUPABASE_URL}"
-          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
-          test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
-      - name: Refresh ${{ matrix.category }} across all 195 canonical countries
-        env:
-          RAW_SOURCE_CATEGORY_ALLOWLIST: ${{ matrix.category }}
+      - name: Refresh all three source categories in parallel
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/sync-country-raw-source-mesh.mjs | tee country-raw-source-sync-${{ matrix.category }}.json
-          node scripts/drain-live-structure.mjs --fragment-ids-file country-raw-source-sync-${{ matrix.category }}.json
-          node -e 'const fs=require("node:fs"); const p=process.env.CHECK_FILE; const x=JSON.parse(fs.readFileSync(p,"utf8")); if(x.ok!==true||x.failed_cells!==0||x.missing_non_gdelt_paths.length!==0||x.processed_cells+x.already_fresh_non_gdelt_cells!==195) process.exit(1); console.log(JSON.stringify({category:x.categories,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length},null,2));'
-        env:
-          CHECK_FILE: country-raw-source-sync-${{ matrix.category }}.json
-      - name: Upload category evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: global-realtime-category-${{ matrix.category }}-${{ github.sha }}
-          path: country-raw-source-sync-${{ matrix.category }}.json
-          if-no-files-found: warn
-          retention-days: 30
 
-  verify:
-    needs: raw_runtime
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    environment: production
-    env:
-      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
-      GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
-      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
-      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
-      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
-      NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-      LIVE_STRUCTURE_MAX_ATTEMPTS: 4
-      LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: 90000
-      BREAKING_RSS_ENABLED: true
-      BREAKING_RSS_RUN_ONCE: true
-      TELEGRAM_ENABLED: false
-      GRI_PUBLISH_ENABLED: false
-      RAW_SOURCE_SYNC_CONCURRENCY: 16
-      RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
-      INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
-      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
-    steps:
-      - name: Checkout repair revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Setup Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: 1.4.2
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
+          run_category() {
+            local category="$1"
+            local out="country-raw-source-sync-${category}.json"
+            RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"               bun scripts/sync-country-raw-source-mesh.mjs > "${out}" 2>&1
+            node scripts/drain-live-structure.mjs --fragment-ids-file "${out}"
+            node - "${out}" "${category}" <<'NODE'
+          const fs = require("node:fs");
+          const file = process.argv[2];
+          const expectedCategory = process.argv[3];
+          const result = JSON.parse(fs.readFileSync(file, "utf8"));
+          if (
+            result.ok !== true ||
+            result.failed_cells !== 0 ||
+            result.missing_non_gdelt_paths.length !== 0 ||
+            result.processed_cells + result.already_fresh_non_gdelt_cells !== 195 ||
+            result.categories.length !== 1 ||
+            result.categories[0] !== expectedCategory
+          ) {
+            console.error(JSON.stringify(result, null, 2));
+            process.exit(1);
+          }
+          console.log(JSON.stringify({
+            category: result.categories[0],
+            expected_cells: result.expected_cells,
+            processed_cells: result.processed_cells,
+            already_fresh_non_gdelt_cells: result.already_fresh_non_gdelt_cells,
+            failed_cells: result.failed_cells,
+            missing_non_gdelt_paths: result.missing_non_gdelt_paths.length,
+            fragment_ids: result.fragment_ids.length
+          }, null, 2));
+          NODE
+          }
+
+          run_category GEOPOLITICS > category-GEOPOLITICS.log 2>&1 & p1=$!
+          run_category MACRO > category-MACRO.log 2>&1 & p2=$!
+          run_category CRITICAL_MINERALS > category-CRITICAL_MINERALS.log 2>&1 & p3=$!
+
+          wait "$p1"
+          wait "$p2"
+          wait "$p3"
+
+          cat category-GEOPOLITICS.log
+          cat category-MACRO.log
+          cat category-CRITICAL_MINERALS.log
+
       - name: Verify all three category runtime cells
         run: |
           set -euo pipefail
           timeout 10m node scripts/audit-global-raw-source-runtime.mjs
           timeout 10m node scripts/audit-gdelt-dependency-live.mjs
+
       - name: Run remaining launch-critical realtime repair tasks
         shell: bash
+        env:
+          INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness,source_evidence
         run: |
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-repair.log
+
       - name: Verify all realtime contracts again
         run: |
           set -euo pipefail
           timeout 10m node scripts/audit-global-raw-source-runtime.mjs
           timeout 10m node scripts/audit-realtime-scope-fanout.mjs
+          timeout 10m node scripts/audit-gdelt-dependency-live.mjs
+
       - name: Run final Global Realtime Intelligence 100 gate
         run: |
           set -euo pipefail
           mkdir -p artifacts/global-realtime-intelligence-100
           node scripts/audit-global-realtime-intelligence-100.mjs --strict
+
       - name: Upload final evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: global-realtime-production-repair-${{ github.sha }}
           path: |
+            country-raw-source-sync-GEOPOLITICS.json
+            country-raw-source-sync-MACRO.json
+            country-raw-source-sync-CRITICAL_MINERALS.json
+            category-GEOPOLITICS.log
+            category-MACRO.log
+            category-CRITICAL_MINERALS.log
             intelligence-orchestrator-repair.log
             artifacts/global-realtime-intelligence-100/gate.json
           if-no-files-found: warn
