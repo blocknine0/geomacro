@@ -73,6 +73,8 @@ Verification independently:
 
 A payload-hash match alone is not sufficient for `VERIFIED`.
 
+The signed `verification.status` field is a statement carried by the artifact and is not authoritative for the current verification state. Consumers MUST evaluate `expires_at` and other current freshness/lifecycle rules at verification time and use the verifier's current status. An expired object may therefore retain a signed `verification.status: VERIFIED` while the current verifier status is `EXPIRED`.
+
 ## 5. Encoding and key material
 
 - JSON transport is UTF-8.
