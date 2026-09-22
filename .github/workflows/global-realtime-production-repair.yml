@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: global-realtime-production-repair
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   repair:
