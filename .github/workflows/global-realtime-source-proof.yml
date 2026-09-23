@@ -138,8 +138,8 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN}"
-          supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
-          supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
+          supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt --use-api
+          supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt --use-api
 
       - name: Acquire scoped GitHub Actions OIDC token
         shell: bash
