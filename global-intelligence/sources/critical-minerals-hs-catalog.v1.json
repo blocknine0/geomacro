@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "source_id": "un_comtrade_minerals",
+  "classification": "HS2022",
+  "status": "STARTER_CATALOG_PENDING_DOMAIN_REVIEW",
+  "policy": {
+    "no_total_claims_for_minerals": true,
+    "exact_code_required_for_production_claim": true,
+    "historical_classification_must_be_explicit": true,
+    "do_not_mix_hs_versions_without_mapping": true
+  },
+  "commodities": [
+    {
+      "slug": "copper_ores_concentrates",
+      "hs2022": [
+        "260300"
+      ],
+      "evidence_scope": [
+        "TRADE_EXPORT",
+        "TRADE_IMPORT"
+      ]
+    },
+    {
+      "slug": "nickel_ores_concentrates",
+      "hs2022": [
+        "260400"
+      ],
+      "evidence_scope": [
+        "TRADE_EXPORT",
+        "TRADE_IMPORT"
+      ]
+    },
+    {
+      "slug": "cobalt_ores_concentrates",
+      "hs2022": [
+        "260500"
+      ],
+      "evidence_scope": [
+        "TRADE_EXPORT",
+        "TRADE_IMPORT"
+      ]
+    },
+    {
+      "slug": "lithium_ores_concentrates",
+      "hs2022": [
+        "253090"
+      ],
+      "evidence_scope": [
+        "TRADE_EXPORT",
+        "TRADE_IMPORT"
+      ],
+      "note": "HS code can include non-lithium minerals; requires narrower domain mapping before claiming lithium-only trade."
+    },
+    {
+      "slug": "rare_earth_ores_concentrates",
+      "hs2022": [
+        "253090"
+      ],
+      "evidence_scope": [
+        "TRADE_EXPORT",
+        "TRADE_IMPORT"
+      ],
+      "note": "Shared HS heading is not a clean rare-earth-only proxy; do not treat this as a confirmed rare-earth trade series."
+    }
+  ],
+  "notes": [
+    "This is deliberately conservative and is not a complete critical-minerals HS concordance.",
+    "UNSD publishes HS 2022 classification resources and correspondence tables; final production catalog must be reconciled against official HS descriptions and Geomacro mineral taxonomy.",
+    "Ambiguous/shared headings remain flagged instead of being silently interpreted as mineral-specific."
+  ],
+  "provenance": {
+    "official_classification_source": "https://unstats.un.org/unsd/classifications/econ",
+    "reviewed_against": "UNSD HS classification resources"
+  }
+}
