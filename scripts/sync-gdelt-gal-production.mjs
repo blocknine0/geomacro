@@ -193,8 +193,16 @@ async function main() {
       const successAgeSeconds = Number.isFinite(lastSuccessMs)
         ? Math.max(0, (now.getTime() - lastSuccessMs) / 1000)
         : Number.POSITIVE_INFINITY;
-      const failures = Number(cursorRow?.consecutive_failures ?? 0) + 1;
-      const healthStatus = failures >= 3 ? "failed" : "degraded";
+      const previousFailures = Number(cursorRow?.consecutive_failures ?? 0);
+      const lastSuccessIsFresh =
+        Number.isFinite(successAgeSeconds) &&
+        successAgeSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;
+      const failures = lastSuccessIsFresh ? 0 : previousFailures + 1;
+      const healthStatus = lastSuccessIsFresh
+        ? "degraded"
+        : failures >= 3
+          ? "failed"
+          : "degraded";
       const failureClass = "UPSTREAM_SOURCE_DELAYED";
       const { error } = await supabase.from("live_ingestion_cursors").upsert({
         source_key: SOURCE_KEY,
