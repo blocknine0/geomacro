@@ -1,0 +1,62 @@
+name: Source network production audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit-source-certification-100.mjs"
+      - "scripts/audit-source-certification-census.mjs"
+      - "docs/SOURCE_NETWORK_100_CERTIFICATION.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-network-production-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Validate production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL missing"; exit 1; }
+          test -n "${APP_SUPABASE_URL:-}" || { echo "::error::APP_SUPABASE_URL missing"; exit 1; }
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::APP_SUPABASE_SERVICE_ROLE_KEY missing"; exit 1; }
+          node - <<'NODE'
+          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
+          const db = new URL(process.env.SUPABASE_DB_URL);
+          const direct = db.hostname === `db.${ref}.supabase.co` && db.username === "postgres";
+          const pooler = db.hostname.endsWith(".pooler.supabase.com") && db.username === `postgres.${ref}`;
+          if (!direct && !pooler) throw new Error("Wrong Supabase production target");
+          if (db.pathname !== "/postgres" || !db.password) throw new Error("Invalid production DB URL");
+          const api = new URL(process.env.APP_SUPABASE_URL);
+          if (api.hostname !== `${ref}.supabase.co` || api.protocol !== "https:") throw new Error("Wrong Supabase API target");
+          console.log("PASS: authoritative production Supabase target confirmed.");
+          NODE
+      - name: Run read-only source certification audit
+        run: node scripts/audit-source-certification-100.mjs
+      - name: Upload certification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-network-production-audit
+          path: artifacts/source-certification-100/**
+          if-no-files-found: error
+          retention-days: 30
