@@ -787,7 +787,6 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
       .map(({ row, similarity }) => ({
         eventId: row.id,
         title: titleOf(row),
-        sourceUrl: row.source_url as string,
         relevance: Math.round(similarity * 100),
       })),
     insufficient_evidence: false,

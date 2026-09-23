@@ -169,8 +169,8 @@ describe("commercial website source-of-truth contract", () => {
     expect(arena).toContain("permanently locked to Arc Testnet as secondary technical proof");
     expect(arena).toContain("not planning a prediction-market mainnet or real-money launch");
     const onchain = read("src/components/sections/onchain-section.tsx");
-    expect(onchain).toContain("Arc public mainnet launched on 16 Sep 2026");
-    expect(onchain).toContain("Geomacro mainnet transaction features remain intentionally disabled");
+    expect(onchain).toContain("Arc mainnet: coming soon.");
+    expect(onchain).toContain("Geomacro keeps mainnet transaction features disabled until full production completion and acceptance.");
   });
 
   it("keeps the active roadmap intelligence-first and removes the stale market-first source of truth", () => {
