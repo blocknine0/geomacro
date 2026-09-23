@@ -25,11 +25,11 @@ function normalizeStatistic(value) {
 export function normalizeBgsWorldMineralsFeature(feature) {
   const p = feature?.properties ?? feature ?? {};
   const year = toNumber(first(p, ["year", "Year"]));
-  const country = first(p, ["country", "Country", "country_name"]);
+  const country = first(p, ["country_iso3_code", "country_iso2_code", "country", "Country", "country_name"]);
   const commodity = first(p, ["commodity", "Commodity", "sub_commodity", "subCommodity"]);
-  const statisticType = first(p, ["statistic_type", "statisticType", "statistic", "Statistic type"]);
+  const statisticType = first(p, ["bgs_statistic_type_trans", "statistic_type", "statisticType", "statistic", "Statistic type"]);
   const quantity = toNumber(first(p, ["quantity", "Quantity", "value", "Value", "amount"]));
-  const unit = first(p, ["unit", "Unit", "unit_of_measure"]);
+  const unit = first(p, ["units", "unit", "Unit", "unit_of_measure"]);
   return {
     source_id: "bgs_world_minerals_statistics",
     evidence_type: normalizeStatistic(statisticType),
