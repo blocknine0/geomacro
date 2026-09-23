@@ -187,7 +187,7 @@ export function inferCategories(terms: string[]): string[] {
 
 export function rankRow(row: EventRow, terms: string[], categories: string[], now: number) {
   const hay =
-    `${row.source_title ?? ""} ${row.summary ?? ""} ${row.narrative ?? ""} ${row.category ?? ""}`.toLowerCase();
+    `${row.source_title ?? ""} ${row.summary ?? ""} ${row.narrative ?? ""} ${row.source_name ?? ""} ${row.source_domain ?? ""} ${row.category ?? ""}`.toLowerCase();
   const matches = terms.filter((term) => hay.includes(term)).length;
   const catMatch = categories.length && row.category && categories.includes(row.category) ? 1 : 0;
   const ageHours = Math.max(0, (now - new Date(row.created_at).getTime()) / HOUR);
@@ -279,7 +279,7 @@ async function retrieve(terms: string[], categories: string[]) {
   const filters: string[] = [];
   for (const term of terms.slice(0, 4)) {
     const safe = escapeLike(term);
-    filters.push(`source_title.ilike.%${safe}%`, `summary.ilike.%${safe}%`);
+    filters.push(`source_title.ilike.%${safe}%`, `summary.ilike.%${safe}%`, `narrative.ilike.%${safe}%`, `source_name.ilike.%${safe}%`);
   }
   for (const category of categories) filters.push(`category.eq.${category}`);
 
