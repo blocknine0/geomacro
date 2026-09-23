@@ -6,7 +6,7 @@
     "import:countries": "node country-mesh/import-canonical-registry.mjs",
     "validate:countries": "node country-mesh/validate-canonical-registry.mjs",
     "generate:coverage": "node scripts/generate-coverage-matrix.mjs",
-    "probe:sources": "node scripts/probe-free-sources.mjs",
+    "probe:sources": "npm run audit:runtime",
     "gate:coverage": "node scripts/run-coverage-gates.mjs",
     "gate:all": "npm run validate:countries && npm run generate:coverage && npm run gate:coverage && npm run validate:mineral-country",
     "probe:world-bank": "node scripts/probe-world-bank-macro.mjs",
