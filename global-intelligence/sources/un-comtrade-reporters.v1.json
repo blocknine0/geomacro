@@ -1,0 +1,12 @@
+{
+  "version":"1.0",
+  "source_id":"un_comtrade",
+  "status":"CURATED_PARTIAL",
+  "policy":"Use explicit official reporter codes. Do not infer missing numeric codes.",
+  "reporters":{
+    "USA":842,"IND":699,"CHN":156,"DEU":276,"GBR":826,"FRA":251,"JPN":392,
+    "KOR":410,"CAN":124,"AUS":36,"BRA":76,"RUS":643,"ZAF":710,"SAU":682,
+    "ARE":784,"IDN":360,"VNM":704,"MEX":484,"TUR":792,"ITA":380,"ESP":724
+  },
+  "next_step":"Populate the complete 195-country reporter table from official Comtrade reference data before 585-cell certification."
+}
