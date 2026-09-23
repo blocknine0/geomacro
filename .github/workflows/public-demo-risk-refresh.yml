@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+# Fresh post-merge live public-demo data acceptance trigger.
+
+
 concurrency:
   group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
