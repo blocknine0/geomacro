@@ -100,9 +100,13 @@ async function assertPublicSandboxCorridorDeliverable(
   );
 
   for (const endpointObject of endpointObjects) {
-    const endpointVerification = verifyCommercialRiskObjectArtifact(endpointObject);
-    if (!endpointVerification.deliverable) {
-      throw new Error("PUBLIC_DEMO_CORRIDOR_ENDPOINT_NOT_DELIVERABLE");
+    const endpointPublicVerification =
+      verifyPublicRiskObjectArtifact(endpointObject);
+    if (
+      !endpointPublicVerification.valid ||
+      !endpointPublicVerification.cryptographic_valid
+    ) {
+      throw new Error("PUBLIC_DEMO_CORRIDOR_ENDPOINT_NOT_VERIFIABLE");
     }
   }
 }
