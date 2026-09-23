@@ -17,7 +17,7 @@ concurrency:
 jobs:
   repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 90
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -42,7 +42,7 @@ jobs:
       BREAKING_RSS_RUN_ONCE: true
       TELEGRAM_ENABLED: false
       GRI_PUBLISH_ENABLED: false
-      RAW_SOURCE_SYNC_CONCURRENCY: 6
+      RAW_SOURCE_SYNC_CONCURRENCY: 12
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
       GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
       GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
