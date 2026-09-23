@@ -5,6 +5,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 
 const OUTPUT_DIR = String(process.env.GDELT_GAL_CYCLE_OUTPUT_DIR ?? "gdelt-gal-cycle").trim();
+const PROJECT_REF = "ldpwajisioljyjtojvfx";
+const SOURCE_KEY = "gdelt_gal";
+const STREAM_KEY = "global-relevant";
 const MAX_ATTEMPTS = Math.max(1, Math.min(4, Number(process.env.GDELT_GAL_CYCLE_MAX_ATTEMPTS ?? 3)));
 const BACKOFF_SECONDS = Math.max(5, Math.min(300, Number(process.env.GDELT_GAL_CYCLE_BACKOFF_SECONDS ?? 30)));
 const CYCLE_START = new Date().toISOString();

@@ -6,7 +6,7 @@ const APP_SUPABASE_URL = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const SUPABASE_PROJECT_ID = String(
   process.env.SUPABASE_PROJECT_ID ?? new URL(APP_SUPABASE_URL).hostname.split(".")[0],
 ).trim();
-const OIDC = String(process.env.GEOMACRO_FLASH_OIDC_TOKEN ?? "").trim();
+let OIDC = String(process.env.GEOMACRO_FLASH_OIDC_TOKEN ?? "").trim();
 const INGEST_TOKEN = String(process.env.GEOMACRO_FLASH_INGEST_TOKEN ?? "").trim();
 
 if (!APP_SUPABASE_URL || !SUPABASE_PROJECT_ID || !OIDC) {
@@ -40,19 +40,53 @@ function runWorker() {
   });
 }
 
-async function corroborate() {
-  const endpoint = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${OIDC}`,
-      "x-geomacro-github-oidc-token": OIDC,
-      "content-type": "application/json",
-      ...(INGEST_TOKEN ? { "x-geomacro-flash-ingest-token": INGEST_TOKEN } : {}),
+async function refreshOidcToken() {
+  const requestUrl = String(process.env.ACTIONS_ID_TOKEN_REQUEST_URL ?? "").trim();
+  const requestToken = String(process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN ?? "").trim();
+  if (!requestUrl || !requestToken) return false;
+  const separator = requestUrl.includes("?") ? "&" : "?";
+  let response;
+  try {
+    response = await fetch(
+      requestUrl + separator + "audience=" + encodeURIComponent("https://geomacro.live/actions/live-flash-rss"),
+      {
+        headers: { authorization: "bearer " + requestToken },
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+  } catch { return false; }
+  if (!response.ok) return false;
+  try {
+    const payload = await response.json();
+    const token = String(payload?.value ?? "").trim();
+    if (!token) return false;
+    OIDC = token;
+    process.env.GEOMACRO_FLASH_OIDC_TOKEN = token;
+    return true;
+  } catch { return false; }
+}
+
+async function postCorroboration() {
+  return fetch(
+    `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${OIDC}`,
+        "x-geomacro-github-oidc-token": OIDC,
+        "content-type": "application/json",
+        ...(INGEST_TOKEN ? { "x-geomacro-flash-ingest-token": INGEST_TOKEN } : {}),
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(120_000),
     },
-    body: "{}",
-    signal: AbortSignal.timeout(120_000),
-  });
+  );
+}
+async function corroborate() {
+  let response = await postCorroboration();
+  if (response.status === 401 && await refreshOidcToken()) {
+    response = await postCorroboration();
+  }
   const text = await response.text();
   if (!response.ok) throw new Error(`live-flash-corroborate HTTP ${response.status}: ${text.slice(0, 2000)}`);
   const data = JSON.parse(text);

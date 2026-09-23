@@ -93,8 +93,8 @@ jobs:
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
       LIVE_STRUCTURE_DRAIN_CONCURRENCY: 8
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
-      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,rss_live,realtime_fanout
-      INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,rss_live,realtime_fanout
+      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
+      INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
       OPEN_LIVE_SOURCE_SYNC_OUTPUT: open-live-source-sync.json
       GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
       GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
