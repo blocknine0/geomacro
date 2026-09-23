@@ -17,6 +17,7 @@
     "probe:usgs": "node scripts/probe-usgs-minerals.mjs",
     "probe:bgs": "node scripts/probe-bgs-minerals.mjs",
     "probe:historical": "node scripts/probe-historical-data.mjs",
-    "test:minerals": "node scripts/test-minerals-reconciliation.mjs"
+    "test:minerals": "node scripts/test-minerals-reconciliation.mjs",
+    "test:health": "node scripts/test-source-health.mjs"
   }
 }
