@@ -1,0 +1,14 @@
+import fs from "node:fs/promises"; import {mkdtemp,writeFile} from "node:fs/promises"; import os from "node:os"; import path from "node:path";
+const dir=await mkdtemp(path.join(os.tmpdir(),"geomacro-cert-"));
+const countries={countries:[{iso2:"IN",iso3:"IND",name:"India"},{iso2:"DE",iso3:"DEU",name:"Germany"}]};
+const matrix={cell_count:6,cells:["IND","DEU"].flatMap((iso3,i)=>{const iso2=i?"DE":"IN",name=i?"Germany":"India";return ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].map(category=>({country_iso2:iso2,country_iso3:iso3,country_name:name,category,status:"CONFIGURED"}));})};
+const runtime={results:[{sourceId:"gdelt_v2",category:"GEOPOLITICS",country_iso3:"IND",coverage_status:"LIVE_DATA",checked_at:"2026-09-23T00:00:00.000Z"},{sourceId:"eurostat",category:"MACRO",country_iso3:"DEU",coverage_status:"DEGRADED",checked_at:"2026-09-23T00:00:00.000Z"}]};
+const registry={categories:{GEOPOLITICS:[{id:"gdelt_v2",class:"GLOBAL_FALLBACK",coverage:"global"}],MACRO:[{id:"eurostat",class:"AUTHORITATIVE",coverage:"europe"}],CRITICAL_MINERALS:[{id:"usgs_mcs",class:"GLOBAL_FALLBACK",coverage:"global"}]}};
+for(const [n,v] of [["countries.json",countries],["matrix.json",matrix],["runtime.json",runtime],["registry.json",registry]]) await writeFile(path.join(dir,n),JSON.stringify(v));
+let source=await fs.readFile(new URL("../health/country-coverage-certification.mjs",import.meta.url),"utf8");
+for(const [a,b] of [["../country-mesh/countries.v1.json","file://"+path.join(dir,"countries.json")],["../country-mesh/generated/coverage-matrix.v1.json","file://"+path.join(dir,"matrix.json")],["../runtime-coverage-report.json","file://"+path.join(dir,"runtime.json")],["../sources/source-registry.v1.json","file://"+path.join(dir,"registry.json")],["./country-coverage-certification.v1.json","file://"+path.join(dir,"out.json")]]) source=source.replaceAll(JSON.stringify(a),JSON.stringify(b));
+const cert=path.join(dir,"cert.mjs"); await writeFile(cert,source);
+const {execFileSync}=await import("node:child_process"); execFileSync(process.execPath,[cert],{stdio:"pipe"});
+const report=JSON.parse(await fs.readFile(path.join(dir,"out.json"),"utf8"));
+if(report.cell_count!==6||report.counts.LIVE_DATA!==1||report.counts.DEGRADED!==1||report.counts.CONFIGURED!==4) throw new Error("Unexpected certification counts");
+console.log("Country coverage certification test passed.");
