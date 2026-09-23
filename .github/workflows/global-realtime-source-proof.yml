@@ -213,50 +213,22 @@ jobs:
 
           if (( cycle_status != 0 )); then
             echo "GDELT GAL cycle did not seal a new upstream file; checking the authoritative first-break freshness window before failing."
-            node <<'NODE'
-            const { createClient } = require("@supabase/supabase-js");
-
-            const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
-            const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-            if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
-            if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") {
-              throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
-            }
-
-            const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-            const { data, error } = await db
-              .from("live_ingestion_cursors")
-              .select("source_key,stream_key,status,last_success_at,last_item_at,consecutive_failures")
-              .eq("source_key", "gdelt_gal")
-              .eq("stream_key", "global-relevant")
-              .limit(1)
-              .maybeSingle();
-
-            if (error) throw new Error(error.message);
-
-            const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
-            const ageSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, (Date.now() - lastSuccessMs) / 1000) : Infinity;
-            const fresh = Number.isFinite(lastSuccessMs)
-              && ageSeconds <= 1800
-              && ["healthy", "degraded"].includes(String(data?.status ?? ""));
-
-            console.log(JSON.stringify({
-              fallback: "UPSTREAM_SOURCE_DELAYED_WITHIN_STRICT_FRESHNESS_WINDOW",
-              source_key: data?.source_key ?? null,
-              stream_key: data?.stream_key ?? null,
-              status: data?.status ?? null,
-              last_success_at: data?.last_success_at ?? null,
-              age_seconds: Math.round(ageSeconds),
-              consecutive_failures: Number(data?.consecutive_failures ?? 0),
-              max_age_seconds: 1800,
-              accepted: fresh
-            }, null, 2));
-
-            if (!fresh) process.exit(1);
-            NODE
+            node --input-type=module -e '
+              import { createClient } from "@supabase/supabase-js";
+              const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
+              const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+              if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+              if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+              const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+              const { data, error } = await db.from("live_ingestion_cursors").select("source_key,stream_key,status,last_success_at,last_item_at,consecutive_failures").eq("source_key","gdelt_gal").eq("stream_key","global-relevant").limit(1).maybeSingle();
+              if (error) throw new Error(error.message);
+              const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
+              const ageSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, (Date.now() - lastSuccessMs) / 1000) : Infinity;
+              const fresh = Number.isFinite(lastSuccessMs) && ageSeconds <= 1800 && ["healthy","degraded"].includes(String(data?.status ?? "")) && Number(data?.consecutive_failures ?? 0) === 0;
+              console.log(JSON.stringify({ fallback:"UPSTREAM_SOURCE_DELAYED_WITHIN_STRICT_FRESHNESS_WINDOW", source_key:data?.source_key ?? null, stream_key:data?.stream_key ?? null, status:data?.status ?? null, last_success_at:data?.last_success_at ?? null, age_seconds:Math.round(ageSeconds), consecutive_failures:Number(data?.consecutive_failures ?? 0), max_age_seconds:1800, accepted:fresh }, null, 2));
+              if (!fresh) process.exit(1);
+            '
           fi
-
-          bun scripts/sync-realtime-scope-fanout.mjs
 
       - name: Final raw freshness convergence
         shell: bash
