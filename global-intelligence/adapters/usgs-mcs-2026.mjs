@@ -1,0 +1,7 @@
+import {getJson,observation} from "./http.mjs";
+const MCS_RELEASE_URL="https://www.usgs.gov/data/mineral-commodity-summaries-2026-data-release";
+const MCS_BASE_URL=process.env.USGS_MCS_2026_BASE_URL || "";
+function num(v){if(v===null||v===undefined||String(v).trim()==="")return null;const n=Number(String(v).replace(/,/g,""));return Number.isFinite(n)?n:null;}
+function normalize(row,commodity){const country=String(row.country_iso3||row.ISO3||row.iso3||"").toUpperCase()||null;const year=num(row.year||row.Year||2025);return observation({sourceId:"usgs_mcs_2026",category:"CRITICAL_MINERALS",countryIso3:country,publishedAt:"2026-09-18T00:00:00Z",observedAt:year?String(year)+"-12-31T00:00:00Z":null,title:"USGS MCS 2026 "+commodity,summary:String(row.summary||row.value||""),url:MCS_RELEASE_URL,confidence:0.95,raw:{evidence_type:row.evidence_type||"WORLD_PRODUCTION_BASELINE",commodity,country_iso3:country,year,value:num(row.value||row.production||row.world_production),unit:row.unit||null,raw:row}});}
+export function parseUsGSMcsRows(rows,{commodity="unknown"}={}){if(!Array.isArray(rows))throw new Error("USGS MCS rows must be an array.");return rows.map(row=>normalize(row,commodity));}
+export async function fetchUsGSMcs2026({commodity,csvUrl=null}={}){const url=csvUrl||MCS_BASE_URL;if(!url)throw new Error("USGS_MCS_2026_BASE_URL or csvUrl is required.");const data=await getJson(url);const rows=Array.isArray(data)?data:(Array.isArray(data?.data)?data.data:[]);return parseUsGSMcsRows(rows,{commodity});}
