@@ -311,6 +311,16 @@ jobs:
           state_count="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where enabled_for_commercial_signals = true and not exists (select 1 from public.live_source_certification_records cert where cert.source_id = live_external_sources.source_id and cert.certification_state = 'CERTIFIED' and cert.endpoint_status = 'PASS' and cert.rights_status in ('COMMERCIAL_OK','DERIVED_ONLY') and cert.schema_status in ('PASS','NOT_APPLICABLE') and cert.freshness_status in ('FRESH','VARIABLE','NOT_APPLICABLE') and cert.provenance_status in ('PASS','NOT_APPLICABLE') and cert.independence_status in ('PASS','NOT_APPLICABLE') and cert.adapter_status in ('TESTED','NOT_APPLICABLE') and cert.runtime_status in ('PASS','NOT_APPLICABLE') and cert.fallback_status in ('READY','NOT_REQUIRED'))")"
           test "${state_count}" = "0"
 
+      - name: Refresh open realtime mesh orchestrator state before final gate
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=open_realtime_mesh           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=open_realtime_mesh           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-open-realtime-mesh-final.log
+
+      - name: Refresh direct realtime scope targets before final gate
+        run: |
+          set -euo pipefail
+          bun scripts/sync-realtime-scope-fanout.mjs 2>&1 | tee realtime-scope-fanout-final.log
+
       - name: Verify final realtime contracts
         run: |
           set -euo pipefail
