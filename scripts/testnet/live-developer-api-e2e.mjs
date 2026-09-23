@@ -171,9 +171,10 @@ async function main() {
 
   const manifest = await jsonFetch('developer manifest', BASE_URL + '/api/testnet/manifest');
   assert(manifest.payload.ok === true, 'Developer manifest not healthy');
-  assert(manifest.payload.environment === 'testnet', 'Developer manifest is not Testnet');
-  assert(manifest.payload.commercial_revenue === false, 'Developer manifest is classified as revenue');
-  assert(JSON.stringify(Object.keys(manifest.payload.capabilities || {}).sort()) === JSON.stringify(CAPABILITIES.slice().sort()), 'Developer capability set drifted');
+  const manifestData = manifest.payload.data;
+  assert(manifestData?.environment === 'testnet', 'Developer manifest is not Testnet');
+  assert(manifestData?.commercial_revenue === false, 'Developer manifest is classified as revenue');
+  assert(JSON.stringify(Object.keys(manifestData?.capabilities || {}).sort()) === JSON.stringify(CAPABILITIES.slice().sort()), 'Developer capability set drifted');
 
   const account = await jsonFetch('developer account', BASE_URL + '/api/testnet/account', { headers: authHeaders(apiKey, apiSecret) });
   assert(account.payload.ok === true, 'Developer account failed');
