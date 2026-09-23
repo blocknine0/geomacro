@@ -43,11 +43,11 @@ jobs:
         run: |
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
-      - name: Import canonical 195-country registry
+      - name: Import expanded global country universe
         run: npm run import:countries
       - name: Validate canonical country registry
         run: npm run validate:countries
-      - name: Generate 585-cell coverage matrix
+      - name: Generate N×3 global coverage matrix
         run: npm run generate:coverage
       - name: Run structural coverage gates
         run: npm run gate:coverage
