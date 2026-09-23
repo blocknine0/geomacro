@@ -286,3 +286,4 @@ Depending on capability, `data` contains GRI proof/change-attribution fields, st
 - No upstream news-source URL/identity delivery in machine responses.
 - No execution authorization.
 - Mainnet and commercial production pricing are separate and unchanged by this Testnet contract.
+<!-- public-demo-refresh acceptance trigger -->
