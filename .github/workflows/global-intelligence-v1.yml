@@ -54,9 +54,9 @@ jobs:
       - name: Validate mineral country coverage
         run: npm run validate:mineral-country
       - name: Runtime source coverage audit
-        run: npm run audit:runtime > runtime-coverage-report.json
+        run: node health/runtime-coverage-audit.mjs > runtime-coverage-report.json
       - name: Validate runtime audit report
-        run: node -e 'const r=require("./runtime-coverage-report.json"); if(r.version!=="1.0" || !Array.isArray(r.results) || r.results.length<8) process.exit(1)'
+        run: node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync("./runtime-coverage-report.json","utf8")); if(r.version!=="1.0" || !Array.isArray(r.results) || r.results.length<8) process.exit(1)'
       - name: Upload generated coverage and runtime audit artifacts
         uses: actions/upload-artifact@v4
         with:
