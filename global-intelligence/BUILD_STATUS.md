@@ -38,8 +38,18 @@ Credentials must be supplied only through the application's secret/environment m
 ## Next gates
 1. Import the canonical 195-country registry into the isolated track.
 2. Generate the 585-cell matrix.
-3. Implement live source adapters.
+3. Implement live source adapters. World Bank macro adapter now supports multi-indicator batching, MRV/frequency/date controls, indicator catalog retrieval, observation-status/provenance fields, and a no-secret runtime probe.
 4. Implement Telegram source verification and ingestion.
 5. Implement cross-source verification.
 6. Run category-specific runtime probes.
 7. Run full 585-cell certification.
+
+## Latest completed slice
+- World Bank macro adapter upgraded on `feature/global-intelligence-v1`.
+- Added `world-bank-indicator-catalog.v1.json` with initial macro families and aliases.
+- Added multi-indicator World Bank retrieval (up to the documented 60-indicator request limit), MRV, frequency, date and gap-fill controls.
+- Added World Bank indicator catalog retrieval for dynamic expansion beyond the initial curated families.
+- Added a runtime probe covering IND/USA/CHN plus indicator-catalog availability.
+- Intelligence engine now accepts category engines returning either arrays or structured `{observations: [...]}` results.
+- No credentials are required for this World Bank slice.
+- Runtime execution still needs to be run from the actual branch checkout before this source can be marked PASS in certification.
