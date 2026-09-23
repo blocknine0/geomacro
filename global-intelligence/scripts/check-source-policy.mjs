@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 
-const registry = JSON.parse(await fs.readFile("global-intelligence/sources/source-registry.v1.json","utf8"));
+const registryPath = new URL("../sources/source-registry.v1.json", import.meta.url);\nconst registry = JSON.parse(await fs.readFile(registryPath, "utf8"));
 const errors = [];
 const seen = new Set();
 const categories = ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"];
