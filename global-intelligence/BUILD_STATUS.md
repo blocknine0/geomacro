@@ -55,3 +55,5 @@ Credentials must be supplied only through the application's secret/environment m
 - Runtime execution still needs to be run from the actual branch checkout before this source can be marked PASS in certification.
 
 - Added configuration-driven national-statistics/central-bank onboarding contract, official JSON adapter, country-primary registry and U.S. BLS runtime probe. Discovery-required endpoints remain outside governed ingestion until exact dataset routes are pinned.
+
+- Added UN Comtrade trade-flow adapter with explicit reporter-code safety, export/import normalization, derived trade-balance evidence, preview/key-gated access, probe script, and source contract. The shipped reporter map is intentionally partial; complete 195-country reporter-code coverage is still a certification requirement. Runtime PASS has not been established yet.
