@@ -307,6 +307,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+  # Temporary validation branch trigger; removed before merge.
   developer-paid-e2e:
     if: >-
       ${{
