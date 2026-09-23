@@ -13,12 +13,12 @@ export function OnchainSection() {
       <SectionHeader
         eyebrow="Onchain"
         title="Arc technical proof"
-        desc="Arc public mainnet launched on 16 Sep 2026. Geomacro still uses Arc Testnet for its onchain technical-proof surfaces; Geomacro mainnet transaction features remain intentionally disabled until a separately approved production configuration is activated."
+        desc="Arc public mainnet is live. Geomacro has not enabled Arc mainnet transaction features: this page remains a secondary technical-proof surface and the production revenue path is separately governed by the commercial launch gates."
       />
       <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
           {ARC_NETWORKS.map((n) => {
-            const badgeLabel = n.live ? "Geomacro enabled" : n.key === "mainnet" ? "public network live · Geomacro disabled" : "Geomacro disabled";
+            const badgeLabel = n.live ? "Geomacro enabled" : n.key === "mainnet" ? "public network live · Geomacro product disabled" : "Geomacro disabled";
             return (
               <div
                 key={n.key}
