@@ -1,0 +1,7 @@
+{
+  "version":"1.0",
+  "status":"CONTROLLED_MAPPING_REQUIRED",
+  "principle":"Country names and commodity labels are normalized only through explicit mappings; unknown values remain unresolved.",
+  "country_aliases":{"DEMOCRATIC REPUBLIC OF THE CONGO":"COD","DR CONGO":"COD","CONGO, DEMOCRATIC REPUBLIC OF THE":"COD","UNITED STATES":"USA","UNITED STATES OF AMERICA":"USA","CHINA":"CHN","INDIA":"IND","GERMANY":"DEU","UNITED KINGDOM":"GBR"},
+  "commodity_aliases":{"COBALT":"cobalt","COPPER":"copper","NICKEL":"nickel","LITHIUM":"lithium","RARE EARTHS":"rare_earths","RARE EARTH ELEMENTS":"rare_earths","GRAPHITE":"graphite","MANGANESE":"manganese","TUNGSTEN":"tungsten","ANTIMONY":"antimony","GALLIUM":"gallium","GERMANIUM":"germanium","NIOBIUM":"niobium","TANTALUM":"tantalum","VANADIUM":"vanadium","CHROMIUM":"chromium","ZINC":"zinc","TIN":"tin","TITANIUM":"titanium","PLATINUM-GROUP METALS":"pgm","PLATINUM":"platinum","PALLADIUM":"palladium","RHODIUM":"rhodium","IRIDIUM":"iridium","RUTHENIUM":"ruthenium","OSMIUM":"osmium","BERYLLIUM":"beryllium","BISMUTH":"bismuth","BORON":"boron","CESIUM":"cesium","FLUORSPAR":"fluorspar","HELIUM":"helium","MAGNESIUM":"magnesium","MOLYBDENUM":"molybdenum","POTASH":"potash","PHOSPHATE ROCK":"phosphate_rock","SILICON":"silicon","SILVER":"silver","TELLURIUM":"tellurium","URANIUM":"uranium"}
+}
