@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 
 const categories = ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"];
-const input = process.env.GEOMACRO_COUNTRIES_FILE || "global-intelligence/country-mesh/countries.v1.json";
+const input = process.env.GEOMACRO_COUNTRIES_FILE
+  ? new URL(process.env.GEOMACRO_COUNTRIES_FILE, import.meta.url)
+  : new URL("../country-mesh/countries.v1.json", import.meta.url);
+const output = new URL("../country-mesh/generated/coverage-matrix.v1.json", import.meta.url);
 
 const raw = JSON.parse(await fs.readFile(input, "utf8"));
 const countries = Array.isArray(raw) ? raw : raw.countries;
@@ -26,9 +29,9 @@ const cells = normalized.flatMap(country => categories.map(category => ({
 
 if (cells.length !== 585) throw new Error(`Expected 585 cells, got ${cells.length}`);
 
-await fs.mkdir("global-intelligence/country-mesh/generated", {recursive:true});
+await fs.mkdir(new URL("./", output), {recursive:true});
 await fs.writeFile(
-  "global-intelligence/country-mesh/generated/coverage-matrix.v1.json",
+  output,
   JSON.stringify({version:"1.0", country_count:195, category_count:3, cell_count:585, cells}, null, 2)+"\n"
 );
-console.log(JSON.stringify({ok:true,country_count:195,cell_count:585,output:"global-intelligence/country-mesh/generated/coverage-matrix.v1.json"},null,2));
+console.log(JSON.stringify({ok:true,country_count:195,cell_count:585,output:output.pathname},null,2));
