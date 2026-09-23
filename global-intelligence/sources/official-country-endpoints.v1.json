@@ -1,0 +1,13 @@
+{
+  "version":"1.0",
+  "policy":{
+    "purpose":"Country-primary redundancy registry. A configured endpoint is not production-approved until identity, licensing, freshness, machine-readability and runtime health are verified.",
+    "fallback_rule":"World Bank/IMF remain global macro fallbacks when a country-primary endpoint is unavailable."
+  },
+  "entries":[
+    {"source_id":"us_bls_public","country_iso3":"USA","category":"MACRO","institution":"U.S. Bureau of Labor Statistics","transport":"JSON","access":"free_no_key","base_url":"https://api.bls.gov/publicAPI/v2","path":"timeseries/data","example_query":{"seriesid":["LNS14000000"],"startyear":"2024","endyear":"2025"},"status":"CANDIDATE_RUNTIME"},
+    {"source_id":"uk_ons_public","country_iso3":"GBR","category":"MACRO","institution":"UK Office for National Statistics","transport":"JSON","access":"free_public_api","base_url":"https://api.beta.ons.gov.uk/v1","path":"","example_query":{},"status":"DISCOVERY_REQUIRED"},
+    {"source_id":"india_rbi_public","country_iso3":"IND","category":"MACRO","institution":"Reserve Bank of India","transport":"official_web_or_dataset_api","access":"free_public_data","base_url":"https://data.rbi.org.in","path":"","example_query":{},"status":"DISCOVERY_REQUIRED"},
+    {"source_id":"ecb_public","country_iso3":"DEU","category":"MACRO","institution":"European Central Bank","transport":"SDMX","access":"free_public_api","base_url":"https://data-api.ecb.europa.eu/service","path":"","example_query":{},"status":"CANDIDATE_RUNTIME"}
+  ]
+}
