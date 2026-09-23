@@ -10,6 +10,7 @@
     "gate:coverage": "node scripts/run-coverage-gates.mjs",
     "gate:all": "npm run validate:countries && npm run generate:coverage && npm run gate:coverage",
     "probe:world-bank": "node scripts/probe-world-bank-macro.mjs",
-    "probe:imf": "node scripts/probe-imf-macro.mjs"
+    "probe:imf": "node scripts/probe-imf-macro.mjs",
+    "probe:eurostat": "node scripts/probe-eurostat-macro.mjs"
   }
 }
