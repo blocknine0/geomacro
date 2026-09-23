@@ -34,6 +34,9 @@ on:
         description: "For paid authenticated E2E only, type exactly GEOMACRO_TESTNET_USDC"
         required: false
         type: string
+  push:
+    branches:
+      - ops/live-testnet-api-100-e2e
   schedule:
     - cron: "*/15 * * * *"
     - cron: "23 */6 * * *"
@@ -308,6 +311,7 @@ jobs:
   developer-paid-e2e:
     if: >-
       ${{
+        (github.event_name == 'push' && github.ref == 'refs/heads/ops/live-testnet-api-100-e2e') ||
         (github.event_name == 'schedule' && github.event.schedule == '41 2 * * *' && vars.GEOMACRO_TESTNET_DEVELOPER_E2E_ENABLED == 'true') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e')
       }}
