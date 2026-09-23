@@ -105,7 +105,7 @@ export async function fetchComtradeTradeFlows(countryIso3, {
 }={}) {
   const [exportsRows,importsRows]=await Promise.all([
     fetchComtrade(countryIso3,{reporterCode,period,cmdCode,flowCode:"X",partnerCode,partner2Code,motCode,customsCode,maxRecords,allowPreview,category,sourceId}),
-    fetchComtrade(countryIso3,{reporterCode,period,cmdCode,flowCode:"M",partnerCode,partner2Code,motCode,customsCode,maxRecords,allowPreview})
+    fetchComtrade(countryIso3,{reporterCode,period,cmdCode,flowCode:"M",partnerCode,partner2Code,motCode,customsCode,maxRecords,allowPreview,category,sourceId})
   ]);
 
   const sum=(rows,key) => rows.reduce((total,row)=>{
