@@ -156,6 +156,11 @@ generateInternal(
     input.delivery_profile ??
     "CANONICAL";
 
+  const sourceDeliveryProfile =
+    corridorCountrySourceDeliveryProfile(
+      deliveryProfile,
+    );
+
   const [
     origin,
     destination,
@@ -164,13 +169,13 @@ generateInternal(
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         originIso3,
         boundary,
-        deliveryProfile,
+        sourceDeliveryProfile,
       ),
 
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         destinationIso3,
         boundary,
-        deliveryProfile,
+        sourceDeliveryProfile,
       ),
     ]);
 
