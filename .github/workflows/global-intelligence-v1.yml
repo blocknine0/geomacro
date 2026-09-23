@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - feature/global-intelligence-v1
+  workflow_dispatch:
 
 jobs:
   structural-and-unit:
@@ -24,3 +25,31 @@ jobs:
         run: npm run gate:source-policy
       - name: Unit and deterministic tests
         run: npm run test:all
+
+  canonical-coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: global-intelligence
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require canonical registry credentials
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+      - name: Import canonical 195-country registry
+        run: npm run import:countries
+      - name: Validate canonical country registry
+        run: npm run validate:countries
+      - name: Generate 585-cell coverage matrix
+        run: npm run generate:coverage
+      - name: Run structural coverage gates
+        run: npm run gate:coverage
+      - name: Validate mineral country coverage
+        run: npm run validate:mineral-country
