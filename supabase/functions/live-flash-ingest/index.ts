@@ -203,7 +203,7 @@ async function verifyGitHubActionsOidc(
     const pullRequestWorkflowAuthorized =
       typeof payload.event_name === "string" &&
       payload.event_name === "pull_request" &&
-      /^refs\/pull\/\\d+\/merge$/.test(
+      /^refs\/pull\/[0-9]+\/merge$/.test(
         String(payload.ref ?? ""),
       ) &&
       (
