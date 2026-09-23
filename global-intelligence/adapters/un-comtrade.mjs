@@ -2,7 +2,7 @@ import {getJson,observation} from "./http.mjs";
 
 const PREVIEW_BASE_URL="https://comtradeapi.un.org/public/v1";
 const DATA_BASE_URL="https://comtradeapi.un.org/data/v1";
-const REFERENCE_URL="https://comtradeapi.un.org/files/v1/app/reference/partnerAreas.json";
+const REFERENCE_URL="https://comtradeapi.un.org/files/v1/app/reference/Reporters.json";
 
 let reporterCatalogPromise=null;
 
@@ -35,11 +35,11 @@ export async function fetchComtradeReporterCatalog(){
       const results=Array.isArray(data?.results) ? data.results : [];
       const map={};
       for(const row of results){
-        const iso3=String(row.PartnerCodeIsoAlpha3 ?? "").trim().toUpperCase();
-        const code=Number(row.PartnerCode);
+        const iso3=String(row.reporterCodeIsoAlpha3 ?? row.ReporterCodeIsoAlpha3 ?? "").trim().toUpperCase();
+        const code=Number(row.reporterCode);
         if(!/^[A-Z]{3}$/.test(iso3) || !Number.isInteger(code) || row.isGroup===true) continue;
         if(row.entryExpiredDate) continue;
-        if(!map[iso3]) map[iso3]={code,name:row.PartnerDesc ?? row.text ?? iso3};
+        if(!map[iso3]) map[iso3]={code,name:row.reporterDesc ?? row.ReporterDesc ?? row.text ?? iso3};
       }
       return map;
     }).catch(error=>{ reporterCatalogPromise=null; throw error; });
