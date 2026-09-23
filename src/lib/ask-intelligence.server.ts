@@ -156,8 +156,8 @@ const CATEGORY_HINTS: Record<string, string[]> = {
 
 const COLUMNS =
   "id,source_title,source_url,source_name,source_domain,category,summary,narrative,severity,confidence,delta,published_at,created_at";
-const RECENT_LIMIT = 120;
-const KEYWORD_LIMIT = 60;
+const RECENT_LIMIT = 180;
+const KEYWORD_LIMIT = 100;
 const MAX_EVIDENCE = 5;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -262,14 +262,15 @@ async function retrieve(terms: string[], categories: string[]) {
   const supabase = getAppSupabase();
   if (!supabase) throw new Error("Intelligence store unavailable");
 
-  const recentSince = new Date(Date.now() - 7 * DAY).toISOString();
-  const keywordSince = new Date(Date.now() - 30 * DAY).toISOString();
+  const recentSince = new Date(Date.now() - 14 * DAY).toISOString();
+  const keywordSince = new Date(Date.now() - 90 * DAY).toISOString();
 
   const recent = supabase
     .from("events")
     .select(COLUMNS)
     .in("category", ["geopolitics", "macro", "rare_earth"])
     .gte("created_at", recentSince)
+    .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(RECENT_LIMIT);
 
@@ -290,6 +291,7 @@ async function retrieve(terms: string[], categories: string[]) {
         .in("category", ["geopolitics", "macro", "rare_earth"])
         .gte("created_at", keywordSince)
         .or(filters.join(","))
+        .order("published_at", { ascending: false, nullsFirst: false })
         .order("severity", { ascending: false })
         .limit(KEYWORD_LIMIT),
     );
