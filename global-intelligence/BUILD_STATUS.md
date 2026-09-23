@@ -56,7 +56,7 @@ Credentials must be supplied only through the application's secret/environment m
 
 - Added configuration-driven national-statistics/central-bank onboarding contract, official JSON adapter, country-primary registry and U.S. BLS runtime probe. Discovery-required endpoints remain outside governed ingestion until exact dataset routes are pinned.
 
-- Corrected UN Comtrade reporter resolution to use the official `Reporters.json` reference rather than `partnerAreas.json`. UN Comtrade distinguishes reporter countries from partner areas, and the reporter catalog is the canonical mapping for country-level reporter queries. citeturn0search0turn0search3
-- Added a real USGS Minerals Yearbook Volume III CSV parser for production and facilities evidence, with explicit `PRODUCTION` and `FACILITY` evidence types and release provenance. The official 2024 release provides CSV production/facility tables covering 2020–2024 and is CC0/public domain. citeturn1view0turn0search4
+- Corrected UN Comtrade reporter resolution to use the official `Reporters.json` reference rather than `partnerAreas.json`. UN Comtrade distinguishes reporter countries from partner areas, and the reporter catalog is the canonical mapping for country-level reporter queries.
+- Added a real USGS Minerals Yearbook Volume III CSV parser for production and facilities evidence, with explicit `PRODUCTION` and `FACILITY` evidence types and release provenance. The official 2024 release provides CSV production/facility tables covering 2020–2024 and is CC0/public domain.
 - Added an explicit minerals reconciliation layer that keeps production, exports, imports, and trade balance as separate evidence types and refuses to convert unlike measures into a single production claim.
 - Complete 195-country reporter resolution, runtime PASS, full mineral concordance, freshness, and commercial/re-dissemination review remain open.
