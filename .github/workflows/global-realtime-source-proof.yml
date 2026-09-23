@@ -247,6 +247,11 @@ jobs:
           set -euo pipefail
           INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=realtime_fanout           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=realtime_fanout           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-realtime-fanout.log
 
+      - name: Refresh GDELT V2 orchestrator state after GDELT convergence
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=gdelt_v2           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=gdelt_v2           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-gdelt-v2.log
+
       - name: Refresh production-readiness orchestrator state after GDELT convergence
         run: |
           set -euo pipefail
