@@ -8,7 +8,7 @@
     "generate:coverage": "node scripts/generate-coverage-matrix.mjs",
     "probe:sources": "node scripts/probe-free-sources.mjs",
     "gate:coverage": "node scripts/run-coverage-gates.mjs",
-    "gate:all": "npm run validate:countries && npm run generate:coverage && npm run gate:coverage",
+    "gate:all": "npm run validate:countries && npm run generate:coverage && npm run gate:coverage && npm run validate:mineral-country",
     "probe:world-bank": "node scripts/probe-world-bank-macro.mjs",
     "probe:imf": "node scripts/probe-imf-macro.mjs",
     "probe:eurostat": "node scripts/probe-eurostat-macro.mjs",
@@ -25,7 +25,7 @@
     "test:verifier": "node scripts/test-cross-source-verifier.mjs",
     "test:all": "npm run test:verifier && npm run test:minerals && npm run test:health && npm run test:usgs-mcs && npm run test:mineral-normalization && npm run test:engine-routing && npm run test:telegram",
     "gate:source-policy": "node scripts/check-source-policy.mjs",
-    "gate:structure": "npm run gate:source-policy && npm run validate:countries && npm run generate:coverage && npm run gate:coverage",
+    "gate:structure": "npm run gate:source-policy && npm run validate:countries && npm run generate:coverage && npm run gate:coverage && npm run validate:mineral-country",
     "test:engine-routing": "node scripts/test-engine-routing.mjs",
     "test:telegram": "node scripts/test-telegram-normalization.mjs"
   }
