@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import {parseUsGSMcsCsv,USGS_MCS_2026_RELEASE} from "../adapters/usgs-mcs-2026.mjs";
+const csv="MCS chapter,Section,Commodity,Country,Statistics,Statistics_detail,Unit,Year,Value,Notes,Is critical mineral 2025\nCobalt,World,Cobalt,Democratic Republic of the Congo,Mine production,,metric tons,2025,220000,,Yes\n";
+const rows=parseUsGSMcsCsv(csv);
+assert.equal(rows.length,1);
+assert.equal(rows[0].raw.evidence_type,"PRODUCTION");
+assert.equal(rows[0].raw.value,220000);
+assert.equal(rows[0].raw.year,2025);
+assert.equal(rows[0].raw.critical_mineral_2025,"Yes");
+assert.equal(USGS_MCS_2026_RELEASE.sciencebase_item,"696a75d5d4be0228872d3bf8");
+assert.equal(USGS_MCS_2026_RELEASE.license,"CC0");
+console.log(JSON.stringify({status:"PASS",rows:rows.length,release:USGS_MCS_2026_RELEASE},null,2));
