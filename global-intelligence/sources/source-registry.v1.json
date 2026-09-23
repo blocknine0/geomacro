@@ -342,7 +342,6 @@
     "version": "1.0",
     "required_sources": [
       "ecb",
-      "imf",
       "oecd",
       "bis",
       "eurostat",
@@ -357,6 +356,15 @@
     ],
     "probe_command": "npm run probe:public",
     "production_enablement_requires_runtime_pass": true,
-    "copernicus_download_requires_authorized_access": true
+    "copernicus_download_requires_authorized_access": true,
+    "blocked_sources": [
+      {
+        "id": "imf_sdmx",
+        "reason": "provider_blocked_from_github_actions_runner",
+        "requires_runtime_certification": true,
+        "production_enablement": false
+      }
+    ],
+    "notes": "All listed public sources must pass the runtime probe. IMF remains explicitly blocked and is not production-enabled until its authenticated/public API runtime path is certified."
   }
 }
