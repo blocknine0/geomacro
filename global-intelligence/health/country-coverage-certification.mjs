@@ -12,6 +12,15 @@ const registry=JSON.parse(await fs.readFile(registryPath,"utf8"));
 const countries=countriesRaw.countries;
 if(!Array.isArray(countries)||countries.length<195) throw new Error("Country universe must contain at least 195 countries");
 if(matrix.cell_count!==countries.length*3||matrix.cells?.length!==countries.length*3) throw new Error("Coverage matrix does not match country universe");
+const countryKeys=new Set(countries.map(country=>String(country.iso3).toUpperCase()));
+const matrixKeys=new Set();
+for(const cell of matrix.cells){
+ const iso3=String(cell.country_iso3||"").toUpperCase(); const category=String(cell.category||"").toUpperCase();
+ if(!countryKeys.has(iso3)||!categories.includes(category)) throw new Error("Coverage matrix contains an invalid country/category cell");
+ if(cell.status!=="CONFIGURED") throw new Error("Coverage matrix source state must be CONFIGURED before certification");
+ const key=iso3+"|"+category; if(matrixKeys.has(key)) throw new Error("Coverage matrix contains duplicate country/category cells"); matrixKeys.add(key);
+}
+if(matrixKeys.size!==countries.length*3) throw new Error("Coverage matrix country/category keys are incomplete");
 if(!Array.isArray(runtime.results)) throw new Error("Runtime audit results are required");
 const sourceMeta=new Map(); for(const category of categories) for(const source of registry.categories?.[category]??[]) sourceMeta.set(source.id,{...source,category});
 const observed=new Map();
