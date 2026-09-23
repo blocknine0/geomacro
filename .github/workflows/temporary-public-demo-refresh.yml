@@ -41,7 +41,7 @@ jobs:
           });
           if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('Risk Object signing key must be Ed25519');
           const publicB64 = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
-          fs.appendFileSync(process.env.GITHUB_ENV, 'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\\n');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + ''\n');
           NODE
       # Validation commit trigger.
       - name: Refresh public demo Risk Objects
