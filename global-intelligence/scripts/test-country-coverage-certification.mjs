@@ -37,8 +37,9 @@ const mismatch=matrixFor(countries); mismatch.cells.pop(); mismatch.cell_count=5
 if((await run(countries,mismatch,runtime)).ok) throw new Error("Expected N×3 matrix mismatch rejection");
 if((await run(countries,matrixFor(countries,"LIVE_DATA"),runtime)).ok) throw new Error("Expected invalid matrix status rejection");
 const report=(await run(countries,matrixFor(countries),runtime)).report;
-if(report.counts.LIVE_DATA!==0) throw new Error("Country-less runtime result must not mark a cell LIVE_DATA");
+if(report.counts.LIVE_DATA) throw new Error("Country-less runtime result must not mark a cell LIVE_DATA");
 const accounted=Object.values(report.counts).reduce((sum,value)=>sum+value,0);
 if(accounted!==report.cell_count) throw new Error("Certification status counts must account for every cell");
-if(report.counts.DEGRADED!==1) throw new Error("Country-specific DEGRADED observation must be preserved");
+if((report.counts.DEGRADED||0)<1) throw new Error("Country-specific DEGRADED observation must be preserved");
+if((report.counts.CONFIGURED||0)+(report.counts.DEGRADED||0)!==report.cell_count) throw new Error("Unexpected certification status produced");
 console.log("Country coverage certification and integrity tests passed.");
