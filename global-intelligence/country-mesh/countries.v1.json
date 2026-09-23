@@ -1,5 +1,7 @@
 {
   "source": "runtime-canonical-country-registry",
-  "status": "PLACEHOLDER_UNTIL_GENERATED_FROM_195_COUNTRY_REGISTRY",
+  "status": "RUNTIME_GENERATED_FROM_ALL_ENABLED_REGISTRY_COUNTRIES",
+  "baseline_count": 195,
+  "country_universe": "all_enabled_registry_countries",
   "countries": []
 }
