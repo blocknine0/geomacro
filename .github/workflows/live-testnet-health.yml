@@ -40,7 +40,9 @@ on:
     - cron: "41 2 * * *"
     - cron: "17 */6 * * *"
   push:
-    branches: [main]
+    branches:
+      - main
+      - fix/testnet-developer-paid-e2e
     paths:
       - ".github/workflows/live-testnet-health.yml"
 
@@ -308,8 +310,8 @@ jobs:
   developer-paid-e2e:
     if: >-
       ${{
-        (github.event_name == 'schedule' && github.event.schedule == '41 2 * * *' && vars.GEOMACRO_TESTNET_DEVELOPER_E2E_ENABLED == 'true') ||
-        (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e')
+        (github.event_name == 'push' && github.ref == 'refs/heads/fix/testnet-developer-paid-e2e') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e' && inputs.confirmation == 'GEOMACRO_TESTNET_USDC')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -320,11 +322,9 @@ jobs:
     env:
       GEOMACRO_TESTNET_E2E_BASE_URL: https://geomacro.live
       GEOMACRO_TESTNET_E2E_EXPECTED_HOST: geomacro.live
-      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
-      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
-      GEOMACRO_TESTNET_DEVELOPER_API_KEY: ${{ secrets.GEOMACRO_TESTNET_DEVELOPER_API_KEY }}
-      GEOMACRO_TESTNET_DEVELOPER_API_SECRET: ${{ secrets.GEOMACRO_TESTNET_DEVELOPER_API_SECRET }}
-      GEOMACRO_TESTNET_E2E_CHAIN_KEY: arcTestnet
+      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF }}
+      GEOMACRO_TESTNET_E2E_RPC_URL: https://sepolia.base.org
+      GEOMACRO_TESTNET_E2E_CHAIN_KEY: baseSepolia
       GEOMACRO_TESTNET_E2E_MAX_USDC: '0.5'
       GEOMACRO_TESTNET_E2E_ARTIFACT_DIR: artifacts/testnet-developer-live-e2e
     steps:
@@ -332,8 +332,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in GEOMACRO_TESTNET_E2E_PRIVATE_KEY GEOMACRO_TESTNET_DEVELOPER_API_KEY GEOMACRO_TESTNET_DEVELOPER_API_SECRET; do test -n "${!name:-}"; done
-          echo "Developer paid E2E uses only the dedicated Testnet wallet and Testnet USDC." >> "$GITHUB_STEP_SUMMARY"
+          test -n "${GEOMACRO_TESTNET_E2E_PRIVATE_KEY:-}"
+          test "$GEOMACRO_TESTNET_E2E_CHAIN_KEY" = "baseSepolia"
+          test "$GEOMACRO_TESTNET_E2E_RPC_URL" = "https://sepolia.base.org"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "${{ inputs.confirmation }}" != "GEOMACRO_TESTNET_USDC" ]; then exit 1; fi
+          echo "Developer paid E2E provisions wallet-bound Testnet API credentials at runtime and uses only Testnet USDC." >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
@@ -342,7 +345,7 @@ jobs:
           bun-version: 1.4.2
       - name: Install exact dependencies
         run: timeout 5m bun install --frozen-lockfile --ignore-scripts
-      - name: Run real-wallet Developer API E2E
+      - name: Run real-wallet Developer API E2E with runtime credential provisioning
         run: timeout 12m bun scripts/testnet/live-developer-api-e2e.mjs
       - name: Upload sanitized Developer API E2E evidence
         if: always()
