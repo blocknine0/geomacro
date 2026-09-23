@@ -327,6 +327,7 @@
   "credentialed_runtime_gate": {
     "version": "1.0",
     "required_env": [
+      "BLS_API_KEY",
       "BEA_API_KEY",
       "ALPHA_VANTAGE_API_KEY",
       "EIA_API_KEY",
