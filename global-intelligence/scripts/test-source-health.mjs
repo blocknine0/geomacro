@@ -1,18 +1,13 @@
 import assert from "node:assert/strict";
-import { evaluateFreshness, aggregateSourceHealth } from "../health/source-health.mjs";
-
-const fresh=evaluateFreshness("2026-09-22T00:00:00Z",{now:new Date("2026-09-23T00:00:00Z"),maxAgeDays:30});
-const stale=evaluateFreshness("2026-07-01T00:00:00Z",{now:new Date("2026-09-23T00:00:00Z"),maxAgeDays:30});
-assert.equal(fresh.status,"FRESH");
-assert.equal(stale.status,"STALE");
-
-const aggregate=aggregateSourceHealth([
-  {source_id:"b",category:"MACRO",status:"FAIL",checked_at:"2026-09-23T00:00:01Z",latency_ms:2},
-  {source_id:"a",category:"MACRO",status:"PASS",checked_at:"2026-09-23T00:00:01Z",latency_ms:1},
-  {source_id:"a",category:"MACRO",status:"FAIL",checked_at:"2026-09-22T00:00:01Z",latency_ms:4}
-]);
-assert.equal(aggregate.source_count,2);
-assert.equal(aggregate.counts.PASS,1);
-assert.equal(aggregate.counts.FAIL,1);
-assert.deepEqual(aggregate.results.map(x=>x.source_id),["a","b"]);
-console.log(JSON.stringify({status:"PASS",fresh,stale,counts:aggregate.counts},null,2));
+import {evaluateFreshness,aggregateSourceHealth,certifySourceHealth} from "../health/source-health.mjs";
+const now=new Date("2026-09-23T00:00:00Z");
+assert.equal(evaluateFreshness("2026-09-22T00:00:00Z",{now,maxAgeDays:30}).status,"FRESH");
+assert.equal(evaluateFreshness("2026-07-01T00:00:00Z",{now,maxAgeDays:30}).status,"STALE");
+assert.equal(evaluateFreshness("not-a-date",{now}).status,"UNKNOWN");
+const results=[{source_id:"usgs",status:"PASS",checked_at:"2026-09-23T00:00:00Z"},{source_id:"bgs",status:"LICENSE_REVIEW",checked_at:"2026-09-23T00:00:01Z"},{source_id:"comtrade",status:"PASS",checked_at:"2026-09-23T00:00:02Z"}];
+const aggregated=aggregateSourceHealth(results);
+assert.equal(aggregated.source_count,3); assert.equal(aggregated.counts.PASS,2); assert.equal(aggregated.counts.LICENSE_REVIEW,1);
+assert.equal(certifySourceHealth(results,{requiredSources:["usgs","comtrade"]}).certification.status,"NOT_CERTIFIED");
+const certified=certifySourceHealth([{source_id:"usgs",status:"PASS",checked_at:"2026-09-23T00:00:00Z"},{source_id:"comtrade",status:"PASS",checked_at:"2026-09-23T00:00:01Z"}],{requiredSources:["usgs","comtrade"]});
+assert.equal(certified.certification.status,"CERTIFIED");
+console.log(JSON.stringify({status:"PASS",source_count:aggregated.source_count,certification:certified.certification},null,2));
