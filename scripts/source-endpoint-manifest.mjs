@@ -26,6 +26,7 @@ export async function collectMigrationEndpointManifest(root = process.cwd()) {
     "968_country_raw_web_snapshot_store.sql",
     "969_telegram_global_discovery_metadata.sql",
     "970_realtime_scope_fanout_mesh.sql",
+    "973_completed_source_access_registry.sql",
   ]);
   // Phase-B endpoint census remains frozen at 933; Stage-1 realtime fanout
   // has its own source/target governance and is audited separately.
