@@ -9,7 +9,7 @@ export type ArcNetwork = {
   explorer: string;
   currency: { name: string; symbol: string; decimals: number };
   faucet?: string;
-  live: boolean; // false until mainnet ships
+  live: boolean; // true only when Geomacro has explicitly enabled the network
 };
 
 /**
@@ -52,7 +52,7 @@ export const ARC_MAINNET: ArcNetwork = {
   rpcUrl: "https://rpc.arc.network",
   explorer: "https://arcscan.app",
   currency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  live: false, // flip to true after mainnet launches
+  live: false, // Arc is public; Geomacro Arc-mainnet product execution remains disabled
 };
 
 export const ARC_NETWORKS: ArcNetwork[] = [ARC_MAINNET, ARC_TESTNET];
