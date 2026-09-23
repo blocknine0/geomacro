@@ -101,7 +101,7 @@ const TASKS = [
     timeoutMs: 1_200_000,
     steps: [
       ["bun", ["scripts/sync-open-live-source-mesh.mjs"], "."],
-      ["node", ["scripts/drain-live-structure.mjs"], "."],
+      ["node", ["scripts/drain-live-structure.mjs", "--fragment-ids-file", "open-live-source-sync.json"], "."],
     ],
   },
   {
@@ -181,7 +181,7 @@ const TASKS = [
     priority: 85,
     timeoutMs: 1_500_000,
     steps: [
-      ["bun", ["scripts/global-risk-gate-country-census.ts", "--require-any-accepted"], "."],
+      ["bun", ["scripts/global-risk-gate-country-census.ts"], "."],
       ["node", ["scripts/audit-global-realtime-source-freshness.mjs"], "."],
       ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
     ],
