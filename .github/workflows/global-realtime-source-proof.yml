@@ -269,24 +269,68 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_DB_URL}"
-          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 <<'SQL'
-          update public.live_external_sources
-          set
-            enabled_for_commercial_signals = false,
-            notes = coalesce(notes, '') ||
-              ' Commercial signals disabled fail-closed until source certification is complete.',
-            updated_at = now()
-          where source_id in (
-            'world_bank_indicators',
-            'unhcr_refugee_statistics',
-            'usgs_mcs',
-            'ucdp_candidate',
-            'world_bank_qpsd',
-            'world_bank_wgi_political_stability',
-            'eurostat_government_finance'
-          );
-          SQL
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+
+          const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") {
+            throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+          }
+
+          const db = createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+
+          const { data: sources, error: sourceError } = await db
+            .from("live_external_sources")
+            .select("source_id,enabled_for_commercial_signals");
+          if (sourceError) throw sourceError;
+
+          const { data: certs, error: certError } = await db
+            .from("live_source_certification_records")
+            .select("source_id,certification_state,endpoint_status,rights_status,schema_status,freshness_status,provenance_status,independence_status,adapter_status,runtime_status,fallback_status");
+          if (certError) throw certError;
+
+          const certById = new Map((certs ?? []).map((row) => [String(row.source_id), row]));
+          const toDisable = (sources ?? [])
+            .filter((source) => source.enabled_for_commercial_signals === true)
+            .filter((source) => {
+              const cert = certById.get(String(source.source_id));
+              return !(
+                cert &&
+                cert.certification_state === "CERTIFIED" &&
+                cert.endpoint_status === "PASS" &&
+                ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
+                ["PASS", "NOT_APPLICABLE"].includes(String(cert.schema_status ?? "")) &&
+                ["FRESH", "VARIABLE", "NOT_APPLICABLE"].includes(String(cert.freshness_status ?? "")) &&
+                ["PASS", "NOT_APPLICABLE"].includes(String(cert.provenance_status ?? "")) &&
+                ["PASS", "NOT_APPLICABLE"].includes(String(cert.independence_status ?? "")) &&
+                ["TESTED", "NOT_APPLICABLE"].includes(String(cert.adapter_status ?? "")) &&
+                ["PASS", "NOT_APPLICABLE"].includes(String(cert.runtime_status ?? "")) &&
+                ["READY", "NOT_REQUIRED"].includes(String(cert.fallback_status ?? ""))
+              );
+            })
+            .map((source) => String(source.source_id));
+
+          if (toDisable.length) {
+            const { error } = await db
+              .from("live_external_sources")
+              .update({
+                enabled_for_commercial_signals: false,
+                updated_at: new Date().toISOString(),
+              })
+              .in("source_id", toDisable);
+            if (error) throw error;
+          }
+
+          console.log(JSON.stringify({
+            commercial_sources_checked: (sources ?? []).filter((s) => s.enabled_for_commercial_signals === true).length,
+            uncertified_sources_disabled: toDisable,
+            fail_closed: true,
+          }, null, 2));
+          NODE
 
       - name: Verify final realtime contracts
         run: |
