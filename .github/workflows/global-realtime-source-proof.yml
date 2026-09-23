@@ -4,12 +4,23 @@ on:
   pull_request:
     paths:
       - "scripts/audit-global-realtime-source-freshness.mjs"
+      - "scripts/audit-global-realtime-intelligence-100.mjs"
+      - "scripts/audit-global-raw-source-runtime.mjs"
+      - "scripts/audit-realtime-scope-fanout.mjs"
+      - "scripts/audit-gdelt-dependency-live.mjs"
+      - "scripts/run-gdelt-gal-cycle.mjs"
+      - "scripts/verify-gdelt-gal-cycle.mjs"
+      - "scripts/sync-country-raw-source-mesh.mjs"
+      - "scripts/drain-live-structure.mjs"
+      - "scripts/intelligence-orchestrator.mjs"
+      - "supabase/functions/live-flash-ingest/index.ts"
+      - "supabase/functions/live-flash-corroborate/index.ts"
       - "supabase/migrations/920_multi_source_commercial_registry.sql"
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
 concurrency:
-  group: geomacro-intelligence-orchestrator
-  cancel-in-progress: false
+  group: geomacro-global-realtime-source-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -44,5 +55,284 @@ jobs:
           path: |
             global-realtime-source-freshness.json
             global-realtime-source-freshness.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  exact-head-production-realtime-acceptance:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+      INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
+      RELIEFWEB_APP_NAME: ${{ secrets.RELIEFWEB_APP_NAME }}
+      NASA_FIRMS_MAP_KEY: ${{ secrets.NASA_FIRMS_MAP_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      LIVE_STRUCTURE_MAX_ATTEMPTS: 4
+      LIVE_STRUCTURE_ATTEMPT_TIMEOUT_MS: 90000
+      BREAKING_RSS_ENABLED: true
+      BREAKING_RSS_RUN_ONCE: true
+      TELEGRAM_ENABLED: false
+      GRI_PUBLISH_ENABLED: false
+      RAW_SOURCE_SYNC_CONCURRENCY: 16
+      RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
+      LIVE_STRUCTURE_DRAIN_CONCURRENCY: 8
+      INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
+      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
+      INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,rss_live,realtime_fanout
+      OPEN_LIVE_SOURCE_SYNC_OUTPUT: open-live-source-sync.json
+      GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
+      GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Install pinned RSS worker dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --disable-pip-version-check --no-input -r workers/telegram-flash/requirements.txt
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Verify authoritative production target
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+        with:
+          version: 2.117.0
+
+      - name: Deploy realtime flash functions
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN}"
+          supabase functions deploy live-flash-ingest --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
+          supabase functions deploy live-flash-corroborate --project-ref "${SUPABASE_PROJECT_ID}" --no-verify-jwt
+
+      - name: Acquire scoped GitHub Actions OIDC token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+          oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+          token="$(printf "%s" "${oidc_response}" | jq -er ".value")"
+          test -n "${token}"
+          echo "::add-mask::${token}"
+          printf "GEOMACRO_FLASH_OIDC_TOKEN=%s\n" "${token}" >> "${GITHUB_ENV}"
+
+      - name: Inspect scoped OIDC claims
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, os
+          token = os.environ["GEOMACRO_FLASH_OIDC_TOKEN"]
+          payload = token.split(".", 2)[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload.encode()))
+          print(json.dumps({
+            "repository": claims.get("repository"),
+            "ref": claims.get("ref"),
+            "event_name": claims.get("event_name"),
+            "workflow": claims.get("workflow"),
+            "workflow_ref": claims.get("workflow_ref"),
+            "job_workflow_ref": claims.get("job_workflow_ref"),
+            "head_ref": claims.get("head_ref"),
+            "base_ref": claims.get("base_ref")
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Smoke-check realtime corroboration OIDC
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GEOMACRO_FLASH_OIDC_TOKEN}"
+          code="$(curl --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 --output /tmp/realtime-corroborate-health.json --write-out '%{http_code}' -X POST -H "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" -H "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" -H 'Content-Type: application/json' "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate?mode=health")"
+          cat /tmp/realtime-corroborate-health.json
+          test "${code}" = "200"
+          grep -q '"authenticated":true' /tmp/realtime-corroborate-health.json
+
+      - name: Refresh all three raw runtime categories
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-acceptance-${category}.json" 2>&1
+            ) > "category-acceptance-${category}.log" 2>&1 &
+          done
+          wait
+          node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-acceptance-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
+
+      - name: Drain acceptance fragments in parallel
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-acceptance-${category}.json"
+            ) >> "category-acceptance-${category}.log" 2>&1 &
+          done
+          wait
+
+      - name: Run realtime orchestrator continuity
+        run: |
+          set -euo pipefail
+          node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
+
+      - name: Final GDELT first-break and scope fanout convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-cycle-final.log
+          cycle_status=${PIPESTATUS[0]}
+          set -e
+
+          if (( cycle_status != 0 )); then
+            echo "GDELT GAL cycle did not seal a new upstream file; checking the authoritative first-break freshness window before failing."
+            node --input-type=module -e '
+              import { createClient } from "@supabase/supabase-js";
+              const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
+              const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+              if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+              if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+              const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+              const { data, error } = await db.from("live_ingestion_cursors").select("source_key,stream_key,status,last_success_at,last_item_at,consecutive_failures").eq("source_key","gdelt_gal").eq("stream_key","global-relevant").limit(1).maybeSingle();
+              if (error) throw new Error(error.message);
+              const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
+              const ageSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, (Date.now() - lastSuccessMs) / 1000) : Infinity;
+              const fresh = Number.isFinite(lastSuccessMs) && ageSeconds <= 1800 && ["healthy","degraded"].includes(String(data?.status ?? "")) && Number(data?.consecutive_failures ?? 0) === 0;
+              console.log(JSON.stringify({ fallback:"UPSTREAM_SOURCE_DELAYED_WITHIN_STRICT_FRESHNESS_WINDOW", source_key:data?.source_key ?? null, stream_key:data?.stream_key ?? null, status:data?.status ?? null, last_success_at:data?.last_success_at ?? null, age_seconds:Math.round(ageSeconds), consecutive_failures:Number(data?.consecutive_failures ?? 0), max_age_seconds:1800, accepted:fresh }, null, 2));
+              if (!fresh) process.exit(1);
+            '
+          fi
+
+      - name: Refresh realtime-fanout orchestrator state after GDELT convergence
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=realtime_fanout           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=realtime_fanout           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-realtime-fanout.log
+
+      - name: Refresh production-readiness orchestrator state after GDELT convergence
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=production_readiness           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=production_readiness           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-production-readiness.log
+
+      - name: Final raw freshness convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              export RAW_SOURCE_CATEGORY_ALLOWLIST="${category}"
+              timeout 15m bun scripts/sync-country-raw-source-mesh.mjs > "country-raw-source-final-${category}.json" 2>&1
+            ) > "category-final-${category}.log" 2>&1 &
+          done
+          wait
+          node -e 'const fs=require("node:fs"); for (const category of ["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]) { const f="country-raw-source-final-"+category+".json"; if(!fs.existsSync(f)) throw new Error("MISSING_"+f); const x=JSON.parse(fs.readFileSync(f,"utf8")); if(x.ok!==true || x.failed_cells!==0 || x.missing_non_gdelt_paths.length!==0 || x.processed_cells+x.already_fresh_non_gdelt_cells!==195 || x.categories.length!==1 || x.categories[0]!==category) { console.error(JSON.stringify(x,null,2)); process.exit(1); } console.log(JSON.stringify({category,expected_cells:x.expected_cells,processed_cells:x.processed_cells,already_fresh_non_gdelt_cells:x.already_fresh_non_gdelt_cells,failed_cells:x.failed_cells,missing_non_gdelt_paths:x.missing_non_gdelt_paths.length,fragment_ids:x.fragment_ids.length})); }'
+
+      - name: Drain final freshness fragments
+        shell: bash
+        run: |
+          set -euo pipefail
+          for category in GEOPOLITICS MACRO CRITICAL_MINERALS; do
+            (
+              timeout 15m node scripts/drain-live-structure.mjs --fragment-ids-file "country-raw-source-final-${category}.json"
+            ) >> "category-final-${category}.log" 2>&1 &
+          done
+          wait
+
+      - name: Enforce production commercial certification fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 <<'SQL'
+          update public.live_external_sources as src
+          set
+            enabled_for_commercial_signals = false,
+            updated_at = now()
+          where src.enabled_for_commercial_signals = true
+            and not exists (
+              select 1
+              from public.live_source_certification_records as cert
+              where cert.source_id = src.source_id
+                and cert.certification_state = 'CERTIFIED'
+                and cert.endpoint_status = 'PASS'
+                and cert.rights_status in ('COMMERCIAL_OK', 'DERIVED_ONLY')
+                and cert.schema_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.freshness_status in ('FRESH', 'VARIABLE', 'NOT_APPLICABLE')
+                and cert.provenance_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.independence_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.adapter_status in ('TESTED', 'NOT_APPLICABLE')
+                and cert.runtime_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.fallback_status in ('READY', 'NOT_REQUIRED')
+            );
+          SQL
+
+          state_count="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where enabled_for_commercial_signals = true and not exists (select 1 from public.live_source_certification_records cert where cert.source_id = live_external_sources.source_id and cert.certification_state = 'CERTIFIED' and cert.endpoint_status = 'PASS' and cert.rights_status in ('COMMERCIAL_OK','DERIVED_ONLY') and cert.schema_status in ('PASS','NOT_APPLICABLE') and cert.freshness_status in ('FRESH','VARIABLE','NOT_APPLICABLE') and cert.provenance_status in ('PASS','NOT_APPLICABLE') and cert.independence_status in ('PASS','NOT_APPLICABLE') and cert.adapter_status in ('TESTED','NOT_APPLICABLE') and cert.runtime_status in ('PASS','NOT_APPLICABLE') and cert.fallback_status in ('READY','NOT_REQUIRED'))")"
+          test "${state_count}" = "0"
+
+      - name: Verify final realtime contracts
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-raw-source-runtime.mjs
+          node scripts/audit-realtime-scope-fanout.mjs
+          node scripts/audit-gdelt-dependency-live.mjs
+
+      - name: Run strict Global Realtime Intelligence 100 gate
+        run: |
+          set -euo pipefail
+          node scripts/audit-global-realtime-intelligence-100.mjs --strict
+
+      - name: Upload exact-head production evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.1.0
+        with:
+          name: global-realtime-intelligence-100-${{ github.event.pull_request.head.sha }}
+          path: |
+            country-raw-source-acceptance-GEOPOLITICS.json
+            country-raw-source-acceptance-MACRO.json
+            country-raw-source-acceptance-CRITICAL_MINERALS.json
+            country-raw-source-final-GEOPOLITICS.json
+            country-raw-source-final-MACRO.json
+            country-raw-source-final-CRITICAL_MINERALS.json
+            intelligence-orchestrator-acceptance.log
+            category-acceptance-*.log
+            category-final-*.log
+            artifacts/global-realtime-intelligence-100/summary.json
           if-no-files-found: warn
           retention-days: 30

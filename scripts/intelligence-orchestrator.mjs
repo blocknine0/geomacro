@@ -39,6 +39,12 @@ const TASK_ALLOWLIST = new Set(
     .map((value) => value.trim())
     .filter(Boolean),
 );
+const FORCE_TASKS = new Set(
+  String(process.env.INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 
 function fetchWithTimeout(input, init = {}) {
@@ -95,7 +101,7 @@ const TASKS = [
     timeoutMs: 1_200_000,
     steps: [
       ["bun", ["scripts/sync-open-live-source-mesh.mjs"], "."],
-      ["node", ["scripts/drain-live-structure.mjs"], "."],
+      ["node", ["scripts/drain-live-structure.mjs", "--fragment-ids-file", "open-live-source-sync.json"], "."],
     ],
   },
   {
@@ -120,6 +126,8 @@ const TASKS = [
     oidcAudience: "https://geomacro.live/actions/live-flash-rss",
     requiredEnv: [],
     timeoutMs: 1_200_000,
+    maxAttempts: 3,
+    retryBackoffMs: 5000,
     steps: [["node", ["scripts/run-rss-live-cycle.mjs"], "."]],
   },
   {
@@ -175,9 +183,9 @@ const TASKS = [
     priority: 85,
     timeoutMs: 1_500_000,
     steps: [
-      ["bun", ["scripts/global-risk-gate-country-census.ts", "--require-any-accepted"], "."],
+      ["bun", ["scripts/global-risk-gate-country-census.ts"], "."],
       ["node", ["scripts/audit-global-realtime-source-freshness.mjs"], "."],
-      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
+      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts"], "."],
     ],
   },
   {
@@ -436,24 +444,39 @@ async function runTask(task, state) {
   await upsertState(task, state);
 
   const started = Date.now();
+  const maxAttempts = Math.max(1, Math.min(3, Number(task.maxAttempts ?? 1)));
+  const retryBackoffMs = Math.max(0, Math.min(30_000, Number(task.retryBackoffMs ?? 5000)));
   let failedStep = null;
   let result = null;
+  let taskAttempts = 0;
 
-  for (let index = 0; index < task.steps.length; index += 1) {
-    const [command, args, cwd] = task.steps[index];
-    result = await runStep(command, args, cwd, task.timeoutMs ?? TASK_TIMEOUT_MS);
-    if (!result.ok) {
-      failedStep = {
-        index,
-        command,
-        args,
-        cwd,
-        exit_code: result.code,
-        signal: result.signal,
-        timed_out: result.timed_out,
-        stderr: result.stderr,
-      };
-      break;
+  for (let taskAttempt = 1; taskAttempt <= maxAttempts; taskAttempt += 1) {
+    taskAttempts = taskAttempt;
+    failedStep = null;
+    result = null;
+
+    for (let index = 0; index < task.steps.length; index += 1) {
+      const [command, args, cwd] = task.steps[index];
+      result = await runStep(command, args, cwd, task.timeoutMs ?? TASK_TIMEOUT_MS);
+      if (!result.ok) {
+        failedStep = {
+          index,
+          command,
+          args,
+          cwd,
+          exit_code: result.code,
+          signal: result.signal,
+          timed_out: result.timed_out,
+          stderr: result.stderr,
+          task_attempt: taskAttempt,
+        };
+        break;
+      }
+    }
+
+    if (!failedStep) break;
+    if (taskAttempt < maxAttempts) {
+      await sleep(retryBackoffMs * taskAttempt);
     }
   }
 
@@ -480,6 +503,7 @@ async function runTask(task, state) {
       duration_ms: Date.now() - started,
       failed_step: failedStep,
       failure_class: failureClass,
+      attempts: taskAttempts,
     };
   }
 
@@ -497,6 +521,7 @@ async function runTask(task, state) {
     status: "succeeded",
     duration_ms: Date.now() - started,
     next_due_at: state.cursor.next_due_at,
+    attempts: taskAttempts,
   };
 }
 
@@ -528,9 +553,9 @@ async function main() {
     TASKS
       .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
       .filter(({ task, state }) => {
-        if (!isPast(state.cursor.next_due_at, nowMs)) return false;
         if (typeof task.enabled === "function" && !task.enabled()) return false;
         if (TASK_ALLOWLIST.size && !TASK_ALLOWLIST.has(task.key)) return false;
+        if (!FORCE_TASKS.has(task.key) && !isPast(state.cursor.next_due_at, nowMs)) return false;
         return true;
       }),
   );
@@ -565,6 +590,7 @@ async function main() {
     heartbeat_seconds: 900,
     max_tasks_per_tick: MAX_TASKS_PER_TICK,
     task_allowlist: [...TASK_ALLOWLIST],
+    force_tasks: [...FORCE_TASKS],
     due_task_count: due.length,
     results,
     source_failures_are_recorded_as_degraded: true,

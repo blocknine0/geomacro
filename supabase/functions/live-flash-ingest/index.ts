@@ -179,20 +179,6 @@ async function verifyGitHubActionsOidc(
         },
       )
 
-    if (
-      payload.repository !==
-        GITHUB_OIDC_REPOSITORY ||
-      payload.ref !==
-        "refs/heads/main" ||
-      typeof payload.event_name !==
-        "string" ||
-      !GITHUB_OIDC_ALLOWED_EVENTS.has(
-        payload.event_name,
-      )
-    ) {
-      return false
-    }
-
     const workflowRef =
       typeof payload.job_workflow_ref ===
         "string"
@@ -214,9 +200,36 @@ async function verifyGitHubActionsOidc(
         payload.workflow,
       )
 
+    const pullRequestWorkflowAuthorized =
+      typeof payload.event_name === "string" &&
+      payload.event_name === "pull_request" &&
+      /^refs\/pull\/[0-9]+\/merge$/.test(
+        String(payload.ref ?? ""),
+      ) &&
+      (
+        workflowRef ===
+          `${GITHUB_OIDC_REPOSITORY}/.github/workflows/global-realtime-source-proof.yml@${String(payload.ref ?? "")}` ||
+        payload.workflow === "global-realtime-source-proof.yml" ||
+        payload.workflow === "Global Realtime Source Proof"
+      )
+
+    const mainWorkflowAuthorized =
+      payload.ref === "refs/heads/main" &&
+      typeof payload.event_name === "string" &&
+      GITHUB_OIDC_ALLOWED_EVENTS.has(payload.event_name) &&
+      (workflowRefAuthorized || workflowFileAuthorized)
+
+    if (
+      payload.repository !== GITHUB_OIDC_REPOSITORY ||
+      (!mainWorkflowAuthorized &&
+        !pullRequestWorkflowAuthorized)
+    ) {
+      return false
+    }
+
     return (
-      workflowRefAuthorized ||
-      workflowFileAuthorized
+      mainWorkflowAuthorized ||
+      pullRequestWorkflowAuthorized
     )
   } catch {
     return false
