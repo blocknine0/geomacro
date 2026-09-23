@@ -190,15 +190,50 @@ async function fetchJson(url) {
 }
 
 async function fetchWeb(url) {
-  const response = await fetch(url, {
-    redirect: "follow",
-    headers: {
-      accept: "text/html,application/xhtml+xml,application/xml,text/xml;q=0.9,application/json;q=0.8,*/*;q=0.2",
-      "user-agent": UA,
-    },
-  });
-  if (!response.ok) throw new Error("HTTP " + response.status + " from " + url);
-  return { finalUrl: response.url || url, contentType: response.headers.get("content-type") ?? "", text: await response.text() };
+  const attempts = 3;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+
+    try {
+      const response = await fetch(url, {
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          accept: "text/html,application/xhtml+xml,application/xml,text/xml;q=0.9,application/json;q=0.8,*/*;q=0.2",
+          "user-agent": UA,
+        },
+      });
+
+      if (!response.ok) {
+        const retryable = [408, 425, 429, 500, 502, 503, 504].includes(response.status);
+        throw Object.assign(
+          new Error("HTTP " + response.status + " from " + url),
+          { retryable },
+        );
+      }
+
+      return {
+        finalUrl: response.url || url,
+        contentType: response.headers.get("content-type") ?? "",
+        text: await response.text(),
+      };
+    } catch (error) {
+      lastError = error;
+      const retryable =
+        error?.name === "AbortError" ||
+        Boolean(error?.retryable) ||
+        /fetch failed|ECONNRESET|ETIMEDOUT|ENETUNREACH|EAI_AGAIN/i.test(String(error?.message ?? ""));
+      if (!retryable || attempt === attempts) break;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 2_000));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("WEB_DIRECT_FETCH_FAILED");
 }
 
 async function writeFragment(db, target, records, nowIso) {

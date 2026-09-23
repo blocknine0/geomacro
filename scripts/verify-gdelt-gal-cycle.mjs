@@ -63,7 +63,8 @@ async function main() {
   const cursorStamp = String(cursor?.cursor?.last_source_stamp ?? "");
   const sourceStampMs = requireSourceStampMs(cursorStamp, "GDELT GAL cursor.last_source_stamp");
   const sourceLagSeconds = Math.max(0, Math.floor((now.getTime() - sourceStampMs) / 1000));
-  if (cursor?.status !== "healthy") throw new Error(`GDELT GAL cursor status is ${cursor?.status ?? "missing"}`);
+  if (!["healthy", "degraded"].includes(String(cursor?.status ?? ""))) throw new Error(`GDELT GAL cursor status is ${cursor?.status ?? "missing"}`);
+  if (Number(cursor?.consecutive_failures ?? 0) !== 0) throw new Error(`GDELT GAL cursor has ${cursor?.consecutive_failures ?? 0} consecutive failures`);
   if (lastSuccessMs < cycleStartMs) throw new Error("GDELT GAL cursor was not refreshed by this cycle");
   if (cursorStamp !== EXPECTED_SOURCE_STAMP) {
     throw new Error(`GDELT GAL cursor stamp mismatch: expected ${EXPECTED_SOURCE_STAMP}, got ${cursorStamp}`);

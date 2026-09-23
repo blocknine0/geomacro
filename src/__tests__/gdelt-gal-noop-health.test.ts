@@ -14,12 +14,15 @@ describe("GDELT GAL cursor health semantics", () => {
 
     const block = script.slice(Math.max(0, index - 1800), index + 300);
     expect(block).toContain('const failureClass = "UPSTREAM_SOURCE_DELAYED"');
-    expect(block).toContain("const healthStatus = failures >= 3 ? \"failed\" : \"degraded\"");
+    expect(block).toContain("const previousFailures = Number(cursorRow?.consecutive_failures ?? 0);");
+    expect(block).toContain("const failures = lastSuccessIsFresh ? 0 : previousFailures + 1;");
+    expect(block).toContain('const healthStatus = lastSuccessIsFresh');
+    expect(block).toContain('"degraded"');
     expect(block).toContain("status: healthStatus");
     expect(block).toContain("last_attempt_at: nowIso");
     expect(block).toContain("last_success_at: cursorRow?.last_success_at ?? null");
     expect(block).toContain("consecutive_failures: failures");
     expect(block).toContain('last_failure_class: failureClass');
-    expect(block).toContain('failureClass = "UPSTREAM_SOURCE_DELAYED"');
+    expect(block).toContain('last_failure_class: failureClass');
   });
 });

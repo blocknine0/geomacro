@@ -333,17 +333,31 @@ Deno.serve(async request => {
         workflowRef ===
           "blocknine0/geomacro/.github/workflows/global-realtime-production-repair.yml@refs/heads/fix/global-realtime-source-runtime"
 
-      githubOidcAuthorized =
-        payload.repository ===
-          GITHUB_OIDC_REPOSITORY &&
-        typeof payload.event_name ===
-          "string" &&
-        GITHUB_OIDC_ALLOWED_EVENTS.has(
-          payload.event_name,
+      const pullRequestWorkflowAuthorized =
+        typeof payload.event_name === "string" &&
+        payload.event_name === "pull_request" &&
+        /^refs\/pull\/[0-9]+\/merge$/.test(
+          String(payload.ref ?? ""),
         ) &&
         (
+          workflowRef ===
+            `${GITHUB_OIDC_REPOSITORY}/.github/workflows/global-realtime-source-proof.yml@${String(payload.ref ?? "")}` ||
+          payload.workflow === "global-realtime-source-proof.yml" ||
+          payload.workflow === "Global Realtime Source Proof"
+        )
+
+      const mainWorkflowAuthorized =
+        payload.ref === "refs/heads/main" &&
+        typeof payload.event_name === "string" &&
+        GITHUB_OIDC_ALLOWED_EVENTS.has(payload.event_name) &&
+        workflowFileAuthorized
+
+      githubOidcAuthorized =
+        payload.repository === GITHUB_OIDC_REPOSITORY &&
+        (
+          mainWorkflowAuthorized ||
           workflowRefBranchAuthorized ||
-          workflowFileAuthorized
+          pullRequestWorkflowAuthorized
         )
     } catch {
       githubOidcAuthorized = false

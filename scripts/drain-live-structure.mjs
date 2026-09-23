@@ -6,6 +6,7 @@ const APP_SUPABASE_URL = String(process.env.APP_SUPABASE_URL ?? process.env.SUPA
 const LIVE_STRUCTURE_TOKEN = String(process.env.LIVE_STRUCTURE_TOKEN ?? "").trim();
 const MAX_CYCLES = Math.max(1, Math.min(24, Number(process.env.LIVE_STRUCTURE_MAX_CYCLES ?? 12)));
 const RETRIES = Math.max(1, Math.min(5, Number(process.env.LIVE_STRUCTURE_RETRIES ?? 3)));
+const CONCURRENCY = Math.max(1, Math.min(16, Number(process.env.LIVE_STRUCTURE_DRAIN_CONCURRENCY ?? 8)));
 const argIndex = process.argv.indexOf("--fragment-ids-file");
 const IDS_FILE = String(
   argIndex >= 0 ? process.argv[argIndex + 1] ?? "" : process.env.STRUCTURE_FRAGMENT_IDS_FILE ?? "",
@@ -54,8 +55,10 @@ async function main() {
         ? raw.fragment_ids
         : [];
     const uniqueIds = [...new Set(ids.map(String).filter(Boolean))];
-    for (const fragmentId of uniqueIds) {
-      outputs.push(await post({ fragment_id: fragmentId }));
+    for (let offset = 0; offset < uniqueIds.length; offset += CONCURRENCY) {
+      const batch = uniqueIds.slice(offset, offset + CONCURRENCY);
+      const results = await Promise.all(batch.map((fragmentId) => post({ fragment_id: fragmentId })));
+      outputs.push(...results);
     }
   } else {
     for (let cycle = 0; cycle < MAX_CYCLES; cycle += 1) {

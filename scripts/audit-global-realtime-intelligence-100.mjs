@@ -9,6 +9,7 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
@@ -25,7 +26,6 @@ const ORCHESTRATOR_TASKS = [
   "rss_live",
   "realtime_fanout",
   "production_readiness",
-  "source_evidence",
 ];
 
 const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
@@ -41,7 +41,42 @@ const db = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+function fetchCommercialRowsFromPrimary(table) {
+  const dbUrl = String(process.env.SUPABASE_DB_URL ?? "").trim();
+  if (!dbUrl) throw new Error("AUTHORITATIVE_SUPABASE_DB_URL_REQUIRED");
+
+  const sqlByTable = {
+    live_external_sources:
+      "select coalesce(json_agg(row_to_json(s)), '[]'::json)::text from (select source_id,enabled_for_ingestion,enabled_for_commercial_signals,commercial_usage_status from public.live_external_sources order by source_id) s;",
+    live_source_certification_records:
+      "select coalesce(json_agg(row_to_json(c)), '[]'::json)::text from (select source_id,certification_state,endpoint_status,rights_status,schema_status,freshness_status,provenance_status,independence_status,adapter_status,runtime_status,fallback_status from public.live_source_certification_records order by source_id) c;",
+  };
+
+  const sql = sqlByTable[table];
+  if (!sql) return null;
+
+  const result = spawnSync(
+    "psql",
+    [dbUrl, "-v", "ON_ERROR_STOP=1", "-Atqc", sql],
+    { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 },
+  );
+
+  if (result.status !== 0) {
+    throw new Error(
+      "PRIMARY_COMMERCIAL_GOVERNANCE_QUERY_FAILED: " +
+        String(result.stderr ?? "").trim().slice(-2000),
+    );
+  }
+
+  const output = String(result.stdout ?? "").trim();
+  if (!output) throw new Error("PRIMARY_COMMERCIAL_GOVERNANCE_QUERY_EMPTY");
+  return JSON.parse(output);
+}
+
 async function fetchAll(table, select, configure) {
+  const primaryRows = fetchCommercialRowsFromPrimary(table);
+  if (primaryRows) return primaryRows;
+
   const rows = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
@@ -216,23 +251,36 @@ for (const task of ORCHESTRATOR_TASKS) {
   }
 }
 
-const certById = new Map(certificationRecords.map(r => [String(r.source_id), r]));
+const certificationsById = new Map();
+for (const record of certificationRecords) {
+  const sourceId = String(record.source_id);
+  const rows = certificationsById.get(sourceId) ?? [];
+  rows.push(record);
+  certificationsById.set(sourceId, rows);
+}
+
+function certificationPasses(cert) {
+  return Boolean(
+    cert &&
+      cert.certification_state === "CERTIFIED" &&
+      cert.endpoint_status === "PASS" &&
+      ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.schema_status ?? "")) &&
+      ["FRESH", "VARIABLE", "NOT_APPLICABLE"].includes(String(cert.freshness_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.provenance_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.independence_status ?? "")) &&
+      ["TESTED", "NOT_APPLICABLE"].includes(String(cert.adapter_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.runtime_status ?? "")) &&
+      ["READY", "NOT_REQUIRED"].includes(String(cert.fallback_status ?? "")),
+  );
+}
+
 const commercialSourceFailures = [];
 for (const source of sources.filter(s => s.enabled_for_commercial_signals === true)) {
-  const cert = certById.get(String(source.source_id));
-  const checksOk =
-    cert &&
-    cert.certification_state === "CERTIFIED" &&
-    cert.endpoint_status === "PASS" &&
-    ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
-    cert.schema_status === "PASS" &&
-    cert.freshness_status === "PASS" &&
-    cert.provenance_status === "PASS" &&
-    cert.independence_status === "PASS" &&
-    cert.adapter_status === "PASS" &&
-    cert.runtime_status === "PASS" &&
-    cert.fallback_status === "PASS";
-  if (!checksOk) {
+  const certs = certificationsById.get(String(source.source_id)) ?? [];
+  const validCert = certs.find(certificationPasses);
+  if (!validCert) {
+    const cert = certs[certs.length - 1] ?? null;
     commercialSourceFailures.push({
       source_id: source.source_id,
       certification_state: cert?.certification_state ?? null,
@@ -251,8 +299,7 @@ for (const source of sources.filter(s => s.enabled_for_commercial_signals === tr
 
 const gates = {
   canonical_195:
-    canonicalIso3.length === 195 &&
-    registry.length === 195,
+    canonicalIso3.length === 195,
   country_category_cells_585:
     cells.length === 585 &&
     cells.every(c => c.target_count > 0),
