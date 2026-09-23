@@ -19,7 +19,7 @@ export type AskAnswer = {
   what_changed: string;
   why_it_matters: string;
   geomacro_view: string;
-  evidence: Array<{ eventId: string; title: string; sourceUrl: string; relevance: number }>;
+  evidence: Array<{ eventId: string; title: string; relevance: number }>;
   insufficient_evidence: boolean;
   mean_relevance: number | null;
   low_confidence: boolean;
@@ -249,12 +249,10 @@ function sortByNewest(a: EventRow, b: EventRow) {
 
 function evidenceFromRows(rows: EventRow[], base = 100) {
   return rows
-    .filter((row) => Boolean(row.source_url))
     .slice(0, MAX_EVIDENCE)
     .map((row, index) => ({
       eventId: row.id,
       title: titleOf(row),
-      sourceUrl: row.source_url as string,
       relevance: Math.max(70, base - index * 6),
     }));
 }
@@ -292,7 +290,7 @@ async function searchOpenWeb(question: string): Promise<WebSearchResult[]> {
           : null,
         snippet: String(article.title ?? "").trim(),
       }))
-      .filter((item) => item.title && /^https?:\\/\\//i.test(item.url));
+      .filter((item) => item.title && /^https?:\/\//i.test(item.url));
   } finally {
     clearTimeout(timer);
   }
@@ -340,7 +338,6 @@ async function answerFromOpenWeb(question: string, gri: GriReading): Promise<Ask
   const evidence = indexes.map((index) => ({
     eventId: `web:${index}`,
     title: sources[index].title,
-    sourceUrl: undefined,
     relevance: Math.max(70, 100 - index * 5),
   }));
 
@@ -585,7 +582,6 @@ function griWhy(gri: GriReading): AskAnswer | null {
     .map((item, index) => ({
       eventId: String(item.eventId),
       title: String(item.sourceTitle ?? item.eventId),
-      sourceUrl: String(item.sourceUrl),
       relevance: Math.max(75, 100 - index * 5),
     }));
 
@@ -788,7 +784,6 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
               : "Recorded movement in the matched set is mixed."
         }`,
     evidence: selected
-      .filter(({ row }) => Boolean(row.source_url))
       .map(({ row, similarity }) => ({
         eventId: row.id,
         title: titleOf(row),
