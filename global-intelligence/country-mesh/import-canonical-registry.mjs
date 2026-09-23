@@ -5,35 +5,60 @@ const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 if (!url || !key) throw new Error("Set SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY.");
 
-const endpoint = new URL("/rest/v1/live_country_registry", url);
-endpoint.searchParams.set("select","iso2,iso3,country_name,region,subregion,aliases,demonyms,enabled");
-endpoint.searchParams.set("enabled","eq.true");
-endpoint.searchParams.set("order","iso3.asc");
-endpoint.searchParams.set("limit","500");
+async function fetchRows(table, select) {
+  const endpoint = new URL("/rest/v1/" + table, url);
+  endpoint.searchParams.set("select", select);
+  endpoint.searchParams.set("order", "country_iso2.asc");
+  endpoint.searchParams.set("limit", "500");
+  const res = await fetch(endpoint, { headers: { apikey:key, Authorization:"Bearer "+key }});
+  if (!res.ok) throw new Error(`Supabase ${table} fetch failed: ${res.status} ${await res.text()}`);
+  const rows = await res.json();
+  if (!Array.isArray(rows)) throw new Error(`${table} response is not an array.`);
+  return rows;
+}
 
-const res = await fetch(endpoint, { headers: { apikey:key, Authorization:"Bearer "+key }});
-if (!res.ok) throw new Error(`Supabase registry fetch failed: ${res.status} ${await res.text()}`);
-const rows = await res.json();
+const directory = await fetchRows(
+  "live_country_primary_source_directory",
+  "country_iso2,country_name"
+);
+const uniqueIso2 = [...new Set(directory.map(r => String(r.country_iso2 ?? "").toUpperCase()).filter(Boolean))];
+if (uniqueIso2.length !== 195) {
+  throw new Error(`Canonical 195-country baseline gate failed: primary-source directory resolved ${uniqueIso2.length} unique ISO2 countries.`);
+}
+
+const registryEndpoint = new URL("/rest/v1/live_country_registry", url);
+registryEndpoint.searchParams.set("select","iso2,iso3,country_name,region,subregion,aliases,demonyms,enabled");
+registryEndpoint.searchParams.set("iso2","in.(" + uniqueIso2.join(",") + ")");
+registryEndpoint.searchParams.set("enabled","eq.true");
+registryEndpoint.searchParams.set("limit","500");
+const registryRes = await fetch(registryEndpoint, { headers: { apikey:key, Authorization:"Bearer "+key }});
+if (!registryRes.ok) throw new Error(`Supabase registry fetch failed: ${registryRes.status} ${await registryRes.text()}`);
+const rows = await registryRes.json();
 if (!Array.isArray(rows)) throw new Error("Registry response is not an array.");
 
-const countries = rows.map(r => ({
-  iso2:r.iso2, iso3:r.iso3, name:r.country_name,
-  region:r.region ?? null, subregion:r.subregion ?? null,
-  aliases:Array.isArray(r.aliases) ? r.aliases : [],
-  demonyms:Array.isArray(r.demonyms) ? r.demonyms : []
-}));
+const byIso2 = new Map(rows.map(r => [String(r.iso2).toUpperCase(), r]));
+const countries = uniqueIso2.map(iso2 => {
+  const r = byIso2.get(iso2);
+  if (!r) throw new Error(`Canonical country directory ISO2 missing from enabled registry: ${iso2}`);
+  return {
+    iso2:r.iso2, iso3:r.iso3, name:r.country_name,
+    region:r.region ?? null, subregion:r.subregion ?? null,
+    aliases:Array.isArray(r.aliases) ? r.aliases : [],
+    demonyms:Array.isArray(r.demonyms) ? r.demonyms : []
+  };
+});
 
 const unique = new Set(countries.map(c=>c.iso3));
 if (countries.length !== 195 || unique.size !== 195) {
-  throw new Error(`Canonical registry gate failed: expected 195 enabled rows, got ${countries.length} rows / ${unique.size} unique ISO3.`);
+  throw new Error(`Canonical registry gate failed: expected 195 primary-source countries, got ${countries.length} rows / ${unique.size} unique ISO3.`);
 }
 
 const out = {
   schema_version:"country-mesh-1.0",
-  source:"public.live_country_registry",
+  source:"public.live_country_primary_source_directory + public.live_country_registry",
   generated_at:new Date().toISOString(),
   expected_count:195,
   countries
 };
 await fs.writeFile(new URL("./countries.v1.json", import.meta.url), JSON.stringify(out,null,2)+"\n");
-console.log(`Wrote ${countries.length} canonical countries.`);
+console.log(`Wrote ${countries.length} canonical countries from the governed 195-country primary-source baseline.`);
