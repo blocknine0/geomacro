@@ -16,7 +16,7 @@ permissions:
 
 
 concurrency:
-  group: geomacro-intelligence-orchestrator
+  group: public-demo-refresh-acceptance-once
   cancel-in-progress: false
 
 jobs:
