@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+# Controlled live acceptance marker: public-demo-refresh-fixed-corridor.
+
+
 concurrency:
   group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
