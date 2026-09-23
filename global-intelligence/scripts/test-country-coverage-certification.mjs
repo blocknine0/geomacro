@@ -1,7 +1,7 @@
 import fs from "node:fs/promises"; import {mkdtemp,writeFile} from "node:fs/promises"; import os from "node:os"; import path from "node:path";
 const dir=await mkdtemp(path.join(os.tmpdir(),"geomacro-cert-"));
 const countries={countries:Array.from({length:195},(_,i)=>({iso2:`${String.fromCharCode(65+(i%26))}${String.fromCharCode(65+((i*7)%26))}`,iso3:`C${String(i).padStart(2,"0")}`,name:`Country ${i}`}))};
-const matrix={cell_count:585,cells:countries.countries.flatMap(c=>["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].map(category=>({...c,category,status:"CONFIGURED"})))};
+const matrix={cell_count:585,cells:countries.countries.flatMap(c=>["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].map(category=>({country_iso2:c.iso2,country_iso3:c.iso3,country_name:c.name,category,status:"CONFIGURED"})))};
 const runtime={results:[{sourceId:"gdelt_v2",category:"GEOPOLITICS",country_iso3:"C00",coverage_status:"LIVE_DATA",checked_at:"2026-09-23T00:00:00.000Z"},{sourceId:"eurostat",category:"MACRO",country_iso3:"C01",coverage_status:"DEGRADED",checked_at:"2026-09-23T00:00:00.000Z"}]};
 const registry={categories:{GEOPOLITICS:[{id:"gdelt_v2",class:"GLOBAL_FALLBACK",coverage:"global"}],MACRO:[{id:"eurostat",class:"AUTHORITATIVE",coverage:"europe"}],CRITICAL_MINERALS:[{id:"usgs_mcs",class:"GLOBAL_FALLBACK",coverage:"global"}]}};
 for(const [n,v] of [["countries.json",countries],["matrix.json",matrix],["runtime.json",runtime],["registry.json",registry]]) await writeFile(path.join(dir,n),JSON.stringify(v));
