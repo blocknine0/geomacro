@@ -2,6 +2,9 @@ name: Public Demo Risk Refresh
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - ops/live-testnet-api-100-e2e
 
 
 permissions:
