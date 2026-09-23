@@ -68,3 +68,7 @@ Credentials must be supplied only through the application's secret/environment m
 - Critical-minerals engine consumes USGS MCS 2026 and only enables UN Comtrade trade evidence when an explicitly reviewed HS/cmdCode is supplied; it never treats TOTAL trade as a mineral series.
 - Added deterministic routing/adapter unit coverage and branch CI configuration.
 - CI/runtime execution has not yet been observed as PASS from this branch; no PASS claim is made.
+
+- Added transport-neutral Telegram message normalization with content hashing, provenance fields, and explicit VERIFIED/SPECIALIST/EARLY_SIGNAL classification.
+- Added Telegram tests proving unknown/specialist channels cannot independently confirm facts, while an identity-verified and policy-approved official channel can be eligible for confirmation.
+- Telegram credentials remain runtime-only; no login client or secret is committed.
