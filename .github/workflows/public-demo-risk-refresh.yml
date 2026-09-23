@@ -2,11 +2,6 @@ name: Public Demo Risk Refresh
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/public-demo-risk-refresh.yml"
-      - "docs/TESTNET_DEVELOPER_API.md"
 
 
 permissions:
@@ -16,7 +11,7 @@ permissions:
 
 
 concurrency:
-  group: public-demo-refresh-acceptance-once
+  group: geomacro-intelligence-orchestrator
   cancel-in-progress: false
 
 jobs:
