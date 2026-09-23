@@ -116,7 +116,51 @@ async function main() {
   }
 
   const syncPayload = sync?.payload;
+
+  // A late GDELT release must not turn the heartbeat RED while the previously
+  // sealed first-break cycle remains within the strict 30-minute freshness window.
   if (!sync?.result?.ok || syncPayload?.status !== "sealed") {
+    if (String(syncPayload?.failure_class ?? "") === "UPSTREAM_SOURCE_DELAYED") {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabaseUrl = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
+      const supabaseKey = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+      if (supabaseUrl && supabaseKey && new URL(supabaseUrl).hostname.split(".")[0] === PROJECT_REF) {
+        const db = createClient(supabaseUrl, supabaseKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data: cursor } = await db
+          .from("live_ingestion_cursors")
+          .select("status,last_success_at,consecutive_failures")
+          .eq("source_key", SOURCE_KEY)
+          .eq("stream_key", STREAM_KEY)
+          .maybeSingle();
+        const lastSuccessMs = Date.parse(String(cursor?.last_success_at ?? ""));
+        const ageSeconds = Number.isFinite(lastSuccessMs)
+          ? Math.max(0, (Date.now() - lastSuccessMs) / 1000)
+          : Number.POSITIVE_INFINITY;
+        const priorCycleFresh =
+          ageSeconds <= 1800 &&
+          ["healthy", "degraded"].includes(String(cursor?.status ?? "")) &&
+          Number(cursor?.consecutive_failures ?? 0) === 0;
+
+        if (priorCycleFresh) {
+          const summary = {
+            ok: true,
+            status: "fresh_prior_cycle",
+            failure_class: "UPSTREAM_SOURCE_DELAYED",
+            accepted_without_new_fragment: true,
+            freshness_window_seconds: 1800,
+            prior_cycle_age_seconds: Math.round(ageSeconds),
+            last_success_at: cursor.last_success_at,
+            attempts,
+          };
+          await writeJson(OUTPUT_DIR + "/gdelt-gal-cycle-summary.json", summary);
+          console.log(JSON.stringify(summary));
+          return;
+        }
+      }
+    }
+
     const failureClass = syncPayload?.failure_class
       ?? (syncFailureIsRetryable(syncPayload) ? "UPSTREAM_TEMPORARY_OUTAGE" : "PIPELINE_FAILURE");
     const summary = {
