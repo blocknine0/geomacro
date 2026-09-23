@@ -162,17 +162,17 @@ async function main() {
   assert(manifest.payload.commercial_revenue === false, 'Developer manifest is classified as revenue');
   assert(JSON.stringify(Object.keys(manifest.payload.capabilities || {}).sort()) === JSON.stringify(CAPABILITIES.slice().sort()), 'Developer capability set drifted');
 
-  const account = await jsonFetch('developer account', BASE_URL + '/api/testnet/account', { headers: authHeaders(API_KEY, API_SECRET) });
-  assert(account.payload.ok === true, 'Developer account failed');
-  assert(account.payload.data?.environment === 'testnet', 'Developer account is not Testnet');
-  assert(account.payload.data?.payment_model === 'pay_per_call', 'Developer API is not pay-per-call');
-  assert(account.payload.data?.commercial_revenue === false, 'Developer account revenue boundary changed');
-
   const credentials = await provisionDeveloperCredential(COOKIE);
   const API_KEY = credentials.apiKey;
   const API_SECRET = credentials.apiSecret;
   assert(/^gmk_test_[A-Za-z0-9_-]{20,}$/.test(API_KEY), 'Provisioned Testnet API key is invalid');
   assert(/^gms_test_[A-Za-z0-9_-]{32,}$/.test(API_SECRET), 'Provisioned Testnet API secret is invalid');
+
+  const account = await jsonFetch('developer account', BASE_URL + '/api/testnet/account', { headers: authHeaders(API_KEY, API_SECRET) });
+  assert(account.payload.ok === true, 'Developer account failed');
+  assert(account.payload.data?.environment === 'testnet', 'Developer account is not Testnet');
+  assert(account.payload.data?.payment_model === 'pay_per_call', 'Developer API is not pay-per-call');
+  assert(account.payload.data?.commercial_revenue === false, 'Developer account revenue boundary changed');
 
   const quotes = [];
   let paidSeed = null;
