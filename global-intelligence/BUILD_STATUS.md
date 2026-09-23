@@ -53,3 +53,5 @@ Credentials must be supplied only through the application's secret/environment m
 - Intelligence engine now accepts category engines returning either arrays or structured `{observations: [...]}` results.
 - No credentials are required for this World Bank slice.
 - Runtime execution still needs to be run from the actual branch checkout before this source can be marked PASS in certification.
+
+- Added configuration-driven national-statistics/central-bank onboarding contract, official JSON adapter, country-primary registry and U.S. BLS runtime probe. Discovery-required endpoints remain outside governed ingestion until exact dataset routes are pinned.
