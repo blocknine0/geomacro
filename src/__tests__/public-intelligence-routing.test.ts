@@ -65,8 +65,8 @@ describe("public intelligence routing contract", () => {
     expect(home).not.toContain("RiskIndicesSection");
     expect(homeRisk).toContain("Lightweight homepage introduction");
     expect(homeRisk).toContain("three public Risk Indices");
-    expect(askEngine).toContain("No LLM provider, external search or private fallback score");
-    expect(askWorkspace).toContain("does not search the open web at question time");
+    expect(askEngine).toContain("Current public-web grounding takes precedence for user questions");
+    expect(askWorkspace).toContain("Raw source content, provider details and internal retrieval payloads are not exposed in the answer.");
     expect(askWorkspace).toContain("Current verified Risk Indices context");
     expect(askWorkspace).not.toContain("Open Global Risk Index");
   });
