@@ -257,8 +257,7 @@ jobs:
     if: >-
       ${{
         (github.event_name == 'schedule' && github.event.schedule == '23 */6 * * *' && vars.GEOMACRO_TESTNET_E2E_ENABLED == 'true') ||
-        (github.event_name == 'workflow_dispatch' && inputs.mode == 'authenticated-e2e') ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]'))
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'authenticated-e2e')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -269,11 +268,11 @@ jobs:
     env:
       GEOMACRO_TESTNET_E2E_BASE_URL: https://geomacro.live
       GEOMACRO_TESTNET_E2E_EXPECTED_HOST: geomacro.live
-      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]')) && secrets.COINBASE_X402_BASE_SEPOLIA_PAID_PROOF || secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
-      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]')) && 'https://sepolia.base.org' || secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
-      GEOMACRO_TESTNET_E2E_MODE: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]')) && 'paid' || inputs.e2e_mode || 'quote_only' }}
-      GEOMACRO_TESTNET_E2E_CHAIN_KEY: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]')) && 'baseSepolia' || inputs.chain_key || 'arcTestnet' }}
-      GEOMACRO_TESTNET_E2E_ACK: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]')) && 'GEOMACRO_TESTNET_USDC' || inputs.confirmation || '' }}
+      GEOMACRO_TESTNET_E2E_PRIVATE_KEY: ${{ secrets.GEOMACRO_TESTNET_E2E_PRIVATE_KEY }}
+      GEOMACRO_TESTNET_E2E_RPC_URL: ${{ secrets.GEOMACRO_TESTNET_E2E_RPC_URL }}
+      GEOMACRO_TESTNET_E2E_MODE: ${{ inputs.e2e_mode || 'quote_only' }}
+      GEOMACRO_TESTNET_E2E_CHAIN_KEY: ${{ inputs.chain_key || 'arcTestnet' }}
+      GEOMACRO_TESTNET_E2E_ACK: ${{ inputs.confirmation || '' }}
       GEOMACRO_TESTNET_E2E_MAX_USDC: '0.5'
       GEOMACRO_TESTNET_E2E_ARTIFACT_DIR: artifacts/testnet-live-e2e
     steps:
@@ -309,8 +308,7 @@ jobs:
   developer-paid-e2e:
     if: >-
       ${{
-        (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e' && inputs.confirmation == 'GEOMACRO_TESTNET_USDC') ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, '[testnet-paid-e2e]'))
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e' && inputs.confirmation == 'GEOMACRO_TESTNET_USDC')
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
