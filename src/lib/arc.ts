@@ -52,7 +52,7 @@ export const ARC_MAINNET: ArcNetwork = {
   rpcUrl: "https://rpc.arc.network",
   explorer: "https://arcscan.app",
   currency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  live: false, // Arc is public; Geomacro Arc-mainnet product execution remains disabled
+  live: false, // keep Mainnet coming soon until full Geomacro mainnet completion
 };
 
 export const ARC_NETWORKS: ArcNetwork[] = [ARC_MAINNET, ARC_TESTNET];
