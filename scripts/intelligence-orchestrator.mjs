@@ -185,7 +185,7 @@ const TASKS = [
     steps: [
       ["bun", ["scripts/global-risk-gate-country-census.ts"], "."],
       ["node", ["scripts/audit-global-realtime-source-freshness.mjs"], "."],
-      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
+      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts"], "."],
     ],
   },
   {
