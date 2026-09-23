@@ -43,6 +43,7 @@ jobs:
           const publicB64 = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
           fs.appendFileSync(process.env.GITHUB_ENV, 'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\\n');
           NODE
+      # Validation commit trigger.
       - name: Refresh public demo Risk Objects
         run: bun scripts/refresh-public-demo-risk-objects.ts
       - name: Verify all four live demo scenarios
