@@ -71,16 +71,6 @@ export type CorridorRiskPublishResult = {
 };
 
 
-export function corridorCountrySourceDeliveryProfile(
-  deliveryProfile: RiskObjectDeliveryProfile,
-): RiskObjectDeliveryProfile {
-  // Public demo corridors are allowed to be non-commercial themselves, but
-  // their endpoint source GROs must remain independently commercial-verifiable.
-  return deliveryProfile === "PUBLIC_DEMO"
-    ? "CANONICAL"
-    : deliveryProfile;
-}
-
 function normalizeIso3(
   value: string,
   field: string,
@@ -156,11 +146,6 @@ generateInternal(
     input.delivery_profile ??
     "CANONICAL";
 
-  const sourceDeliveryProfile =
-    corridorCountrySourceDeliveryProfile(
-      deliveryProfile,
-    );
-
   const [
     origin,
     destination,
@@ -169,13 +154,13 @@ generateInternal(
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         originIso3,
         boundary,
-        sourceDeliveryProfile,
+        deliveryProfile,
       ),
 
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         destinationIso3,
         boundary,
-        sourceDeliveryProfile,
+        deliveryProfile,
       ),
     ]);
 
