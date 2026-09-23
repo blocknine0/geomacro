@@ -146,6 +146,13 @@ generateInternal(
     input.delivery_profile ??
     "CANONICAL";
 
+  // Public demo corridors are intentionally non-commercial, but their two
+  // endpoint source GROs must remain independently commercially deliverable.
+  const sourceDeliveryProfile =
+    deliveryProfile === "PUBLIC_DEMO"
+      ? "CANONICAL"
+      : deliveryProfile;
+
   const [
     origin,
     destination,
@@ -154,13 +161,13 @@ generateInternal(
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         originIso3,
         boundary,
-        deliveryProfile,
+        sourceDeliveryProfile,
       ),
 
       getLatestCompatibleCountryRiskObjectAtOrBefore(
         destinationIso3,
         boundary,
-        deliveryProfile,
+        sourceDeliveryProfile,
       ),
     ]);
 
