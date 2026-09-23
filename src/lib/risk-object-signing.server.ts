@@ -14,6 +14,10 @@ import {
   type GeomacroRiskObject,
 } from "./risk-object-contract";
 
+import {
+  ensureRiskObjectRuntimePublicKey,
+} from "./risk-object-runtime-public-key.server";
+
 export type RiskObjectSigningMaterial = {
   key_id: string;
   private_key_pkcs8_b64: string;
@@ -521,6 +525,11 @@ export function normalizeRiskObjectVerificationKeys(
 
 export function loadRiskObjectVerificationKeysFromEnv():
   RiskObjectVerificationKeys {
+  // Production hosting may provide the current key id and private signer
+  // without a redundant public-key secret. Materialize the deterministic
+  // public key before merging the verification registry.
+  ensureRiskObjectRuntimePublicKey();
+
   const keys:
     RiskObjectVerificationKeys = {};
 
