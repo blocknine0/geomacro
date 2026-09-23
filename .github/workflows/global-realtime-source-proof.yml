@@ -93,7 +93,7 @@ jobs:
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
       LIVE_STRUCTURE_DRAIN_CONCURRENCY: 8
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
-      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,rss_live,realtime_fanout
+      INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST: gdelt_gal,gdelt_v2,open_realtime_mesh,rss_live,realtime_fanout,production_readiness
       INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS: gdelt_gal,rss_live,realtime_fanout
       GITHUB_OIDC_AUDIENCE: "https://geomacro.live/actions/live-flash-rss"
       GEOMACRO_FLASH_INGEST_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1/live-flash-ingest
@@ -269,68 +269,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --input-type=module <<'NODE'
-          import { createClient } from "@supabase/supabase-js";
+          psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 <<'SQL'
+          update public.live_external_sources as src
+          set
+            enabled_for_commercial_signals = false,
+            updated_at = now()
+          where src.enabled_for_commercial_signals = true
+            and not exists (
+              select 1
+              from public.live_source_certification_records as cert
+              where cert.source_id = src.source_id
+                and cert.certification_state = 'CERTIFIED'
+                and cert.endpoint_status = 'PASS'
+                and cert.rights_status in ('COMMERCIAL_OK', 'DERIVED_ONLY')
+                and cert.schema_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.freshness_status in ('FRESH', 'VARIABLE', 'NOT_APPLICABLE')
+                and cert.provenance_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.independence_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.adapter_status in ('TESTED', 'NOT_APPLICABLE')
+                and cert.runtime_status in ('PASS', 'NOT_APPLICABLE')
+                and cert.fallback_status in ('READY', 'NOT_REQUIRED')
+            );
+          SQL
 
-          const url = String(process.env.APP_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
-          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
-          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") {
-            throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
-          }
-
-          const db = createClient(url, key, {
-            auth: { persistSession: false, autoRefreshToken: false },
-          });
-
-          const { data: sources, error: sourceError } = await db
-            .from("live_external_sources")
-            .select("source_id,enabled_for_commercial_signals");
-          if (sourceError) throw sourceError;
-
-          const { data: certs, error: certError } = await db
-            .from("live_source_certification_records")
-            .select("source_id,certification_state,endpoint_status,rights_status,schema_status,freshness_status,provenance_status,independence_status,adapter_status,runtime_status,fallback_status");
-          if (certError) throw certError;
-
-          const certById = new Map((certs ?? []).map((row) => [String(row.source_id), row]));
-          const toDisable = (sources ?? [])
-            .filter((source) => source.enabled_for_commercial_signals === true)
-            .filter((source) => {
-              const cert = certById.get(String(source.source_id));
-              return !(
-                cert &&
-                cert.certification_state === "CERTIFIED" &&
-                cert.endpoint_status === "PASS" &&
-                ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
-                ["PASS", "NOT_APPLICABLE"].includes(String(cert.schema_status ?? "")) &&
-                ["FRESH", "VARIABLE", "NOT_APPLICABLE"].includes(String(cert.freshness_status ?? "")) &&
-                ["PASS", "NOT_APPLICABLE"].includes(String(cert.provenance_status ?? "")) &&
-                ["PASS", "NOT_APPLICABLE"].includes(String(cert.independence_status ?? "")) &&
-                ["TESTED", "NOT_APPLICABLE"].includes(String(cert.adapter_status ?? "")) &&
-                ["PASS", "NOT_APPLICABLE"].includes(String(cert.runtime_status ?? "")) &&
-                ["READY", "NOT_REQUIRED"].includes(String(cert.fallback_status ?? ""))
-              );
-            })
-            .map((source) => String(source.source_id));
-
-          if (toDisable.length) {
-            const { error } = await db
-              .from("live_external_sources")
-              .update({
-                enabled_for_commercial_signals: false,
-                updated_at: new Date().toISOString(),
-              })
-              .in("source_id", toDisable);
-            if (error) throw error;
-          }
-
-          console.log(JSON.stringify({
-            commercial_sources_checked: (sources ?? []).filter((s) => s.enabled_for_commercial_signals === true).length,
-            uncertified_sources_disabled: toDisable,
-            fail_closed: true,
-          }, null, 2));
-          NODE
+          state_count="$(psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 -Atqc "select count(*) from public.live_external_sources where enabled_for_commercial_signals = true and not exists (select 1 from public.live_source_certification_records cert where cert.source_id = live_external_sources.source_id and cert.certification_state = 'CERTIFIED' and cert.endpoint_status = 'PASS' and cert.rights_status in ('COMMERCIAL_OK','DERIVED_ONLY') and cert.schema_status in ('PASS','NOT_APPLICABLE') and cert.freshness_status in ('FRESH','VARIABLE','NOT_APPLICABLE') and cert.provenance_status in ('PASS','NOT_APPLICABLE') and cert.independence_status in ('PASS','NOT_APPLICABLE') and cert.adapter_status in ('TESTED','NOT_APPLICABLE') and cert.runtime_status in ('PASS','NOT_APPLICABLE') and cert.fallback_status in ('READY','NOT_REQUIRED'))")"
+          test "${state_count}" = "0"
 
       - name: Verify final realtime contracts
         run: |
