@@ -48,7 +48,7 @@ jobs:
           git show -s --format='Replay commit: %H %s' HEAD
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Start disposable local Supabase
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,kong,gotrue,realtime,postgrest,storage-api,postgres-meta,mailpit
       - name: Replay the full migration chain from zero
         run: supabase db reset --local --no-seed
       - name: Stop disposable Supabase
