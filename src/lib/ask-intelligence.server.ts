@@ -338,9 +338,9 @@ async function answerFromOpenWeb(question: string, gri: GriReading): Promise<Ask
     ),
   ).slice(0, MAX_EVIDENCE);
   const evidence = indexes.map((index) => ({
-    eventId: `web:${index}:${Buffer.from(sources[index].url).toString("base64url").slice(0, 24)}`,
+    eventId: `web:${index}`,
     title: sources[index].title,
-    sourceUrl: sources[index].url,
+    sourceUrl: undefined,
     relevance: Math.max(70, 100 - index * 5),
   }));
 
