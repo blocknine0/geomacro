@@ -1,5 +1,6 @@
 import {routeQuestion} from "./router.mjs";
 import {verifyObservations} from "./cross-source-verifier.mjs";
+import {defaultAdapters} from "./default-adapters.mjs";
 
 function unwrapRows(result) {
   if (Array.isArray(result)) return result;
@@ -7,13 +8,14 @@ function unwrapRows(result) {
   return [];
 }
 
-export async function answerQuestion(question, {countryIso3 = null, adapters = {}} = {}) {
+export async function answerQuestion(question, {countryIso3 = null, adapters = null, options = {}} = {}) {
+  const activeAdapters = adapters ?? defaultAdapters(options);
   const categories = routeQuestion(question);
   const observations = [];
   const adapterResults = {};
 
   for (const category of categories) {
-    const adapter = adapters[category];
+    const adapter = activeAdapters[category];
     if (!adapter) continue;
 
     const result = await adapter({question, countryIso3});
