@@ -1,0 +1,19 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"National Minerals Authority Source",
+  "type":"object",
+  "required":["iso3","country_name","authority_name","source_type","status","official_url"],
+  "properties":{
+    "iso3":{"type":"string","pattern":"^[A-Z]{3}$"},
+    "country_name":{"type":"string","minLength":1},
+    "authority_name":{"type":"string","minLength":1},
+    "source_type":{"enum":["MINING_AUTHORITY","GEOLOGICAL_SURVEY","STATISTICS_OFFICE","ENERGY_MINERALS_MINISTRY","OTHER_OFFICIAL"]},
+    "status":{"enum":["DISCOVERY","ONBOARDED","RUNTIME_VERIFIED","LICENSE_REVIEW"]},
+    "official_url":{"type":"string","format":"uri"},
+    "api_url":{"type":["string","null"],"format":"uri"},
+    "machine_readable":{"type":"boolean"},
+    "coverage_notes":{"type":"string"},
+    "commercial_use_review":{"enum":["REQUIRED","OK","DERIVED_ONLY","UNKNOWN"]}
+  },
+  "additionalProperties":false
+}
