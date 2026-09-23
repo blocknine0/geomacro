@@ -9,6 +9,7 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
@@ -40,7 +41,42 @@ const db = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+function fetchCommercialRowsFromPrimary(table) {
+  const dbUrl = String(process.env.SUPABASE_DB_URL ?? "").trim();
+  if (!dbUrl) throw new Error("AUTHORITATIVE_SUPABASE_DB_URL_REQUIRED");
+
+  const sqlByTable = {
+    live_external_sources:
+      "select coalesce(json_agg(row_to_json(s)), '[]'::json)::text from (select source_id,enabled_for_ingestion,enabled_for_commercial_signals,commercial_usage_status from public.live_external_sources order by source_id) s;",
+    live_source_certification_records:
+      "select coalesce(json_agg(row_to_json(c)), '[]'::json)::text from (select source_id,certification_state,endpoint_status,rights_status,schema_status,freshness_status,provenance_status,independence_status,adapter_status,runtime_status,fallback_status from public.live_source_certification_records order by source_id) c;",
+  };
+
+  const sql = sqlByTable[table];
+  if (!sql) return null;
+
+  const result = spawnSync(
+    "psql",
+    [dbUrl, "-v", "ON_ERROR_STOP=1", "-Atqc", sql],
+    { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 },
+  );
+
+  if (result.status !== 0) {
+    throw new Error(
+      "PRIMARY_COMMERCIAL_GOVERNANCE_QUERY_FAILED: " +
+        String(result.stderr ?? "").trim().slice(-2000),
+    );
+  }
+
+  const output = String(result.stdout ?? "").trim();
+  if (!output) throw new Error("PRIMARY_COMMERCIAL_GOVERNANCE_QUERY_EMPTY");
+  return JSON.parse(output);
+}
+
 async function fetchAll(table, select, configure) {
+  const primaryRows = fetchCommercialRowsFromPrimary(table);
+  if (primaryRows) return primaryRows;
+
   const rows = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
