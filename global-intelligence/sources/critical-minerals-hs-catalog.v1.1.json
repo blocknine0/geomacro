@@ -1,0 +1,16 @@
+{
+  "version":"1.1",
+  "source_id":"un_comtrade_minerals",
+  "classification":"HS2022",
+  "status":"DOMAIN_REVIEW_REQUIRED",
+  "policy":{"no_total_claims_for_minerals":true,"exact_code_required_for_mineral_trade_claim":true,"historical_classification_must_be_explicit":true,"do_not_mix_hs_versions_without_mapping":true},
+  "commodities":[
+    {"slug":"copper_ores_concentrates","hs2022":["260300"],"confidence":"HIGH","scope":["TRADE_EXPORT","TRADE_IMPORT"]},
+    {"slug":"nickel_ores_concentrates","hs2022":["260400"],"confidence":"HIGH","scope":["TRADE_EXPORT","TRADE_IMPORT"]},
+    {"slug":"cobalt_ores_concentrates","hs2022":["260500"],"confidence":"HIGH","scope":["TRADE_EXPORT","TRADE_IMPORT"]},
+    {"slug":"lithium_ores_concentrates","hs2022":["253090"],"confidence":"LOW","scope":["TRADE_EXPORT","TRADE_IMPORT"],"status":"AMBIGUOUS_SHARED_HEADING"},
+    {"slug":"rare_earth_ores_concentrates","hs2022":["253090"],"confidence":"LOW","scope":["TRADE_EXPORT","TRADE_IMPORT"],"status":"AMBIGUOUS_SHARED_HEADING"}
+  ],
+  "required_before_production_claim":["official HS description validation","mineral taxonomy mapping","historical HS edition mapping for periods before HS2022","commodity-specific domain review"],
+  "provenance":{"official_classification_source":"https://unstats.un.org/unsd/classifications/econ"}
+}
