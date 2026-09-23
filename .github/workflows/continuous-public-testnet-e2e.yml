@@ -178,4 +178,3 @@ jobs:
             echo
             echo "Paid Testnet wallet settlement, replay/no-double-charge, and Federico live strict-output certification remain separate observable gates and are never represented by this public monitor as passed."
           } >> "$GITHUB_STEP_SUMMARY"
-# Post-merge acceptance probe: force a fresh live run on the latest main.
