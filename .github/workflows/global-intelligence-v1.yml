@@ -53,12 +53,17 @@ jobs:
         run: npm run gate:coverage
       - name: Validate mineral country coverage
         run: npm run validate:mineral-country
-      - name: Upload generated coverage artifacts
+      - name: Runtime source coverage audit
+        run: npm run audit:runtime > runtime-coverage-report.json
+      - name: Validate runtime audit report
+        run: node -e 'const r=require("./runtime-coverage-report.json"); if(r.version!=="1.0" || !Array.isArray(r.results) || r.results.length<8) process.exit(1)'
+      - name: Upload generated coverage and runtime audit artifacts
         uses: actions/upload-artifact@v4
         with:
           name: global-intelligence-v1-coverage-${{ github.run_id }}
           path: |
             global-intelligence/country-mesh/countries.v1.json
             global-intelligence/country-mesh/generated/coverage-matrix.v1.json
+            global-intelligence/runtime-coverage-report.json
           if-no-files-found: error
           retention-days: 14
