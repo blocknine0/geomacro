@@ -126,6 +126,8 @@ const TASKS = [
     oidcAudience: "https://geomacro.live/actions/live-flash-rss",
     requiredEnv: [],
     timeoutMs: 1_200_000,
+    maxAttempts: 3,
+    retryBackoffMs: 5000,
     steps: [["node", ["scripts/run-rss-live-cycle.mjs"], "."]],
   },
   {
@@ -442,24 +444,39 @@ async function runTask(task, state) {
   await upsertState(task, state);
 
   const started = Date.now();
+  const maxAttempts = Math.max(1, Math.min(3, Number(task.maxAttempts ?? 1)));
+  const retryBackoffMs = Math.max(0, Math.min(30_000, Number(task.retryBackoffMs ?? 5000)));
   let failedStep = null;
   let result = null;
+  let taskAttempts = 0;
 
-  for (let index = 0; index < task.steps.length; index += 1) {
-    const [command, args, cwd] = task.steps[index];
-    result = await runStep(command, args, cwd, task.timeoutMs ?? TASK_TIMEOUT_MS);
-    if (!result.ok) {
-      failedStep = {
-        index,
-        command,
-        args,
-        cwd,
-        exit_code: result.code,
-        signal: result.signal,
-        timed_out: result.timed_out,
-        stderr: result.stderr,
-      };
-      break;
+  for (let taskAttempt = 1; taskAttempt <= maxAttempts; taskAttempt += 1) {
+    taskAttempts = taskAttempt;
+    failedStep = null;
+    result = null;
+
+    for (let index = 0; index < task.steps.length; index += 1) {
+      const [command, args, cwd] = task.steps[index];
+      result = await runStep(command, args, cwd, task.timeoutMs ?? TASK_TIMEOUT_MS);
+      if (!result.ok) {
+        failedStep = {
+          index,
+          command,
+          args,
+          cwd,
+          exit_code: result.code,
+          signal: result.signal,
+          timed_out: result.timed_out,
+          stderr: result.stderr,
+          task_attempt: taskAttempt,
+        };
+        break;
+      }
+    }
+
+    if (!failedStep) break;
+    if (taskAttempt < maxAttempts) {
+      await sleep(retryBackoffMs * taskAttempt);
     }
   }
 
@@ -486,6 +503,7 @@ async function runTask(task, state) {
       duration_ms: Date.now() - started,
       failed_step: failedStep,
       failure_class: failureClass,
+      attempts: taskAttempts,
     };
   }
 
@@ -503,6 +521,7 @@ async function runTask(task, state) {
     status: "succeeded",
     duration_ms: Date.now() - started,
     next_due_at: state.cursor.next_due_at,
+    attempts: taskAttempts,
   };
 }
 
