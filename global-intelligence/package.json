@@ -22,6 +22,7 @@
     "test:usgs-mcs": "node scripts/test-usgs-mcs-2026.mjs",
     "test:mineral-normalization": "node scripts/test-mineral-normalization.mjs",
     "validate:mineral-country": "node country-mesh/validate-mineral-country-coverage.mjs",
-    "test:verifier": "node scripts/test-cross-source-verifier.mjs"
+    "test:verifier": "node scripts/test-cross-source-verifier.mjs",
+    "test:all": "npm run test:verifier && npm run test:minerals && npm run test:health && npm run test:usgs-mcs && npm run test:mineral-normalization"
   }
 }
