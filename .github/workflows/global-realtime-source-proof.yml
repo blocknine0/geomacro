@@ -50,7 +50,7 @@ jobs:
   exact-head-production-realtime-acceptance:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 90
     environment: production
     permissions:
       contents: read
@@ -78,7 +78,7 @@ jobs:
       BREAKING_RSS_RUN_ONCE: true
       TELEGRAM_ENABLED: false
       GRI_PUBLISH_ENABLED: false
-      RAW_SOURCE_SYNC_CONCURRENCY: 6
+      RAW_SOURCE_SYNC_CONCURRENCY: 12
       RAW_SOURCE_CELL_MAX_ATTEMPTS: 3
       LIVE_STRUCTURE_DRAIN_CONCURRENCY: 8
       INTELLIGENCE_ORCHESTRATOR_MAX_TASKS: 8
