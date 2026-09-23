@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["source_id","category","status","checked_at","latency_ms"],
+  "properties":{
+    "source_id":{"type":"string"},
+    "category":{"enum":["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]},
+    "status":{"enum":["PASS","DEGRADED","FAIL","AUTH_REQUIRED","LICENSE_REVIEW"]},
+    "checked_at":{"type":"string","format":"date-time"},
+    "latency_ms":{"type":"integer","minimum":0},
+    "error":{"type":["string","null"]},
+    "coverage":{"type":"object"}
+  }
+}
