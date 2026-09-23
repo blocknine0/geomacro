@@ -39,7 +39,7 @@ Supported:
 - customs code;
 - preview or authenticated access.
 
-For critical-minerals production claims, `TOTAL` is not sufficient. A governed HS mineral-code catalog must be added before certification.
+For critical-minerals production claims, `TOTAL` is not sufficient. A conservative starter catalog now exists at `sources/critical-minerals-hs-catalog.v1.json`, but it is explicitly not yet a complete production mineral concordance. Shared/ambiguous HS headings remain flagged and cannot be treated as mineral-only evidence.
 
 ## Remaining certification gates
 
