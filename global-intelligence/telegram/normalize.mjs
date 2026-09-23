@@ -6,7 +6,10 @@ const EARLY="TELEGRAM_EARLY_SIGNAL";
 
 function sha256(value){return createHash("sha256").update(String(value ?? "")).digest("hex");}
 
-export function classifyTelegramSource({identityVerified=false,authorityLevel=null,policyApproved=false}={}){
+export function classifyTelegramSource(source={}={}){
+  const identityVerified=Boolean(source.identityVerified ?? source.identity_verified);
+  const authorityLevel=source.authorityLevel ?? source.authority_level ?? null;
+  const policyApproved=Boolean(source.policyApproved ?? source.policy_approved);
   const authority=String(authorityLevel || "").toUpperCase();
   if(identityVerified && policyApproved && (authority==="OFFICIAL" || authority==="AUTHORITATIVE" || authority==="VERIFIED_OFFICIAL")) return VERIFIED;
   if(authority==="SPECIALIST") return SPECIALIST;
