@@ -9,7 +9,7 @@ UN Comtrade is wired as a machine-readable trade-flow evidence source for MACRO 
 - Set `UN_COMTRADE_API_KEY` locally or in the runtime secret store. Never commit it.
 - With the key present, this adapter uses the authenticated `data/v1/get` API. Without it, it uses the public preview API.
 
-The current UN Comtrade documentation says the free basic individual subscription provides up to 500 API calls/day and the preview API is limited to 500 records. citeturn0search1turn0search2
+The current UN Comtrade documentation states that the free basic individual subscription provides up to 500 API calls/day, while the public preview is limited to 500 records.
 
 ## Global reporter coverage
 
