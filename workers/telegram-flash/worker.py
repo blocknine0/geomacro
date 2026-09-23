@@ -11,7 +11,7 @@ import time
 import http.client
 import urllib.error
 import urllib.request
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlencode
 from calendar import timegm
 from datetime import datetime, timezone
 from typing import Any
@@ -542,30 +542,85 @@ def telegram_source_url(entity: Any, message_id: int) -> str | None:
     return None
 
 
-def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
-    request = urllib.request.Request(
-        INGEST_URL,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+def refresh_oidc_token_sync() -> bool:
+    global OIDC_TOKEN
+
+    request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", "").strip()
+    request_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "").strip()
+    if not request_url or not request_token:
+        return False
+
+    separator = "&" if "?" in request_url else "?"
+    token_request = urllib.request.Request(
+        f"{request_url}{separator}{urlencode({'audience': 'https://geomacro.live/actions/live-flash-rss'})}",
         headers={
-            "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": USER_AGENT,
+            "Authorization": f"bearer {request_token}",
         },
-        method="POST",
+        method="GET",
     )
 
-    if INGEST_TOKEN:
-        request.add_header("x-geomacro-flash-token", INGEST_TOKEN)
-    if OIDC_TOKEN:
-        request.add_header("x-geomacro-github-oidc-token", OIDC_TOKEN)
-        request.add_header("Authorization", f"Bearer {OIDC_TOKEN}")
-
     try:
+        with urllib.request.urlopen(token_request, timeout=15) as response:
+            body = response.read().decode("utf-8", errors="replace")
+            payload = json.loads(body)
+    except urllib.error.HTTPError:
+        return False
+    except (
+        TimeoutError,
+        socket.timeout,
+        urllib.error.URLError,
+        http.client.IncompleteRead,
+        ConnectionError,
+        ConnectionResetError,
+        ConnectionAbortedError,
+        BrokenPipeError,
+    ):
+        return False
+
+    token = str(payload.get("value", "")).strip()
+    if not token:
+        return False
+
+    OIDC_TOKEN = token
+    return True
+
+
+def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
+    def send_request() -> dict[str, Any]:
+        request = urllib.request.Request(
+            INGEST_URL,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+            method="POST",
+        )
+
+        if INGEST_TOKEN:
+            request.add_header("x-geomacro-flash-token", INGEST_TOKEN)
+        if OIDC_TOKEN:
+            request.add_header("x-geomacro-github-oidc-token", OIDC_TOKEN)
+            request.add_header("Authorization", f"Bearer {OIDC_TOKEN}")
+
         with urllib.request.urlopen(request, timeout=15) as response:
             body = response.read().decode("utf-8", errors="replace")
             return json.loads(body)
+
+    try:
+        return send_request()
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
+        if exc.code == 401 and refresh_oidc_token_sync():
+            try:
+                return send_request()
+            except urllib.error.HTTPError as retry_exc:
+                retry_detail = retry_exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(
+                    f"Geomacro flash ingest HTTP {retry_exc.code}: {retry_detail[:1000]}"
+                ) from retry_exc
         raise RuntimeError(
             f"Geomacro flash ingest HTTP {exc.code}: {detail[:1000]}"
         ) from exc

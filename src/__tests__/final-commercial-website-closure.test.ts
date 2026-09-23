@@ -136,7 +136,8 @@ describe("final commercial website closure", () => {
     expect(technicalBanner).toContain("working technical proof is not a claim of general production availability");
     expect(arena).toContain("permanently locked to Arc Testnet");
     expect(arena).toContain("not planned for mainnet or real-money production use");
-    expect(onchain).toContain("Geomacro mainnet transaction features remain intentionally disabled");
+    expect(onchain).toContain("Arc mainnet: coming soon");
+    expect(onchain).toContain("mainnet transaction features disabled until full production completion and acceptance");
     expect(consolePage).toContain('meta name="robots" content="noindex,nofollow,noarchive"');
     expect(consolePage).toContain("Testnet only. No real-money production settlement.");
   });

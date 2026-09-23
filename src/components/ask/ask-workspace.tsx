@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowRight,
-  ExternalLink,
   Loader2,
   Search,
   ShieldCheck,
@@ -74,10 +73,10 @@ export function AskWorkspace() {
         </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Ask Geomacro</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Ask about current geopolitical, macroeconomic and critical-mineral risk. Geomacro searches its own stored intelligence and uses the same verified risk context behind the public Risk Indices, while exposing the evidence behind the answer.
+          Ask about current geopolitical, macroeconomic and critical-mineral risk. Geomacro returns a concise structured answer from verified risk context and approved intelligence evidence.
         </p>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          It does not search the open web at question time and it does not invent outside evidence when Geomacro's own record is weak.
+          Raw source content, provider details and internal retrieval payloads are not exposed in the answer.
         </p>
       </header>
 
@@ -160,7 +159,7 @@ export function AskWorkspace() {
               <li>Stored Geomacro intelligence events</li>
               <li>Current verified Risk Indices context</li>
               <li>Stored severity, confidence and movement</li>
-              <li>Source links and event-level evidence</li>
+              <li>Structured evidence references</li>
             </ul>
           </div>
           <div className="rounded-2xl border border-border/70 bg-card/40 p-5">
@@ -254,14 +253,6 @@ function AnswerView({ answer, question }: { answer: AskAnswer; question: string 
                     {evidence.relevance}% relevance
                   </span>
                 </div>
-                <a
-                  href={evidence.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Open original source <ExternalLink className="h-3 w-3" />
-                </a>
               </li>
             ))}
           </ul>
