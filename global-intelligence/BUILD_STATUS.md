@@ -36,13 +36,12 @@
 Credentials must be supplied only through the application's secret/environment mechanism. Never put them in Git.
 
 ## Next gates
-1. Import the canonical 195-country registry into the isolated track.
-2. Generate the 585-cell matrix.
-3. Implement live source adapters. World Bank macro adapter now supports multi-indicator batching, MRV/frequency/date controls, indicator catalog retrieval, observation-status/provenance fields, and a no-secret runtime probe.
-4. Implement Telegram source verification and ingestion.
-5. Implement cross-source verification.
-6. Run category-specific runtime probes.
-7. Run full 585-cell certification.
+1. Preserve the generated all-enabled country universe and N×3 matrix as CI artifacts for every certification run.
+2. Add bounded runtime probes for public/no-key global sources and record source-level health separately from structural coverage.
+3. Add country-level coverage certification that distinguishes CONFIGURED, LIVE_DATA, DEGRADED, and NO_DATA instead of treating a configured cell as healthy.
+4. Run the complete expanded-universe certification for the current enabled registry (currently 250 countries, 750 category cells).
+5. Keep the governed 195-country sovereign baseline as a separate certification gate.
+6. Only after runtime certification, failure-injection tests, and production-readiness review should PR #836 be merged.
 
 ## Latest completed slice
 - World Bank macro adapter upgraded on `feature/global-intelligence-v1`.
