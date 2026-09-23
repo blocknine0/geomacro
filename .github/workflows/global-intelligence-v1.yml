@@ -53,3 +53,12 @@ jobs:
         run: npm run gate:coverage
       - name: Validate mineral country coverage
         run: npm run validate:mineral-country
+      - name: Upload generated coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-intelligence-v1-coverage-${{ github.run_id }}
+          path: |
+            global-intelligence/country-mesh/countries.v1.json
+            global-intelligence/country-mesh/generated/coverage-matrix.v1.json
+          if-no-files-found: error
+          retention-days: 14
