@@ -178,9 +178,10 @@ async function main() {
 
   const account = await jsonFetch('developer account', BASE_URL + '/api/testnet/account', { headers: authHeaders(apiKey, apiSecret) });
   assert(account.payload.ok === true, 'Developer account failed');
-  assert(account.payload.data?.environment === 'testnet', 'Developer account is not Testnet');
-  assert(account.payload.data?.payment_model === 'pay_per_call', 'Developer API is not pay-per-call');
-  assert(account.payload.data?.commercial_revenue === false, 'Developer account revenue boundary changed');
+  assert(account.payload.data?.payment?.environment === 'testnet', 'Developer account is not Testnet');
+  assert(account.payload.data?.pricing?.payment_model === 'pay_per_call', 'Developer API is not pay-per-call');
+  assert(account.payload.data?.payment?.commercial_revenue === false, 'Developer account revenue boundary changed');
+  assert(account.payload.data?.payment?.configured === true, 'Testnet payment receiver is not configured');
 
   const quotes = [];
   let paidSeed = null;
