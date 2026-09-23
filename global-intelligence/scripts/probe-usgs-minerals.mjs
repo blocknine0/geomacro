@@ -5,13 +5,13 @@ import {
 
 const productionCsv=[
   "Country,Commodity,Unit,2024,2023",
-  ""India","Copper","metric tons","100","90"",
-  ""United States","Nickel","metric tons","50","45""
+  '"India","Copper","metric tons","100","90"',
+  '"United States","Nickel","metric tons","50","45"'
 ].join("\n");
 
 const facilitiesCsv=[
   "Country,Commodity,Facility,Annual Capacity,Unit",
-  ""India","Copper","Example Mine","1000","metric tons/year""
+  '"India","Copper","Example Mine","1000","metric tons/year"'
 ].join("\n");
 
 const production=parseUsGSMineralsYearbookProductionCsv(productionCsv,{countryIso3:"IND"});
