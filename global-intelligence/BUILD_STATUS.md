@@ -60,3 +60,11 @@ Credentials must be supplied only through the application's secret/environment m
 - Added a real USGS Minerals Yearbook Volume III CSV parser for production and facilities evidence, with explicit `PRODUCTION` and `FACILITY` evidence types and release provenance. The official 2024 release provides CSV production/facility tables covering 2020–2024 and is CC0/public domain.
 - Added an explicit minerals reconciliation layer that keeps production, exports, imports, and trade balance as separate evidence types and refuses to convert unlike measures into a single production claim.
 - Complete 195-country reporter resolution, runtime PASS, full mineral concordance, freshness, and commercial/re-dissemination review remain open.
+
+- Added deterministic category engines for GEOPOLITICS, MACRO, and CRITICAL_MINERALS.
+- Added default adapter wiring so the intelligence engine can run without manually injecting category adapters.
+- Geopolitics resolves ISO3 to ISO2 through the World Bank country endpoint before querying GDELT.
+- Macro maps question terms to a controlled World Bank indicator set.
+- Critical-minerals engine consumes USGS MCS 2026 and only enables UN Comtrade trade evidence when an explicitly reviewed HS/cmdCode is supplied; it never treats TOTAL trade as a mineral series.
+- Added deterministic routing/adapter unit coverage and branch CI configuration.
+- CI/runtime execution has not yet been observed as PASS from this branch; no PASS claim is made.
