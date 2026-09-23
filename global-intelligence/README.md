@@ -1,23 +1,21 @@
 # Geomacro Global Intelligence v1
 
-Independent development track for the 195-country × 3-category intelligence system.
+Isolated build branch for the 195-country, three-category intelligence system.
 
-## Scope
+## Categories
 - GEOPOLITICS
 - MACRO
 - CRITICAL_MINERALS
-- 195 canonical countries
-- Source mesh with authoritative, global fallback, specialist, and Telegram layers
-- Cross-source verification
-- Early-signal separation
-- Intent/category routing
-- Structured human and machine answers
-- Automated 585-cell certification
 
-## Isolation
-This branch is intentionally independent of the production implementation. No production integration is required until every certification gate passes.
+## Architecture
+question -> router -> one or more category engines -> source adapters -> normalization -> cross-source verification -> structured answer.
 
-## Certification target
-195 countries × 3 categories = 585 coverage cells.
+The country baseline is derived from Geomacro's canonical country registry. The system is not merge-ready until structural, source, runtime, provenance, Telegram, and failure-mode gates all pass.
 
-A cell is certified only when source configuration, ingestion, freshness, verification, and answer delivery checks pass.
+## Credential requirements
+- UN_COMTRADE_API_KEY for the free-key Comtrade API path
+- TELEGRAM_API_ID + TELEGRAM_API_HASH for MTProto public-channel ingestion
+- optional TELEGRAM_BOT_TOKEN for Bot API sources
+- optional IMF_API_TOKEN if the selected IMF endpoint requires it
+
+Never commit secrets.
