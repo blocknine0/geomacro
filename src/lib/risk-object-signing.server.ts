@@ -589,27 +589,18 @@ export function loadRiskObjectVerificationKeysFromEnv():
       .RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64
       ?.trim();
 
-  // The public key is non-secret and can be deterministically derived from
-  // the configured production private key. Keep an explicit public-key env
-  // value as an optional operational cross-check, but do not make duplicate
-  // public-key configuration a hard production dependency.
-  let effectiveCurrentPublicKey = currentPublicKey;
-  if (currentKeyId && !effectiveCurrentPublicKey) {
-    const currentPrivateKey =
-      process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64?.trim();
-    if (!currentPrivateKey) {
-      throw new Error(
-        "Risk Object current signing key requires either public key configuration or the private signing key needed to derive it",
-      );
-    }
-    effectiveCurrentPublicKey = publicKeyBase64(
-      privateKeyFromBase64(currentPrivateKey),
+  if (
+    Boolean(currentKeyId) !==
+    Boolean(currentPublicKey)
+  ) {
+    throw new Error(
+      "Risk Object current signing key ID/public key must be configured together",
     );
   }
 
   if (
     currentKeyId &&
-    effectiveCurrentPublicKey
+    currentPublicKey
   ) {
     const normalizedId =
       validateKeyId(
@@ -631,7 +622,7 @@ export function loadRiskObjectVerificationKeysFromEnv():
           normalizedId,
           {
             public_key_spki_b64:
-              effectiveCurrentPublicKey,
+              currentPublicKey,
           },
         );
 
@@ -651,7 +642,7 @@ export function loadRiskObjectVerificationKeysFromEnv():
     } else {
       keys[normalizedId] = {
         public_key_spki_b64:
-          effectiveCurrentPublicKey,
+          currentPublicKey,
 
         status:
           "active",
