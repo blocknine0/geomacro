@@ -20,6 +20,7 @@
     "test:minerals": "node scripts/test-minerals-reconciliation.mjs",
     "test:health": "node scripts/test-source-health.mjs",
     "test:usgs-mcs": "node scripts/test-usgs-mcs-2026.mjs",
-    "test:mineral-normalization": "node scripts/test-mineral-normalization.mjs"
+    "test:mineral-normalization": "node scripts/test-mineral-normalization.mjs",
+    "validate:mineral-country": "node country-mesh/validate-mineral-country-coverage.mjs"
   }
 }
