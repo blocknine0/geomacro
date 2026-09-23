@@ -1,4 +1,5 @@
 import { getAppSupabase } from "./supabase-app.server";
+import { groqClassifyJson } from "./groq.server";
 import {
   GRI_MAX_PUBLIC_SNAPSHOT_AGE_HOURS,
   GRI_METHOD_VERSION,
@@ -256,6 +257,105 @@ function evidenceFromRows(rows: EventRow[], base = 100) {
       sourceUrl: row.source_url as string,
       relevance: Math.max(70, base - index * 6),
     }));
+}
+
+const WEB_SEARCH_LIMIT = 8;
+const WEB_SEARCH_TIMEOUT_MS = 12_000;
+
+type WebSearchResult = {
+  title: string;
+  url: string;
+  publishedAt: string | null;
+  snippet: string;
+};
+
+async function searchOpenWeb(question: string): Promise<WebSearchResult[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WEB_SEARCH_TIMEOUT_MS);
+  try {
+    const query = encodeURIComponent(String(question || "").trim().slice(0, 500));
+    const response = await fetch(
+      `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=ArtList&format=json&maxrecords=${WEB_SEARCH_LIMIT}&sort=HybridRel`,
+      { signal: controller.signal, headers: { Accept: "application/json" } },
+    );
+    if (!response.ok) throw new Error(`web search failed: ${response.status}`);
+    const data = (await response.json()) as { articles?: Array<Record<string, unknown>> };
+    return (data.articles ?? [])
+      .map((article) => ({
+        title: String(article.title ?? "").trim(),
+        url: String(article.url ?? "").trim(),
+        publishedAt: article.seendate
+          ? String(article.seendate).replace(
+              /^([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2}).*$/,
+              "$1-$2-$3T$4:$5:$6Z",
+            )
+          : null,
+        snippet: String(article.title ?? "").trim(),
+      }))
+      .filter((item) => item.title && /^https?:\\/\\//i.test(item.url));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function answerFromOpenWeb(question: string, gri: GriReading): Promise<AskAnswer | null> {
+  const sources = await searchOpenWeb(question);
+  if (!sources.length) return null;
+
+  const grounded = await groqClassifyJson<{
+    summary?: string;
+    what_changed?: string;
+    why_it_matters?: string;
+    geomacro_view?: string;
+    source_indexes?: number[];
+  }>({
+    system:
+      "You are Ask Geomacro. Answer the user's question directly using ONLY the supplied web-search results. " +
+      "Do not invent facts, dates, numbers, sources, or URLs. If the sources do not support a claim, omit it. " +
+      "Prefer the newest relevant sources. Keep the answer concise and point-to-point. " +
+      "Return JSON with summary, what_changed, why_it_matters, geomacro_view, source_indexes. " +
+      "source_indexes must contain only supplied source numbers.",
+    user: JSON.stringify({
+      question,
+      current_gri: gri.displayScore,
+      sources: sources.map((source, index) => ({
+        index,
+        title: source.title,
+        url: source.url,
+        published_at: source.publishedAt,
+        snippet: source.snippet,
+      })),
+    }),
+    temperature: 0.1,
+    timeoutMs: 20_000,
+  });
+
+  const indexes = Array.from(
+    new Set(
+      (grounded.source_indexes ?? []).filter(
+        (index): index is number => Number.isInteger(index) && index >= 0 && index < sources.length,
+      ),
+    ),
+  ).slice(0, MAX_EVIDENCE);
+  const evidence = indexes.map((index) => ({
+    eventId: `web:${index}:${Buffer.from(sources[index].url).toString("base64url").slice(0, 24)}`,
+    title: sources[index].title,
+    sourceUrl: sources[index].url,
+    relevance: Math.max(70, 100 - index * 5),
+  }));
+
+  return {
+    summary: String(grounded.summary ?? "Current web results were found, but no supported direct answer was produced."),
+    what_changed: String(grounded.what_changed ?? ""),
+    why_it_matters: String(grounded.why_it_matters ?? ""),
+    geomacro_view: String(grounded.geomacro_view ?? "This answer is grounded in current public web results, not an internal Geomacro forecast."),
+    evidence,
+    insufficient_evidence: evidence.length === 0,
+    mean_relevance: evidence.length ? Number((evidence.reduce((sum, item) => sum + item.relevance, 0) / evidence.length / 100).toFixed(3)) : null,
+    low_confidence: evidence.length === 0,
+    gri: gri.displayScore,
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 async function retrieve(terms: string[], categories: string[]) {
@@ -632,10 +732,16 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
     .slice(0, MAX_EVIDENCE);
 
   if (selected.length === 0) {
+    try {
+      const webAnswer = await answerFromOpenWeb(question, gri);
+      if (webAnswer) return webAnswer;
+    } catch (error) {
+      console.error("[askGeomacro] open-web fallback failed", error);
+    }
     return insufficientAnswer(
       recentRows.length === 0
-        ? "No scored events are recorded in the stored seven-day window."
-        : `${recentRows.length} events are stored for the last seven days, but none clear the relevance threshold for this topic-specific question.`,
+        ? "No strongly relevant stored evidence was found, and the current public-web search did not produce a supported answer."
+        : `${recentRows.length} stored events were checked, but none were strongly relevant and the current public-web search did not produce a supported answer.`,
       gri.displayScore,
     );
   }
