@@ -23,8 +23,9 @@
     "test:mineral-normalization": "node scripts/test-mineral-normalization.mjs",
     "validate:mineral-country": "node country-mesh/validate-mineral-country-coverage.mjs",
     "test:verifier": "node scripts/test-cross-source-verifier.mjs",
-    "test:all": "npm run test:verifier && npm run test:minerals && npm run test:health && npm run test:usgs-mcs && npm run test:mineral-normalization",
+    "test:all": "npm run test:verifier && npm run test:minerals && npm run test:health && npm run test:usgs-mcs && npm run test:mineral-normalization && npm run test:engine-routing",
     "gate:source-policy": "node scripts/check-source-policy.mjs",
-    "gate:structure": "npm run gate:source-policy && npm run validate:countries && npm run generate:coverage && npm run gate:coverage"
+    "gate:structure": "npm run gate:source-policy && npm run validate:countries && npm run generate:coverage && npm run gate:coverage",
+    "test:engine-routing": "node scripts/test-engine-routing.mjs"
   }
 }
