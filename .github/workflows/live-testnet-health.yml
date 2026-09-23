@@ -36,16 +36,15 @@ on:
         type: string
   push:
     branches:
+      - main
       - ops/live-testnet-api-100-e2e
+    paths:
+      - ".github/workflows/live-testnet-health.yml"
   schedule:
     - cron: "*/15 * * * *"
     - cron: "23 */6 * * *"
     - cron: "41 2 * * *"
     - cron: "17 */6 * * *"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/live-testnet-health.yml"
 
 permissions:
   contents: read
