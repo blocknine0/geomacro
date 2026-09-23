@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Geomacro Global Intelligence Coverage Cell",
+  "type":"object",
+  "required":["country_iso2","country_iso3","category","status","sources","last_success_at"],
+  "properties":{
+    "country_iso2":{"type":"string","minLength":2,"maxLength":2},
+    "country_iso3":{"type":"string","minLength":3,"maxLength":3},
+    "category":{"enum":["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]},
+    "status":{"enum":["CONFIGURED","INGESTING","HEALTHY","DEGRADED","FAILED"]},
+    "sources":{"type":"array","items":{"type":"string"}},
+    "last_success_at":{"type":["string","null"],"format":"date-time"},
+    "verification_capable":{"type":"boolean"},
+    "telegram_enabled":{"type":"boolean"},
+    "early_signal_enabled":{"type":"boolean"}
+  }
+}
