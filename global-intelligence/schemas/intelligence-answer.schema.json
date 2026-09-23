@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Geomacro Structured Intelligence Answer",
+  "type":"object",
+  "required":["categories","assessment","confirmed_events","early_signals","confidence","verification","updated_at"],
+  "properties":{
+    "categories":{"type":"array","items":{"enum":["GEOPOLITICS","MACRO","CRITICAL_MINERALS"]}},
+    "countries":{"type":"array","items":{"type":"string"}},
+    "assessment":{"type":"string"},
+    "confirmed_events":{"type":"array","items":{"type":"object"}},
+    "early_signals":{"type":"array","items":{"type":"object"}},
+    "confidence":{"type":"number","minimum":0,"maximum":1},
+    "verification":{"type":"object"},
+    "sources":{"type":"array","items":{"type":"object"}},
+    "updated_at":{"type":"string","format":"date-time"}
+  }
+}

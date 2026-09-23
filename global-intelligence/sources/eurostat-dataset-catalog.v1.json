@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "source_id": "eurostat",
+  "api": "statistics-1.0",
+  "datasets": {
+    "gdp": {"code":"nama_10_gdp","aliases":["gdp","gross domestic product","economic output"]},
+    "inflation": {"code":"prc_hicp_manr","aliases":["inflation","hicp","consumer prices","cpi"]},
+    "unemployment": {"code":"une_rt_m","aliases":["unemployment","jobless","unemployment rate"]},
+    "employment": {"code":"lfsi_emp_a","aliases":["employment","employed"]}
+  },
+  "coverage": "European statistical geography; this is a regional redundancy, not a global 195-country source."
+}

@@ -1,0 +1,81 @@
+name: Global Intelligence V1 CI
+
+on:
+  push:
+    branches:
+      - feature/global-intelligence-v1
+  pull_request:
+    branches:
+      - main
+      - feature/global-intelligence-v1
+  workflow_dispatch:
+
+jobs:
+  structural-and-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: global-intelligence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Source policy
+        run: npm run gate:source-policy
+      - name: Unit and deterministic tests
+        run: npm run test:all
+
+  canonical-coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: global-intelligence
+    env:
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require canonical registry credentials
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+      - name: Import expanded global country universe
+        run: npm run import:countries
+      - name: Validate canonical country registry
+        run: npm run validate:countries
+      - name: Generate N×3 global coverage matrix
+        run: npm run generate:coverage
+      - name: Run structural coverage gates
+        run: npm run gate:coverage
+      - name: Validate mineral country coverage
+        run: npm run validate:mineral-country
+      - name: Runtime source coverage audit
+        run: node health/runtime-coverage-audit.mjs > runtime-coverage-report.json
+      - name: Validate runtime audit report
+        run: node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync("./runtime-coverage-report.json","utf8")); if(r.version!=="1.0" || !Array.isArray(r.results) || r.results.length<8) process.exit(1)'
+      - name: Country-level coverage certification
+        run: node health/country-coverage-certification.mjs
+      - name: Validate country-level certification
+        run: |
+          node <<'NODE'
+          const fs=require("fs");
+          const r=JSON.parse(fs.readFileSync("./health/country-coverage-certification.v1.json","utf8"));
+          if(r.version!=="1.0" || r.country_count<195 || r.category_count!==3 || r.cell_count!==r.country_count*3 || !Array.isArray(r.cells) || r.cells.length!==r.cell_count) process.exit(1);
+          const allowed=new Set(["CONFIGURED","LIVE_DATA","DEGRADED","NO_DATA"]);
+          if(r.cells.some(c=>!allowed.has(c.status))) process.exit(1);
+          NODE
+      - name: Upload generated coverage and runtime audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-intelligence-v1-coverage-${{ github.run_id }}
+          path: |
+            global-intelligence/country-mesh/countries.v1.json
+            global-intelligence/country-mesh/generated/coverage-matrix.v1.json
+            global-intelligence/runtime-coverage-report.json
+            global-intelligence/health/country-coverage-certification.v1.json
+          if-no-files-found: error
+          retention-days: 14

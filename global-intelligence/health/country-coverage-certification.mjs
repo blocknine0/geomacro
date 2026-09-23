@@ -1,0 +1,39 @@
+import fs from "node:fs/promises";
+const categories=["GEOPOLITICS","MACRO","CRITICAL_MINERALS"];
+const countriesPath=new URL("../country-mesh/countries.v1.json",import.meta.url);
+const matrixPath=new URL("../country-mesh/generated/coverage-matrix.v1.json",import.meta.url);
+const runtimePath=new URL("../runtime-coverage-report.json",import.meta.url);
+const outputPath=new URL("./country-coverage-certification.v1.json",import.meta.url);
+const registryPath=new URL("../sources/source-registry.v1.json",import.meta.url);
+const countriesRaw=JSON.parse(await fs.readFile(countriesPath,"utf8"));
+const matrix=JSON.parse(await fs.readFile(matrixPath,"utf8"));
+const runtime=JSON.parse(await fs.readFile(runtimePath,"utf8"));
+const registry=JSON.parse(await fs.readFile(registryPath,"utf8"));
+const countries=countriesRaw.countries;
+if(!Array.isArray(countries)||countries.length<195) throw new Error("Country universe must contain at least 195 countries");
+if(matrix.cell_count!==countries.length*3||matrix.cells?.length!==countries.length*3) throw new Error("Coverage matrix does not match country universe");
+const countryKeys=new Set(countries.map(country=>String(country.iso3).toUpperCase()));
+const matrixKeys=new Set();
+for(const cell of matrix.cells){
+ const iso3=String(cell.country_iso3||"").toUpperCase(); const category=String(cell.category||"").toUpperCase();
+ if(!countryKeys.has(iso3)||!categories.includes(category)) throw new Error("Coverage matrix contains an invalid country/category cell");
+ if(cell.status!=="CONFIGURED") throw new Error("Coverage matrix source state must be CONFIGURED before certification");
+ const key=iso3+"|"+category; if(matrixKeys.has(key)) throw new Error("Coverage matrix contains duplicate country/category cells"); matrixKeys.add(key);
+}
+if(matrixKeys.size!==countries.length*3) throw new Error("Coverage matrix country/category keys are incomplete");
+if(!Array.isArray(runtime.results)) throw new Error("Runtime audit results are required");
+const sourceMeta=new Map(); for(const category of categories) for(const source of registry.categories?.[category]??[]) sourceMeta.set(source.id,{...source,category});
+const observed=new Map();
+for(const result of runtime.results){ if(!result.country_iso3) continue; const key=result.country_iso3.toUpperCase()+"|"+result.category; const current=observed.get(key); if(!current||new Date(result.checked_at||result.observed_at||0)>new Date(current.checked_at||current.observed_at||0)) observed.set(key,result); }
+const cells=matrix.cells.map(cell=>{
+ const result=observed.get(cell.country_iso3+"|"+cell.category);
+ const configuredSources=(registry.categories?.[cell.category]??[]).filter(source=>["global","country","country_and_global","global_trade"].includes(source.coverage)).map(source=>source.id);
+ if(!result) return {...cell,status:"CONFIGURED",evidence_level:"STRUCTURAL",sources:configuredSources,observed_at:null,notes:"Structurally covered by the governed source registry; no country-specific runtime observation was executed in this audit."};
+ const status=result.coverage_status==="LIVE_DATA"?"LIVE_DATA":result.coverage_status==="DEGRADED"?"DEGRADED":result.coverage_status==="NO_DATA"?"NO_DATA":"CONFIGURED";
+ const meta=sourceMeta.get(result.sourceId);
+ return {...cell,status,evidence_level:"RUNTIME_OBSERVED",sources:[result.sourceId],observed_at:result.checked_at||result.observed_at||null,notes:meta?"Runtime observation from "+result.sourceId+"; registry class "+meta.class+".":"Runtime observation from "+result.sourceId+"."};
+});
+const counts={}; for(const cell of cells) counts[cell.status]=(counts[cell.status]||0)+1;
+const report={version:"1.0",generated_at:new Date().toISOString(),country_count:countries.length,category_count:3,cell_count:cells.length,counts,scope:"Country-level certification separates structural configuration from country-specific runtime evidence; CONFIGURED does not mean live data.",cells};
+await fs.writeFile(outputPath,JSON.stringify(report,null,2)+"\n");
+console.log(JSON.stringify({ok:true,country_count:report.country_count,cell_count:report.cell_count,counts,output:outputPath.pathname},null,2));

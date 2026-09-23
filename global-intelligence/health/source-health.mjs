@@ -1,0 +1,18 @@
+const DEFAULT_STALE_DAYS = Number(process.env.GLOBAL_SOURCE_STALE_DAYS ?? 30);
+const DEFAULT_TIMEOUT_MS = Number(process.env.GLOBAL_SOURCE_TIMEOUT_MS ?? 15000);
+function statusForHttp(status){ if(status===401||status===403)return "AUTH_REQUIRED"; if(status===429)return "DEGRADED"; return status>=200&&status<300?"PASS":"FAIL"; }
+export async function probeSource({sourceId,category,url,validate=()=>true,headers={},licenseReview=false,staleAfterDays=DEFAULT_STALE_DAYS,timeoutMs=DEFAULT_TIMEOUT_MS}){
+  const started=Date.now(); const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const res=await fetch(url,{headers:{accept:"application/json,text/html",...headers},redirect:"follow",signal:controller.signal});
+    const checkedAt=new Date().toISOString();
+    if(!res.ok)return {source_id:sourceId,category,status:statusForHttp(res.status),checked_at:checkedAt,latency_ms:Date.now()-started,http_status:res.status,error:"HTTP "+res.status};
+    const body=await res.text();
+    if(!validate(body,res))return {source_id:sourceId,category,status:"DEGRADED",checked_at:checkedAt,latency_ms:Date.now()-started,http_status:res.status,error:"response validation failed"};
+    return {source_id:sourceId,category,status:licenseReview?"LICENSE_REVIEW":"PASS",checked_at:checkedAt,latency_ms:Date.now()-started,http_status:res.status,stale_after_days:staleAfterDays,coverage:{}};
+  }catch(error){ const aborted=error?.name==="AbortError"; return {source_id:sourceId,category,status:"FAIL",checked_at:new Date().toISOString(),latency_ms:Date.now()-started,error:aborted?"timeout after "+timeoutMs+"ms":String(error.message||error)};
+  }finally{ clearTimeout(timer); }
+}
+export function evaluateFreshness(observedAt,{now=new Date(),maxAgeDays=DEFAULT_STALE_DAYS}={}){ if(!observedAt)return {status:"UNKNOWN",age_days:null,max_age_days:maxAgeDays}; const date=new Date(observedAt); if(Number.isNaN(date.getTime()))return {status:"UNKNOWN",age_days:null,max_age_days:maxAgeDays}; const ageDays=Math.max(0,(now-date)/86400000); return {status:ageDays<=maxAgeDays?"FRESH":"STALE",age_days:ageDays,max_age_days:maxAgeDays}; }
+export function aggregateSourceHealth(results=[]){ const bySource=new Map(); for(const result of results){ const current=bySource.get(result.source_id); if(!current||new Date(result.checked_at)>new Date(current.checked_at))bySource.set(result.source_id,result); } const ordered=[...bySource.values()].sort((a,b)=>a.source_id.localeCompare(b.source_id)); const counts=Object.fromEntries(["PASS","DEGRADED","FAIL","AUTH_REQUIRED","LICENSE_REVIEW"].map(s=>[s,ordered.filter(x=>x.status===s).length])); return {checked_at:new Date().toISOString(),source_count:ordered.length,counts,results:ordered}; }
+export function certifySourceHealth(results=[],{requiredSources=[]}={}){ const latest=aggregateSourceHealth(results); const required=new Set(requiredSources); const missing=[...required].filter(id=>!latest.results.some(r=>r.source_id===id)); const failed=latest.results.filter(r=>["FAIL","AUTH_REQUIRED","DEGRADED"].includes(r.status)).map(r=>r.source_id); const licenseReview=latest.results.filter(r=>r.status==="LICENSE_REVIEW").map(r=>r.source_id); return {...latest,certification:{status:missing.length||failed.length||licenseReview.length?"NOT_CERTIFIED":"CERTIFIED",missing_required_sources:missing,failed_or_degraded_sources:failed,license_review_sources:licenseReview}}; }

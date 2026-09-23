@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import {normalizeCountryIso3,normalizeMineral,normalizeMineralObservation} from "../adapters/mineral-normalization.mjs";
+assert.equal(normalizeCountryIso3("Democratic Republic of the Congo"),"COD");
+assert.equal(normalizeCountryIso3("USA"),"USA");
+assert.equal(normalizeMineral("Cobalt"),"cobalt");
+assert.equal(normalizeMineral("Rare Earths"),"rare_earths");
+assert.equal(normalizeMineral("unknown commodity"),null);
+assert.equal(normalizeMineralObservation({raw:{country:"China",commodity:"Copper"}}).normalization_status,"RESOLVED");
+assert.equal(normalizeMineralObservation({raw:{country:"Atlantis",commodity:"Copper"}}).normalization_status,"UNRESOLVED");
+console.log(JSON.stringify({status:"PASS"}));

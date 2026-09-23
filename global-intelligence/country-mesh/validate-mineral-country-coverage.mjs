@@ -1,0 +1,10 @@
+import fs from "node:fs/promises";
+import assert from "node:assert/strict";
+import {normalizeCountryIso3} from "../adapters/mineral-normalization.mjs";
+const data=JSON.parse(await fs.readFile(new URL("./countries.v1.json",import.meta.url),"utf8"));
+assert.ok(data.countries.length>=195);
+assert.equal(data.baseline_count,195);
+const canonical=new Set(data.countries.map(c=>c.iso3));
+for(const iso3 of ["USA","CHN","IND","DEU","GBR","COD"]) assert.equal(normalizeCountryIso3(iso3,{canonicalIso3Set:canonical}),iso3);
+assert.equal(normalizeCountryIso3("Atlantis",{canonicalIso3Set:canonical}),null);
+console.log(JSON.stringify({status:"PASS",country_universe_count:canonical.size,sovereign_baseline_count:195,sample_checked:6},null,2));

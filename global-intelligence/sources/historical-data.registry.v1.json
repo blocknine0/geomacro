@@ -1,0 +1,20 @@
+{
+  "source_id":"geomacro_historical_data",
+  "repository":"blocknine0/geomacro-historical-data",
+  "status":"INTEGRATION_READY_CREDENTIALS_REQUIRED",
+  "role":"historical_evidence_crosscheck",
+  "domains":["GEOPOLITICS","MACRO","CRITICAL_MINERALS"],
+  "serving_interfaces":{
+    "geopolitics":"commercial_structural_country_latest",
+    "geopolitics_profiles":"commercial_structural_country_profiles",
+    "geopolitics_corridors":"commercial_structural_corridor_latest",
+    "rare_earths":"rare_earth_canonical_observations",
+    "macro":"commercial_macro_observations"
+  },
+  "methodology_boundary":"EVIDENCE_ONLY_NOT_IN_GRI_OR_GRO_UNTIL_SEPARATELY_VERSIONED",
+  "credentials":["HISTORICAL_SUPABASE_URL","HISTORICAL_SUPABASE_SERVICE_ROLE_KEY"],
+  "browser_access":false,
+  "raw_warehouse_access":false,
+  "missing_is_not_zero":true,
+  "current_source_override":false
+}

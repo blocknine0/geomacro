@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "source_id": "world_bank_indicators",
+  "families": {
+    "growth": ["NY.GDP.MKTP.CD", "NY.GDP.MKTP.KD.ZG", "NY.GDP.PCAP.CD"],
+    "inflation": ["FP.CPI.TOTL.ZG"],
+    "employment": ["SL.UEM.TOTL.ZS"],
+    "trade": ["NE.TRD.GNFS.ZS"],
+    "debt": ["GC.DOD.TOTL.GD.ZS"],
+    "fiscal": ["GC.BAL.CASH.GD.ZS"],
+    "current_account": ["BN.CAB.XOKA.GD.ZS"]
+  },
+  "aliases": {
+    "gdp": "growth",
+    "growth": "growth",
+    "inflation": "inflation",
+    "cpi": "inflation",
+    "unemployment": "employment",
+    "jobs": "employment",
+    "employment": "employment",
+    "trade": "trade",
+    "debt": "debt",
+    "fiscal": "fiscal",
+    "budget": "fiscal",
+    "current account": "current_account"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "policy": {
+    "authoritative_requires_identity_verification": true,
+    "telegram_default_class": "TELEGRAM_EARLY_SIGNAL",
+    "telegram_official_can_be_authoritative_after_verification": true,
+    "unverified_sources_never_confirm_alone": true
+  },
+  "categories": {
+    "GEOPOLITICS": [
+      {"id":"gdelt_v2","class":"GLOBAL_FALLBACK","access":"free","auth":"none","priority":1,"coverage":"global"},
+      {"id":"gdelt_gal","class":"GLOBAL_FALLBACK","access":"free","auth":"none","priority":2,"coverage":"global"},
+      {"id":"un_security_council","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"global"},
+      {"id":"imo_msi","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"global"},
+      {"id":"ukmto","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"maritime"},
+      {"id":"government_official","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"country"},
+      {"id":"telegram_verified_geopolitics","class":"TELEGRAM_VERIFIED","access":"free","auth":"telegram_api","priority":1,"coverage":"country_and_global"},
+      {"id":"telegram_osint_geopolitics","class":"TELEGRAM_EARLY_SIGNAL","access":"free","auth":"telegram_api","priority":2,"coverage":"country_and_global"}
+    ],
+    "MACRO": [
+      {"id":"world_bank_indicators","class":"GLOBAL_FALLBACK","access":"free","auth":"none","priority":1,"coverage":"global"},
+      {"id":"imf_sdmx","class":"AUTHORITATIVE","access":"free","auth":"account_or_public_endpoint","priority":1,"coverage":"global"},
+      {"id":"eurostat","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"europe"},
+      {"id":"national_statistics","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"country"},
+      {"id":"central_bank","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"country"},
+      {"id":"un_comtrade","class":"AUTHORITATIVE","access":"free","auth":"free_api_key_or_preview","priority":2,"coverage":"global_trade"},
+      {"id":"telegram_verified_macro","class":"TELEGRAM_VERIFIED","access":"free","auth":"telegram_api","priority":1,"coverage":"country_and_global"},
+      {"id":"telegram_osint_macro","class":"TELEGRAM_EARLY_SIGNAL","access":"free","auth":"telegram_api","priority":2,"coverage":"country_and_global"}
+    ],
+    "CRITICAL_MINERALS": [
+      {"id":"usgs_mcs","class":"GLOBAL_FALLBACK","access":"free","auth":"none","priority":1,"coverage":"global"},
+      {"id":"usgs_mrp","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"global"},
+      {"id":"bgs_world_minerals_statistics","class":"AUTHORITATIVE","access":"free","auth":"none","priority":2,"coverage":"global"},
+      {"id":"national_minerals_authority","class":"AUTHORITATIVE","access":"free","auth":"none","priority":1,"coverage":"country"},
+      {"id":"un_comtrade_minerals","class":"AUTHORITATIVE","access":"free","auth":"free_api_key_or_preview","priority":2,"coverage":"global_trade"},
+      {"id":"telegram_verified_minerals","class":"TELEGRAM_VERIFIED","access":"free","auth":"telegram_api","priority":1,"coverage":"country_and_global"},
+      {"id":"telegram_osint_minerals","class":"TELEGRAM_EARLY_SIGNAL","access":"free","auth":"telegram_api","priority":2,"coverage":"country_and_global"}
+    ]
+  },
+  "candidate_sources_not_yet_approved": [
+    "jrc_rmis_supply_chain",
+    "iea_critical_minerals",
+    "commercial_news_apis",
+    "commercial_market_data"
+  ]
+}
