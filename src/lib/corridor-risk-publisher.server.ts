@@ -71,16 +71,6 @@ export type CorridorRiskPublishResult = {
 };
 
 
-export function corridorCountrySourceDeliveryProfile(
-  deliveryProfile: RiskObjectDeliveryProfile,
-): RiskObjectDeliveryProfile {
-  // Public demo corridors use canonical endpoint GROs so their source intelligence remains independently verifiable.
-  return deliveryProfile === "PUBLIC_DEMO"
-    ? "CANONICAL"
-    : deliveryProfile;
-}
-
-
 function normalizeIso3(
   value: string,
   field: string,
