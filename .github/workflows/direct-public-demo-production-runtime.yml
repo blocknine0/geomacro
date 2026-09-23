@@ -33,5 +33,12 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify live build SHA against this main commit
+        env:
+          GEOMACRO_LIVE_BASE_URL: https://geomacro.live
+          GEOMACRO_LIVE_EXPECTED_HOST: geomacro.live
+          GEOMACRO_EXPECTED_DEPLOYED_SHA: ${{ github.sha }}
+        run: node scripts/ops/live-build-sha-smoke.mjs
+
       - name: Run direct production-runtime demo probe
         run: bun scripts/diagnostics/public-demo-direct-production-runtime.mjs
