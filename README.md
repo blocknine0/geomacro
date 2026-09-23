@@ -19,6 +19,30 @@ Prediction markets, Arc Testnet contracts, USDC, Circle CCTP and swap flows are 
 
 ---
 
+## Permanent user-facing data boundary
+
+Geomacro has a repository-level permanent rule for every current and future live product surface.
+
+**User-facing output MUST be structured, concise and limited to approved product fields.**
+
+The following MUST NEVER be exposed to users or external systems through a Geomacro product surface:
+
+1. raw source URLs;
+2. raw article, document, feed or source content;
+3. internal search or retrieval payloads;
+4. provider names, provider/API implementation details or internal search infrastructure details;
+5. internal provenance, retrieval metadata, scoring metadata or other internal implementation metadata that is not part of the approved public product contract.
+
+This applies across the website, UI, Ask Geomacro, APIs, Risk Intelligence, Risk Indices, Risk Objects, Risk Gate, agent interfaces, paid delivery and all future live capabilities.
+
+Internal evidence and retrieval may be used to produce verified intelligence, but the external boundary is always:
+
+`Raw/Internal Evidence -> Retrieval/Verification/Processing -> Approved Structured Intelligence -> User/External System`
+
+A feature that violates this boundary is not production-ready. See [docs/USER_FACING_DATA_BOUNDARY.md](docs/USER_FACING_DATA_BOUNDARY.md).
+
+---
+
 ## Current product status
 
 | Surface | Status | Product truth |

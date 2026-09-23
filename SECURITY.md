@@ -20,6 +20,24 @@ A useful report includes the affected surface, prerequisites, steps to reproduce
 
 Do not send private keys, seed phrases, service-role credentials, signing keys, OTPs or unrelated confidential information.
 
+## Permanent user-facing data boundary
+
+Geomacro enforces a repository-level permanent user-facing data boundary across all current and future live capabilities.
+
+User-facing responses and payloads MUST be structured, concise and limited to approved public product fields. They MUST NOT expose:
+
+- raw source URLs;
+- raw article, document, feed or source content;
+- internal search or retrieval payloads;
+- provider names, provider/API implementation details or internal search infrastructure details;
+- internal provenance, retrieval metadata, scoring metadata or other internal implementation metadata that is not part of the approved public product contract.
+
+This rule applies to visible UI as well as API responses, server-rendered data, client state, HTML/DOM payloads, errors, debug responses, embedded metadata and fallback paths.
+
+Internal evidence and retrieval systems may be used behind the boundary. Raw/internal material must be transformed into approved structured intelligence before external delivery. Any capability that violates this boundary is not production-ready.
+
+See [docs/USER_FACING_DATA_BOUNDARY.md](docs/USER_FACING_DATA_BOUNDARY.md).
+
 ## Security scope
 
 Examples of material findings include:
