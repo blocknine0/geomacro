@@ -1,6 +1,6 @@
 import {probeCredentialedSource} from "../adapters/credentialed-sources.mjs";
 
-const sources = ["bea","alpha_vantage","eia_api_v2","noaa_ncei","wto_timeseries","opensanctions"];
+const sources = ["bls","bea","alpha_vantage","eia_api_v2","noaa_ncei","wto_timeseries","opensanctions"];
 const results = [];
 
 for (const source of sources) {
