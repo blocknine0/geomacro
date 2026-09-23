@@ -84,7 +84,7 @@ export function corridorCountrySourceDeliveryProfile(
 function normalizeIso3(
   value: string,
   field: string,
-)
+) {
   const iso3 =
     value
       .trim()
