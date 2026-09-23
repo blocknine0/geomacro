@@ -31,6 +31,8 @@
     "audit:runtime": "node health/runtime-coverage-audit.mjs",
     "test:runtime-coverage": "node scripts/test-runtime-coverage-audit.mjs",
     "certify:country": "node health/country-coverage-certification.mjs",
-    "test:country-coverage": "node scripts/test-country-coverage-certification.mjs"
+    "test:country-coverage": "node scripts/test-country-coverage-certification.mjs",
+    "probe:credentialed": "node scripts/probe-credentialed-sources.mjs",
+    "test:runtime-credentialed": "node scripts/probe-credentialed-sources.mjs"
   }
 }
