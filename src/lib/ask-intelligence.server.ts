@@ -731,6 +731,15 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
     .filter(({ similarity }) => similarity >= SIMILARITY_THRESHOLD)
     .slice(0, MAX_EVIDENCE);
 
+  // Current public-web grounding takes precedence for user questions so Ask Geomacro
+  // does not answer a fresh question from an older stored snapshot when live sources exist.
+  try {
+    const webAnswer = await answerFromOpenWeb(question, gri);
+    if (webAnswer) return webAnswer;
+  } catch (error) {
+    console.error("[askGeomacro] open-web search unavailable; using stored intelligence", error);
+  }
+
   if (selected.length === 0) {
     try {
       const webAnswer = await answerFromOpenWeb(question, gri);
