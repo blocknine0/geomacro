@@ -4,6 +4,17 @@ on:
   pull_request:
     paths:
       - "scripts/audit-global-realtime-source-freshness.mjs"
+      - "scripts/audit-global-realtime-intelligence-100.mjs"
+      - "scripts/audit-global-raw-source-runtime.mjs"
+      - "scripts/audit-realtime-scope-fanout.mjs"
+      - "scripts/audit-gdelt-dependency-live.mjs"
+      - "scripts/run-gdelt-gal-cycle.mjs"
+      - "scripts/verify-gdelt-gal-cycle.mjs"
+      - "scripts/sync-country-raw-source-mesh.mjs"
+      - "scripts/drain-live-structure.mjs"
+      - "scripts/intelligence-orchestrator.mjs"
+      - "supabase/functions/live-flash-ingest/index.ts"
+      - "supabase/functions/live-flash-corroborate/index.ts"
       - "supabase/migrations/920_multi_source_commercial_registry.sql"
       - ".github/workflows/global-realtime-source-proof.yml"
   workflow_dispatch:
