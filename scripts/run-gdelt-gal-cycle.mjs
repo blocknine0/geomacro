@@ -7,6 +7,9 @@ import { spawn } from "node:child_process";
 const OUTPUT_DIR = String(process.env.GDELT_GAL_CYCLE_OUTPUT_DIR ?? "gdelt-gal-cycle").trim();
 const MAX_ATTEMPTS = Math.max(1, Math.min(4, Number(process.env.GDELT_GAL_CYCLE_MAX_ATTEMPTS ?? 3)));
 const BACKOFF_SECONDS = Math.max(5, Math.min(300, Number(process.env.GDELT_GAL_CYCLE_BACKOFF_SECONDS ?? 30)));
+const PROJECT_REF = "ldpwajisioljyjtojvfx";
+const SOURCE_KEY = "gdelt_gal";
+const STREAM_KEY = "global-relevant";
 const CYCLE_START = new Date().toISOString();
 
 function sleep(ms) {
@@ -144,6 +147,19 @@ async function main() {
           Number(cursor?.consecutive_failures ?? 0) === 0;
 
         if (priorCycleFresh) {
+          const now = new Date().toISOString();
+          const { error: healError } = await db
+            .from("live_ingestion_cursors")
+            .update({
+              status: "healthy",
+              consecutive_failures: 0,
+              last_attempt_at: now,
+              updated_at: now,
+            })
+            .eq("source_key", SOURCE_KEY)
+            .eq("stream_key", STREAM_KEY);
+          if (healError) throw healError;
+
           const summary = {
             ok: true,
             status: "fresh_prior_cycle",
