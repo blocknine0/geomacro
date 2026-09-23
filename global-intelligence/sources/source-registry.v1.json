@@ -352,19 +352,12 @@
       "noaa_swpc",
       "bgs_world_minerals_statistics",
       "sec_edgar",
-      "copernicus_ems"
+      "copernicus_ems",
+      "imf"
     ],
     "probe_command": "npm run probe:public",
     "production_enablement_requires_runtime_pass": true,
     "copernicus_download_requires_authorized_access": true,
-    "blocked_sources": [
-      {
-        "id": "imf_sdmx",
-        "reason": "provider_blocked_from_github_actions_runner",
-        "requires_runtime_certification": true,
-        "production_enablement": false
-      }
-    ],
-    "notes": "All listed public sources must pass the runtime probe. IMF remains explicitly blocked and is not production-enabled until its authenticated/public API runtime path is certified."
+    "notes": "All public sources, including IMF SDMX, must pass the runtime probe before production enablement."
   }
 }

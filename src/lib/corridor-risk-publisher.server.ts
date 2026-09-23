@@ -146,6 +146,7 @@ generateInternal(
     input.delivery_profile ??
     "CANONICAL";
 
+
   const [
     origin,
     destination,
