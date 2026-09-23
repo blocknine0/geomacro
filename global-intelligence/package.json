@@ -13,6 +13,7 @@
     "probe:imf": "node scripts/probe-imf-macro.mjs",
     "probe:eurostat": "node scripts/probe-eurostat-macro.mjs",
     "probe:official": "node scripts/probe-official-statistics.mjs",
-    "probe:comtrade": "node scripts/probe-un-comtrade.mjs"
+    "probe:comtrade": "node scripts/probe-un-comtrade.mjs",
+    "probe:usgs": "node scripts/probe-usgs-minerals.mjs"
   }
 }
