@@ -214,6 +214,11 @@ jobs:
           set -euo pipefail
           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-acceptance.log
 
+      - name: Refresh production-readiness orchestrator state
+        run: |
+          set -euo pipefail
+          INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST=production_readiness           INTELLIGENCE_ORCHESTRATOR_FORCE_TASKS=production_readiness           node scripts/intelligence-orchestrator.mjs 2>&1 | tee intelligence-orchestrator-production-readiness.log
+
       - name: Final GDELT first-break and scope fanout convergence
         shell: bash
         run: |
