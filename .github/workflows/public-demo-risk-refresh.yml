@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/public-demo-risk-refresh.yml"
+      - "docs/TESTNET_DEVELOPER_API.md"
 
 
 permissions:
