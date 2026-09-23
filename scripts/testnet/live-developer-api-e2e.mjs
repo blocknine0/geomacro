@@ -15,6 +15,12 @@ const CAPABILITIES = ['intelligence_query','gri_read','structural_country_digest
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
 function rid(prefix) { return prefix + '-' + Date.now() + '-' + crypto.randomUUID(); }
+function extractCookie(headers) {
+  const raw = headers.get('set-cookie') || '';
+  const pair = raw.split(';', 1)[0]?.trim();
+  assert(pair && pair.includes('='), 'Wallet sign-in did not return a session cookie');
+  return pair;
+}
 function authHeaders(apiKey, apiSecret) {
   assert(/^gmk_test_[A-Za-z0-9_-]{20,}$/.test(apiKey), 'Provisioned Testnet API key is invalid');
   assert(/^gms_test_[A-Za-z0-9_-]{32,}$/.test(apiSecret), 'Provisioned Testnet API secret is invalid');
