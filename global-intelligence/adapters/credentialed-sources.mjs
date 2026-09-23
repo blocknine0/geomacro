@@ -8,6 +8,11 @@ function required(name) {
 
 export async function probeCredentialedSource(sourceId) {
   const configs = {
+    bls: {
+      category: "MACRO", countryIso3: "USA", env: "BLS_API_KEY",
+      build: key => `https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000?startyear=2025&endyear=2026&registrationkey=${encodeURIComponent(key)}`,
+      validate: x => Array.isArray(x?.Results?.series) && x.Results.series.some(s => Array.isArray(s?.data) && s.data.length > 0)
+    },
     bea: {
       category: "MACRO", countryIso3: "USA", env: "BEA_API_KEY",
       build: key => `https://apps.bea.gov/api/data?UserID=${encodeURIComponent(key)}&method=GETDATASETLIST`,
