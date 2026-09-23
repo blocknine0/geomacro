@@ -2,6 +2,10 @@ name: Public Demo Risk Refresh
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-demo-risk-refresh.yml"
 
 
 permissions:
@@ -22,6 +26,16 @@ jobs:
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
 
     steps:
+      - name: Verify one-time refresh trigger
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event.head_commit.message }}" != *"[public-demo-refresh]"* ]]; then
+            echo "Unexpected push trigger; refusing public demo refresh."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
