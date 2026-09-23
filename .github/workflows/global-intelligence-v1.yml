@@ -1,0 +1,26 @@
+name: Global Intelligence V1 CI
+
+on:
+  push:
+    branches:
+      - feature/global-intelligence-v1
+  pull_request:
+    branches:
+      - main
+      - feature/global-intelligence-v1
+
+jobs:
+  structural-and-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: global-intelligence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Source policy
+        run: npm run gate:source-policy
+      - name: Unit and deterministic tests
+        run: npm run test:all
