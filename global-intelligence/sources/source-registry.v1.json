@@ -81,6 +81,22 @@
         "coverage": "environmental"
       },
       {
+        "id": "noaa_swpc",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "space_weather"
+      },
+      {
+        "id": "gdacs_global_disasters",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "global_disasters"
+      },
+      {
         "id": "opensanctions",
         "class": "SUPPLEMENTAL_SCREENING",
         "access": "trial",
@@ -105,6 +121,30 @@
         "auth": "account_or_public_endpoint",
         "priority": 1,
         "coverage": "global"
+      },
+      {
+        "id": "ecb_sdmx",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "europe_and_global_fx"
+      },
+      {
+        "id": "oecd_sdmx",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "global"
+      },
+      {
+        "id": "bis_statistics",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "global_financial_system"
       },
       {
         "id": "eurostat",
@@ -137,6 +177,30 @@
         "auth": "free_api_key_or_preview",
         "priority": 2,
         "coverage": "global_trade"
+      },
+      {
+        "id": "sec_edgar",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "united_states_corporate_filings"
+      },
+      {
+        "id": "faostat_global",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "global_food_agriculture"
+      },
+      {
+        "id": "ilostat_global",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "global_labour"
       },
       {
         "id": "telegram_verified_macro",
@@ -221,6 +285,14 @@
         "coverage": "global_trade"
       },
       {
+        "id": "copernicus_ems",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "public_catalog_or_authorized_download",
+        "priority": 2,
+        "coverage": "global_environmental_risk"
+      },
+      {
         "id": "telegram_verified_minerals",
         "class": "TELEGRAM_VERIFIED",
         "access": "free",
@@ -265,5 +337,34 @@
     "probe_command": "npm run probe:credentialed",
     "production_enablement_requires_runtime_pass": true,
     "opensanctions_requires_commercial_license": true
+  },
+  "public_runtime_gate": {
+    "version": "1.0",
+    "required_sources": [
+      "ecb",
+      "oecd",
+      "bis",
+      "eurostat",
+      "gdacs",
+      "un_comtrade",
+      "faostat_global",
+      "ilostat_global",
+      "noaa_swpc",
+      "bgs_world_minerals_statistics",
+      "sec_edgar",
+      "copernicus_ems"
+    ],
+    "probe_command": "npm run probe:public",
+    "production_enablement_requires_runtime_pass": true,
+    "copernicus_download_requires_authorized_access": true,
+    "blocked_sources": [
+      {
+        "id": "imf_sdmx",
+        "reason": "provider_blocked_from_github_actions_runner",
+        "requires_runtime_certification": true,
+        "production_enablement": false
+      }
+    ],
+    "notes": "All listed public sources must pass the runtime probe. IMF remains explicitly blocked and is not production-enabled until its authenticated/public API runtime path is certified."
   }
 }

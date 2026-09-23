@@ -1,0 +1,29 @@
+name: Public source runtime certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "global-intelligence/**"
+      - ".github/workflows/public-source-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-source-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: global-intelligence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe public sources
+        run: npm run probe:public
