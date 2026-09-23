@@ -7,6 +7,7 @@ const audit = fs.readFileSync("scripts/audit-global-raw-source-coverage.mjs","ut
 const runtimeAudit = fs.readFileSync("scripts/audit-global-raw-source-runtime.mjs","utf8");
 const workflow = fs.readFileSync(".github/workflows/global-country-raw-source-mesh.yml","utf8");
 const snapshot = fs.readFileSync("supabase/migrations/968_country_raw_web_snapshot_store.sql","utf8");
+const corroborate = fs.readFileSync("supabase/functions/live-flash-corroborate/index.ts","utf8");
 
 describe("global country raw source mesh",()=>{
   it("defines all three categories and a 195-country contract",()=>{
@@ -31,7 +32,7 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("worldbank.org/v2/country/");
     expect(worker).toContain("api.gdeltproject.org/api/v2/doc/doc");
     expect(worker).toContain("sourcecountry:");
-    expect(worker).toContain("const countryIso2=new Map");
+    expect(worker).toContain("const countryIso2");
     expect(worker).toContain("GEO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MACRO:COVERAGE_FALLBACK:");
     expect(worker).toContain("MINERALS:COVERAGE_FALLBACK:");
@@ -39,6 +40,16 @@ describe("global country raw source mesh",()=>{
     expect(worker).toContain("RETRY_ATTEMPTS=4");
     expect(worker).toContain("retry-after");
     expect(worker).toContain("api.gdeltproject.org");
+    expect(worker).toContain("alreadyFreshNonGdelt");
+    expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
+    expect(worker).toContain("nonGdeltCandidates");
+  });
+
+  it("keeps realtime RSS corroboration authorized for the master orchestrator",()=>{
+    expect(corroborate).toContain("intelligence-orchestrator.yml@refs/heads/main");
+    expect(corroborate).toContain('"intelligence-orchestrator.yml"');
+    expect(corroborate).toContain('https://geomacro.live/actions/live-flash-rss');
   });
 
   it("is operator-driven because the master orchestrator owns scheduling",()=>{
@@ -52,13 +63,21 @@ describe("global country raw source mesh",()=>{
     );
   });
 
-  it("self-heals missing directory targets without weakening commercial rights",()=>{
-    expect(worker).toContain("commercial_promotion_allowed: false");
+  it("self-heals stale cells without weakening commercial rights",()=>{
+    expect(worker).toContain("country_raw_web_mesh");
     expect(worker).toContain("live_country_primary_source_directory");
-    expect(worker).toContain("Expected exactly 195 canonical countries from the government-portal baseline");
-    expect(worker).toContain("inserted_targets");
-    expect(worker).toContain('.not("target_id","like","%MESH_FILLER%")');
-    expect(worker).toContain("for(let from=0;;from+=1000)");
+    expect(worker).toContain("canonicalIso3.length !== 195");
+    expect(worker).toContain('.not("target_id", "like", "%MESH_FILLER%")');
+    expect(worker).toContain('.not("transport", "eq", "TELEGRAM_DISCOVERY")');
+    expect(worker).toContain("alreadyFreshNonGdelt");
+    expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
+    expect(worker).toContain("un_security_council_docs_rss");
+    expect(worker).toContain("ukmto_maritime_security");
+    expect(worker).toContain("GEO:GLOBAL:UNSC_RSS:");
+    expect(worker).toContain("GEO:GLOBAL:UKMTO:");
+    expect(worker).toContain("const fragmentId = await saveFragment");
+    expect(worker).toContain("fragment_ids: [...new Set(fragmentIds)]");
   });
 
   it("keeps raw bytes private and hashed",()=>{

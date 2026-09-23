@@ -13,6 +13,13 @@ const HOST_MIN_INTERVAL_MS=new Map([
   ["www.usgs.gov",300],
 ]);
 const UA="Geomacro-Country-Raw-Source-Mesh/1.0 (+https://geomacro.live)";
+const SOURCE_HTTP_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_HTTP_TIMEOUT_MS??30000)));
+const DB_REQUEST_TIMEOUT_MS=Math.max(5000,Math.min(120000,Number(process.env.RAW_SOURCE_DB_TIMEOUT_MS??30000)));
+function fetchWithTimeout(input,init={}){
+  const timeout=AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
+  const signal=init?.signal?AbortSignal.any([init.signal,timeout]):timeout;
+  return fetch(input,{...init,signal});
+}
 const projectRef=(u)=>{try{return new URL(u).hostname.split(".")[0]??"";}catch{return "";}};
 const hash=(b)=>createHash("sha256").update(b).digest("hex");
 const txt=(v)=>String(v??"").replace(/\s+/g," ").trim();
@@ -80,7 +87,7 @@ async function fetchUrl(url){
   for(let attempt=1;attempt<=RETRY_ATTEMPTS;attempt++){
     try{
       const result=await withHostPacing(url,async()=>{
-        const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow"});
+        const r=await fetch(url,{headers:{accept:"text/html,application/xhtml+xml,application/json,application/xml,text/xml;q=0.8,*/*;q=0.2","user-agent":UA},redirect:"follow",signal:AbortSignal.timeout(SOURCE_HTTP_TIMEOUT_MS)});
         const bytes=Buffer.from(await r.arrayBuffer());
         return{status:r.status,ct:r.headers.get("content-type")??"",etag:r.headers.get("etag"),lm:r.headers.get("last-modified"),retryAfter:r.headers.get("retry-after"),final:r.url||url,bytes};
       });
@@ -188,6 +195,50 @@ async function ensureCoverageTargets(db) {
   for (const country of countries) {
     const iso = String(country.iso3);
     const name = String(country.country_name);
+    const geoRedundancy = [
+      {
+        target_id: "GEO:GLOBAL:UNSC_RSS:" + iso,
+        source_id: "un_security_council_docs_rss",
+        transport: "RSS",
+        target_url: "https://main.un.org/securitycouncil/en/rss",
+        display_name: "UN Security Council RSS fallback - " + name,
+        cadence_seconds: 900,
+        priority: 15,
+        notes: "Global institutional geopolitical event fallback. Country attribution is downstream; raw discovery/corroboration only."
+      },
+      {
+        target_id: "GEO:GLOBAL:UKMTO:" + iso,
+        source_id: "ukmto_maritime_security",
+        transport: "WEB",
+        target_url: "https://www.ukmto.org/",
+        display_name: "UKMTO maritime-security fallback - " + name,
+        cadence_seconds: 900,
+        priority: 18,
+        notes: "Global operational maritime-security fallback. Country attribution is downstream; raw source reuse remains certification-gated."
+      }
+    ];
+    for (const target of geoRedundancy) {
+      if (!ids.has(target.target_id)) {
+        rows.push({
+          target_id: target.target_id,
+          country_iso3: iso,
+          category: "GEOPOLITICS",
+          transport: target.transport,
+          source_id: target.source_id,
+          target_url: target.target_url,
+          display_name: target.display_name,
+          enabled: true,
+          raw_storage_allowed: true,
+          commercial_promotion_allowed: false,
+          cadence_seconds: target.cadence_seconds,
+          priority: target.priority,
+          discovery_state: "DISCOVERED",
+          notes: target.notes
+        });
+        ids.add(target.target_id);
+      }
+    }
+
     for (const category of Object.keys(expected)) {
       const anchor = anchors[category];
       const anchorId = anchor.id(iso);
@@ -213,57 +264,511 @@ async function ensureCoverageTargets(db) {
   }
   return { countries: 195, categories: Object.keys(expected), raw_only: true, inserted_targets: rows.length, coverage_anchors: countries.length * Object.keys(expected).length };
 }
-async function main(){const url=String(process.env.APP_SUPABASE_URL??"").trim(),key=String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY??"").trim();if(!url||!key)throw new Error("Authoritative Supabase credentials are required");if(projectRef(url)!==REF)throw new Error("Non-authoritative Supabase project");const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const country_contract=await ensureCoverageTargets(db);const now=Date.now();const [directoryQuery,registryQuery]=await Promise.all([db.from("live_country_primary_source_directory").select("country_iso2"),db.from("live_country_registry").select("iso3,iso2").eq("enabled",true)]);
-  if(directoryQuery.error)throw directoryQuery.error;if(registryQuery.error)throw registryQuery.error;
-  const registryByIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso2).toUpperCase(),String(x.iso3)]));
-  const countryIso2=new Map((registryQuery.data??[]).map((x)=>[String(x.iso3),String(x.iso2).toLowerCase()]));
-  const canonicalIso3=new Set((directoryQuery.data??[]).map((x)=>registryByIso2.get(String(x.country_iso2).toUpperCase())).filter(Boolean));
-  if(canonicalIso3.size!==195)throw new Error("Canonical 195-country baseline resolution failed: "+canonicalIso3.size);
-  const due=[];let selectedTargets=0;
-  for(let from=0;;from+=1000){
-    const q=await db.from("live_raw_source_targets").select("target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,last_attempt_at,consecutive_failures").eq("enabled",true).in("country_iso3",[...canonicalIso3]).in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"]).not("target_id","like","%MESH_FILLER%").order("priority",{ascending:true,nullsFirst:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("target_id",{ascending:true}).range(from,from+999);if(q.error)throw q.error;
-    const page=q.data??[];selectedTargets+=page.length;
-    for(const t of page){const last=Date.parse(String(t.last_attempt_at??""));const retrySeconds=Number(t.consecutive_failures??0)>0?FAILURE_RETRY_SECONDS:Number(t.cadence_seconds);if(!Number.isFinite(last)||last+retrySeconds*1000<=now)due.push(t);if(due.length>=LIMIT)break;}
-    if(due.length>=LIMIT||page.length<1000)break;
+
+async function main() {
+  const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+  const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+  if (!url || !key) throw new Error("Authoritative Supabase credentials are required");
+  if (projectRef(url) !== REF) throw new Error("Non-authoritative Supabase project");
+
+  const db = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const countryContract = await ensureCoverageTargets(db);
+  const nowMs = Date.now();
+  const requestedCategories = String(process.env.RAW_SOURCE_CATEGORY_ALLOWLIST ?? "")
+    .split(",")
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  const categories = requestedCategories.length
+    ? requestedCategories.filter((value) => ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"].includes(value))
+    : ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
+  if (!categories.length) throw new Error("RAW_SOURCE_CATEGORY_ALLOWLIST_EMPTY");
+  const windows = { GEOPOLITICS: 1800, MACRO: 7200, CRITICAL_MINERALS: 14400 };
+  // Refresh before the exact freshness boundary so a long run cannot age a cell
+  // from fresh-at-start into stale-at-final-audit. The audit thresholds remain exact.
+  const freshnessSafetyMarginSeconds = Math.max(
+    60,
+    Math.min(900, Number(process.env.RAW_SOURCE_FRESHNESS_SAFETY_MARGIN_SECONDS ?? 600)),
+  );
+
+  const [directoryQuery, registryQuery] = await Promise.all([
+    db.from("live_country_primary_source_directory").select("country_iso2"),
+    db.from("live_country_registry").select("iso3,iso2").eq("enabled", true),
+  ]);
+  if (directoryQuery.error) throw directoryQuery.error;
+  if (registryQuery.error) throw registryQuery.error;
+
+  const registryByIso2 = new Map(
+    (registryQuery.data ?? []).map((row) => [
+      String(row.iso2).toUpperCase(),
+      String(row.iso3).toUpperCase(),
+    ]),
+  );
+  const countryIso2 = new Map(
+    (registryQuery.data ?? []).map((row) => [
+      String(row.iso3).toUpperCase(),
+      String(row.iso2).toLowerCase(),
+    ]),
+  );
+  const canonicalIso3 = [
+    ...new Set(
+      (directoryQuery.data ?? [])
+        .map((row) => registryByIso2.get(String(row.country_iso2).toUpperCase()))
+        .filter(Boolean),
+    ),
+  ].sort();
+
+  if (canonicalIso3.length !== 195) {
+    throw new Error(
+      "Canonical 195-country baseline resolution failed: " + canonicalIso3.length,
+    );
   }
-  due.splice(LIMIT);let cursor=0,ok=0,fail=0;const failures=[];async function worker(){for(;;){const i=cursor++;if(i>=due.length)return;const t=due[i],when=new Date().toISOString();try{let u=t.target_url;if(t.source_id==="world_bank_indicators")u="https://api.worldbank.org/v2/country/"+String(t.country_iso3).toLowerCase()+"/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
-        if(t.source_id==="gdelt_v2"){
-          const iso2=countryIso2.get(String(t.country_iso3));
-          if(iso2)u="https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:"+encodeURIComponent(iso2)+"&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
-        }if(!u)throw new Error("RAW_SOURCE_TARGET_URL_MISSING");const f=await fetchUrl(u);if(f.status<200||f.status>=300)throw new Error("HTTP_"+f.status);const text=f.bytes.toString("utf8"),rows=[];if(/xml|rss|atom/i.test(f.ct)||/<(?:rss|feed)\b/i.test(text)){for(const x of rssItems(text,f.final)){let host="";try{host=new URL(x.u).hostname;}catch{continue;}rows.push({i:hash(Buffer.from("rss:"+t.target_id+":"+x.u)),u:x.u,d:x.d||when,h:host,o:t.display_name,t:x.t,x:x.x||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}if(/json/i.test(f.ct)){try{
-          const p=JSON.parse(text);
-          const a=Array.isArray(p?.articles)
-            ? p.articles
-            : Array.isArray(p?.data)
-              ? p.data
-              : Array.isArray(p) && Array.isArray(p[1])
-                ? p[1]
-                : Array.isArray(p)
-                  ? p
-                  : [];
-          for(const x of a.slice(0,100)){
-            const title=t.source_id==="world_bank_indicators"
-              ? txt((x?.indicator?.value??"World Bank indicator")+" "+(x?.date??""))
-              : t.source_id==="gdelt_v2"
-                ? txt(x?.title??"")
-                : txt(x?.title??x?.name??x?.indicator_name??x?.event_type??"");
-            if(!title)continue;
-            const ru=txt(x?.url??x?.link??x?.source_url??f.final);
-            let host="";
-            try{host=new URL(ru).hostname;}catch{continue;}
-            const dateRaw=t.source_id==="gdelt_v2"
-              ? txt(x?.seendate??x?.published_at??x?.socialimage_lastupdate??"")
-              : txt(x?.published_at??x?.updated_at??x?.date??x?.period_end??"");
-            let date=when;
-            if(/^\\d{14}Z?$/.test(dateRaw)){
-              const z=dateRaw.replace(/Z$/,"");
-              date=z.slice(0,4)+"-"+z.slice(4,6)+"-"+z.slice(6,8)+"T"+z.slice(9,11)+":"+z.slice(11,13)+":"+z.slice(13,15)+"Z";
-            }else if(dateRaw) date=dateRaw;
-            const description=t.source_id==="world_bank_indicators"
-              ? txt(String(x?.value??"")+" "+String(x?.unit??""))
-              : txt(x?.summary??x?.description??x?.value_text??"");
-            rows.push({i:hash(Buffer.from("api:"+t.target_id+":"+JSON.stringify(x))),u:ru,d:date,h:host,o:t.display_name,t:title.slice(0,800),x:description.slice(0,2400)||null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});
+
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const q = await db
+      .from("live_raw_source_targets")
+      .select(
+        "target_id,country_iso3,category,transport,source_id,target_url,display_name,cadence_seconds,priority,last_attempt_at,last_success_at,consecutive_failures",
+      )
+      .eq("enabled", true)
+      .in("country_iso3", canonicalIso3)
+      .in("category", categories)
+      .not("target_id", "like", "%MESH_FILLER%")
+      .not("transport", "eq", "TELEGRAM_DISCOVERY")
+      .order("country_iso3", { ascending: true })
+      .order("category", { ascending: true })
+      .order("priority", { ascending: true, nullsFirst: false })
+      .order("last_success_at", { ascending: true, nullsFirst: true })
+      .order("target_id", { ascending: true })
+      .range(from, from + 999);
+
+    if (q.error) throw q.error;
+    rows.push(...(q.data ?? []));
+    if ((q.data ?? []).length < 1000) break;
+  }
+
+  const byCell = new Map();
+  const cellKey = (country, category) => country + "::" + category;
+
+  for (const country of canonicalIso3) {
+    for (const category of categories) {
+      byCell.set(cellKey(country, category), []);
+    }
+  }
+
+  for (const row of rows) {
+    const country = String(row.country_iso3 ?? "").toUpperCase();
+    const category = String(row.category ?? "");
+    if (!byCell.has(cellKey(country, category))) continue;
+    if (!row.target_url) continue;
+    byCell.get(cellKey(country, category)).push(row);
+  }
+
+  const isGdelt = (row) => /gdelt/i.test(String(row.source_id ?? ""));
+  const isFresh = (row, category) => {
+    const timestamp = Date.parse(String(row.last_success_at ?? ""));
+    const refreshBeforeBoundarySeconds = Math.max(
+      60,
+      windows[category] - freshnessSafetyMarginSeconds,
+    );
+    return Number.isFinite(timestamp) &&
+      nowMs - timestamp <= refreshBeforeBoundarySeconds * 1000 &&
+      row.discovery_state !== "UNREACHABLE" &&
+      row.discovery_state !== "STALE";
+  };
+  const isDue = (row) => {
+    const lastAttempt = Date.parse(String(row.last_attempt_at ?? ""));
+    const failures = Number(row.consecutive_failures ?? 0);
+    const retrySeconds = failures > 0
+      ? FAILURE_RETRY_SECONDS
+      : Math.max(60, Number(row.cadence_seconds ?? windows[row.category] ?? 900));
+    return !Number.isFinite(lastAttempt) || lastAttempt + retrySeconds * 1000 <= nowMs;
+  };
+
+  const work = [];
+  const alreadyFreshNonGdelt = [];
+  const noNonGdeltPath = [];
+  const maxCellAttempts = Math.max(
+    1,
+    Math.min(5, Number(process.env.RAW_SOURCE_CELL_MAX_ATTEMPTS ?? 3)),
+  );
+
+  for (const [key, candidates] of byCell.entries()) {
+    const parts = key.split("::");
+    const country = parts[0];
+    const category = parts[1];
+
+    if (candidates.some((row) => !isGdelt(row) && isFresh(row, category))) {
+      alreadyFreshNonGdelt.push({ country_iso3: country, category });
+      continue;
+    }
+
+    const nonGdeltCandidates = candidates
+      .filter((row) => !isGdelt(row) && isDue(row))
+      .sort((a, b) => {
+        const priority = Number(a.priority ?? 999) - Number(b.priority ?? 999);
+        if (priority !== 0) return priority;
+        const aLast = Date.parse(String(a.last_success_at ?? "")) || 0;
+        const bLast = Date.parse(String(b.last_success_at ?? "")) || 0;
+        return aLast - bLast || String(a.target_id).localeCompare(String(b.target_id));
+      });
+
+    const availableNonGdelt = candidates
+      .filter((row) => !isGdelt(row))
+      .sort((a, b) => {
+        const priority = Number(a.priority ?? 999) - Number(b.priority ?? 999);
+        if (priority !== 0) return priority;
+        const aLast = Date.parse(String(a.last_success_at ?? "")) || 0;
+        const bLast = Date.parse(String(b.last_success_at ?? "")) || 0;
+        return aLast - bLast || String(a.target_id).localeCompare(String(b.target_id));
+      });
+
+    if (!availableNonGdelt.length) {
+      noNonGdeltPath.push({ country_iso3: country, category });
+      continue;
+    }
+
+    const selected = nonGdeltCandidates.length
+      ? nonGdeltCandidates.slice(0, maxCellAttempts)
+      : availableNonGdelt.slice(0, maxCellAttempts);
+
+    work.push({ country_iso3: country, category, candidates: selected });
+  }
+
+  let cursor = 0;
+  let successfulCells = 0;
+  let failedCells = 0;
+  let targetAttempts = 0;
+  const failures = [];
+  const fragmentIds = [];
+
+  async function processTarget(t, countryIso3) {
+    const when = new Date().toISOString();
+    let targetUrl = t.target_url;
+
+    if (t.source_id === "world_bank_indicators") {
+      targetUrl =
+        "https://api.worldbank.org/v2/country/" +
+        String(countryIso3).toLowerCase() +
+        "/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG;SL.UEM.TOTL.ZS?format=json&mrv=5";
+    }
+
+    if (t.source_id === "gdelt_v2") {
+      const iso2 = countryIso2.get(String(countryIso3).toUpperCase());
+      if (iso2) {
+        targetUrl =
+          "https://api.gdeltproject.org/api/v2/doc/doc?query=sourcecountry:" +
+          encodeURIComponent(iso2) +
+          "&mode=ArtList&maxrecords=25&format=json&sort=HybridRel&timespan=12h";
+      }
+    }
+
+    if (!targetUrl) throw new Error("RAW_SOURCE_TARGET_URL_MISSING");
+
+    const fetched = await fetchUrl(targetUrl);
+    if (fetched.status < 200 || fetched.status >= 300) {
+      throw new Error("HTTP_" + fetched.status);
+    }
+
+    const bodyText = fetched.bytes.toString("utf8");
+    const extracted = [];
+
+    if (
+      /xml|rss|atom/i.test(fetched.ct) ||
+      /<(?:rss|feed)\b/i.test(bodyText)
+    ) {
+      for (const item of rssItems(bodyText, fetched.final)) {
+        let host = "";
+        try {
+          host = new URL(item.u).hostname;
+        } catch {
+          continue;
+        }
+        extracted.push({
+          i: hash(Buffer.from("rss:" + t.target_id + ":" + item.u)),
+          u: item.u,
+          d: item.d || when,
+          h: host,
+          o: t.display_name,
+          t: item.t,
+          x: item.x || null,
+          l: "und",
+          a: t.display_name,
+          q: [String(t.category).toLowerCase()],
+          g: when,
+        });
+      }
+    }
+
+    if (/json/i.test(fetched.ct)) {
+      try {
+        const parsed = JSON.parse(bodyText);
+        const values = Array.isArray(parsed?.articles)
+          ? parsed.articles
+          : Array.isArray(parsed?.data)
+            ? parsed.data
+            : Array.isArray(parsed) && Array.isArray(parsed[1])
+              ? parsed[1]
+              : Array.isArray(parsed)
+                ? parsed
+                : [];
+
+        for (const item of values.slice(0, 100)) {
+          const title =
+            t.source_id === "world_bank_indicators"
+              ? txt(
+                  (item?.indicator?.value ?? "World Bank indicator") +
+                    " " +
+                    (item?.date ?? ""),
+                )
+              : t.source_id === "gdelt_v2"
+                ? txt(item?.title ?? "")
+                : txt(
+                    item?.title ??
+                      item?.name ??
+                      item?.indicator_name ??
+                      item?.event_type ??
+                      "",
+                  );
+
+          if (!title) continue;
+
+          const rawUrl = txt(
+            item?.url ?? item?.link ?? item?.source_url ?? fetched.final,
+          );
+          let host = "";
+          try {
+            host = new URL(rawUrl).hostname;
+          } catch {
+            continue;
           }
-        }catch{}}if(!rows.length){const title=pageTitle(text);if(title)rows.push({i:hash(Buffer.from("page:"+t.target_id+":"+f.final+":"+title)),u:f.final,d:when,h:new URL(f.final).hostname,o:t.display_name,t:title,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});for(const x of links(text,f.final)){rows.push({i:hash(Buffer.from("link:"+t.target_id+":"+x.u)),u:x.u,d:when,h:new URL(x.u).hostname,o:t.display_name,t:x.t,x:null,l:"und",a:t.display_name,q:[t.category.toLowerCase()],g:when});}}const sid=await saveSnapshot(db,t,when,f);await saveFragment(db,t,when,rows);await db.from("live_raw_source_snapshots").update({extracted_item_count:rows.length}).eq("snapshot_id",sid);await mark(db,t,{discovery_state:rows.length?"REACHABLE":"STALE",last_attempt_at:when,last_success_at:when,last_observed_at:when,consecutive_failures:0,last_error:null});ok++;}catch(e){fail++;failures.push({target_id:t.target_id,error:e instanceof Error?e.message:String(e)});try{await mark(db,t,{discovery_state:"UNREACHABLE",last_attempt_at:when,consecutive_failures:Number(t.consecutive_failures??0)+1,last_error:String(e).slice(0,1000)});}catch{}}}}
-await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,due.length))},worker));console.log(JSON.stringify({ok:fail===0,generated_at:new Date().toISOString(),selected_targets:selectedTargets,due_targets:due.length,completed:ok,failed:fail,failures:failures.slice(0,50),country_contract},null,2));if(fail>0&&ok===0)process.exit(1);}
+
+          const dateRaw =
+            t.source_id === "gdelt_v2"
+              ? txt(
+                  item?.seendate ??
+                    item?.published_at ??
+                    item?.socialimage_lastupdate ??
+                    "",
+                )
+              : txt(
+                  item?.published_at ??
+                    item?.updated_at ??
+                    item?.date ??
+                    item?.period_end ??
+                    "",
+                );
+
+          let date = when;
+          if (/^\d{14}Z?$/.test(dateRaw)) {
+            const z = dateRaw.replace(/Z$/, "");
+            date =
+              z.slice(0, 4) +
+              "-" +
+              z.slice(4, 6) +
+              "-" +
+              z.slice(6, 8) +
+              "T" +
+              z.slice(9, 11) +
+              ":" +
+              z.slice(11, 13) +
+              ":" +
+              z.slice(13, 15) +
+              "Z";
+          } else if (dateRaw) {
+            date = dateRaw;
+          }
+
+          const description =
+            t.source_id === "world_bank_indicators"
+              ? txt(String(item?.value ?? "") + " " + String(item?.unit ?? ""))
+              : txt(
+                  item?.summary ??
+                    item?.description ??
+                    item?.value_text ??
+                    "",
+                );
+
+          extracted.push({
+            i: hash(
+              Buffer.from(
+                "api:" + t.target_id + ":" + JSON.stringify(item),
+              ),
+            ),
+            u: rawUrl,
+            d: date,
+            h: host,
+            o: t.display_name,
+            t: title.slice(0, 800),
+            x: description.slice(0, 2400) || null,
+            l: "und",
+            a: t.display_name,
+            q: [String(t.category).toLowerCase()],
+            g: when,
+          });
+        }
+      } catch {
+        // Preserve the raw snapshot when a structured parser cannot decode it.
+      }
+    }
+
+    if (!extracted.length) {
+      const title = pageTitle(bodyText);
+      if (title) {
+        extracted.push({
+          i: hash(
+            Buffer.from(
+              "page:" + t.target_id + ":" + fetched.final + ":" + title,
+            ),
+          ),
+          u: fetched.final,
+          d: when,
+          h: new URL(fetched.final).hostname,
+          o: t.display_name,
+          t: title,
+          x: null,
+          l: "und",
+          a: t.display_name,
+          q: [String(t.category).toLowerCase()],
+          g: when,
+        });
+      }
+
+      for (const item of links(bodyText, fetched.final)) {
+        extracted.push({
+          i: hash(Buffer.from("link:" + t.target_id + ":" + item.u)),
+          u: item.u,
+          d: when,
+          h: new URL(item.u).hostname,
+          o: t.display_name,
+          t: item.t,
+          x: null,
+          l: "und",
+          a: t.display_name,
+          q: [String(t.category).toLowerCase()],
+          g: when,
+        });
+      }
+    }
+
+    const snapshotId = await saveSnapshot(db, t, when, fetched);
+    const fragmentId = await saveFragment(db, t, when, extracted);
+    await db
+      .from("live_raw_source_snapshots")
+      .update({ extracted_item_count: extracted.length })
+      .eq("snapshot_id", snapshotId);
+
+    const { error: updateError } = await db
+      .from("live_raw_source_targets")
+      .update({
+        discovery_state: extracted.length ? "REACHABLE" : "STALE",
+        last_attempt_at: when,
+        last_success_at: when,
+        last_observed_at: when,
+        consecutive_failures: 0,
+        last_error: null,
+        updated_at: when,
+      })
+      .eq("target_id", t.target_id);
+
+    if (updateError) throw updateError;
+    return fragmentId;
+  }
+
+  async function worker() {
+    for (;;) {
+      const index = cursor++;
+      if (index >= work.length) return;
+
+      const cell = work[index];
+      let cellSucceeded = false;
+      const attempted = [];
+
+      for (const target of cell.candidates) {
+        targetAttempts += 1;
+        attempted.push(target.target_id);
+
+        try {
+          const fragmentId = await processTarget(target, cell.country_iso3);
+          if (fragmentId) fragmentIds.push(String(fragmentId));
+          cellSucceeded = true;
+          successfulCells += 1;
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push({
+            country_iso3: cell.country_iso3,
+            category: cell.category,
+            target_id: target.target_id,
+            error: message,
+          });
+
+          try {
+            await mark(db, target, {
+              discovery_state: "UNREACHABLE",
+              last_attempt_at: new Date().toISOString(),
+              consecutive_failures: Number(target.consecutive_failures ?? 0) + 1,
+              last_error: message.slice(0, 1000),
+            });
+          } catch {
+            // Preserve the original source failure in the run summary.
+          }
+        }
+      }
+
+      if (!cellSucceeded) {
+        failedCells += 1;
+        failures.push({
+          country_iso3: cell.country_iso3,
+          category: cell.category,
+          target_id: null,
+          attempted,
+          error: "NO_FRESH_NON_GDELT_TARGET_SUCCEEDED",
+        });
+      }
+    }
+  }
+
+  const concurrency = Math.max(
+    4,
+    Math.min(16, Number(process.env.RAW_SOURCE_SYNC_CONCURRENCY ?? 16)),
+  );
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, Math.max(1, work.length)) },
+      worker,
+    ),
+  );
+
+  const result = {
+    ok: failedCells === 0 && noNonGdeltPath.length === 0,
+    generated_at: new Date().toISOString(),
+    canonical_countries: canonicalIso3.length,
+    categories,
+    expected_cells: canonicalIso3.length * categories.length,
+    candidate_targets: rows.length,
+    work_cells: work.length,
+    already_fresh_non_gdelt_cells: alreadyFreshNonGdelt.length,
+    processed_cells: successfulCells,
+    failed_cells: failedCells,
+    missing_non_gdelt_paths: noNonGdeltPath,
+    target_attempts: targetAttempts,
+    failures: failures.slice(0, 100),
+    fragment_ids: [...new Set(fragmentIds)],
+    country_contract: countryContract,
+    runtime_contract: {
+      freshness_windows_seconds: windows,
+      non_gdelt_required: true,
+      per_cell_target_attempts: maxCellAttempts,
+      telegram_discovery_excluded_from_runtime_truth: true,
+      fillers_excluded_from_runtime_refresh: true,
+    },
+  };
+
+  console.log(JSON.stringify(result, null, 2));
+  if (!result.ok) process.exit(1);
+}
 main().catch(e=>{console.error(e instanceof Error?e.stack??e.message:String(e));process.exit(1);});

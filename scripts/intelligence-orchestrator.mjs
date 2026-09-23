@@ -33,6 +33,14 @@ const DB_REQUEST_TIMEOUT_MS = Math.max(
   Math.min(120_000, Number(process.env.INTELLIGENCE_ORCHESTRATOR_DB_TIMEOUT_MS ?? 30_000)),
 );
 
+const TASK_ALLOWLIST = new Set(
+  String(process.env.INTELLIGENCE_ORCHESTRATOR_TASK_ALLOWLIST ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+
+
 function fetchWithTimeout(input, init = {}) {
   const timeoutSignal = AbortSignal.timeout(DB_REQUEST_TIMEOUT_MS);
   const signal = init?.signal
@@ -519,7 +527,12 @@ async function main() {
   const dueAll = orderDueTasks(
     TASKS
       .map((task) => ({ task, state: normalizedState(task, states.get(STATE_PREFIX + task.key), nowMs) }))
-      .filter(({ task, state }) => isPast(state.cursor.next_due_at, nowMs)),
+      .filter(({ task, state }) => {
+        if (!isPast(state.cursor.next_due_at, nowMs)) return false;
+        if (typeof task.enabled === "function" && !task.enabled()) return false;
+        if (TASK_ALLOWLIST.size && !TASK_ALLOWLIST.has(task.key)) return false;
+        return true;
+      }),
   );
   const due = dueAll.slice(0, MAX_TASKS_PER_TICK);
   const executionStartedAt = Date.now();
@@ -551,6 +564,7 @@ async function main() {
     project_ref: PROJECT_REF,
     heartbeat_seconds: 900,
     max_tasks_per_tick: MAX_TASKS_PER_TICK,
+    task_allowlist: [...TASK_ALLOWLIST],
     due_task_count: due.length,
     results,
     source_failures_are_recorded_as_degraded: true,

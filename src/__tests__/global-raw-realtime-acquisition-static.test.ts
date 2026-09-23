@@ -15,19 +15,24 @@ describe("global raw realtime acquisition",()=>{
 
   it("actually fetches API and RSS targets instead of silently ignoring them",()=>{
     const worker=read("scripts/sync-country-raw-source-mesh.mjs");
-    expect(worker).toContain('.in("transport",["WEB","GLOBAL_FALLBACK","API","RSS"])');
+    expect(worker).toContain('.not("transport", "eq", "TELEGRAM_DISCOVERY")');
     expect(worker).toContain("function rssItems");
+    expect(worker).toContain("const fetched = await fetchUrl(targetUrl);");
   });
 
-  it("prioritizes due targets without letting not-due rows consume the bounded batch",()=>{
+  it("refreshes stale three-category cells through independent non-GDELT candidates",()=>{
     const worker=read("scripts/sync-country-raw-source-mesh.mjs");
-    expect(worker).toContain("RAW_SOURCE_SYNC_MAX_TARGETS??5000");
-    expect(worker).toContain("for(let from=0;;from+=1000)");
-    expect(worker).toContain('.order("priority",{ascending:true,nullsFirst:true}).order("last_attempt_at",{ascending:true,nullsFirst:true}).order("target_id",{ascending:true}).range(from,from+999)');
-    expect(worker).toContain("if(due.length>=LIMIT||page.length<1000)break;");
-    expect(worker).toContain("due.splice(LIMIT);");
-    expect(worker).not.toContain('.order("last_attempt_at",{ascending:true,nullsFirst:true}).order("priority",{ascending:true})');
-    expect(worker).not.toContain(".limit(LIMIT);if(q.error)throw q.error;const due=");
+    expect(worker).toContain('"GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"');
+    expect(worker).toContain("GEOPOLITICS: 1800");
+    expect(worker).toContain("MACRO: 7200");
+    expect(worker).toContain("CRITICAL_MINERALS: 14400");
+    expect(worker).toContain("alreadyFreshNonGdelt");
+    expect(worker).toContain("const nonGdeltCandidates = candidates");
+    expect(worker).toContain("NO_FRESH_NON_GDELT_TARGET_SUCCEEDED");
+    expect(worker).toContain("RAW_SOURCE_CELL_MAX_ATTEMPTS");
+    expect(worker).toContain("await Promise.all(");
+    expect(worker).toContain("RAW_SOURCE_CATEGORY_ALLOWLIST");
+    expect(worker).toContain("processed_cells: successfulCells");
   });
 
   it("keeps GDELT country fallback as a fallback, not the global first-break backbone",()=>{
