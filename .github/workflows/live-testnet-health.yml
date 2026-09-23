@@ -40,9 +40,9 @@ on:
     - cron: "41 2 * * *"
     - cron: "17 */6 * * *"
   push:
-    branches:
-      - main
-      - fix/testnet-developer-paid-e2e
+    branches: [main]
+    paths:
+      - ".github/workflows/live-testnet-health.yml"
 
 permissions:
   contents: read
@@ -305,11 +305,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
-  # Temporary validation branch trigger; removed before merge.
   developer-paid-e2e:
     if: >-
       ${{
-        (github.event_name == 'push' && github.ref == 'refs/heads/fix/testnet-developer-paid-e2e') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'developer-paid-e2e' && inputs.confirmation == 'GEOMACRO_TESTNET_USDC')
       }}
     runs-on: ubuntu-latest
