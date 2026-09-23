@@ -251,23 +251,36 @@ for (const task of ORCHESTRATOR_TASKS) {
   }
 }
 
-const certById = new Map(certificationRecords.map(r => [String(r.source_id), r]));
+const certificationsById = new Map();
+for (const record of certificationRecords) {
+  const sourceId = String(record.source_id);
+  const rows = certificationsById.get(sourceId) ?? [];
+  rows.push(record);
+  certificationsById.set(sourceId, rows);
+}
+
+function certificationPasses(cert) {
+  return Boolean(
+    cert &&
+      cert.certification_state === "CERTIFIED" &&
+      cert.endpoint_status === "PASS" &&
+      ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.schema_status ?? "")) &&
+      ["FRESH", "VARIABLE", "NOT_APPLICABLE"].includes(String(cert.freshness_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.provenance_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.independence_status ?? "")) &&
+      ["TESTED", "NOT_APPLICABLE"].includes(String(cert.adapter_status ?? "")) &&
+      ["PASS", "NOT_APPLICABLE"].includes(String(cert.runtime_status ?? "")) &&
+      ["READY", "NOT_REQUIRED"].includes(String(cert.fallback_status ?? "")),
+  );
+}
+
 const commercialSourceFailures = [];
 for (const source of sources.filter(s => s.enabled_for_commercial_signals === true)) {
-  const cert = certById.get(String(source.source_id));
-  const checksOk =
-    cert &&
-    cert.certification_state === "CERTIFIED" &&
-    cert.endpoint_status === "PASS" &&
-    ["COMMERCIAL_OK", "DERIVED_ONLY"].includes(String(cert.rights_status ?? "")) &&
-    ["PASS", "NOT_APPLICABLE"].includes(String(cert.schema_status ?? "")) &&
-    ["FRESH", "VARIABLE", "NOT_APPLICABLE"].includes(String(cert.freshness_status ?? "")) &&
-    ["PASS", "NOT_APPLICABLE"].includes(String(cert.provenance_status ?? "")) &&
-    ["PASS", "NOT_APPLICABLE"].includes(String(cert.independence_status ?? "")) &&
-    ["TESTED", "NOT_APPLICABLE"].includes(String(cert.adapter_status ?? "")) &&
-    ["PASS", "NOT_APPLICABLE"].includes(String(cert.runtime_status ?? "")) &&
-    ["READY", "NOT_REQUIRED"].includes(String(cert.fallback_status ?? ""));
-  if (!checksOk) {
+  const certs = certificationsById.get(String(source.source_id)) ?? [];
+  const validCert = certs.find(certificationPasses);
+  if (!validCert) {
+    const cert = certs[certs.length - 1] ?? null;
     commercialSourceFailures.push({
       source_id: source.source_id,
       certification_state: cert?.certification_state ?? null,
