@@ -5,8 +5,9 @@
 - no production integration
 
 ## Phase 1 — Country mesh
-- lock canonical 195-country registry
-- generate 585 cells
+- preserve governed 195-country baseline
+- expand to all enabled canonical registry countries
+- generate N×3 category cells
 - deterministic completeness audit
 
 ## Phase 2 — Source mesh
@@ -39,7 +40,8 @@
 - machine-readable output
 
 ## Phase 7 — Certification
-- 585-cell runtime audit
+- expanded-universe runtime audit
+- 195-country governed baseline audit
 - failure injection
 - regression tests
 - production-readiness report
