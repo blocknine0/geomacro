@@ -15,6 +15,7 @@
     "probe:official": "node scripts/probe-official-statistics.mjs",
     "probe:comtrade": "node scripts/probe-un-comtrade.mjs",
     "probe:usgs": "node scripts/probe-usgs-minerals.mjs",
-    "probe:bgs": "node scripts/probe-bgs-minerals.mjs"
+    "probe:bgs": "node scripts/probe-bgs-minerals.mjs",
+    "probe:historical": "node scripts/probe-historical-data.mjs"
   }
 }
