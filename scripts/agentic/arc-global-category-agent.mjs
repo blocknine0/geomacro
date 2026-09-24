@@ -175,7 +175,7 @@ for (const { expectedCategories, question } of QUESTIONS) {
 console.log(JSON.stringify({
   ok: true,
   categories: results,
-  total_paid_usdc: 0.15,
+  total_paid_usdc: 0.20,
   execution_authorized: false,
   technical_proof_only: true,
 }, null, 2));
