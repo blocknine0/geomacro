@@ -1,0 +1,36 @@
+name: Governed production source ingestion
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ingest-certified-sources.mjs"
+      - "supabase/migrations/975_enable_governed_source_ingestion.sql"
+      - ".github/workflows/governed-source-ingestion.yml"
+permissions: {contents: read}
+concurrency: {group: governed-source-ingestion, cancel-in-progress: false}
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+      NOAA_NCEI_TOKEN: ${{ secrets.NOAA_NCEI_TOKEN }}
+      SOURCE_INGESTION_SOURCES: eia_api_v2,noaa_ncei_cdo_api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm}
+      - run: npm ci --ignore-scripts
+      - name: Validate production secrets
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY EIA_API_KEY NOAA_NCEI_TOKEN; do test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }; done
+      - name: Run governed normalized ingestion
+        run: node scripts/ingest-certified-sources.mjs

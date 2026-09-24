@@ -1,0 +1,1 @@
+import {readFileSync} from "node:fs";const s=readFileSync("scripts/ingest-certified-sources.mjs","utf8");for(const x of ["live_external_observations","enabled_for_ingestion","enabled_for_commercial_signals","EIA_API_KEY","NOAA_NCEI_TOKEN","commercial_eligibility_status"])if(!s.includes(x))throw Error("missing "+x);console.log("PASS: governed ingestion contract")
