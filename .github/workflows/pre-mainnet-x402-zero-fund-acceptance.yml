@@ -81,9 +81,14 @@ jobs:
           HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
           HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          set +e
           node scripts/ops/probe-structural-serving-production.mjs
+          s1=$?
           node scripts/ops/probe-structural-base-tables-production.mjs
+          s2=$?
           node scripts/ops/probe-risk-object-production.mjs
+          s3=$?
+          if ((s1 != 0 || s2 != 0 || s3 != 0)); then exit 1; fi
 
       - name: Final zero-fund acceptance gate
         id: final_gate
