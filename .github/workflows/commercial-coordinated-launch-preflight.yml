@@ -265,8 +265,8 @@ jobs:
             if (c.commercial_contract?.static_catalog_price_authoritative !== false) throw new Error("static catalog cannot become authoritative pricing");
             const p = c.offers?.[0]?.providers ?? {};
             if (p.coinbase_x402?.launch_cohort !== true || p.coinbase_x402?.production_enabled !== false) throw new Error("Coinbase discovery cohort mismatch");
-            if (p.circle_gateway?.launch_cohort !== true || p.circle_gateway?.production_enabled !== false) throw new Error("Circle discovery cohort mismatch");
-            if (p.nevermined?.launch_cohort !== true || p.nevermined?.production_enabled !== false) throw new Error("Nevermined discovery cohort mismatch");
+            if (p.circle_gateway?.launch_cohort !== false || p.circle_gateway?.production_enabled !== false) throw new Error("Circle discovery cohort mismatch");
+            if (p.nevermined?.launch_cohort !== false || p.nevermined?.production_enabled !== false) throw new Error("Nevermined discovery cohort mismatch");
             if (p.goat_x402?.launch_cohort !== false || p.goat_x402?.production_enabled !== false) throw new Error("GOAT discovery must remain deferred");
           '
           grep -q '/.well-known/geomacro-commerce.json' public/llms.txt
