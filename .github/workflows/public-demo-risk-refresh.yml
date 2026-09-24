@@ -2,6 +2,20 @@ name: Public Demo Risk Refresh
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/public-demo-risk-refresh.yml"
+      - "src/lib/country-risk-publisher.server.ts"
+      - "src/lib/corridor-risk-publisher.server.ts"
+      - "src/lib/country-risk-engine.ts"
+      - "src/lib/corridor-risk-engine.ts"
+      - "src/lib/risk-object-store.server.ts"
+      - "src/lib/risk-object-signing.server.ts"
+      - "scripts/refresh-public-demo-risk-objects.ts"
 
 
 permissions:
