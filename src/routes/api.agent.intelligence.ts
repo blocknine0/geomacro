@@ -9,6 +9,7 @@ import {
   prepareAgentCommerceDelivery,
   releaseAgentCommerceDelivery,
 } from "../lib/agent-commerce-delivery.server";
+import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
   circleX402PaymentRequiredResponse,
   circleX402PaymentResponseHeader,
@@ -130,6 +131,23 @@ export const Route = createFileRoute("/api/agent/intelligence")({
         if ("error" in parsedBody) return parsedBody.error;
 
         const { question, client_request_id } = parsedBody.parsed;
+
+        if (!allowPublicDemoRequest(request, {
+          namespace: "agent-intelligence-x402",
+          windowMs: 60_000,
+          maxPerClient: 20,
+          maxGlobal: 200,
+        })) {
+          return json({
+            ok: false,
+            chargeable: false,
+            error: {
+              code: "X402_RATE_LIMITED",
+              message: "Global intelligence request limit exceeded.",
+            },
+            execution_authorized: false,
+          }, 429);
+        }
 
         let prepared;
         try {
