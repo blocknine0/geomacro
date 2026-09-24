@@ -26,17 +26,19 @@ The customer or external agent owns any later execution decision.
 
 ## 2. Current source branch
 
-Until PR #115 is merged, staging must use:
+The current autonomous-agent proof branch is:
 
 ```text
-feat/agentic-commerce-demo-current-main
+feat/arc-autonomous-agent-v1
 ```
+
+Its PR targets the current agentic-commerce integration base. Keep live staging evidence pinned to the exact release-candidate commit used for the test.
 
 Always pin evidence to an exact commit:
 
 ```bash
 git fetch origin
-git checkout --detach origin/feat/agentic-commerce-demo-current-main
+git checkout --detach origin/feat/arc-autonomous-agent-v1
 git rev-parse HEAD
 bun install --frozen-lockfile
 ```
