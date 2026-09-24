@@ -209,7 +209,11 @@ const TASKS = [
     priority: 80,
     requiredEnv: ["SUPABASE_DB_URL"],
     timeoutMs: 2_400_000,
-    steps: [["bun", ["run", "source:certification:evidence-graph"], "."]],
+    steps: [
+      // Operational continuity records certification state; the strict
+      // commercial certification gate runs separately and fail-closed.
+      ["node", ["scripts/audit-source-certification-census.mjs"], "."],
+    ],
   },
 ];
 
