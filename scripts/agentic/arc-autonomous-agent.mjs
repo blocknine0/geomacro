@@ -5,6 +5,11 @@ import { spawnSync } from "node:child_process";
 const base = (process.env.GEOMACRO_X402_BASE_URL || "").replace(/\/$/, "");
 const wallet = process.env.GEOMACRO_X402_AGENT_WALLET_ADDRESS || "";
 const maxAmount = process.env.GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.001";
+const MAX_PAYMENT_USDC = 0.001;
+const parsedMaxAmount = Number(maxAmount);
+if (!Number.isFinite(parsedMaxAmount) || parsedMaxAmount <= 0 || parsedMaxAmount > MAX_PAYMENT_USDC) {
+  fail(`GEOMACRO_AGENT_MAX_PAYMENT_USDC must be greater than 0 and no more than ${MAX_PAYMENT_USDC}.`);
+}
 const acknowledge = process.env.GEOMACRO_AGENT_PAYMENT_ACK || "";
 
 function fail(message) {
@@ -76,7 +81,7 @@ if (accept?.asset?.toLowerCase() !== "0x3600000000000000000000000000000000000000
   fail("Payment asset is not Circle Gateway USDC on Arc Testnet.");
 }
 if (accept?.amount !== "1000") fail("Unexpected paid intelligence price.");
-if (accept?.payTo === wallet) fail("Agent wallet must not equal the seller address.");
+if (accept?.payTo?.toLowerCase() === wallet.toLowerCase()) fail("Agent wallet must not equal the seller address.");
 
 console.log("✅ 402 received and payment policy verified.");
 console.log("Stage 2: authorizing exactly one bounded Circle CLI payment...");
@@ -116,7 +121,7 @@ if (result?.payment?.asset !== "USDC") fail("Response did not confirm USDC.");
 if (result?.risk_object?.verification?.status !== "VERIFIED") {
   fail("Returned Risk Object was not cryptographically verified.");
 }
-if (result?.boundaries?.execution_authorized !== false) {
+if (result?.risk_gate?.execution_authorized !== false || result?.boundaries?.execution_authorized !== false) {
   fail("Execution boundary was not fail-closed.");
 }
 
