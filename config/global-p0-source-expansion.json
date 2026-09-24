@@ -1,0 +1,98 @@
+{
+  "version": "1.2.0",
+  "p0_global_source_expansion": {
+    "mode": "prelaunch",
+    "activation_requires": [
+      "endpoint_pass",
+      "rights_review",
+      "schema_pass",
+      "freshness_pass",
+      "provenance_pass",
+      "independence_pass",
+      "adapter_tested",
+      "runtime_pass"
+    ],
+    "sources": {
+      "uk_sanctions_list": {
+        "provider": "UK Government",
+        "category": "GEOPOLITICS",
+        "transport_candidate": "OFFICIAL_WEB_LIST",
+        "discovery_url": "https://www.gov.uk/government/publications/the-uk-sanctions-list",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "eu_sanctions_consolidated": {
+        "provider": "European Commission / DG FISMA",
+        "category": "GEOPOLITICS",
+        "transport_candidate": "OFFICIAL_CONSOLIDATED_LIST",
+        "discovery_url": "https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/overview-sanctions-and-related-resources_en",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "opcw_news": {
+        "provider": "OPCW",
+        "category": "GEOPOLITICS",
+        "transport_candidate": "OFFICIAL_NEWS",
+        "discovery_url": "https://www.opcw.org/media-centre/news",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "icj_cases": {
+        "provider": "International Court of Justice",
+        "category": "GEOPOLITICS",
+        "transport_candidate": "OFFICIAL_CASES",
+        "discovery_url": "https://www.icj-cij.org/cases",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "icc_news": {
+        "provider": "International Criminal Court",
+        "category": "GEOPOLITICS",
+        "transport_candidate": "OFFICIAL_NEWS",
+        "discovery_url": "https://www.icc-cpi.int/news",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "unctadstat_global": {
+        "provider": "United Nations Trade and Development",
+        "category": "MACRO",
+        "transport_candidate": "OFFICIAL_API",
+        "discovery_url": "https://unctadstat.unctad.org/datacentre/",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "world_bank_commodity_prices": {
+        "provider": "World Bank",
+        "category": "MACRO",
+        "transport_candidate": "OFFICIAL_COMMODITY_DATA",
+        "discovery_url": "https://www.worldbank.org/en/research/commodity-markets",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "china_mofcom_trade_controls": {
+        "provider": "Ministry of Commerce of the People's Republic of China",
+        "category": "CRITICAL_MINERALS",
+        "transport_candidate": "OFFICIAL_POLICY_RELEASES",
+        "discovery_url": "https://english.mofcom.gov.cn/",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "australia_critical_minerals": {
+        "provider": "Australian Government",
+        "category": "CRITICAL_MINERALS",
+        "transport_candidate": "OFFICIAL_CRITICAL_MINERALS",
+        "discovery_url": "https://www.industry.gov.au/mining-oil-and-gas/minerals/critical-minerals",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      },
+      "cochilco_minerals": {
+        "provider": "Chilean Copper Commission",
+        "category": "CRITICAL_MINERALS",
+        "transport_candidate": "OFFICIAL_MINERALS_DATA",
+        "discovery_url": "https://www.cochilco.cl/",
+        "adapter_status": "NOT_IMPLEMENTED",
+        "enabled": false
+      }
+    }
+  }
+}
