@@ -41,6 +41,8 @@ async function probe(target) {
   }
 
   const results = {};
+  let servingProfilesAvailable = false;
+  let fallbackObservationViewAvailable = false;
   for (const country of countries) {
     try {
       const result = await query(
@@ -49,15 +51,34 @@ async function probe(target) {
         "commercial_structural_country_profiles",
         { country_iso3: `eq.${country}` },
       );
-      results[country] = result.response.ok
-        ? { ok: true, count: Array.isArray(result.json) ? result.json.length : 0 }
-        : { ok: false, http_status: result.response.status, code: result.json?.code ?? "UNKNOWN" };
+      if (result.response.ok) {
+        servingProfilesAvailable = true;
+        results[country] = { ok: true, count: Array.isArray(result.json) ? result.json.length : 0, interface: "serving_profile" };
+        continue;
+      }
+      if (!["42P01", "PGRST205"].includes(result.json?.code ?? "")) {
+        results[country] = { ok: false, http_status: result.response.status, code: result.json?.code ?? "UNKNOWN" };
+        continue;
+      }
+
+      const fallback = await query(
+        target.url,
+        target.key,
+        "commercial_structural_geopolitical_observations",
+        { country_iso3: `eq.${country}` },
+      );
+      if (fallback.response.ok) {
+        fallbackObservationViewAvailable = true;
+        results[country] = { ok: true, count: Array.isArray(fallback.json) ? fallback.json.length : 0, interface: "base_commercial_fallback" };
+      } else {
+        results[country] = { ok: false, http_status: fallback.response.status, code: fallback.json?.code ?? "UNKNOWN" };
+      }
     } catch (error) {
       results[country] = { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 
-  let table = false;
+  let coverageAvailable = false;
   try {
     const result = await query(
       target.url,
@@ -65,13 +86,17 @@ async function probe(target) {
       "commercial_structural_country_coverage_latest",
       { country_iso3: "eq.USA" },
     );
-    table = result.response.ok || !["42P01", "PGRST205"].includes(result.json?.code ?? "");
+    coverageAvailable = result.response.ok;
   } catch {}
 
+  const interfaceAvailable = servingProfilesAvailable || fallbackObservationViewAvailable;
   return {
     configured: true,
     reachable: !Object.values(results).some((row) => row.ok === false && row.http_status === 401),
-    table,
+    table: interfaceAvailable,
+    coverage: coverageAvailable,
+    serving_profiles_available: servingProfilesAvailable,
+    fallback_observation_view_available: fallbackObservationViewAvailable,
     rows: results,
   };
 }
