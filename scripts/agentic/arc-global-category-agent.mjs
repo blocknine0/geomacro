@@ -148,6 +148,15 @@ for (const { expectedCategories, question } of QUESTIONS) {
     fail(label + ": category routing mismatch: " + JSON.stringify(paid.categories));
   }
   if (paid?.answer?.insufficient_evidence !== false) fail(label + ": answer was not grounded enough for delivery.");
+  if (paid?.answer?.provenance?.upstream_source_urls_exposed !== false) {
+    fail(label + ": upstream source URLs were exposed or provenance is missing.");
+  }
+  if (typeof paid?.answer?.provenance?.external_web_search_used !== "boolean") {
+    fail(label + ": web-search provenance is missing.");
+  }
+  if (typeof paid?.answer?.provenance?.external_llm_used !== "boolean") {
+    fail(label + ": LLM provenance is missing.");
+  }
   if (paid?.execution_authorized !== false) fail(label + ": execution boundary was violated.");
 
   results.push({
