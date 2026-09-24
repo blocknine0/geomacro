@@ -17,7 +17,7 @@ values
   'UK Sanctions List',
   'UK Government',
   'GEOPOLITICS',
-  'HTML', 'NONE',
+  'XML', 'NONE',
   'https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'GLOBAL', 'NEAR_REAL_TIME',
   'Official UK sanctions list. Register now for global sanctions coverage; exact machine endpoint, change-feed behavior and commercial reuse boundary must be certified before activation.'
@@ -77,7 +77,7 @@ values
   'World Bank Commodity Markets / Pink Sheet',
   'World Bank',
   'MACRO',
-  'CSV', 'NONE',
+  'XLSX', 'NONE',
   'https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'GLOBAL', 'MONTHLY',
   'Global commodity-price benchmark for oil, gas, metals, food and related macro transmission. Exact dataset/version and reuse boundary must be certified before activation.'
@@ -88,7 +88,7 @@ values
   'Ministry of Commerce of the People''s Republic of China',
   'CRITICAL_MINERALS',
   'HTML', 'NONE',
-  'https://english.mofcom.gov.cn/',
+  'https://exportcontrol.mofcom.gov.cn/',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'CHN', 'NEAR_REAL_TIME',
   'Primary Chinese trade-policy/export-control surface. Critical for mineral and strategic-material restriction events; endpoint and reuse terms require certification.'
 ),
@@ -98,7 +98,7 @@ values
   'Australian Government',
   'CRITICAL_MINERALS',
   'HTML', 'NONE',
-  'https://www.industry.gov.au/mining-oil-and-gas/minerals/critical-minerals',
+  'https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'AUS', 'PERIODIC',
   'Primary Australian critical-minerals policy/project/supply-chain surface. Exact machine endpoint and reuse terms require certification.'
 ),
@@ -108,7 +108,7 @@ values
   'Chilean Copper Commission',
   'CRITICAL_MINERALS',
   'HTML', 'NONE',
-  'https://www.cochilco.cl/',
+  'https://www.cochilco.cl/web/anuario-de-estadisticas-del-cobre-y-otros-minerales/',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'CHL', 'PERIODIC',
   'Primary Chilean copper/minerals market and supply information source. Exact machine endpoint and reuse terms require certification.'
 )
@@ -186,21 +186,21 @@ values
 (
   'GLOBAL:P0:CHINA_MOFCOM:CRITICAL_MINERALS','HOT_TOPIC','mineral_export_control',
   'CRITICAL_MINERALS','WEB_DIRECT','china_mofcom_trade_controls',
-  'https://english.mofcom.gov.cn/',
+  'https://exportcontrol.mofcom.gov.cn/',
   'CONTINUOUS',900,'critical minerals export control rare earth graphite gallium germanium',
   'P0 China policy/export-control source; exact endpoint adapter required.',false
 ),
 (
   'GLOBAL:P0:AU_CRITICAL_MINERALS:CRITICAL_MINERALS','HOT_TOPIC','critical_mineral_supply',
   'CRITICAL_MINERALS','WEB_DIRECT','australia_critical_minerals',
-  'https://www.industry.gov.au/mining-oil-and-gas/minerals/critical-minerals',
+  'https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list',
   'CONTINUOUS',3600,'critical minerals projects supply chain lithium rare earth nickel',
   'P0 Australian supply source; exact endpoint adapter required.',false
 ),
 (
   'GLOBAL:P0:COCHILCO:CRITICAL_MINERALS','HOT_TOPIC','copper_supply',
   'CRITICAL_MINERALS','WEB_DIRECT','cochilco_minerals',
-  'https://www.cochilco.cl/',
+  'https://www.cochilco.cl/web/anuario-de-estadisticas-del-cobre-y-otros-minerales/',
   'CONTINUOUS',3600,'copper production supply price Chile mining',
   'P0 Chilean copper supply source; exact endpoint adapter required.',false
 )
