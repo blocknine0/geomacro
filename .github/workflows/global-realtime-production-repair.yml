@@ -1,4 +1,5 @@
 name: Global Realtime Production Repair
+# Production repair trigger: run only on this isolated repair branch; all existing authoritative/fail-closed gates remain enforced.
 
 on:
   push:
