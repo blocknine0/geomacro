@@ -4,6 +4,9 @@
  * Read-only. Never enables a source.
  */
 import fs from "node:fs/promises";
+import { parseMofcomExportControlHtml } from "../global-intelligence/adapters/china-mofcom.mjs";
+import { parseAustraliaCriticalMineralsHtml } from "../global-intelligence/adapters/australia-critical-minerals.mjs";
+import { parseCochilcoAnuarioHtml } from "../global-intelligence/adapters/cochilco-minerals.mjs";
 
 const registry = JSON.parse(await fs.readFile(new URL("../config/global-p0-source-expansion.json", import.meta.url), "utf8"));
 const timeoutMs = Number(process.env.P0_SOURCE_LIVE_TIMEOUT_MS ?? 20000);
@@ -16,6 +19,12 @@ const checks = {
   china_mofcom_trade_controls: { type:"html", required:["exportcontrol.mofcom.gov.cn"] },
   australia_critical_minerals: { type:"html", required:["Critical Minerals List","Strategic Materials List"] },
   cochilco_minerals: { type:"html", required:["Anuario de Estadísticas del Cobre y Otros Minerales"] }
+};
+
+const runtimeExtractors = {
+  china_mofcom_trade_controls: (text) => parseMofcomExportControlHtml(text).length,
+  australia_critical_minerals: (text) => parseAustraliaCriticalMineralsHtml(text).length,
+  cochilco_minerals: (text) => parseCochilcoAnuarioHtml(text).value_numeric
 };
 
 function structured(type, bytes, text, ct, url) {
@@ -40,10 +49,10 @@ async function run(id, source) {
     const text=/xml|csv|json|html|text/i.test(ct) ? new TextDecoder().decode(bytes) : "";
     const rule=checks[id];
     const requiredPass=(rule.required??[]).every(marker=>text.includes(marker));
-    const schemaPass=res.ok && structured(rule.type,bytes,text,ct,res.url) && requiredPass;
-    return {source_id:id,status:res.status,ok:res.ok,schema_pass:schemaPass,content_type:ct,bytes:bytes.length,final_url:res.url,latency_ms:Date.now()-started,observed_at:new Date().toISOString(),note:schemaPass?"transport/schema candidate passed":"transport or schema validation failed"};
+    const schemaPass=res.ok && structured(rule.type,bytes,text,ct,res.url) && requiredPass && runtimePass;
+    return {source_id:id,status:res.status,ok:res.ok,schema_pass:schemaPass,content_type:ct,bytes:bytes.length,final_url:res.url,extraction_count,extraction_error,runtime_pass:runtimePass,latency_ms:Date.now()-started,observed_at:new Date().toISOString(),note:schemaPass?"transport/schema candidate passed":"transport or schema validation failed"};
   } catch(error) {
-    return {source_id:id,status:null,ok:false,schema_pass:false,content_type:null,bytes:0,final_url:null,latency_ms:Date.now()-started,observed_at:new Date().toISOString(),note:error instanceof Error?error.message:String(error)};
+    return {source_id:id,status:null,ok:false,schema_pass:false,content_type:null,bytes:0,final_url:null,extraction_count:null,extraction_error:error instanceof Error?error.message:String(error),runtime_pass:false,latency_ms:Date.now()-started,observed_at:new Date().toISOString(),note:error instanceof Error?error.message:String(error)};
   }
 }
 
