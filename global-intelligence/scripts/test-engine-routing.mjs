@@ -8,6 +8,15 @@ function assert(condition, message) {
 const geo = routeQuestion("What is the geopolitical conflict risk?");
 assert(geo.includes("GEOPOLITICS") && !geo.includes("MACRO"), "geo routing failed");
 
+const macro = routeQuestion("What are the current macro risks?");
+assert(macro.includes("MACRO") && !macro.includes("GEOPOLITICS"), "explicit macro routing failed");
+
+const minerals = routeQuestion("What are the current critical-mineral supply risks?");
+assert(
+  minerals.includes("CRITICAL_MINERALS") && !minerals.includes("MACRO"),
+  "explicit critical-minerals routing failed",
+);
+
 const mixed = routeQuestion(
   "What are the current geopolitical, macro and critical-mineral risks affecting global trade?",
 );
