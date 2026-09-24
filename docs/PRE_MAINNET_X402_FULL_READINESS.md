@@ -47,6 +47,15 @@ Launch-time external inputs still required:
 
 These are launch actions, not missing implementation.
 
+
+## 1A. Zero-fund mainnet rehearsal and delivery contract
+
+Before any real-money authorization, the repository must pass the zero-fund Coinbase Base mainnet rehearsal. This rehearsal constructs the exact production network/token/amount/receiver contract and exercises the payment-binding and buyer-visible response boundaries without contacting the facilitator or moving funds.
+
+The paid adaptive intelligence path also validates the complete structured response contract **before settlement**. A malformed response, execution-authorized response, unverified Risk Object attestation, missing product hash, or product-hash mismatch aborts delivery before settlement.
+
+The Base Sepolia paid E2E additionally verifies the confirmed ERC-20 USDC `Transfer` log for the exact token, payer, recipient and advertised amount. Buyer balance delta is a secondary check, not the only settlement proof.
+
 ## 2. Circle Gateway / Circle Agent Marketplace
 
 Implementation status: **production adapter prepared and locked**.
