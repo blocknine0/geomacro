@@ -6,7 +6,6 @@ export const CHINA_MOFCOM_ENGLISH_URL = "https://english.mofcom.gov.cn/Policies/
 function decodeHtml(value) {
   return String(value ?? "")
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
