@@ -84,13 +84,43 @@ if (accept?.amount !== "50000") fail("Unexpected paid intelligence price.");
 if (accept?.payTo?.toLowerCase() === wallet.toLowerCase()) fail("Agent wallet must not equal the seller address.");
 
 console.log("✅ 402 received and payment policy verified.");
-console.log("Stage 2: authorizing exactly one bounded Circle CLI payment...");
+console.log("Stage 2: inspecting the service before authorizing payment...");
+
+const inspected = spawnSync(
+  "circle",
+  ["services", "inspect", target.toString(), "--output", "json"],
+  { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] },
+);
+if (inspected.error) fail(`Circle CLI could not start for inspect: ${inspected.error.message}`);
+if (inspected.status !== 0) {
+  console.error(inspected.stderr || inspected.stdout);
+  fail(`Circle CLI inspect exited with status ${inspected.status}.`);
+}
+
+let inspection;
+try {
+  inspection = JSON.parse(inspected.stdout.trim());
+} catch {
+  console.error(inspected.stdout);
+  fail("Circle CLI inspect output was not valid JSON.");
+}
+
+const inspectedMethod = inspection?.method ?? inspection?.request?.method;
+if (!["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(inspectedMethod)) {
+  fail("Circle CLI inspect did not return a valid HTTP method.");
+}
+if (inspectedMethod !== "POST") {
+  fail(`Unexpected service method from inspect: ${inspectedMethod}`);
+}
+
+console.log(`✅ Circle inspect confirmed ${inspectedMethod} before payment.`);
+console.log("Stage 3: authorizing exactly one bounded Circle CLI payment...");
 
 const args = [
   "services", "pay", target.toString(),
   "--address", wallet,
   "--chain", "ARC-TESTNET",
-  "-X", "POST",
+  "-X", inspectedMethod,
   "--max-amount", maxAmount,
   "-H", "content-type: application/json",
   "-d", JSON.stringify(payload),
