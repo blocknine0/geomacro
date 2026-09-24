@@ -5,7 +5,6 @@ export const AU_CRITICAL_MINERALS_URL = "https://www.industry.gov.au/publication
 function decodeHtml(value) {
   return String(value ?? "")
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
