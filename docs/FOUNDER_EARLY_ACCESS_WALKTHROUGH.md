@@ -51,7 +51,7 @@ Use the direct `/demo` link for technical buyers or partners. It remains outside
 
 Show the free browser pre-flight first. Explain that the separate x402 endpoint proves agent-native pay-per-call access with USDC on Arc Testnet.
 
-The `0.001 USDC` x402 price is technical proof only. It is not institutional pricing.
+The `0.05 USDC` x402 price is technical proof only. It is not institutional pricing.
 
 ## 5. Show integration surfaces
 
