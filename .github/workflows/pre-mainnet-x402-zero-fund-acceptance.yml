@@ -12,6 +12,7 @@ on:
       - "src/routes/api.x402.risk_.availability.ts"
       - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
       - "scripts/verify-launch-readiness.mjs"
+      - "scripts/agentic/verify-live-x402-prelaunch-availability.mjs"
       - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
       - "supabase/migrations/947_agent_commerce_production_reconciliation.sql"
       - ".github/workflows/pre-mainnet-x402-zero-fund-acceptance.yml"
@@ -65,6 +66,9 @@ jobs:
 
       - name: Verify source launch policy remains locked
         run: node scripts/verify-launch-readiness.mjs
+
+      - name: Verify live public x402 prelaunch safety and no-charge deliverability
+        run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
       - name: Record zero-fund boundary
         run: |
