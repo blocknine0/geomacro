@@ -153,7 +153,9 @@ describe("Testnet canonical intelligence capability parity", () => {
     expect(service).toContain("private_warehouse_access: false");
     expect(service).toContain("upstream_news_source_identity_exposed: false");
     expect(service).toContain("execution_authorized: false");
-    expect(runner).toContain("upstream_source_urls_exposed: false");
+    expect(runner).toContain("provenance: answer.provenance");
+    const ask = read("src/lib/ask-intelligence.server.ts");
+    expect(ask).toContain("upstream_source_urls_exposed: false");
     expect(runner).toContain("public_verification");
     expect(runner).toContain("commercial_delivery");
     expect(runner).toContain("containsForbiddenPublicSourceKeys");
