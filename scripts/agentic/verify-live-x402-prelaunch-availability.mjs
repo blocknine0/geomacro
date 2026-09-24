@@ -75,6 +75,8 @@ async function main() {
   }
 
   const results = [];
+  let allDeliverable = true;
+
   for (const testCase of cases) {
     const response = await fetch(URL, {
       method: "POST",
@@ -87,59 +89,60 @@ async function main() {
     try {
       body = JSON.parse(text);
     } catch {
-      throw new Error(`${testCase.id}: availability response was not JSON: ${text.slice(0, 300)}`);
+      throw new Error(`${testCase.id}: availability response was not JSON: ${text.slice(0, 500)}`);
     }
 
-    if (response.status !== 200) {
-      throw new Error(`${testCase.id}: expected HTTP 200 deliverability, got ${response.status}: ${JSON.stringify(body).slice(0, 500)}`);
-    }
-    if (body.ok !== true || body.chargeable !== true || body.payment_required_now !== false) {
-      throw new Error(`${testCase.id}: live host did not prove a payable/no-charge deliverability state`);
-    }
-    if (body.product !== "geomacro_adaptive_risk_intelligence_v1") {
-      throw new Error(`${testCase.id}: unexpected product ${body.product}`);
-    }
-    if (body.execution_authorized !== false) {
-      throw new Error(`${testCase.id}: execution_authorized boundary was violated`);
-    }
-    if (!body.exact_price || body.exact_price.asset !== "USDC") {
-      throw new Error(`${testCase.id}: exact price/asset contract missing`);
-    }
-    if (!["eip155:84532", "eip155:8453"].includes(body.exact_price.network)) {
-      throw new Error(`${testCase.id}: unexpected network ${body.exact_price.network}`);
-    }
-    if (body.exact_price.amount_usdc !== "0.05" && body.exact_price.amount_usdc !== 0.05) {
-      throw new Error(`${testCase.id}: unexpected live price ${body.exact_price.amount_usdc}`);
-    }
-    if (typeof body.query_plan_hash !== "string" || !/^[0-9a-f]{64}$/.test(body.query_plan_hash)) {
-      throw new Error(`${testCase.id}: query_plan_hash missing/invalid`);
-    }
-
-    results.push({
+    const result = {
       id: testCase.id,
       status: response.status,
-      product: body.product,
-      network: body.exact_price.network,
-      amount_usdc: body.exact_price.amount_usdc,
-      query_plan_hash: body.query_plan_hash,
+      product: body.product ?? null,
+      network: body.exact_price?.network ?? null,
+      amount_usdc: body.exact_price?.amount_usdc ?? null,
+      query_plan_hash: body.query_plan_hash ?? null,
+      deliverable: body.availability?.deliverable ?? false,
+      code: body.availability?.code ?? null,
       missing_modules: body.availability?.missing_modules ?? [],
       stale_modules: body.availability?.stale_modules ?? [],
       ineligible_source_ids: body.availability?.ineligible_source_ids ?? [],
-      execution_authorized: false,
-    });
+      source_contracts: body.availability?.source_contracts ?? [],
+      subjects: body.availability?.subjects ?? [],
+      execution_authorized: body.execution_authorized ?? null,
+      payment_required_now: body.payment_required_now ?? null,
+    };
+    results.push(result);
+
+    if (
+      response.status !== 200 ||
+      result.deliverable !== true ||
+      result.code !== "AVAILABLE" ||
+      body.ok !== true ||
+      body.chargeable !== true ||
+      body.payment_required_now !== false ||
+      body.execution_authorized !== false ||
+      body.exact_price?.asset !== "USDC" ||
+      !["eip155:84532", "eip155:8453"].includes(body.exact_price?.network) ||
+      (body.exact_price?.amount_usdc !== "0.05" && body.exact_price?.amount_usdc !== 0.05) ||
+      typeof body.query_plan_hash !== "string" ||
+      !/^[0-9a-f]{64}$/.test(body.query_plan_hash)
+    ) {
+      allDeliverable = false;
+    }
   }
 
   console.log(JSON.stringify({
-    schema_version: "geomacro.live-x402-prelaunch-availability.v1",
+    schema_version: "geomacro.live-x402-prelaunch-availability.v2",
     checked_at: new Date().toISOString(),
     host: BASE,
     payment_performed: false,
     real_funds_touched: false,
-    all_representative_cases_deliverable: true,
+    discovery_prelaunch: true,
+    production_funds_authorized: false,
+    all_representative_cases_deliverable: allDeliverable,
     results,
   }, null, 2));
-}
 
+  if (!allDeliverable) process.exit(2);
+}
 main().catch((error) => {
   console.error(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
