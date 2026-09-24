@@ -17,6 +17,7 @@ import {
   GEOMACRO_INTELLIGENCE_PRODUCT_ID,
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
   assertGeomacroIntelligenceResponseContract,
+  computeGeomacroIntelligenceProductHash,
 } from "../lib/geomacro-intelligence-contract";
 
 const ENV_KEYS = [
@@ -44,7 +45,7 @@ function enableMainnetRehearsal() {
 }
 
 function minimalValidResponse() {
-  return {
+  const response = {
     schema_version: GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
     product: GEOMACRO_INTELLIGENCE_PRODUCT_ID,
     request_id: "00000000-0000-4000-8000-000000000001",
@@ -87,8 +88,10 @@ function minimalValidResponse() {
       execution_authorized: false,
     },
     execution_authorized: false,
-    delivered_product_hash: "d".repeat(64),
+    delivered_product_hash: "",
   };
+  response.delivered_product_hash = computeGeomacroIntelligenceProductHash(response);
+  return response;
 }
 
 describe("Coinbase x402 mainnet zero-fund rehearsal", () => {
