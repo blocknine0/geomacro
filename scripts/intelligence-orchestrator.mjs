@@ -190,6 +190,20 @@ const TASKS = [
     ],
   },
   {
+    key: "paid_agent_country_refresh",
+    cadenceSeconds: 3600,
+    offsetSeconds: 2400,
+    priority: 92,
+    timeoutMs: 1_200_000,
+    requiredEnv: [
+      "RISK_OBJECT_SIGNING_KEY_ID",
+      "RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64",
+    ],
+    steps: [
+      ["bun", ["scripts/refresh-paid-agent-risk-objects.ts"], "."],
+    ],
+  },
+  {
     key: "public_demo_refresh",
     cadenceSeconds: 3600,
     offsetSeconds: 900,
