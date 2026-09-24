@@ -19,3 +19,16 @@ describe("Circle x402 Arc Testnet price contract", () => {
     );
   });
 });
+
+
+describe("Circle x402 settlement ledger contract", () => {
+  it("fails closed when settlement telemetry persistence fails", async () => {
+    const source = readFileSync(
+      new URL("../lib/circle-x402.server.ts", import.meta.url),
+      "utf8",
+    );
+
+    expect(source).toContain('throw error instanceof Error');
+    expect(source).toContain('circle_x402_telemetry_persistence_failed');
+  });
+});
