@@ -47,7 +47,7 @@ UNCTADstat remains registered against the official Data Centre surface; dataset/
 
 ### Live HTML extraction sources
 
-OPCW uses the official News page. The current official page is populated with dated 2026 news releases. citeturn466545search0
+OPCW uses the official News page: https://www.opcw.org/media-centre/news. The current official page is populated with dated 2026 news releases.
 
 ICJ uses the official Cases page. The adapter is designed for the Court's official HTML case listing and remains read-only until live runtime checks pass.
 
