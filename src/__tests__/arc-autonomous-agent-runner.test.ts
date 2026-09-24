@@ -28,6 +28,8 @@ describe("Arc autonomous agent runner", () => {
     expect(runner).toContain('"--max-amount", maxAmount');
     expect(runner).toContain('"-X", inspectedMethod');
     expect(runner).toContain('"--estimate"');
+    expect(runner).toContain('type: "country"');
+    expect(runner).toContain('GEOMACRO_AGENT_COUNTRY || "USA"');
     expect(runner).toContain(
       "GEOMACRO_AGENT_MAX_PAYMENT_USDC must be greater than 0",
     );
