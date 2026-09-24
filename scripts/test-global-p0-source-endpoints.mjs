@@ -76,10 +76,10 @@ for (const [sourceId, source] of entries) {
 }
 
 const failed = results.filter((row) => !row.ok || row.error);
-const blockingFailures = failed.filter(([sourceId, source] => {
-  const registrySource = registry.p0_global_source_expansion.sources[sourceId];
+const blockingFailures = failed.filter((row) => {
+  const registrySource = registry.p0_global_source_expansion.sources[row.source_id];
   return registrySource?.enabled !== false;
-}));
+});
 console.log(JSON.stringify({
   mode: "READ_ONLY_ENDPOINT_PROBE",
   source_count: results.length,
