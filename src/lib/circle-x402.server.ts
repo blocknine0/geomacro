@@ -185,10 +185,14 @@ export async function persistSettlementTelemetry(input: {
       throw paymentError ?? new Error("agent payment telemetry unavailable");
     }
 
-    await db
+    const { error: linkError } = await db
       .from("agent_api_requests")
       .update({ payment_id: paymentRow.id })
       .eq("id", requestRow.id);
+
+    if (linkError) {
+      throw linkError;
+    }
 
     await recordCommercialPaymentEvent({
       environment: "testnet",
