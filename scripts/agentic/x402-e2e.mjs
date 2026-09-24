@@ -32,9 +32,8 @@ if (expectedHost && url.hostname !== expectedHost) {
 const endpoint = `${base}/api/agent/risk`;
 const payload = {
   subject: {
-    type: "corridor",
-    origin_country_iso3: "USA",
-    destination_country_iso3: "CHN",
+    type: "country",
+    country_iso3: process.env.GEOMACRO_AGENT_COUNTRY || "USA",
   },
   policy_preset: "cautious",
   action_type: "agent_payment",
