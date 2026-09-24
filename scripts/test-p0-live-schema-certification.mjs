@@ -48,6 +48,13 @@ async function run(id, source) {
     const ct=res.headers.get("content-type")??"";
     const text=/xml|csv|json|html|text/i.test(ct) ? new TextDecoder().decode(bytes) : "";
     const rule=checks[id];
+    let extraction_count = null;
+    let extraction_error = null;
+    if (res.ok && text && runtimeExtractors[id]) {
+      try { extraction_count = runtimeExtractors[id](text); }
+      catch (error) { extraction_error = error instanceof Error ? error.message : String(error); }
+    }
+    const runtimePass = !runtimeExtractors[id] || (Number(extraction_count) > 0 && !extraction_error);
     const requiredPass=(rule.required??[]).every(marker=>text.includes(marker));
     const schemaPass=res.ok && structured(rule.type,bytes,text,ct,res.url) && requiredPass && runtimePass;
     return {source_id:id,status:res.status,ok:res.ok,schema_pass:schemaPass,content_type:ct,bytes:bytes.length,final_url:res.url,extraction_count,extraction_error,runtime_pass:runtimePass,latency_ms:Date.now()-started,observed_at:new Date().toISOString(),note:schemaPass?"transport/schema candidate passed":"transport or schema validation failed"};
