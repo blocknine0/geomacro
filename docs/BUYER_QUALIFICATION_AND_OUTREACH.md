@@ -156,7 +156,7 @@ Do not claim:
 - autonomous execution;
 - full sanctions or logistics modelling;
 - real-money production use from Arc Testnet evidence;
-- commercial pricing based on the `0.001 USDC` x402 demonstration.
+- commercial pricing based on the `0.05 USDC` x402 demonstration.
 
 Use the measured launch evidence in `docs/SECURITY_RESILIENCE_LAUNCH_EVIDENCE.md` when needed.
 
