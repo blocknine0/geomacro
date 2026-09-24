@@ -1011,6 +1011,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSlugRoute: DocsSlugRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
   EventEventIdRoute: EventEventIdRoute,
+  ApiAgentIntelligenceRoute: ApiAgentIntelligenceRoute,
   ApiAgentRiskRoute: ApiAgentRiskRoute,
   ApiDemoFeedbackRoute: ApiDemoFeedbackRoute,
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
