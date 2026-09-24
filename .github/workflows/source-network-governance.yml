@@ -166,6 +166,8 @@ jobs:
           retention-days: 30
       - name: Verify source-network contracts
         run: bunx vitest run src/__tests__/source-certification-contract.test.ts src/__tests__/global-source-coverage-migration.test.ts src/__tests__/source-network-launch-gate-static.test.ts
+      - name: Test global P0 registry alignment
+        run: bun run test:p0-registry-alignment
       - name: Test global P0 adapters
         run: bun run test:p0-adapters
       - name: Test global P0 adapter certification
