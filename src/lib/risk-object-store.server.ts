@@ -715,9 +715,18 @@ getLatestCompatibleCorridorRiskObjectAtOrBefore(
     applyDeliveryProfileFilter(
       query,
       deliveryProfile,
-    )
-      .order(
-        "generated_at",
+    );
+
+  if (deliveryProfile === "PUBLIC_DEMO") {
+    query = query.gt(
+      "expires_at",
+      boundary.toISOString(),
+    );
+  }
+
+  query = query
+    .order(
+      "generated_at",
         {
           ascending: false,
         },

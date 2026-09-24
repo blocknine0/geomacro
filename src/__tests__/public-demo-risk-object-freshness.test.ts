@@ -10,7 +10,11 @@ describe("public demo Risk Object freshness", () => {
   });
 
   it("filters expired corridor objects from PUBLIC_DEMO point-in-time reads", () => {
-    const occurrences = store.match(/query\s*=\s*query\.gt\(\s*"expires_at",\s*boundary\.toISOString\(\),\s*\)/g) ?? [];
-    expect(occurrences.length).toBeGreaterThanOrEqual(2);
+    const corridorRead = store.slice(
+      store.indexOf("export async function\ngetLatestCompatibleCorridorRiskObjectAtOrBefore"),
+    );
+    expect(corridorRead).toMatch(
+      /applyDeliveryProfileFilter\([\s\S]*?deliveryProfile,\n\s*\);[\s\S]*?if \(deliveryProfile === "PUBLIC_DEMO"\)[\s\S]*?query = query\.gt\(\s*"expires_at",\s*boundary\.toISOString\(\),\s*\)/,
+    );
   });
 });

@@ -85,13 +85,20 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/ingest-reliefweb-live.yml",
       ".github/workflows/global-realtime-source-proof.yml",
       ".github/workflows/production-intelligence-readiness.yml",
-      ".github/workflows/public-demo-risk-refresh.yml",
     ]) {
       const source = read(path);
       expect(source, path).toContain("workflow_dispatch:");
       expect(source, path).not.toContain("schedule:");
       expect(source, path).not.toContain("workflow_run:");
     }
+  });
+
+  it("allows the public demo Risk Object refresh to run on a bounded freshness schedule", () => {
+    const workflow = read(".github/workflows/public-demo-risk-refresh.yml");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain('cron: "0 */6 * * *"');
+    expect(workflow).not.toContain("workflow_run:");
+    expect(workflow).toContain("Refresh all visible public demo subjects");
   });
 
   it("keeps GRI freshness gates strict while avoiding pre-publish proof races", () => {
