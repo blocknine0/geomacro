@@ -36,7 +36,7 @@ export function parseIcjCasesHtml(html, { retrievedAt = new Date().toISOString()
   }
 
   const records = [];
-  const anchorRe = /<a\b[^>]*href=["']([^"']*\/cases\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const anchorRe = /<a\b[^>]*href=["']([^"']*(?:\/cases\/|\/case\/|\/contentious-cases(?:\/|\?))[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of input.matchAll(anchorRe)) {
     const title = decodeHtml(match[2]);
     const url = absoluteUrl(match[1], baseUrl);
