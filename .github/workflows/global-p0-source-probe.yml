@@ -38,6 +38,9 @@ jobs:
           mkdir -p artifacts
           node scripts/test-global-p0-source-endpoints.mjs > artifacts/global-p0-source-probe.json
 
+      - name: Test P0 registry alignment
+        run: node scripts/test-p0-registry-alignment.mjs
+
       - name: Test P0 normalization adapters
         run: node scripts/test-p0-adapters.mjs
 
