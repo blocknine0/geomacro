@@ -18,7 +18,7 @@ values
   'UK Government',
   'GEOPOLITICS',
   'HTML', 'NONE',
-  'https://www.gov.uk/government/publications/the-uk-sanctions-list',
+  'https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'GLOBAL', 'NEAR_REAL_TIME',
   'Official UK sanctions list. Register now for global sanctions coverage; exact machine endpoint, change-feed behavior and commercial reuse boundary must be certified before activation.'
 ),
@@ -28,7 +28,7 @@ values
   'European Commission / DG FISMA',
   'GEOPOLITICS',
   'HTML', 'NONE',
-  'https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/overview-sanctions-and-related-resources_en',
+  'https://webgate.ec.europa.eu/fsd/fsf',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'GLOBAL', 'NEAR_REAL_TIME',
   'Official EU consolidated financial-sanctions surface. Exact downloadable dataset, update cadence and reuse boundary must be certified before activation.'
 ),
@@ -78,7 +78,7 @@ values
   'World Bank',
   'MACRO',
   'CSV', 'NONE',
-  'https://www.worldbank.org/en/research/commodity-markets',
+  'https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'GLOBAL', 'MONTHLY',
   'Global commodity-price benchmark for oil, gas, metals, food and related macro transmission. Exact dataset/version and reuse boundary must be certified before activation.'
 ),
@@ -137,14 +137,14 @@ values
 (
   'GLOBAL:P0:UK_SANCTIONS:GEOPOLITICS','HOT_TOPIC','sanctions_embargoes_export_controls',
   'GEOPOLITICS','WEB_DIRECT','uk_sanctions_list',
-  'https://www.gov.uk/government/publications/the-uk-sanctions-list',
+  'https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml',
   'CONTINUOUS',900,'UK sanctions designation delisting asset freeze export restriction',
   'P0 global sanctions source; remains disabled until endpoint/rights certification.',false
 ),
 (
   'GLOBAL:P0:EU_SANCTIONS:GEOPOLITICS','HOT_TOPIC','sanctions_embargoes_export_controls',
   'GEOPOLITICS','WEB_DIRECT','eu_sanctions_consolidated',
-  'https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/overview-sanctions-and-related-resources_en',
+  'https://webgate.ec.europa.eu/fsd/fsf',
   'CONTINUOUS',900,'EU restrictive measures consolidated financial sanctions',
   'P0 global sanctions source; remains disabled until endpoint/rights certification.',false
 ),
@@ -179,7 +179,7 @@ values
 (
   'GLOBAL:P0:WB_COMMODITIES:MACRO','HOT_TOPIC','commodity_price_shock',
   'MACRO','WEB_DIRECT','world_bank_commodity_prices',
-  'https://www.worldbank.org/en/research/commodity-markets',
+  'https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx',
   'CONTINUOUS',3600,'commodity prices oil gas metals food fertilizer',
   'P0 global commodity-price benchmark; exact dataset adapter required.',false
 ),
