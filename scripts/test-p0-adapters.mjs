@@ -14,8 +14,8 @@ if (uk.length !== 1 || uk[0].source_record_id !== "UKSL:UK001") throw new Error(
 const wb = normalizeCommodityRow({commodity:"Copper",period:"2026-08",value:"123.45",unit:"USD/mt"});
 if (wb.value_numeric !== 123.45 || wb.category !== "MACRO") throw new Error("World Bank commodity normalization failed");
 
-const eu = normalizeEuSanctionsRecord({id:"EU001",name:"Example Entity",regime:"Example Regime",designationDate:"2026-09-20"});
-if (eu.source_record_id !== "EUFS:EU001" || eu.category !== "GEOPOLITICS") throw new Error("EU sanctions normalization failed");
+const eu = normalizeEuSanctionsRecord({id:"EU001",name:"Example Entity &amp; Co",regime:"Example Regime",designationDate:"2026-09-20",raw:"<entity><id>EU001</id><name>Example Entity &amp; Co</name></entity>"});
+if (eu.source_record_id !== "EUFS:EU001" || eu.title !== "EU financial sanctions designation: Example Entity & Co" || eu.category !== "GEOPOLITICS") throw new Error("EU sanctions normalization failed");
 
 const unctad = normalizeUnctadStatObservation({dataset:"trade",series:"Exports",period:"2026-08",value:"42.5",unit:"USD million",countryIso3:"CHN"});
 if (unctad.value_numeric !== 42.5 || unctad.country_iso3 !== "CHN" || unctad.category !== "MACRO") throw new Error("UNCTADstat normalization failed");
