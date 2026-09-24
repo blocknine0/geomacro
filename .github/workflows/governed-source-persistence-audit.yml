@@ -3,6 +3,11 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "47 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit-governed-source-persistence.mjs"
+      - ".github/workflows/governed-source-persistence-audit.yml"
 permissions: {contents: read}
 concurrency: {group: governed-source-persistence-audit, cancel-in-progress: false}
 jobs:
