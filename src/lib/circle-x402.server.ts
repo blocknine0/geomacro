@@ -220,6 +220,9 @@ export async function persistSettlementTelemetry(input: {
     });
   } catch (error) {
     console.error("[circle-x402] telemetry persistence failed", error);
+    throw error instanceof Error
+      ? error
+      : new Error("circle_x402_telemetry_persistence_failed");
   }
 }
 
