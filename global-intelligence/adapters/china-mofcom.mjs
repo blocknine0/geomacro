@@ -54,7 +54,8 @@ export function parseMofcomExportControlHtml(html, { observedAt = new Date().toI
       title,
       issuedAt,
       url,
-      commodity: /rare earth/i.test(title + " " + context) ? "Rare earths" : null,
+      commodity: /rare earth|稀土/i.test(title + " " + context) ? "Rare earths" : /tungsten|钨/i.test(title + " " + context) ? "Tungsten" : /lithium|锂/i.test(title + " " + context) ? "Lithium" : null,
+      retrievedAt: observedAt,
       raw: { title, url, issuedAt, context }
     }));
   }
