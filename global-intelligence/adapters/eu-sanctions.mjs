@@ -16,20 +16,20 @@ function first(...values) {
 export function parseEuSanctionsXml(xml, { retrievedAt = new Date().toISOString() } = {}) {
   const records = [];
   const input = String(xml);
-  const blocks = input.match(/<(?:sanctionEntity|entity|designation|record)\\b[^>]*>[\\s\\S]*?<\\/(?:sanctionEntity|entity|designation|record)>/gi) ?? [];
+  const blocks = input.match(/<(?:sanctionEntity|entity|designation|record)\b[^>]*>[\s\S]*?<\/(?:sanctionEntity|entity|designation|record)>/gi) ?? [];
 
   for (const block of blocks) {
     const id = first(
-      block.match(/<(?:euReferenceNumber|referenceNumber|id|logicalId)\\b[^>]*>([\\s\\S]*?)<\\/(?:euReferenceNumber|referenceNumber|id|logicalId)>/i)?.[1]
+      block.match(/<(?:euReferenceNumber|referenceNumber|id|logicalId)\b[^>]*>([\s\S]*?)<\/(?:euReferenceNumber|referenceNumber|id|logicalId)>/i)?.[1]
     );
     const name = first(
-      block.match(/<(?:nameAlias|wholeName|name)\\b[^>]*>([\\s\\S]*?)<\\/(?:nameAlias|wholeName|name)>/i)?.[1]
+      block.match(/<(?:nameAlias|wholeName|name)\b[^>]*>([\s\S]*?)<\/(?:nameAlias|wholeName|name)>/i)?.[1]
     );
     const regime = first(
-      block.match(/<(?:regime|programme|subjectType)\\b[^>]*>([\\s\\S]*?)<\\/(?:regime|programme|subjectType)>/i)?.[1]
+      block.match(/<(?:regime|programme|subjectType)\b[^>]*>([\s\S]*?)<\/(?:regime|programme|subjectType)>/i)?.[1]
     );
     const designationDate = first(
-      block.match(/<(?:designationDate|listedDate|date)\\b[^>]*>([\\s\\S]*?)<\\/(?:designationDate|listedDate|date)>/i)?.[1]
+      block.match(/<(?:designationDate|listedDate|date)\b[^>]*>([\s\S]*?)<\/(?:designationDate|listedDate|date)>/i)?.[1]
     );
 
     if (!id && !name) continue;
@@ -45,7 +45,7 @@ export function parseEuSanctionsXml(xml, { retrievedAt = new Date().toISOString(
 
     records.push({
       source_id: "eu_sanctions_consolidated",
-      source_record_id: "EUFS:" + cleanId.replace(/\\s+/g, "_"),
+      source_record_id: "EUFS:" + cleanId.replace(/\s+/g, "_"),
       category: "GEOPOLITICS",
       observed_at: retrievedAt,
       published_at: publishedAt,
@@ -86,7 +86,7 @@ export function normalizeEuSanctionsRecord({ id, name, regime, designationDate =
 
   return {
     source_id: "eu_sanctions_consolidated",
-    source_record_id: "EUFS:" + String(cleanId).replace(/\\s+/g, "_"),
+    source_record_id: "EUFS:" + String(cleanId).replace(/\s+/g, "_"),
     category: "GEOPOLITICS",
     observed_at: retrievedAt,
     published_at: publishedAt,
