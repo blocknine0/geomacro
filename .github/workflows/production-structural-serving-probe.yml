@@ -34,3 +34,9 @@ jobs:
           HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
           HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/ops/probe-structural-serving-production.mjs
+
+      - name: Probe authoritative app DB base structural tables
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/probe-structural-base-tables-production.mjs
