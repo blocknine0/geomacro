@@ -1,0 +1,35 @@
+name: Global P0 source endpoint probe
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probe authoritative source endpoints
+        run: |
+          mkdir -p artifacts
+          node scripts/test-global-p0-source-endpoints.mjs > artifacts/global-p0-source-probe.json
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-p0-source-probe
+          path: artifacts/global-p0-source-probe.json
+          if-no-files-found: error
