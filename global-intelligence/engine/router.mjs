@@ -1,7 +1,7 @@
 const RULES=[
-  {category:"CRITICAL_MINERALS",terms:/critical mineral|lithium|cobalt|nickel|graphite|rare earth|rare-earth|copper|uranium|supply of mineral|mine|refin/i},
-  {category:"MACRO",terms:/inflation|gdp|cpi|interest rate|central bank|currency|fx|employment|unemployment|trade|export|import|debt|fiscal|monetary|recession|growth/i},
-  {category:"GEOPOLITICS",terms:/geopolitic|war|conflict|sanction|sanctions|tariff|election|government|military|security|diplomatic|treaty|protest|coup|border|shipping|strait|policy/i}
+  {category:"CRITICAL_MINERALS",terms:/critical[- ]mineral|lithium|cobalt|nickel|graphite|rare[- ]earth|copper|uranium|supply of mineral|mine|refin/i},
+  {category:"MACRO",terms:/\bmacro\b|inflation|gdp|cpi|interest rate|central bank|currency|fx|employment|unemployment|trade|export|import|debt|fiscal|monetary|recession|growth/i},
+  {category:"GEOPOLITICS",terms:/geopolitic|geo[- ]political|war|conflict|sanction|tariff|election|government|military|security|diplomatic|treaty|protest|coup|border|shipping|strait|policy/i}
 ];
 export function routeQuestion(question){
   const hits=RULES.filter(r=>r.terms.test(question)).map(r=>r.category);
