@@ -26,6 +26,9 @@ jobs:
           mkdir -p artifacts
           node scripts/test-global-p0-source-endpoints.mjs > artifacts/global-p0-source-probe.json
 
+      - name: Test P0 normalization adapters
+        run: node scripts/test-p0-adapters.mjs
+
       - name: Upload probe evidence
         if: always()
         uses: actions/upload-artifact@v4
