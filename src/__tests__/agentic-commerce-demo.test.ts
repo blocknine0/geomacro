@@ -37,8 +37,8 @@ describe("Agentic Commerce public demo contract", () => {
     expect(x402).toContain('"eip155:5042002"');
     expect(x402).toContain('"0x3600000000000000000000000000000000000000"');
     expect(x402).toContain('"0x0077777d7EBA4688BDeF3E311b846F25870A19B9"');
-    expect(x402).toContain('"0.001"');
-    expect(x402).toContain('"1000"');
+    expect(x402).toContain('"0.05"');
+    expect(x402).toContain('"50000"');
     expect(x402).toContain("604900");
     expect(x402).toContain('"https://gateway-api-testnet.circle.com"');
     expect(x402).toContain("BatchFacilitatorClient");
