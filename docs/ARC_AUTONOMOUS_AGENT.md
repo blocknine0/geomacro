@@ -30,6 +30,7 @@ export GEOMACRO_X402_BASE_URL="https://<isolated-staging-host>"
 export GEOMACRO_X402_AGENT_WALLET_ADDRESS="0x..."
 export GEOMACRO_AGENT_PAYMENT_ACK="ARC_TESTNET_USDC"
 export GEOMACRO_AGENT_MAX_PAYMENT_USDC="0.05"
+export GEOMACRO_AGENT_COUNTRY="USA"
 ```
 
 Then:
@@ -38,12 +39,13 @@ Then:
 bun run agentic:arc-agent
 ```
 
-Optional subject overrides:
+Optional country override:
 
 ```bash
-export GEOMACRO_AGENT_ORIGIN=USA
-export GEOMACRO_AGENT_DESTINATION=CHN
+export GEOMACRO_AGENT_COUNTRY=USA
 ```
+
+The paid Arc Testnet proof uses a country Risk Object. The current directional corridor pilot remains independently unverified and is not eligible for paid delivery.
 
 ## Security boundary
 
