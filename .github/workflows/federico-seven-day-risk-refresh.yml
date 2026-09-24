@@ -131,6 +131,18 @@ jobs:
           export PGSSLMODE="require"
 
           required_schema="DO \$\$
+          DECLARE
+            required_columns text[] := ARRAY[
+              'signal_category',
+              'source_version',
+              'material_update',
+              'material_update_reason',
+              'first_seen_at',
+              'last_seen_at',
+              'last_material_update_at',
+              'event_family_id'
+            ];
+            column_name text;
           BEGIN
             IF to_regclass('public.live_flash_event_families') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_families is missing';
@@ -144,6 +156,18 @@ jobs:
             IF to_regclass('public.live_flash_event_versions') IS NULL THEN
               RAISE EXCEPTION 'live_flash_event_versions is missing';
             END IF;
+
+            FOREACH column_name IN ARRAY required_columns LOOP
+              IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'live_flash_events'
+                  AND column_name = required_schema.column_name
+              ) THEN
+                RAISE EXCEPTION 'live_flash_events.% is missing', column_name;
+              END IF;
+            END LOOP;
           END \$\$;"
 
           set +e
