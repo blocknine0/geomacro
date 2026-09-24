@@ -10,6 +10,8 @@ describe("global three-category Arc agent contract", () => {
       expect(runner).toContain('["' + category + '"]');
     }
     expect(route).toContain('["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]');
+    expect(runner).toContain("GEOMACRO_AGENT_CASE");
+    expect(runner).toContain("mixed");
   });
 
   it("is bounded to Arc Testnet Gateway USDC and 0.05 USDC", () => {
