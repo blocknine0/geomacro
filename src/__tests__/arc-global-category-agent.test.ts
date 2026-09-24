@@ -7,7 +7,7 @@ const route = readFileSync("src/routes/api.agent.intelligence.ts", "utf8");
 describe("global three-category Arc agent contract", () => {
   it("covers all three core intelligence categories", () => {
     for (const category of ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]) {
-      expect(runner).toContain('["' + category + '"');
+      expect(runner).toContain('["' + category + '"]');
     }
     expect(route).toContain('["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"]');
   });
