@@ -8,8 +8,8 @@ export const CIRCLE_X402_ASSET =
   "0x3600000000000000000000000000000000000000" as const;
 export const CIRCLE_X402_GATEWAY_WALLET =
   "0x0077777d7EBA4688BDeF3E311b846F25870A19B9" as const;
-export const CIRCLE_X402_PRICE_USDC = "0.001" as const;
-export const CIRCLE_X402_PRICE_ATOMIC = "1000" as const;
+export const CIRCLE_X402_PRICE_USDC = "0.05" as const;
+export const CIRCLE_X402_PRICE_ATOMIC = "50000" as const;
 export const CIRCLE_X402_MAX_TIMEOUT_SECONDS = 604900 as const;
 export const CIRCLE_X402_FACILITATOR_URL =
   "https://gateway-api-testnet.circle.com" as const;
