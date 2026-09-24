@@ -5,6 +5,10 @@ const script = readFileSync(
   "scripts/agentic/coinbase-x402-base-sepolia-e2e.mjs",
   "utf8",
 );
+const adaptiveScript = readFileSync(
+  "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs",
+  "utf8",
+);
 const workflow = readFileSync(
   ".github/workflows/coinbase-x402-base-sepolia.yml",
   "utf8",
@@ -30,11 +34,11 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
     expect(script).toContain("Replay the exact same signed proof + exact same request");
     expect(script).toContain("replay_no_second_debit: true");
     expect(script).toContain("duplicate_charge_count: 0");
-    expect(script).toContain('"event Transfer(address indexed from, address indexed to, uint256 value)"');
-    expect(script).toContain("onchain_usdc_transfer_log_verified: true");
-    expect(script).toContain("transferProof.from !== payer");
-    expect(script).toContain("transferProof.to");
-    expect(script).toContain("transferProof.amount_atomic");
+    expect(adaptiveScript).toContain('"event Transfer(address indexed from, address indexed to, uint256 value)"');
+    expect(adaptiveScript).toContain("onchain_usdc_transfer_log_verified: true");
+    expect(adaptiveScript).toContain("transferProof.from !== payer");
+    expect(adaptiveScript).toContain("transferProof.to");
+    expect(adaptiveScript).toContain("transferProof.amount_atomic");
   });
 
   it("proves the same payment proof cannot authorize changed business terms", () => {
