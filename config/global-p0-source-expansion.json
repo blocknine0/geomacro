@@ -95,7 +95,11 @@
         "transport_candidate": "OFFICIAL_POLICY_RELEASES",
         "discovery_url": "https://english.mofcom.gov.cn/",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "machine_endpoint": "https://exportcontrol.mofcom.gov.cn/",
+        "machine_formats": [
+          "HTML"
+        ]
       },
       "australia_critical_minerals": {
         "provider": "Australian Government",
@@ -103,7 +107,11 @@
         "transport_candidate": "OFFICIAL_CRITICAL_MINERALS",
         "discovery_url": "https://www.industry.gov.au/mining-oil-and-gas/minerals/critical-minerals",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "machine_endpoint": "https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list",
+        "machine_formats": [
+          "HTML"
+        ]
       },
       "cochilco_minerals": {
         "provider": "Chilean Copper Commission",
