@@ -12,7 +12,10 @@ const checks = {
   uk_sanctions_list: { type:"xml", required:["UniqueID","PrimaryName"] },
   eu_sanctions_consolidated: { type:"any-structured", required:[] },
   world_bank_commodity_prices: { type:"xlsx", required:[] },
-  unctadstat_global: { type:"html", required:[] }
+  unctadstat_global: { type:"html", required:[] },
+  china_mofcom_trade_controls: { type:"html", required:["exportcontrol.mofcom.gov.cn"] },
+  australia_critical_minerals: { type:"html", required:["Critical Minerals List","Strategic Materials List"] },
+  cochilco_minerals: { type:"xlsx", required:[] }
 };
 
 function structured(type, bytes, text, ct, url) {
@@ -20,7 +23,10 @@ function structured(type, bytes, text, ct, url) {
   if(type==="xml") return (/xml/i.test(lower)||/\.xml(?:$|[?#])/i.test(url)) && /^\s*</.test(text);
   if(type==="xlsx") return bytes.length>100 && bytes[0]===0x50 && bytes[1]===0x4b;
   if(type==="any-structured") return /xml|csv|json|spreadsheet|excel|officedocument/i.test(lower) || /(?:\.xml|\.csv|\.json)(?:$|[?#])/i.test(url);
-  if(type==="html") return /html/i.test(lower) && /<html|<body|<script|<!doctype/i.test(text);
+  if(type==="html") {
+    if(!/html/i.test(lower) || !/<html|<body|<script|<!doctype/i.test(text)) return false;
+    return true;
+  }
   return false;
 }
 
