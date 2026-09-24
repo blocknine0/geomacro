@@ -68,7 +68,7 @@ if (accept?.network !== "eip155:5042002") fail(`Unexpected network: ${accept?.ne
 if (accept?.asset?.toLowerCase() !== "0x3600000000000000000000000000000000000000") {
   fail(`Unexpected USDC asset: ${accept?.asset}`);
 }
-if (accept?.amount !== "1000") fail(`Unexpected test price: ${accept?.amount}`);
+if (accept?.amount !== "50000") fail(`Unexpected test price: ${accept?.amount}`);
 if (accept?.maxTimeoutSeconds < 604900) fail(`Gateway timeout too short: ${accept?.maxTimeoutSeconds}`);
 if (accept?.extra?.verifyingContract?.toLowerCase() !== "0x0077777d7eba4688bdef3e311b846f25870a19b9") {
   fail(`Unexpected Gateway verifying contract: ${accept?.extra?.verifyingContract}`);
@@ -76,14 +76,14 @@ if (accept?.extra?.verifyingContract?.toLowerCase() !== "0x0077777d7eba4688bdef3
 console.log("✅ Unpaid 402 contract matches Arc Testnet x402 technical-proof policy.");
 
 if (ack !== "ARC_TESTNET_USDC") {
-  console.log("ℹ️ Payment stage skipped. Set GEOMACRO_X402_E2E_ACK=ARC_TESTNET_USDC to authorize the 0.001 USDC Arc Testnet call.");
+  console.log("ℹ️ Payment stage skipped. Set GEOMACRO_X402_E2E_ACK=ARC_TESTNET_USDC to authorize the 0.05 USDC Arc Testnet call.");
   process.exit(0);
 }
 if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
   fail("GEOMACRO_X402_AGENT_WALLET_ADDRESS must be a valid EVM address before payment stage.");
 }
 
-console.log("Stage 2: invoking Circle CLI for one 0.001 USDC Arc Testnet payment...");
+console.log("Stage 2: invoking Circle CLI for one 0.05 USDC Arc Testnet payment...");
 const args = [
   "services",
   "pay",
