@@ -151,7 +151,7 @@ State `execution_authorized=false` explicitly.
 
 Use the direct `/demo` link for a technical buyer.
 
-Show the browser pre-flight first. Then explain that Circle x402 and USDC on Arc Testnet demonstrate agent-native pay-per-call delivery. The `0.001 USDC` technical-demo price is not institutional pricing.
+Show the browser pre-flight first. Then explain that Circle x402 and USDC on Arc Testnet demonstrate agent-native pay-per-call delivery. The `0.05 USDC` technical-demo price is not institutional pricing.
 
 ### Minute 12 to 15: close
 
