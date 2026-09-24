@@ -81,6 +81,9 @@ if (accept?.asset?.toLowerCase() !== "0x3600000000000000000000000000000000000000
   fail("Payment asset is not Circle Gateway USDC on Arc Testnet.");
 }
 if (accept?.amount !== "50000") fail("Unexpected paid intelligence price.");
+if (parsedMaxAmount < Number(accept.amount) / 1_000_000) {
+  fail(`GEOMACRO_AGENT_MAX_PAYMENT_USDC must cover the advertised ${Number(accept.amount) / 1_000_000} USDC request.`);
+}
 if (accept?.payTo?.toLowerCase() === wallet.toLowerCase()) fail("Agent wallet must not equal the seller address.");
 
 console.log("✅ 402 received and payment policy verified.");
