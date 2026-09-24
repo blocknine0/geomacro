@@ -596,7 +596,7 @@ if (invinoApiKey) {
   let reviewApiKey = invinoApiKey;
   let reviewAuthMode: "primary" | "demo_fallback" = "primary";
 
-  let response = await fetch(invinoOrigin + "/review", {
+  let response = await fetch(invinoOrigin + "/review/external", {
     method: "POST",
     headers: {
       authorization: "Bearer " + reviewApiKey,
@@ -614,7 +614,7 @@ if (invinoApiKey) {
   ) {
     reviewApiKey = invinoDemoApiKey;
     reviewAuthMode = "demo_fallback";
-    response = await fetch(invinoOrigin + "/review", {
+    response = await fetch(invinoOrigin + "/review/external", {
       method: "POST",
       headers: {
         authorization: "Bearer " + reviewApiKey,
@@ -640,7 +640,7 @@ if (invinoApiKey) {
 
   if (!body?.proof) {
     throw new Error(
-      "invinoveritas /review was requested with sign=true but returned no proof",
+      "invinoveritas /review/external was requested with sign=true but returned no proof",
     );
   }
 
