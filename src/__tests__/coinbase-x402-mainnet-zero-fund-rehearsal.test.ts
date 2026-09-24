@@ -184,6 +184,8 @@ describe("Coinbase x402 mainnet zero-fund rehearsal", () => {
         },
       }],
     };
+    const { delivered_product_hash: _ignoredUnverifiedHash, ...unverifiedWithoutHash } = unverified;
+    unverified.delivered_product_hash = computeGeomacroIntelligenceProductHash(unverifiedWithoutHash);
     expect(() => assertGeomacroIntelligenceResponseContract(unverified)).toThrow("INTELLIGENCE_RESPONSE_RISK_OBJECT_VERIFICATION_INVALID");
   });
 
