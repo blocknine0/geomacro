@@ -33,6 +33,10 @@ on:
       - "scripts/test-p0-adapters.mjs"
       - "scripts/test-p0-adapter-certification.mjs"
       - "scripts/test-p0-live-schema-certification.mjs"
+      - "scripts/test-p0-registry-alignment.mjs"
+      - "global-intelligence/sources/source-registry.v1.json"
+      - "global-intelligence/sources/free-source-catalog.v1.json"
+      - "global-intelligence/sources/source-gap-matrix.v1.md"
       - ".github/workflows/global-p0-source-probe.yml"
 
 
