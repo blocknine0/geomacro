@@ -307,12 +307,6 @@ getLatestCompatibleCountryRiskObject(
       deliveryProfile,
     );
 
-  if (deliveryProfile === "PUBLIC_DEMO") {
-    query = query.gt(
-      "expires_at",
-      boundary.toISOString(),
-    );
-  }
 
   query = query
     .order(
