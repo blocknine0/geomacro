@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 export const WORLD_BANK_PINK_SHEET_URL = "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx";
 
 export function normalizeCommodityRow({ commodity, period, value, unit = null, retrievedAt = new Date().toISOString() }) {
-  if (!commodity || !period || value == null || !Number.isFinite(Number(value))) throw new Error("Invalid World Bank commodity observation");
+  if (!commodity || !period || !/^\\d{4}-\\d{2}$/.test(String(period)) || value == null || !Number.isFinite(Number(value))) throw new Error("Invalid World Bank commodity observation");
   const normalized = {
     source_id:"world_bank_commodity_prices",
     source_record_id:"WB-PINK:" + commodity + ":" + period,
