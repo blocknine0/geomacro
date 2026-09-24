@@ -1,0 +1,154 @@
+#!/usr/bin/env node
+import process from "node:process";
+import { spawnSync } from "node:child_process";
+
+const base = (process.env.GEOMACRO_X402_BASE_URL || "http://127.0.0.1:8090").replace(/\/$/, "");
+const wallet = process.env.GEOMACRO_X402_AGENT_WALLET_ADDRESS || "";
+const maxAmount = process.env.GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.05";
+const ack = process.env.GEOMACRO_AGENT_PAYMENT_ACK || "";
+
+const QUESTIONS = [
+  ["GEOPOLITICS", "What are the current geopolitical risks involving war, conflict, sanctions and diplomatic pressure?"],
+  ["MACRO", "What are the current macro risks involving inflation, interest rates, growth and currencies?"],
+  ["CRITICAL_MINERALS", "What are the current critical-mineral risks involving lithium, cobalt, copper and rare-earth supply?"],
+];
+
+function fail(message) {
+  console.error("❌ " + message);
+  process.exit(1);
+}
+
+if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) fail("GEOMACRO_X402_AGENT_WALLET_ADDRESS must be a valid EVM address.");
+if (ack !== "ARC_TESTNET_USDC") fail("Set GEOMACRO_AGENT_PAYMENT_ACK=ARC_TESTNET_USDC to authorize the bounded Testnet payments.");
+if (Number(maxAmount) !== 0.05) fail("GEOMACRO_AGENT_MAX_PAYMENT_USDC must be exactly 0.05 for this acceptance run.");
+
+const target = new URL(base + "/api/agent/intelligence");
+if (target.protocol !== "http:" && target.protocol !== "https:") fail("Unsupported agent target protocol.");
+if (target.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(target.hostname)) fail("Agent target must use HTTPS except for localhost.");
+if (["geomacro.live", "www.geomacro.live"].includes(target.hostname)) fail("Refusing to spend Testnet USDC against the public production host.");
+
+function parsePaymentRequired(header) {
+  let decoded;
+  try {
+    decoded = Buffer.from(header, "base64").toString("utf8");
+    return JSON.parse(decoded);
+  } catch {
+    fail("PAYMENT-REQUIRED was not valid base64 JSON.");
+  }
+}
+
+function runCircle(args, label) {
+  const result = spawnSync("circle", args, { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] });
+  if (result.error) fail(label + " could not start: " + result.error.message);
+  if (result.status !== 0) {
+    console.error(result.stderr || result.stdout);
+    fail(label + " exited with status " + result.status);
+  }
+  return result.stdout.trim();
+}
+
+console.log("Geomacro global three-category Arc Testnet agent acceptance");
+console.log("Target: " + target);
+console.log("Scope: GEOPOLITICS + MACRO + CRITICAL_MINERALS");
+console.log("Spend cap: 0.05 USDC per accepted question");
+
+const results = [];
+for (const [expectedCategory, question] of QUESTIONS) {
+  console.log("\n[" + expectedCategory + "] " + question);
+
+  const unpaid = await fetch(target, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question, client_request_id: "arc-global-" + Date.now() }),
+  });
+
+  if (unpaid.status !== 402) {
+    const body = await unpaid.text();
+    fail(expectedCategory + ": expected HTTP 402, received " + unpaid.status + ": " + body);
+  }
+
+  const header = unpaid.headers.get("payment-required");
+  if (!header) fail(expectedCategory + ": missing PAYMENT-REQUIRED header.");
+  const required = parsePaymentRequired(header);
+  const accept = required?.accepts?.[0];
+
+  if (required?.x402Version !== 2) fail(expectedCategory + ": expected x402 v2.");
+  if (accept?.network !== "eip155:5042002") fail(expectedCategory + ": payment network is not Arc Testnet.");
+  if (String(accept?.asset || "").toLowerCase() !== "0x3600000000000000000000000000000000000000") fail(expectedCategory + ": payment asset is not Gateway USDC.");
+  if (accept?.amount !== "50000") fail(expectedCategory + ": payment amount is not 0.05 USDC.");
+  if (accept?.payTo?.toLowerCase() === wallet.toLowerCase()) fail(expectedCategory + ": buyer and seller wallets must be different.");
+
+  console.log("✅ 402 and payment policy verified.");
+
+  const inspection = JSON.parse(runCircle(
+    ["services", "inspect", target.toString(), "--output", "json"],
+    expectedCategory + " Circle inspect",
+  ));
+  const method = inspection?.method ?? inspection?.request?.method;
+  if (method !== "POST") fail(expectedCategory + ": Circle inspect did not confirm POST.");
+
+  console.log("✅ Circle inspect confirmed POST.");
+
+  const payload = JSON.stringify({ question, client_request_id: "arc-global-" + Date.now() });
+
+  const estimate = runCircle(
+    [
+      "services", "pay", target.toString(),
+      "--address", wallet,
+      "--chain", "ARC-TESTNET",
+      "-X", "POST",
+      "--max-amount", maxAmount,
+      "--estimate",
+      "-H", "content-type: application/json",
+      "-d", payload,
+      "--output", "json",
+    ],
+    expectedCategory + " payment estimate",
+  );
+
+  console.log(estimate);
+
+  const paid = JSON.parse(runCircle(
+    [
+      "services", "pay", target.toString(),
+      "--address", wallet,
+      "--chain", "ARC-TESTNET",
+      "-X", "POST",
+      "--max-amount", maxAmount,
+      "-H", "content-type: application/json",
+      "-d", payload,
+      "--output", "json",
+    ],
+    expectedCategory + " Circle payment",
+  ));
+
+  if (paid?.ok !== true) fail(expectedCategory + ": paid delivery was not successful.");
+  if (paid?.payment?.provider !== "circle_gateway_x402") fail(expectedCategory + ": wrong payment provider.");
+  if (paid?.payment?.network !== "eip155:5042002") fail(expectedCategory + ": paid response did not confirm Arc Testnet.");
+  if (paid?.payment?.asset !== "USDC") fail(expectedCategory + ": paid response did not confirm USDC.");
+  if (paid?.categories?.length !== 1 || paid.categories[0] !== expectedCategory) {
+    fail(expectedCategory + ": category routing mismatch: " + JSON.stringify(paid.categories));
+  }
+  if (paid?.answer?.insufficient_evidence !== false) fail(expectedCategory + ": answer was not grounded enough for delivery.");
+  if (paid?.execution_authorized !== false) fail(expectedCategory + ": execution boundary was violated.");
+
+  results.push({
+    category: expectedCategory,
+    payment_provider: paid.payment.provider,
+    amount_usdc: paid.payment.amount_usdc,
+    network: paid.payment.network,
+    settlement_reference: paid.payment.settlement_reference ?? null,
+    answer_grounded: paid.answer.insufficient_evidence === false,
+    execution_authorized: false,
+  });
+
+  console.log("✅ " + expectedCategory + " paid intelligence delivered.");
+}
+
+console.log(JSON.stringify({
+  ok: true,
+  categories: results,
+  total_paid_usdc: 0.15,
+  execution_authorized: false,
+  technical_proof_only: true,
+}, null, 2));
