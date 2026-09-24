@@ -137,7 +137,7 @@ const evidence = {
   production_activation_performed: false,
   production_funds_authorized: false,
   official_launch_announced: false,
-  payment_launch_cohort: ["coinbase_x402", "circle_gateway_x402", "nevermined"],
+  payment_launch_cohort: ["coinbase_x402"],
   deferred_payment_providers: {
     goat_x402_mainnet: "manual_merchant_application_and_approval_required",
   },
