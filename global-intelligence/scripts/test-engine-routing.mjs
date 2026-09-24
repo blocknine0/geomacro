@@ -27,14 +27,19 @@ assert(
   "mixed three-category routing failed",
 );
 
-const macro = routeQuestion("What is inflation and GDP growth?");
-assert(macro.includes("MACRO"), "macro routing failed");
+const macroSignals = routeQuestion("What is inflation and GDP growth?");
+assert(macroSignals.includes("MACRO"), "macro routing failed");
 
-const minerals = routeQuestion("What is cobalt supply and mine production?");
-assert(minerals.includes("CRITICAL_MINERALS"), "minerals routing failed");
+const mineralSignals = routeQuestion("What is cobalt supply and mine production?");
+assert(mineralSignals.includes("CRITICAL_MINERALS"), "minerals routing failed");
 
-const mixed = routeQuestion("How could sanctions affect copper exports and inflation?");
-assert(mixed.includes("GEOPOLITICS") && mixed.includes("CRITICAL_MINERALS") && mixed.includes("MACRO"), "multi-category routing failed");
+const multiSignals = routeQuestion("How could sanctions affect copper exports and inflation?");
+assert(
+  multiSignals.includes("GEOPOLITICS") &&
+    multiSignals.includes("CRITICAL_MINERALS") &&
+    multiSignals.includes("MACRO"),
+  "multi-category routing failed",
+);
 
 const adapters = defaultAdapters();
 assert(typeof adapters.GEOPOLITICS === "function", "geo adapter missing");
