@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   CIRCLE_X402_ASSET,
   CIRCLE_X402_NETWORK,
