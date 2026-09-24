@@ -351,6 +351,27 @@ export const Route = createFileRoute("/api/agent/intelligence")({
           }, 503);
         }
 
+        if (!settlement.settlement_reference) {
+          await releaseAgentCommerceDelivery({
+            provider: "circle_gateway_x402",
+            providerEnvironment: "testnet",
+            paymentFingerprint,
+            claimToken,
+            failureCode: "GLOBAL_INTELLIGENCE_SETTLEMENT_REFERENCE_MISSING",
+            manualReview: true,
+          });
+          return json({
+            ok: false,
+            error: {
+              code: "GLOBAL_INTELLIGENCE_SETTLEMENT_RECONCILIATION_REQUIRED",
+              message: "Settlement succeeded without a durable settlement reference. Delivery is held for reconciliation.",
+            },
+            execution_authorized: false,
+          }, 503, {
+            "PAYMENT-RESPONSE": circleX402PaymentResponseHeader(settlement),
+          });
+        }
+
         try {
           await completeAgentCommerceDelivery({
             provider: "circle_gateway_x402",
@@ -358,7 +379,7 @@ export const Route = createFileRoute("/api/agent/intelligence")({
             paymentFingerprint,
             claimToken,
             payerReference: settlement.payer,
-            settlementReference: settlement.settlement_reference ?? "circle_gateway_settled_without_reference",
+            settlementReference: settlement.settlement_reference,
             settlementNetwork: settlement.network,
           });
         } catch (error) {
