@@ -396,7 +396,7 @@ describe("private revenue ledger production runtime gate", () => {
 
 
 describe("Federico exact external-evidence review binding", () => {
-  it("supplies the exact signed Risk Object as deterministic external evidence", () => {
+  it("binds the exact signed Risk Object with a hash-only external-evidence envelope", () => {
     expect(federicoPreflight).toContain(
       'const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));',
     );
@@ -424,7 +424,6 @@ describe("Federico exact external-evidence review binding", () => {
     expect(federicoPreflight).toContain(
       'confidentiality_tier: "hash_only"',
     );
-    );
   });
 
   it("binds review timing to the Risk Object observation timestamp", () => {
@@ -439,7 +438,6 @@ describe("Federico exact external-evidence review binding", () => {
     );
     expect(federicoPreflight).toContain(
       '"record" in externalEvidence[0]',
-    );
     );
   });
 });
