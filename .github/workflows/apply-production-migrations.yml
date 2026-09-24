@@ -22,7 +22,7 @@ jobs:
     environment: production
     steps:
       - name: Checkout exact main
-        uses: actions/checkout@v4
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           ref: main
           persist-credentials: false
