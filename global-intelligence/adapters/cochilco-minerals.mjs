@@ -5,7 +5,6 @@ export const COCHILCO_URL = "https://www.cochilco.cl/web/anuario-de-estadisticas
 function decodeHtml(value) {
   return String(value ?? "")
     .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
