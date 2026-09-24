@@ -44,7 +44,7 @@ export function parseMofcomExportControlHtml(html, { observedAt = new Date().toI
     const contextStart = Math.max(0, match.index - 500);
     const contextEnd = Math.min(input.length, match.index + match[0].length + 500);
     const context = decodeHtml(input.slice(contextStart, contextEnd));
-    if (!/export|control|rare earth|dual-use|strategic mineral|mineral/i.test(title + " " + context)) continue;
+    if (!/export|control|rare earth|dual-use|strategic mineral|mineral|出口管制|战略矿产|稀土|钨|碲|锂/i.test(title + " " + context)) continue;
 
     const id = match[1].match(/(?:id|article|content|info)[=_/-]([A-Za-z0-9_-]+)/i)?.[1]
       ?? Buffer.from(url).toString("base64url").slice(0, 24);
