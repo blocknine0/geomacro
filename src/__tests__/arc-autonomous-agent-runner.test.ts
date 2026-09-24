@@ -22,10 +22,11 @@ describe("Arc autonomous agent runner", () => {
     expect(runner).toContain(
       'GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.05"',
     );
-    expect(runner).toContain('"services", "inspect", target.toString(), "--output", "json"');
+    expect(runner).toContain('"services", "inspect", target.toString(), "-X", "POST", "-H", "content-type: application/json", "-d", JSON.stringify(payload), "--output", "json"');
     expect(runner).toContain('const inspectedMethod = inspection?.method ?? inspection?.request?.method;');
     expect(runner).toContain('"--max-amount", maxAmount');
     expect(runner).toContain('"-X", inspectedMethod');
+    expect(runner).toContain('"--estimate"');
     expect(runner).toContain(
       "GEOMACRO_AGENT_MAX_PAYMENT_USDC must be greater than 0",
     );
