@@ -29,9 +29,9 @@ if (mofcomParsed.length !== 1 || mofcomParsed[0].source_id !== "china_mofcom_tra
 const mofcom = normalizeMofcomExportControl({id:"18-2025",title:"Rare earth export control",issuedAt:"2025-04-04",commodity:"Rare earths"});
 if (mofcom.country_iso3 !== "CHN" || mofcom.category !== "CRITICAL_MINERALS") throw new Error("MOFCOM normalization failed");
 
-const ausHtml = '<html><body><h1>Critical Minerals List</h1><h2>Strategic Materials List</h2><table><tr><th>Mineral</th><th>Potential</th><th>Production</th></tr><tr><td>Lithium</td><td>High</td><td>75 kt</td></tr></table></body></html>';
+const ausHtml = '<html><body><h1>Critical Minerals List</h1><h2>Strategic Materials List</h2><table><tr><th>Mineral</th><th>Potential</th><th>Production</th></tr><tr><td>Lithium</td><td>High</td><td>75 kt</td></tr></table><p>Australia’s strategic materials are:</p><ul><li>aluminium</li><li>copper</li><li>phosphorus</li><li>tin</li><li>zinc</li></ul></body></html>';
 const ausParsed = parseAustraliaCriticalMineralsHtml(ausHtml);
-if (ausParsed.length !== 1 || ausParsed[0].commodity !== "Lithium") throw new Error("Australia live parser fixture failed");
+if (ausParsed.length !== 6 || !ausParsed.some((record) => record.commodity === "Lithium") || !ausParsed.some((record) => record.commodity === "copper" && record.value_text === "Strategic Materials List")) throw new Error("Australia live parser fixture failed");
 const aus = normalizeAustraliaCriticalMineral({mineral:"Lithium",geologicalPotential:"High",production:"75 kt"});
 if (aus.country_iso3 !== "AUS" || aus.commodity !== "Lithium") throw new Error("Australia critical minerals normalization failed");
 
