@@ -32,6 +32,9 @@ jobs:
       - name: Test P0 certification gates
         run: node scripts/test-p0-adapter-certification.mjs
 
+      - name: Test live P0 transport and schema
+        run: node scripts/test-p0-live-schema-certification.mjs
+
       - name: Upload probe evidence
         if: always()
         uses: actions/upload-artifact@v4
