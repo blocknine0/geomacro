@@ -502,7 +502,7 @@ Deno.serve(async request => {
       .from("live_flash_event_countries")
       .select("flash_id")
       .eq("country_iso3", requestedCountryIso3)
-      .limit(CORROBORATION_CANDIDATE_LIMIT * 4)
+      .limit(CORROBORATION_CANDIDATE_LIMIT)
 
     if (countryFlashResult.error) {
       console.error(countryFlashResult.error)
