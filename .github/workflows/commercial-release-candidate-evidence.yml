@@ -131,7 +131,7 @@ jobs:
           if (e.production_activation_performed !== false) throw new Error('RC evidence cannot activate production');
           if (e.production_funds_authorized !== false) throw new Error('RC evidence cannot authorize production funds');
           if (e.official_launch_announced !== false) throw new Error('RC evidence cannot announce launch');
-          if (JSON.stringify(e.payment_launch_cohort) !== JSON.stringify(['coinbase_x402','circle_gateway_x402','nevermined'])) throw new Error('unexpected payment launch cohort');
+          if (JSON.stringify(e.payment_launch_cohort) !== JSON.stringify(['coinbase_x402'])) throw new Error('unexpected payment launch cohort');
           if (!e.deferred_payment_providers?.goat_x402_mainnet) throw new Error('GOAT mainnet deferral is missing');
 
           const warning = e.public_early_warning_distribution;
