@@ -330,12 +330,7 @@ export async function runCanonicalTestnetIntelligence(input: {
       gri: answer.gri,
       evidence,
       generated_at: answer.generatedAt,
-      provenance: {
-        source: "geomacro_stored_intelligence",
-        external_web_search_used: false,
-        external_llm_used: false,
-        upstream_source_urls_exposed: false,
-      },
+      provenance: answer.provenance,
     };
     return {
       data,
