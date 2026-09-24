@@ -138,6 +138,10 @@ export function assertGeomacroIntelligenceResponseContract(payload: unknown): as
   if (!isSha256(payload.delivered_product_hash)) {
     throw new Error("INTELLIGENCE_RESPONSE_PRODUCT_HASH_INVALID");
   }
+  const { delivered_product_hash: deliveredProductHash, ...responseWithoutProductHash } = payload;
+  if (computeGeomacroIntelligenceProductHash(responseWithoutProductHash) !== deliveredProductHash) {
+    throw new Error("INTELLIGENCE_RESPONSE_PRODUCT_HASH_MISMATCH");
+  }
 
   if (!Array.isArray(payload.risk_gate)) throw new Error("INTELLIGENCE_RESPONSE_RISK_GATE_INVALID");
   for (const row of payload.risk_gate) {
@@ -199,6 +203,12 @@ function sha256(value: unknown) {
   return createHash("sha256")
     .update(JSON.stringify(canonicalize(value)), "utf8")
     .digest("hex");
+}
+
+export function computeGeomacroIntelligenceProductHash(
+  payloadWithoutProductHash: unknown,
+) {
+  return sha256(payloadWithoutProductHash);
 }
 
 function ageSeconds(value: string | null, asOf: string) {
