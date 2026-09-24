@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "p0_global_source_expansion": {
     "mode": "prelaunch",
     "activation_requires": [
@@ -19,7 +19,12 @@
         "transport_candidate": "OFFICIAL_WEB_LIST",
         "discovery_url": "https://www.gov.uk/government/publications/the-uk-sanctions-list",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "machine_endpoint": "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml",
+        "machine_formats": [
+          "XML",
+          "CSV"
+        ]
       },
       "eu_sanctions_consolidated": {
         "provider": "European Commission / DG FISMA",
@@ -27,7 +32,13 @@
         "transport_candidate": "OFFICIAL_CONSOLIDATED_LIST",
         "discovery_url": "https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/overview-sanctions-and-related-resources_en",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "machine_endpoint": "https://webgate.ec.europa.eu/fsd/fsf",
+        "machine_formats": [
+          "XML",
+          "CSV",
+          "PDF"
+        ]
       },
       "opcw_news": {
         "provider": "OPCW",
@@ -59,7 +70,8 @@
         "transport_candidate": "OFFICIAL_API",
         "discovery_url": "https://unctadstat.unctad.org/datacentre/",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "dataset_surface": "https://unctadstat.unctad.org/datacentre/"
       },
       "world_bank_commodity_prices": {
         "provider": "World Bank",
@@ -67,7 +79,12 @@
         "transport_candidate": "OFFICIAL_COMMODITY_DATA",
         "discovery_url": "https://www.worldbank.org/en/research/commodity-markets",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "machine_endpoint": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
+        "machine_formats": [
+          "XLSX",
+          "PDF"
+        ]
       },
       "china_mofcom_trade_controls": {
         "provider": "Ministry of Commerce of the People's Republic of China",
