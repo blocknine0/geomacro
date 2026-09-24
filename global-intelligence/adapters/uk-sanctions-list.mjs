@@ -24,8 +24,8 @@ function field(block, names) {
 
 export function parseUkSanctionsXml(xml, { observedAt = new Date().toISOString() } = {}) {
   const records = [];
-  const input = String(xml).replace(/<\\?xml[^>]*>/i, "");
-  const blockRe = /<(?:Designation|Individual|Entity|Ship)\\b[^>]*>[\\s\\S]*?<\\/(?:Designation|Individual|Entity|Ship)>/gi;
+  const input = String(xml).replace(/<\?xml[^>]*>/i, "");
+  const blockRe = /<(?:Designation|Individual|Entity|Ship)\b[^>]*>[\s\S]*?<\/(?:Designation|Individual|Entity|Ship)>/gi;
 
   for (const match of input.matchAll(blockRe)) {
     const block = match[0];
