@@ -43,7 +43,7 @@ describe("Agentic Commerce public demo contract", () => {
     expect(x402).toContain('"https://gateway-api-testnet.circle.com"');
     expect(x402).toContain("BatchFacilitatorClient");
     expect(x402).toContain("facilitator.settle");
-    expect(x402).not.toContain("facilitator.verify");
+    expect(x402).toContain("facilitator.verify");
     expect(x402).toContain("PAYMENT-REQUIRED");
     expect(x402).toContain("payment-signature");
     expect(x402).toContain("PAYMENT-RESPONSE");
@@ -60,6 +60,7 @@ describe("Agentic Commerce public demo contract", () => {
     expect(freeRoute).toContain("runAgenticPreflightDemo");
     expect(paidRoute).toContain("runAgenticPreflightDemo");
     expect(paidRoute).toContain('mode: "X402_PAID"');
+    expect(paidRoute).toContain("verifyCircleX402");
     expect(paidRoute).toContain("settleCircleX402");
     expect(paidRoute).toContain("Risk Gate execution boundary violated after settlement");
   });
@@ -146,6 +147,8 @@ describe("Agentic Commerce public demo contract", () => {
     expect(freeRoute).toContain("Requested risk context is temporarily unavailable.");
     expect(paidRoute).toContain("Requested risk context is temporarily unavailable.");
     expect(paidRoute).toContain("Payment signature could not be verified or settled.");
+    expect(paidRoute).toContain("X402_PAYMENT_VERIFICATION_FAILED");
+    expect(paidRoute).toContain("X402_PAYMENT_SETTLEMENT_REJECTED");
     expect(paidRoute).toContain("Paid resource delivery failed closed.");
   });
 
