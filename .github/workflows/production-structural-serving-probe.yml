@@ -27,9 +27,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install minimal client
-        run: npm install --no-save @supabase/supabase-js@2.108.2
-
       - name: Probe structural serving configuration
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
