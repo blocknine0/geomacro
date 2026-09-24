@@ -9,7 +9,7 @@ An external AI-agent runtime can:
 1. discover the Geomacro risk endpoint;
 2. request a signed geopolitical/macro risk pre-flight;
 3. receive an HTTP 402 payment challenge;
-4. validate that the challenge is Arc Testnet + USDC + the fixed technical-proof price;
+4. validate that the challenge is Arc Testnet + USDC + the fixed 0.05 USDC technical-proof price;
 5. authorize one bounded Testnet payment through the Circle CLI;
 6. retry the same request;
 7. receive the prepared Risk Object and Risk Gate result;
