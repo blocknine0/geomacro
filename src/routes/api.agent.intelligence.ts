@@ -11,6 +11,7 @@ import {
 } from "../lib/agent-commerce-delivery.server";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
+  CircleX402SettlementRejectedError,
   circleX402PaymentRequiredResponse,
   circleX402PaymentResponseHeader,
   settleCircleX402,
@@ -376,6 +377,30 @@ export const Route = createFileRoute("/api/agent/intelligence")({
         try {
           settlement = await settleCircleX402(request);
         } catch (error) {
+          if (error instanceof CircleX402SettlementRejectedError) {
+            await releaseAgentCommerceDelivery({
+              provider: "circle_gateway_x402",
+              providerEnvironment: "testnet",
+              paymentFingerprint,
+              claimToken,
+              failureCode: "GLOBAL_INTELLIGENCE_SETTLEMENT_REJECTED",
+            });
+            console.warn(
+              "[agent-intelligence] Circle settlement rejected:",
+              error.reason,
+            );
+            return json({
+              ok: false,
+              payment_required: true,
+              error: {
+                code: "X402_PAYMENT_SETTLEMENT_REJECTED",
+                message: "The supplied payment proof was rejected by the Circle Testnet facilitator.",
+                reason: error.reason,
+              },
+              execution_authorized: false,
+            }, 402);
+          }
+
           await releaseAgentCommerceDelivery({
             provider: "circle_gateway_x402",
             providerEnvironment: "testnet",
