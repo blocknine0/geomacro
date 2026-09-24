@@ -35,6 +35,13 @@ describe("global three-category Arc agent contract", () => {
     expect(runner).toContain("already-verified POST endpoint contract");
   });
 
+  it("accepts Circle CLI JSON service-response envelopes", () => {
+    expect(runner).toContain("function unwrapCircleServiceResponse");
+    expect(runner).toContain("payload.data");
+    expect(runner).toContain("Circle CLI 1.1.4 wraps service responses under data");
+    expect(runner).toContain("const paid = unwrapCircleServiceResponse(paidEnvelope);");
+  });
+
   it("refuses Testnet spend on public production host", () => {
     expect(runner).toContain('["geomacro.live", "www.geomacro.live"]');
   });
