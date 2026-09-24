@@ -76,7 +76,7 @@ if (accept?.extra?.verifyingContract?.toLowerCase() !== "0x0077777d7eba4688bdef3
 console.log("✅ Unpaid 402 contract matches Arc Testnet x402 technical-proof policy.");
 
 if (ack !== "ARC_TESTNET_USDC") {
-  console.log("ℹ️ Payment stage skipped. Set GEOMACRO_X402_E2E_ACK=ARC_TESTNET_USDC to authorize the 0.001 USDC Arc Testnet call.");
+  console.log("ℹ️ Payment stage skipped. Set GEOMACRO_X402_E2E_ACK=ARC_TESTNET_USDC to authorize the 0.05 USDC Arc Testnet call.");
   process.exit(0);
 }
 if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
