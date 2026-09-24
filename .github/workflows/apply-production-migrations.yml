@@ -1,0 +1,77 @@
+name: Apply production Supabase migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Migration mode"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+        default: plan
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+
+      - name: Validate production target
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_PROJECT_ID"
+          test -n "$SUPABASE_DB_URL"
+          test "$SUPABASE_PROJECT_ID" = "ldpwajisioljyjtojvfx"
+          case "$SUPABASE_DB_URL" in
+            *db.ldpwajisioljyjtojvfx.supabase.co*|*pooler.supabase.com*) ;;
+            *) echo "Unexpected production DB host"; exit 1 ;;
+          esac
+          echo "PASS: authoritative production Supabase target"
+
+      - name: Preview pending migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+      - name: Apply migrations
+        if: ${{ inputs.mode == 'apply' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Verify migration state
+        if: ${{ inputs.mode == 'apply' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          pending="$(supabase db push --db-url "$SUPABASE_DB_URL" --dry-run)"
+          echo "$pending"
+          if echo "$pending" | grep -Eqi 'Would apply|Applying migration|pending migration'; then
+            echo "Pending migrations remain after apply"
+            exit 1
+          fi
+          echo "PASS: production migration state is current"
