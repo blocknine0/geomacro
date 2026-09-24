@@ -82,6 +82,14 @@ for (const target of targets) output[target.name] = await probe(target);
 const historical = output.historical;
 const authoritative = output.authoritative_app;
 
+const historicalReady =
+  historical.configured &&
+  historical.reachable &&
+  historical.table &&
+  ["USA", "IND", "CHN"].every(
+    (country) => historical.rows?.[country]?.ok === true && Number(historical.rows?.[country]?.count ?? 0) > 0,
+  );
+
 console.log(JSON.stringify({
   schema_version: "geomacro.structural-serving-production-probe.v2",
   checked_at: new Date().toISOString(),
@@ -98,8 +106,10 @@ console.log(JSON.stringify({
     serving_table_available: authoritative.table,
     country_profiles: authoritative.rows,
   },
-  live_runtime_issue_signature:
-    historical.configured && historical.reachable && historical.table
-      ? "NOT_A_HISTORICAL_CREDENTIAL_GAP"
-      : "HISTORICAL_RUNTIME_CONFIGURATION_REQUIRED",
+  representative_country_profiles_ready: historicalReady,
+  live_runtime_issue_signature: historicalReady
+    ? "HISTORICAL_SERVING_READY"
+    : "HISTORICAL_RUNTIME_CONFIGURATION_REQUIRED",
 }, null, 2));
+
+if (!historicalReady) process.exit(1);
