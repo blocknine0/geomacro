@@ -358,6 +358,12 @@ async function answerFromOpenWeb(question: string, gri: GriReading): Promise<Ask
     low_confidence: evidence.length === 0,
     gri: gri.displayScore,
     generatedAt: new Date().toISOString(),
+    provenance: {
+      source: "public_web_current_results",
+      external_web_search_used: true,
+      external_llm_used: true,
+      upstream_source_urls_exposed: false,
+    },
   };
 }
 
@@ -604,6 +610,12 @@ function griWhy(gri: GriReading): AskAnswer | null {
     low_confidence: false,
     gri: gri.displayScore,
     generatedAt: new Date().toISOString(),
+    provenance: {
+      source: "geomacro_stored_intelligence",
+      external_web_search_used: false,
+      external_llm_used: false,
+      upstream_source_urls_exposed: false,
+    },
   };
 }
 
@@ -680,6 +692,12 @@ function broadAnswer(
     low_confidence: false,
     gri: gri.displayScore,
     generatedAt: new Date().toISOString(),
+    provenance: {
+      source: "geomacro_stored_intelligence",
+      external_web_search_used: false,
+      external_llm_used: false,
+      upstream_source_urls_exposed: false,
+    },
   };
 }
 
@@ -696,6 +714,12 @@ function insufficientAnswer(message: string, gri: number | null): AskAnswer {
     low_confidence: true,
     gri,
     generatedAt: new Date().toISOString(),
+    provenance: {
+      source: "geomacro_stored_intelligence",
+      external_web_search_used: false,
+      external_llm_used: false,
+      upstream_source_urls_exposed: false,
+    },
   };
 }
 
@@ -800,5 +824,11 @@ export async function answerQuestion(question: string): Promise<AskAnswer> {
     low_confidence: lowConfidence,
     gri: gri.displayScore,
     generatedAt: new Date().toISOString(),
+    provenance: {
+      source: "geomacro_stored_intelligence",
+      external_web_search_used: false,
+      external_llm_used: false,
+      upstream_source_urls_exposed: false,
+    },
   };
 }
