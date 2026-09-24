@@ -41,6 +41,7 @@ import { Route as ApiRiskObjectKeysRouteImport } from './routes/api.risk-object-
 import { Route as DocsSlugRouteImport } from './routes/docs_.$slug'
 import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
 import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
+import { Route as ApiAgentIntelligenceRouteImport } from './routes/api.agent.intelligence'
 import { Route as ApiAgentRiskRouteImport } from './routes/api.agent.risk'
 import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
@@ -216,6 +217,11 @@ const EventEventIdRoute = EventEventIdRouteImport.update({
   path: '/event/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentIntelligenceRoute = ApiAgentIntelligenceRouteImport.update({
+  id: '/api/agent/intelligence',
+  path: '/api/agent/intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentRiskRoute = ApiAgentRiskRouteImport.update({
   id: '/api/agent/risk',
   path: '/api/agent/risk',
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
   '/event/$eventId': typeof EventEventIdRoute
+  '/api/agent/intelligence': typeof ApiAgentIntelligenceRoute
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
@@ -371,6 +378,7 @@ export interface FileRoutesByTo {
   '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
   '/event/$eventId': typeof EventEventIdRoute
+  '/api/agent/intelligence': typeof ApiAgentIntelligenceRoute
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
@@ -420,6 +428,7 @@ export interface FileRoutesById {
   '/docs_/$slug': typeof DocsSlugRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
   '/event/$eventId': typeof EventEventIdRoute
+  '/api/agent/intelligence': typeof ApiAgentIntelligenceRoute
   '/api/agent/risk': typeof ApiAgentRiskRoute
   '/api/demo/feedback': typeof ApiDemoFeedbackRoute
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
@@ -615,6 +624,7 @@ export interface RootRouteChildren {
   DocsSlugRoute: typeof DocsSlugRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
   EventEventIdRoute: typeof EventEventIdRoute
+  ApiAgentIntelligenceRoute: typeof ApiAgentIntelligenceRoute
   ApiAgentRiskRoute: typeof ApiAgentRiskRoute
   ApiDemoFeedbackRoute: typeof ApiDemoFeedbackRoute
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
