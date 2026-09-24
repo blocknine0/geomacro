@@ -27,6 +27,16 @@ export type CircleX402Settlement = {
   network: typeof CIRCLE_X402_NETWORK;
 };
 
+export class CircleX402SettlementRejectedError extends Error {
+  readonly reason: string;
+
+  constructor(reason: string) {
+    super(`PAYMENT_SETTLEMENT_REJECTED:${reason}`);
+    this.name = "CircleX402SettlementRejectedError";
+    this.reason = reason;
+  }
+}
+
 function sellerAddress() {
   const value = process.env.CIRCLE_X402_SELLER_ADDRESS?.trim();
   if (!value || !/^0x[a-fA-F0-9]{40}$/.test(value)) return null;
@@ -266,8 +276,8 @@ export async function settleCircleX402(
   );
 
   if (!settled.success) {
-    throw new Error(
-      `PAYMENT_SETTLEMENT_FAILED:${settled.errorReason ?? "unknown"}`,
+    throw new CircleX402SettlementRejectedError(
+      settled.errorReason ?? "unknown",
     );
   }
 
