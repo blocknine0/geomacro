@@ -627,14 +627,14 @@ if (invinoApiKey) {
 
   if (!response.ok) {
     throw new Error(
-      "invinoveritas /review failed HTTP " + response.status + ": " + JSON.stringify(body),
+      "invinoveritas /review/external failed HTTP " + response.status + ": " + JSON.stringify(body),
     );
   }
 
   const verdict = String(body?.verdict ?? "");
   if (!["approve", "approve_with_concerns", "concerns", "reject"].includes(verdict)) {
     throw new Error(
-      `invinoveritas /review returned an unexpected verdict contract: ${JSON.stringify(body)}`,
+      `invinoveritas /review/external returned an unexpected verdict contract: ${JSON.stringify(body)}`,
     );
   }
 
