@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 export const UNCTADSTAT_URL = "https://unctadstat.unctad.org/datacentre/";
 
 export function normalizeUnctadStatObservation({ dataset, series, period, value, unit = null, countryIso3 = null, retrievedAt = new Date().toISOString(), raw = null }) {
-  if (!dataset || !series || !period || value == null || !Number.isFinite(Number(value))) {
+  if (!dataset || !series || !period || !/^(?:\\d{4}(?:-\\d{2})?|\\d{4}-Q[1-4])$/.test(String(period)) || value == null || !Number.isFinite(Number(value))) {
     throw new Error("Invalid UNCTADstat observation");
   }
   const key = [dataset, series, countryIso3 ?? "GLOBAL", period].join(":");
