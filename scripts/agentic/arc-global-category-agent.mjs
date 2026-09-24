@@ -8,9 +8,22 @@ const maxAmount = process.env.GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.05";
 const ack = process.env.GEOMACRO_AGENT_PAYMENT_ACK || "";
 
 const QUESTIONS = [
-  ["GEOPOLITICS", "What are the current geopolitical risks involving war, conflict, sanctions and diplomatic pressure?"],
-  ["MACRO", "What are the current macro risks involving inflation, interest rates, growth and currencies?"],
-  ["CRITICAL_MINERALS", "What are the current critical-mineral risks involving lithium, cobalt, copper and rare-earth supply?"],
+  {
+    expectedCategories: ["GEOPOLITICS"],
+    question: "What are the current geopolitical risks involving war, conflict, sanctions and diplomatic pressure?",
+  },
+  {
+    expectedCategories: ["MACRO"],
+    question: "What are the current macro risks involving inflation, interest rates, growth and currencies?",
+  },
+  {
+    expectedCategories: ["CRITICAL_MINERALS"],
+    question: "What are the current critical-mineral risks involving lithium, cobalt, copper and rare-earth supply?",
+  },
+  {
+    expectedCategories: ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+    question: "What are the current geopolitical, macro and critical-mineral risks affecting global trade?",
+  },
 ];
 
 function fail(message) {
@@ -53,8 +66,9 @@ console.log("Scope: GEOPOLITICS + MACRO + CRITICAL_MINERALS");
 console.log("Spend cap: 0.05 USDC per accepted question");
 
 const results = [];
-for (const [expectedCategory, question] of QUESTIONS) {
-  console.log("\n[" + expectedCategory + "] " + question);
+for (const { expectedCategories, question } of QUESTIONS) {
+  const label = expectedCategories.join("+");
+  console.log("\n[" + label + "] " + question);
 
   const unpaid = await fetch(target, {
     method: "POST",
@@ -64,7 +78,7 @@ for (const [expectedCategory, question] of QUESTIONS) {
 
   if (unpaid.status !== 402) {
     const body = await unpaid.text();
-    fail(expectedCategory + ": expected HTTP 402, received " + unpaid.status + ": " + body);
+    fail(label + ": expected HTTP 402, received " + unpaid.status + ": " + body);
   }
 
   const header = unpaid.headers.get("payment-required");
@@ -72,20 +86,20 @@ for (const [expectedCategory, question] of QUESTIONS) {
   const required = parsePaymentRequired(header);
   const accept = required?.accepts?.[0];
 
-  if (required?.x402Version !== 2) fail(expectedCategory + ": expected x402 v2.");
-  if (accept?.network !== "eip155:5042002") fail(expectedCategory + ": payment network is not Arc Testnet.");
-  if (String(accept?.asset || "").toLowerCase() !== "0x3600000000000000000000000000000000000000") fail(expectedCategory + ": payment asset is not Gateway USDC.");
-  if (accept?.amount !== "50000") fail(expectedCategory + ": payment amount is not 0.05 USDC.");
-  if (accept?.payTo?.toLowerCase() === wallet.toLowerCase()) fail(expectedCategory + ": buyer and seller wallets must be different.");
+  if (required?.x402Version !== 2) fail(label + ": expected x402 v2.");
+  if (accept?.network !== "eip155:5042002") fail(label + ": payment network is not Arc Testnet.");
+  if (String(accept?.asset || "").toLowerCase() !== "0x3600000000000000000000000000000000000000") fail(label + ": payment asset is not Gateway USDC.");
+  if (accept?.amount !== "50000") fail(label + ": payment amount is not 0.05 USDC.");
+  if (accept?.payTo?.toLowerCase() === wallet.toLowerCase()) fail(label + ": buyer and seller wallets must be different.");
 
   console.log("✅ 402 and payment policy verified.");
 
   const inspection = JSON.parse(runCircle(
     ["services", "inspect", target.toString(), "--output", "json"],
-    expectedCategory + " Circle inspect",
+    label + " Circle inspect",
   ));
   const method = inspection?.method ?? inspection?.request?.method;
-  if (method !== "POST") fail(expectedCategory + ": Circle inspect did not confirm POST.");
+  if (method !== "POST") fail(label + ": Circle inspect did not confirm POST.");
 
   console.log("✅ Circle inspect confirmed POST.");
 
@@ -103,7 +117,7 @@ for (const [expectedCategory, question] of QUESTIONS) {
       "-d", payload,
       "--output", "json",
     ],
-    expectedCategory + " payment estimate",
+    label + " payment estimate",
   );
 
   console.log(estimate);
@@ -119,21 +133,25 @@ for (const [expectedCategory, question] of QUESTIONS) {
       "-d", payload,
       "--output", "json",
     ],
-    expectedCategory + " Circle payment",
+    label + " Circle payment",
   ));
 
-  if (paid?.ok !== true) fail(expectedCategory + ": paid delivery was not successful.");
-  if (paid?.payment?.provider !== "circle_gateway_x402") fail(expectedCategory + ": wrong payment provider.");
-  if (paid?.payment?.network !== "eip155:5042002") fail(expectedCategory + ": paid response did not confirm Arc Testnet.");
-  if (paid?.payment?.asset !== "USDC") fail(expectedCategory + ": paid response did not confirm USDC.");
-  if (paid?.categories?.length !== 1 || paid.categories[0] !== expectedCategory) {
-    fail(expectedCategory + ": category routing mismatch: " + JSON.stringify(paid.categories));
+  if (paid?.ok !== true) fail(label + ": paid delivery was not successful.");
+  if (paid?.payment?.provider !== "circle_gateway_x402") fail(label + ": wrong payment provider.");
+  if (paid?.payment?.network !== "eip155:5042002") fail(label + ": paid response did not confirm Arc Testnet.");
+  if (paid?.payment?.asset !== "USDC") fail(label + ": paid response did not confirm USDC.");
+  const actualCategories = Array.isArray(paid?.categories)
+    ? [...paid.categories].sort()
+    : [];
+  const expectedSorted = [...expectedCategories].sort();
+  if (JSON.stringify(actualCategories) !== JSON.stringify(expectedSorted)) {
+    fail(label + ": category routing mismatch: " + JSON.stringify(paid.categories));
   }
-  if (paid?.answer?.insufficient_evidence !== false) fail(expectedCategory + ": answer was not grounded enough for delivery.");
-  if (paid?.execution_authorized !== false) fail(expectedCategory + ": execution boundary was violated.");
+  if (paid?.answer?.insufficient_evidence !== false) fail(label + ": answer was not grounded enough for delivery.");
+  if (paid?.execution_authorized !== false) fail(label + ": execution boundary was violated.");
 
   results.push({
-    category: expectedCategory,
+    categories: expectedSorted,
     payment_provider: paid.payment.provider,
     amount_usdc: paid.payment.amount_usdc,
     network: paid.payment.network,
@@ -142,7 +160,7 @@ for (const [expectedCategory, question] of QUESTIONS) {
     execution_authorized: false,
   });
 
-  console.log("✅ " + expectedCategory + " paid intelligence delivered.");
+  console.log("✅ " + label + " paid intelligence delivered.");
 }
 
 console.log(JSON.stringify({
