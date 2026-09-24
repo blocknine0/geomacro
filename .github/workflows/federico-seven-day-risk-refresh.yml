@@ -160,10 +160,10 @@ jobs:
             FOREACH column_name IN ARRAY required_columns LOOP
               IF NOT EXISTS (
                 SELECT 1
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                  AND table_name = 'live_flash_events'
-                  AND column_name = required_schema.column_name
+                FROM information_schema.columns AS c
+                WHERE c.table_schema = 'public'
+                  AND c.table_name = 'live_flash_events'
+                  AND c.column_name = column_name
               ) THEN
                 RAISE EXCEPTION 'live_flash_events.% is missing', column_name;
               END IF;
