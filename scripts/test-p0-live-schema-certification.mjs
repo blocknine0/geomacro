@@ -117,11 +117,17 @@ for (const id of Object.keys(checks)) {
 }
 
 const failed = results.filter((x) => !x.ok || !x.schema_pass);
+const blockingFailures = failed.filter((row) => {
+  const source = registry.p0_global_source_expansion.sources[row.source_id];
+  return source?.enabled !== false;
+});
 console.log(JSON.stringify({
   mode:"READ_ONLY_LIVE_SCHEMA_CERTIFICATION",
   source_count:results.length,
   pass_count:results.length-failed.length,
   fail_count:failed.length,
+  blocking_fail_count:blockingFailures.length,
+  non_blocking_disabled_fail_count:failed.length-blockingFailures.length,
   results
 }, null, 2));
-process.exitCode = failed.length ? 1 : 0;
+process.exitCode = blockingFailures.length ? 1 : 0;
