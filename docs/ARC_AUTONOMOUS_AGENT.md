@@ -10,13 +10,12 @@ An external AI-agent runtime can:
 2. request a signed geopolitical/macro risk pre-flight;
 3. receive an HTTP 402 payment challenge;
 4. validate that the challenge is Arc Testnet + USDC + the fixed 0.05 USDC technical-proof price;
-5. authorize one bounded Testnet payment through the Circle CLI;
-6. inspect the paid service with Circle CLI and validate its HTTP method;
-7. authorize one bounded Testnet payment;
-8. retry the same request;
-9. receive the prepared Risk Object and Risk Gate result;
-10. verify that the Risk Object is marked `VERIFIED`;
-11. verify that `execution_authorized=false` remains fail-closed.
+5. inspect the paid service with Circle CLI and validate its HTTP method;
+6. authorize one bounded Testnet payment through the Circle CLI;
+7. retry the same request;
+8. receive the prepared Risk Object and Risk Gate result;
+9. verify that the Risk Object is marked `VERIFIED`;
+10. verify that `execution_authorized=false` remains fail-closed.
 
 The payment runner is deliberately a client-side/agent-runtime concern. The Geomacro server never receives a private wallet key and never gets permission to make arbitrary transfers.
 
