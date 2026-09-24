@@ -85,14 +85,14 @@ for (const [provider, state] of Object.entries(launch.providers || {})) {
 if (launch.providers?.coinbase_x402?.launch_cohort !== true) {
   throw new Error("Coinbase must remain in the initial payment launch cohort");
 }
-if (launch.providers?.circle_gateway_x402?.launch_cohort !== true) {
-  throw new Error("Circle Gateway must remain in the initial payment launch cohort");
+if (launch.providers?.circle_gateway_x402?.launch_cohort !== false) {
+  throw new Error("Circle Gateway must remain outside the initial payment launch cohort");
 }
 if (launch.providers?.circle_gateway_x402?.arc_mainnet_enabled !== false) {
   throw new Error("Arc mainnet must remain disabled in the prepared Circle launch path");
 }
-if (launch.providers?.nevermined?.launch_cohort !== true) {
-  throw new Error("Nevermined must remain in the initial payment launch cohort");
+if (launch.providers?.nevermined?.launch_cohort !== false) {
+  throw new Error("Nevermined must remain outside the initial payment launch cohort");
 }
 if (launch.providers?.goat_x402?.launch_cohort !== false) {
   throw new Error("GOAT mainnet must remain deferred from the initial payment launch cohort");
