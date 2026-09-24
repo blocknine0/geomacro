@@ -51,9 +51,13 @@ function parsePaymentRequired(header) {
 }
 
 function unwrapCircleServiceResponse(payload) {
-  // Circle CLI 1.1.4 wraps service responses under data for JSON output.
-  // Preserve direct responses too so the acceptance runner remains compatible.
+  // Circle CLI 1.1.4 wraps paid service responses as data.response and
+  // adds a separate data.payment receipt envelope.
+  // Preserve direct responses and data-only responses too.
   if (payload && typeof payload === "object" && payload.data && typeof payload.data === "object") {
+    if (payload.data.response && typeof payload.data.response === "object") {
+      return payload.data.response;
+    }
     return payload.data;
   }
   return payload;
