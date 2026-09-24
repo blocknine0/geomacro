@@ -152,7 +152,7 @@ The payment contract is pinned to:
 ```text
 network: eip155:5042002
 asset: 0x3600000000000000000000000000000000000000
-price: 1000 atomic = 0.001 USDC
+price: 50000 atomic = 0.05 USDC
 Gateway verifying contract: 0x0077777d7EBA4688BDeF3E311b846F25870A19B9
 facilitator: https://gateway-api-testnet.circle.com
 ```
@@ -175,7 +175,7 @@ A pass requires:
 - `PAYMENT-REQUIRED` header;
 - x402 version `2`;
 - Arc Testnet network and USDC address above;
-- amount `1000`;
+- amount `50000`;
 - dedicated seller/payTo;
 - `maxTimeoutSeconds >= 604900`;
 - Gateway verifying contract above;
@@ -195,7 +195,7 @@ GEOMACRO_X402_E2E_ACK=ARC_TESTNET_USDC \
 bun run agentic:x402:e2e
 ```
 
-The acknowledgement authorizes one Arc Testnet call capped at `0.001 USDC`.
+The acknowledgement authorizes one Arc Testnet call capped at `0.05 USDC`.
 
 A successful response must identify:
 
@@ -294,7 +294,7 @@ Before public demo launch, preserve evidence for at least:
 10. canonical proof-verified GRI context or explicit `null`;
 11. staging resilience results;
 12. final-head unpaid x402 regression;
-13. final-head paid `0.001 USDC` Arc Testnet regression.
+13. final-head paid `0.05 USDC` Arc Testnet regression.
 
 Fix and re-test any critical/high finding. Do not describe the review as an independent third-party audit or certification unless one is actually obtained.
 
@@ -308,7 +308,7 @@ Disclose these rather than hiding them:
 - GRI may be `null` if the canonical public GRI contract is not available in that staging runtime;
 - public demo throttling is process-local plus a process-global bucket, not distributed edge rate limiting;
 - `client_request_id` is a correlation value for this technical demo, not a promise of application-level refund/business idempotency;
-- x402 is Arc Testnet technical proof and `0.001 USDC` is not institutional pricing;
+- x402 is Arc Testnet technical proof and `0.05 USDC` is not institutional pricing;
 - no production SLA, certification, or autonomous execution claim.
 
 ## 14. Public-launch decision
