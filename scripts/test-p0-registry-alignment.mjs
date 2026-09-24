@@ -7,6 +7,7 @@ const readJson = async (path) => JSON.parse(await fs.readFile(new URL(path, ROOT
 const p0 = await readJson("config/global-p0-source-expansion.json");
 const registry = await readJson("global-intelligence/sources/source-registry.v1.json");
 const freeCatalog = await readJson("global-intelligence/sources/free-source-catalog.v1.json");
+const migration = await fs.readFile(new URL("supabase/migrations/974_global_source_p0_expansion.sql", ROOT), "utf8");
 
 const expected = [
   ["uk_sanctions_list","GEOPOLITICS"],
@@ -35,6 +36,7 @@ for (const [id, category] of expected) {
   }
   if (p.category !== category) errors.push(`${id}: wrong P0 category`);
   if (p.enabled !== false) errors.push(`${id}: P0 enabled must remain false`);
+  if (!migration.includes(id)) errors.push(`${id}: missing from migration 974`);
 
   const inRegistry = (registry.categories?.[category] ?? []).some((row) => row.id === id);
   if (!inRegistry) errors.push(`${id}: missing from global source registry`);
@@ -43,6 +45,7 @@ for (const [id, category] of expected) {
   if (!inFreeCatalog) errors.push(`${id}: missing from free source catalog`);
 }
 
+if ((migration.match(/enabled_for_ingestion\\s*=\\s*false/gi) ?? []).length !== 1) errors.push("migration 974 must explicitly disable ingestion fail-closed");
 if (errors.length) {
   console.error(JSON.stringify({status:"FAIL",errors}, null, 2));
   process.exit(1);
