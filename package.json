@@ -43,6 +43,7 @@
     "source:certification:evidence-graph": "node scripts/source-certification-evidence-graph.mjs",
     "source:gdelt-dependency:audit": "node scripts/audit-gdelt-dependency-live.mjs",
     "test:p0-adapters": "node scripts/test-p0-adapters.mjs",
+    "test:p0-registry-alignment": "node scripts/test-p0-registry-alignment.mjs",
     "test:p0-adapter-certification": "node scripts/test-p0-adapter-certification.mjs",
     "test:p0-live-schema": "node scripts/test-p0-live-schema-certification.mjs"
   },
