@@ -120,7 +120,7 @@ For early pilots, prefer:
 - written limitations and success criteria;
 - a scheduled go / no-go review before the pilot ends.
 
-Do not tie institutional pricing to the Arc Testnet x402 demonstration price. The `0.001 USDC` testnet price exists only to prove machine payment and delivery mechanics.
+Do not tie institutional pricing to the Arc Testnet x402 demonstration price. The `0.05 USDC` testnet price exists only to prove machine payment and delivery mechanics.
 
 ## Negotiation rule
 
