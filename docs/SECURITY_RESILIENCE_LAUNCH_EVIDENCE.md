@@ -12,7 +12,7 @@ Release-candidate staging covered the agentic Risk Gate technical-demo path, inc
 - Database migration safety: full zero-to-current replay passed on disposable Supabase after merge.
 - Local unpaid x402 contract: passed.
 - External HTTPS unpaid x402 contract: passed.
-- One Arc Testnet paid x402 regression: passed at `0.001 USDC`.
+- One Arc Testnet paid x402 regression: passed at `0.05 USDC`.
 - Paid Risk Gate response: `REQUIRE_APPROVAL`, `execution_authorized=false`.
 - Resilience `/api/demo/preflight`: 40 requests at concurrency 8; 20 HTTP 200, 20 HTTP 429; 0 server errors, timeouts, network errors or boundary violations; p95 3703.23 ms.
 - Resilience `/api/agent/risk`: 40 requests at concurrency 8; 30 HTTP 402, 10 HTTP 429; 0 server errors, timeouts, network errors, missing payment-required headers or boundary violations; p95 1285.30 ms.
