@@ -40,6 +40,7 @@ const invinoOrigin = (
   process.env.INVINO_ORIGIN ?? "https://api.babyblueviper.com"
 ).replace(/\/$/, "");
 const invinoApiKey = process.env.INVINO_API_KEY?.trim() ?? "";
+const invinoDemoApiKey = process.env.INVINO_DEMO_API_KEY?.trim() ?? "";
 const requestOut = process.env.INVINO_REQUEST_OUT?.trim() ?? "";
 const reviewOut = process.env.INVINO_REVIEW_OUT?.trim() ?? "";
 
@@ -571,6 +572,7 @@ let liveReview:
     }
   | {
       attempted: true;
+      auth_mode: "primary" | "demo_fallback";
       http_status: number;
       verdict: string;
       confidence: number | null;
@@ -591,19 +593,41 @@ let liveReview:
     } = { attempted: false };
 
 if (invinoApiKey) {
-  const response = await fetch(`${invinoOrigin}/review/external`, {
+  let reviewApiKey = invinoApiKey;
+  let reviewAuthMode: "primary" | "demo_fallback" = "primary";
+
+  let response = await fetch(invinoOrigin + "/review", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${invinoApiKey}`,
+      authorization: "Bearer " + reviewApiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify(reviewRequest),
   });
 
-  const body = await response.json().catch(() => null);
+  let body = await response.json().catch(() => null);
+
+  if (
+    response.status === 402 &&
+    invinoDemoApiKey &&
+    invinoDemoApiKey !== invinoApiKey
+  ) {
+    reviewApiKey = invinoDemoApiKey;
+    reviewAuthMode = "demo_fallback";
+    response = await fetch(invinoOrigin + "/review", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer " + reviewApiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(reviewRequest),
+    });
+    body = await response.json().catch(() => null);
+  }
+
   if (!response.ok) {
     throw new Error(
-      `invinoveritas /review failed HTTP ${response.status}: ${JSON.stringify(body)}`,
+      "invinoveritas /review failed HTTP " + response.status + ": " + JSON.stringify(body),
     );
   }
 
@@ -772,6 +796,7 @@ if (invinoApiKey) {
 
   liveReview = {
     attempted: true,
+    auth_mode: reviewAuthMode,
     http_status: response.status,
     verdict,
     confidence:
