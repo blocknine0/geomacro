@@ -17,14 +17,14 @@ describe("Arc autonomous agent runner", () => {
 
   it("requires explicit Testnet payment acknowledgement and caps spend", () => {
     expect(runner).toContain(
-      'GEOMACRO_AGENT_PAYMENT_ACK=ARC_TESTNET_USDC',
+      "GEOMACRO_AGENT_PAYMENT_ACK=ARC_TESTNET_USDC",
     );
     expect(runner).toContain(
       'GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.001"',
     );
     expect(runner).toContain('"--max-amount", maxAmount');
     expect(runner).toContain(
-      '"execution_authorized" was not fail-closed',
+      "Execution boundary was not fail-closed.",
     );
   });
 
@@ -39,7 +39,7 @@ describe("Arc autonomous agent runner", () => {
       'result?.risk_object?.verification?.status !== "VERIFIED"',
     );
     expect(runner).toContain(
-      'result?.boundaries?.execution_authorized !== false',
+      "result?.boundaries?.execution_authorized !== false",
     );
   });
 });
