@@ -88,7 +88,7 @@ console.log("Stage 2: inspecting the service before authorizing payment...");
 
 const inspected = spawnSync(
   "circle",
-  ["services", "inspect", target.toString(), "--output", "json"],
+  ["services", "inspect", target.toString(), "-X", "POST", "-H", "content-type: application/json", "-d", JSON.stringify(payload), "--output", "json"],
   { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] },
 );
 if (inspected.error) fail(`Circle CLI could not start for inspect: ${inspected.error.message}`);
@@ -114,7 +114,31 @@ if (inspectedMethod !== "POST") {
 }
 
 console.log(`✅ Circle inspect confirmed ${inspectedMethod} before payment.`);
-console.log("Stage 3: authorizing exactly one bounded Circle CLI payment...");
+console.log("Stage 3: estimating the bounded payment before settlement...");
+
+const estimate = spawnSync(
+  "circle",
+  [
+    "services", "pay", target.toString(),
+    "--address", wallet,
+    "--chain", "ARC-TESTNET",
+    "-X", inspectedMethod,
+    "--max-amount", maxAmount,
+    "--estimate",
+    "-H", "content-type: application/json",
+    "-d", JSON.stringify(payload),
+    "--output", "json",
+  ],
+  { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] },
+);
+if (estimate.error) fail(`Circle CLI could not start for estimate: ${estimate.error.message}`);
+if (estimate.status !== 0) {
+  console.error(estimate.stderr || estimate.stdout);
+  fail(`Circle CLI estimate failed with status ${estimate.status}.`);
+}
+console.log(estimate.stdout.trim());
+
+console.log("Stage 4: authorizing exactly one bounded Circle CLI payment...");
 
 const args = [
   "services", "pay", target.toString(),
