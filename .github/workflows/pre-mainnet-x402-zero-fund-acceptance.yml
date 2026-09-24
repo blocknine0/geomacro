@@ -70,6 +70,16 @@ jobs:
       - name: Verify live public x402 prelaunch safety and no-charge deliverability
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
+      - name: Verify production structural serving dependencies
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
+          HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/ops/probe-structural-serving-production.mjs
+          node scripts/ops/probe-structural-base-tables-production.mjs
+
       - name: Record zero-fund boundary
         run: |
           {
