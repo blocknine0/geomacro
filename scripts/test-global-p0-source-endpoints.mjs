@@ -18,7 +18,7 @@ function probeUrl(source) {
   return source.machine_endpoint ?? source.discovery_url;
 }
 
-function validateResponse(source, response, body) {
+function validateResponse(source, response, body, bytes) {
   const url = probeUrl(source);
   const ct = String(response.headers.get("content-type") ?? "").toLowerCase();
   const looksXml = /xml/i.test(ct) || /\.xml(?:$|[?#])/i.test(url);
@@ -26,7 +26,10 @@ function validateResponse(source, response, body) {
   const looksXlsx = /spreadsheet|excel|officedocument/i.test(ct) || /\.xlsx(?:$|[?#])/i.test(url);
   if (looksXml && !/^\s*</.test(body)) return "expected XML-like payload";
   if (looksCsv && body.split(/\r?\n/).find(Boolean)?.split(/[,;\t]/).length < 2) return "expected delimited payload";
-  if (looksXlsx && body.length < 100) return "expected XLSX payload";
+  if (looksXlsx) {
+    if (bytes.length < 100) return "expected XLSX payload";
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return "expected XLSX ZIP signature";
+  }
   return null;
 }
 
@@ -38,17 +41,18 @@ async function probe(sourceId, source) {
       signal: AbortSignal.timeout(timeoutMs),
       headers: { "user-agent": "Geomacro-source-probe/1.0" },
     });
-    const body = await response.text();
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const body = (String(response.headers.get("content-type") ?? "").toLowerCase().includes("xml") || String(response.headers.get("content-type") ?? "").toLowerCase().includes("csv")) ? new TextDecoder().decode(bytes) : "";
     return {
       source_id: sourceId,
       status: response.status,
       ok: response.ok,
       final_url: response.url,
       content_type: response.headers.get("content-type") ?? "",
-      bytes: Buffer.byteLength(body, "utf8"),
+      bytes: bytes.byteLength,
       latency_ms: Date.now() - started,
       observed_at: new Date().toISOString(),
-      error: validateResponse(source, response, body),
+      error: validateResponse(source, response, body, bytes),
     };
   } catch (error) {
     return {
