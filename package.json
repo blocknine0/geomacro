@@ -43,7 +43,8 @@
     "source:certification:evidence-graph": "node scripts/source-certification-evidence-graph.mjs",
     "source:gdelt-dependency:audit": "node scripts/audit-gdelt-dependency-live.mjs",
     "agentic:arc-agent": "node scripts/agentic/arc-autonomous-agent.mjs",
-    "risk:refresh-paid-agent": "bun scripts/refresh-paid-agent-risk-objects.ts"
+    "risk:refresh-paid-agent": "bun scripts/refresh-paid-agent-risk-objects.ts",
+    "agentic:arc-global": "node scripts/agentic/arc-global-category-agent.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
