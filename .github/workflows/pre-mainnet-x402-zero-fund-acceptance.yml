@@ -1,0 +1,80 @@
+name: Pre-Mainnet x402 Zero-Fund Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/coinbase-x402.server.ts"
+      - "src/lib/coinbase-x402.server.test.ts"
+      - "src/lib/geomacro-intelligence-contract.ts"
+      - "src/lib/agent-query-*.ts"
+      - "src/lib/agent-commerce-delivery.server.ts"
+      - "src/routes/api.x402.intelligence.ts"
+      - "src/routes/api.x402.risk_.availability.ts"
+      - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
+      - "scripts/verify-launch-readiness.mjs"
+      - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
+      - "supabase/migrations/947_agent_commerce_production_reconciliation.sql"
+      - ".github/workflows/pre-mainnet-x402-zero-fund-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pre-mainnet-x402-zero-fund-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies without install scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build candidate
+        run: bun run build
+
+      - name: Run payment and structured-delivery contract suite
+        run: >-
+          bunx vitest run
+          src/lib/coinbase-x402.server.test.ts
+          src/__tests__/coinbase-x402-mainnet-zero-fund-rehearsal.test.ts
+          src/__tests__/coinbase-x402-adaptive-availability-static.test.ts
+          src/__tests__/pre-mainnet-x402-readiness.test.ts
+          src/__tests__/agent-commerce-delivery-ledger-static.test.ts
+          src/__tests__/production-agent-commerce-reconciliation-static.test.ts
+          src/__tests__/public-intelligence-machine-surfaces-static.test.ts
+
+      - name: Verify database migration safety
+        run: bun run db:safety
+
+      - name: Verify hosting/source alignment
+        run: bun run hosting:verify
+
+      - name: Verify source launch policy remains locked
+        run: node scripts/verify-launch-readiness.mjs
+
+      - name: Record zero-fund boundary
+        run: |
+          {
+            echo "## Pre-Mainnet x402 Zero-Fund Acceptance"
+            echo
+            echo "- Mainnet activation: **false**"
+            echo "- Real payment attempted: **false**"
+            echo "- Production funds authorized: **false**"
+            echo "- External revenue claimed: **false**"
+            echo "- Structured response validated before settlement: **true**"
+            echo "- Replay/no-double-charge contract validated: **true**"
+          } >> "$GITHUB_STEP_SUMMARY"
