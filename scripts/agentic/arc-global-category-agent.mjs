@@ -104,8 +104,22 @@ console.log("Target: " + target);
 console.log("Scope: GEOPOLITICS + MACRO + CRITICAL_MINERALS");
 console.log("Spend cap: 0.05 USDC per accepted question");
 
+const requestedCase = (process.env.GEOMACRO_AGENT_CASE || "all").trim().toLowerCase();
+const cases = {
+  geopolitics: QUESTIONS.filter((item) => item.expectedCategories.length === 1 && item.expectedCategories[0] === "GEOPOLITICS"),
+  macro: QUESTIONS.filter((item) => item.expectedCategories.length === 1 && item.expectedCategories[0] === "MACRO"),
+  critical_minerals: QUESTIONS.filter((item) => item.expectedCategories.length === 1 && item.expectedCategories[0] === "CRITICAL_MINERALS"),
+  mixed: QUESTIONS.filter((item) => item.expectedCategories.length === 3),
+  all: QUESTIONS,
+};
+const selectedQuestions = cases[requestedCase];
+if (!selectedQuestions) {
+  fail('GEOMACRO_AGENT_CASE must be one of: all, geopolitics, macro, critical_minerals, mixed.');
+}
+console.log("Acceptance case: " + requestedCase + " (" + selectedQuestions.length + " question" + (selectedQuestions.length === 1 ? "" : "s") + ")");
+
 const results = [];
-for (const { expectedCategories, question } of QUESTIONS) {
+for (const { expectedCategories, question } of selectedQuestions) {
   const label = expectedCategories.join("+");
   console.log("\n[" + label + "] " + question);
 
