@@ -2,6 +2,16 @@ name: Global P0 source endpoint probe
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "config/global-p0-source-expansion.json"
+      - "global-intelligence/adapters/**"
+      - "scripts/test-p0-adapters.mjs"
+      - "scripts/test-p0-adapter-certification.mjs"
+      - "scripts/test-p0-live-schema-certification.mjs"
+      - "scripts/test-global-p0-source-endpoints.mjs"
+      - ".github/workflows/global-p0-source-probe.yml"
   schedule:
     - cron: "17 3 * * 1"
 
@@ -19,7 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@1e60f620b9541dca9a04b31e8e3f7f4f9c6b6c4f
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 22
 
