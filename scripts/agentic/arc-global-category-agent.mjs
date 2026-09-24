@@ -50,6 +50,15 @@ function parsePaymentRequired(header) {
   }
 }
 
+function unwrapCircleServiceResponse(payload) {
+  // Circle CLI 1.1.4 wraps service responses under data for JSON output.
+  // Preserve direct responses too so the acceptance runner remains compatible.
+  if (payload && typeof payload === "object" && payload.data && typeof payload.data === "object") {
+    return payload.data;
+  }
+  return payload;
+}
+
 function runCircle(args, label) {
   const result = spawnSync("circle", args, { encoding: "utf8", stdio: ["inherit", "pipe", "pipe"] });
   if (result.error) fail(label + " could not start: " + result.error.message);
@@ -160,7 +169,7 @@ for (const { expectedCategories, question } of QUESTIONS) {
 
   console.log(estimate);
 
-  const paid = JSON.parse(runCircle(
+  const paidRaw = runCircle(
     [
       "services", "pay", target.toString(),
       "--address", wallet,
@@ -172,9 +181,20 @@ for (const { expectedCategories, question } of QUESTIONS) {
       "--output", "json",
     ],
     label + " Circle payment",
-  ));
+  );
+  let paidEnvelope;
+  try {
+    paidEnvelope = JSON.parse(paidRaw);
+  } catch {
+    fail(label + ": Circle payment did not return valid JSON. Raw output: " + paidRaw);
+  }
 
-  if (paid?.ok !== true) fail(label + ": paid delivery was not successful.");
+  const paid = unwrapCircleServiceResponse(paidEnvelope);
+  if (paid?.ok !== true) {
+    console.error(label + " paid response:");
+    console.error(JSON.stringify(paidEnvelope, null, 2));
+    fail(label + ": paid delivery was not successful.");
+  }
   if (paid?.payment?.provider !== "circle_gateway_x402") fail(label + ": wrong payment provider.");
   if (paid?.payment?.network !== "eip155:5042002") fail(label + ": paid response did not confirm Arc Testnet.");
   if (paid?.payment?.asset !== "USDC") fail(label + ": paid response did not confirm USDC.");
