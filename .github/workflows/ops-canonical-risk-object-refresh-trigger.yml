@@ -89,6 +89,8 @@ jobs:
           for iso3 in USA IND CHN; do
             echo "Publishing canonical Risk Object for ${iso3}"
             bun scripts/publish-country-risk-object.ts "${iso3}" CANONICAL > "/tmp/${iso3}-canonical.json"
+            echo "Publication diagnostics for ${iso3}:"
+            jq '{published,object_id,schema_version,delivery_profile,subject,verification,commercial_eligibility,integrity:{signing_key_id,signature_present,signature_valid,payload_hash,calculation_hash},context}' "/tmp/${iso3}-canonical.json"
             jq -e               --arg iso3 "${iso3}"               --arg key_id "${EXPECTED_KEY_ID}"               '
                 .published == true
                 and .context.published == true
