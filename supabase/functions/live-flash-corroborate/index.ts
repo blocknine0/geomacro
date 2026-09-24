@@ -419,10 +419,57 @@ Deno.serve(async request => {
       })
     }
 
+    const healthCountry = "CHN"
+    const healthCountryFlashResult = await db
+      .from("live_flash_event_countries")
+      .select("flash_id")
+      .eq("country_iso3", healthCountry)
+      .limit(1)
+
+    if (healthCountryFlashResult.error) {
+      console.error(healthCountryFlashResult.error)
+      return jsonResponse(500, {
+        ok: false,
+        health: true,
+        authenticated: true,
+        error: "health_country_query_failed",
+        code: healthCountryFlashResult.error.code ?? null,
+      })
+    }
+
+    const healthFlashId = healthCountryFlashResult.data?.[0]?.flash_id ?? null
+    if (healthFlashId) {
+      const healthCandidateResult = await db
+        .from("live_flash_events")
+        .select(
+          "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
+        )
+        .in("flash_id", [healthFlashId])
+        .gte(
+          "ingested_at",
+          new Date(Date.now() - 90 * 60_000).toISOString(),
+        )
+        .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
+        .order("ingested_at", { ascending: false })
+        .limit(1)
+
+      if (healthCandidateResult.error) {
+        console.error(healthCandidateResult.error)
+        return jsonResponse(500, {
+          ok: false,
+          health: true,
+          authenticated: true,
+          error: "health_candidate_query_failed",
+          code: healthCandidateResult.error.code ?? null,
+        })
+      }
+    }
+
     return jsonResponse(200, {
       ok: true,
       health: true,
       authenticated: true,
+      candidate_query: "PASS",
     })
   }
 
