@@ -1,0 +1,39 @@
+name: Production Structural Serving Probe
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/probe-structural-serving-production.mjs"
+      - ".github/workflows/production-structural-serving-probe.yml"
+      - "src/lib/structural-context.server.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install minimal client
+        run: npm install --no-save @supabase/supabase-js@2.108.2
+
+      - name: Probe structural serving configuration
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
+          HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/probe-structural-serving-production.mjs
