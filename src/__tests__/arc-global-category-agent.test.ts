@@ -51,7 +51,8 @@ describe("global three-category Arc agent contract", () => {
   it("accepts Circle CLI JSON service-response envelopes", () => {
     expect(runner).toContain("function unwrapCircleServiceResponse");
     expect(runner).toContain("payload.data");
-    expect(runner).toContain("Circle CLI 1.1.4 wraps service responses under data");
+    expect(runner).toContain("payload.data.response");
+    expect(runner).toContain("Circle CLI 1.1.4 wraps paid service responses as data.response");
     expect(runner).toContain("const paid = unwrapCircleServiceResponse(paidEnvelope);");
   });
 
