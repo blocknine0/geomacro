@@ -32,6 +32,6 @@ describe("historical structural edge adapter contract", () => {
     expect(source).toContain('request.method !== "POST"');
     expect(source).toContain('"cache-control": "no-store"');
     expect(source).not.toContain("Access-Control-Allow-Origin");
-    expect(source).not.toContain("Deno.env.get("VITE_");
+    expect(source).not.toContain(`Deno.env.get("VITE_`);
   });
 });
