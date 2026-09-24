@@ -26,6 +26,12 @@ describe("global three-category Arc agent contract", () => {
     expect(route).toContain("settleCircleX402");
   });
 
+  it("distinguishes rejected settlement from ambiguous settlement", () => {
+    expect(route).toContain("CircleX402SettlementRejectedError");
+    expect(route).toContain("X402_PAYMENT_SETTLEMENT_REJECTED");
+    expect(route).toContain("GLOBAL_INTELLIGENCE_SETTLEMENT_AMBIGUOUS");
+  });
+
   it("requires grounded delivery and fail-closed execution", () => {
     expect(route).toContain("answerQuestion");
     expect(route).toContain("insufficient_evidence");
