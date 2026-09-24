@@ -491,9 +491,12 @@ const evidenceRefs = Array.isArray(riskObject.evidence)
   : [];
 
 const reviewArtifact = {
-  artifact_version: "geomacro-invino-review-v3",
+  artifact_version: "geomacro-invino-review-v4",
   as_of: observedAt,
   as_of_source: "risk_object.observed_at",
+  decision_type: "read_only_risk_context",
+  action_proposed: false,
+  execution_authorized: false,
   risk_object_reference: {
     object_id: riskObject.object_id,
     schema_version: riskObject.schema_version,
@@ -508,11 +511,12 @@ const reviewArtifact = {
     expires_at: riskObject.expires_at,
     risk: riskObject.risk,
     confidence: riskObject.confidence,
-    attribution: Array.isArray(riskObject.attribution) ? riskObject.attribution : [],
     evidence_summary: riskObject.evidence_summary ?? null,
-    evidence_references: evidenceRefs,
+    evidence_count: evidenceRefs.length,
+    verified_evidence_count: evidenceRefs.filter(
+      (item) => item.corroboration_status === "CONFIRMED",
+    ).length,
     verification: riskObject.verification,
-    commercial_eligibility: riskObject.commercial_eligibility,
   },
 };
 
@@ -524,9 +528,8 @@ const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
 const externalEvidence = [{
   source: "Geomacro",
-  record: signedRiskObjectRecord,
   record_sha256: signedRiskObjectRecordSha256,
-  evidence_type: "signed_risk_object",
+  evidence_type: "signed_risk_object_hash_only",
   observed_at: observedAt,
   validity_until: riskObject.expires_at,
 }];
@@ -537,7 +540,8 @@ if (
     externalEvidence.length !== 1 ||
     externalEvidence[0]?.record_sha256 !== signedRiskObjectRecordSha256 ||
     externalEvidence[0]?.observed_at !== observedAt ||
-    externalEvidence[0]?.validity_until !== riskObject.expires_at
+    externalEvidence[0]?.validity_until !== riskObject.expires_at ||
+    "record" in externalEvidence[0]
   )
 ) {
   throw new Error(
