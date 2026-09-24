@@ -22,7 +22,7 @@ Current test contract:
 
 - network: Arc Testnet (`eip155:5042002`)
 - asset: test USDC
-- test price: `0.001 USDC` per call
+- test price: `0.05 USDC` per call
 - supported public demo subjects: USA, CHN, USA→CHN, CHN→USA
 - seller/pay-to address supplied by server-only `CIRCLE_X402_SELLER_ADDRESS`
 - unpaid valid requests return HTTP `402` with `PAYMENT-REQUIRED`
