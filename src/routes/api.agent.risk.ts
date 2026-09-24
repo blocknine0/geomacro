@@ -8,6 +8,7 @@ import {
 } from "../lib/geomacro-agent-contract";
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 import {
+  CircleX402SettlementRejectedError,
   CIRCLE_X402_ASSET,
   CIRCLE_X402_NETWORK,
   CIRCLE_X402_PRICE_ATOMIC,
@@ -17,6 +18,7 @@ import {
   isCircleX402Configured,
   persistSettlementTelemetry,
   settleCircleX402,
+  verifyCircleX402,
 } from "../lib/circle-x402.server";
 
 const MAX_BODY_BYTES = 8 * 1024;
@@ -228,6 +230,27 @@ export const Route = createFileRoute("/api/agent/risk")({
         }
 
         try {
+          const verification = await verifyCircleX402(request);
+          if (!verification.valid) {
+            console.warn(
+              "[agentic-x402] Circle payment rejected:",
+              verification.invalid_reason ?? "unknown",
+            );
+            return json(
+              {
+                ok: false,
+                payment_required: true,
+                error: {
+                  code: "X402_PAYMENT_VERIFICATION_FAILED",
+                  message: "The supplied payment proof could not be verified.",
+                  reason: verification.invalid_reason ?? null,
+                },
+                execution_authorized: false,
+              },
+              402,
+            );
+          }
+
           const settlement = await settleCircleX402(request);
           const result = {
             ...prepared,
@@ -262,6 +285,8 @@ export const Route = createFileRoute("/api/agent/risk")({
           const message =
             error instanceof Error ? error.message : "Circle x402 payment failed.";
           const paymentFailure =
+            error instanceof CircleX402SettlementRejectedError ||
+            message.startsWith("PAYMENT_SETTLEMENT_REJECTED") ||
             message.startsWith("PAYMENT_SETTLEMENT_FAILED") ||
             message.startsWith("PAYMENT_SIGNATURE_");
 
