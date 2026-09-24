@@ -1,6 +1,68 @@
 import { createHash } from "node:crypto";
 
-export const CHINA_MOFCOM_URL = "https://english.mofcom.gov.cn/Policies/index.html";
+export const CHINA_MOFCOM_URL = "https://exportcontrol.mofcom.gov.cn/";
+export const CHINA_MOFCOM_ENGLISH_URL = "https://english.mofcom.gov.cn/Policies/index.html";
+
+function decodeHtml(value) {
+  return String(value ?? "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function absoluteUrl(href, baseUrl = CHINA_MOFCOM_URL) {
+  try { return new URL(href, baseUrl).toString(); } catch { return null; }
+}
+
+function dateFromText(value) {
+  const text = String(value ?? "");
+  const m = text.match(/(?:20\d{2})[./-](?:0?[1-9]|1[0-2])[./-](?:0?[1-9]|[12]\d|3[01])/);
+  if (!m) return null;
+  const normalized = m[0].replace(/[./]/g, "-");
+  const date = new Date(normalized + "T00:00:00.000Z");
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+export function parseMofcomExportControlHtml(html, { observedAt = new Date().toISOString(), baseUrl = CHINA_MOFCOM_URL } = {}) {
+  const input = String(html ?? "");
+  if (!/exportcontrol\.mofcom\.gov\.cn/i.test(input) && !/export control/i.test(input)) {
+    throw new Error("MOFCOM export-control page marker not found");
+  }
+
+  const records = [];
+  const anchorRe = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  for (const match of input.matchAll(anchorRe)) {
+    const title = decodeHtml(match[2]);
+    const url = absoluteUrl(match[1], baseUrl);
+    if (!title || !url || title.length < 6) continue;
+    const contextStart = Math.max(0, match.index - 500);
+    const contextEnd = Math.min(input.length, match.index + match[0].length + 500);
+    const context = decodeHtml(input.slice(contextStart, contextEnd));
+    if (!/export|control|rare earth|dual-use|strategic mineral|mineral/i.test(title + " " + context)) continue;
+
+    const id = match[1].match(/(?:id|article|content|info)[=_/-]([A-Za-z0-9_-]+)/i)?.[1]
+      ?? Buffer.from(url).toString("base64url").slice(0, 24);
+    const issuedAt = dateFromText(context);
+    records.push(normalizeMofcomExportControl({
+      id,
+      title,
+      issuedAt,
+      url,
+      commodity: /rare earth/i.test(title + " " + context) ? "Rare earths" : null,
+      raw: { title, url, issuedAt, context }
+    }));
+  }
+
+  const unique = [...new Map(records.map((record) => [record.source_record_id, record])).values()];
+  if (!unique.length) throw new Error("MOFCOM parser found no export-control records");
+  return unique;
+}
 
 export function normalizeMofcomExportControl({ id, title, issuedAt = null, url = CHINA_MOFCOM_URL, commodity = null, controlAction = "EXPORT_CONTROL", retrievedAt = new Date().toISOString(), raw = null }) {
   if (!title) throw new Error("MOFCOM record requires title");
