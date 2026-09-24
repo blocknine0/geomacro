@@ -648,7 +648,13 @@ if (invinoApiKey) {
     JSON.stringify({
       partner_review_issues: issues.map((issue: any) => ({
         severity: String(issue?.severity ?? "").toLowerCase(),
-        summary: String(issue?.summary ?? issue?.title ?? "unspecified"),
+        code: issue?.code ?? issue?.type ?? null,
+        title: issue?.title ?? null,
+        summary: issue?.summary ?? null,
+        message: issue?.message ?? null,
+        reason: issue?.reason ?? null,
+        field: issue?.field ?? issue?.path ?? null,
+        details: issue?.details ?? null,
       })),
     }),
   );
