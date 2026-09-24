@@ -1,3 +1,4 @@
+// Deployment marker: keep this source aligned with the current production corroboration implementation.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"
 
