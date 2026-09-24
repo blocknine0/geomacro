@@ -2,7 +2,7 @@ name: Product CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/agentic-commerce-demo-current-main]
     paths:
       - 'src/**'
       - 'scripts/**'
