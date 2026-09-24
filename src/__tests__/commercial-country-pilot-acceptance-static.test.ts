@@ -12,7 +12,7 @@ const workflow = readFileSync(
 describe("commercial country pilot acceptance workflow", () => {
   it("pins production authority and current signing key", () => {
     expect(workflow).toContain("EXPECTED_PROJECT_REF: ldpwajisioljyjtojvfx");
-    expect(workflow).toContain("EXPECTED_KEY_ID: geomacro-risk-2026-02");
+    expect(workflow).toContain("EXPECTED_KEY_ID: geomacro-risk-2026-03");
     expect(workflow).toContain("environment: production");
   });
 
