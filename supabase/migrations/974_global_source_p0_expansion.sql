@@ -77,7 +77,7 @@ values
   'World Bank Commodity Markets / Pink Sheet',
   'World Bank',
   'MACRO',
-  'XLSX', 'NONE',
+  'BULK_DOWNLOAD', 'NONE',
   'https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx',
   null, 'REVIEW_REQUIRED', false, true, false, false, 'GLOBAL', 'MONTHLY',
   'Global commodity-price benchmark for oil, gas, metals, food and related macro transmission. Exact dataset/version and reuse boundary must be certified before activation.'
