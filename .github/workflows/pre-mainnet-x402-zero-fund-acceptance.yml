@@ -79,6 +79,7 @@ jobs:
         run: |
           node scripts/ops/probe-structural-serving-production.mjs
           node scripts/ops/probe-structural-base-tables-production.mjs
+          node scripts/ops/probe-risk-object-production.mjs
 
       - name: Record zero-fund boundary
         run: |
