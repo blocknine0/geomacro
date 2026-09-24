@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const runner = readFileSync("scripts/agentic/arc-global-category-agent.mjs", "utf8");
 const route = readFileSync("src/routes/api.agent.intelligence.ts", "utf8");
+const routeTree = readFileSync("src/routeTree.gen.ts", "utf8");
 
 describe("global three-category Arc agent contract", () => {
   it("covers all three core intelligence categories", () => {
@@ -13,6 +14,7 @@ describe("global three-category Arc agent contract", () => {
     expect(runner).toContain("GEOMACRO_AGENT_CASE");
     expect(runner).toContain("mixed");
     expect(runner).toContain("total_paid_usdc: Number((results.length * 0.05).toFixed(2))");
+    expect(routeTree).toContain("ApiAgentIntelligenceRoute: ApiAgentIntelligenceRoute,");
   });
 
   it("is bounded to Arc Testnet Gateway USDC and 0.05 USDC", () => {
