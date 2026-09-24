@@ -12,7 +12,7 @@ Verified gates:
 - Product CI passed, including app tests, Risk Gate static contracts, production build and generated route-tree drift protection.
 - Database Schema Safety passed, including a full zero-to-current migration replay on disposable Supabase.
 - Exact-head local and external HTTPS unpaid x402 contracts passed.
-- One explicitly acknowledged `0.001 USDC` Arc Testnet x402 paid regression passed.
+- One explicitly acknowledged `0.05 USDC` Arc Testnet x402 paid regression passed.
 - Paid resource returned a signed persisted Risk Object and `REQUIRE_APPROVAL` while preserving `execution_authorized=false`.
 - Isolated staging returned `NOT_CONFIGURED` structural context and `null` GRI when canonical verified context was unavailable. No synthetic or fallback score was introduced.
 - Staging resilience testing passed with no server errors, timeouts, network errors or decision-boundary violations in the scoped test.
@@ -30,7 +30,7 @@ Merging the technical implementation does not by itself mean:
 - autonomous transaction authorization;
 - custody or wallet signing by Geomacro;
 - full route, logistics, counterparty or sanctions modelling;
-- institutional pricing represented by the `0.001 USDC` x402 technical-proof price.
+- institutional pricing represented by the `0.05 USDC` x402 technical-proof price.
 
 ## Permanent decision boundary
 
