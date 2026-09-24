@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "p0_global_source_expansion": {
     "mode": "prelaunch",
     "activation_requires": [
@@ -21,10 +21,7 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml",
-        "machine_formats": [
-          "XML",
-          "CSV"
-        ]
+        "machine_formats": ["XML", "CSV"]
       },
       "eu_sanctions_consolidated": {
         "provider": "European Commission / DG FISMA",
@@ -34,11 +31,7 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://webgate.ec.europa.eu/fsd/fsf",
-        "machine_formats": [
-          "XML",
-          "CSV",
-          "PDF"
-        ]
+        "machine_formats": ["XML", "CSV", "PDF"]
       },
       "opcw_news": {
         "provider": "OPCW",
@@ -47,7 +40,7 @@
         "discovery_url": "https://www.opcw.org/media-centre/news",
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
-        "schema_status": "LIVE_MACHINE_ENDPOINT_NOT_IDENTIFIED"
+        "schema_status": "LIVE_HTML_EXTRACTION_CANDIDATE"
       },
       "icj_cases": {
         "provider": "International Court of Justice",
@@ -56,7 +49,7 @@
         "discovery_url": "https://www.icj-cij.org/cases",
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
-        "schema_status": "LIVE_MACHINE_ENDPOINT_NOT_IDENTIFIED"
+        "schema_status": "LIVE_HTML_EXTRACTION_CANDIDATE"
       },
       "icc_news": {
         "provider": "International Criminal Court",
@@ -65,7 +58,7 @@
         "discovery_url": "https://www.icc-cpi.int/news",
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
-        "schema_status": "LIVE_MACHINE_ENDPOINT_NOT_IDENTIFIED"
+        "schema_status": "LIVE_HTML_EXTRACTION_CANDIDATE"
       },
       "unctadstat_global": {
         "provider": "United Nations Trade and Development",
@@ -84,10 +77,7 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
-        "machine_formats": [
-          "XLSX",
-          "PDF"
-        ]
+        "machine_formats": ["XLSX", "PDF"]
       },
       "china_mofcom_trade_controls": {
         "provider": "Ministry of Commerce of the People's Republic of China",
@@ -97,9 +87,7 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://exportcontrol.mofcom.gov.cn/",
-        "machine_formats": [
-          "HTML"
-        ]
+        "machine_formats": ["HTML"]
       },
       "australia_critical_minerals": {
         "provider": "Australian Government",
@@ -109,9 +97,7 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list",
-        "machine_formats": [
-          "HTML"
-        ]
+        "machine_formats": ["HTML"]
       },
       "cochilco_minerals": {
         "provider": "Chilean Copper Commission",
@@ -121,9 +107,7 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://www.cochilco.cl/web/anuario-de-estadisticas-del-cobre-y-otros-minerales/",
-        "machine_formats": [
-          "HTML"
-        ],
+        "machine_formats": ["HTML"],
         "schema_status": "STRUCTURED_DISCOVERY_SURFACE"
       }
     }
