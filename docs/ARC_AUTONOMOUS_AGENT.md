@@ -28,7 +28,7 @@ Required environment:
 export GEOMACRO_X402_BASE_URL="https://<isolated-staging-host>"
 export GEOMACRO_X402_AGENT_WALLET_ADDRESS="0x..."
 export GEOMACRO_AGENT_PAYMENT_ACK="ARC_TESTNET_USDC"
-export GEOMACRO_AGENT_MAX_PAYMENT_USDC="0.001"
+export GEOMACRO_AGENT_MAX_PAYMENT_USDC="0.05"
 ```
 
 Then:
@@ -50,7 +50,7 @@ The v1 proof is intentionally constrained:
 
 - Arc Testnet only
 - USDC only
-- maximum 0.001 USDC per request
+- maximum 0.05 USDC per request
 - Circle Gateway x402 seller only
 - no arbitrary contract calls
 - no mainnet
