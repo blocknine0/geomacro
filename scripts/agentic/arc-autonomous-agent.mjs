@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const base = (process.env.GEOMACRO_X402_BASE_URL || "").replace(/\/$/, "");
 const wallet = process.env.GEOMACRO_X402_AGENT_WALLET_ADDRESS || "";
-const maxAmount = process.env.GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.001";
+const maxAmount = process.env.GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.05";
 const MAX_PAYMENT_USDC = 0.05;
 const parsedMaxAmount = Number(maxAmount);
 if (!Number.isFinite(parsedMaxAmount) || parsedMaxAmount <= 0 || parsedMaxAmount > MAX_PAYMENT_USDC) {
