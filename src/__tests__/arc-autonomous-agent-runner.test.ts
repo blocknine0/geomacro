@@ -20,7 +20,7 @@ describe("Arc autonomous agent runner", () => {
       "GEOMACRO_AGENT_PAYMENT_ACK=ARC_TESTNET_USDC",
     );
     expect(runner).toContain(
-      'GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.001"',
+      'GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.05"',
     );
     expect(runner).toContain('"--max-amount", maxAmount');
     expect(runner).toContain(
