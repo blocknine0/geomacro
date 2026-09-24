@@ -521,21 +521,22 @@ const reviewArtifactBytes = Buffer.byteLength(reviewArtifactText, "utf8");
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
-const externalEvidence = {
+const externalEvidence = [{
   source: "Geomacro",
   record: signedRiskObjectRecord,
   record_sha256: signedRiskObjectRecordSha256,
   evidence_type: "signed_risk_object",
   observed_at: observedAt,
   validity_until: riskObject.expires_at,
-};
+}];
 
 if (
   strictProfile &&
   (
-    externalEvidence.record_sha256 !== signedRiskObjectRecordSha256 ||
-    externalEvidence.observed_at !== observedAt ||
-    externalEvidence.validity_until !== riskObject.expires_at
+    externalEvidence.length !== 1 ||
+    externalEvidence[0]?.record_sha256 !== signedRiskObjectRecordSha256 ||
+    externalEvidence[0]?.observed_at !== observedAt ||
+    externalEvidence[0]?.validity_until !== riskObject.expires_at
   )
 ) {
   throw new Error(
