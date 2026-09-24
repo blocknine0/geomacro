@@ -4,13 +4,15 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("production launch safety contract", () => {
-  it("keeps the initial paid cohort coordinated and includes Circle explicitly", () => {
+  it("keeps Coinbase as the sole initial paid cohort and defers secondary rails", () => {
     const manifest = JSON.parse(read("config/commercial-launch-manifest.json"));
 
-    for (const provider of ["coinbase_x402", "circle_gateway_x402", "nevermined"]) {
-      expect(manifest.providers[provider].launch_cohort).toBe(true);
-      expect(manifest.providers[provider].production_enabled).toBe(false);
-    }
+    expect(manifest.providers.coinbase_x402.launch_cohort).toBe(true);
+    expect(manifest.providers.coinbase_x402.production_enabled).toBe(false);
+    expect(manifest.providers.circle_gateway_x402.launch_cohort).toBe(false);
+    expect(manifest.providers.circle_gateway_x402.production_enabled).toBe(false);
+    expect(manifest.providers.nevermined.launch_cohort).toBe(false);
+    expect(manifest.providers.nevermined.production_enabled).toBe(false);
 
     expect(manifest.providers.goat_x402.launch_cohort).toBe(false);
     expect(manifest.launch_rule.allow_partial_provider_launch).toBe(false);
