@@ -6,9 +6,9 @@ import { normalizeUnctadStatObservation } from "../global-intelligence/adapters/
 import { normalizeMofcomExportControl, parseMofcomExportControlHtml } from "../global-intelligence/adapters/china-mofcom.mjs";
 import { normalizeAustraliaCriticalMineral, parseAustraliaCriticalMineralsHtml } from "../global-intelligence/adapters/australia-critical-minerals.mjs";
 import { normalizeCochilcoObservation, parseCochilcoAnuarioHtml } from "../global-intelligence/adapters/cochilco-minerals.mjs";
-import { normalizeOpcwNews } from "../global-intelligence/adapters/opcw-news.mjs";
-import { normalizeIcjCase } from "../global-intelligence/adapters/icj-cases.mjs";
-import { normalizeIccNews } from "../global-intelligence/adapters/icc-news.mjs";
+import { normalizeOpcwNews, parseOpcwNewsHtml } from "../global-intelligence/adapters/opcw-news.mjs";
+import { normalizeIcjCase, parseIcjCasesHtml } from "../global-intelligence/adapters/icj-cases.mjs";
+import { normalizeIccNews, parseIccNewsHtml } from "../global-intelligence/adapters/icc-news.mjs";
 
 const fixture = "<Designations><Designation><UniqueID>UK001</UniqueID><PrimaryName>Example Entity</PrimaryName><RegimeName>Example Regime</RegimeName><LastUpdated>2026-09-20</LastUpdated></Designation></Designations>";
 const uk = parseUkSanctionsXml(fixture);
@@ -39,9 +39,25 @@ const cochHtml = '<html><body><h1>Anuario de Estadísticas del Cobre y Otros Min
 const cochDiscovery = parseCochilcoAnuarioHtml(cochHtml);
 if (cochDiscovery.value_numeric !== 1 || !cochDiscovery.provenance.links[0].url.endsWith("db.xlsx")) throw new Error("COCHILCO live parser fixture failed");
 const coch = normalizeCochilcoObservation({series:"Mine copper production",period:"2026-07",value:"400.3",unit:"kt",commodity:"Copper"});
+
+const opcwHtml = '<html><body><h1>News</h1><div>OPCW</div><a href="/media-centre/news/2026/09/example-event">Example OPCW event</a><time>11 September 2026</time></body></html>';
+const opcwParsed = parseOpcwNewsHtml(opcwHtml, {retrievedAt:"2026-09-24T00:00:00.000Z"});
+if (opcwParsed.length !== 1 || opcwParsed[0].source_record_id !== "OPCW:%2Fmedia-centre%2Fnews%2F2026%2F09%2Fexample-event") throw new Error("OPCW live parser fixture failed");
 if (normalizeOpcwNews({id:"OPCW001",title:"Example OPCW event"}).source_record_id !== "OPCW:OPCW001") throw new Error("OPCW normalization failed");
+
+const icjHtml = '<html><body><h1>Cases</h1><div>International Court of Justice</div><a href="/cases/123">Example ICJ case</a><time>20 September 2026</time></body></html>';
+const icjParsed = parseIcjCasesHtml(icjHtml, {retrievedAt:"2026-09-24T00:00:00.000Z"});
+if (icjParsed.length !== 1 || icjParsed[0].source_record_id !== "ICJ:123") throw new Error("ICJ live parser fixture failed");
 if (normalizeIcjCase({id:"ICJ001",title:"Example ICJ case",status:"Pending"}).source_record_id !== "ICJ:ICJ001") throw new Error("ICJ normalization failed");
+
+const iccHtml = '<html><body><h1>News</h1><div>International Criminal Court</div><a href="/news/example-event">Example ICC event</a><time>20 September 2026</time></body></html>';
+const iccParsed = parseIccNewsHtml(iccHtml, {retrievedAt:"2026-09-24T00:00:00.000Z"});
+if (iccParsed.length !== 1 || iccParsed[0].source_record_id !== "ICC:example-event") throw new Error("ICC live parser fixture failed");
 if (normalizeIccNews({id:"ICC001",title:"Example ICC event"}).source_record_id !== "ICC:ICC001") throw new Error("ICC normalization failed");
+
 if (coch.country_iso3 !== "CHL" || coch.value_numeric !== 400.3) throw new Error("COCHILCO normalization failed");
 
-console.log(JSON.stringify({status:"PASS",tests:["uk","world_bank","eu","unctadstat","mofcom","australia_critical_minerals","cochilco"]}));
+console.log(JSON.stringify({
+  status:"PASS",
+  tests:["uk","world_bank","eu","unctadstat","mofcom","australia_critical_minerals","cochilco","opcw","icj","icc"]
+}));
