@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
-import { Contract, JsonRpcProvider, Wallet, getAddress, isAddress } from "ethers";
+import { Contract, Interface, JsonRpcProvider, Wallet, getAddress, isAddress } from "ethers";
 
 const RESOURCE_URL = "https://geomacro.live/api/x402/intelligence";
 const AVAILABILITY_URL = "https://geomacro.live/api/x402/risk/availability";
@@ -17,7 +17,11 @@ const PRIVATE_KEY = process.env.GEOMACRO_COINBASE_X402_BUYER_PRIVATE_KEY || "";
 const EXPECTED_BUYER = process.env.GEOMACRO_COINBASE_X402_BUYER_ADDRESS || "";
 const ARTIFACT_DIR = process.env.GEOMACRO_COINBASE_X402_ADAPTIVE_E2E_ARTIFACT_DIR || "artifacts/coinbase-x402-adaptive-base-sepolia-paid";
 
-const USDC_ABI = ["function balanceOf(address account) view returns (uint256)"];
+const USDC_ABI = [
+  "function balanceOf(address account) view returns (uint256)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+];
+const USDC_INTERFACE = new Interface(USDC_ABI);
 
 function fail(message) { throw new Error(message); }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
@@ -68,15 +72,30 @@ function assertExecutionBoundary(body, label) {
 
 function assertAdaptiveProduct(body) {
   assertExecutionBoundary(body, "Adaptive paid response");
+  if (body.schema_version !== "geomacro.adaptive-intelligence-response.v1") fail("Unexpected adaptive response schema");
   if (body.product !== EXPECTED_PRODUCT) fail(`Unexpected adaptive product: ${body.product}`);
+  if (typeof body.request_id !== "string" || body.request_id.length < 8) fail("Adaptive response is missing request_id");
   if (typeof body.query_plan_hash !== "string" || !/^[0-9a-f]{64}$/.test(body.query_plan_hash)) fail("Adaptive response is missing a valid query_plan_hash");
   if (typeof body.delivered_product_hash !== "string" || !/^[0-9a-f]{64}$/.test(body.delivered_product_hash)) fail("Adaptive response is missing delivered_product_hash");
-  if (!Array.isArray(body.signed_risk_objects) || body.signed_risk_objects.length < 1) fail("Adaptive response did not deliver a signed Risk Object");
+  for (const field of ["question_interpretation", "analysis", "structural", "hot_topics", "risk_gate", "signed_risk_objects", "current_state", "answer", "methodology", "limitations"]) {
+    if (!(field in body)) fail(`Adaptive response missing structured field: ${field}`);
+  }
+  if (!Array.isArray(body.subjects) || body.subjects.length < 1) fail("Adaptive response subjects are missing");
+  if (!Array.isArray(body.structural)) fail("Adaptive response structural section is not an array");
+  if (!Array.isArray(body.hot_topics)) fail("Adaptive response hot_topics section is not an array");
   if (!Array.isArray(body.risk_gate) || body.risk_gate.length < 1) fail("Adaptive response did not deliver Risk Gate output");
+  if (!Array.isArray(body.signed_risk_objects) || body.signed_risk_objects.length < 1) fail("Adaptive response did not deliver a signed Risk Object");
+  if (!Array.isArray(body.current_state) || body.current_state.length < 1) fail("Adaptive response current_state is missing");
+  if (!body.payment || body.payment.query_plan_bound !== true) fail("Adaptive response payment query binding is missing");
+  if (body.payment?.execution_authorized !== undefined && body.payment.execution_authorized !== false) fail("Adaptive response payment boundary was violated");
   for (const row of body.risk_gate) {
     if (row?.result?.context?.execution_authorized !== false || row?.result?.response?.execution_authorized !== false) {
       fail("Risk Gate execution boundary was violated");
     }
+  }
+  for (const row of body.signed_risk_objects) {
+    if (row?.object?.verification?.status !== "VERIFIED") fail("Signed Risk Object is not cryptographically verified");
+    if (row?.object?.delivery_boundary !== "SIGNED_RISK_OBJECT_ATTESTATION_ONLY") fail("Risk Object delivery boundary was violated");
   }
 }
 
@@ -195,6 +214,26 @@ async function main() {
   if (!txHash) fail("Adaptive paid response is missing settlement transaction hash");
   const receipt = await provider.waitForTransaction(txHash, 1, 60_000);
   if (!receipt || receipt.status !== 1) fail(`Adaptive settlement did not confirm: ${txHash}`);
+
+  let transferProof = null;
+  for (const log of receipt.logs) {
+    if (log.address.toLowerCase() !== EXPECTED_ASSET.toLowerCase()) continue;
+    try {
+      const parsedLog = USDC_INTERFACE.parseLog({ topics: log.topics, data: log.data });
+      if (parsedLog?.name !== "Transfer") continue;
+      const from = normalizeAddress(parsedLog.args[0], "Transfer from");
+      const to = normalizeAddress(parsedLog.args[1], "Transfer to");
+      const value = BigInt(parsedLog.args[2]);
+      if (to === payTo && value === amountAtomic) {
+        transferProof = { from, to, amount_atomic: value.toString(), log_index: log.index };
+        break;
+      }
+    } catch {
+      // Ignore unrelated logs from the same transaction.
+    }
+  }
+  if (!transferProof) fail("Confirmed settlement transaction did not contain the expected Base Sepolia USDC Transfer to payTo");
+  if (transferProof.from !== payer) fail(`Settlement Transfer payer mismatch: ${transferProof.from}`);
   const afterPaidBalance = BigInt(await usdc.balanceOf(payer));
   const observedDebit = beforeBalance - afterPaidBalance;
   if (observedDebit !== amountAtomic) fail(`Adaptive debit mismatch: observed=${observedDebit}, expected=${amountAtomic}`);
@@ -260,6 +299,14 @@ async function main() {
     settlement_tx_hash: txHash,
     settlement_block_number: receipt.blockNumber,
     settlement_status: "confirmed",
+    transfer_log_proof: {
+      verified: true,
+      token: normalizeAddress(EXPECTED_ASSET, "Expected Base Sepolia USDC"),
+      from: transferProof.from,
+      to: transferProof.to,
+      amount_atomic: transferProof.amount_atomic,
+      log_index: transferProof.log_index,
+    },
     observed_first_debit_atomic: observedDebit.toString(),
     replay_balance_delta_atomic: (afterPaidBalance - afterReplayBalance).toString(),
     changed_query_balance_delta_atomic: (afterReplayBalance - afterConflictBalance).toString(),
@@ -275,9 +322,11 @@ async function main() {
       initial_402: true,
       query_extension_echoed: true,
       paid_200: true,
+      structured_response_contract_passed: true,
       signed_risk_object_delivered: true,
       risk_gate_delivered: true,
       settlement_confirmed: true,
+      onchain_usdc_transfer_log_verified: true,
       exact_debit_matches_advertised_amount: true,
       replay_200: true,
       replay_no_second_debit: true,
