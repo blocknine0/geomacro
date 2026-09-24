@@ -384,7 +384,7 @@ function AgentEndpoint({ requestBody }: { requestBody: unknown }) {
   --address "$AGENT_WALLET_ADDRESS" \\
   --chain ARC-TESTNET \\
   -X POST \\
-  --max-amount 0.001 \\
+  --max-amount 0.05 \\
   -H 'content-type: application/json' \\
   -d '${JSON.stringify(requestBody)}' \\
   --output json`;
@@ -399,7 +399,7 @@ function AgentEndpoint({ requestBody }: { requestBody: unknown }) {
             The machine endpoint uses HTTP 402, Circle Gateway batching and USDC on Arc Testnet. An unpaid valid request receives payment requirements; an x402-aware agent can pay and retry the same call.
           </p>
           <div className="mt-5 rounded-xl border border-border/60 bg-card/45 p-4 text-sm">
-            <div className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4 text-primary" /><span className="font-medium">0.001 USDC per test call</span></div>
+            <div className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4 text-primary" /><span className="font-medium">0.05 USDC per test call</span></div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">Testnet demo price only. It is not Geomacro's institutional pricing.</p>
           </div>
         </div>
