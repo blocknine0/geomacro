@@ -25,6 +25,12 @@ export type AskAnswer = {
   low_confidence: boolean;
   gri: number | null;
   generatedAt: string;
+  provenance: {
+    source: "geomacro_stored_intelligence" | "public_web_current_results";
+    external_web_search_used: boolean;
+    external_llm_used: boolean;
+    upstream_source_urls_exposed: false;
+  };
 };
 
 export type EventRow = {
