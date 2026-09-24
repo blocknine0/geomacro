@@ -58,6 +58,30 @@ jobs:
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_PROJECT_REF}"
           test "${RISK_OBJECT_SIGNING_KEY_ID}" = "${EXPECTED_KEY_ID}"
 
+      - name: Derive current verification public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require("node:crypto");
+          const fs = require("node:fs");
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), "base64"),
+            format: "der",
+            type: "pkcs8",
+          });
+          if (privateKey.asymmetricKeyType !== "ed25519") {
+            throw new Error("Risk Object signing key must be Ed25519");
+          }
+          const publicB64 = Buffer.from(
+            createPublicKey(privateKey).export({ format: "der", type: "spki" }),
+          ).toString("base64");
+          fs.appendFileSync(
+            process.env.GITHUB_ENV,
+            "RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=" + publicB64 + "\n",
+          );
+          NODE
+
       - name: Refresh USA IND CHN as CANONICAL
         shell: bash
         run: |
