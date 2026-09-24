@@ -24,6 +24,7 @@ describe("Arc autonomous agent runner", () => {
     );
     expect(runner).toContain('"services", "inspect", target.toString(), "-X", "POST", "-H", "content-type: application/json", "-d", JSON.stringify(payload), "--output", "json"');
     expect(runner).toContain('const inspectedMethod = inspection?.method ?? inspection?.request?.method;');
+    expect(runner).toContain('parsedMaxAmount < Number(accept.amount) / 1_000_000');
     expect(runner).toContain('"--max-amount", maxAmount');
     expect(runner).toContain('"-X", inspectedMethod');
     expect(runner).toContain('"--estimate"');
