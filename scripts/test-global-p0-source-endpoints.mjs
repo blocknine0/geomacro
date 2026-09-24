@@ -21,11 +21,11 @@ function probeUrl(source) {
 function validateResponse(source, response, body) {
   const url = probeUrl(source);
   const ct = String(response.headers.get("content-type") ?? "").toLowerCase();
-  const looksXml = /xml/i.test(ct) || /\\.xml(?:$|[?#])/i.test(url);
-  const looksCsv = /csv/i.test(ct) || /\\.csv(?:$|[?#])/i.test(url);
-  const looksXlsx = /spreadsheet|excel|officedocument/i.test(ct) || /\\.xlsx(?:$|[?#])/i.test(url);
-  if (looksXml && !/^\\s*</.test(body)) return "expected XML-like payload";
-  if (looksCsv && body.split(/\\r?\\n/).find(Boolean)?.split(/[,;\\t]/).length < 2) return "expected delimited payload";
+  const looksXml = /xml/i.test(ct) || /\.xml(?:$|[?#])/i.test(url);
+  const looksCsv = /csv/i.test(ct) || /\.csv(?:$|[?#])/i.test(url);
+  const looksXlsx = /spreadsheet|excel|officedocument/i.test(ct) || /\.xlsx(?:$|[?#])/i.test(url);
+  if (looksXml && !/^\s*</.test(body)) return "expected XML-like payload";
+  if (looksCsv && body.split(/\r?\n/).find(Boolean)?.split(/[,;\t]/).length < 2) return "expected delimited payload";
   if (looksXlsx && body.length < 100) return "expected XLSX payload";
   return null;
 }
