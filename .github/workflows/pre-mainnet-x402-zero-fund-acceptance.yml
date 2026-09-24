@@ -68,9 +68,13 @@ jobs:
         run: node scripts/verify-launch-readiness.mjs
 
       - name: Verify live public x402 prelaunch safety and no-charge deliverability
+        id: live_preflight
+        continue-on-error: true
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
       - name: Verify production structural serving dependencies
+        id: data_probes
+        continue-on-error: true
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -81,7 +85,25 @@ jobs:
           node scripts/ops/probe-structural-base-tables-production.mjs
           node scripts/ops/probe-risk-object-production.mjs
 
+      - name: Final zero-fund acceptance gate
+        id: final_gate
+        env:
+          LIVE_OUTCOME: ${{ steps.live_preflight.outcome }}
+          DATA_OUTCOME: ${{ steps.data_probes.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$LIVE_OUTCOME" != "success" ]]; then
+            echo "::error::Live public x402 preflight did not pass."
+            exit 1
+          fi
+          if [[ "$DATA_OUTCOME" != "success" ]]; then
+            echo "::error::Production data-serving dependency probes did not pass."
+            exit 1
+          fi
+          echo "PASS: live no-charge deliverability and production data-serving dependencies are verified."
+
       - name: Record zero-fund boundary
+        if: always()
         run: |
           {
             echo "## Pre-Mainnet x402 Zero-Fund Acceptance"
@@ -92,4 +114,6 @@ jobs:
             echo "- External revenue claimed: **false**"
             echo "- Structured response validated before settlement: **true**"
             echo "- Replay/no-double-charge contract validated: **true**"
+            echo "- Live no-charge preflight: **${{ steps.live_preflight.outcome }}**"
+            echo "- Production data dependency probes: **${{ steps.data_probes.outcome }}**"
           } >> "$GITHUB_STEP_SUMMARY"
