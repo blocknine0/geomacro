@@ -40,6 +40,7 @@ const invinoOrigin = (
   process.env.INVINO_ORIGIN ?? "https://api.babyblueviper.com"
 ).replace(/\/$/, "");
 const invinoApiKey = process.env.INVINO_API_KEY?.trim() ?? "";
+const invinoDemoApiKey = process.env.INVINO_DEMO_API_KEY?.trim() ?? "";
 const requestOut = process.env.INVINO_REQUEST_OUT?.trim() ?? "";
 const reviewOut = process.env.INVINO_REVIEW_OUT?.trim() ?? "";
 
@@ -553,7 +554,7 @@ const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
   context:
-    "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object; the exact signed object is supplied separately in external_evidence.record with a deterministic record_sha256, and as_of is derived directly from risk_object.observed_at. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
+    "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object; the exact signed object is supplied separately in external_evidence[0].record with a deterministic record_sha256, and as_of is derived directly from risk_object.observed_at. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
   sign: true,
   confidentiality_tier: "hash_only",
   external_evidence: externalEvidence,
@@ -571,6 +572,7 @@ let liveReview:
     }
   | {
       attempted: true;
+      auth_mode: "primary" | "demo_fallback";
       http_status: number;
       verdict: string;
       confidence: number | null;
@@ -591,19 +593,41 @@ let liveReview:
     } = { attempted: false };
 
 if (invinoApiKey) {
-  const response = await fetch(`${invinoOrigin}/review/external`, {
+  let reviewApiKey = invinoApiKey;
+  let reviewAuthMode: "primary" | "demo_fallback" = "primary";
+
+  let response = await fetch(invinoOrigin + "/review", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${invinoApiKey}`,
+      authorization: "Bearer " + reviewApiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify(reviewRequest),
   });
 
-  const body = await response.json().catch(() => null);
+  let body = await response.json().catch(() => null);
+
+  if (
+    response.status === 402 &&
+    invinoDemoApiKey &&
+    invinoDemoApiKey !== invinoApiKey
+  ) {
+    reviewApiKey = invinoDemoApiKey;
+    reviewAuthMode = "demo_fallback";
+    response = await fetch(invinoOrigin + "/review", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer " + reviewApiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(reviewRequest),
+    });
+    body = await response.json().catch(() => null);
+  }
+
   if (!response.ok) {
     throw new Error(
-      `invinoveritas /review failed HTTP ${response.status}: ${JSON.stringify(body)}`,
+      "invinoveritas /review failed HTTP " + response.status + ": " + JSON.stringify(body),
     );
   }
 
@@ -772,6 +796,7 @@ if (invinoApiKey) {
 
   liveReview = {
     attempted: true,
+    auth_mode: reviewAuthMode,
     http_status: response.status,
     verdict,
     confidence:
@@ -841,13 +866,8 @@ console.log(
         confidentiality_tier: reviewRequest.confidentiality_tier,
         context: reviewRequest.context,
         artifact_bytes: reviewArtifactBytes,
-        external_evidence: {
-          source: externalEvidence.source,
-          evidence_type: externalEvidence.evidence_type,
-          record_sha256: externalEvidence.record_sha256,
-          observed_at: externalEvidence.observed_at,
-          validity_until: externalEvidence.validity_until,
-        },
+        external_evidence: externalEvidence,
+        review_auth_mode: liveReview.attempted ? liveReview.auth_mode : null,
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
       },
