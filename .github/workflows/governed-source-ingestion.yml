@@ -18,7 +18,7 @@ jobs:
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_SERVICE_ROLE_KEY }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
       NOAA_NCEI_TOKEN: ${{ secrets.NOAA_NCEI_TOKEN }}
       SOURCE_INGESTION_SOURCES: eia_api_v2,noaa_ncei_cdo_api
