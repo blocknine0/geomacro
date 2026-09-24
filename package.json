@@ -42,7 +42,8 @@
     "source:certification:census:strict": "node scripts/audit-source-certification-census.mjs --strict",
     "source:certification:evidence-graph": "node scripts/source-certification-evidence-graph.mjs",
     "source:gdelt-dependency:audit": "node scripts/audit-gdelt-dependency-live.mjs",
-    "test:p0-adapters": "node scripts/test-p0-adapters.mjs"
+    "test:p0-adapters": "node scripts/test-p0-adapters.mjs",
+    "test:p0-live-schema": "node scripts/test-p0-live-schema-certification.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
