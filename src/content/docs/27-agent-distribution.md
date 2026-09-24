@@ -22,7 +22,7 @@ Current test contract:
 
 - network: Arc Testnet (`eip155:5042002`)
 - asset: test USDC
-- test price: `0.05 USDC` per call
+- test price: `0.001 USDC` per call
 - supported public demo subjects: USA, CHN, USA→CHN, CHN→USA
 - seller/pay-to address supplied by server-only `CIRCLE_X402_SELLER_ADDRESS`
 - unpaid valid requests return HTTP `402` with `PAYMENT-REQUIRED`
@@ -55,18 +55,3 @@ Potential future interfaces include:
 These remain **PLANNED** unless separately implemented and verified.
 
 A payment/access mechanism must never bypass source-rights restrictions or become part of the core risk calculation methodology.
-
-
-### Circle Testnet global agent question path
-
-For autonomous buyer-agent testing, Geomacro also exposes a Circle Gateway x402 Testnet endpoint:
-
-- GET /api/agent/intelligence for capability discovery;
-- POST /api/agent/intelligence for global natural-language intelligence questions;
-- category routing covers GEOPOLITICS, MACRO and CRITICAL_MINERALS;
-- payment is 0.05 USDC on Arc Testnet (eip155:5042002);
-- payment is accepted only after the requested answer passes the current grounded-evidence check;
-- the response is machine-readable and includes routed categories, grounded answer, evidence and provenance;
-- execution_authorized is always false.
-
-This Testnet path is an integration proof. It does not represent institutional pricing or autonomous financial execution.
