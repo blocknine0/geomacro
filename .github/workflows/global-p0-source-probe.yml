@@ -19,7 +19,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1e60f620b9541dca9a04b31e8e3f7f4f9c6b6c4f
         with:
           node-version: 22
 
