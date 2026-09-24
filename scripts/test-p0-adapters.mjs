@@ -6,6 +6,9 @@ import { normalizeUnctadStatObservation } from "../global-intelligence/adapters/
 import { normalizeMofcomExportControl } from "../global-intelligence/adapters/china-mofcom.mjs";
 import { normalizeAustraliaCriticalMineral } from "../global-intelligence/adapters/australia-critical-minerals.mjs";
 import { normalizeCochilcoObservation } from "../global-intelligence/adapters/cochilco-minerals.mjs";
+import { normalizeOpcwNews } from "../global-intelligence/adapters/opcw-news.mjs";
+import { normalizeIcjCase } from "../global-intelligence/adapters/icj-cases.mjs";
+import { normalizeIccNews } from "../global-intelligence/adapters/icc-news.mjs";
 
 const fixture = "<Designations><Designation><UniqueID>UK001</UniqueID><PrimaryName>Example Entity</PrimaryName><RegimeName>Example Regime</RegimeName><LastUpdated>2026-09-20</LastUpdated></Designation></Designations>";
 const uk = parseUkSanctionsXml(fixture);
@@ -27,6 +30,9 @@ const aus = normalizeAustraliaCriticalMineral({mineral:"Lithium",geologicalPoten
 if (aus.country_iso3 !== "AUS" || aus.commodity !== "Lithium") throw new Error("Australia critical minerals normalization failed");
 
 const coch = normalizeCochilcoObservation({series:"Mine copper production",period:"2026-07",value:"400.3",unit:"kt",commodity:"Copper"});
+if (normalizeOpcwNews({id:"OPCW001",title:"Example OPCW event"}).source_record_id !== "OPCW:OPCW001") throw new Error("OPCW normalization failed");
+if (normalizeIcjCase({id:"ICJ001",title:"Example ICJ case",status:"Pending"}).source_record_id !== "ICJ:ICJ001") throw new Error("ICJ normalization failed");
+if (normalizeIccNews({id:"ICC001",title:"Example ICC event"}).source_record_id !== "ICC:ICC001") throw new Error("ICC normalization failed");
 if (coch.country_iso3 !== "CHL" || coch.value_numeric !== 400.3) throw new Error("COCHILCO normalization failed");
 
 console.log(JSON.stringify({status:"PASS",tests:["uk","world_bank","eu","unctadstat","mofcom","australia_critical_minerals","cochilco"]}));
