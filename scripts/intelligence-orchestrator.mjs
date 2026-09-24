@@ -181,7 +181,8 @@ const TASKS = [
     priority: 85,
     timeoutMs: 1_500_000,
     steps: [
-      ["bun", ["scripts/global-risk-gate-country-census.ts", "--require-any-accepted"], "."],
+      // Country census is observational here; commercial acceptance is a separate fail-closed launch gate.
+      ["bun", ["scripts/global-risk-gate-country-census.ts"], "."],
       ["node", ["scripts/audit-global-realtime-source-freshness.mjs"], "."],
       ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
     ],
