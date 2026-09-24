@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 const base = (process.env.GEOMACRO_X402_BASE_URL || "").replace(/\/$/, "");
 const wallet = process.env.GEOMACRO_X402_AGENT_WALLET_ADDRESS || "";
 const maxAmount = process.env.GEOMACRO_AGENT_MAX_PAYMENT_USDC || "0.001";
-const MAX_PAYMENT_USDC = 0.001;
+const MAX_PAYMENT_USDC = 0.05;
 const parsedMaxAmount = Number(maxAmount);
 if (!Number.isFinite(parsedMaxAmount) || parsedMaxAmount <= 0 || parsedMaxAmount > MAX_PAYMENT_USDC) {
   fail(`GEOMACRO_AGENT_MAX_PAYMENT_USDC must be greater than 0 and no more than ${MAX_PAYMENT_USDC}.`);
@@ -51,7 +51,7 @@ const payload = {
 
 console.log("Geomacro Autonomous Risk Agent");
 console.log(`Target: ${target}`);
-console.log("Policy: Arc Testnet only, USDC only, max 0.001 USDC per request.");
+console.log("Policy: Arc Testnet only, USDC only, max 0.05 USDC per request.");
 console.log("Stage 1: requesting intelligence without payment...");
 
 const unpaid = await fetch(target, {
