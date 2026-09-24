@@ -82,6 +82,28 @@ jobs:
           );
           NODE
 
+      - name: Verify signer matches deployed public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/risk-object-keys.json
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const body = JSON.parse(fs.readFileSync('/tmp/risk-object-keys.json', 'utf8'));
+          const key = Array.isArray(body?.keys)
+            ? body.keys.find((item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID)
+            : null;
+
+          if (!key || key.status !== 'active') {
+            throw new Error('Configured Risk Object signing key is not the deployed active key');
+          }
+
+          if (key.public_key_spki_b64 !== process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
+            throw new Error('Configured Risk Object private key does not match deployed public verification key');
+          }
+          NODE
+
       - name: Validate requested country
         id: country
         shell: bash
