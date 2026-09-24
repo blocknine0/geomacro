@@ -28,6 +28,12 @@ on:
       - "src/routes/api.risk-gate-readiness.ts"
       - "config/source-endpoint-manifest-lock.json"
       - ".github/workflows/source-network-governance.yml"
+      - "config/global-p0-source-expansion.json"
+      - "global-intelligence/adapters/**"
+      - "scripts/test-p0-adapters.mjs"
+      - "scripts/test-p0-adapter-certification.mjs"
+      - "scripts/test-p0-live-schema-certification.mjs"
+      - ".github/workflows/global-p0-source-probe.yml"
 
 
 permissions:
@@ -160,6 +166,12 @@ jobs:
           retention-days: 30
       - name: Verify source-network contracts
         run: bunx vitest run src/__tests__/source-certification-contract.test.ts src/__tests__/global-source-coverage-migration.test.ts src/__tests__/source-network-launch-gate-static.test.ts
+      - name: Test global P0 adapters
+        run: bun run test:p0-adapters
+      - name: Test global P0 adapter certification
+        run: bun run test:p0-adapter-certification
+      - name: Test live global P0 transport and schema
+        run: bun run test:p0-live-schema
       - name: Run strict source-network audit on isolated staging
         if: github.event_name == 'workflow_dispatch'
         env:
