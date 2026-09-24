@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "p0_global_source_expansion": {
     "mode": "prelaunch",
     "activation_requires": [
@@ -45,24 +45,27 @@
         "category": "GEOPOLITICS",
         "transport_candidate": "OFFICIAL_NEWS",
         "discovery_url": "https://www.opcw.org/media-centre/news",
-        "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
+        "enabled": false,
+        "schema_status": "LIVE_MACHINE_ENDPOINT_NOT_IDENTIFIED"
       },
       "icj_cases": {
         "provider": "International Court of Justice",
         "category": "GEOPOLITICS",
         "transport_candidate": "OFFICIAL_CASES",
         "discovery_url": "https://www.icj-cij.org/cases",
-        "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
+        "enabled": false,
+        "schema_status": "LIVE_MACHINE_ENDPOINT_NOT_IDENTIFIED"
       },
       "icc_news": {
         "provider": "International Criminal Court",
         "category": "GEOPOLITICS",
         "transport_candidate": "OFFICIAL_NEWS",
         "discovery_url": "https://www.icc-cpi.int/news",
-        "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
+        "enabled": false,
+        "schema_status": "LIVE_MACHINE_ENDPOINT_NOT_IDENTIFIED"
       },
       "unctadstat_global": {
         "provider": "United Nations Trade and Development",
