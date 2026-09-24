@@ -19,6 +19,13 @@ describe("global three-category Arc agent contract", () => {
     expect(runner).toContain('"ARC-TESTNET"');
   });
 
+  it("requires verified payment before claiming and settling delivery", () => {
+    expect(route).toContain("verifyCircleX402");
+    expect(route).toContain("X402_PAYMENT_VERIFICATION_FAILED");
+    expect(route).toContain("claimAgentCommerceDelivery");
+    expect(route).toContain("settleCircleX402");
+  });
+
   it("requires grounded delivery and fail-closed execution", () => {
     expect(route).toContain("answerQuestion");
     expect(route).toContain("insufficient_evidence");
