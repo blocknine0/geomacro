@@ -415,6 +415,16 @@ describe("Federico exact external-evidence review binding", () => {
     expect(federicoPreflight).toContain(
       "record_sha256: signedRiskObjectRecordSha256",
     );
+    expect(federicoPreflight).toContain(
+      'evidence_type: "signed_risk_object_hash_only"',
+    );
+    expect(federicoPreflight).toContain(
+      "action_proposed: false",
+    );
+    expect(federicoPreflight).toContain(
+      'confidentiality_tier: "hash_only"',
+    );
+    );
   });
 
   it("binds review timing to the Risk Object observation timestamp", () => {
@@ -426,6 +436,10 @@ describe("Federico exact external-evidence review binding", () => {
     );
     expect(federicoPreflight).toContain(
       "externalEvidence[0]?.validity_until !== riskObject.expires_at",
+    );
+    expect(federicoPreflight).toContain(
+      '"record" in externalEvidence[0]',
+    );
     );
   });
 });
