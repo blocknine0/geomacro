@@ -37,11 +37,15 @@ if (acknowledge !== "ARC_TESTNET_USDC") {
   fail("Set GEOMACRO_AGENT_PAYMENT_ACK=ARC_TESTNET_USDC to authorize the bounded Testnet payment.");
 }
 
+const country = (process.env.GEOMACRO_AGENT_COUNTRY || "USA").trim().toUpperCase();
+if (!/^[A-Z]{3}$/.test(country)) {
+  fail("GEOMACRO_AGENT_COUNTRY must be a three-letter ISO3 country code.");
+}
+
 const payload = {
   subject: {
-    type: "corridor",
-    origin_country_iso3: process.env.GEOMACRO_AGENT_ORIGIN || "USA",
-    destination_country_iso3: process.env.GEOMACRO_AGENT_DESTINATION || "CHN",
+    type: "country",
+    country_iso3: country,
   },
   policy_preset: "cautious",
   action_type: "agent_payment",
@@ -52,6 +56,7 @@ const payload = {
 console.log("Geomacro Autonomous Risk Agent");
 console.log(`Target: ${target}`);
 console.log("Policy: Arc Testnet only, USDC only, max 0.05 USDC per request.");
+console.log(`Subject: country ${country}`);
 console.log("Stage 1: requesting intelligence without payment...");
 
 const unpaid = await fetch(target, {
