@@ -867,6 +867,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventEventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/intelligence': {
+      id: '/api/agent/intelligence'
+      path: '/api/agent/intelligence'
+      fullPath: '/api/agent/intelligence'
+      preLoaderRoute: typeof ApiAgentIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agent/risk': {
       id: '/api/agent/risk'
       path: '/api/agent/risk'
