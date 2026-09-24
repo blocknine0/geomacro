@@ -11,8 +11,10 @@ import {
 /**
  * Deterministic Ask Geomacro engine.
  *
- * It uses only Geomacro's stored intelligence and the current canonical GRI.
- * No LLM provider, external search or private fallback score is involved.
+ * It uses Geomacro's stored intelligence and the current canonical GRI.
+ * For current topic questions, it may use current public-web search and an
+ * LLM constrained to the retrieved public results. It never invents a private
+ * fallback score when verified GRI state is unavailable.
  */
 export type AskAnswer = {
   summary: string;
