@@ -413,7 +413,7 @@ describe("Federico exact external-evidence review binding", () => {
       "external_evidence: externalEvidence",
     );
     expect(federicoPreflight).toContain(
-      "record_sha256: externalEvidence.record_sha256",
+      "record_sha256: signedRiskObjectRecordSha256",
     );
   });
 
@@ -422,10 +422,10 @@ describe("Federico exact external-evidence review binding", () => {
       "observed_at: observedAt",
     );
     expect(federicoPreflight).toContain(
-      "externalEvidence.observed_at !== observedAt",
+      "externalEvidence[0]?.observed_at !== observedAt",
     );
     expect(federicoPreflight).toContain(
-      "externalEvidence.validity_until !== riskObject.expires_at",
+      "externalEvidence[0]?.validity_until !== riskObject.expires_at",
     );
   });
 });
