@@ -24,7 +24,10 @@ describe("Arc autonomous agent runner", () => {
     );
     expect(runner).toContain('"--max-amount", maxAmount');
     expect(runner).toContain(
-      "Execution boundary was not fail-closed.",
+      "GEOMACRO_AGENT_MAX_PAYMENT_USDC must be greater than 0",
+    );
+    expect(runner).toContain(
+      "result?.risk_gate?.execution_authorized !== false",
     );
   });
 
