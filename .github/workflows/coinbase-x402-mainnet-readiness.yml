@@ -9,6 +9,9 @@ on:
       - "src/lib/coinbase-x402.server.test.ts"
       - "server/routes/api/x402/**"
       - "docs/COINBASE_X402_MAINNET_READINESS.md"
+      - "src/lib/geomacro-intelligence-contract.ts"
+      - "src/__tests__/coinbase-x402-mainnet-zero-fund-rehearsal.test.ts"
+      - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
       - ".env.example"
       - ".github/workflows/coinbase-x402-mainnet-readiness.yml"
   push:
@@ -48,6 +51,7 @@ jobs:
           bunx vitest run
           src/lib/commercial-launch-gate.server.test.ts
           src/lib/coinbase-x402.server.test.ts
+          src/__tests__/coinbase-x402-mainnet-zero-fund-rehearsal.test.ts
       - name: Verify coordinated real-funds gates remain explicit and inactive in source
         shell: bash
         run: |
