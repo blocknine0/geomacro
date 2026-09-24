@@ -119,7 +119,12 @@
         "transport_candidate": "OFFICIAL_MINERALS_DATA",
         "discovery_url": "https://www.cochilco.cl/",
         "adapter_status": "NOT_IMPLEMENTED",
-        "enabled": false
+        "enabled": false,
+        "machine_endpoint": "https://www.cochilco.cl/web/anuario-de-estadisticas-del-cobre-y-otros-minerales/",
+        "machine_formats": [
+          "HTML"
+        ],
+        "schema_status": "STRUCTURED_DISCOVERY_SURFACE"
       }
     }
   }
