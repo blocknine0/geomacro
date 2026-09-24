@@ -575,6 +575,73 @@ jobs:
           }))
           print('PASS: every RSS source declared by the worker completed successfully; transient failures are considered recovered when a later poll succeeds.')
           PY
+      - name: Preflight corroboration query compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createClient } = require('@supabase/supabase-js');
+
+          (async () => {
+            const db = createClient(
+              process.env.APP_SUPABASE_URL,
+              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
+              { auth: { persistSession: false, autoRefreshToken: false } },
+            );
+
+            const country = await db
+              .from('live_flash_event_countries')
+              .select('flash_id')
+              .eq('country_iso3', 'CHN')
+              .limit(1);
+
+            if (country.error) {
+              console.error(JSON.stringify({
+                stage: 'live_flash_event_countries',
+                message: country.error.message,
+                code: country.error.code,
+                details: country.error.details,
+                hint: country.error.hint,
+              }, null, 2));
+              process.exit(1);
+            }
+
+            const flashId = country.data?.[0]?.flash_id;
+            if (!flashId) {
+              console.log('PASS: no CHN flash candidate currently exists; corroboration query compatibility is structurally available.');
+              return;
+            }
+
+            const candidate = await db
+              .from('live_flash_events')
+              .select('flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at')
+              .in('flash_id', [flashId])
+              .in('verification_status', ['UNVERIFIED', 'CORROBORATING'])
+              .limit(1);
+
+            if (candidate.error) {
+              console.error(JSON.stringify({
+                stage: 'live_flash_events_candidate',
+                message: candidate.error.message,
+                code: candidate.error.code,
+                details: candidate.error.details,
+                hint: candidate.error.hint,
+              }, null, 2));
+              process.exit(1);
+            }
+
+            console.log(JSON.stringify({
+              ok: true,
+              candidate_query_compatible: true,
+              sample_flash_id: flashId,
+              candidate_rows: candidate.data?.length ?? 0,
+            }));
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
       - name: Corroborate fresh RSS and structured evidence
         shell: bash
         run: |
