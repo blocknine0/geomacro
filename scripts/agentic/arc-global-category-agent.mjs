@@ -251,7 +251,7 @@ for (const { expectedCategories, question } of selectedQuestions) {
 console.log(JSON.stringify({
   ok: true,
   categories: results,
-  total_paid_usdc: 0.20,
+  total_paid_usdc: Number((results.length * 0.05).toFixed(2)),
   execution_authorized: false,
   technical_proof_only: true,
 }, null, 2));
