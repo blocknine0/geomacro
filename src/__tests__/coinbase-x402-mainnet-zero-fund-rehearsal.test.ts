@@ -7,7 +7,6 @@ import {
   assertCoinbasePaymentBinding,
   coinbasePaymentFingerprint,
   coinbaseRequestFingerprint,
-  coinbaseX402PaymentRequired,
   coinbaseX402PaymentRequirements,
   coinbaseX402PaymentResponseHeader,
   getCoinbaseX402Config,
@@ -90,7 +89,8 @@ function minimalValidResponse() {
     execution_authorized: false,
     delivered_product_hash: "",
   };
-  response.delivered_product_hash = computeGeomacroIntelligenceProductHash(response);
+  const { delivered_product_hash: _ignored, ...withoutProductHash } = response;
+  response.delivered_product_hash = computeGeomacroIntelligenceProductHash(withoutProductHash);
   return response;
 }
 
@@ -200,19 +200,17 @@ describe("Coinbase x402 mainnet zero-fund rehearsal", () => {
     expect(decoded.extensions).toEqual({ buyer_visible: true });
   });
 
-  it("keeps the public payment requirement truthful for the rehearsal target", () => {
+  it("keeps the mainnet payment requirement truthful for the rehearsal target", () => {
     enableMainnetRehearsal();
     const config = getCoinbaseX402Config()!;
-    const required = coinbaseX402PaymentRequired(
-      new Request("https://geomacro.live/api/x402/intelligence", { method: "POST" }),
-      config,
-    );
-    expect(required.x402Version).toBe(2);
-    expect(required.resource.url).toBe("https://geomacro.live/api/x402/intelligence");
-    expect(required.accepts[0].network).toBe("eip155:8453");
-    expect(required.accepts[0].asset).toBe(COINBASE_X402_MAINNET_USDC);
-    expect(required.accepts[0].amount).toBe("50000");
-    expect(required.accepts[0].payTo).toBe(PAY_TO);
+    const required = coinbaseX402PaymentRequirements(config);
+    expect(required.network).toBe("eip155:8453");
+    expect(required.asset).toBe(COINBASE_X402_MAINNET_USDC);
+    expect(required.amount).toBe("50000");
+    expect(required.payTo).toBe(PAY_TO);
+    expect(required.scheme).toBe("exact");
+    expect(required.maxTimeoutSeconds).toBe(60);
+    expect(required.extra).toEqual({ name: "USDC", version: "2" });
     expect(GEOMACRO_INTELLIGENCE_PRICE_USDC).toBe("0.05");
   });
 });
