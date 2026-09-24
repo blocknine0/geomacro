@@ -75,3 +75,18 @@ Before presenting it as a production commercial capability, the acceptance flow 
 - payment settlement references are retained in the commercial proof ledger.
 
 Those checks remain separate from the bounded Arc Testnet agent demo.
+
+
+## Global three-category acceptance
+
+The bounded country Risk Gate proof above is one machine capability. The broader global question proof is exposed separately at `/api/agent/intelligence`.
+
+The global agent endpoint accepts natural-language questions and deterministically routes them across:
+
+- GEOPOLITICS
+- MACRO
+- CRITICAL_MINERALS
+
+A valid question is answered only after current grounded evidence is available. The Circle Testnet buyer runner `agentic:arc-global` verifies HTTP 402, Arc Testnet Gateway USDC, Circle service inspection, a 0.05 USDC spend cap, paid delivery, category routing, grounded evidence and `execution_authorized=false`.
+
+The global endpoint is still Testnet technical proof only. Institutional pricing, production SLAs and autonomous financial execution are outside this path.
