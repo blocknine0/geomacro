@@ -591,7 +591,7 @@ let liveReview:
     } = { attempted: false };
 
 if (invinoApiKey) {
-  const response = await fetch(`${invinoOrigin}/review`, {
+  const response = await fetch(`${invinoOrigin}/review/external`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${invinoApiKey}`,
