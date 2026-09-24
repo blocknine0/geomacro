@@ -1,57 +1,55 @@
 # Global P0 Source Endpoint Review
 
 Date: 2026-09-24
-Branch: `feat/global-source-p0-expansion`
+Branch: feat/global-source-p0-expansion
 Status: prelaunch, fail-closed
 
-## Scope
+## Current certification evidence
 
-This review covers the ten authoritative sources registered by the Global P0 source expansion. Registration does not activate ingestion or commercial signals.
+The P0 adapter fixture suite now covers seven source normalizers:
 
-Every source remains disabled until the full activation gate passes:
+- UK Sanctions List
+- EU Consolidated Financial Sanctions
+- World Bank Commodity Markets / Pink Sheet
+- UNCTADstat
+- China MOFCOM trade/export controls
+- Australian Critical Minerals
+- COCHILCO minerals statistics
 
-- endpoint_pass
-- rights_review
-- schema_pass
-- freshness_pass
-- provenance_pass
-- independence_pass
-- adapter_tested
-- runtime_pass
+The certification fixture checks:
 
-## Authoritative source evidence
+- required normalized observation fields
+- HTTPS source URL shape
+- SHA-256 raw hash format
+- deterministic source record IDs
+- deterministic hashes
+- publication/observation time ordering
+- source-record collision detection
+- category assignment
 
-| Source ID | Category | Official discovery / data surface | Evidence status |
-|---|---|---|---|
-| `uk_sanctions_list` | GEOPOLITICS | UK Sanctions List publication and machine-readable list | Official source verified; machine-readable formats are published |
-| `eu_sanctions_consolidated` | GEOPOLITICS | European Commission sanctions overview / consolidated financial sanctions list | Official source verified; exact production transport still requires runtime certification |
-| `opcw_news` | GEOPOLITICS | OPCW media centre news | Official source verified |
-| `icj_cases` | GEOPOLITICS | ICJ cases | Official source surface identified; runtime certification required |
-| `icc_news` | GEOPOLITICS | ICC news | Official source surface identified; runtime certification required |
-| `unctadstat_global` | MACRO | UNCTADstat Data Centre | Official source verified; multiple datasets are actively updated |
-| `world_bank_commodity_prices` | MACRO | World Bank Commodity Markets / Pink Sheet | Official source verified; September 2026 monthly/annual data surfaces are published |
-| `china_mofcom_trade_controls` | CRITICAL_MINERALS | China MOFCOM | Official government source verified; exact trade-control extraction requires certification |
-| `australia_critical_minerals` | CRITICAL_MINERALS | Australian Government Critical Minerals | Official government source verified |
-| `cochilco_minerals` | CRITICAL_MINERALS | Chilean Copper Commission (COCHILCO) | Official government source verified |
+## Runtime gate
 
-## External verification
+Fixture success does not certify a live source. Activation still requires:
 
-The World Bank currently exposes September 2026 Pink Sheet monthly and annual XLS data, alongside the commodity-market page. urlWorld Bank Commodity Marketshttps://www.worldbank.org/en/research/commodity-markets
+1. endpoint transport pass
+2. machine-readable schema pass against the live endpoint
+3. rights/licensing review
+4. freshness pass
+5. provenance review
+6. independence review
+7. adapter runtime pass
+8. production ingestion pass
 
-UNCTADstat currently lists regularly updated datasets including merchandise trade, balance of payments, commodity prices, and critical-minerals trade. urlUNCTADstat Data Centrehttps://unctadstat.unctad.org/datacentre/
+All seven P0 sources remain disabled for ingestion and commercial signals until every gate is satisfied.
 
-The UK Sanctions List is the UK Government's current sanctions designation source and publishes machine-readable formats. Exact ingestion transport must still pass the repository's runtime and rights gates before activation.
+The endpoint probe runs in GitHub Actions because the local model execution environment cannot be treated as external source-health evidence.
 
-## Runtime probe
+## API key requirement
 
-The repository includes:
+No API key is required by the current seven adapter contracts. They use public government/international-organization data surfaces. If a future source requires credentials, it must be added only after documenting the free/paid access model and secret-handling requirements.
 
-`node scripts/test-global-p0-source-endpoints.mjs`
+## Upstream notes
 
-The probe is read-only and does not activate sources. It records HTTP status, final URL, content type, response size, latency, and timestamp.
+UNCTADstat currently exposes frequently updated trade, macro, commodity-price and critical-minerals datasets through its Data Centre. The current Data Centre includes a monthly UNCTAD Commodity Price Index and a critical-minerals bilateral-trade dataset. citeturn0search0
 
-The model execution environment used during implementation cannot resolve external DNS hosts, so a local execution from that environment cannot be treated as a source-health result. A GitHub Actions workflow has therefore been added to execute the same read-only probe on GitHub-hosted infrastructure and retain the JSON result as an artifact.
-
-## Activation rule
-
-No source in this P0 expansion may be enabled solely because an official page is reachable. Activation requires the complete source certification evidence graph, including rights, schema, freshness, provenance, independence, adapter tests, and runtime health.
+The UK Sanctions List is the UK's current authoritative sanctions designation source and provides XML, CSV and other machine-readable formats. The official page was last updated 21 September 2026. citeturn0search1
