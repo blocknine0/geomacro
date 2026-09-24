@@ -3,7 +3,7 @@ name: Production Historical Structural Adapter
 on:
   push:
     branches:
-      - pre-mainnet-x402-zero-fund-acceptance
+      - main
     paths:
       - "supabase/functions/historical-structural-context/**"
       - ".github/workflows/production-historical-structural-adapter.yml"
@@ -17,7 +17,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event.head_commit.message == 'ops: deploy governed historical structural adapter'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
