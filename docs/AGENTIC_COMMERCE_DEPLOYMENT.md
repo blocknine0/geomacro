@@ -213,7 +213,7 @@ A real Arc Testnet E2E previously passed on the pre-security-hardening head `fd7
 ```text
 buyer Gateway balance before: 0.500000 USDC
 buyer Gateway balance after:  0.499000 USDC
-amount:                       0.001 USDC
+amount:                       0.05 USDC
 settlement reference:         77469123-eeca-41ea-8412-58b45f9ff3b3
 Risk Gate decision:           REQUIRE_APPROVAL
 execution_authorized:         false
