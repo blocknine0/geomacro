@@ -1,5 +1,5 @@
 name: Global Realtime Production Repair
-# Production repair trigger: run only on this isolated repair branch; all existing authoritative/fail-closed gates remain enforced.
+# Production repair trigger: isolated branch only; OIDC allows this exact workflow ref and existing authoritative/fail-closed gates remain enforced.
 
 on:
   push:
