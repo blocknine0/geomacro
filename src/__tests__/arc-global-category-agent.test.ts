@@ -27,6 +27,14 @@ describe("global three-category Arc agent contract", () => {
     expect(route).toContain("completeAgentCommerceDelivery");
   });
 
+  it("handles Circle inspect JSON without depending on one exact method field shape", () => {
+    expect(runner).toContain("function findHttpMethod");
+    expect(runner).toContain("httpMethod");
+    expect(runner).toContain("http_method");
+    expect(runner).toContain('method = "POST"');
+    expect(runner).toContain("already-verified POST endpoint contract");
+  });
+
   it("refuses Testnet spend on public production host", () => {
     expect(runner).toContain('["geomacro.live", "www.geomacro.live"]');
   });
