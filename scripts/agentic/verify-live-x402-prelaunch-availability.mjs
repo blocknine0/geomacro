@@ -55,6 +55,25 @@ const cases = [
 ];
 
 async function main() {
+  const discoveryResponse = await fetch(`${BASE}/.well-known/x402.json`, {
+    method: "GET",
+    headers: { accept: "application/json" },
+    redirect: "error",
+  });
+  if (discoveryResponse.status !== 200) {
+    throw new Error(`x402 discovery: expected HTTP 200, got ${discoveryResponse.status}`);
+  }
+  const discovery = await discoveryResponse.json();
+  if (discovery.status !== "prelaunch") {
+    throw new Error(`x402 discovery is not prelaunch: ${discovery.status}`);
+  }
+  if (discovery.productionFundsAuthorized !== false) {
+    throw new Error("x402 discovery productionFundsAuthorized must remain false before launch");
+  }
+  if (!Array.isArray(discovery.resources) || discovery.resources.length !== 0) {
+    throw new Error("x402 discovery must advertise zero payable production resources before launch");
+  }
+
   const results = [];
   for (const testCase of cases) {
     const response = await fetch(URL, {
