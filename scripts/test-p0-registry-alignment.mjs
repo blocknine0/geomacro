@@ -45,7 +45,7 @@ for (const [id, category] of expected) {
   if (!inFreeCatalog) errors.push(`${id}: missing from free source catalog`);
 }
 
-if ((migration.match(/enabled_for_ingestion\\s*=\\s*false/gi) ?? []).length !== 1) errors.push("migration 974 must explicitly disable ingestion fail-closed");
+if ((migration.match(/enabled_for_ingestion\s*=\s*false/gi) ?? []).length !== 1) errors.push("migration 974 must explicitly disable ingestion fail-closed");
 if (errors.length) {
   console.error(JSON.stringify({status:"FAIL",errors}, null, 2));
   process.exit(1);
