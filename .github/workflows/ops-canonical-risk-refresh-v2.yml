@@ -1,0 +1,106 @@
+name: Ops Canonical Risk Object Refresh V2
+
+on:
+  push:
+    branches:
+      - ops/canonical-risk-refresh-v2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ops-canonical-risk-refresh-v2
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      EXPECTED_PROJECT_REF: ldpwajisioljyjtojvfx
+      EXPECTED_KEY_ID: geomacro-risk-2026-03
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      REFRESH_AUTHORIZATION: I_AUTHORIZE_CANONICAL_RISK_OBJECT_REFRESH
+
+    steps:
+      - name: Require explicit production refresh authorization
+        run: |
+          test "${REFRESH_AUTHORIZATION}" = "I_AUTHORIZE_CANONICAL_RISK_OBJECT_REFRESH"
+
+      - name: Checkout isolated reviewed revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate authoritative production target and signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${SUPABASE_PROJECT_ID:-ldpwajisioljyjtojvfx}" = "${EXPECTED_PROJECT_REF}"
+          test -n "${APP_SUPABASE_URL}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY}"
+          test -n "${RISK_OBJECT_SIGNING_KEY_ID}"
+          test -n "${RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64}"
+          test "${RISK_OBJECT_SIGNING_KEY_ID}" = "${EXPECTED_KEY_ID}"
+
+      - name: Derive signer public verification key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { createPrivateKey, createPublicKey } = require("node:crypto");
+          const fs = require("node:fs");
+          const privateKey = createPrivateKey({
+            key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), "base64"),
+            format: "der",
+            type: "pkcs8",
+          });
+          if (privateKey.asymmetricKeyType !== "ed25519") throw new Error("Risk Object signing key must be Ed25519");
+          const publicB64 = Buffer.from(createPublicKey(privateKey).export({format:"der",type:"spki"})).toString("base64");
+          fs.appendFileSync(process.env.GITHUB_ENV, "RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64="+publicB64+"\n");
+          NODE
+
+      - name: Publish USA IND CHN canonical Risk Objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          for iso3 in USA IND CHN; do
+            echo "Publishing canonical Risk Object for ${iso3}"
+            bun scripts/publish-country-risk-object.ts "${iso3}" CANONICAL > "/tmp/${iso3}.json"
+            jq '{published,object_id,schema_version,delivery_profile,subject,confidence,verification,commercial_eligibility,integrity:{signing_key_id,signature_present,signature_valid,payload_hash,calculation_hash},context}' "/tmp/${iso3}.json"
+            jq -e               --arg iso3 "${iso3}"               --arg key_id "${EXPECTED_KEY_ID}"               '
+                .published == true
+                and .context.published == true
+                and .subject.type == "country"
+                and .subject.id == $iso3
+                and .schema_version == "gro-1.1"
+                and .delivery_profile == "CANONICAL"
+                and .integrity.signing_key_id == $key_id
+                and .integrity.signature_present == true
+                and .integrity.signature_valid == true
+                and .verification.status == "VERIFIED"
+                and .commercial_eligibility.status == "VERIFIED"
+              ' "/tmp/${iso3}.json" >/dev/null
+          done
+
+      - name: Verify current canonical production state
+        run: bun scripts/ops/probe-risk-object-production.mjs
+
+      - name: Record no-payment boundary
+        if: always()
+        run: |
+          echo "Canonical refresh is intelligence-data publication only. No x402 verification, settlement, Base transaction, or USDC movement was performed." >> "${GITHUB_STEP_SUMMARY}"
