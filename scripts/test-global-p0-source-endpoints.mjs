@@ -14,10 +14,26 @@ const registry = JSON.parse(
 
 const timeoutMs = Number(process.env.P0_SOURCE_PROBE_TIMEOUT_MS ?? 15000);
 
+function probeUrl(source) {
+  return source.machine_endpoint ?? source.discovery_url;
+}
+
+function validateResponse(source, response, body) {
+  const url = probeUrl(source);
+  const ct = String(response.headers.get("content-type") ?? "").toLowerCase();
+  const looksXml = /xml/i.test(ct) || /\\.xml(?:$|[?#])/i.test(url);
+  const looksCsv = /csv/i.test(ct) || /\\.csv(?:$|[?#])/i.test(url);
+  const looksXlsx = /spreadsheet|excel|officedocument/i.test(ct) || /\\.xlsx(?:$|[?#])/i.test(url);
+  if (looksXml && !/^\\s*</.test(body)) return "expected XML-like payload";
+  if (looksCsv && body.split(/\\r?\\n/).find(Boolean)?.split(/[,;\\t]/).length < 2) return "expected delimited payload";
+  if (looksXlsx && body.length < 100) return "expected XLSX payload";
+  return null;
+}
+
 async function probe(sourceId, source) {
   const started = Date.now();
   try {
-    const response = await fetch(source.discovery_url, {
+    const response = await fetch(probeUrl(source), {
       redirect: "follow",
       signal: AbortSignal.timeout(timeoutMs),
       headers: { "user-agent": "Geomacro-source-probe/1.0" },
@@ -32,7 +48,7 @@ async function probe(sourceId, source) {
       bytes: Buffer.byteLength(body, "utf8"),
       latency_ms: Date.now() - started,
       observed_at: new Date().toISOString(),
-      error: null,
+      error: validateResponse(source, response, body),
     };
   } catch (error) {
     return {
@@ -55,7 +71,7 @@ for (const [sourceId, source] of entries) {
   results.push(await probe(sourceId, source));
 }
 
-const failed = results.filter((row) => !row.ok);
+const failed = results.filter((row) => !row.ok || row.error);
 console.log(JSON.stringify({
   mode: "READ_ONLY_ENDPOINT_PROBE",
   source_count: results.length,
