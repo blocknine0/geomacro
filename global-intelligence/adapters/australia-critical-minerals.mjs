@@ -45,9 +45,9 @@ export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Dat
     }
   }
 
-  const strategicSection = input.match(/Strategic Materials List[\\s\\S]*?(?:More information|Contact us|$)/i)?.[0] ?? "";
-  const strategicList = strategicSection.match(/<ul\\b[^>]*>[\\s\\S]*?<\\/ul>/i)?.[0] ?? "";
-  for (const item of strategicList.matchAll(/<li\\b[^>]*>([\\s\\S]*?)<\\/li>/gi)) {
+  const strategicSection = input.match(/Strategic Materials List[\s\S]*?(?:More information|Contact us|$)/i)?.[0] ?? "";
+  const strategicList = strategicSection.match(/<ul\b[^>]*>[\s\S]*?<\/ul>/i)?.[0] ?? "";
+  for (const item of strategicList.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)) {
     const mineral = decodeHtml(item[1]);
     if (!mineral || mineral.length > 80 || !/[A-Za-z]/.test(mineral)) continue;
     records.push(normalizeAustraliaCriticalMineral({
