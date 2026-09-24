@@ -76,12 +76,18 @@ for (const [sourceId, source] of entries) {
 }
 
 const failed = results.filter((row) => !row.ok || row.error);
+const blockingFailures = failed.filter(([sourceId, source] => {
+  const registrySource = registry.p0_global_source_expansion.sources[sourceId];
+  return registrySource?.enabled !== false;
+}));
 console.log(JSON.stringify({
   mode: "READ_ONLY_ENDPOINT_PROBE",
   source_count: results.length,
   pass_count: results.length - failed.length,
   fail_count: failed.length,
+  blocking_fail_count: blockingFailures.length,
+  non_blocking_disabled_fail_count: failed.length - blockingFailures.length,
   results,
 }, null, 2));
 
-process.exitCode = failed.length ? 1 : 0;
+process.exitCode = blockingFailures.length ? 1 : 0;
