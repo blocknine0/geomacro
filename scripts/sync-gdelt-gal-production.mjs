@@ -12,6 +12,8 @@ const LOOKBACK_MINUTES = 35;
 const MAX_SOURCE_FILES_PER_RUN = 8;
 const FINGERPRINT_TTL_DAYS = 30;
 const FRESH_SUCCESS_WINDOW_SECONDS = 30 * 60;
+const UPSTREAM_WAIT_SECONDS = 15 * 60;
+const UPSTREAM_RETRY_SECONDS = 30;
 const OUTPUT = process.env.GDELT_GAL_SYNC_OUTPUT ?? null;
 
 const TOPIC_PATTERNS = {
@@ -175,18 +177,35 @@ async function main() {
       ? cursorRow.cursor.last_source_stamp
       : null;
 
+    // GDELT GAL publication can legitimately lag the wall clock. Wait for the
+    // upstream file to appear while keeping the strict 30-minute freshness gate.
     const available = [];
-    for (const stamp of candidateStamps(now).filter((value) => !lastStamp || value > lastStamp)) {
-      const file = await fetchGalFile(stamp);
-      if (file) available.push(file);
-      if (available.length >= MAX_SOURCE_FILES_PER_RUN) break;
-    }
+    const waitStartedAt = Date.now();
+    let freshAvailable = [];
 
-    const freshAvailable = available.filter((file) => {
-      const sourceMs = stampToDate(file.stamp).getTime();
-      const ageSeconds = Math.max(0, (now.getTime() - sourceMs) / 1000);
-      return ageSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;
-    });
+    while ((Date.now() - waitStartedAt) / 1000 <= UPSTREAM_WAIT_SECONDS) {
+      const attemptNow = new Date();
+      for (const stamp of candidateStamps(attemptNow).filter((value) => !lastStamp || value > lastStamp)) {
+        const file = await fetchGalFile(stamp);
+        if (file && !available.some((item) => item.stamp === file.stamp)) available.push(file);
+        if (available.length >= MAX_SOURCE_FILES_PER_RUN) break;
+      }
+
+      freshAvailable = available.filter((file) => {
+        const sourceMs = stampToDate(file.stamp).getTime();
+        const ageSeconds = Math.max(0, (attemptNow.getTime() - sourceMs) / 1000);
+        return ageSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;
+      });
+
+      if (freshAvailable.length > 0) break;
+      console.log(JSON.stringify({
+        ok: false,
+        status: "waiting_for_fresh_gdelt_file",
+        wait_seconds: Math.round((Date.now() - waitStartedAt) / 1000),
+        strict_freshness_window_seconds: FRESH_SUCCESS_WINDOW_SECONDS,
+      }));
+      await new Promise((resolve) => setTimeout(resolve, UPSTREAM_RETRY_SECONDS * 1000));
+    }
 
     if (freshAvailable.length === 0) {
       const lastSuccessMs = cursorRow?.last_success_at ? Date.parse(String(cursorRow.last_success_at)) : NaN;
