@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout exact main
-        uses: actions/checkout@3d3c42e7c7c0e2bff7c1a9f7c74bf54d6f3b8b4a # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
