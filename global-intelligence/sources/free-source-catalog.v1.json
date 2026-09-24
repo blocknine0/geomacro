@@ -1,5 +1,5 @@
 {
-  "version":"1.0",
+  "version":"1.1",
   "sources":[
     {"id":"gdelt_v2","category":"GEOPOLITICS","mode":"api","auth":"none","commercial_status":"verify_per_endpoint","role":"global_fallback"},
     {"id":"gdelt_gal","category":"GEOPOLITICS","mode":"api","auth":"none","commercial_status":"verify_per_endpoint","role":"global_event_stream"},
@@ -7,7 +7,14 @@
     {"id":"un_security_council","category":"GEOPOLITICS","mode":"web_or_rss","auth":"none","commercial_status":"verify_terms","role":"authoritative_context"},
     {"id":"imo_msi","category":"GEOPOLITICS","mode":"web_or_rss","auth":"none","commercial_status":"verify_terms","role":"maritime_context"},
     {"id":"ukmto","category":"GEOPOLITICS","mode":"web","auth":"none","commercial_status":"verify_terms","role":"maritime_security"},
+    {"id":"uk_sanctions_list","category":"GEOPOLITICS","mode":"xml_or_csv","auth":"none","commercial_status":"verify_terms","role":"uk_sanctions_designations"},
+    {"id":"eu_sanctions_consolidated","category":"GEOPOLITICS","mode":"xml_or_csv","auth":"none","commercial_status":"verify_terms","role":"eu_financial_sanctions"},
+    {"id":"opcw_news","category":"GEOPOLITICS","mode":"html","auth":"none","commercial_status":"verify_terms","role":"chemical_weapons_security"},
+    {"id":"icj_cases","category":"GEOPOLITICS","mode":"html","auth":"none","commercial_status":"verify_terms","role":"international_legal_proceedings"},
+    {"id":"icc_news","category":"GEOPOLITICS","mode":"html","auth":"none","commercial_status":"verify_terms","role":"international_justice"},
     {"id":"world_bank_indicators","category":"MACRO","mode":"api","auth":"none","commercial_status":"public_api","role":"global_macro_baseline"},
+    {"id":"unctadstat_global","category":"MACRO","mode":"data_centre","auth":"none","commercial_status":"verify_dataset_terms","role":"global_trade_investment"},
+    {"id":"world_bank_commodity_prices","category":"MACRO","mode":"xlsx","auth":"none","commercial_status":"verify_dataset_terms","role":"global_commodity_benchmark"},
     {"id":"imf_sdmx","category":"MACRO","mode":"api","auth":"account_or_endpoint_dependent","commercial_status":"verify_dataset_terms","role":"global_macro"},
     {"id":"eurostat","category":"MACRO","mode":"api","auth":"none","commercial_status":"public_api","role":"regional_authoritative"},
     {"id":"un_comtrade","category":"MACRO","mode":"api","auth":"free_key","commercial_status":"verify_free_product_terms","role":"trade_crosscheck"},
