@@ -30,6 +30,11 @@ describe("Coinbase x402 Base Sepolia paid E2E safety contract", () => {
     expect(script).toContain("Replay the exact same signed proof + exact same request");
     expect(script).toContain("replay_no_second_debit: true");
     expect(script).toContain("duplicate_charge_count: 0");
+    expect(script).toContain('"event Transfer(address indexed from, address indexed to, uint256 value)"');
+    expect(script).toContain("onchain_usdc_transfer_log_verified: true");
+    expect(script).toContain("transferProof.from !== payer");
+    expect(script).toContain("transferProof.to");
+    expect(script).toContain("transferProof.amount_atomic");
   });
 
   it("proves the same payment proof cannot authorize changed business terms", () => {
