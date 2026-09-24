@@ -147,8 +147,9 @@ describe("Agentic Commerce public demo contract", () => {
     expect(freeRoute).toContain("Requested risk context is temporarily unavailable.");
     expect(paidRoute).toContain("Requested risk context is temporarily unavailable.");
     expect(paidRoute).toContain("Payment signature could not be verified or settled.");
-    expect(paidRoute).toContain("X402_PAYMENT_VERIFICATION_FAILED");
-    expect(paidRoute).toContain("X402_PAYMENT_SETTLEMENT_REJECTED");
+    expect(paidRoute).toContain("X402_PAYMENT_FAILED");
+    expect(paidRoute).toContain("CircleX402SettlementRejectedError");
+    expect(read("src/lib/circle-x402.server.ts")).toContain("PAYMENT_SETTLEMENT_REJECTED");
     expect(paidRoute).toContain("Paid resource delivery failed closed.");
   });
 
