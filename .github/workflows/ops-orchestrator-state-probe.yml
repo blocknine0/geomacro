@@ -1,0 +1,44 @@
+name: Ops Orchestrator State Probe
+
+on:
+  push:
+    branches:
+      - ops/probe-orchestrator-state
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Read orchestrator states
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_SUPABASE_URL="${APP_SUPABASE_URL}" APP_SUPABASE_SERVICE_ROLE_KEY="${APP_SUPABASE_SERVICE_ROLE_KEY}"           node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+          const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+          const db = createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+          const {data,error}=await db.from("live_ingestion_cursors").select("source_key,stream_key,status,last_success_at,last_attempt_at,last_item_at,consecutive_failures,updated_at").eq("source_key","geomacro_intelligence_orchestrator").order("stream_key");
+          if(error) throw error;
+          console.log(JSON.stringify((data??[]).map(r=>({stream_key:r.stream_key,status:r.status,last_success_at:r.last_success_at,last_attempt_at:r.last_attempt_at,last_item_at:r.last_item_at,consecutive_failures:r.consecutive_failures,updated_at:r.updated_at})),null,2));
+          NODE
