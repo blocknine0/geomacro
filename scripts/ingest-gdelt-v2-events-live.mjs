@@ -229,6 +229,41 @@ function mapFipsToIso3(fipsCode, fipsLookup, registry) {
 }
 
 
+async function probeExportFileAvailability(exportMeta) {
+  const headers = {
+    accept: "application/zip, application/octet-stream",
+    "user-agent": "Geomacro-GDELT-Event-Ingest/1.0 (+https://geomacro.live)",
+  }
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const head = await fetch(exportMeta.url, {
+        method: "HEAD",
+        headers,
+      })
+
+      if (head.ok) {
+        const contentLength = Number(head.headers.get("content-length") ?? "")
+        if (Number.isFinite(contentLength) && contentLength === exportMeta.size) {
+          return true
+        }
+      }
+
+      if (head.status !== 405 && head.status !== 501) {
+        return false
+      }
+    } catch {
+      // Fall through to the bounded retry.
+    }
+
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+  }
+
+  return false
+}
+
 async function loadCurrentlyAvailableExport(asOf) {
   const waitMinutes = Number(
     process.env.GDELT_MAX_AVAILABILITY_WAIT_MINUTES ?? 8,
@@ -260,6 +295,63 @@ async function loadCurrentlyAvailableExport(asOf) {
     try {
       return parseLastUpdate(lastUpdateText, effectiveAsOf)
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        message ===
+        "GDELT lastupdate.txt has no Event export available at or before the requested as-of time"
+      ) {
+        try {
+          // GDELT can publish an export file whose filename timestamp briefly
+          // runs ahead of the CI runner clock. Keep the existing 60-minute
+          // freshness envelope, but require the actual ZIP to already exist
+          // with the exact manifest size before accepting the future label.
+          const futureBoundAsOf = new Date(
+            effectiveAsOf.getTime() +
+              MAX_BATCH_AGE_MINUTES * 60_000,
+          )
+          const futureCandidate = parseLastUpdate(
+            lastUpdateText,
+            futureBoundAsOf,
+          )
+          if (
+            new Date(futureCandidate.batchIso).getTime() >
+            effectiveAsOf.getTime()
+          ) {
+            const availableNow =
+              await probeExportFileAvailability(
+                futureCandidate,
+              )
+            if (availableNow) {
+              console.log(
+                JSON.stringify({
+                  fallback:
+                    "FUTURE_GDELT_LABEL_BUT_EXPORT_FILE_ALREADY_AVAILABLE",
+                  batchIso: futureCandidate.batchIso,
+                  future_skew_minutes:
+                    Math.max(
+                      0,
+                      (
+                        new Date(futureCandidate.batchIso).getTime() -
+                        effectiveAsOf.getTime()
+                      ) /
+                        60_000,
+                    ),
+                  max_future_skew_minutes:
+                    MAX_BATCH_AGE_MINUTES,
+                  availability_verified:
+                    true,
+                }),
+              )
+              return futureCandidate
+            }
+          }
+        } catch {
+          // The normal bounded wait below remains authoritative if the file
+          // cannot be proven available now.
+        }
+      }
       const message =
         error instanceof Error ? error.message : String(error)
 
