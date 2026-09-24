@@ -1,3 +1,4 @@
+# Manual-only partner refresh. Production intelligence workflows must not trigger this testnet acceptance job automatically.
 name: Federico Continuous Testnet Risk Object Refresh
 # Continuous testnet acceptance and partner-refresh path. Publication remains fail-closed on all strict evidence gates.
 
