@@ -35,3 +35,5 @@ jobs:
           for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY EIA_API_KEY NOAA_NCEI_TOKEN; do test -n "${!name:-}" || { echo "::error::Missing ${name}"; exit 1; }; done
       - name: Run governed normalized ingestion
         run: bun run scripts/ingest-certified-sources.mjs
+      - name: Replay governed normalized ingestion
+        run: bun run scripts/ingest-certified-sources.mjs
