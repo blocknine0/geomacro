@@ -1,0 +1,34 @@
+name: Ops Canonical Risk Object Refresh Trigger
+
+on:
+  push:
+    branches:
+      - ops/canonical-risk-refresh-trigger
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ops-canonical-risk-refresh-trigger
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dispatch governed canonical refresh for USA IND CHN
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ops/canonical-risk-refresh-trigger
+          ACK: I_AUTHORIZE_CANONICAL_RISK_OBJECT_REFRESH
+        shell: bash
+        run: |
+          set -euo pipefail
+          for iso3 in USA IND CHN; do
+            gh workflow run canonical-risk-object-production-refresh.yml               --repo "${REPO}"               --ref "${REF}"               -f "iso3=${iso3}"               -f "authorization=${ACK}"
+            echo "DISPATCHED ${iso3}"
+          done
+          echo "PASS: governed canonical refresh workflows dispatched for USA, IND, CHN.";
