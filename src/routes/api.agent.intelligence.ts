@@ -14,6 +14,7 @@ import {
   circleX402PaymentRequiredResponse,
   circleX402PaymentResponseHeader,
   settleCircleX402,
+  verifyCircleX402,
 } from "../lib/circle-x402.server";
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -183,6 +184,31 @@ export const Route = createFileRoute("/api/agent/intelligence")({
         const paymentHeader = request.headers.get("payment-signature")?.trim() ?? "";
         if (!paymentHeader) {
           return circleX402PaymentRequiredResponse(request);
+        }
+
+        let verification;
+        try {
+          verification = await verifyCircleX402(request);
+        } catch (error) {
+          console.error("[agent-intelligence] Circle payment verification failed", error);
+          return circleX402PaymentRequiredResponse(request);
+        }
+
+        if (!verification.valid) {
+          console.warn(
+            "[agent-intelligence] Circle payment rejected:",
+            verification.invalid_reason ?? "unknown",
+          );
+          return json({
+            ok: false,
+            payment_required: true,
+            error: {
+              code: "X402_PAYMENT_VERIFICATION_FAILED",
+              message: "The supplied payment proof could not be verified.",
+              reason: verification.invalid_reason ?? null,
+            },
+            execution_authorized: false,
+          }, 402);
         }
 
         const paymentFingerprint = commerceFingerprint(paymentHeader);
