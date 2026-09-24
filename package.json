@@ -42,7 +42,8 @@
     "source:certification:census:strict": "node scripts/audit-source-certification-census.mjs --strict",
     "source:certification:evidence-graph": "node scripts/source-certification-evidence-graph.mjs",
     "source:gdelt-dependency:audit": "node scripts/audit-gdelt-dependency-live.mjs",
-    "agentic:arc-agent": "node scripts/agentic/arc-autonomous-agent.mjs"
+    "agentic:arc-agent": "node scripts/agentic/arc-autonomous-agent.mjs",
+    "risk:refresh-paid-agent": "bun scripts/refresh-paid-agent-risk-objects.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
