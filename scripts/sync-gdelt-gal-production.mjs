@@ -104,6 +104,15 @@ function candidateStamps(now = new Date()) {
   return out;
 }
 
+function filterFreshAvailable(available, observedAt) {
+  const freshAvailable = available.filter((file) => {
+    const sourceMs = stampToDate(file.stamp).getTime();
+    const ageSeconds = Math.max(0, (observedAt.getTime() - sourceMs) / 1000);
+    return ageSeconds <= FRESH_SUCCESS_WINDOW_SECONDS;
+  });
+  return freshAvailable;
+}
+
 async function fetchGalFile(stamp) {
   const sourceUrl = `https://storage.googleapis.com/data.gdeltproject.org/gdeltv3/gal/${stamp}.gal.json.gz`;
   try {
