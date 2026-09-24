@@ -103,6 +103,27 @@ function telemetryAgentId(payer: string | null) {
   return `x402:sha256:${digest}`;
 }
 
+export async function verifyCircleX402(
+  request: Request,
+): Promise<{ valid: boolean; payer: string | null; invalid_reason: string | null }> {
+  const header = request.headers.get("payment-signature");
+  if (!header) throw new Error("PAYMENT_SIGNATURE_MISSING");
+
+  const requirements = paymentRequirements();
+  const paymentPayload = decodePaymentHeader(header);
+
+  const verified = await facilitator.verify(
+    paymentPayload as Parameters<typeof facilitator.verify>[0],
+    requirements as Parameters<typeof facilitator.verify>[1],
+  );
+
+  return {
+    valid: verified.isValid,
+    payer: verified.payer ?? null,
+    invalid_reason: verified.invalidReason ?? null,
+  };
+}
+
 export function circleX402PaymentRequiredResponse(request: Request) {
   const requirements = paymentRequirements();
   const endpoint = new URL(request.url).toString();
@@ -111,7 +132,7 @@ export function circleX402PaymentRequiredResponse(request: Request) {
     resource: {
       url: endpoint,
       description:
-        "Geomacro signed country/corridor risk pre-flight with structural context",
+        "Geomacro global risk intelligence with structured evidence and provenance",
       mimeType: "application/json",
     },
     accepts: [requirements],
