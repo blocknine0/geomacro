@@ -46,6 +46,7 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               signed_risk_object_attestation: true,
             },
             commercial_boundary: {
+              agent_global_question_categories: ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
               raw_source_identity_exposed: false,
               raw_article_material_exposed: false,
               source_names_in_paid_response: false,
@@ -57,6 +58,8 @@ export const Route = createFileRoute("/api/intelligence/capabilities")({
               free_state_check:
                 "GET /api/intelligence/state?country=ISO3&known_state_version=...",
               risk_object_keys: "GET /api/risk-object-keys",
+              testnet_agent_intelligence: "POST /api/agent/intelligence",
+              testnet_agent_intelligence_discovery: "GET /api/agent/intelligence",
             },
           },
           {
