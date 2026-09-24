@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "p0_global_source_expansion": {
     "mode": "prelaunch",
     "activation_requires": [
@@ -94,7 +94,7 @@
         "category": "CRITICAL_MINERALS",
         "transport_candidate": "OFFICIAL_POLICY_RELEASES",
         "discovery_url": "https://english.mofcom.gov.cn/",
-        "adapter_status": "NOT_IMPLEMENTED",
+        "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://exportcontrol.mofcom.gov.cn/",
         "machine_formats": [
@@ -106,7 +106,7 @@
         "category": "CRITICAL_MINERALS",
         "transport_candidate": "OFFICIAL_CRITICAL_MINERALS",
         "discovery_url": "https://www.industry.gov.au/mining-oil-and-gas/minerals/critical-minerals",
-        "adapter_status": "NOT_IMPLEMENTED",
+        "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list",
         "machine_formats": [
@@ -118,7 +118,7 @@
         "category": "CRITICAL_MINERALS",
         "transport_candidate": "OFFICIAL_MINERALS_DATA",
         "discovery_url": "https://www.cochilco.cl/",
-        "adapter_status": "NOT_IMPLEMENTED",
+        "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "machine_endpoint": "https://www.cochilco.cl/web/anuario-de-estadisticas-del-cobre-y-otros-minerales/",
         "machine_formats": [
