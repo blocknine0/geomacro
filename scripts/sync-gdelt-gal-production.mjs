@@ -14,6 +14,8 @@ const FINGERPRINT_TTL_DAYS = 30;
 const FRESH_SUCCESS_WINDOW_SECONDS = 30 * 60;
 const UPSTREAM_WAIT_SECONDS = 15 * 60;
 const UPSTREAM_RETRY_SECONDS = 30;
+const UPSTREAM_FETCH_TIMEOUT_SECONDS = 8;
+const MAX_GDELT_PROBE_MINUTES = 12;
 const OUTPUT = process.env.GDELT_GAL_SYNC_OUTPUT ?? null;
 
 const TOPIC_PATTERNS = {
@@ -111,6 +113,7 @@ async function fetchGalFile(stamp) {
   try {
     const response = await fetch(sourceUrl, {
       headers: { "user-agent": "Geomacro-Live-Intelligence/1.0" },
+      signal: AbortSignal.timeout(UPSTREAM_FETCH_TIMEOUT_SECONDS * 1000),
     });
     if (response.status === 404) return null;
     if (!response.ok) {
@@ -185,10 +188,26 @@ async function main() {
 
     while ((Date.now() - waitStartedAt) / 1000 <= UPSTREAM_WAIT_SECONDS) {
       const attemptNow = new Date();
-      for (const stamp of candidateStamps(attemptNow).filter((value) => !lastStamp || value > lastStamp)) {
-        const file = await fetchGalFile(stamp);
-        if (file && !available.some((item) => item.stamp === file.stamp)) available.push(file);
-        if (available.length >= MAX_SOURCE_FILES_PER_RUN) break;
+      const probeStamps = candidateStamps(attemptNow)
+        .filter((value) => !lastStamp || value > lastStamp)
+        .slice(0, MAX_GDELT_PROBE_MINUTES);
+
+      const probeResults = await Promise.allSettled(
+        probeStamps.map((stamp) => fetchGalFile(stamp)),
+      );
+
+      for (const result of probeResults) {
+        if (
+          result.status === "fulfilled" &&
+          result.value &&
+          !available.some((item) => item.stamp === result.value.stamp)
+        ) {
+          available.push(result.value);
+        }
+      }
+
+      if (available.length > MAX_SOURCE_FILES_PER_RUN) {
+        available.splice(MAX_SOURCE_FILES_PER_RUN);
       }
 
       freshAvailable = available.filter((file) => {
