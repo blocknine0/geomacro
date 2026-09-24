@@ -4,9 +4,9 @@ Date: 2026-09-24
 Branch: feat/global-source-p0-expansion
 Status: prelaunch, fail-closed
 
-## Current certification evidence
+## Certified implementation surface
 
-The P0 adapter fixture suite now covers ten source normalizers:
+The P0 expansion now contains ten source adapters covering:
 
 - UK Sanctions List
 - EU Consolidated Financial Sanctions
@@ -19,52 +19,71 @@ The P0 adapter fixture suite now covers ten source normalizers:
 - Australian Critical Minerals
 - COCHILCO minerals statistics
 
-The fixture certification checks:
+All ten have deterministic normalization contracts, SHA-256 provenance hashes, collision checks, timestamp ordering checks and fixture coverage. The three international legal/security HTML sources also have live HTML extraction parsers rather than discovery-only normalizers.
 
-- required normalized observation fields
-- HTTPS source URL shape
-- SHA-256 raw hash format
-- deterministic source record IDs
-- deterministic hashes
-- publication/observation time ordering
-- source-record collision detection
-- category assignment
+## Live certification model
 
-## OPCW / ICJ / ICC live-source status
+Live certification is read-only and fail-closed. Each candidate is checked for:
 
-The official discovery surfaces are confirmed current, but a stable public machine-readable endpoint was not identified for these three sources during this certification pass.
+1. successful transport
+2. expected content type / structure
+3. required authoritative page markers
+4. positive extraction count for sources with live HTML parsers
+5. successful adapter execution
 
-OPCW publishes current official news on its Media Centre. The current page contains dated official news items, including September 2026 releases. citeturn0search1turn0search3
+The live certification now covers all ten P0 sources. It never changes source activation state.
 
-The ICJ official cases/documents are available through the Court website and its official document infrastructure. Search evidence also exposes official case-related documents on the Court's api.icj-cij.org document host, but that is not sufficient by itself to certify a stable case-list API. citeturn1search0turn0search4
+## Source-specific status
 
-The ICC official news surface remains the authoritative discovery surface for this adapter. No stable machine endpoint was promoted from discovery-only evidence in this pass.
+### Machine-readable sources
 
-Accordingly, these three adapters are marked IMPLEMENTED_FIXTURE_CERTIFIED, but remain disabled and are not treated as live schema-certified sources.
+UK Sanctions List uses the official UK machine-readable list endpoint.
 
-## Runtime gate
+EU Consolidated Financial Sanctions uses the official EU consolidated sanctions surface.
 
-Fixture success does not certify a live source. Activation still requires:
+World Bank commodity prices use the official monthly commodity dataset endpoint.
 
-1. endpoint transport pass
-2. machine-readable schema pass against the live endpoint
+UNCTADstat remains registered against the official Data Centre surface; dataset/API-level certification is still separate from page transport.
+
+### Live HTML extraction sources
+
+OPCW uses the official News page. The current official page is populated with dated 2026 news releases. citeturn466545search0
+
+ICJ uses the official Cases page. The adapter is designed for the Court's official HTML case listing and remains read-only until live runtime checks pass.
+
+ICC uses the official News page. The adapter extracts official news links from the published HTML surface and remains read-only until live runtime checks pass.
+
+China MOFCOM uses the official Export Control Information Network HTML surface.
+
+Australia uses the official Critical Minerals List / Strategic Materials List HTML surface.
+
+COCHILCO uses the official Anuario page as a structured discovery surface for the current statistical datasets. It does not claim a pinned XLSX endpoint until that endpoint is safely verified.
+
+## Activation gate
+
+All ten P0 sources remain disabled for ingestion and commercial signals.
+
+Activation requires every applicable gate to pass:
+
+1. endpoint transport
+2. schema/runtime extraction
 3. rights/licensing review
-4. freshness pass
+4. freshness review
 5. provenance review
-6. independence review
-7. adapter runtime pass
-8. production ingestion pass
+6. source-independence review
+7. adapter certification
+8. production ingestion verification
 
-All ten P0 sources remain disabled for ingestion and commercial signals until every gate is satisfied.
+No source is enabled merely because its parser or live endpoint test passes.
 
-The endpoint probe runs in GitHub Actions because the local model execution environment cannot be treated as external source-health evidence.
+## CI governance
+
+Global P0 adapter fixtures, adapter certification and live transport/schema certification are now included in pull-request gating through GitHub Actions.
+
+The dedicated Global P0 workflow also supports scheduled re-probing and manual execution.
+
+The broader Source Network Governance workflow runs the P0 checks alongside the existing endpoint-manifest and source-network contract gates.
 
 ## API key requirement
 
-No API key is required by the current adapter contracts. They use public government/international-organization data surfaces. If a future source requires credentials, it must be added only after documenting the free/paid access model and secret-handling requirements.
-
-## Upstream notes
-
-UNCTADstat exposes frequently updated trade, macro, commodity-price and critical-minerals datasets through its Data Centre.
-
-The UK Sanctions List is the UK's current authoritative sanctions designation source and provides XML, CSV and other machine-readable formats.
+No API key is required by the current P0 adapter contracts. Any future credentialed source must document access terms, secret handling and commercial-use constraints before activation.
