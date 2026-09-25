@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Copy,
   Github,
+  Languages,
   LogOut,
   Menu,
   Twitter,
@@ -152,6 +153,65 @@ const PRODUCTION_EVIDENCE_ROUTES = new Set(["/risk-gate", "/research"]);
 
 const GITHUB_URL = "https://github.com/blocknine0/geomacro";
 
+const SITE_LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "pt", label: "Português" },
+  { code: "zh-CN", label: "简体中文" },
+  { code: "zh-TW", label: "繁體中文" },
+  { code: "ja", label: "日本語" },
+  { code: "ko", label: "한국어" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "bn", label: "বাংলা" },
+  { code: "ar", label: "العربية" },
+  { code: "ru", label: "Русский" },
+  { code: "tr", label: "Türkçe" },
+  { code: "id", label: "Bahasa Indonesia" },
+] as const;
+
+function LanguageMenu() {
+  const translatePage = (code: string) => {
+    if (code === "en") {
+      window.location.reload();
+      return;
+    }
+    const target = encodeURIComponent(window.location.href);
+    window.location.assign(`https://translate.google.com/translate?sl=auto&tl=${encodeURIComponent(code)}&u=${target}`);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+          aria-label="Choose website language"
+        >
+          <Languages className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Language</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          Read Geomacro in your language
+        </DropdownMenuLabel>
+        {SITE_LANGUAGES.map((language) => (
+          <DropdownMenuItem
+            key={language.code}
+            onSelect={() => translatePage(language.code)}
+            className="cursor-pointer"
+          >
+            {language.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function ExploreMenu() {
   return (
     <DropdownMenu>
@@ -295,7 +355,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
               </Button>
             </nav>
 
-            <div className="flex min-w-[44px] items-center justify-end gap-2">
+            <div className="flex min-w-[44px] items-center justify-end gap-1.5">
+              <LanguageMenu />
               {address && (
                 <Link
                   to="/portfolio"
