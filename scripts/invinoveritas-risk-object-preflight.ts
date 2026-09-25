@@ -136,6 +136,20 @@ if (strictProfile && !observedAt) {
   );
 }
 
+if (
+  strictProfile &&
+  (
+    riskObject?.schema_version !== "gro-1.1" ||
+    riskObject?.subject?.type !== "country" ||
+    riskObject?.subject?.id !== "CHN" ||
+    riskObject?.methodology_version !== "country-risk-v0.1.0-pilot"
+  )
+) {
+  throw new Error(
+    "Federico strict admission target mismatch: expected CHN gro-1.1 country-risk-v0.1.0-pilot",
+  );
+}
+
 let registryUrl = riskObject?.integrity?.trust_registry_url ?? "";
 let trusted: any = null;
 let registry: any = null;
@@ -602,6 +616,16 @@ if (
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
+if (
+  strictProfile &&
+  signedRiskObjectRecordSha256 !==
+    String(externalEvidence?.[0]?.record_sha256 ?? "")
+) {
+  throw new Error(
+    "Federico strict admission requires computed SHA-256 to equal external_evidence[0].record_sha256",
+  );
+}
+
 const signableRiskObject = structuredClone(riskObject);
 signableRiskObject.integrity = {
   ...signableRiskObject.integrity,
@@ -788,38 +812,22 @@ let liveReview:
     } = { attempted: false };
 
 if (invinoApiKey) {
-  let reviewApiKey = invinoApiKey;
-  let reviewAuthMode: "primary" | "demo_fallback" = "primary";
+  // Production Federation acceptance must use the configured primary
+  // Invinoveritas credential. A 402 is an actionable billing/authentication
+  // failure, not a reason to silently switch to a demo credential.
+  const reviewAuthMode: "primary" = "primary";
 
-  // /review/external can return a verdict without the portable proof. Federico acceptance requires the signed proof contract, so use canonical /review with sign=true.
-  let response = await fetch(invinoOrigin + "/review", {
+  // Federico acceptance requires the signed proof contract, so use canonical /review with sign=true.
+  const response = await fetch(invinoOrigin + "/review", {
     method: "POST",
     headers: {
-      authorization: "Bearer " + reviewApiKey,
+      authorization: "Bearer " + invinoApiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify(reviewRequest),
   });
 
-  let body = await response.json().catch(() => null);
-
-  if (
-    response.status === 402 &&
-    invinoDemoApiKey &&
-    invinoDemoApiKey !== invinoApiKey
-  ) {
-    reviewApiKey = invinoDemoApiKey;
-    reviewAuthMode = "demo_fallback";
-    response = await fetch(invinoOrigin + "/review", {
-      method: "POST",
-      headers: {
-        authorization: "Bearer " + reviewApiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(reviewRequest),
-    });
-    body = await response.json().catch(() => null);
-  }
+  const body = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new Error(
@@ -982,14 +990,12 @@ if (invinoApiKey) {
     );
   }
 
-  // The partner's signed review verdict is advisory. "approve_with_concerns"
-  // is still an admission decision when there are no blocker-severity issues.
-  // High/medium/low concerns remain preserved in the proof and summary for
-  // downstream human review; they do not convert an explicitly approving
-  // partner verdict into a hard cryptographic admission failure.
+  // Federico acceptance is intentionally strict: a signed partner proof is
+  // useful only when the provider returned a clean approval with zero issues.
+  // Any blocker/high/medium/low concern keeps the object inadmissible.
   const admissionClear =
-    ["approve", "approve_with_concerns"].includes(verdict) &&
-    blockerCount === 0;
+    verdict === "approve" &&
+    issues.length === 0;
 
   liveReview = {
     attempted: true,
@@ -1073,6 +1079,8 @@ console.log(
           validity_until: externalEvidence[0].validity_until,
         }],
         review_auth_mode: liveReview.attempted ? liveReview.auth_mode : null,
+        primary_auth_required: strictProfile,
+        demo_fallback_allowed: false,
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
       },
