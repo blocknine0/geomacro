@@ -19,7 +19,6 @@ import {
   FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION,
-  FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
   federicoStrictSourceFamilyForId,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
 } from "./public-demo-risk-profile";
@@ -813,22 +812,33 @@ export async function buildCountryRiskObject(
         source_record_ids:
           [...(event.source_record_ids ?? [])],
 
-        source_urls:
-          [...(event.source_urls ?? [])],
+        // Strict Federico omits raw source URLs and duplicate source-family
+        // expansions. The versioned source-family registry reconstructs those
+        // families deterministically from source_ids.
+        ...(strictProfile
+          ? {}
+          : {
+              source_urls:
+                [...(event.source_urls ?? [])],
 
-        source_families:
-          [...(event.source_families ?? [])],
+              source_families:
+                [...(event.source_families ?? [])],
+            }),
 
         content_hashes:
           [...(event.content_hashes ?? [])],
 
-        relevance_reason:
-          event.relevance_reason ??
-          `Country-link relevance: ${countryIso3}`,
+        ...(strictProfile
+          ? {}
+          : {
+              relevance_reason:
+                event.relevance_reason ??
+                `Country-link relevance: ${countryIso3}`,
 
-        transmission_channel:
-          event.transmission_channel ??
-          null,
+              transmission_channel:
+                event.transmission_channel ??
+                null,
+          }),
 
         relevance_weight:
           round(
@@ -842,9 +852,13 @@ export async function buildCountryRiskObject(
             3,
           ),
 
-        subject_is_primary:
-          event.subject_is_primary ??
-          true,
+        ...(strictProfile
+          ? {}
+          : {
+              subject_is_primary:
+                event.subject_is_primary ??
+                true,
+            }),
 
         subject_attribution_confidence:
           typeof event.subject_attribution_confidence ===
@@ -889,8 +903,17 @@ export async function buildCountryRiskObject(
           event.direction ??
           "unknown",
 
-        last_seen_at:
-          event.last_seen_at,
+        ...(strictProfile
+          ? {}
+          : {
+              last_seen_at:
+                event.last_seen_at,
+
+              evidence_refs:
+                normalizeStringArray(
+                  event.evidence_refs,
+                ),
+            }),
 
         evidence_count:
           Number(
@@ -903,14 +926,8 @@ export async function buildCountryRiskObject(
             event.independent_source_count ??
               0,
           ),
-
-        evidence_refs:
-          normalizeStringArray(
-            event.evidence_refs,
-          ),
       }),
     );
-
   const structureVersions =
     normalizeStringArray(
       selectedWeighted.map(
@@ -968,13 +985,20 @@ export async function buildCountryRiskObject(
       0,
     );
 
+  const evidenceSourceFamilies =
+    strictProfile
+      ? evidence.flatMap((item) =>
+          (item.source_ids ?? []).map(
+            federicoStrictSourceFamilyForId,
+          ),
+        )
+      : evidence.flatMap(
+          (item) =>
+            item.source_families ?? [],
+        );
+
   const sourceFamilies =
-    new Set(
-      evidence.flatMap(
-        (item) =>
-          item.source_families,
-      ),
-    );
+    new Set(evidenceSourceFamilies);
 
   const calculationInput = {
     methodology_version:
@@ -1000,52 +1024,81 @@ export async function buildCountryRiskObject(
 
     events:
       selectedWeighted.map(
-        (item) => ({
-          id:
-            item.event.id,
+        (item) =>
+          strictProfile
+            ? {
+                id:
+                  item.event.id,
 
-          event_type:
-            item.event
-              .event_type,
+                event_type:
+                  item.event.event_type,
 
-          severity:
-            item.severity,
+                severity:
+                  item.severity,
 
-          confidence:
-            item.confidence,
+                confidence:
+                  item.confidence,
 
-          last_seen_at:
-            item.event
-              .last_seen_at,
+                evidence_at:
+                  item.event.material_evidence_at ??
+                  item.event.last_seen_at,
 
-          driver:
-            item.driver,
+                driver:
+                  item.driver,
 
-          weight:
-            item.weight,
+                weight:
+                  item.weight,
 
-          relevance_weight:
-            item.relevance_weight,
+                relevance_weight:
+                  item.relevance_weight,
 
-          source_families:
-            item.event.source_families ??
-            [],
+                event_family_id:
+                  item.event.event_family_id ??
+                  null,
+              }
+            : {
+                id:
+                  item.event.id,
 
-          source_record_ids:
-            item.event.source_record_ids ??
-            [],
+                event_type:
+                  item.event.event_type,
 
-          content_hashes:
-            item.event.content_hashes ??
-            [],
+                severity:
+                  item.severity,
 
-          event_family_id:
-            item.event.event_family_id ??
-            null,
-        }),
+                confidence:
+                  item.confidence,
+
+                last_seen_at:
+                  item.event.last_seen_at,
+
+                driver:
+                  item.driver,
+
+                weight:
+                  item.weight,
+
+                relevance_weight:
+                  item.relevance_weight,
+
+                source_families:
+                  item.event.source_families ??
+                  [],
+
+                source_record_ids:
+                  item.event.source_record_ids ??
+                  [],
+
+                content_hashes:
+                  item.event.content_hashes ??
+                  [],
+
+                event_family_id:
+                  item.event.event_family_id ??
+                  null,
+              },
       ),
   };
-
   const inputHash =
     await sha256(
       calculationInput,
@@ -1057,65 +1110,93 @@ export async function buildCountryRiskObject(
 
     evidence:
       evidence.map(
-        (item) => ({
-          event_id:
-            item.event_id,
+        (item) =>
+          strictProfile
+            ? {
+                event_id:
+                  item.event_id,
 
-          event_family_id:
-            item.event_family_id ?? null,
+                event_family_id:
+                  item.event_family_id ??
+                  null,
 
-          evidence_refs:
-            item.evidence_refs,
+                source_ids:
+                  item.source_ids ?? [],
 
-          source_ids:
-            item.source_ids ?? [],
+                source_record_ids:
+                  item.source_record_ids ?? [],
 
-          source_record_ids:
-            item.source_record_ids ?? [],
+                content_hashes:
+                  item.content_hashes ?? [],
 
-          source_urls:
-            item.source_urls ?? [],
+                material_evidence_at:
+                  item.material_evidence_at,
 
-          source_families:
-            item.source_families,
+                evidence_age_hours:
+                  item.evidence_age_hours,
 
-          evidence_age_hours:
-            item.evidence_age_hours,
+                relevance_weight:
+                  item.relevance_weight ?? 1,
 
-          relevance_reason:
-            item.relevance_reason,
+                subject_attribution_confidence:
+                  item.subject_attribution_confidence ??
+                  null,
 
-          material_evidence_at:
-            item.material_evidence_at,
+                subject_attribution_method:
+                  item.subject_attribution_method ??
+                  null,
+              }
+            : {
+                event_id:
+                  item.event_id,
 
-          transmission_channel:
-            item.transmission_channel,
+                event_family_id:
+                  item.event_family_id ?? null,
 
-          relevance_weight:
-            item.relevance_weight,
+                evidence_refs:
+                  item.evidence_refs,
 
-          material_evidence_at:
-            item.material_evidence_at ??
-            null,
+                source_ids:
+                  item.source_ids ?? [],
 
-          subject_is_primary:
-            item.subject_is_primary ?? true,
+                source_record_ids:
+                  item.source_record_ids ?? [],
 
-          subject_attribution_confidence:
-            item.subject_attribution_confidence ?? null,
+                source_urls:
+                  item.source_urls ?? [],
 
-          subject_attribution_method:
-            item.subject_attribution_method ?? null,
+                source_families:
+                  item.source_families,
 
-          source_record_ids:
-            item.source_record_ids ?? [],
+                evidence_age_hours:
+                  item.evidence_age_hours,
 
-          content_hashes:
-            item.content_hashes ?? [],
-        }),
+                relevance_reason:
+                  item.relevance_reason,
+
+                material_evidence_at:
+                  item.material_evidence_at,
+
+                transmission_channel:
+                  item.transmission_channel,
+
+                relevance_weight:
+                  item.relevance_weight,
+
+                subject_is_primary:
+                  item.subject_is_primary ?? true,
+
+                subject_attribution_confidence:
+                  item.subject_attribution_confidence ?? null,
+
+                subject_attribution_method:
+                  item.subject_attribution_method ?? null,
+
+                content_hashes:
+                  item.content_hashes ?? [],
+              },
       ),
   };
-
   const dataHash =
     await sha256(
       dataProjection,
@@ -1177,13 +1258,8 @@ export async function buildCountryRiskObject(
     );
   }
 
-  const totalIndependentSources = new Set(
-    evidence.flatMap(
-      (item) =>
-        item.source_families ??
-        [],
-    ),
-  ).size;
+  const totalIndependentSources =
+    new Set(evidenceSourceFamilies).size;
 
   const highImpactEvidence = evidence.filter(
     (item) =>
@@ -1343,17 +1419,21 @@ export async function buildCountryRiskObject(
 
       source_family_map:
         strictProfile
-          ? {
-              ...FEDERICO_STRICT_SOURCE_FAMILY_BY_ID,
-              ...Object.fromEntries(
-                evidence.flatMap((item) =>
-                  item.source_ids.map((sourceId) => [
-                    sourceId,
-                    federicoStrictSourceFamilyForId(sourceId),
-                  ]),
+          ? Object.fromEntries(
+              [...
+                new Set(
+                  evidence.flatMap(
+                    (item) =>
+                      item.source_ids ?? [],
+                  ),
                 ),
-              ),
-            }
+              ]
+                .sort()
+                .map((sourceId) => [
+                  sourceId,
+                  federicoStrictSourceFamilyForId(sourceId),
+                ]),
+            )
           : {},
     },
     calculation_input:
@@ -1373,10 +1453,18 @@ export async function buildCountryRiskObject(
       aggregate_confidence:
         aggregateConfidenceRounded,
     },
-    hash_inputs: {
-      data_projection:
-        dataProjection,
-    },
+    hash_inputs:
+      strictProfile
+        ? {
+            data_projection_version:
+              "country-risk-data-projection-v2",
+            data_projection_sha256:
+              dataHash,
+          }
+        : {
+            data_projection:
+              dataProjection,
+          },
   };
 
   const objectId =
