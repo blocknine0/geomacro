@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { TESTNET_INTELLIGENCE_CAPABILITY_CATALOG, TESTNET_INTELLIGENCE_PRICE_TABLE } from "@/lib/testnet-intelligence-contract";
+import { TESTNET_INTELLIGENCE_CAPABILITIES, TESTNET_INTELLIGENCE_CAPABILITY_CATALOG, TESTNET_INTELLIGENCE_PRICE_TABLE } from "@/lib/testnet-intelligence-contract";
+import { TESTNET_API_CREDIT_PRICE_USDC, TESTNET_API_FIXED_CREDITS } from "@/lib/testnet-api-pricing";
 import { TESTNET_PUBLIC_API_KEYS } from "@/lib/testnet-public-access-contract";
 import { TESTNET_USDC_ACCESS_CHAINS } from "@/lib/testnet-usdc-access-contract";
 
@@ -44,6 +45,8 @@ const AUTH_FLOW = "client-wallet-first-v4-public-developer";
 const MAX_ACTIVE_DEVELOPER_KEYS = 1;
 const DEMO_CAPABILITY = "structural_country_digest" as const;
 const DEMO_PRICE = TESTNET_INTELLIGENCE_PRICE_TABLE[DEMO_CAPABILITY];
+const TESTNET_INTELLIGENCE_CAPABILITY_COUNT = TESTNET_INTELLIGENCE_CAPABILITIES.length;
+const TESTNET_USDC_CHAIN_COUNT = Object.values(TESTNET_USDC_ACCESS_CHAINS).length;
 const X_HANDLE = "GeomacroLive";
 const X_FOLLOW_URL = `https://x.com/intent/follow?screen_name=${X_HANDLE}`;
 const X_SHARE_TEXT =
@@ -465,8 +468,12 @@ function TestnetAccessPage() {
 
   async function writeClipboard(value: string) {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return;
+      try {
+        await navigator.clipboard.writeText(value);
+        return;
+      } catch {
+        // Fall through to the browser-compatible textarea fallback.
+      }
     }
 
     const textArea = document.createElement("textarea");
@@ -579,22 +586,22 @@ function TestnetAccessPage() {
       <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-border/70 bg-card/20 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Capabilities</p>
-          <p className="mt-2 text-2xl font-semibold">8</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_INTELLIGENCE_CAPABILITY_COUNT}</p>
           <p className="mt-1 text-xs text-muted-foreground">Query, GRI, structural risk, signed Risk Objects and Risk Gate.</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-card/20 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Metering</p>
-          <p className="mt-2 text-2xl font-semibold">0.5 USDC</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_API_CREDIT_PRICE_USDC} USDC</p>
           <p className="mt-1 text-xs text-muted-foreground">Testnet USDC per credit. Pay only when a metered call is used.</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-card/20 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Usage cap</p>
-          <p className="mt-2 text-2xl font-semibold">500 credits</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_API_FIXED_CREDITS} credits</p>
           <p className="mt-1 text-xs text-muted-foreground">30-day Testnet usage cap, not a prepaid balance.</p>
         </div>
         <div className="rounded-xl border border-border/70 bg-card/20 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Payment chains</p>
-          <p className="mt-2 text-2xl font-semibold">3</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_USDC_CHAIN_COUNT}</p>
           <p className="mt-1 text-xs text-muted-foreground">Arc Testnet, Base Sepolia and Polygon Amoy.</p>
         </div>
       </section>
@@ -850,6 +857,8 @@ Authorization: GeomacroTest <API_KEY>.<API_SECRET>
   "payment": {
     "credits": ${DEMO_PRICE.credits},
     "amount_due_usdc": ${DEMO_PRICE.testnet_usdc.toFixed(2)},
+    "receiver_address": "<RECEIVER_FROM_QUOTE>",
+    "supported_chains": ["Arc Testnet", "Base Sepolia", "Polygon Amoy"],
     "message": "Pay only this API call, then retry the same request_id."
   }
 }`}</pre>
@@ -859,7 +868,8 @@ Authorization: GeomacroTest <API_KEY>.<API_SECRET>
 Asset: Testnet USDC
 Amount: ${DEMO_PRICE.testnet_usdc.toFixed(2)} USDC
 From: <VERIFIED_TESTER_WALLET>
-Network: ${Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => chain.name).join(" / ")}
+Network: <SELECTED_SUPPORTED_CHAIN>
+Supported: ${Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => chain.name).join(" / ")}
 Result: <CONFIRMED_TX_HASH>`}</pre>
             ) : null}
             {demoStep === 3 ? (
