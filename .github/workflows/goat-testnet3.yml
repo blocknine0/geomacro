@@ -162,7 +162,7 @@ jobs:
           for name in GOATX402_API_KEY GOATX402_API_SECRET GOATX402_MERCHANT_ID GOATX402_PILOT_ACCESS_TOKEN APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY RISK_OBJECT_SIGNING_KEY_ID RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 GEOMACRO_GOAT_TEST_PAYER_ADDRESS; do
             test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
           done
-          test "$RISK_OBJECT_SIGNING_KEY_ID" = "geomacro-risk-2026-02"
+          test "$RISK_OBJECT_SIGNING_KEY_ID" = "geomacro-risk-2026-03"
       - name: Derive matching Risk Object public key
         shell: bash
         run: |

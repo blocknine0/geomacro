@@ -26,7 +26,7 @@ Add these as **Environment secrets**, not variables:
 | `GEOMACRO_GOAT_PILOT_ACCESS_TOKEN` | Geomacro-only bearer token for `/api/goat/pilot/*`; generate a random 32-byte-or-longer secret and keep it server-only |
 | `APP_SUPABASE_URL` | Existing authoritative Geomacro application Supabase URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Existing authoritative Geomacro service-role key; workflow maps this to `APP_SUPABASE_SERVICE_ROLE_KEY` |
-| `RISK_OBJECT_SIGNING_KEY_ID` | Current Risk Object signing generation; current workflow expects `geomacro-risk-2026-02` |
+| `RISK_OBJECT_SIGNING_KEY_ID` | Current Risk Object signing generation; current workflow expects `geomacro-risk-2026-03` |
 | `RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64` | Current server-only Ed25519 Risk Object signing private key |
 | `GEOMACRO_GOAT_TEST_PAYER_ADDRESS` | Public address of the dedicated GOAT Testnet3 payer wallet |
 | `GEOMACRO_GOAT_TEST_PAYER_PRIVATE_KEY` | Private key of the dedicated Testnet-only payer wallet; never paste into chat/issues/logs |

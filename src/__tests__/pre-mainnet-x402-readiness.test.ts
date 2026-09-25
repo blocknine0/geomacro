@@ -153,7 +153,7 @@ describe("pre-mainnet x402 readiness", () => {
     expect(openapi.paths["/api/x402/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
     expect(openapi.paths["/api/x402/circle/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
     expect(openapi.paths["/api/x402/circle/intelligence"].post["x-payment-info"].arc_mainnet_enabled).toBe(false);
-    expect(launch.providers.circle_gateway_x402.launch_cohort).toBe(true);
+    expect(launch.providers.circle_gateway_x402.launch_cohort).toBe(false);
     expect(launch.providers.circle_gateway_x402.production_enabled).toBe(false);
     expect(launch.providers.circle_gateway_x402.arc_mainnet_enabled).toBe(false);
     expect(middleware).toContain("providerRealFundsSecurityState");

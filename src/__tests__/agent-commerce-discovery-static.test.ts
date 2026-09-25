@@ -40,7 +40,7 @@ describe("agent commerce machine discovery contract", () => {
     );
   });
 
-  it("puts Coinbase, Circle and Nevermined in the payment cohort while deferring GOAT mainnet", () => {
+  it("keeps the public prelaunch catalog explicit while Coinbase remains the internal initial rail", () => {
     const providers = commerce.offers[0].providers;
     expect(providers.coinbase_x402.launch_cohort).toBe(true);
     expect(providers.coinbase_x402.production_enabled).toBe(false);

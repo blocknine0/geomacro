@@ -10,6 +10,7 @@ import { loadStructuralContext } from "./structural-context.server";
 import {
   GEOMACRO_INTELLIGENCE_CONTRACT_VERSION,
   GEOMACRO_INTELLIGENCE_PRICE_USDC,
+  computeGeomacroIntelligenceProductHash,
   GEOMACRO_INTELLIGENCE_PRODUCT_ID,
   GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA,
   intelligenceStateVersion,
@@ -663,6 +664,6 @@ export async function assembleAgentQueryResponse(input: {
 
   return {
     ...core,
-    delivered_product_hash: hash(core),
+    delivered_product_hash: computeGeomacroIntelligenceProductHash(core),
   };
 }

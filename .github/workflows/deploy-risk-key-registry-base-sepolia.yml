@@ -22,7 +22,7 @@ jobs:
     environment: geomacro-testnet-e2e
     env:
       BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
-      RISK_OBJECT_SIGNING_KEY_ID: geomacro-risk-2026-02
+      RISK_OBJECT_SIGNING_KEY_ID: geomacro-risk-2026-03
       RISK_OBJECT_JWKS_URI: https://geomacro.live/.well-known/jwks.json
 
     steps:

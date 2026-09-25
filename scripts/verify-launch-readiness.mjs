@@ -71,8 +71,8 @@ for (const [name, provider] of Object.entries(launch.providers || {})) {
   need(provider?.production_enabled === false, name + " production must remain disabled");
 }
 need(launch.providers?.coinbase_x402?.launch_cohort === true, "Coinbase launch cohort missing");
-need(launch.providers?.circle_gateway_x402?.launch_cohort === true, "Circle launch cohort missing");
-need(launch.providers?.nevermined?.launch_cohort === true, "Nevermined launch cohort missing");
+need(launch.providers?.circle_gateway_x402?.launch_cohort === false, "Circle must remain a post-launch candidate");
+need(launch.providers?.nevermined?.launch_cohort === false, "Nevermined must remain a post-launch candidate");
 need(launch.providers?.goat_x402?.launch_cohort === false, "GOAT mainnet must remain deferred");
 
 need(commerce.service?.status === "prelaunch", "machine commerce discovery must remain prelaunch");

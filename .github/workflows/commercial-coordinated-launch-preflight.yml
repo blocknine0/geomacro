@@ -141,8 +141,8 @@ jobs:
               if (provider.production_enabled !== false) throw new Error(`${name} production_enabled must remain false`);
             }
             if (manifest.providers?.coinbase_x402?.launch_cohort !== true) throw new Error("Coinbase must remain in the initial launch cohort");
-            if (manifest.providers?.circle_gateway_x402?.launch_cohort !== true) throw new Error("Circle must remain in the initial launch cohort");
-            if (manifest.providers?.nevermined?.launch_cohort !== true) throw new Error("Nevermined must remain in the initial launch cohort");
+            if (manifest.providers?.circle_gateway_x402?.launch_cohort !== false) throw new Error("Circle must remain outside the initial launch cohort");
+            if (manifest.providers?.nevermined?.launch_cohort !== false) throw new Error("Nevermined must remain outside the initial launch cohort");
             if (manifest.providers?.goat_x402?.launch_cohort !== false) throw new Error("GOAT mainnet must remain outside the initial cohort until manual merchant onboarding completes");
             if (manifest.providers?.goat_x402?.status !== "deferred_manual_mainnet_merchant_onboarding") throw new Error("GOAT deferred status must remain explicit");
             if (manifest.launch_rule?.allow_partial_provider_launch !== false) throw new Error("partial launch inside the approved cohort must remain disabled");

@@ -184,9 +184,10 @@ const TASKS = [
     priority: 85,
     timeoutMs: 1_500_000,
     steps: [
+      // Country census is observational here; commercial acceptance is a separate fail-closed launch gate.
       ["bun", ["scripts/global-risk-gate-country-census.ts"], "."],
       ["node", ["scripts/audit-global-realtime-source-freshness.mjs"], "."],
-      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts"], "."],
+      ["bun", ["scripts/audit-agent-hot-topic-readiness.ts", "--require-pipeline-healthy"], "."],
     ],
   },
   {
@@ -211,7 +212,11 @@ const TASKS = [
     priority: 80,
     requiredEnv: ["SUPABASE_DB_URL"],
     timeoutMs: 2_400_000,
-    steps: [["bun", ["run", "source:certification:evidence-graph"], "."]],
+    steps: [
+      // Operational continuity records certification state; the strict
+      // commercial certification gate runs separately and fail-closed.
+      ["node", ["scripts/audit-source-certification-census.mjs"], "."],
+    ],
   },
 ];
 

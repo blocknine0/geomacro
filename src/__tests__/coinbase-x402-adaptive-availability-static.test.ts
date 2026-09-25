@@ -36,6 +36,16 @@ describe("Coinbase x402 adaptive availability boundary", () => {
     expect(paidRoute).toContain("PAYMENT_QUERY_PLAN_MISMATCH");
   });
 
+  it("requires the structured response contract before settlement", () => {
+    expect(paidRoute).toContain("assertGeomacroIntelligenceResponseContract");
+    const validate = paidRoute.indexOf("assertGeomacroIntelligenceResponseContract(intelligence)");
+    const prepare = paidRoute.indexOf("await prepareCoinbaseX402Delivery");
+    const settle = paidRoute.indexOf("await settleCoinbaseX402");
+    expect(validate).toBeGreaterThanOrEqual(0);
+    expect(prepare).toBeGreaterThan(validate);
+    expect(settle).toBeGreaterThan(prepare);
+  });
+
   it("rechecks deliverability and prepares the product before settlement", () => {
     const finalCheck = paidRoute.indexOf("FINAL_AVAILABILITY_CHECK_FAILED");
     const prepare = paidRoute.indexOf("await prepareCoinbaseX402Delivery");

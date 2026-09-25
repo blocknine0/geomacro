@@ -1,0 +1,99 @@
+name: Production Historical Structural Adapter
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/historical-structural-context/**"
+      - ".github/workflows/production-historical-structural-adapter.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-historical-structural-adapter
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
+      HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout reviewed PR revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Validate authoritative production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${SUPABASE_PROJECT_ID}" = "ldpwajisioljyjtojvfx"
+          test -n "${SUPABASE_ACCESS_TOKEN}"
+          test -n "${APP_SUPABASE_URL}"
+          test -n "${HISTORICAL_SUPABASE_URL}"
+          test -n "${HISTORICAL_SUPABASE_SERVICE_ROLE_KEY}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
+
+      - name: Setup pinned Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
+        with:
+          version: 2.117.0
+
+      - name: Deploy historical structural adapter with JWT gateway protection
+        run: |
+          set -euo pipefail
+          supabase functions deploy historical-structural-context             --project-ref "${SUPABASE_PROJECT_ID}"
+
+      - name: Set server-only historical warehouse secrets
+        run: |
+          set -euo pipefail
+          supabase secrets set             HISTORICAL_SUPABASE_URL="${HISTORICAL_SUPABASE_URL}"             HISTORICAL_SUPABASE_SERVICE_ROLE_KEY="${HISTORICAL_SUPABASE_SERVICE_ROLE_KEY}"             --project-ref "${SUPABASE_PROJECT_ID}"
+
+      - name: Smoke test country and corridor through service-role gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body -sS             -X POST             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"             -H "content-type: application/json"             --data '{"subject":{"type":"country","country_iso3":"USA"}}'             "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/historical-structural-context")"
+          echo "$response" | jq -e '
+            .ok == true
+            and (.status == "AVAILABLE" or .status == "UNAVAILABLE" or .status == "NOT_CONFIGURED")
+            and .methodology_status == "EVIDENCE_ONLY_NOT_IN_GRI_V1_2"
+            and .subject.type == "country"
+            and .subject.country_iso3 == "USA"
+            and (.observations | type) == "array"
+            and (.metadata | type) == "object"
+            and (.note | type) == "string"
+          ' >/dev/null
+
+          corridor="$(curl --fail-with-body -sS             -X POST             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"             -H "content-type: application/json"             --data '{"subject":{"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"}}'             "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/historical-structural-context")"
+          echo "$corridor" | jq -e '
+            .ok == true
+            and .subject.type == "corridor"
+            and .subject.origin_country_iso3 == "USA"
+            and .subject.destination_country_iso3 == "CHN"
+            and .methodology_status == "EVIDENCE_ONLY_NOT_IN_GRI_V1_2"
+            and (.observations | type) == "array"
+          ' >/dev/null
+
+      - name: Record production boundary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Production Historical Structural Adapter"
+            echo
+            echo "- Authoritative application project: ldpwajisioljyjtojvfx"
+            echo "- Historical credentials: server-only Supabase function secrets"
+            echo "- Client/browser access: blocked by service-role JWT gateway"
+            echo "- Structural methodology: evidence-only, outside GRI v1.2 and GRO v0.2"
+          } >> "${GITHUB_STEP_SUMMARY}"

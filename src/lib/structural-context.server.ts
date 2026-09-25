@@ -1,6 +1,8 @@
 import process from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { AUTHORITATIVE_APP_SUPABASE_PROJECT_REF } from "./supabase-app.server";
+
 export const STRUCTURAL_METHODOLOGY_STATUS =
   "EVIDENCE_ONLY_NOT_IN_GRI_V1_2" as const;
 export const STRUCTURAL_WAREHOUSE_METHODOLOGY_STATUS =
@@ -58,6 +60,7 @@ export type StructuralServingMetadata = {
     | "COUNTRY_PROFILE_V1"
     | "CORRIDOR_ENDPOINT_COMPOSED_V1"
     | "BASE_COMMERCIAL_VIEW_ROLLOUT_FALLBACK"
+    | "HISTORICAL_EDGE_ADAPTER_V1"
     | "NOT_CONFIGURED";
   warehouse_methodology_status: typeof STRUCTURAL_WAREHOUSE_METHODOLOGY_STATUS;
   coverage: StructuralCoverage[];
@@ -106,6 +109,165 @@ type CorridorProfileRow = {
 };
 
 let cachedHistoricalClient: SupabaseClient | null = null;
+
+const HISTORICAL_ADAPTER_PATH =
+  `https://${AUTHORITATIVE_APP_SUPABASE_PROJECT_REF}.supabase.co/functions/v1/historical-structural-context`;
+
+type HistoricalAdapterResponse = {
+  ok: boolean;
+  status: "AVAILABLE" | "UNAVAILABLE" | "NOT_CONFIGURED";
+  methodology_status: typeof STRUCTURAL_METHODOLOGY_STATUS;
+  subject: StructuralSubject;
+  observations: unknown;
+  metadata: {
+    serving_layer: string;
+    warehouse_methodology_status: typeof STRUCTURAL_WAREHOUSE_METHODOLOGY_STATUS;
+    coverage: unknown;
+    composition_method: "ENDPOINT_COMPOSED_V0_1" | null;
+    route_modeling_status: "NOT_MODELED" | null;
+    direct_evidence_status: "AVAILABLE" | "NO_DIRECT_BILATERAL_EVIDENCE" | null;
+  };
+  note: string;
+};
+
+function appServiceRoleForHistoricalAdapter(): string | null {
+  const appUrl =
+    process.env.APP_SUPABASE_URL?.trim() ||
+    process.env.SUPABASE_URL?.trim() ||
+    "";
+  const serviceKey =
+    process.env.APP_SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    "";
+
+  if (!appUrl || !serviceKey) return null;
+
+  try {
+    const parsed = new URL(appUrl);
+    const suffix = ".supabase.co";
+    if (
+      !parsed.hostname.endsWith(suffix) ||
+      parsed.hostname.slice(0, -suffix.length) !==
+        AUTHORITATIVE_APP_SUPABASE_PROJECT_REF
+    ) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return serviceKey;
+}
+
+function isHistoricalAdapterPayload(
+  value: unknown,
+  subject: StructuralSubject,
+): value is HistoricalAdapterResponse {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Partial<HistoricalAdapterResponse>;
+  return (
+    row.ok === true &&
+    (row.status === "AVAILABLE" ||
+      row.status === "UNAVAILABLE" ||
+      row.status === "NOT_CONFIGURED") &&
+    row.methodology_status === STRUCTURAL_METHODOLOGY_STATUS &&
+    JSON.stringify(row.subject) === JSON.stringify(subject) &&
+    typeof row.note === "string" &&
+    Array.isArray(row.observations) &&
+    Boolean(row.metadata) &&
+    typeof row.metadata === "object"
+  );
+}
+
+async function loadHistoricalContextViaEdgeAdapter(
+  subject: StructuralSubject,
+): Promise<StructuralContext | null> {
+  const serviceKey = appServiceRoleForHistoricalAdapter();
+  if (!serviceKey) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12_000);
+
+  try {
+    const response = await fetch(HISTORICAL_ADAPTER_PATH, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${serviceKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ subject }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      console.error(
+        "[structural-context] historical edge adapter returned non-2xx",
+        response.status,
+      );
+      return null;
+    }
+
+    const payload = (await response.json()) as unknown;
+    if (!isHistoricalAdapterPayload(payload, subject)) {
+      console.error(
+        "[structural-context] historical edge adapter returned invalid contract",
+      );
+      return null;
+    }
+
+    const metadataInput = payload.metadata;
+    const servingLayer =
+      metadataInput.serving_layer === "COUNTRY_PROFILE_V1" ||
+      metadataInput.serving_layer === "CORRIDOR_ENDPOINT_COMPOSED_V1" ||
+      metadataInput.serving_layer ===
+        "BASE_COMMERCIAL_VIEW_ROLLOUT_FALLBACK"
+        ? metadataInput.serving_layer
+        : "HISTORICAL_EDGE_ADAPTER_V1";
+
+    const observations =
+      observationsFromJson(payload.observations);
+    const coverage = Array.isArray(metadataInput.coverage)
+      ? (metadataInput.coverage as StructuralCoverage[])
+      : [];
+
+    return {
+      status: payload.status,
+      methodology_status: STRUCTURAL_METHODOLOGY_STATUS,
+      subject,
+      observations,
+      metadata: metadata(
+        "HISTORICAL_EDGE_ADAPTER_V1",
+        {
+          coverage,
+          compositionMethod:
+            subject.type === "corridor"
+              ? "ENDPOINT_COMPOSED_V0_1"
+              : null,
+          routeModelingStatus:
+            subject.type === "corridor"
+              ? "NOT_MODELED"
+              : null,
+          directEvidenceStatus:
+            metadataInput.direct_evidence_status ===
+            "AVAILABLE"
+              ? "AVAILABLE"
+              : subject.type === "corridor"
+                ? "NO_DIRECT_BILATERAL_EVIDENCE"
+                : null,
+        },
+      ),
+      note: `${payload.note} Serving path: ${servingLayer} through the server-authenticated historical Edge adapter.`,
+    };
+  } catch (error) {
+    console.error(
+      "[structural-context] historical edge adapter request failed",
+      error,
+    );
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Historical data is a separate private warehouse.
@@ -480,6 +642,13 @@ export async function loadStructuralContext(
   const db = getHistoricalClient();
 
   if (!db) {
+    const adapterContext =
+      await loadHistoricalContextViaEdgeAdapter(subject);
+
+    if (adapterContext) {
+      return adapterContext;
+    }
+
     return {
       status: "NOT_CONFIGURED",
       methodology_status: STRUCTURAL_METHODOLOGY_STATUS,

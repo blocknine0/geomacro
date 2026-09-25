@@ -1,7 +1,7 @@
 name: Product CI
 
 on:
-  # Product CI is the repository-wide merge/push gate. Do not scope this by
+  # Product CI is the repository-wide merge/push gate. One-shot production repair dispatch is commit-message gated. Do not scope this by
   # paths: important agentic/economy contracts also live under supabase/,
   # workers/, config/, schemas/ and other non-src surfaces. A path filter would
   # let a future regression bypass the permanent governance suite.
@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: product-ci-${{ github.workflow }}-${{ github.ref }}
@@ -67,6 +68,39 @@ jobs:
 
       - name: Production build
         run: bun run build
+
+      - name: One-shot PR 892 production realtime repair dispatch
+        if: >-
+          github.event_name == 'push'
+          && github.ref == 'refs/heads/pre-mainnet-x402-zero-fund-acceptance'
+          && github.event.head_commit.message == 'ops: dispatch production realtime repair for PR 892'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run global-realtime-production-repair.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref fix/global-realtime-source-runtime
+
+          run_id=""
+          for attempt in {1..12}; do
+            run_id="$(gh run list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --workflow global-realtime-production-repair.yml \
+              --branch fix/global-realtime-source-runtime \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')"
+            if [ -n "${run_id}" ]; then break; fi
+            sleep 5
+          done
+
+          test -n "${run_id}"
+          echo "Dispatched Global Realtime Production Repair run ${run_id}"
+          echo "Global Realtime Production Repair run: ${run_id}" >> "${GITHUB_STEP_SUMMARY}"
+
+          gh run watch "${run_id}" --repo "${GITHUB_REPOSITORY}" --interval 10 --exit-status
 
       - name: Verify generated route tree is committed
         shell: bash

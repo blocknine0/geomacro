@@ -1229,8 +1229,8 @@ async function generateInternal(
         );
 
   const eligibleEventIds =
-    deliveryProfile ===
-      "PUBLIC_DEMO"
+    deliveryProfile === "PUBLIC_DEMO" ||
+    deliveryProfile === "CANONICAL"
       ? new Set(
           loaded
             .commercial_eligibility
