@@ -529,7 +529,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "src/lib/country-risk-publisher.server.ts",
     );
     expect(publisher).toContain(
-      "fail closed rather than reintroducing syndicated or issuer-derived provenance",
+      "issuer-derived provenance through the structured fallback",
     );
     expect(publisher).not.toContain(
       "const fallback = await loadFedericoStructuredFallback(db, asOf, iso3);",
