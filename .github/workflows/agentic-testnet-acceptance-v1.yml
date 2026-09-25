@@ -1,0 +1,157 @@
+name: Agentic Testnet Acceptance v1
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/circle-x402.server.ts"
+      - "src/routes/api.agent.risk.ts"
+      - "src/lib/agent-commerce-delivery.server.ts"
+      - "supabase/migrations/934_agent_commerce_delivery_ledger.sql"
+      - "scripts/agentic/agentic-testnet-acceptance-v1.mjs"
+      - "src/__tests__/agentic-testnet-acceptance-v1.test.ts"
+      - "docs/AGENTIC_TESTNET_ACCEPTANCE_V1.md"
+      - ".github/workflows/agentic-testnet-acceptance-v1.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run static validation or the one-payment Arc Testnet acceptance"
+        required: true
+        default: static
+        type: choice
+        options:
+          - static
+          - paid-e2e
+      confirmation:
+        description: "paid-e2e requires ARC_TESTNET_USDC_AGENTIC_ACCEPTANCE_V1"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentic-testnet-acceptance-v1-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static-gate:
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'static') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Run Agentic Testnet Acceptance v1 regression tests
+        run: bun test src/__tests__/agentic-testnet-acceptance-v1.test.ts
+
+      - name: Compile production application
+        run: bun run build
+
+      - name: Static acceptance summary
+        shell: bash
+        run: |
+          {
+            echo "## Agentic Testnet Acceptance v1 — static gate"
+            echo
+            echo "- Arc x402 strict payment binding: PASS"
+            echo "- Durable payment/request ledger orchestration: PASS"
+            echo "- Replay/ambiguous-settlement fail-closed controls: PASS"
+            echo "- Autonomous buyer harness guardrails: PASS"
+            echo "- Production build: PASS"
+            echo
+            echo "No funds are moved by the static gate."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  paid-e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'paid-e2e' && github.actor == 'blocknine0' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GEOMACRO_AGENTIC_ACCEPTANCE_BASE_URL: https://geomacro.live
+      GEOMACRO_AGENTIC_ACCEPTANCE_ACK: ${{ inputs.confirmation }}
+      GEOMACRO_AGENTIC_ACCEPTANCE_MAX_USDC: "0.001"
+      GEOMACRO_AGENTIC_ACCEPTANCE_AUTO_DEPOSIT_USDC: "0.01"
+      GEOMACRO_AGENTIC_ACCEPTANCE_ARTIFACT_DIR: artifacts/agentic-testnet-acceptance-v1
+
+    steps:
+      - name: Validate explicit Arc Testnet acknowledgement
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GEOMACRO_AGENTIC_ACCEPTANCE_ACK" != "ARC_TESTNET_USDC_AGENTIC_ACCEPTANCE_V1" ]; then
+            echo "::error::Paid acceptance requires ARC_TESTNET_USDC_AGENTIC_ACCEPTANCE_V1."
+            exit 1
+          fi
+          echo "Arc Testnet acceptance acknowledgement accepted." >> "$GITHUB_STEP_SUMMARY"
+          echo "Maximum seller spend: exactly 0.001 test USDC." >> "$GITHUB_STEP_SUMMARY"
+          echo "Commercial revenue: false." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate dedicated Arc Testnet buyer secret without printing it
+        env:
+          GEOMACRO_AGENTIC_ACCEPTANCE_BUYER_PRIVATE_KEY: ${{ secrets.ARC_TESTNET_AGENTIC_ACCEPTANCE_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$GEOMACRO_AGENTIC_ACCEPTANCE_BUYER_PRIVATE_KEY" ]; then
+            echo "::error::Repository Actions secret ARC_TESTNET_AGENTIC_ACCEPTANCE_PRIVATE_KEY is not configured."
+            exit 1
+          fi
+          if ! [[ "$GEOMACRO_AGENTIC_ACCEPTANCE_BUYER_PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+            echo "::error::ARC_TESTNET_AGENTIC_ACCEPTANCE_PRIVATE_KEY is not a valid EVM private key."
+            exit 1
+          fi
+
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install exact dependencies without lifecycle scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Execute canonical autonomous Arc Testnet acceptance
+        env:
+          GEOMACRO_AGENTIC_ACCEPTANCE_BUYER_PRIVATE_KEY: ${{ secrets.ARC_TESTNET_AGENTIC_ACCEPTANCE_PRIVATE_KEY }}
+        run: bun scripts/agentic/agentic-testnet-acceptance-v1.mjs
+
+      - name: Upload sanitized acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: agentic-testnet-acceptance-v1-${{ github.run_id }}
+          path: artifacts/agentic-testnet-acceptance-v1/*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Paid acceptance boundary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Agentic Testnet Acceptance v1 — paid gate"
+            echo
+            echo "- Network: Arc Testnet / eip155:5042002"
+            echo "- Asset: Arc Testnet USDC"
+            echo "- Maximum seller spend per run: 0.001 test USDC"
+            echo "- Automatic Gateway deposit cap when needed: 0.01 test USDC"
+            echo "- Mainnet USDC: disabled"
+            echo "- Commercial revenue: false"
+            echo "- Private key persisted in evidence: false"
+            echo "- Raw PAYMENT-SIGNATURE persisted in evidence: false"
+          } >> "$GITHUB_STEP_SUMMARY"
