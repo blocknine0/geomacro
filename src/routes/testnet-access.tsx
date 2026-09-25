@@ -510,15 +510,33 @@ function TestnetAccessPage() {
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">TESTNET · NON-REVENUE</span>
         </div>
         <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-tight sm:text-5xl">
-          Build with Geomacro intelligence. Test it as a user. Integrate it as a machine.
+          Turn geopolitical risk intelligence into something your product or AI agent can actually use.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
-          One canonical Testnet surface for humans, products and AI agents. Query geopolitical and macro intelligence, read the Global Risk Index, retrieve signed Risk Objects, or request a full Risk Gate bundle through a metered API.
+          Start with a real Testnet integration. Query geopolitical and macro intelligence, read the Global Risk Index, retrieve signed Risk Objects, or request a full Risk Gate bundle. See the payment contract, test the x402 loop, and take the result into your own system.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <a href="#wallet-account" className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Start with wallet</a>
-          <a href="#x402-demo" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">See the 402 flow</a>
-          <a href="#integration" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Integration examples</a>
+          <a href="#wallet-account" className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Start testing</a>
+          <a href="#x402-demo" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">See x402 in action</a>
+          <a href="#integration" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Build with the API</a>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-primary">TRY IT</p>
+          <p className="mt-2 text-sm font-semibold">One wallet sign-in. Then call the API.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">No upfront Testnet USDC activation payment. Metered calls quote their own charge.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">SEE THE OUTPUT</p>
+          <p className="mt-2 text-sm font-semibold">From raw risk question to machine response.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use structured intelligence, signed risk state, or a full governed Risk Gate bundle.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">LOOK AHEAD</p>
+          <p className="mt-2 text-sm font-semibold">Testnet now. Mainnet is a separate production milestone.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Mainnet transaction features stay disabled until full production completion and acceptance.</p>
         </div>
       </section>
 
@@ -856,6 +874,43 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
           <button type="button" onClick={() => setDemoStep((step) => Math.max(0, step - 1))} disabled={demoStep === 0} className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40">Previous</button>
           <button type="button" onClick={() => setDemoStep((step) => Math.min(4, step + 1))} disabled={demoStep === 4} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next step</button>
           <a href="/testnet-console" className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Run the real Testnet flow</a>
+        </div>
+      </section>
+
+      <section id="mainnet-direction" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">TESTNET → MAINNET DIRECTION</p>
+            <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">What you can test now is the foundation for the production path ahead.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Testnet is where builders can validate the intelligence contract, machine-readable delivery and pay-per-call workflow. Mainnet is not enabled on this page. Geomacro keeps mainnet transaction features disabled until full production completion and acceptance.
+            </p>
+          </div>
+          <a href="/roadmap" className="inline-flex shrink-0 items-center justify-center rounded-lg border border-border px-4 py-2.5 text-sm font-medium">View the roadmap</a>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">01 · TODAY</p>
+            <h3 className="mt-2 text-lg font-semibold">Test the intelligence layer</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Run real Testnet calls against Geomacro's machine-readable contract and inspect what your system receives.</p>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">02 · BUILD</p>
+            <h3 className="mt-2 text-lg font-semibold">Prove your integration</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Connect your application or AI agent to the manifest, intelligence endpoint, payment proof and retry loop before production access is enabled.</p>
+          </article>
+          <article className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary">03 · NEXT</p>
+            <h3 className="mt-2 text-lg font-semibold">Mainnet, when production-ready</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Arc mainnet remains coming soon. The current Testnet surface is the place to understand and validate the product before that production milestone.</p>
+          </article>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full border border-border/70 px-3 py-1.5 font-mono text-[10px] text-muted-foreground">TESTNET ACTIVE</span>
+          <span className="rounded-full border border-border/70 px-3 py-1.5 font-mono text-[10px] text-muted-foreground">MAINNET COMING SOON</span>
+          <span className="rounded-full border border-border/70 px-3 py-1.5 font-mono text-[10px] text-muted-foreground">NO MAINNET TRANSACTIONS</span>
         </div>
       </section>
 
