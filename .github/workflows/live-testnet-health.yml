@@ -157,7 +157,7 @@ jobs:
             'GET /api/testnet/manifest' \
             'POST /api/testnet/intelligence' \
             'Authorization: GeomacroTest &lt;API_KEY&gt;.&lt;API_SECRET&gt;' \
-            'Payment loop' \
+            'x402' \
             'No upfront activation payment.'
           do
             if ! grep -Fq "$marker" "$body"; then
