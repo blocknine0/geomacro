@@ -571,13 +571,26 @@ if (reviewArtifactBytes > 20_000) {
   );
 }
 
+const reviewContext =
+  "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object. The exact canonical signed object is supplied in external_evidence[0].record and bound by external_evidence[0].record_sha256. Resolve trust from the embedded Ed25519 public key, signing_key_id, trust_registry_url and canonicalization_url. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Require current trusted time to remain strictly before expires_at and fail closed at or after expiry. Do not treat this review as execution authorization. The full signed Risk Object must be considered unavailable unless external_evidence[0].record is present and its SHA-256 matches exactly. Commercial delivery is derived-only and does not redistribute raw third-party source material.";
+
+const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
+if (reviewContextBytes > 4_000) {
+  throw new Error(
+    `Invinoveritas review context exceeds the partner contract: ${reviewContextBytes} bytes > 4000`,
+  );
+}
+
+if (Buffer.byteLength(signedRiskObjectRecord, "utf8") > 20_000) {
+  throw new Error(
+    "Signed Risk Object evidence record exceeds the partner artifact-size ceiling",
+  );
+}
+
 const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
-  context:
-    "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object. The exact signed object is supplied twice for interoperability: as external_evidence[0].record and as a clearly labeled external_evidence_record in this context. The record is canonicalized signed Risk Object bytes and is bound by external_evidence[0].record_sha256. Trust is resolvable through the embedded Ed25519 public key, signing_key_id, trust_registry_url and canonicalization_url. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Require current trusted time to remain strictly before expires_at and fail closed at or after expiry. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.\n\nEXTERNAL_EVIDENCE_RECORD_BEGIN\n" +
-    signedRiskObjectRecord +
-    "\nEXTERNAL_EVIDENCE_RECORD_END",
+  context: reviewContext,
   sign: true,
   confidentiality_tier: "partial_disclosure",
   disclosed_summary:
@@ -908,8 +921,16 @@ console.log(
         sign: reviewRequest.sign,
         confidentiality_tier: reviewRequest.confidentiality_tier,
         context: reviewRequest.context,
+        context_bytes: reviewContextBytes,
         artifact_bytes: reviewArtifactBytes,
-        external_evidence: externalEvidence,
+        external_evidence: [{
+          source: externalEvidence[0].source,
+          evidence_type: externalEvidence[0].evidence_type,
+          record_sha256: externalEvidence[0].record_sha256,
+          record_bytes: Buffer.byteLength(externalEvidence[0].record, "utf8"),
+          observed_at: externalEvidence[0].observed_at,
+          validity_until: externalEvidence[0].validity_until,
+        }],
         review_auth_mode: liveReview.attempted ? liveReview.auth_mode : null,
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
