@@ -2,18 +2,24 @@ import { createHash } from "node:crypto";
 
 export const COCHILCO_URL = "https://www.cochilco.cl/web/anuario-de-estadisticas-del-cobre-y-otros-minerales/";
 
-function decodeHtml(value) {
-  return String(value ?? "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function extractTextFragment(value) {
+  const input = String(value ?? "");
+  let output = "";
+  let inTag = false;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (!inTag && char === "<") {
+      inTag = true;
+      continue;
+    }
+    if (inTag) {
+      if (char === ">") inTag = false;
+      continue;
+    }
+    output += char;
+  }
+  return clean(output);
 }
-
 export function parseCochilcoAnuarioHtml(html, { retrievedAt = new Date().toISOString(), baseUrl = COCHILCO_URL } = {}) {
   const input = String(html ?? "");
   if (!/Anuario de Estadísticas del Cobre y Otros Minerales/i.test(input)) {
@@ -23,7 +29,7 @@ export function parseCochilcoAnuarioHtml(html, { retrievedAt = new Date().toISOS
   const links = [];
   const anchorRe = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of input.matchAll(anchorRe)) {
-    const label = decodeHtml(match[2]);
+    const label = extractTextFragment(match[2]);
     if (!/Base de Datos|Anuario/i.test(label)) continue;
     let url = null;
     try { url = new URL(match[1], baseUrl).toString(); } catch {}
