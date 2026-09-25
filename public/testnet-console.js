@@ -556,5 +556,17 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
+  document.addEventListener("DOMContentLoaded", () => {
+    const languageSelect = document.getElementById("languageSelect");
+    languageSelect?.addEventListener("change", () => {
+      const lang = String(languageSelect.value || "en");
+      if (lang === "en") {
+        window.location.reload();
+        return;
+      }
+      const target = encodeURIComponent(window.location.href);
+      window.location.assign(`https://translate.google.com/translate?sl=auto&tl=${encodeURIComponent(lang)}&u=${target}`);
+    });
+    boot();
+  });
 })();
