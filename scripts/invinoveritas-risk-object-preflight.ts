@@ -471,11 +471,11 @@ if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
  * context explains how the artifact should be interpreted.
  *
  * sign=true requests the portable signed review proof.
- * hash_only keeps the reviewed content out of public disclosure surfaces.
- * The review envelope contains a compact, cryptographically bound projection
- * of the signed Risk Object. The full signed object is verified independently
- * before submission; payload_hash and signing_key_id bind this review context
- * back to that exact object without exceeding the partner artifact limit.
+ * partial_disclosure publishes a deliberately bounded summary while keeping
+ * the full signed Risk Object available as exact external evidence for the
+ * review. This is required because hash_only semantically means the reviewed
+ * content is never disclosed, while this interoperability preflight explicitly
+ * supplies the exact Risk Object record to the verifier.
  */
 const evidenceRefs = Array.isArray(riskObject.evidence)
   ? riskObject.evidence.slice(0, 8).map((item) => ({
@@ -562,7 +562,25 @@ const reviewRequest = {
   context:
     "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object; the exact signed object is supplied in external_evidence[0].record with a deterministic record_sha256, and as_of is derived directly from risk_object.observed_at. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
   sign: true,
-  confidentiality_tier: "hash_only",
+  confidentiality_tier: "partial_disclosure",
+  disclosed_summary:
+    "Geomacro gro-1.1 country Risk Object for CHN. " +
+    "Read-only risk context only. " +
+    JSON.stringify({
+      object_id: riskObject.object_id,
+      subject: riskObject.subject,
+      risk: riskObject.risk,
+      confidence: riskObject.confidence,
+      observed_at: riskObject.observed_at,
+      expires_at: riskObject.expires_at,
+      evidence_summary: riskObject.evidence_summary ?? null,
+      verification: riskObject.verification,
+      decision_readiness: riskObject.decision_readiness ?? null,
+      methodology_version: riskObject.methodology_version ?? null,
+      payload_hash: riskObject.integrity?.payload_hash ?? null,
+      signing_key_id: riskObject.integrity?.signing_key_id ?? null,
+    }) +
+    " No raw third-party source content is included.",
   external_evidence: externalEvidence,
 };
 
@@ -686,6 +704,7 @@ if (invinoApiKey) {
         reason: issue?.reason ?? null,
         field: issue?.field ?? issue?.path ?? null,
         details: issue?.details ?? null,
+        provider_issue: issue,
       })),
     }),
   );
