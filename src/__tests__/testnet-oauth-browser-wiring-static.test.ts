@@ -69,6 +69,7 @@ describe("Testnet tester identity and X sharing boundary", () => {
 
   it("keeps upstream source identities and wallet secrets out of the browser tester bundle", () => {
     const browser = read("public/testnet-access.js");
+    const page = read("server/routes/testnet-access.get.ts");
     expect(browser).not.toMatch(/source_url|source_name|publisher|private[_ -]?key|seed phrase/i);
     expect(browser).toContain("personal_sign");
     expect(browser).not.toContain("/api/testnet-tester/payment-claim");
