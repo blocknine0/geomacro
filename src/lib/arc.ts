@@ -42,17 +42,19 @@ export const ARC_TESTNET: ArcNetwork = {
   live: true,
 };
 
-/** Placeholder mainnet config. Update chainId/RPC/explorer the day Arc mainnet goes live;
- * the app auto-shifts once the wallet reports the mainnet chainId. */
+/** Canonical Arc Mainnet network parameters.
+ * Mainnet is configured for accurate address/network discovery, but remains
+ * disabled until Geomacro completes and authorizes its production cutover.
+ */
 export const ARC_MAINNET: ArcNetwork = {
   key: "mainnet",
-  chainIdDec: 5042001,
-  chainIdHex: "0x4cef51",
+  chainIdDec: 5042,
+  chainIdHex: "0x13b2",
   chainName: "Arc",
-  rpcUrl: "https://rpc.arc.network",
-  explorer: "https://arcscan.app",
+  rpcUrl: "https://rpc.mainnet.arc.io",
+  explorer: "https://explorer.arc.io",
   currency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  live: false, // keep Mainnet coming soon until full Geomacro mainnet completion
+  live: false,
 };
 
 export const ARC_NETWORKS: ArcNetwork[] = [ARC_MAINNET, ARC_TESTNET];
