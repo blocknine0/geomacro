@@ -495,7 +495,8 @@ const reviewArtifact = {
   as_of: observedAt,
   as_of_source: "risk_object.observed_at",
   decision_type: "read_only_risk_context",
-  action_proposed: false,
+  action_proposed: true,
+  action: "Admit this verified Geomacro Risk Object as read-only risk context to a downstream decision gate; do not execute any trade, transaction, deployment, or other irreversible action.",
   execution_authorized: false,
   risk_object_reference: {
     object_id: riskObject.object_id,
@@ -529,7 +530,8 @@ const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 const externalEvidence = [{
   source: "Geomacro",
   record_sha256: signedRiskObjectRecordSha256,
-  evidence_type: "signed_risk_object_hash_only",
+  evidence_type: "signed_risk_object",
+  record: signedRiskObjectRecord,
   observed_at: observedAt,
   validity_until: riskObject.expires_at,
 }];
