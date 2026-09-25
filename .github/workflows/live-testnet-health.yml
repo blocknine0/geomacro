@@ -154,18 +154,18 @@ jobs:
             exit 1
           fi
           for marker in \
-            'PUBLIC TESTNET DEVELOPER API' \
-            '500-credit usage cap' \
-            'API Key + API Secret' \
-            'Receive HTTP 402' \
-            'There is no upfront Testnet USDC activation payment.'
+            'GET /api/testnet/manifest' \
+            'POST /api/testnet/intelligence' \
+            'Authorization: GeomacroTest &lt;API_KEY&gt;.&lt;API_SECRET&gt;' \
+            'Payment loop' \
+            'No upfront activation payment.'
           do
             if ! grep -Fq "$marker" "$body"; then
-              echo "::error title=Hosted Testnet page is stale::Missing marker: $marker"
+              echo "::error title=Hosted Testnet page contract is stale::Missing marker: $marker"
               exit 1
             fi
           done
-          echo "PASS: /testnet-access is live with the current pay-per-call contract."
+          echo "PASS: /testnet-access exposes the current pay-per-call developer contract."
 
       - name: Verify authenticated account API fails closed without credentials
         shell: bash
