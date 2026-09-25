@@ -123,7 +123,10 @@ describe("Federico strict evidence-gap continuity", () => {
       calculation_namespace: "federico_strict_evidence_v1",
     });
 
-    expect(result.decision_readiness.status).toBe("READY");
+    expect(result.decision_readiness.status).toBe("DEGRADED");
+    expect(result.decision_readiness.reason_codes).toContain(
+      "uncalibrated_uncertainty_interval",
+    );
     expect(result.evidence).toHaveLength(8);
     expect(
       result.provenance.reproducibility.selection_policy
