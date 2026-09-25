@@ -1,8 +1,8 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "56213a1542ce432037cd2f74a7e69552fb842ac9",
-  "published_baseline": "Founder-approved Testnet Access canonicalization, user/machine integration surface and x402 walkthrough",
+  "baseline_sha": "3d96f2a21687950c426fa3805d358c65b98729e4",
+  "published_baseline": "Founder-approved Testnet Access canonicalization, user/machine integration surface, x402 walkthrough and compatibility contract markers",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
   "locked_at_utc": "2026-09-20T04:47:41Z",
