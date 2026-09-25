@@ -581,12 +581,6 @@ if (reviewContextBytes > 4_000) {
   );
 }
 
-if (Buffer.byteLength(signedRiskObjectRecord, "utf8") > 20_000) {
-  throw new Error(
-    "Signed Risk Object evidence record exceeds the partner artifact-size ceiling",
-  );
-}
-
 const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
