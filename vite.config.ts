@@ -50,8 +50,16 @@ export default defineConfig({
   },
   nitro: {
     // Geomacro's Nitro handlers live under ./server/{api,routes,...}.
-    // Nitro 3 does not scan this directory unless it is explicitly configured.
+    // Nitro 3 scans this directory for server routes, so legacy standalone
+    // Testnet Access HTML handlers must be excluded: the React route
+    // src/routes/testnet-access.tsx is the single canonical /testnet-access
+    // surface for both direct navigation and in-site navigation.
     serverDir: "./server",
+    ignore: [
+      "routes/testnet-access.get.ts",
+      "routes/testnet-access-wallet-first.get.ts",
+      "routes/testnet-access-canonical-wallet-first.get.ts",
+    ],
   },
   vite: {
     plugins: [polyfillResolver()],
