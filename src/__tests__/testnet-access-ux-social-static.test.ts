@@ -13,13 +13,14 @@ describe("permanent Testnet access UX", () => {
     expect(page).toContain("wallet extension's Disconnect site action");
   });
 
-  it("keeps normal-user public access on the left and developer access on the right", () => {
-    expect(page).toContain("lg:grid-cols-2");
-    expect(page).toContain(">Normal users<");
-    expect(page).toContain(">Developers<");
+  it("keeps public testing primary and moves advanced access behind compact disclosures", () => {
+    expect(page).toContain("Public Testnet access");
+    expect(page).toContain("Normal users");
     expect(page).toContain("TESTNET_PUBLIC_API_KEYS");
     expect(page).toContain("Three public API keys");
     expect(page).toContain("Developer integrations (optional)");
+    expect(page).toContain("<details>");
+    expect(page).toContain("INTEGRATION DETAILS");
   });
 
   it("keeps feedback optional and provides X distribution actions", () => {
