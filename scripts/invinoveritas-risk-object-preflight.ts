@@ -543,7 +543,7 @@ if (
     externalEvidence[0]?.record_sha256 !== signedRiskObjectRecordSha256 ||
     externalEvidence[0]?.observed_at !== observedAt ||
     externalEvidence[0]?.validity_until !== riskObject.expires_at ||
-    "record" in externalEvidence[0]
+    externalEvidence[0]?.record !== signedRiskObjectRecord
   )
 ) {
   throw new Error(
@@ -560,7 +560,7 @@ const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
   context:
-    "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object; the exact signed object is supplied separately in external_evidence[0].record with a deterministic record_sha256, and as_of is derived directly from risk_object.observed_at. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
+    "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object; the exact signed object is supplied in external_evidence[0].record with a deterministic record_sha256, and as_of is derived directly from risk_object.observed_at. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Do not treat the review as execution authorization. Commercial delivery is derived-only and does not redistribute raw third-party source material.",
   sign: true,
   confidentiality_tier: "hash_only",
   external_evidence: externalEvidence,
