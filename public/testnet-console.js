@@ -210,7 +210,7 @@
       amountField,
     );
     const runWrap = el("div", { className: "field full" });
-    const runButton = el("button", { type: "submit", text: "Get price quote" });
+    const runButton = el("button", { type: "submit", text: "Send API request" });
     runWrap.appendChild(runButton);
     form.appendChild(runWrap);
     panel.appendChild(form);
@@ -252,6 +252,15 @@
     const anchor = document.getElementById("consoleAnchor");
     if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling);
     else document.querySelector("main")?.appendChild(panel);
+
+    const flowSteps = Array.from(document.querySelectorAll(".flow-step"));
+    function setFlowStep(activeIndex) {
+      flowSteps.forEach((step, index) => {
+        step.classList.toggle("active", index === activeIndex);
+        step.classList.toggle("done", index < activeIndex);
+      });
+    }
+    setFlowStep(0);
 
     function resetQuote() {
       if (busy || pendingPayment) return;
@@ -336,6 +345,7 @@
       }
 
       if (response.status === 402 && payload?.error?.code === "TESTNET_PAYMENT_REQUIRED") {
+        setFlowStep(1);
         if (pendingPayment) throw new Error("Payment already submitted. Retry verification with the saved transaction; do not pay again.");
         pendingRequest = request;
         pendingQuote = payload.payment;
@@ -350,7 +360,7 @@
         });
         quoteText.textContent = `${payload.payment.credit_cost} credit${payload.payment.credit_cost === 1 ? "" : "s"} × ${payload.payment.credit_price_usdc} Testnet USDC = ${payload.payment.amount_due_usdc} Testnet USDC. Public key: ${publicChain.public_api_key}.`;
         paymentBox.hidden = false;
-        status.textContent = "Price quote ready. Pay only this call amount, then the exact same request will retry automatically.";
+        status.textContent = "HTTP 402 PAYMENT REQUIRED · Quote ready. Pay only this call amount, then the exact same request will retry automatically.";
         return;
       }
 
@@ -364,13 +374,14 @@
         );
       }
 
+      setFlowStep(4);
       lastResult = payload;
       lastRequest = request;
       lastShare = null;
       output.textContent = JSON.stringify(payload, null, 2);
       output.hidden = false;
       paymentBox.hidden = true;
-      status.textContent = "Delivered successfully from the canonical Geomacro intelligence pipeline.";
+      status.textContent = "HTTP 200 OK · Intelligence delivered successfully from the canonical Geomacro intelligence pipeline.";
       credits.textContent = `Credits remaining: ${payload.entitlement?.credits_remaining ?? "unknown"} · Cost: ${payload.entitlement?.credit_cost ?? "unknown"} credits · Paid: ${payload.payment?.amount_due_usdc ?? "unknown"} Testnet USDC`;
       createShare.hidden = !payload.usage_event_id;
       shareX.hidden = true;
@@ -395,7 +406,8 @@
       event.preventDefault();
       if (busy || pendingPayment) return;
       setBusy(true);
-      status.textContent = "Preparing Testnet API call quote...";
+      setFlowStep(0);
+      status.textContent = "API CALL · Sending the Testnet intelligence request...";
       output.hidden = true;
       createShare.hidden = true;
       shareX.hidden = true;
@@ -425,8 +437,10 @@
 
       setBusy(true);
       try {
+        setFlowStep(2);
         if (pendingPayment) {
-          status.textContent = "Retrying the saved transaction proof. No new payment will be sent.";
+          setFlowStep(3);
+          status.textContent = "RETRY · Verifying the saved transaction proof. No new payment will be sent.";
           await executeRequest({ ...pendingRequest, payment: pendingPayment });
           return;
         }
@@ -448,7 +462,7 @@
           throw new Error("Wallet network does not match the quoted Testnet chain. No payment was sent.");
         }
 
-        status.textContent = `Confirm ${pendingQuote.amount_due_usdc} Testnet USDC in your wallet...`;
+        status.textContent = `PAY · Confirm ${pendingQuote.amount_due_usdc} Testnet USDC in your wallet...`;
         const txHash = await window.ethereum.request({
           method: "eth_sendTransaction",
           params: [
@@ -468,7 +482,8 @@
         };
         saveRecovery();
         quoteText.textContent = `Submitted transaction: ${pendingPayment.tx_hash}`;
-        status.textContent = "Testnet USDC sent. Waiting for confirmation before retrying the same request...";
+        setFlowStep(3);
+        status.textContent = "RETRY · Testnet USDC confirmed. Retrying the exact same request...";
         await waitForReceipt(String(txHash));
         await executeRequest({ ...pendingRequest, payment: pendingPayment });
       } catch (error) {
