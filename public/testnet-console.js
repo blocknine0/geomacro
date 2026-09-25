@@ -567,6 +567,6 @@
       const target = encodeURIComponent(window.location.href);
       window.location.assign(`https://translate.google.com/translate?sl=auto&tl=${encodeURIComponent(lang)}&u=${target}`);
     });
-    boot();
+    return boot();
   });
 })();
