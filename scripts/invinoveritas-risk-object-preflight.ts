@@ -134,8 +134,18 @@ if (strictProfile && !observedAt) {
   );
 }
 
+let registryUrl = riskObject?.integrity?.trust_registry_url ?? "";
+let trusted: any = null;
+let registry: any = null;
+let registryFetchedAt: string | null = null;
+let registryHttpDate: string | null = null;
+let registryResponseSha256: string | null = null;
+let trustedKeyFingerprintSha256: string | null = null;
+let trustedClockMs: number | null = null;
+let expiresAtMsForAttestation: number | null = null;
+
 if (strictProfile) {
-  const registryUrl =
+  registryUrl =
     riskObject.integrity.trust_registry_url;
 
   const registryResponse =
@@ -146,17 +156,17 @@ if (strictProfile) {
         registryResponse.status,
     );
   }
-  const registry =
+  registry =
     await registryResponse.json();
-  const registryFetchedAt = new Date().toISOString();
-  const registryHttpDate = registryResponse.headers.get("date");
+  registryFetchedAt = new Date().toISOString();
+  registryHttpDate = registryResponse.headers.get("date");
   if (!registryHttpDate || !Number.isFinite(Date.parse(registryHttpDate))) {
     throw new Error(
       "Risk Object trust registry did not provide a valid HTTP Date header for trusted freshness attestation",
     );
   }
 
-  const trusted =
+  trusted =
     Array.isArray(registry?.keys)
       ? registry.keys.find(
           (item: any) =>
@@ -176,14 +186,18 @@ if (strictProfile) {
     );
   }
 
-  const registryResponseSha256 = sha256Canonical(registry);
-  const trustedKeyFingerprintSha256 = createHash("sha256")
+  registryResponseSha256 = sha256Canonical(registry);
+  trustedKeyFingerprintSha256 = createHash("sha256")
     .update(Buffer.from(riskObject.integrity.public_key_spki_b64, "base64"))
     .digest("hex");
 
-  const trustedClockMs = Date.parse(registryHttpDate);
-  const expiresAtMs = Date.parse(riskObject.expires_at);
-  if (!Number.isFinite(expiresAtMs) || trustedClockMs >= expiresAtMs) {
+  trustedClockMs = Date.parse(registryHttpDate);
+  expiresAtMsForAttestation = Date.parse(riskObject.expires_at);
+  if (
+    !Number.isFinite(expiresAtMsForAttestation) ||
+    !Number.isFinite(trustedClockMs) ||
+    trustedClockMs >= expiresAtMsForAttestation
+  ) {
     throw new Error(
       "Federico strict trusted registry clock is not strictly before Risk Object expiry",
     );
@@ -699,7 +713,10 @@ const reviewArtifact = {
     trusted_clock_source: registryUrl,
     trusted_http_date: registryHttpDate,
     expires_at: riskObject.expires_at,
-    strict_before_expiry: trustedClockMs < expiresAtMs,
+    strict_before_expiry:
+      trustedClockMs !== null &&
+      expiresAtMsForAttestation !== null &&
+      trustedClockMs < expiresAtMsForAttestation,
     decision_time_revalidation_required: true,
     fail_closed_at_or_after: riskObject.expires_at,
   },
