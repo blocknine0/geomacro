@@ -86,7 +86,8 @@ async function browser(options: { receiptFailure?: boolean; deliveryFailure?: bo
     localStorage: forbiddenStorage,
     fetch, crypto: { randomUUID: () => "fixed-request-0001" }, AbortSignal, setTimeout, TextEncoder,
   });
-  await boot();
+  boot();
+  await new Promise((resolve) => setTimeout(resolve, 0));
   const submit = () => ids.get("testerConsoleForm").listeners.submit({ preventDefault() {} });
   const pay = () => nodes.find(n => n.listeners.click && String(n.textContent).startsWith("Pay Testnet"))
     ?? nodes.find(n => String(n.textContent).startsWith("Retry existing"));
@@ -107,7 +108,7 @@ describe("browser Testnet payment recovery", () => {
     expect(app.sendCount()).toBe(1);
     expect(app.bodies.at(-1).request_id).toBe(app.bodies[0].request_id);
     expect(app.bodies.at(-1).payment.tx_hash).toBe(tx);
-    expect(app.ids.get("testerConsoleStatus").textContent).toContain("Delivered successfully");
+    expect(app.ids.get("testerConsoleStatus").textContent).toContain("Intelligence delivered successfully");
   });
 
   it("never persists payment proof or request recovery state in Web Storage", async () => {
