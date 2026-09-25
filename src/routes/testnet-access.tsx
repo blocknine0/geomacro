@@ -55,7 +55,7 @@ export const Route = createFileRoute("/testnet-access")({
       {
         name: "description",
         content:
-          "Sign in with one EVM wallet to test Geomacro on Testnet. Browser testers use public Testnet keys; private API credentials are optional for developers.",
+          "Build with Geomacro Testnet: machine-readable geopolitical and macro intelligence, pay-per-call access, API integrations for products and AI agents, and an explicit x402 flow.",
       },
       { name: "geomacro-testnet-auth-flow", content: AUTH_FLOW },
     ],
