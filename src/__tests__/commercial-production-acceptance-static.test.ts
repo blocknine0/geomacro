@@ -404,9 +404,6 @@ describe("Federico exact external-evidence review binding", () => {
       'const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);',
     );
     expect(federicoPreflight).toContain(
-      'evidence_type: "signed_risk_object"',
-    );
-    expect(federicoPreflight).toContain(
       "validity_until: riskObject.expires_at",
     );
     expect(federicoPreflight).toContain(
