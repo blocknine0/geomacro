@@ -16,8 +16,8 @@ export const publicSources={
       const body=await fetchText("https://sdmxcentral.imf.org/ws/public/sdmxapi/rest/dataflow/IMF/all/latest?format=sdmx-3.0");
       if(body.length>=100&&body.includes("Dataflow")) return{source_id:"imf_sdmx",observations:1};
     }catch(primaryError){
-      const fallback=await fetchText("https://www.imf.org/external/datamapper/api/v1/NGDP");
-      if(fallback.length>100&&fallback.includes("NGDP")) return{source_id:"imf_sdmx",observations:1};
+      const fallback=await fetchText("https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.RES/WEO/+/DEU.NGDP_RPCH.A?startPeriod=2020&endPeriod=2026&format=jsondata");
+      if(fallback.length>100&&fallback.includes("data")) return{source_id:"imf_sdmx",observations:1};
       throw new Error(`IMF public endpoints unavailable: ${primaryError.message}`);
     }
     const fallback=await fetchText("https://www.imf.org/external/datamapper/api/v1/NGDP");
