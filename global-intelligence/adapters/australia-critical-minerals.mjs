@@ -2,20 +2,26 @@ import { createHash } from "node:crypto";
 
 export const AU_CRITICAL_MINERALS_URL = "https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list";
 
-function decodeHtml(value) {
-  return String(value ?? "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function extractTextFragment(value) {
+  const input = String(value ?? "");
+  let output = "";
+  let inTag = false;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (!inTag && char === "<") {
+      inTag = true;
+      continue;
+    }
+    if (inTag) {
+      if (char === ">") inTag = false;
+      continue;
+    }
+    output += char;
+  }
+  return clean(output);
 }
-
 function splitCells(row) {
-  return [...row.matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi)].map((m) => decodeHtml(m[1]));
+  return [...row.matchAll(/<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi)].map((m) => extractTextFragment(m[1]));
 }
 
 export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Date().toISOString() } = {}) {
@@ -48,7 +54,7 @@ export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Dat
   const strategicSection = input.match(/Strategic Materials List[\s\S]*?(?:More information|Contact us|$)/i)?.[0] ?? "";
   const strategicList = strategicSection.match(/<ul\b[^>]*>[\s\S]*?<\/ul>/i)?.[0] ?? "";
   for (const item of strategicList.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)) {
-    const mineral = decodeHtml(item[1]);
+    const mineral = extractTextFragment(item[1]);
     if (!mineral || mineral.length > 80 || !/[A-Za-z]/.test(mineral)) continue;
     records.push(normalizeAustraliaCriticalMineral({
       mineral,
