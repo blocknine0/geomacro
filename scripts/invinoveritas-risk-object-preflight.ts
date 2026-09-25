@@ -553,18 +553,18 @@ if (reviewArtifactBytes > 20_000) {
   );
 }
 
+const reviewContext =
+  "Pre-action external risk context from Geomacro. The review artifact itself contains the exact canonical signed gro-1.1 Risk Object inside external_evidence[0].record and its record_sha256. Verify that exact record, its Ed25519 signature, embedded public key, signing_key_id, trust_registry_url and canonicalization_url. Validate evidence/provenance, integrity, decision readiness and freshness. Require trusted current time to be strictly before expires_at at admission and execution, and fail closed at or after expiry. This review never authorizes execution. Commercial delivery is derived-only and does not redistribute raw third-party source material.";
+const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
+if (reviewContextBytes > 4_000) {
+  throw new Error(
+    `Invinoveritas review context exceeds the partner contract: ${reviewContextBytes} bytes > 4000`,
+  );
+}
+
 const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
-  const reviewContext =
-    "Pre-action external risk context from Geomacro. The review artifact itself contains the exact canonical signed gro-1.1 Risk Object inside external_evidence[0].record and its record_sha256. Verify that exact record, its Ed25519 signature, embedded public key, signing_key_id, trust_registry_url and canonicalization_url. Validate evidence/provenance, integrity, decision readiness and freshness. Require trusted current time to be strictly before expires_at at admission and execution, and fail closed at or after expiry. This review never authorizes execution. Commercial delivery is derived-only and does not redistribute raw third-party source material.";
-  const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
-  if (reviewContextBytes > 4_000) {
-    throw new Error(
-      `Invinoveritas review context exceeds the partner contract: ${reviewContextBytes} bytes > 4000`,
-    );
-  }
-
   context: reviewContext,
   sign: true,
   confidentiality_tier: "partial_disclosure",
