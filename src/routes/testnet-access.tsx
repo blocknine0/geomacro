@@ -694,6 +694,165 @@ return response.body;`}</pre>
         ) : null}
       </section>
 
+      <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">API SURFACE</p>
+        <h2 className="mt-2 text-2xl font-semibold">Eight capabilities. One governed Testnet intelligence service.</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Capability descriptions and prices below are read from the current application contract, so this page does not maintain a second hard-coded pricing source.
+        </p>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="border-b border-border/70 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-3 font-medium">Capability</th>
+                <th className="px-3 py-3 font-medium">What it gives you</th>
+                <th className="px-3 py-3 font-medium">Credits</th>
+                <th className="px-3 py-3 font-medium">Testnet USDC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(TESTNET_INTELLIGENCE_PRICE_TABLE).map((capability) => {
+                const price = TESTNET_INTELLIGENCE_PRICE_TABLE[capability as keyof typeof TESTNET_INTELLIGENCE_PRICE_TABLE];
+                const catalog = TESTNET_INTELLIGENCE_CAPABILITY_CATALOG[capability as keyof typeof TESTNET_INTELLIGENCE_CAPABILITY_CATALOG];
+                return (
+                  <tr key={capability} className="border-b border-border/50 align-top last:border-0">
+                    <td className="px-3 py-3"><code>{capability}</code></td>
+                    <td className="px-3 py-3 leading-6 text-muted-foreground">{catalog.description}</td>
+                    <td className="px-3 py-3">{price.credits}</td>
+                    <td className="px-3 py-3">{price.testnet_usdc.toFixed(2)} USDC</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => (
+            <span key={chain.key} className="rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground">
+              {chain.name} · chain {chain.chain_id}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section id="x402-demo" className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">SHORT DEMO · x402</p>
+            <h2 className="mt-2 text-2xl font-semibold">API call → 402 response → pay → retry → response</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Walk through the actual Testnet payment contract without sending a transaction from this demo. The final button opens the live console for the real wallet flow.
+            </p>
+          </div>
+          <button type="button" onClick={() => setDemoStep(0)} className="rounded-lg border border-border px-3 py-2 text-xs font-medium">Restart demo</button>
+        </div>
+
+        <div className="mt-5 grid gap-2 md:grid-cols-5">
+          {[
+            ["01", "API call"],
+            ["02", "402 response"],
+            ["03", "Pay"],
+            ["04", "Retry"],
+            ["05", "Response"],
+          ].map(([number, label], index) => (
+            <button
+              key={number}
+              type="button"
+              onClick={() => setDemoStep(index)}
+              className={`rounded-xl border p-3 text-left ${demoStep === index ? "border-primary/50 bg-background" : "border-border/70 bg-background/40"}`}
+            >
+              <span className="font-mono text-[10px] text-primary">{number}</span>
+              <span className="mt-1 block text-sm font-semibold">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.08fr_.92fr]">
+          <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {["REQUEST", "HTTP 402 QUOTE", "TESTNET PAYMENT", "RETRY WITH PROOF", "MACHINE RESPONSE"][demoStep]}
+            </p>
+            {demoStep === 0 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`POST /api/testnet/intelligence
+Authorization: GeomacroTest <API_KEY>.<API_SECRET>
+
+{
+  "request_id": "demo-country-0001",
+  "capability": "structural_country_digest",
+  "subject": { "type": "country", "country_iso3": "IND" }
+}`}</pre>
+            ) : null}
+            {demoStep === 1 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`HTTP/1.1 402 Payment Required
+
+{
+  "error": { "code": "TESTNET_PAYMENT_REQUIRED" },
+  "payment": {
+    "credits": 3,
+    "amount_due_usdc": 1.50,
+    "message": "Pay only this API call, then retry the same request_id."
+  }
+}`}</pre>
+            ) : null}
+            {demoStep === 2 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`Wallet payment
+Asset: Testnet USDC
+Amount: ${TESTNET_INTELLIGENCE_PRICE_TABLE.structural_country_digest.testnet_usdc.toFixed(2)} USDC
+From: <VERIFIED_TESTER_WALLET>
+Network: Arc Testnet / Base Sepolia / Polygon Amoy
+Result: <CONFIRMED_TX_HASH>`}</pre>
+            ) : null}
+            {demoStep === 3 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`POST /api/testnet/intelligence
+
+{
+  "request_id": "demo-country-0001",
+  "capability": "structural_country_digest",
+  "subject": { "type": "country", "country_iso3": "IND" },
+  "payment": {
+    "chain_key": "arcTestnet",
+    "tx_hash": "<CONFIRMED_TX_HASH>",
+    "payer_address": "<VERIFIED_TESTER_WALLET>"
+  }
+}`}</pre>
+            ) : null}
+            {demoStep === 4 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`{
+  "request_id": "demo-country-0001",
+  "capability": "structural_country_digest",
+  "subject": { "type": "country", "country_iso3": "IND" },
+  "data": {
+    "severity": "<CURRENT_TESTNET_SEVERITY>",
+    "observations": ["..."],
+    "coverage": { "...": "..." },
+    "quality": { "...": "..." }
+  }
+}`}</pre>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-background/50 p-4">
+            <p className="font-medium">What happens here</p>
+            <div className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
+              {demoStep === 0 ? <p>Your first request contains the exact capability and subject, but no payment proof.</p> : null}
+              {demoStep === 1 ? <p>Geomacro returns an exact quote before delivery. For this 3-credit example, the current contract prices the call at 1.50 Testnet USDC.</p> : null}
+              {demoStep === 2 ? <p>Your system sends exactly the quoted Testnet USDC from the verified tester wallet on a supported Testnet payment chain.</p> : null}
+              {demoStep === 3 ? <p>Keep the original <code>request_id</code>, capability and subject unchanged. Add the verified payment proof fields and retry.</p> : null}
+              {demoStep === 4 ? <p>Geomacro verifies the settlement, consumes the credits once and returns the machine-readable intelligence. Exact replay is idempotent and does not double-charge.</p> : null}
+            </div>
+            <div className="mt-5 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              This is a contract walkthrough. The response body shown is representative, not a fabricated live transaction result.
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setDemoStep((step) => Math.max(0, step - 1))} disabled={demoStep === 0} className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40">Previous</button>
+          <button type="button" onClick={() => setDemoStep((step) => Math.min(4, step + 1))} disabled={demoStep === 4} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next step</button>
+          <a href="/testnet-console" className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Run the real Testnet flow</a>
+        </div>
+      </section>
+
       <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
