@@ -22,13 +22,6 @@ export default defineEventHandler((event) => {
 </style>
 <script src="/testnet-console.js" defer></script>
 <script src="/testnet-console-pricing.js" defer></script>
-<script>
-document.getElementById("languageSelect")?.addEventListener("change",function(){
-  const lang=this.value;
-  if(lang==="en"){ location.reload(); return; }
-  location.href="https://translate.google.com/translate?sl=auto&tl="+encodeURIComponent(lang)+"&u="+encodeURIComponent(location.href);
-});
-</script>
 </head>
 <body>
 <main>
