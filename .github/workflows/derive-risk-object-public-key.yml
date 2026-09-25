@@ -75,7 +75,7 @@ jobs:
               publicB64,
               '```',
               '',
-              'Also set `RISK_OBJECT_SIGNING_KEY_ID` to `geomacro-risk-2026-02`.',
+              `Signing key ID is sourced from the configured \\`RISK_OBJECT_SIGNING_KEY_ID\\` secret: \\`${keyId}\\`.`,
               '',
               'The private signing key was not printed or persisted by this workflow.',
             ].join('\n'),
