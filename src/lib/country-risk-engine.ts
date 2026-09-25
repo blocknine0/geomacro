@@ -985,6 +985,18 @@ export async function buildCountryRiskObject(
       0,
     );
 
+  const evidenceSourceFamilies =
+    strictProfile
+      ? evidence.flatMap((item) =>
+          (item.source_ids ?? []).map(
+            federicoStrictSourceFamilyForId,
+          ),
+        )
+      : evidence.flatMap(
+          (item) =>
+            item.source_families ?? [],
+        );
+
   const sourceFamilies =
     new Set(evidenceSourceFamilies);
 
@@ -1245,18 +1257,6 @@ export async function buildCountryRiskObject(
       "missing_structure_version",
     );
   }
-
-  const evidenceSourceFamilies =
-    strictProfile
-      ? evidence.flatMap((item) =>
-          (item.source_ids ?? []).map(
-            federicoStrictSourceFamilyForId,
-          ),
-        )
-      : evidence.flatMap(
-          (item) =>
-            item.source_families ?? [],
-        );
 
   const totalIndependentSources =
     new Set(evidenceSourceFamilies).size;
