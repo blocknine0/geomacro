@@ -20,6 +20,8 @@
 
 import {
   createHash,
+  createPublicKey,
+  verify as verifySignatureBytes,
 } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import {
@@ -132,16 +134,39 @@ if (strictProfile && !observedAt) {
   );
 }
 
+let registryUrl = riskObject?.integrity?.trust_registry_url ?? "";
+let trusted: any = null;
+let registry: any = null;
+let registryFetchedAt: string | null = null;
+let registryHttpDate: string | null = null;
+let registryResponseSha256: string | null = null;
+let trustedKeyFingerprintSha256: string | null = null;
+let trustedClockMs: number | null = null;
+let expiresAtMsForAttestation: number | null = null;
+
 if (strictProfile) {
-  const registryUrl =
+  registryUrl =
     riskObject.integrity.trust_registry_url;
 
   const registryResponse =
     await fetch(registryUrl);
-  const registry =
+  if (!registryResponse.ok) {
+    throw new Error(
+      "Risk Object trust registry fetch failed HTTP " +
+        registryResponse.status,
+    );
+  }
+  registry =
     await registryResponse.json();
+  registryFetchedAt = new Date().toISOString();
+  registryHttpDate = registryResponse.headers.get("date");
+  if (!registryHttpDate || !Number.isFinite(Date.parse(registryHttpDate))) {
+    throw new Error(
+      "Risk Object trust registry did not provide a valid HTTP Date header for trusted freshness attestation",
+    );
+  }
 
-  const trusted =
+  trusted =
     Array.isArray(registry?.keys)
       ? registry.keys.find(
           (item: any) =>
@@ -158,6 +183,23 @@ if (strictProfile) {
   ) {
     throw new Error(
       "Embedded Risk Object public key does not match the active public trust registry",
+    );
+  }
+
+  registryResponseSha256 = sha256Canonical(registry);
+  trustedKeyFingerprintSha256 = createHash("sha256")
+    .update(Buffer.from(riskObject.integrity.public_key_spki_b64, "base64"))
+    .digest("hex");
+
+  trustedClockMs = Date.parse(registryHttpDate);
+  expiresAtMsForAttestation = Date.parse(riskObject.expires_at);
+  if (
+    !Number.isFinite(expiresAtMsForAttestation) ||
+    !Number.isFinite(trustedClockMs) ||
+    trustedClockMs >= expiresAtMsForAttestation
+  ) {
+    throw new Error(
+      "Federico strict trusted registry clock is not strictly before Risk Object expiry",
     );
   }
 
@@ -542,6 +584,52 @@ if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
+const signableRiskObject = structuredClone(riskObject);
+signableRiskObject.integrity = {
+  ...signableRiskObject.integrity,
+  payload_hash: null,
+  signature: null,
+};
+const canonicalSignedBytes = JSON.stringify(canonicalize(signableRiskObject));
+const recomputedPayloadHash = createHash("sha256")
+  .update(canonicalSignedBytes, "utf8")
+  .digest("hex");
+if (recomputedPayloadHash !== riskObject.integrity.payload_hash) {
+  throw new Error(
+    "Federico cryptographic attestation payload_hash mismatch",
+  );
+}
+
+const publicKey = createPublicKey({
+  key: Buffer.from(riskObject.integrity.public_key_spki_b64, "base64"),
+  format: "der",
+  type: "spki",
+});
+const signatureValid = verifySignatureBytes(
+  null,
+  Buffer.from(canonicalSignedBytes, "utf8"),
+  publicKey,
+  Buffer.from(riskObject.integrity.signature, "base64"),
+);
+if (!signatureValid) {
+  throw new Error(
+    "Federico cryptographic attestation Ed25519 signature verification failed",
+  );
+}
+
+const deployedVerificationSummary = {
+  verifier_url:
+    geomacroOrigin + "/api/risk-object-keys",
+  http_status: original.http_status,
+  status: original.body?.verification?.status ?? null,
+  valid: original.body?.verification?.valid ?? false,
+  cryptographic_valid:
+    original.body?.verification?.cryptographic_valid ?? false,
+  contract_valid:
+    original.body?.verification?.contract_valid ?? false,
+  fresh: original.body?.verification?.fresh ?? false,
+};
+
 const externalEvidence = [{
   source: "Geomacro",
   record_sha256: signedRiskObjectRecordSha256,
@@ -587,6 +675,51 @@ const reviewArtifact = {
     observed_at: externalEvidence[0].observed_at,
     validity_until: externalEvidence[0].validity_until,
   }],
+  cryptographic_attestation: {
+    verification_method:
+      "Geomacro deployed verifier + local Ed25519 recomputation",
+    canonicalization: riskObject.integrity.canonicalization,
+    canonicalization_url: riskObject.integrity.canonicalization_url,
+    signature_scheme: riskObject.integrity.signature_scheme,
+    signing_key_id: riskObject.integrity.signing_key_id,
+    public_key_spki_b64: riskObject.integrity.public_key_spki_b64,
+    public_key_fingerprint_sha256: trustedKeyFingerprintSha256,
+    payload_hash: riskObject.integrity.payload_hash,
+    recomputed_payload_hash: recomputedPayloadHash,
+    signed_record_sha256: signedRiskObjectRecordSha256,
+    signature: riskObject.integrity.signature,
+    signature_verified: signatureValid,
+    deployed_verifier: deployedVerificationSummary,
+  },
+  trust_registry_attestation: {
+    registry_url: registryUrl,
+    transport: {
+      scheme: "https",
+      expected_origin: "https://geomacro.live",
+      certificate_validation: "platform_default_tls_validation",
+      certificate_pinning: "not_configured",
+    },
+    fetched_at: registryFetchedAt,
+    http_date: registryHttpDate,
+    response_sha256: registryResponseSha256,
+    key_id: riskObject.integrity.signing_key_id,
+    key_record: trusted,
+    key_fingerprint_sha256: trustedKeyFingerprintSha256,
+    matched_embedded_public_key: true,
+    status_active: trusted.status === "active",
+    snapshot: registry,
+  },
+  freshness_attestation: {
+    trusted_clock_source: registryUrl,
+    trusted_http_date: registryHttpDate,
+    expires_at: riskObject.expires_at,
+    strict_before_expiry:
+      trustedClockMs !== null &&
+      expiresAtMsForAttestation !== null &&
+      trustedClockMs < expiresAtMsForAttestation,
+    decision_time_revalidation_required: true,
+    fail_closed_at_or_after: riskObject.expires_at,
+  },
 };
 
 const reviewArtifactText = JSON.stringify(reviewArtifact);
