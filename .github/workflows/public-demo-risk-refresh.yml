@@ -2,8 +2,10 @@ name: Public Demo Risk Refresh
 
 on:
   workflow_dispatch:
+  # Public Demo Risk Objects expire after 3 hours. Run hourly so scheduled
+  # execution retains a two-hour freshness margin before the fail-closed gate trips.
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 * * * *"
   push:
     branches:
       - main
@@ -22,8 +24,10 @@ permissions:
   contents: read
 
 
+# Keep public-demo publication independent from the long-running intelligence
+# orchestrator so freshness-critical publication cannot be queued behind it.
 concurrency:
-  group: geomacro-intelligence-orchestrator
+  group: geomacro-public-demo-refresh
   cancel-in-progress: false
 
 jobs:

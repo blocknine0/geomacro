@@ -9,6 +9,7 @@ on:
       - main
     paths:
       - ".github/workflows/continuous-public-testnet-e2e.yml"
+      - ".github/workflows/public-demo-risk-refresh.yml"
       - "src/routes/demo.tsx"
       - "src/routes/api.agent.risk.ts"
       - "server/api/testnet/**"
