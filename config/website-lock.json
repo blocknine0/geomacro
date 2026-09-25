@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "fa114780baa862fe2002f5c87041d1fc65dc1fa1",
-  "published_baseline": "Founder-approved Testnet Access canonical surface, contract-aligned credentials, contract-driven metrics, x402 walkthrough and credential lifecycle",
+  "baseline_sha": "30ddeddcd50f2d3b6b6cb60b6506f86cef75289e",
+  "published_baseline": "Founder-approved Testnet Access lighter commercial surface with core x402 demo and collapsed advanced integration details",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-09-20T04:47:41Z",
-  "published_source_sha": "b6419b5baae6001deba15dd0761fc81a1f04301c",
-  "lock_revision": "founder-approved-testnet-access-canonical-v4"
+  "locked_at_utc": "2026-09-25T06:32:00Z",
+  "published_source_sha": "30ddeddcd50f2d3b6b6cb60b6506f86cef75289e",
+  "lock_revision": "founder-approved-testnet-access-lighter-v1"
 }
