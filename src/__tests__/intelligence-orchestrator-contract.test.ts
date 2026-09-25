@@ -96,7 +96,9 @@ describe("permanent intelligence orchestration contract", () => {
   it("allows the public demo Risk Object refresh to run on a bounded freshness schedule", () => {
     const workflow = read(".github/workflows/public-demo-risk-refresh.yml");
     expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain('cron: "0 */6 * * *"');
+    expect(workflow).toContain('cron: "0 * * * *"');
+    expect(workflow).toContain("group: geomacro-public-demo-refresh");
+    expect(workflow).not.toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).not.toContain("workflow_run:");
     expect(workflow).toContain("Refresh all visible public demo subjects");
   });
