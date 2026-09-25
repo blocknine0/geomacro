@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { TESTNET_INTELLIGENCE_CAPABILITY_CATALOG, TESTNET_INTELLIGENCE_PRICE_TABLE } from "@/lib/testnet-intelligence-contract";
 import { TESTNET_PUBLIC_API_KEYS } from "@/lib/testnet-public-access-contract";
+import { TESTNET_USDC_ACCESS_CHAINS } from "@/lib/testnet-usdc-access-contract";
 
 type AccountState = {
   profile_name?: string;
@@ -180,6 +182,9 @@ function TestnetAccessPage() {
   const [feedbackStatus, setFeedbackStatus] = useState("");
   const [followState, setFollowState] = useState<FollowState>("idle");
   const [shareOpened, setShareOpened] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);
+  const [liveManifest, setLiveManifest] = useState<unknown>(null);
+  const [manifestBusy, setManifestBusy] = useState(false);
 
   const active = account?.access_status === "active" && account?.wallet_verified === true;
   const walletConnected = Boolean(connectedWallet) || active;
@@ -472,6 +477,20 @@ function TestnetAccessPage() {
     setFollowState("opened");
   }
 
+  async function loadLiveManifest() {
+    if (manifestBusy) return;
+    setManifestBusy(true);
+    try {
+      const result = await api<Record<string, unknown>>("/api/testnet/manifest");
+      setLiveManifest(result);
+      setStatus("Live Testnet manifest loaded from the production endpoint.");
+    } catch (error) {
+      setStatus(friendlyError(error));
+    } finally {
+      setManifestBusy(false);
+    }
+  }
+
   function confirmFollow() {
     setFollowState("confirmed");
     try {
@@ -484,21 +503,26 @@ function TestnetAccessPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14" data-testnet-auth-flow={AUTH_FLOW}>
       <section className="rounded-2xl border border-border/70 bg-card/30 p-6 sm:p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Geomacro Testnet Access</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Geomacro Testnet API</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">WALLET-FIRST</span>
-          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">PUBLIC TESTER + DEVELOPER API</span>
+          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">MACHINE-READABLE</span>
+          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">PAY-PER-CALL</span>
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">TESTNET · NON-REVENUE</span>
         </div>
-        <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl">
-          Test Geomacro as a user or integrate it as a developer.
+        <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-tight sm:text-5xl">
+          Build with Geomacro intelligence. Test it as a user. Integrate it as a machine.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
-          Sign one wallet message. Normal testers use the three public Testnet keys on the left. Developers can create private API credentials on the right.
+          One canonical Testnet surface for humans, products and AI agents. Query geopolitical and macro intelligence, read the Global Risk Index, retrieve signed Risk Objects, or request a full Risk Gate bundle through a metered API.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a href="#wallet-account" className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Start with wallet</a>
+          <a href="#x402-demo" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">See the 402 flow</a>
+          <a href="#integration" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Integration examples</a>
+        </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+      <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Wallet account</p>
