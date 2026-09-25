@@ -21,5 +21,10 @@ describe("canonical Testnet Access surface", () => {
     expect(route).toContain("risk_gate_bundle");
     expect(route).toContain("signed_risk_object");
     expect(route).toContain("Load live manifest");
+    expect(route).toContain("MAX_ACTIVE_DEVELOPER_KEYS = 1");
+    expect(route).not.toContain("maximum 3 active developer API keys");
+    expect(route).toContain("Demo credentials do not include Risk Gate access");
+    expect(route).toContain("async function writeClipboard");
+    expect(route).toContain("wallet_revokePermissions");
   });
 });
