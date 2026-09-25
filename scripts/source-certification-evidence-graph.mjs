@@ -118,15 +118,8 @@ function canonicalObject(value) {
   return JSON.stringify(out);
 }
 
-function stripHtml(input) {
+function normalizeEvidenceText(input) {
   return String(input || "")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -373,7 +366,7 @@ function governedScopeKey(row) {
 }
 
 function explicitRightsFromText(text) {
-  const clean = stripHtml(text).slice(0, 20000);
+  const clean = normalizeEvidenceText(text).slice(0, 20000);
   const patterns = [
     { status: "COMMERCIAL_OK", re: /creative commons attribution(?: 4\.0)?/i, reason: "Explicit Creative Commons Attribution licensing text." },
     { status: "COMMERCIAL_OK", re: /\bcc by(?: 4\.0)?\b/i, reason: "Explicit CC BY licensing text." },
@@ -423,21 +416,6 @@ async function discoverRights(source, endpointProbe) {
       candidates.add(new URL(suffix, root).toString());
     }
   } catch {}
-
-  const htmlLinks = String(endpointProbe.body || "").matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>/gi);
-  let linkBudget = 0;
-  for (const m of htmlLinks) {
-    const href = m[1];
-    const label = href + " " + m[0];
-    if (/(terms|copyright|licen[cs]|reuse|open[ -]?data|legal|conditions)/i.test(label)) {
-      try {
-        const absolute = new URL(href, endpointProbe.final_url || source.base_url).toString();
-        if (samePublisherHost(source.base_url, absolute)) candidates.add(absolute);
-      } catch {}
-      linkBudget += 1;
-      if (linkBudget >= 4) break;
-    }
-  }
 
   const urls = [...candidates].slice(0, 7);
   const results = await Promise.all(urls.map((url) => httpGet(url)));
