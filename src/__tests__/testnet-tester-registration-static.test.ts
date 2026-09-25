@@ -20,7 +20,7 @@ describe("testnet tester registration boundary", () => {
   });
 
   it("uses only profile plus wallet in the tester flow", () => {
-    expect(pageSource).toContain("Profile + wallet");
+    expect(pageSource).toContain("Create a tester profile and verify one EVM wallet");
     expect(pageSource).toContain("Connect & verify wallet");
     expect(pageSource).not.toContain("Verify email");
     expect(pageSource).not.toContain("Connect X");
@@ -28,12 +28,10 @@ describe("testnet tester registration boundary", () => {
   });
 
   it("describes canonical Testnet pay-per-call pricing, developer credentials and post-test X sharing", () => {
-    expect(pageSource).toContain("0.5 Testnet USDC per credit");
-    expect(pageSource).toContain("500-credit usage cap");
-    expect(pageSource).toContain("not a prepaid balance");
-    expect(pageSource).toContain("There is no upfront Testnet USDC activation payment");
-    expect(pageSource).toContain("API Key + API Secret");
-    expect(pageSource).toContain("HTTP 402");
+    expect(pageSource).toContain("The live manifest is the source of truth for capabilities, pricing and payment configuration.");
+    expect(pageSource).toContain("No upfront activation payment.");
+    expect(pageSource).toContain("API Secret is shown once");
+    expect(pageSource).toContain("402 → pay → retry");
     expect(pageSource).toContain("TEST → X → FEEDBACK");
     expect(pageSource).toContain("open one X post");
   });
