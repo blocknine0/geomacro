@@ -425,7 +425,7 @@ describe("Federico exact external-evidence review binding", () => {
       "execution_authorized: false",
     );
     expect(federicoPreflight).toContain(
-      'confidentiality_tier: "hash_only"',
+      'confidentiality_tier: "partial_disclosure"',
     );
   });
 
