@@ -253,7 +253,7 @@
     if (anchor?.parentNode) anchor.parentNode.insertBefore(panel, anchor.nextSibling);
     else document.querySelector("main")?.appendChild(panel);
 
-    const flowSteps = Array.from(document.querySelectorAll?.(".flow-step") ?? []);
+    const flowSteps = typeof document.querySelectorAll === "function" ? Array.from(document.querySelectorAll(".flow-step")) : [];
     function setFlowStep(activeIndex) {
       flowSteps.forEach((step, index) => {
         step.classList.toggle("active", index === activeIndex);
