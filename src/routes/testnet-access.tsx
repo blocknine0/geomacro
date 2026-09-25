@@ -334,7 +334,7 @@ function TestnetAccessPage() {
 
       <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6 sm:p-8">
         <details>
-          <summary className="cursor-pointer list-none"><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">DEVELOPER INTEGRATIONS (OPTIONAL)</p><h2 className="mt-2 text-2xl font-semibold">Developers</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Create a private API Key + API Secret for your product, AI agent or automation. The secret is shown only once.</p><p className="mt-2 text-xs text-muted-foreground">{activeDeveloperKeys.length}/{MAX_ACTIVE_DEVELOPER_KEYS} active</p></summary>
+          <summary className="cursor-pointer list-none"><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Developer integrations (optional)</p><h2 className="mt-2 text-2xl font-semibold">Developers</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Create a private API Key + API Secret for your product, AI agent or automation. The secret is shown only once.</p><p className="mt-2 text-xs text-muted-foreground">{activeDeveloperKeys.length}/{MAX_ACTIVE_DEVELOPER_KEYS} active</p></summary>
           <div className="mt-6 border-t border-border/70 pt-6">
             {!active ? <p className="rounded-xl border border-border/70 bg-background/40 p-4 text-sm text-muted-foreground">Sign in with a wallet above to create or manage developer credentials.</p> : (
               <>
@@ -383,7 +383,7 @@ function TestnetAccessPage() {
 
       <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <details>
-          <summary className="cursor-pointer list-none"><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">PUBLIC TESTNET ACCESS</p><h2 className="mt-2 text-2xl font-semibold">Normal users</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Three public API keys, one for each supported Testnet. They are public identifiers, not secrets, and still require wallet sign-in, HTTP 402 payment and server-side verification.</p></summary>
+          <summary className="cursor-pointer list-none"><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Public Testnet access</p><h2 className="mt-2 text-2xl font-semibold">Normal users</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Three public API keys, one for each supported Testnet. They are public identifiers, not secrets, and still require wallet sign-in, HTTP 402 payment and server-side verification.</p></summary>
           <div className="mt-5 border-t border-border/70 pt-5"><div className="grid gap-3 md:grid-cols-3">{Object.values(TESTNET_PUBLIC_API_KEYS).map((entry) => <div key={entry.chain_key} className="rounded-xl border border-border/70 bg-background/40 p-4"><p className="text-sm font-medium">{entry.label}</p><code className="mt-2 block break-all text-[11px] text-muted-foreground">{entry.public_api_key}</code><button type="button" onClick={() => void copyText(entry.public_api_key, entry.label + " public API key copied.")} className="mt-3 rounded-lg border border-border px-3 py-2 text-xs">Copy public key</button></div>)}</div><p className="mt-4 text-xs text-muted-foreground">Use a public key with the matching payment Testnet in the browser console.</p></div>
         </details>
       </section>
