@@ -6,6 +6,7 @@ import {
 import {
   withRiskObjectObservationTimestamp,
 } from "./risk-object-observation";
+import { assertFedericoPublicationReady } from "./federico-publication-policy";
 
 import {
   buildCountryRiskObject,
@@ -674,15 +675,22 @@ async function loadFedericoStrictEvents(
     .from("live_flash_event_families")
     .select(
       "family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,last_material_update_at,current_status,source_count,independent_source_count,latest_flash_id",
+      { count: "exact" },
     )
     .eq("current_status", "ACTIVE")
     .gte("last_seen_at", cutoff)
+    .lte("last_seen_at", asOf.toISOString())
     .contains("country_isos", [iso3])
     .order("last_seen_at", { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (familiesResult.error) {
     throw familiesResult.error;
+  }
+
+  if (familiesResult.count === null || familiesResult.count > 1000 ||
+      (familiesResult.data ?? []).length !== familiesResult.count) {
+    throw new Error("FEDERICO_STRICT country family query was truncated");
   }
 
   const families = (familiesResult.data ?? []) as Array<Record<string, unknown>>;
@@ -690,15 +698,22 @@ async function loadFedericoStrictEvents(
   const flashesResult = await db
     .from("live_flash_events")
     .select(
-      "flash_id,source_id,source_record_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,severity,source_reliability,verification_score,verification_status,first_seen_at,last_seen_at,last_material_update_at,event_family_id,content_hash,material_update",
+      "flash_id,source_id,source_record_id,source_channel,published_at,ingested_at,headline,source_url,event_type,signal_category,severity,source_reliability,verification_score,verification_status,first_seen_at,last_seen_at,last_material_update_at,event_family_id,content_hash,material_update,live_flash_event_countries!inner(country_iso3)",
+      { count: "exact" },
     )
+    .eq("live_flash_event_countries.country_iso3", iso3)
     .eq("verification_status", "VERIFIED")
     .gte("last_seen_at", cutoff)
+    .lte("last_seen_at", asOf.toISOString())
     .order("last_seen_at", { ascending: false })
     .limit(1000);
 
   if (flashesResult.error) {
     throw flashesResult.error;
+  }
+  if (flashesResult.count === null || flashesResult.count > 1000 ||
+      (flashesResult.data ?? []).length !== flashesResult.count) {
+    throw new Error("FEDERICO_STRICT country evidence query was truncated");
   }
 
   const flashRows =
@@ -1370,6 +1385,10 @@ async function generateInternal(
       unsignedObject,
       asOf.toISOString(),
     );
+
+  if (publish && deliveryProfile === "FEDERICO_STRICT") {
+    assertFedericoPublicationReady(observationBoundObject);
+  }
 
   const object =
     publish

@@ -81,6 +81,9 @@ jobs:
           src/__tests__/risk-object-public-verification-route.test.ts
           src/__tests__/canonical-json-v1-test-vector.test.ts
           src/__tests__/federico-strict-risk-object-policy-static.test.ts
+          src/__tests__/federico-publication-safety.test.ts
+          src/__tests__/federico-country-window.test.ts
+          src/__tests__/federico-refresh-contract.test.ts
 
       - name: Exact-head readiness gate
         env:

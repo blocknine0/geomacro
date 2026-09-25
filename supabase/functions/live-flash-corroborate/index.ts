@@ -1,4 +1,5 @@
 // Deployment marker: keep this source aligned with the current production corroboration implementation.
+import { loadCountryCorroborationWindow, COUNTRY_WINDOW_LIMIT, COUNTRY_BATCH_SIZE } from "./country-window.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.3"
 
@@ -374,6 +375,8 @@ Deno.serve(async request => {
   }
 
   let requestedCountryIso3: string | null = null
+  let candidateOffset = 0
+  let windowAsOf = new Date().toISOString()
 
   try {
     const bodyText = await request.text()
@@ -394,6 +397,20 @@ Deno.serve(async request => {
           })
         }
         requestedCountryIso3 = normalizedCountry
+      }
+      if (body.candidate_offset !== undefined) {
+        if (!Number.isInteger(body.candidate_offset) || body.candidate_offset < 0 ||
+            body.candidate_offset >= COUNTRY_WINDOW_LIMIT || body.candidate_offset % COUNTRY_BATCH_SIZE !== 0) {
+          return jsonResponse(400, { ok: false, error: "invalid_candidate_offset" })
+        }
+        candidateOffset = body.candidate_offset
+      }
+      if (body.as_of !== undefined) {
+        const value = typeof body.as_of === "string" ? Date.parse(body.as_of) : NaN
+        if (!Number.isFinite(value) || value > Date.now() || Date.now() - value > 30 * 60_000) {
+          return jsonResponse(400, { ok: false, error: "invalid_as_of" })
+        }
+        windowAsOf = new Date(value).toISOString()
       }
     }
   } catch {
@@ -487,7 +504,7 @@ Deno.serve(async request => {
   // Keep the verification work queue bounded. The runner invokes this endpoint
   // repeatedly, so reprocessing six hours of UNVERIFIED/CORROBORATING rows on
   // every call creates an O(n^2) hot path and can exceed the platform's idle
-  // timeout. Older candidates remain eligible for later scheduled cycles.
+  // timeout. Explicit country replays below scan the full six-hour window.
   const candidateCutoff = new Date(
     Date.now() - CORROBORATION_CANDIDATE_WINDOW_MINUTES * 60_000,
   ).toISOString()
@@ -498,34 +515,15 @@ Deno.serve(async request => {
   // the entire six-hour history.
   let candidateRows: Array<Record<string, unknown>> = []
 
+  let countryWindow: Awaited<ReturnType<typeof loadCountryCorroborationWindow>> | null = null
   if (requestedCountryIso3) {
-    // Query the country-filtered event rows directly, ordered by fresh ingestion.
-    // The previous two-step country-bridge lookup took an arbitrary first page of
-    // flash IDs before applying the 90-minute freshness window, which could omit
-    // the newest CHN evidence entirely.
-    const targetCandidateResult = await db
-      .from("live_flash_events")
-      .select(
-        "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at,live_flash_event_countries!inner(country_iso3)",
-      )
-      .eq("live_flash_event_countries.country_iso3", requestedCountryIso3)
-      .gte("ingested_at", candidateCutoff)
-      .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
-      .order("ingested_at", { ascending: false })
-      .limit(CORROBORATION_CANDIDATE_LIMIT)
-
-    if (targetCandidateResult.error) {
-      console.error(targetCandidateResult.error)
-      return jsonResponse(500, {
-        ok: false,
-        error: "candidate_query_failed",
-      })
+    try {
+      countryWindow = await loadCountryCorroborationWindow(db as unknown as Parameters<typeof loadCountryCorroborationWindow>[0], requestedCountryIso3, windowAsOf, candidateOffset)
+      candidateRows = countryWindow.candidates
+    } catch (error) {
+      console.error(error)
+      return jsonResponse(500, { ok: false, error: "country_corroboration_window_failed" })
     }
-
-    candidateRows = (targetCandidateResult.data ?? []).map((row) => {
-      const { live_flash_event_countries: _countryLinks, ...flash } = row as Record<string, unknown>
-      return flash
-    })
   } else {
     const candidateResult = await db
       .from("live_flash_events")
@@ -545,7 +543,9 @@ Deno.serve(async request => {
     candidateRows = (candidateResult.data ?? []) as Array<Record<string, unknown>>
   }
 
-  const referenceResult = await db
+  const referenceResult = countryWindow
+    ? { data: countryWindow.flashes, error: null }
+    : await db
     .from("live_flash_events")
     .select(
       "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
@@ -575,7 +575,9 @@ Deno.serve(async request => {
       verified: 0,
       corroborating: 0,
       unverified: 0,
-      reference_verified: referenceFlashes.length,
+      reference_verified: referenceFlashes.filter(row => row.verification_status === "VERIFIED").length,
+      next_candidate_offset: countryWindow?.nextOffset ?? null,
+      window_as_of: windowAsOf,
     })
   }
 
@@ -669,13 +671,16 @@ Deno.serve(async request => {
   }
 
   const familyCutoff = new Date(Date.now() - 24 * 60 * 60_000).toISOString()
-  const familyResult = await db
+  let familyQuery = db
     .from("live_flash_event_families")
     .select("family_id,signal_category,canonical_headline,country_isos,first_seen_at,last_seen_at,current_version,current_status,source_count,independent_source_count,last_material_update_at,latest_update_reason,latest_flash_id,latest_content_hash")
     .eq("current_status", "ACTIVE")
     .gte("last_seen_at", familyCutoff)
     .order("last_seen_at", { ascending: false })
     .limit(500)
+
+  if (requestedCountryIso3) familyQuery = familyQuery.contains("country_isos", [requestedCountryIso3])
+  const familyResult = await familyQuery
 
   if (familyResult.error) {
     console.error(familyResult.error)
@@ -1180,12 +1185,14 @@ Deno.serve(async request => {
 
   return jsonResponse(200, {
     ok: true,
-    processed: flashes.length,
+    processed: candidateFlashes.length,
     verified,
     corroborating,
     unverified,
     edges_written: edgesWritten,
     structured_events_seen: structuredEvents.length,
+    next_candidate_offset: countryWindow?.nextOffset ?? null,
+    window_as_of: windowAsOf,
     candidate_scope: requestedCountryIso3
       ? "country"
       : "global",

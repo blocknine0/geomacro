@@ -197,12 +197,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(corroborator).toContain(
       "requestedCountryIso3",
     );
-    expect(corroborator).toContain(
-      "live_flash_event_countries!inner(country_iso3)",
-    );
-    expect(corroborator).toContain(
-      '.eq("live_flash_event_countries.country_iso3", requestedCountryIso3)',
-    );
+    const countryWindow = read("supabase/functions/live-flash-corroborate/country-window.ts");
+    expect(corroborator).toContain("loadCountryCorroborationWindow");
+    expect(countryWindow).toContain("live_flash_event_countries!inner(country_iso3)");
+    expect(countryWindow).toContain('.eq("live_flash_event_countries.country_iso3", iso3)');
     expect(corroborator).toContain(
       '.contains("countries", [requestedCountryIso3])',
     );
@@ -213,7 +211,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "CORROBORATION_REFERENCE_LIMIT = 600",
     );
     expect(corroborator).toContain(
-      "Older candidates remain eligible for later scheduled cycles.",
+      "Explicit country replays below scan the full six-hour window.",
     );
   });
 

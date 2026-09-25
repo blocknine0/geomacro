@@ -637,24 +637,56 @@ jobs:
         run: |
           set -euo pipefail
           base="${APP_SUPABASE_URL%/}/functions/v1"
-          response="$(curl --silent --show-error \
-            --output /tmp/federico-corroborate.json \
-            --write-out '%{http_code}' \
-            --retry 5 \
-            --retry-all-errors \
-            --retry-delay 2 \
-            --retry-max-time 120 \
-            --request POST \
-            --header "x-geomacro-github-oidc-token: ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header "Authorization: Bearer ${GEOMACRO_FLASH_OIDC_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --data '{"country_iso3":"CHN"}' \
-            "${base}/live-flash-corroborate")"
-          cat /tmp/federico-corroborate.json
-          echo
-          test "$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
-          jq -e '.ok == true' /tmp/federico-corroborate.json >/dev/null
+          offset=0
+          window_as_of="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          while true; do
+            # Each batch can consume most of an OIDC token lifetime.
+            oidc_response="$(curl --fail-with-body -sS --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${GITHUB_OIDC_AUDIENCE}")"
+            token="$(printf "%s" "$oidc_response" | jq -er '.value')"
+            echo "::add-mask::$token"
+            response="$(curl --silent --show-error \
+              --output /tmp/federico-corroborate.json \
+              --write-out '%{http_code}' \
+              --retry 5 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+              --request POST \
+              --header "x-geomacro-github-oidc-token: ${token}" \
+              --header "Authorization: Bearer ${token}" \
+              --header 'Content-Type: application/json' \
+              --data "$(jq -nc --arg as_of "$window_as_of" --argjson offset "$offset" '{country_iso3:"CHN",as_of:$as_of,candidate_offset:$offset}')" \
+              "${base}/live-flash-corroborate")"
+            cat /tmp/federico-corroborate.json
+            echo
+            test "$response" = "200" || { echo "::error::live-flash-corroborate did not return HTTP 200."; exit 1; }
+            # Reject an old deployment that cannot prove full-window traversal.
+            jq -e '.ok == true and has("next_candidate_offset") and has("window_as_of")' /tmp/federico-corroborate.json >/dev/null
+            next="$(jq -r '.next_candidate_offset' /tmp/federico-corroborate.json)"
+            [[ "$next" != "null" ]] || break
+            [[ "$next" =~ ^[0-9]+$ && "$next" -gt "$offset" && "$next" -lt 600 ]] || {
+              echo "::error::Corroboration cursor did not advance within its bounded country window."
+              exit 1
+            }
+            offset="$next"
+          done
           echo "PASS: fresh RSS and structured evidence corroboration completed."
+
+      - name: Check strict evidence readiness before publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/check-federico-publication.ts | tee /tmp/federico-evidence-readiness.json
+
+      - name: Preserve sanitized evidence diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: federico-evidence-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/federico-corroborate.json
+            /tmp/federico-evidence-readiness.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Publish fresh production-signed CHN Risk Object
         shell: bash
