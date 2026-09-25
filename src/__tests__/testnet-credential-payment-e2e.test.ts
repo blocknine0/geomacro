@@ -18,7 +18,7 @@ describe("Testnet credential -> 402 -> same transaction -> intelligence E2E", ()
   it("keeps public browser access and private developer authentication as separate surfaces", () => {
     expect(consoleScript).toContain('/api/testnet-tester/intelligence');
     expect(consoleScript).toContain('"x-geomacro-public-key"');
-    expect(consoleScript).toContain("Get price quote");
+    expect(consoleScript).toContain("Send API request");
     expect(pricingScript).not.toContain("window.fetch =");
     expect(pricingScript).not.toContain("/api/testnet/intelligence");
     expect(pricingScript).not.toContain("testerCredentialPair");
