@@ -21,10 +21,17 @@ const facilitator = new BatchFacilitatorClient({
 
 export type CircleX402Settlement = {
   payer: string | null;
-  settlement_reference: string | null;
+  settlement_reference: string;
   amount_atomic: string;
   amount_usdc: string;
   network: typeof CIRCLE_X402_NETWORK;
+};
+
+export type CircleX402VerifyResult = {
+  isValid: boolean;
+  payer?: string;
+  invalidReason?: string;
+  invalidMessage?: string;
 };
 
 function sellerAddress() {
@@ -37,7 +44,7 @@ export function isCircleX402Configured() {
   return sellerAddress() !== null;
 }
 
-function paymentRequirements() {
+export function circleX402PaymentRequirements() {
   const payTo = sellerAddress();
   if (!payTo) throw new Error("CIRCLE_X402_SELLER_ADDRESS is not configured");
 
@@ -76,22 +83,69 @@ function encodeHeader(value: unknown) {
   return encodeUtf8Base64(JSON.stringify(value));
 }
 
-function decodePaymentHeader(header: string) {
+export function decodeCircleX402PaymentHeader(header: string): Record<string, unknown> {
   if (header.length > 64 * 1024) {
     throw new Error("PAYMENT_SIGNATURE_HEADER_TOO_LARGE");
   }
 
-  let json: string;
+  let parsed: unknown;
   try {
-    json = decodeUtf8Base64(header);
+    parsed = JSON.parse(decodeUtf8Base64(header));
   } catch {
-    throw new Error("PAYMENT_SIGNATURE_INVALID_ENCODING");
+    throw new Error("PAYMENT_SIGNATURE_INVALID_ENCODING_OR_JSON");
   }
 
-  try {
-    return JSON.parse(json) as unknown;
-  } catch {
-    throw new Error("PAYMENT_SIGNATURE_INVALID_JSON");
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("PAYMENT_SIGNATURE_INVALID_PAYLOAD");
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function normalizedAddress(value: unknown) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+export function assertCircleX402PaymentBinding(paymentPayload: Record<string, unknown>) {
+  if (paymentPayload.x402Version !== 2) {
+    throw new Error("PAYMENT_X402_VERSION_MISMATCH");
+  }
+
+  const accepted = paymentPayload.accepted;
+  if (!accepted || typeof accepted !== "object" || Array.isArray(accepted)) {
+    throw new Error("PAYMENT_ACCEPTED_REQUIREMENTS_MISSING");
+  }
+
+  const actual = accepted as Record<string, unknown>;
+  const expected = circleX402PaymentRequirements();
+  if (actual.scheme !== expected.scheme) throw new Error("PAYMENT_SCHEME_MISMATCH");
+  if (actual.network !== expected.network) throw new Error("PAYMENT_NETWORK_MISMATCH");
+  if (normalizedAddress(actual.asset) !== expected.asset.toLowerCase()) {
+    throw new Error("PAYMENT_ASSET_MISMATCH");
+  }
+  if (String(actual.amount ?? "") !== expected.amount) {
+    throw new Error("PAYMENT_AMOUNT_MISMATCH");
+  }
+  if (normalizedAddress(actual.payTo) !== expected.payTo.toLowerCase()) {
+    throw new Error("PAYMENT_RECIPIENT_MISMATCH");
+  }
+  if (Number(actual.maxTimeoutSeconds) !== expected.maxTimeoutSeconds) {
+    throw new Error("PAYMENT_TIMEOUT_MISMATCH");
+  }
+
+  const extra = actual.extra;
+  if (!extra || typeof extra !== "object" || Array.isArray(extra)) {
+    throw new Error("PAYMENT_GATEWAY_METADATA_MISSING");
+  }
+  const metadata = extra as Record<string, unknown>;
+  if (metadata.name !== expected.extra.name || metadata.version !== expected.extra.version) {
+    throw new Error("PAYMENT_GATEWAY_METADATA_MISMATCH");
+  }
+  if (
+    normalizedAddress(metadata.verifyingContract) !==
+    expected.extra.verifyingContract.toLowerCase()
+  ) {
+    throw new Error("PAYMENT_VERIFYING_CONTRACT_MISMATCH");
   }
 }
 
@@ -104,7 +158,7 @@ function telemetryAgentId(payer: string | null) {
 }
 
 export function circleX402PaymentRequiredResponse(request: Request) {
-  const requirements = paymentRequirements();
+  const requirements = circleX402PaymentRequirements();
   const endpoint = new URL(request.url).toString();
   const body = {
     x402Version: 2,
@@ -137,6 +191,16 @@ export function circleX402PaymentRequiredResponse(request: Request) {
       },
     },
   );
+}
+
+export async function verifyCircleX402(
+  paymentPayload: Record<string, unknown>,
+): Promise<CircleX402VerifyResult> {
+  assertCircleX402PaymentBinding(paymentPayload);
+  return (await facilitator.verify(
+    paymentPayload as Parameters<typeof facilitator.verify>[0],
+    circleX402PaymentRequirements() as Parameters<typeof facilitator.verify>[1],
+  )) as CircleX402VerifyResult;
 }
 
 export async function persistSettlementTelemetry(input: {
@@ -224,13 +288,10 @@ export async function persistSettlementTelemetry(input: {
 }
 
 export async function settleCircleX402(
-  request: Request,
+  paymentPayload: Record<string, unknown>,
 ): Promise<CircleX402Settlement> {
-  const header = request.headers.get("payment-signature");
-  if (!header) throw new Error("PAYMENT_SIGNATURE_MISSING");
-
-  const requirements = paymentRequirements();
-  const paymentPayload = decodePaymentHeader(header);
+  assertCircleX402PaymentBinding(paymentPayload);
+  const requirements = circleX402PaymentRequirements();
 
   const settled = await facilitator.settle(
     paymentPayload as Parameters<typeof facilitator.settle>[0],
@@ -243,9 +304,14 @@ export async function settleCircleX402(
     );
   }
 
+  const settlementReference = String(settled.transaction ?? "").trim();
+  if (!settlementReference) {
+    throw new Error("PAYMENT_SETTLEMENT_REFERENCE_MISSING");
+  }
+
   return {
     payer: settled.payer ?? null,
-    settlement_reference: settled.transaction ?? null,
+    settlement_reference: settlementReference,
     amount_atomic: CIRCLE_X402_PRICE_ATOMIC,
     amount_usdc: CIRCLE_X402_PRICE_USDC,
     network: CIRCLE_X402_NETWORK,
