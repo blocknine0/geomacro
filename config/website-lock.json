@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "fcf092f7e59be1b12328fe1acf39c5d3b46558c8",
+  "baseline_sha": "b6067b9cbc965db55ccc277af4304167a128e1ab",
   "published_baseline": "Founder-approved Testnet Access lighter commercial surface with core x402 demo and collapsed advanced integration details",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
   "locked_at_utc": "2026-09-25T06:32:00Z",
-  "published_source_sha": "fcf092f7e59be1b12328fe1acf39c5d3b46558c8",
+  "published_source_sha": "b6067b9cbc965db55ccc277af4304167a128e1ab",
   "lock_revision": "founder-approved-testnet-access-lighter-v1"
 }
