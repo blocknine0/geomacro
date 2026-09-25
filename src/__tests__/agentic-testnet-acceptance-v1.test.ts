@@ -81,11 +81,11 @@ describe("Agentic Testnet Acceptance v1", () => {
       expect(route, required).toContain(required);
     }
 
-    const claim = route.indexOf("claimAgentCommerceDelivery");
-    const verify = route.indexOf("verifyCircleX402(paymentPayload)");
-    const prepare = route.indexOf("prepareAgentCommerceDelivery");
-    const settle = route.indexOf("settleCircleX402(paymentPayload)");
-    const complete = route.indexOf("completeAgentCommerceDelivery");
+    const claim = route.indexOf("claim = await claimAgentCommerceDelivery");
+    const verify = route.indexOf("verified = await verifyCircleX402(paymentPayload)", claim);
+    const prepare = route.indexOf("await prepareAgentCommerceDelivery", verify);
+    const settle = route.indexOf("settlement = await settleCircleX402(paymentPayload)", prepare);
+    const complete = route.indexOf("await completeAgentCommerceDelivery", settle);
     expect(claim).toBeGreaterThan(0);
     expect(verify).toBeGreaterThan(claim);
     expect(prepare).toBeGreaterThan(verify);
