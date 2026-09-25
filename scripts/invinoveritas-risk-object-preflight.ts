@@ -600,7 +600,8 @@ if (invinoApiKey) {
   let reviewApiKey = invinoApiKey;
   let reviewAuthMode: "primary" | "demo_fallback" = "primary";
 
-  let response = await fetch(invinoOrigin + "/review/external", {
+  // /review/external can return a verdict without the portable proof. Federico acceptance requires the signed proof contract, so use canonical /review with sign=true.
+  let response = await fetch(invinoOrigin + "/review", {
     method: "POST",
     headers: {
       authorization: "Bearer " + reviewApiKey,
@@ -618,7 +619,7 @@ if (invinoApiKey) {
   ) {
     reviewApiKey = invinoDemoApiKey;
     reviewAuthMode = "demo_fallback";
-    response = await fetch(invinoOrigin + "/review/external", {
+    response = await fetch(invinoOrigin + "/review", {
       method: "POST",
       headers: {
         authorization: "Bearer " + reviewApiKey,
@@ -631,20 +632,20 @@ if (invinoApiKey) {
 
   if (!response.ok) {
     throw new Error(
-      "invinoveritas /review/external failed HTTP " + response.status + ": " + JSON.stringify(body),
+      "invinoveritas /review failed HTTP " + response.status + ": " + JSON.stringify(body),
     );
   }
 
   const verdict = String(body?.verdict ?? "");
   if (!["approve", "approve_with_concerns", "concerns", "reject"].includes(verdict)) {
     throw new Error(
-      `invinoveritas /review/external returned an unexpected verdict contract: ${JSON.stringify(body)}`,
+      `invinoveritas /review returned an unexpected verdict contract: ${JSON.stringify(body)}`,
     );
   }
 
   if (!body?.proof) {
     throw new Error(
-      "invinoveritas /review/external was requested with sign=true but returned no proof",
+      "invinoveritas /review was requested with sign=true but returned no proof",
     );
   }
 
