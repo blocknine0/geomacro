@@ -73,6 +73,6 @@ describe("Testnet tester identity and X sharing boundary", () => {
     expect(browser).toContain("personal_sign");
     expect(browser).not.toContain("/api/testnet-tester/payment-claim");
     expect(browser).toContain("/api/testnet-tester/developer-key");
-    expect(browser).toContain("402 quote");
+    expect(page).toContain("402 quote");
   });
 });
