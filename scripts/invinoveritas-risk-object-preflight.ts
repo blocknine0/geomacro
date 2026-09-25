@@ -166,14 +166,15 @@ if (strictProfile) {
 
   if (
     !manifest?.calculation_input ||
-    !manifest?.hash_inputs?.data_projection ||
+    !manifest?.hash_inputs?.data_projection_version ||
+    !manifest?.hash_inputs?.data_projection_sha256 ||
     !manifest?.score_components ||
     !manifest?.selection_policy?.max_included_evidence_items ||
     !manifest?.selection_policy?.source_family_map_version ||
     !manifest?.selection_policy?.source_family_map
   ) {
     throw new Error(
-      "Federico strict object is missing the signed reproducibility manifest",
+      "Federico strict object is missing the signed compact reproducibility manifest",
     );
   }
 
@@ -191,17 +192,70 @@ if (strictProfile) {
     );
   }
 
-  const recomputedDataHash =
-    sha256Canonical(
-      manifest.hash_inputs.data_projection,
+  if (
+    manifest.hash_inputs.data_projection_version !==
+    "country-risk-data-projection-v2"
+  ) {
+    throw new Error(
+      "Unsupported Federico strict data projection version",
     );
+  }
+
+  const evidenceForDataProjection =
+    Array.isArray(riskObject.evidence)
+      ? riskObject.evidence
+      : [];
+
+  if (
+    evidenceForDataProjection.some(
+      (item: any) =>
+        Object.prototype.hasOwnProperty.call(item, "source_urls") ||
+        Object.prototype.hasOwnProperty.call(item, "source_families") ||
+        Object.prototype.hasOwnProperty.call(item, "relevance_reason") ||
+        Object.prototype.hasOwnProperty.call(item, "transmission_channel") ||
+        Object.prototype.hasOwnProperty.call(item, "subject_is_primary") ||
+        Object.prototype.hasOwnProperty.call(item, "last_seen_at") ||
+        Object.prototype.hasOwnProperty.call(item, "evidence_refs")
+    )
+  ) {
+    throw new Error(
+      "Federico strict compact evidence contains legacy duplicated provenance fields",
+    );
+  }
+
+  const strictDataProjection = {
+    country_iso3: riskObject?.subject?.id ?? null,
+    evidence: evidenceForDataProjection.map((item: any) => ({
+      event_id: item.event_id,
+      event_family_id: item.event_family_id ?? null,
+      source_ids: Array.isArray(item.source_ids) ? item.source_ids : [],
+      source_record_ids: Array.isArray(item.source_record_ids)
+        ? item.source_record_ids
+        : [],
+      content_hashes: Array.isArray(item.content_hashes)
+        ? item.content_hashes
+        : [],
+      material_evidence_at: item.material_evidence_at ?? null,
+      evidence_age_hours: item.evidence_age_hours,
+      relevance_weight: item.relevance_weight ?? 1,
+      subject_attribution_confidence:
+        item.subject_attribution_confidence ?? null,
+      subject_attribution_method:
+        item.subject_attribution_method ?? null,
+    })),
+  };
+
+  const recomputedDataHash =
+    sha256Canonical(strictDataProjection);
 
   if (
     recomputedDataHash !==
-    riskObject.integrity.data_hash
+    riskObject.integrity.data_hash ||
+    manifest.hash_inputs.data_projection_sha256 !==
+      riskObject.integrity.data_hash
   ) {
     throw new Error(
-      "Reproducibility manifest data_hash mismatch",
+      "Reproducibility compact data projection hash mismatch",
     );
   }
 
@@ -326,28 +380,24 @@ if (strictProfile) {
   if (
     evidence.some(
       (item: any) =>
-        !Array.isArray(item.source_urls) ||
-        item.source_urls.length === 0 ||
-        !item.relevance_reason ||
-        !item.transmission_channel ||
+        !Array.isArray(item.source_ids) ||
+        item.source_ids.length === 0 ||
         !Array.isArray(item.source_record_ids) ||
         item.source_record_ids.length === 0 ||
         !Array.isArray(item.content_hashes) ||
         item.content_hashes.length === 0 ||
-        typeof item.subject_is_primary !== "boolean" ||
         typeof item.subject_attribution_confidence !== "number" ||
         !item.subject_attribution_method ||
         typeof item.relevance_weight !== "number" ||
         item.relevance_weight <= 0 ||
         item.relevance_weight > 1 ||
-        !Array.isArray(item.source_families) ||
-        item.source_families.length === 0 ||
-        Number(item.evidence_age_hours ?? 999) >
-          6
+        typeof item.material_evidence_at !== "string" ||
+        item.material_evidence_at.length === 0 ||
+        Number(item.evidence_age_hours ?? 999) > 6
     )
   ) {
     throw new Error(
-      "Federico strict evidence is missing attributable source URLs, relevance metadata or freshness bounds",
+      "Federico strict compact evidence is missing source identity, attribution metadata or freshness bounds",
     );
   }
 
@@ -368,9 +418,11 @@ if (strictProfile) {
     const sourceIds = Array.isArray(item.source_ids)
       ? item.source_ids.map(String).map((value: string) => value.trim().toLowerCase()).filter(Boolean)
       : [];
-    const sourceFamilies = Array.isArray(item.source_families)
-      ? item.source_families.map(String).map((value: string) => value.trim().toLowerCase()).filter(Boolean)
-      : [];
+    const sourceFamilies = new Set(
+      sourceIds.map((sourceId: string) =>
+        federicoStrictSourceFamilyForId(sourceId),
+      ),
+    );
 
     for (const sourceId of sourceIds) {
       const configuredFamily = configuredSourceFamilyMap[sourceId];
@@ -402,20 +454,13 @@ if (strictProfile) {
       }
     }
 
-    const expectedFamilies = new Set(
-      sourceIds.map((sourceId: string) =>
-        federicoStrictSourceFamilyForId(sourceId),
-      ),
-    );
-
     for (const family of sourceFamilies) {
-      if (!configuredSourceFamilies.has(family) || !expectedFamilies.has(family)) {
+      if (!configuredSourceFamilies.has(family)) {
         throw new Error(
-          "Federico strict evidence contains an invalid source-family identity: " +
+          "Federico strict evidence contains a source family absent from its signed runtime map: " +
             JSON.stringify({
               source_ids: sourceIds,
-              source_families: sourceFamilies,
-              invalid_family: family,
+              source_family: family,
             }),
         );
       }

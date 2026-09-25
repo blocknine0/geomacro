@@ -354,6 +354,18 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "Reproducibility manifest input_hash mismatch",
     );
     expect(preflight).toContain(
+      'data_projection_version',
+    );
+    expect(preflight).toContain(
+      'country-risk-data-projection-v2',
+    );
+    expect(preflight).toContain(
+      'compact reproducibility manifest',
+    );
+    expect(preflight).toContain(
+      'compact evidence contains legacy duplicated provenance fields',
+    );
+    expect(preflight).toContain(
       "federicoStrictSourceFamilyForId",
     );
     expect(preflight).toContain(
