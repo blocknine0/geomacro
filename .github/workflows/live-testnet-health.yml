@@ -158,7 +158,7 @@ jobs:
             'POST /api/testnet/intelligence' \
             'Authorization: GeomacroTest &lt;API_KEY&gt;.&lt;API_SECRET&gt;' \
             'x402' \
-            'No upfront activation payment.'
+            'No upfront Testnet USDC activation payment.'
           do
             if ! grep -Fq "$marker" "$body"; then
               echo "::error title=Hosted Testnet page contract is stale::Missing marker: $marker"
