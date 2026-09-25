@@ -391,10 +391,16 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
 
     expect(preflight).toContain(
-      '["approve", "approve_with_concerns"].includes(verdict)',
+      'verdict === "approve"',
     );
     expect(preflight).toContain(
-      "blockerCount === 0",
+      "issues.length === 0",
+    );
+    expect(preflight).toContain(
+      "primary_auth_required: strictProfile",
+    );
+    expect(preflight).toContain(
+      "demo_fallback_allowed: false",
     );
     expect(preflight).toContain(
       'const highCount = severityCount("high");',
@@ -498,6 +504,18 @@ describe("Federico strict Risk Object acceptance policy", () => {
     expect(preflight).toContain(
       "issuer_attestations_are_not_trust_roots",
     );
+    expect(preflight).toContain(
+      "receiver_policy_id: \"federico-china-country-risk-v1\"",
+    );
+    expect(preflight).toContain(
+      "minimum_independent_source_families: 2",
+    );
+    expect(preflight).toContain(
+      "maximum_inter_source_spread_ms: 2000",
+    );
+    expect(preflight).toContain(
+      "reject_duplicate_keys: true",
+    );
     expect(preflight).not.toContain(
       "cryptographic_attestation:",
     );
@@ -506,6 +524,15 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(preflight).not.toContain(
       "freshness_attestation:",
+    );
+    const publisher = read(
+      "src/lib/country-risk-publisher.server.ts",
+    );
+    expect(publisher).toContain(
+      "fail closed rather than reintroducing syndicated or issuer-derived provenance",
+    );
+    expect(publisher).not.toContain(
+      "const fallback = await loadFedericoStructuredFallback(db, asOf, iso3);",
     );
     expect(canonicalSpec).toContain(
       "Number::toString",
