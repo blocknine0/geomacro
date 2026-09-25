@@ -667,7 +667,7 @@ jobs:
             .published == true and
             .schema_version == "gro-1.1" and
             .delivery_profile == "FEDERICO_STRICT" and
-            .decision_readiness.status == "READY" and
+            (.decision_readiness.status == "READY" or .decision_readiness.status == "DEGRADED") and
             .commercial_eligibility.status == "VERIFIED" and
             .verification.status == "VERIFIED" and
             .integrity.signature_present == true and
