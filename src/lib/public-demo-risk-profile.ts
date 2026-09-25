@@ -129,6 +129,23 @@ export const FEDERICO_STRICT_MAJOR_SOURCE_IDS = [
   "aljazeera_rss",
 ] as const;
 
+export const FEDERICO_STRICT_AUDITABLE_SOURCE_IDS = [
+  "xinhua_english_china_rss",
+  "scmp_china_rss",
+  "aljazeera_rss",
+  "bbc_world_rss",
+] as const;
+
+export const FEDERICO_STRICT_CHINA_NEXUS_TERMS = [
+  "china",
+  "chinese",
+  "beijing",
+  "shanghai",
+  "prc",
+  "hong kong",
+  "taiwan",
+] as const;
+
 export type RiskObjectDeliveryProfile =
   | "CANONICAL"
   | "PUBLIC_DEMO"
