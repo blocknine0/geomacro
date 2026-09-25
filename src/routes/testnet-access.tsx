@@ -422,10 +422,38 @@ function TestnetAccessPage() {
         method: "POST",
         body: JSON.stringify({ credential_id: credentialId }),
       });
-      setStatus("Developer API key revoked.");
+      setIssued(null);
+      setSecretCopied(false);
+      setStatus("Developer API key revoked. You can create a new credential now.");
       await loadDeveloperKeys();
     } catch (error) {
       setStatus(friendlyError(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rotateCredential(credentialId: string) {
+    if (busy) return;
+    setBusy(true);
+    setIssued(null);
+    setSecretCopied(false);
+    try {
+      const result = await api<{ ok: true; data: IssuedCredential; warning?: string }>(
+        "/api/testnet-tester/developer-key-rotate",
+        {
+          method: "POST",
+          body: JSON.stringify({ credential_id: credentialId }),
+        },
+      );
+      setIssued(result.data);
+      setStatus(
+        "Developer credentials rotated. The previous credential is revoked. Copy the new API Secret now; it will not be shown again.",
+      );
+      await loadDeveloperKeys();
+    } catch (error) {
+      setStatus(friendlyError(error));
+      await loadDeveloperKeys();
     } finally {
       setBusy(false);
     }
@@ -1154,7 +1182,7 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
                   <div>
                     <p className="font-medium">Your developer API keys</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      API Keys stay visible. API Secrets are never returned again after creation.
+                      API Keys stay visible. API Secrets are never returned again after creation. Rotate to replace a credential and receive a new one-time secret.
                     </p>
                   </div>
                   <span className="text-xs text-muted-foreground">
@@ -1200,14 +1228,24 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
                               </button>
                             ) : null}
                             {key.enabled && !key.revoked_at ? (
-                              <button
-                                type="button"
-                                onClick={() => void revokeCredential(key.credential_id)}
-                                disabled={busy}
-                                className="rounded-lg border border-border px-3 py-2 text-xs text-destructive disabled:opacity-50"
-                              >
-                                Revoke
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void rotateCredential(key.credential_id)}
+                                  disabled={busy}
+                                  className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-50"
+                                >
+                                  Rotate
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void revokeCredential(key.credential_id)}
+                                  disabled={busy}
+                                  className="rounded-lg border border-border px-3 py-2 text-xs text-destructive disabled:opacity-50"
+                                >
+                                  Revoke
+                                </button>
+                              </>
                             ) : null}
                           </div>
                         </div>
