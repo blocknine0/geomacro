@@ -8,16 +8,24 @@ function clean(value) {
     .trim();
 }
 
-function decodeHtml(value) {
-  return clean(String(value ?? "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/<[^>]+>/g, " "));
+function extractTextFragment(value) {
+  const input = String(value ?? "");
+  let output = "";
+  let inTag = false;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (!inTag && char === "<") {
+      inTag = true;
+      continue;
+    }
+    if (inTag) {
+      if (char === ">") inTag = false;
+      continue;
+    }
+    output += char;
+  }
+  return clean(output);
 }
-
 function absoluteUrl(href, baseUrl = OPCW_NEWS_URL) {
   try { return new URL(href, baseUrl).toString(); } catch { return null; }
 }
@@ -37,10 +45,10 @@ export function parseOpcwNewsHtml(html, { retrievedAt = new Date().toISOString()
   const records = [];
   const anchorRe = /<a\b[^>]*href=["']([^"']*\/media-centre\/news\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of input.matchAll(anchorRe)) {
-    const title = decodeHtml(match[2]);
+    const title = extractTextFragment(match[2]);
     const url = absoluteUrl(match[1], baseUrl);
     if (!url || title.length < 8) continue;
-    const context = decodeHtml(input.slice(Math.max(0, match.index - 450), Math.min(input.length, match.index + match[0].length + 450)));
+    const context = extractTextFragment(input.slice(Math.max(0, match.index - 450), Math.min(input.length, match.index + match[0].length + 450)));
     const publishedAt = dateFromText(context);
     const id = encodeURIComponent(new URL(url).pathname).slice(-80);
     records.push(normalizeOpcwNews({
