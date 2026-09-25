@@ -15,6 +15,7 @@ import {
   FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS,
   FEDERICO_STRICT_HIGH_IMPACT_SEVERITY,
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
+  FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
   FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_FAMILY_MAP_VERSION,
@@ -529,8 +530,20 @@ export async function buildCountryRiskObject(
       ),
   );
 
+  // Federico strict is a bounded delivery profile. The score and every
+  // reproducibility field in this profile are calculated from the same
+  // deterministic top-weighted evidence set that is delivered in the
+  // signed object. This keeps the signed review artifact bounded without
+  // truncating or mutating the canonical/internal Risk Object.
+  const selectedWeighted = strictProfile
+    ? weighted.slice(
+        0,
+        FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
+      )
+    : weighted;
+
   const totalWeight =
-    weighted.reduce(
+    selectedWeighted.reduce(
       (sum, item) =>
         sum + item.weight,
       0,
@@ -551,7 +564,7 @@ export async function buildCountryRiskObject(
 
   const rawScore =
     totalWeight > 0
-      ? weighted.reduce(
+      ? selectedWeighted.reduce(
           (sum, item) =>
             sum +
             item.severity *
@@ -574,7 +587,7 @@ export async function buildCountryRiskObject(
 
   const aggregateConfidence =
     totalWeight > 0
-      ? weighted.reduce(
+      ? selectedWeighted.reduce(
           (sum, item) =>
             sum +
             item.confidence *
@@ -596,7 +609,7 @@ export async function buildCountryRiskObject(
     >();
 
   for (
-    const item of weighted
+    const item of selectedWeighted
   ) {
     const current =
       driverMap.get(
@@ -764,7 +777,7 @@ export async function buildCountryRiskObject(
           );
 
   const evidence =
-    weighted.map(
+    selectedWeighted.map(
       ({ event, age_hours }) => ({
         event_id:
           event.id,
@@ -902,7 +915,7 @@ export async function buildCountryRiskObject(
 
   const structureVersions =
     normalizeStringArray(
-      weighted.map(
+      selectedWeighted.map(
         (item) =>
           item.event
             .structure_version,
@@ -911,7 +924,7 @@ export async function buildCountryRiskObject(
 
   const scoringVersions =
     normalizeStringArray(
-      weighted.map(
+      selectedWeighted.map(
         (item) =>
           item.event
             .structured_payload
@@ -921,7 +934,7 @@ export async function buildCountryRiskObject(
 
   const relevanceVersions =
     normalizeStringArray(
-      weighted.map(
+      selectedWeighted.map(
         (item) =>
           item.event
             .structured_payload
@@ -931,7 +944,7 @@ export async function buildCountryRiskObject(
 
   const countryVersions =
     normalizeStringArray(
-      weighted.map(
+      selectedWeighted.map(
         (item) =>
           item.event
             .structured_payload
@@ -941,7 +954,7 @@ export async function buildCountryRiskObject(
 
   const storyVersions =
     normalizeStringArray(
-      weighted.map(
+      selectedWeighted.map(
         (item) =>
           item.event
             .structured_payload
@@ -988,7 +1001,7 @@ export async function buildCountryRiskObject(
       COUNTRY_RISK_HALF_LIFE_HOURS,
 
     events:
-      weighted.map(
+      selectedWeighted.map(
         (item) => ({
           id:
             item.event.id,
@@ -1150,7 +1163,7 @@ export async function buildCountryRiskObject(
   );
 
   if (
-    weighted.length === 0
+    selectedWeighted.length === 0
   ) {
     verificationReasons.add(
       "insufficient_country_evidence",
@@ -1302,6 +1315,10 @@ export async function buildCountryRiskObject(
         strictProfile
           ? FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS
           : COUNTRY_RISK_LOOKBACK_HOURS,
+      max_included_evidence_items:
+        strictProfile
+          ? FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS
+          : Number.MAX_SAFE_INTEGER,
       high_impact_max_evidence_age_hours:
         strictProfile
           ? FEDERICO_STRICT_HIGH_IMPACT_MAX_AGE_HOURS
