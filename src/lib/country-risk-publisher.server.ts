@@ -1157,11 +1157,12 @@ async function loadFedericoStrictEvents(
     });
   }
 
+  // Federico strict acceptance must never silently downgrade to a
+  // different evidence pipeline. If the governed live-flash path has no
+  // auditable evidence, fail closed rather than reintroducing syndicated or
+  // issuer-derived provenance through the structured fallback.
   if (events.length === 0) {
-    const fallback = await loadFedericoStructuredFallback(db, asOf, iso3);
-    if (fallback.events.length > 0) {
-      return fallback;
-    }
+    return { events: [], commercial_eligibility: [] };
   }
 
   return { events, commercial_eligibility };

@@ -136,6 +136,20 @@ if (strictProfile && !observedAt) {
   );
 }
 
+if (
+  strictProfile &&
+  (
+    riskObject?.schema_version !== "gro-1.1" ||
+    riskObject?.subject?.type !== "country" ||
+    riskObject?.subject?.id !== "CHN" ||
+    riskObject?.methodology_version !== "country-risk-v0.1.0-pilot"
+  )
+) {
+  throw new Error(
+    "Federico strict admission target mismatch: expected CHN gro-1.1 country-risk-v0.1.0-pilot",
+  );
+}
+
 let registryUrl = riskObject?.integrity?.trust_registry_url ?? "";
 let trusted: any = null;
 let registry: any = null;
@@ -602,6 +616,16 @@ if (
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
+if (
+  strictProfile &&
+  signedRiskObjectRecordSha256 !==
+    String(externalEvidence?.[0]?.record_sha256 ?? "")
+) {
+  throw new Error(
+    "Federico strict admission requires computed SHA-256 to equal external_evidence[0].record_sha256",
+  );
+}
+
 const signableRiskObject = structuredClone(riskObject);
 signableRiskObject.integrity = {
   ...signableRiskObject.integrity,
@@ -676,27 +700,69 @@ const reviewArtifact = {
   artifact_version: "geomacro-invino-review-v6",
   action_proposed: true,
   action:
-    "Admit this exact Geomacro gro-1.1 Risk Object only as read-only external context after receiver-side verification passes. Reject on any verification, provenance, trust, freshness, or integrity failure. This review never authorizes an irreversible action.",
+    "Admit this exact Geomacro gro-1.1 CHN country-risk object only under receiver policy federico-china-country-risk-v1 after all required checks pass. Otherwise reject and keep the context inadmissible. This review never authorizes an irreversible action.",
   execution_authorized: false,
   admission_contract: {
+    receiver_policy_id: "federico-china-country-risk-v1",
+    expected_subject: {
+      issuer: "Geomacro",
+      schema_version: "gro-1.1",
+      subject_type: "country",
+      subject_id: "CHN",
+      methodology_version_allowlist: ["country-risk-v0.1.0-pilot"],
+      context_type: "country_risk_context",
+    },
     exact_evidence_binding:
-      "Bind the receiver's decision to the exact external_evidence[0].record bytes and external_evidence[0].record_sha256.",
+      "Hash the exact received external_evidence[0].record bytes and require computed_sha256 == external_evidence[0].record_sha256 before admission.",
     independent_verification_required: true,
     issuer_attestations_are_not_trust_roots: true,
     trust_anchor_policy:
-      "The receiving system controls the approved Geomacro signing-key fingerprint out of band. An online Geomacro registry response is discovery evidence, not the sole trust root.",
+      "The receiver pins the approved Geomacro signing-key fingerprint out of band and applies key lifecycle/revocation policy. An online Geomacro registry response is discovery evidence only.",
+    provenance_policy: {
+      minimum_independent_source_families: 2,
+      minimum_distinct_source_ids: 2,
+      source_resolution:
+        "Resolve each signed source_id through a receiver-controlled source registry to an HTTPS source URL.",
+      source_fetch:
+        "At admission, independently fetch each cited source record, verify TLS, recompute its content hash, and require equality with the signed content_hash/source_record_id mapping.",
+      country_nexus:
+        "Independently confirm the CHN nexus from the fetched/parsed source material or receiver-controlled structured attribution evidence; issuer attribution confidence alone is insufficient.",
+      ownership_and_syndication:
+        "Require at least two independent publisher groups, reject shared ownership/control, and reject a common syndication group.",
+      material_diversity:
+        "Require at least two materially distinct source records; receiver computes normalized-content similarity and rejects the corroboration set when max pairwise similarity >= 0.85.",
+      unavailable_evidence:
+        "Any unavailable source URL resolution, fetch, hash, ownership, syndication, or country-nexus evidence is a hard fail.",
+    },
+    time_policy: {
+      trusted_time_source:
+        "NTS-authenticated time from a receiver-controlled quorum of at least two independent time sources.",
+      maximum_inter_source_spread_ms: 2000,
+      monotonic_elapsed_time_required: true,
+      uncertainty_overlaps_expiry: "fail_closed",
+      admission_rule: "trusted_now < expires_at",
+      execution_recheck_rule: "repeat immediately before irreversible execution",
+    },
+    parser_policy: {
+      implementation: "single pinned gro-1.1 parser + geomacro-canonical-json-v1",
+      reject_duplicate_keys: true,
+      reject_invalid_utf8: true,
+      reject_non_finite_numbers: true,
+      reject_out_of_schema_values: true,
+    },
     required_checks: [
-      "Hash the exact received record bytes.",
-      "Parse and canonicalize the exact gro-1.1 record using pinned geomacro-canonical-json-v1.",
+      "Hash the exact received record bytes and compare it to external_evidence[0].record_sha256.",
+      "Verify expected issuer, subject, schema_version and methodology_version against receiver policy.",
+      "Parse with the single pinned strict parser, reject ambiguous JSON/schema violations, then canonicalize with geomacro-canonical-json-v1.",
       "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519.",
-      "Resolve signing_key_id against the receiver-controlled approved key fingerprint and lifecycle policy.",
-      "Obtain receiver-controlled trusted current UTC time at admission and require now < expires_at.",
-      "Repeat the trusted-time and expiry check immediately before any irreversible downstream action and fail closed at or after expiry.",
-      "Treat issuer-provided source counts, source-family labels, readiness, confidence, and historical freshness attestations as untrusted until independently validated.",
-      "Require auditable source-specific country nexus and substantive source-family diversity before using the context for downstream risk decisions.",
+      "Resolve signing_key_id against the receiver-controlled approved key fingerprint and lifecycle/revocation policy.",
+      "Independently validate signed source identities, source-record hashes, CHN nexus, publisher ownership/syndication independence, and material diversity under the provenance policy.",
+      "Obtain NTS-authenticated trusted current UTC time and require trusted_now < expires_at at admission; fail closed when time uncertainty overlaps expiry.",
+      "Repeat the same trusted-time and expiry check immediately before any irreversible downstream action.",
+      "Treat issuer-provided readiness, confidence and historical freshness assertions as untrusted decision metadata until receiver validation passes.",
     ],
     failure_posture:
-      "Any unavailable trust anchor, verification mismatch, weak provenance, stale context, or uncalibrated decision input keeps the object read-only or inadmissible.",
+      "Any missing trust anchor, wrong receiver purpose, subject/schema/method mismatch, parser ambiguity, hash/signature mismatch, provenance gap, stale context, or trusted-time uncertainty keeps the object inadmissible.",
   },
   freshness_policy: {
     observed_at: riskObject.observed_at,
@@ -788,38 +854,22 @@ let liveReview:
     } = { attempted: false };
 
 if (invinoApiKey) {
-  let reviewApiKey = invinoApiKey;
-  let reviewAuthMode: "primary" | "demo_fallback" = "primary";
+  // Production Federation acceptance must use the configured primary
+  // Invinoveritas credential. A 402 is an actionable billing/authentication
+  // failure, not a reason to silently switch to a demo credential.
+  const reviewAuthMode: "primary" = "primary";
 
-  // /review/external can return a verdict without the portable proof. Federico acceptance requires the signed proof contract, so use canonical /review with sign=true.
-  let response = await fetch(invinoOrigin + "/review", {
+  // Federico acceptance requires the signed proof contract, so use canonical /review with sign=true.
+  const response = await fetch(invinoOrigin + "/review", {
     method: "POST",
     headers: {
-      authorization: "Bearer " + reviewApiKey,
+      authorization: "Bearer " + invinoApiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify(reviewRequest),
   });
 
-  let body = await response.json().catch(() => null);
-
-  if (
-    response.status === 402 &&
-    invinoDemoApiKey &&
-    invinoDemoApiKey !== invinoApiKey
-  ) {
-    reviewApiKey = invinoDemoApiKey;
-    reviewAuthMode = "demo_fallback";
-    response = await fetch(invinoOrigin + "/review", {
-      method: "POST",
-      headers: {
-        authorization: "Bearer " + reviewApiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(reviewRequest),
-    });
-    body = await response.json().catch(() => null);
-  }
+  const body = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new Error(
@@ -982,14 +1032,12 @@ if (invinoApiKey) {
     );
   }
 
-  // The partner's signed review verdict is advisory. "approve_with_concerns"
-  // is still an admission decision when there are no blocker-severity issues.
-  // High/medium/low concerns remain preserved in the proof and summary for
-  // downstream human review; they do not convert an explicitly approving
-  // partner verdict into a hard cryptographic admission failure.
+  // Federico acceptance is intentionally strict: a signed partner proof is
+  // useful only when the provider returned a clean approval with zero issues.
+  // Any blocker/high/medium/low concern keeps the object inadmissible.
   const admissionClear =
-    ["approve", "approve_with_concerns"].includes(verdict) &&
-    blockerCount === 0;
+    verdict === "approve" &&
+    issues.length === 0;
 
   liveReview = {
     attempted: true,
@@ -1073,6 +1121,8 @@ console.log(
           validity_until: externalEvidence[0].validity_until,
         }],
         review_auth_mode: liveReview.attempted ? liveReview.auth_mode : null,
+        primary_auth_required: strictProfile,
+        demo_fallback_allowed: false,
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
       },
