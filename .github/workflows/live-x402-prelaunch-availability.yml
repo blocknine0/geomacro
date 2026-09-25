@@ -1,4 +1,4 @@
-name: Live x402 Prelaunch Availability
+name: Live x402 Prelaunch Safety
 # Re-run this no-charge production probe after governed intelligence refreshes.
 
 on:
@@ -22,7 +22,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify live no-charge deliverability
+      - name: Verify live no-charge prelaunch safety boundary
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
       - name: Record safety boundary
