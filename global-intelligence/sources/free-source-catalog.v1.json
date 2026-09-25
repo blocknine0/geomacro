@@ -1,22 +1,214 @@
 {
-  "version":"1.0",
-  "sources":[
-    {"id":"gdelt_v2","category":"GEOPOLITICS","mode":"api","auth":"none","commercial_status":"verify_per_endpoint","role":"global_fallback"},
-    {"id":"gdelt_gal","category":"GEOPOLITICS","mode":"api","auth":"none","commercial_status":"verify_per_endpoint","role":"global_event_stream"},
-    {"id":"reliefweb","category":"GEOPOLITICS","mode":"api","auth":"none","commercial_status":"verify_terms","role":"humanitarian_event_context"},
-    {"id":"un_security_council","category":"GEOPOLITICS","mode":"web_or_rss","auth":"none","commercial_status":"verify_terms","role":"authoritative_context"},
-    {"id":"imo_msi","category":"GEOPOLITICS","mode":"web_or_rss","auth":"none","commercial_status":"verify_terms","role":"maritime_context"},
-    {"id":"ukmto","category":"GEOPOLITICS","mode":"web","auth":"none","commercial_status":"verify_terms","role":"maritime_security"},
-    {"id":"world_bank_indicators","category":"MACRO","mode":"api","auth":"none","commercial_status":"public_api","role":"global_macro_baseline"},
-    {"id":"imf_sdmx","category":"MACRO","mode":"api","auth":"account_or_endpoint_dependent","commercial_status":"verify_dataset_terms","role":"global_macro"},
-    {"id":"eurostat","category":"MACRO","mode":"api","auth":"none","commercial_status":"public_api","role":"regional_authoritative"},
-    {"id":"un_comtrade","category":"MACRO","mode":"api","auth":"free_key","commercial_status":"verify_free_product_terms","role":"trade_crosscheck"},
-    {"id":"bis","category":"MACRO","mode":"api_or_download","auth":"none","commercial_status":"verify_dataset_terms","role":"financial_macro_context"},
-    {"id":"usgs_mcs","category":"CRITICAL_MINERALS","mode":"download_or_api","auth":"none","commercial_status":"verify_dataset_terms","role":"global_minerals_baseline"},
-    {"id":"usgs_mrp","category":"CRITICAL_MINERALS","mode":"web_or_feed","auth":"none","commercial_status":"verify_dataset_terms","role":"minerals_updates"},
-    {"id":"bgs_world_minerals_statistics","category":"CRITICAL_MINERALS","mode":"download","auth":"none","commercial_status":"verify_dataset_terms","role":"global_minerals_statistics"},
-    {"id":"un_comtrade_minerals","category":"CRITICAL_MINERALS","mode":"api","auth":"free_key","commercial_status":"verify_free_product_terms","role":"trade_supply_crosscheck"},
-    {"id":"national_official_sources","category":"ALL","mode":"web_or_api","auth":"none_or_public_key","commercial_status":"verify_per_source","role":"country_primary"}
+  "version": "1.2",
+  "sources": [
+    {
+      "id": "gdelt_v2",
+      "category": "GEOPOLITICS",
+      "mode": "api",
+      "auth": "none",
+      "commercial_status": "verify_per_endpoint",
+      "role": "global_fallback"
+    },
+    {
+      "id": "gdelt_gal",
+      "category": "GEOPOLITICS",
+      "mode": "api",
+      "auth": "none",
+      "commercial_status": "verify_per_endpoint",
+      "role": "global_event_stream"
+    },
+    {
+      "id": "reliefweb",
+      "category": "GEOPOLITICS",
+      "mode": "api",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "humanitarian_event_context"
+    },
+    {
+      "id": "un_security_council",
+      "category": "GEOPOLITICS",
+      "mode": "web_or_rss",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "authoritative_context"
+    },
+    {
+      "id": "imo_msi",
+      "category": "GEOPOLITICS",
+      "mode": "web_or_rss",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "maritime_context"
+    },
+    {
+      "id": "ukmto",
+      "category": "GEOPOLITICS",
+      "mode": "web",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "maritime_security"
+    },
+    {
+      "id": "world_bank_indicators",
+      "category": "MACRO",
+      "mode": "api",
+      "auth": "none",
+      "commercial_status": "public_api",
+      "role": "global_macro_baseline"
+    },
+    {
+      "id": "imf_sdmx",
+      "category": "MACRO",
+      "mode": "api",
+      "auth": "account_or_endpoint_dependent",
+      "commercial_status": "verify_dataset_terms",
+      "role": "global_macro"
+    },
+    {
+      "id": "eurostat",
+      "category": "MACRO",
+      "mode": "api",
+      "auth": "none",
+      "commercial_status": "public_api",
+      "role": "regional_authoritative"
+    },
+    {
+      "id": "un_comtrade",
+      "category": "MACRO",
+      "mode": "api",
+      "auth": "free_key",
+      "commercial_status": "verify_free_product_terms",
+      "role": "trade_crosscheck"
+    },
+    {
+      "id": "bis",
+      "category": "MACRO",
+      "mode": "api_or_download",
+      "auth": "none",
+      "commercial_status": "verify_dataset_terms",
+      "role": "financial_macro_context"
+    },
+    {
+      "id": "usgs_mcs",
+      "category": "CRITICAL_MINERALS",
+      "mode": "download_or_api",
+      "auth": "none",
+      "commercial_status": "verify_dataset_terms",
+      "role": "global_minerals_baseline"
+    },
+    {
+      "id": "usgs_mrp",
+      "category": "CRITICAL_MINERALS",
+      "mode": "web_or_feed",
+      "auth": "none",
+      "commercial_status": "verify_dataset_terms",
+      "role": "minerals_updates"
+    },
+    {
+      "id": "bgs_world_minerals_statistics",
+      "category": "CRITICAL_MINERALS",
+      "mode": "download",
+      "auth": "none",
+      "commercial_status": "verify_dataset_terms",
+      "role": "global_minerals_statistics"
+    },
+    {
+      "id": "un_comtrade_minerals",
+      "category": "CRITICAL_MINERALS",
+      "mode": "api",
+      "auth": "free_key",
+      "commercial_status": "verify_free_product_terms",
+      "role": "trade_supply_crosscheck"
+    },
+    {
+      "id": "national_official_sources",
+      "category": "ALL",
+      "mode": "web_or_api",
+      "auth": "none_or_public_key",
+      "commercial_status": "verify_per_source",
+      "role": "country_primary"
+    },
+    {
+      "id": "uk_sanctions_list",
+      "category": "GEOPOLITICS",
+      "mode": "xml_or_csv",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "uk_sanctions_designations"
+    },
+    {
+      "id": "eu_sanctions_consolidated",
+      "category": "GEOPOLITICS",
+      "mode": "xml_or_csv",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "eu_financial_sanctions"
+    },
+    {
+      "id": "opcw_news",
+      "category": "GEOPOLITICS",
+      "mode": "html",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "chemical_weapons_security"
+    },
+    {
+      "id": "icj_cases",
+      "category": "GEOPOLITICS",
+      "mode": "html",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "international_legal_proceedings"
+    },
+    {
+      "id": "icc_news",
+      "category": "GEOPOLITICS",
+      "mode": "html",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "international_justice"
+    },
+    {
+      "id": "unctadstat_global",
+      "category": "MACRO",
+      "mode": "data_centre",
+      "auth": "none",
+      "commercial_status": "verify_dataset_terms",
+      "role": "global_trade_investment"
+    },
+    {
+      "id": "world_bank_commodity_prices",
+      "category": "MACRO",
+      "mode": "xlsx",
+      "auth": "none",
+      "commercial_status": "verify_dataset_terms",
+      "role": "global_commodity_benchmark"
+    },
+    {
+      "id": "china_mofcom_trade_controls",
+      "category": "CRITICAL_MINERALS",
+      "mode": "html",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "china_trade_controls"
+    },
+    {
+      "id": "australia_critical_minerals",
+      "category": "CRITICAL_MINERALS",
+      "mode": "html",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "australia_critical_minerals"
+    },
+    {
+      "id": "cochilco_minerals",
+      "category": "CRITICAL_MINERALS",
+      "mode": "html",
+      "auth": "none",
+      "commercial_status": "verify_terms",
+      "role": "chile_copper_minerals"
+    }
   ],
-  "rule":"Only adapters that pass live endpoint, freshness, provenance, and reuse/commercial checks may enter production certification."
+  "rule": "Only adapters that pass live endpoint, freshness, provenance, and reuse/commercial checks may enter production certification."
 }

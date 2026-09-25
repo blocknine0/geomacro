@@ -16,6 +16,16 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "config/global-p0-source-expansion.json"
+      - "global-intelligence/adapters/**"
+      - "scripts/test-p0-adapters.mjs"
+      - "scripts/test-p0-adapter-certification.mjs"
+      - "scripts/test-p0-live-schema-certification.mjs"
+      - "scripts/test-p0-registry-alignment.mjs"
+      - "global-intelligence/sources/source-registry.v1.json"
+      - "global-intelligence/sources/free-source-catalog.v1.json"
+      - "global-intelligence/sources/source-gap-matrix.v1.md"
+      - ".github/workflows/global-p0-source-probe.yml"
       - "supabase/migrations/**"
       - "scripts/test-global-source-endpoints.mjs"
       - "scripts/source-endpoint-manifest.mjs"
@@ -275,3 +285,11 @@ jobs:
           path: artifacts/source-endpoint-disposition-933/
           if-no-files-found: error
           retention-days: 30
+      - name: Test global P0 registry alignment
+        run: bun run test:p0-registry-alignment
+      - name: Test global P0 adapters
+        run: bun run test:p0-adapters
+      - name: Test global P0 adapter certification
+        run: bun run test:p0-adapter-certification
+      - name: Test live global P0 transport and schema
+        run: bun run test:p0-live-schema

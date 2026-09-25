@@ -11,7 +11,19 @@ async function fetchJson(url, headers={}) { return getJson(url,{headers}); }
 
 export const publicSources={
   ecb:async()=>{const body=await fetchText("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2025-01-01&endPeriod=2025-01-03&format=csvdata");if(!body.includes("TIME_PERIOD"))throw new Error("ECB response missing TIME_PERIOD");return{source_id:"ecb",observations:Math.max(0,body.trim().split("\n").length-1)};},
-  imf:async()=>{const body=await fetchText("https://sdmxcentral.imf.org/ws/public/sdmxapi/rest/dataflow/IMF/all/latest?format=sdmx-3.0");if(body.length<100||!body.includes("Dataflow"))throw new Error("IMF public SDMX dataflow response unavailable");return{source_id:"imf_sdmx",observations:1};},
+  imf:async()=>{
+    try{
+      const body=await fetchText("https://sdmxcentral.imf.org/ws/public/sdmxapi/rest/dataflow/IMF/all/latest?format=sdmx-3.0");
+      if(body.length>=100&&body.includes("Dataflow")) return{source_id:"imf_sdmx",observations:1};
+    }catch(primaryError){
+      const fallback=await fetchText("https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.RES/WEO/+/DEU.NGDP_RPCH.A?startPeriod=2020&endPeriod=2026&format=jsondata");
+      if(fallback.length>100&&fallback.includes("data")) return{source_id:"imf_sdmx",observations:1};
+      throw new Error(`IMF public endpoints unavailable: ${primaryError.message}`);
+    }
+    const fallback=await fetchText("https://www.imf.org/external/datamapper/api/v1/NGDP");
+    if(fallback.length>100&&fallback.includes("NGDP")) return{source_id:"imf_sdmx",observations:1};
+    throw new Error("IMF public data endpoints unavailable");
+  },
   oecd:async()=>{const body=await fetchText("https://sdmx.oecd.org/public/rest/dataflow/all/all/latest");if(body.trim().split("\n").length<2)throw new Error("OECD dataflow response empty");return{source_id:"oecd_sdmx",observations:body.trim().split("\n").length-1};},
   bis:async()=>{const body=await fetchText("https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/M.US?format=csvfile");if(!body.includes("TIME_PERIOD")||!body.includes("OBS_VALUE"))throw new Error("BIS policy-rate CSV missing observations");return{source_id:"bis_statistics",observations:Math.max(0,body.trim().split("\n").length-1)};},
   eurostat:async()=>{const data=await fetchJson("https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/namq_10_gdp?geo=DE&na_item=B1GQ&unit=CP_MEUR&sinceTimePeriod=2020");if(!data?.id?.length||data.value==null)throw new Error("Eurostat response missing observations");return{source_id:"eurostat",observations:Array.isArray(data.value)?data.value.length:Object.keys(data.value).length};},

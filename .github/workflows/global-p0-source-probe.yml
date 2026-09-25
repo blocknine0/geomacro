@@ -1,0 +1,64 @@
+name: Global P0 source endpoint probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "config/global-p0-source-expansion.json"
+      - "global-intelligence/adapters/**"
+      - "scripts/test-p0-adapters.mjs"
+      - "scripts/test-p0-adapter-certification.mjs"
+      - "scripts/test-p0-live-schema-certification.mjs"
+      - "scripts/test-p0-registry-alignment.mjs"
+      - "scripts/test-global-p0-source-endpoints.mjs"
+      - "global-intelligence/sources/source-registry.v1.json"
+      - "global-intelligence/sources/free-source-catalog.v1.json"
+      - "global-intelligence/sources/source-gap-matrix.v1.md"
+      - "supabase/migrations/974_global_source_p0_expansion.sql"
+      - ".github/workflows/global-p0-source-probe.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+
+      - name: Probe authoritative source endpoints
+        run: |
+          mkdir -p artifacts
+          node scripts/test-global-p0-source-endpoints.mjs > artifacts/global-p0-source-probe.json
+
+      - name: Test P0 registry alignment
+        run: node scripts/test-p0-registry-alignment.mjs
+
+      - name: Test P0 normalization adapters
+        run: node scripts/test-p0-adapters.mjs
+
+      - name: Test P0 certification gates
+        run: node scripts/test-p0-adapter-certification.mjs
+
+      - name: Test live P0 transport and schema
+        run: node scripts/test-p0-live-schema-certification.mjs
+
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: global-p0-source-probe
+          path: artifacts/global-p0-source-probe.json
+          if-no-files-found: error
