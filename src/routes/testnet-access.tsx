@@ -634,14 +634,14 @@ function TestnetAccessPage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6"> 
+      <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <details>
           <summary className="cursor-pointer list-none">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">OPTIONAL FEEDBACK + X</p>
             <h2 className="mt-2 text-2xl font-semibold">Share the test, or send feedback.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Optional. It never blocks Testnet access.</p>
           </summary>
-          <div className="mt-5 border-t border-border/70 pt-5">
+
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">WHAT YOU CAN BUILD</p>
         <h2 className="mt-2 text-2xl font-semibold">One intelligence layer for people, products, agents and machines.</h2>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -681,6 +681,13 @@ function TestnetAccessPage() {
       </section>
 
             <section id="integration" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <details>
+          <summary className="cursor-pointer list-none">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">INTEGRATION DETAILS</p>
+            <h2 className="mt-2 text-2xl font-semibold">For builders who want the contract.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Discover → authenticate → request → 402 → pay → retry.</p>
+          </summary>
+
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">INTEGRATION</p>
@@ -795,9 +802,10 @@ return response.body;`}</pre>
           </div>
         ) : null}
       
-          </div>
         </details>
-</section>
+      
+        </details>
+      </section>
       <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">API SURFACE</p>
         <h2 className="mt-2 text-2xl font-semibold">Eight capabilities. One governed Testnet intelligence service.</h2>
@@ -1057,14 +1065,14 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
         )}
       </section>
 
-      <section className="mt-6 grid gap-5 lg:grid-cols-2 lg:items-start"> 
+      <section className="mt-6 grid gap-5 lg:grid-cols-2 lg:items-start">
         <details>
           <summary className="cursor-pointer list-none">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">TESTNET ACCESS OPTIONS</p>
             <h2 className="mt-2 text-2xl font-semibold">Public testing and developer API</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Run the browser test with wallet access, or expand the developer path when you are ready to integrate Geomacro into a product, agent or automation.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Run the browser test or expand the developer path when you are ready to integrate Geomacro into a product, agent or automation.</p>
           </summary>
-          <div className="mt-5 border-t border-border/70 pt-5">
+
         <article className="rounded-2xl border border-border/70 bg-card/30 p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Public Testnet access</p>
           <h2 className="mt-2 text-2xl font-semibold">Normal users</h2>
@@ -1274,17 +1282,9 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
           )}
         </article>
       
-          </div>
         </details>
-</section>
+      </section>
       <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
-        <details>
-          <summary className="cursor-pointer list-none">
-            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">OPTIONAL FEEDBACK + X</p>
-            <h2 className="mt-2 text-2xl font-semibold">Share the test, or send feedback.</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Optional. It never blocks Testnet access.</p>
-          </summary>
-          <div className="mt-5 border-t border-border/70 pt-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">OPTIONAL FEEDBACK + X</p>
@@ -1404,10 +1404,8 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
             </div>
           </form>
         ) : null}
-      
-          </div>
-        </details>
-</section>
+      </section>
+
       <section className="mt-6 rounded-2xl border border-border/70 bg-card/20 p-5 text-sm text-muted-foreground">
         <p>
           <span className="font-medium text-foreground">Public browser flow:</span> wallet session + network-specific public API key → HTTP 402 quote → one Testnet USDC payment → retry the exact same request_id with proof → intelligence result.
