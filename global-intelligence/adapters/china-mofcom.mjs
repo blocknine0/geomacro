@@ -3,18 +3,24 @@ import { createHash } from "node:crypto";
 export const CHINA_MOFCOM_URL = "https://exportcontrol.mofcom.gov.cn/";
 export const CHINA_MOFCOM_ENGLISH_URL = "https://english.mofcom.gov.cn/Policies/index.html";
 
-function decodeHtml(value) {
-  return String(value ?? "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function extractTextFragment(value) {
+  const input = String(value ?? "");
+  let output = "";
+  let inTag = false;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (!inTag && char === "<") {
+      inTag = true;
+      continue;
+    }
+    if (inTag) {
+      if (char === ">") inTag = false;
+      continue;
+    }
+    output += char;
+  }
+  return clean(output);
 }
-
 function absoluteUrl(href, baseUrl = CHINA_MOFCOM_URL) {
   try { return new URL(href, baseUrl).toString(); } catch { return null; }
 }
@@ -37,12 +43,12 @@ export function parseMofcomExportControlHtml(html, { observedAt = new Date().toI
   const records = [];
   const anchorRe = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of input.matchAll(anchorRe)) {
-    const title = decodeHtml(match[2]);
+    const title = extractTextFragment(match[2]);
     const url = absoluteUrl(match[1], baseUrl);
     if (!title || !url || title.length < 6) continue;
     const contextStart = Math.max(0, match.index - 500);
     const contextEnd = Math.min(input.length, match.index + match[0].length + 500);
-    const context = decodeHtml(input.slice(contextStart, contextEnd));
+    const context = extractTextFragment(input.slice(contextStart, contextEnd));
     if (!/export|control|rare earth|dual-use|strategic mineral|mineral|出口管制|战略矿产|稀土|钨|碲|锂/i.test(title + " " + context)) continue;
 
     const id = match[1].match(/(?:id|article|content|info)[=_/-]([A-Za-z0-9_-]+)/i)?.[1]
