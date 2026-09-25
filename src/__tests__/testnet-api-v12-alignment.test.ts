@@ -14,6 +14,7 @@ const developer = read("src/lib/testnet-developer-access.server.ts");
 const commercialAccess = read("src/lib/commercial-access.server.ts");
 const structuralRoute = read("server/api/commercial/structural.post.ts");
 const browser = read("public/testnet-access.js");
+const page = read("server/routes/testnet-access.get.ts");
 const migration = read("supabase/migrations/912_testnet_api_pay_per_call.sql");
 
 describe("Testnet API pay-per-call alignment gate", () => {
@@ -71,8 +72,8 @@ describe("Testnet API pay-per-call alignment gate", () => {
   });
 
   it("renders pay-per-call guidance and keeps the credential pair visible once", () => {
-    expect(browser).toContain("There is no upfront Testnet USDC activation payment");
-    expect(browser).toContain("402 quote");
+    expect(page).toContain("No upfront activation payment.");
+    expect(page).toContain("402 quote");
     expect(browser).toContain("payload.data.api_secret");
     expect(browser).toContain("Copy both values now");
     expect(browser).not.toContain("claimPayment(event)");

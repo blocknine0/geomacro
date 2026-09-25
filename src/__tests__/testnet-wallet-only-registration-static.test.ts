@@ -22,7 +22,6 @@ describe("wallet-only tester registration", () => {
     expect(browser).not.toContain("email-verify");
     expect(browser).not.toContain("oauth/x");
     expect(browser).not.toContain("oauth/discord");
-    expect(page).toContain("Profile + wallet");
     expect(page).toContain("Create a tester profile and verify one EVM wallet");
   });
 });

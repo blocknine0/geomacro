@@ -7,24 +7,15 @@ const walletFirst = readFileSync("public/testnet-wallet-first-v2.js", "utf8");
 
 describe("public Testnet developer access page", () => {
   it("shows the Testnet API surface before credentials are created", () => {
-    expect(page).toContain("PUBLIC TESTNET DEVELOPER API");
+    expect(page).toContain("PUBLIC TESTNET · MACHINE-READABLE RISK INTELLIGENCE");
     expect(page).toContain("/api/testnet/manifest");
-    expect(page).toContain("/api/testnet/account");
     expect(page).toContain("/api/testnet/intelligence");
+    expect(page).toContain("402 → pay → retry");
     expect(page).toContain("Authorization: GeomacroTest &lt;API_KEY&gt;.&lt;API_SECRET&gt;");
   });
 
-  it("shows all eight current Testnet capabilities", () => {
-    for (const capability of [
-      "intelligence_query",
-      "gri_read",
-      "structural_country_digest",
-      "structural_corridor_digest",
-      "structural_country_profile",
-      "structural_corridor_profile",
-      "signed_risk_object",
-      "risk_gate_bundle",
-    ]) {
+  it("summarizes the governed capability surface for commercial visitors", () => {
+    for (const capability of ["Geopolitical intelligence", "GRI", "Structural risk", "Signed Risk Objects", "Risk Gate"]) {
       expect(page).toContain(capability);
     }
   });
@@ -43,7 +34,7 @@ describe("public Testnet developer access page", () => {
   });
 
   it("keeps profile plus wallet registration and developer credential creation", () => {
-    expect(page).toContain("Create developer access");
+    expect(page).toContain("Start Testnet");
     expect(page).toContain("Connect & verify wallet");
     expect(page).toContain("CREATE DEVELOPER API");
     expect(page).toContain("Create Testnet API credentials");
@@ -51,9 +42,8 @@ describe("public Testnet developer access page", () => {
   });
 
   it("keeps Testnet pay-per-call boundaries explicit", () => {
-    expect(page).toContain("0.5 Testnet USDC per credit");
-    expect(page).toContain("500-credit usage cap");
-    expect(page).toContain("There is no upfront Testnet USDC activation payment");
-    expect(page).toContain("Testnet only · non-revenue");
+    expect(page).toContain("No upfront activation payment.");
+    expect(page).toContain("The live manifest is the source of truth for capabilities, pricing and payment configuration.");
+    expect(page).toContain("Testnet only");
   });
 });

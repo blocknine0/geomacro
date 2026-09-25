@@ -131,22 +131,8 @@
   }
 
   function applyPayPerCallCopy() {
-    const hero = document.querySelector(".hero p");
-    if (hero) {
-      hero.textContent =
-        "Create a tester profile, verify one EVM wallet, create an API Key + API Secret, then pay only for each Testnet API call. There is no upfront Testnet USDC activation payment.";
-    }
-    const cards = document.querySelectorAll(".grid .card");
-    if (cards[0]) cards[0].querySelector("p").textContent = "Create a tester profile and verify one EVM wallet to activate Testnet developer access.";
-    if (cards[1]) {
-      cards[1].querySelector("strong").textContent = "500-credit Testnet cap";
-      cards[1].querySelector("p").textContent = "0.5 Testnet USDC per credit, paid per API call. 500 credits is the 30-day usage cap, not an upfront purchase.";
-    }
-    const steps = document.querySelectorAll(".steps .step");
-    if (steps[2]) {
-      steps[2].querySelector("b").textContent = "Create key & call API";
-      steps[2].querySelector(".muted").textContent = "402 quote → pay only for that call → retry with proof";
-    }
+    // Keep the server-rendered commercial presentation stable. This legacy
+    // script only owns account/payment state and must not overwrite page copy.
     show("paymentPanel", false);
   }
 
@@ -462,6 +448,16 @@
     bind();
     clearBooleanErrorArtifact("globalStatus");
     clearBooleanErrorArtifact("walletActionStatus");
+    const languageSelect = $("languageSelect");
+    languageSelect?.addEventListener("change", () => {
+      const lang = String(languageSelect.value || "en");
+      if (lang === "en") {
+        window.location.reload();
+        return;
+      }
+      const target = encodeURIComponent(window.location.href);
+      window.location.assign(`https://translate.google.com/translate?sl=auto&tl=${encodeURIComponent(lang)}&u=${target}`);
+    });
     await loadAccount();
   });
 })();

@@ -14,7 +14,7 @@ describe("Testnet public console browser boundary", () => {
 
     expect(consoleScript).toContain('/api/testnet-tester/intelligence');
     expect(consoleScript).toContain('"x-geomacro-public-key"');
-    expect(consoleScript).toContain("Get price quote");
+    expect(consoleScript).toContain("Send API request");
     expect(consoleScript).toContain("TESTNET_PAYMENT_REQUIRED");
   });
 

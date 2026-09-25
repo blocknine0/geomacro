@@ -31,7 +31,6 @@ describe("Testnet tester end-to-end contract trial", () => {
     expect(account).not.toContain("consumeTesterOauthIdentity");
     expect(meteredMigration).toContain("wallet_verified_at is not null");
     expect(meteredMigration).not.toContain("current_payment_event_id is not null");
-    expect(page).toContain("Profile + wallet");
     expect(page).toContain("Create a tester profile and verify one EVM wallet");
   });
 

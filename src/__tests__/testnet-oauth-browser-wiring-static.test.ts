@@ -51,7 +51,7 @@ describe("Testnet tester identity and X sharing boundary", () => {
     expect(browser).not.toContain("email-verify");
     expect(browser).not.toContain("oauth/x");
     expect(browser).not.toContain("oauth/discord");
-    expect(page).toContain("Profile + wallet");
+    expect(page).toContain("Create a tester profile and verify one EVM wallet");
   });
 
   it("uses X only as an outbound result-sharing action", () => {
@@ -69,10 +69,11 @@ describe("Testnet tester identity and X sharing boundary", () => {
 
   it("keeps upstream source identities and wallet secrets out of the browser tester bundle", () => {
     const browser = read("public/testnet-access.js");
+    const page = read("server/routes/testnet-access.get.ts");
     expect(browser).not.toMatch(/source_url|source_name|publisher|private[_ -]?key|seed phrase/i);
     expect(browser).toContain("personal_sign");
     expect(browser).not.toContain("/api/testnet-tester/payment-claim");
     expect(browser).toContain("/api/testnet-tester/developer-key");
-    expect(browser).toContain("402 quote");
+    expect(page).toContain("402 quote");
   });
 });
