@@ -79,12 +79,33 @@ describe("Federico strict evidence-gap continuity", () => {
           country_version: "country-v1",
           story_version: "story-v1",
         },
-        source_ids: [family],
-        source_record_ids: [`source-record-${index}`],
-        source_urls: [`https://example.com/source/${index}`],
-        source_families: [family],
-        content_hashes: [`hash-${index}`],
-        relevance_reason: "Deterministic country linkage test evidence",
+        source_ids: Array.from(
+          { length: 6 },
+          (_, sourceIndex) =>
+            `${family}-source-${sourceIndex}-${index}`,
+        ),
+        source_record_ids: Array.from(
+          { length: 6 },
+          (_, sourceIndex) =>
+            `source-record-${index}-${sourceIndex}-production`,
+        ),
+        source_urls: Array.from(
+          { length: 6 },
+          (_, sourceIndex) =>
+            `https://example.com/source/${index}/${sourceIndex}`,
+        ),
+        source_families: Array.from(
+          { length: 6 },
+          (_, sourceIndex) =>
+            `${family}-family-${sourceIndex}`,
+        ),
+        content_hashes: Array.from(
+          { length: 6 },
+          (_, sourceIndex) =>
+            `content-hash-${index}-${sourceIndex}-1234567890abcdef`,
+        ),
+        relevance_reason:
+          "Deterministic country linkage test evidence with production-shaped provenance metadata that is intentionally compacted in the strict signed object.",
         transmission_channel: "governed_test_feed",
         relevance_weight: 1,
         subject_is_primary: true,
@@ -111,6 +132,21 @@ describe("Federico strict evidence-gap continuity", () => {
     expect(
       result.provenance.reproducibility.calculation_input.events,
     ).toHaveLength(8);
+    expect(result.evidence).toSatisfy((items) =>
+      items.every(
+        (item: any) =>
+          !Object.prototype.hasOwnProperty.call(item, "source_urls") &&
+          !Object.prototype.hasOwnProperty.call(item, "source_families") &&
+          !Object.prototype.hasOwnProperty.call(item, "transmission_channel") &&
+          !Object.prototype.hasOwnProperty.call(item, "relevance_reason"),
+      ),
+    );
+    expect(
+      result.provenance.reproducibility.hash_inputs,
+    ).toEqual({
+      data_projection_version: "country-risk-data-projection-v2",
+      data_projection_sha256: expect.any(String),
+    });
     expect(
       Buffer.byteLength(JSON.stringify(result), "utf8"),
     ).toBeLessThan(20_000);
