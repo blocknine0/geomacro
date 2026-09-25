@@ -42,8 +42,11 @@ describe("Agentic Commerce public demo contract", () => {
     expect(x402).toContain("604900");
     expect(x402).toContain('"https://gateway-api-testnet.circle.com"');
     expect(x402).toContain("BatchFacilitatorClient");
+    expect(x402).toContain("facilitator.verify");
     expect(x402).toContain("facilitator.settle");
-    expect(x402).not.toContain("facilitator.verify");
+    expect(x402.indexOf("facilitator.verify")).toBeLessThan(
+      x402.indexOf("facilitator.settle"),
+    );
     expect(x402).toContain("PAYMENT-REQUIRED");
     expect(x402).toContain("payment-signature");
     expect(x402).toContain("PAYMENT-RESPONSE");
@@ -60,8 +63,13 @@ describe("Agentic Commerce public demo contract", () => {
     expect(freeRoute).toContain("runAgenticPreflightDemo");
     expect(paidRoute).toContain("runAgenticPreflightDemo");
     expect(paidRoute).toContain('mode: "X402_PAID"');
+    expect(paidRoute).toContain("verifyCircleX402");
+    expect(paidRoute).toContain("prepareAgentCommerceDelivery");
     expect(paidRoute).toContain("settleCircleX402");
-    expect(paidRoute).toContain("Risk Gate execution boundary violated after settlement");
+    expect(paidRoute).toContain("RISK_GATE_EXECUTION_BOUNDARY_VIOLATION");
+    expect(paidRoute.indexOf("await prepareAgentCommerceDelivery")).toBeLessThan(
+      paidRoute.indexOf("settlement = await settleCircleX402(paymentPayload)"),
+    );
   });
 
   it("uses the exact canonical verified public GRI contract for optional demo context", () => {
@@ -148,8 +156,15 @@ describe("Agentic Commerce public demo contract", () => {
 
     expect(freeRoute).toContain("Requested risk context is temporarily unavailable.");
     expect(paidRoute).toContain("Requested risk context is temporarily unavailable.");
-    expect(paidRoute).toContain("Payment signature could not be verified or settled.");
-    expect(paidRoute).toContain("Paid resource delivery failed closed.");
+    expect(paidRoute).toContain(
+      "Circle Gateway payment verification is temporarily unavailable.",
+    );
+    expect(paidRoute).toContain("Payment authorization is invalid.");
+    expect(paidRoute).toContain("Paid delivery ledger is unavailable.");
+    expect(paidRoute).toContain(
+      "Settlement could not be safely confirmed. This proof is locked against automatic re-charge.",
+    );
+    expect(paidRoute).not.toContain("stack:");
   });
 
   it("ships a staging-only no-payment resilience harness", () => {
