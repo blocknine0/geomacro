@@ -1,0 +1,61 @@
+name: Agentic Live Zero-Spend Probe
+
+on:
+  push:
+    branches:
+      - agentic-live-zero-spend-probe
+    paths:
+      - ".github/workflows/agentic-live-zero-spend-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe live Arc x402 challenge without payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://geomacro.live/api/agent/risk"
+          body="$(mktemp)"
+          headers="$(mktemp)"
+          code="$(curl -L --retry 5 --retry-all-errors --retry-delay 2 -sS \
+            -D "$headers" -o "$body" -w '%{http_code}' \
+            -H 'content-type: application/json' \
+            --data '{"subject":{"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"},"policy_preset":"cautious","action_type":"agent_payment","amount_usdc":10000,"client_request_id":"agentic-zero-spend-live-probe"}' \
+            "$endpoint")"
+          echo "LIVE_HTTP_STATUS=$code"
+          cat "$body"
+          echo
+          if [ "$code" = "402" ]; then
+            required="$(awk 'BEGIN{IGNORECASE=1} /^payment-required:/ {sub(/^[^:]+:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}' "$headers")"
+            test -n "$required"
+            node -e '
+              const raw = process.argv[1];
+              const p = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
+              const a = p.accepts?.[0] ?? {};
+              console.log("X402_VERSION=" + p.x402Version);
+              console.log("NETWORK=" + a.network);
+              console.log("ASSET=" + a.asset);
+              console.log("AMOUNT=" + a.amount);
+              console.log("PAY_TO=" + a.payTo);
+              console.log("VERIFYING_CONTRACT=" + (a.extra?.verifyingContract ?? ""));
+              if (p.x402Version !== 2) process.exit(2);
+              if (a.network !== "eip155:5042002") process.exit(3);
+              if (String(a.asset).toLowerCase() !== "0x3600000000000000000000000000000000000000") process.exit(4);
+              if (String(a.amount) !== "1000") process.exit(5);
+              if (!/^0x[a-fA-F0-9]{40}$/.test(String(a.payTo ?? ""))) process.exit(6);
+              if (String(a.extra?.verifyingContract ?? "").toLowerCase() !== "0x0077777d7eba4688bdef3e311b846f25870a19b9") process.exit(7);
+            ' "$required"
+            echo "PROBE_RESULT=READY_FOR_PAID_TEST"
+            exit 0
+          fi
+          if [ "$code" = "503" ] && grep -Fq 'X402_NOT_CONFIGURED' "$body"; then
+            echo "PROBE_RESULT=SELLER_NOT_CONFIGURED"
+            exit 0
+          fi
+          echo "PROBE_RESULT=UNEXPECTED"
+          exit 1
