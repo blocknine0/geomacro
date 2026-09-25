@@ -1298,6 +1298,11 @@ export async function buildCountryRiskObject(
     ) {
       readinessReasons.push("high_impact_evidence_gate_failed");
     }
+
+    // Uncertainty is intentionally uncalibrated in the current pilot.
+    // Federation therefore exposes the strict object as contextual input,
+    // not as a calibrated deterministic decision signal.
+    readinessReasons.push("uncalibrated_uncertainty_interval");
   }
 
   const decisionReadiness = {
