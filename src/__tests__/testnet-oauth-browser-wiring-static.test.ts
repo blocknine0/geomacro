@@ -51,7 +51,7 @@ describe("Testnet tester identity and X sharing boundary", () => {
     expect(browser).not.toContain("email-verify");
     expect(browser).not.toContain("oauth/x");
     expect(browser).not.toContain("oauth/discord");
-    expect(page).toContain("Profile + wallet");
+    expect(page).toContain("Create a tester profile and verify one EVM wallet");
   });
 
   it("uses X only as an outbound result-sharing action", () => {
