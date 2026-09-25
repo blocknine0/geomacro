@@ -584,7 +584,117 @@ function TestnetAccessPage() {
         </div>
       </section>
 
-            <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+            <section id="integration" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">INTEGRATION</p>
+            <h2 className="mt-2 text-2xl font-semibold">Use the Testnet API inside your own product or AI agent.</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Discover the live contract first, authenticate with your Testnet API Key + API Secret, make a metered intelligence request, handle HTTP 402, pay the quoted Testnet USDC, and retry the same request with payment proof.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadLiveManifest()}
+            disabled={manifestBusy}
+            className="rounded-lg border border-border px-3 py-2 text-xs font-medium disabled:opacity-50"
+          >
+            {manifestBusy ? "Loading manifest..." : "Load live manifest"}
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">1 · Discover</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Do not hardcode a copied API contract. Read the current machine manifest.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`curl https://geomacro.live/api/testnet/manifest`}</pre>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">2 · Authenticate</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Create the wallet-bound developer credential on this page. Store the API Secret server-side; never ship it in frontend code.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`Authorization: GeomacroTest <API_KEY>.<API_SECRET>`}</pre>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">3 · Request</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Start small with a country digest, then move to GRI, Risk Objects or Risk Gate as your integration grows.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`curl -X POST https://geomacro.live/api/testnet/intelligence \\\
+  -H "Authorization: GeomacroTest <API_KEY>.<API_SECRET>" \\\
+  -H "Content-Type: application/json" \\\
+  -d '{
+    "request_id":"country-demo-0001",
+    "capability":"structural_country_digest",
+    "subject":{"type":"country","country_iso3":"IND"}
+  }'`}</pre>
+          </article>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">AI agent integration pattern</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`const request = {
+  request_id: "agent-risk-0001",
+  capability: "risk_gate_bundle",
+  subject: {
+    type: "corridor",
+    origin_country_iso3: "IND",
+    destination_country_iso3: "SGP"
+  },
+  policy_preset: "balanced",
+  action_type: "agent_payment",
+  amount_usdc: 1000
+};
+
+let response = await geomacro.post("/api/testnet/intelligence", request);
+
+if (response.status === 402) {
+  const quote = response.body;
+  const tx = await wallet.payTestnetUsdc(
+    quote.payment.amount_due_usdc,
+    quote.payment.chain_key
+  );
+
+  response = await geomacro.post(
+    "/api/testnet/intelligence",
+    {
+      ...request,
+      payment: {
+        chain_key: quote.payment.chain_key,
+        tx_hash: tx.hash,
+        payer_address: tx.from
+      }
+    }
+  );
+}
+
+return response.body;`}</pre>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Illustrative integration pseudocode. The payment/wallet implementation belongs to your system. Geomacro verifies the submitted chain, Testnet USDC transfer, payer, receiver, confirmation and exact amount before delivery.
+            </p>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">What your system receives</p>
+            <div className="mt-3 space-y-2 text-sm">
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>intelligence_query</code><span className="ml-2 text-muted-foreground">summary, changes, why it matters, confidence context</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>gri_read</code><span className="ml-2 text-muted-foreground">score lineage, change attribution and proof hashes</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>structural_*_profile</code><span className="ml-2 text-muted-foreground">severity, observations, coverage and provenance-safe metadata</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>signed_risk_object</code><span className="ml-2 text-muted-foreground">signed machine-readable risk state + verification</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>risk_gate_bundle</code><span className="ml-2 text-muted-foreground">decision, reasons, policy, Risk Object verification and GRI context</span></div>
+            </div>
+          </article>
+        </div>
+
+        {liveManifest ? (
+          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold">Live machine manifest</p>
+              <span className="font-mono text-[10px] text-muted-foreground">GET /api/testnet/manifest</span>
+            </div>
+            <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{JSON.stringify(liveManifest, null, 2)}</pre>
+          </div>
+        ) : null}
+      </section>
+
+      <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Wallet account</p>
