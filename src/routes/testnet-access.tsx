@@ -29,6 +29,7 @@ type DeveloperCredential = {
   last_used_at?: string | null;
   created_at?: string | null;
   revoked_at?: string | null;
+  scopes?: string[];
 };
 
 type EthereumProvider = {
@@ -40,7 +41,9 @@ type EthereumProvider = {
 type FollowState = "idle" | "opened" | "confirmed";
 
 const AUTH_FLOW = "client-wallet-first-v4-public-developer";
-const MAX_ACTIVE_DEVELOPER_KEYS = 3;
+const MAX_ACTIVE_DEVELOPER_KEYS = 1;
+const DEMO_CAPABILITY = "structural_country_digest" as const;
+const DEMO_PRICE = TESTNET_INTELLIGENCE_PRICE_TABLE[DEMO_CAPABILITY];
 const X_HANDLE = "GeomacroLive";
 const X_FOLLOW_URL = `https://x.com/intent/follow?screen_name=${X_HANDLE}`;
 const X_SHARE_TEXT =
@@ -460,16 +463,49 @@ function TestnetAccessPage() {
     }
   }
 
+  async function writeClipboard(value: string) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textArea);
+    }
+
+    if (!copied) throw new Error("CLIPBOARD_UNAVAILABLE");
+  }
+
   async function copyText(value: string, message: string) {
-    await navigator.clipboard.writeText(value);
-    setStatus(message);
+    try {
+      await writeClipboard(value);
+      setStatus(message);
+    } catch {
+      setStatus("Copy is unavailable in this browser. Select the value manually and copy it.");
+    }
   }
 
   async function copyIssuedCredentials() {
     if (!issued) return;
-    await navigator.clipboard.writeText(`API Key: ${issued.api_key}\nAPI Secret: ${issued.api_secret}`);
-    setSecretCopied(true);
-    setStatus("API Key + API Secret copied. Store the secret securely; it cannot be recovered later.");
+    try {
+      await writeClipboard(`API Key: ${issued.api_key}\nAPI Secret: ${issued.api_secret}`);
+      setSecretCopied(true);
+      setStatus("API Key + API Secret copied. Store the secret securely; it cannot be recovered later.");
+    } catch {
+      setStatus("Copy is unavailable in this browser. Select the credentials manually and store the API Secret securely.");
+    }
   }
 
   function openFollowIntent() {
@@ -812,8 +848,8 @@ Authorization: GeomacroTest <API_KEY>.<API_SECRET>
 {
   "error": { "code": "TESTNET_PAYMENT_REQUIRED" },
   "payment": {
-    "credits": 3,
-    "amount_due_usdc": 1.50,
+    "credits": ${DEMO_PRICE.credits},
+    "amount_due_usdc": ${DEMO_PRICE.testnet_usdc.toFixed(2)},
     "message": "Pay only this API call, then retry the same request_id."
   }
 }`}</pre>
@@ -821,9 +857,9 @@ Authorization: GeomacroTest <API_KEY>.<API_SECRET>
             {demoStep === 2 ? (
               <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`Wallet payment
 Asset: Testnet USDC
-Amount: ${TESTNET_INTELLIGENCE_PRICE_TABLE.structural_country_digest.testnet_usdc.toFixed(2)} USDC
+Amount: ${DEMO_PRICE.testnet_usdc.toFixed(2)} USDC
 From: <VERIFIED_TESTER_WALLET>
-Network: Arc Testnet / Base Sepolia / Polygon Amoy
+Network: ${Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => chain.name).join(" / ")}
 Result: <CONFIRMED_TX_HASH>`}</pre>
             ) : null}
             {demoStep === 3 ? (
@@ -834,7 +870,7 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
   "capability": "structural_country_digest",
   "subject": { "type": "country", "country_iso3": "IND" },
   "payment": {
-    "chain_key": "arcTestnet",
+    "chain_key": "<SELECTED_SUPPORTED_CHAIN_KEY>",
     "tx_hash": "<CONFIRMED_TX_HASH>",
     "payer_address": "<VERIFIED_TESTER_WALLET>"
   }
@@ -859,7 +895,7 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
             <p className="font-medium">What happens here</p>
             <div className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
               {demoStep === 0 ? <p>Your first request contains the exact capability and subject, but no payment proof.</p> : null}
-              {demoStep === 1 ? <p>Geomacro returns an exact quote before delivery. For this 3-credit example, the current contract prices the call at 1.50 Testnet USDC.</p> : null}
+              {demoStep === 1 ? <p>Geomacro returns an exact quote before delivery. For this ${DEMO_PRICE.credits}-credit example, the current contract prices the call at ${DEMO_PRICE.testnet_usdc.toFixed(2)} Testnet USDC.</p> : null}
               {demoStep === 2 ? <p>Your system sends exactly the quoted Testnet USDC from the verified tester wallet on a supported Testnet payment chain.</p> : null}
               {demoStep === 3 ? <p>Keep the original <code>request_id</code>, capability and subject unchanged. Add the verified payment proof fields and retry.</p> : null}
               {demoStep === 4 ? <p>Geomacro verifies the settlement, consumes the credits once and returns the machine-readable intelligence. Exact replay is idempotent and does not double-charge.</p> : null}
@@ -968,7 +1004,7 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
         )}
 
         {status && (
-          <div className="mt-4 rounded-lg border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
+          <div role="status" aria-live="polite" className="mt-4 rounded-lg border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
             {status}
           </div>
         )}
@@ -1051,12 +1087,17 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
                     <option value="product_api">Product API</option>
                     <option value="ai_agent">AI agent</option>
                     <option value="automation">Automation</option>
-                    <option value="demo">Demo</option>
+                    <option value="demo">Demo (no Risk Gate)</option>
                   </select>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {selectedIntegrationKeys.length > 0
-                      ? `${selectedIntegrationKeys.length} active ${integrationLabel(integrationType)} key${selectedIntegrationKeys.length === 1 ? "" : "s"} already saved below.`
-                      : `No active ${integrationLabel(integrationType)} key yet.`}
+                      ? `${selectedIntegrationKeys.length} active ${integrationLabel(integrationType)} credential${selectedIntegrationKeys.length === 1 ? "" : "s"} already saved below.`
+                      : activeDeveloperKeys.length > 0
+                        ? `An active ${integrationLabel(activeDeveloperKeys[0].integration_type)} credential already exists for this wallet. Revoke it before creating a new ${integrationLabel(integrationType)} credential.`
+                        : `No active ${integrationLabel(integrationType)} credential yet.`}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Scopes follow the selected integration type. Demo credentials do not include Risk Gate access.
                   </p>
                 </div>
                 <div className="sm:col-span-2">
@@ -1068,7 +1109,7 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
                   </button>
                   {developerKeyLimitReached ? (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Maximum 3 active developer keys reached. Revoke one below before creating another.
+                      One active developer credential is supported per wallet. Revoke the existing credential below before creating a replacement.
                     </p>
                   ) : null}
                 </div>
@@ -1134,6 +1175,9 @@ Result: <CONFIRMED_TX_HASH>`}</pre>
                               API Key: {key.key_id || "Unavailable"}
                             </code>
                             <p className="mt-1 text-xs text-muted-foreground">Secret: hidden permanently after creation</p>
+                            {key.scopes?.length ? (
+                              <p className="mt-1 break-words text-xs text-muted-foreground">Scopes: {key.scopes.join(", ")}</p>
+                            ) : null}
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {key.key_id ? (
