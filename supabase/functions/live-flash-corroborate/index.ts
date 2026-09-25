@@ -152,7 +152,8 @@ function normalize(value: unknown) {
     .normalize("NFKD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replace(/[^a-z0-9.%$+-]+/g, " ")
+    .replace(/['’]s\b/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
 }
@@ -498,50 +499,33 @@ Deno.serve(async request => {
   let candidateRows: Array<Record<string, unknown>> = []
 
   if (requestedCountryIso3) {
-    const countryFlashResult = await db
-      .from("live_flash_event_countries")
-      .select("flash_id")
-      .eq("country_iso3", requestedCountryIso3)
+    // Query the country-filtered event rows directly, ordered by fresh ingestion.
+    // The previous two-step country-bridge lookup took an arbitrary first page of
+    // flash IDs before applying the 90-minute freshness window, which could omit
+    // the newest CHN evidence entirely.
+    const targetCandidateResult = await db
+      .from("live_flash_events")
+      .select(
+        "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at,live_flash_event_countries!inner(country_iso3)",
+      )
+      .eq("live_flash_event_countries.country_iso3", requestedCountryIso3)
+      .gte("ingested_at", candidateCutoff)
+      .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
+      .order("ingested_at", { ascending: false })
       .limit(CORROBORATION_CANDIDATE_LIMIT)
 
-    if (countryFlashResult.error) {
-      console.error(countryFlashResult.error)
+    if (targetCandidateResult.error) {
+      console.error(targetCandidateResult.error)
       return jsonResponse(500, {
         ok: false,
-        error: "candidate_country_query_failed",
+        error: "candidate_query_failed",
       })
     }
 
-    const targetFlashIds = [
-      ...new Set(
-        (countryFlashResult.data ?? [])
-          .map(row => String(row.flash_id ?? "").trim())
-          .filter(Boolean),
-      ),
-    ]
-
-    if (targetFlashIds.length) {
-      const targetCandidateResult = await db
-        .from("live_flash_events")
-        .select(
-          "flash_id,source_id,source_channel,published_at,ingested_at,headline,body,source_reliability,verification_status,signal_category,source_version,event_family_id,material_update,material_update_reason,content_hash,first_seen_at,last_seen_at,last_material_update_at",
-        )
-        .in("flash_id", targetFlashIds)
-        .gte("ingested_at", candidateCutoff)
-        .in("verification_status", ["UNVERIFIED", "CORROBORATING"])
-        .order("ingested_at", { ascending: false })
-        .limit(CORROBORATION_CANDIDATE_LIMIT)
-
-      if (targetCandidateResult.error) {
-        console.error(targetCandidateResult.error)
-        return jsonResponse(500, {
-          ok: false,
-          error: "candidate_query_failed",
-        })
-      }
-
-      candidateRows = (targetCandidateResult.data ?? []) as Array<Record<string, unknown>>
-    }
+    candidateRows = (targetCandidateResult.data ?? []).map((row) => {
+      const { live_flash_event_countries: _countryLinks, ...flash } = row as Record<string, unknown>
+      return flash
+    })
   } else {
     const candidateResult = await db
       .from("live_flash_events")

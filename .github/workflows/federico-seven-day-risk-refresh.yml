@@ -25,8 +25,6 @@ jobs:
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       INVINO_API_KEY: ${{ secrets.INVINO_API_KEY }}
-      # Official public pre-funded demo key, used only when the private key receives HTTP 402 allowance exhaustion.
-      INVINO_DEMO_API_KEY: ivv_j4w83PoN0jght43XnflXNua6nUWJyXhbjrw6OJ5T9x0
       INVINO_REQUEST_OUT: /tmp/federico-review-request.json
       INVINO_REVIEW_OUT: /tmp/federico-review-response.json
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}

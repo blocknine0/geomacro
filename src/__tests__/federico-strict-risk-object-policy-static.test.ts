@@ -198,7 +198,10 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "requestedCountryIso3",
     );
     expect(corroborator).toContain(
-      'eq("country_iso3", requestedCountryIso3)',
+      "live_flash_event_countries!inner(country_iso3)",
+    );
+    expect(corroborator).toContain(
+      '.eq("live_flash_event_countries.country_iso3", requestedCountryIso3)',
     );
     expect(corroborator).toContain(
       '.contains("countries", [requestedCountryIso3])',
