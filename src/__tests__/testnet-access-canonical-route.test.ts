@@ -26,5 +26,7 @@ describe("canonical Testnet Access surface", () => {
     expect(route).toContain("Demo credentials do not include Risk Gate access");
     expect(route).toContain("async function writeClipboard");
     expect(route).toContain("wallet_revokePermissions");
+    expect(route).toContain("/api/testnet-tester/developer-key-rotate");
+    expect(route).toContain("Rotate");
   });
 });
