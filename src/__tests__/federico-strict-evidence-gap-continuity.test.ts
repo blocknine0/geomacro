@@ -132,15 +132,12 @@ describe("Federico strict evidence-gap continuity", () => {
     expect(
       result.provenance.reproducibility.calculation_input.events,
     ).toHaveLength(8);
-    expect(result.evidence).toSatisfy((items) =>
-      items.every(
-        (item: any) =>
-          !Object.prototype.hasOwnProperty.call(item, "source_urls") &&
-          !Object.prototype.hasOwnProperty.call(item, "source_families") &&
-          !Object.prototype.hasOwnProperty.call(item, "transmission_channel") &&
-          !Object.prototype.hasOwnProperty.call(item, "relevance_reason"),
-      ),
-    );
+    for (const item of result.evidence) {
+      expect(Object.prototype.hasOwnProperty.call(item, "source_urls")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(item, "source_families")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(item, "transmission_channel")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(item, "relevance_reason")).toBe(false);
+    }
     expect(
       result.provenance.reproducibility.hash_inputs,
     ).toEqual({
