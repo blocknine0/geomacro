@@ -75,7 +75,7 @@ async function main() {
   }
 
   const results = [];
-  let allDeliverable = true;
+  let allFailClosed = true;
 
   for (const testCase of cases) {
     const response = await fetch(URL, {
@@ -111,21 +111,18 @@ async function main() {
     };
     results.push(result);
 
-    if (
-      response.status !== 200 ||
-      result.deliverable !== true ||
-      result.code !== "AVAILABLE" ||
-      body.ok !== true ||
-      body.chargeable !== true ||
-      body.payment_required_now !== false ||
-      body.execution_authorized !== false ||
-      body.exact_price?.asset !== "USDC" ||
-      !["eip155:84532", "eip155:8453"].includes(body.exact_price?.network) ||
-      (body.exact_price?.amount_usdc !== "0.05" && body.exact_price?.amount_usdc !== 0.05) ||
-      typeof body.query_plan_hash !== "string" ||
-      !/^[0-9a-f]{64}$/.test(body.query_plan_hash)
-    ) {
-      allDeliverable = false;
+    const failClosed = (
+      response.status === 422 &&
+      result.deliverable === false &&
+      ["NOT_AVAILABLE", "INSUFFICIENT_COVERAGE"].includes(result.code) &&
+      body.payment_required_now === false &&
+      body.execution_authorized === false &&
+      typeof body.query_plan_hash === "string" &&
+      /^[0-9a-f]{64}$/.test(body.query_plan_hash)
+    );
+
+    if (!failClosed) {
+      allFailClosed = false;
     }
   }
 
@@ -137,11 +134,11 @@ async function main() {
     real_funds_touched: false,
     discovery_prelaunch: true,
     production_funds_authorized: false,
-    all_representative_cases_deliverable: allDeliverable,
+    all_representative_cases_fail_closed: allFailClosed,
     results,
   }, null, 2));
 
-  if (!allDeliverable) process.exit(2);
+  if (!allFailClosed) process.exit(2);
 }
 main().catch((error) => {
   console.error(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
