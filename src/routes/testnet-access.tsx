@@ -161,7 +161,7 @@ function friendlyError(error: unknown) {
     TESTNET_WALLET_SIGNATURE_INVALID: "The wallet signature could not be verified.",
     TESTNET_PROFILE_NOT_ACTIVE: "This Testnet account is not active.",
     TESTNET_DEVELOPER_KEY_LIMIT_REACHED:
-      "You already have the maximum 3 active developer API keys. Revoke one before creating another.",
+      "One active developer credential is supported per wallet. Revoke it before creating a replacement.",
     TESTNET_DEVELOPER_KEY_NOT_FOUND: "That developer API key could not be found.",
     INVALID_WALLET_ADDRESS: "The connected wallet address is invalid.",
   };
