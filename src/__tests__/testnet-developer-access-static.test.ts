@@ -36,7 +36,7 @@ describe("metered testnet developer integration", () => {
     expect(server).toContain("shown_once: true");
     expect(server).toContain('auth_scheme: "key_secret"');
     expect(server).toContain('payment_model: "pay_per_call"');
-    expect(page).toContain("API Key + API Secret");
+    expect(page).toContain("API Secret is shown once");
     expect(browser).toContain("payload.data.api_secret");
   });
 
