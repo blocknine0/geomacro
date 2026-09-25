@@ -23,6 +23,7 @@ import {
 } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import {
+  FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS,
   federicoStrictSourceFamilyForId,
 } from "../src/lib/public-demo-risk-profile";
 
@@ -167,6 +168,7 @@ if (strictProfile) {
     !manifest?.calculation_input ||
     !manifest?.hash_inputs?.data_projection ||
     !manifest?.score_components ||
+    !manifest?.selection_policy?.max_included_evidence_items ||
     !manifest?.selection_policy?.source_family_map_version ||
     !manifest?.selection_policy?.source_family_map
   ) {
@@ -305,6 +307,21 @@ if (strictProfile) {
     Array.isArray(riskObject.evidence)
       ? riskObject.evidence
       : [];
+
+  if (
+    strictProfile &&
+    (
+      Number(
+        manifest.selection_policy.max_included_evidence_items,
+      ) !== FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS ||
+      evidence.length >
+        FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS
+    )
+  ) {
+    throw new Error(
+      "Federico strict evidence selection exceeds the signed bounded review profile",
+    );
+  }
 
   if (
     evidence.some(
@@ -477,68 +494,6 @@ if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
  * content is never disclosed, while this interoperability preflight explicitly
  * supplies the exact Risk Object record to the verifier.
  */
-const evidenceRefs = Array.isArray(riskObject.evidence)
-  ? riskObject.evidence.slice(0, 8).map((item) => ({
-      event_id: item?.event_id ?? null,
-      title: item?.title ?? null,
-      severity: item?.severity ?? null,
-      confidence: item?.confidence ?? null,
-      source_ids: Array.isArray(item?.source_ids) ? item.source_ids.slice(0, 8) : [],
-      source_families: Array.isArray(item?.source_families) ? item.source_families.slice(0, 8) : [],
-      last_seen_at: item?.last_seen_at ?? null,
-      corroboration_status: item?.corroboration_status ?? null,
-    }))
-  : [];
-
-const reviewArtifact = {
-  artifact_version: "geomacro-invino-review-v4",
-  as_of: observedAt,
-  as_of_source: "risk_object.observed_at",
-  decision_type: "read_only_risk_context",
-  action_proposed: true,
-  action: "Admit this verified Geomacro Risk Object as read-only risk context to a downstream decision gate; do not execute any trade, transaction, deployment, or other irreversible action.",
-  execution_authorized: false,
-  risk_object_reference: {
-    object_id: riskObject.object_id,
-    schema_version: riskObject.schema_version,
-    payload_hash: riskObject.integrity?.payload_hash ?? null,
-    signing_key_id: riskObject.integrity?.signing_key_id ?? null,
-    signature_scheme: riskObject.integrity?.signature_scheme ?? null,
-  },
-  risk_state: {
-    subject: riskObject.subject,
-    generated_at: riskObject.generated_at,
-    observed_at: riskObject.observed_at,
-    expires_at: riskObject.expires_at,
-    risk: riskObject.risk,
-    confidence: riskObject.confidence,
-    evidence_summary: riskObject.evidence_summary ?? null,
-    event_count: evidenceRefs.length,
-    verified_event_count: evidenceRefs.filter(
-      (item) => item.corroboration_status === "CONFIRMED",
-    ).length,
-    source_evidence_count: Array.isArray(riskObject.evidence)
-      ? riskObject.evidence.reduce(
-          (sum, item) => sum + Number(item?.independent_source_count ?? item?.evidence_count ?? 0),
-          0,
-        )
-      : 0,
-    verification: riskObject.verification,
-    freshness: {
-      checked_at: new Date().toISOString(),
-      observed_at: riskObject.observed_at,
-      expires_at: riskObject.expires_at,
-      fail_closed_at_or_after: riskObject.expires_at,
-      valid_now: Date.parse(riskObject.expires_at) > Date.now(),
-      uncertainty_interval: riskObject.risk?.uncertainty_interval ?? null,
-      calibrated: riskObject.risk?.uncertainty_interval?.calibrated ?? null,
-    },
-  },
-};
-
-const reviewArtifactText = JSON.stringify(reviewArtifact);
-const reviewArtifactBytes = Buffer.byteLength(reviewArtifactText, "utf8");
-
 const signedRiskObjectRecord = JSON.stringify(canonicalize(riskObject));
 const signedRiskObjectRecordSha256 = sha256Canonical(riskObject);
 
@@ -565,25 +520,51 @@ if (
     "Federico strict external evidence failed its exact signed-object self-consistency check",
   );
 }
+
+const reviewArtifact = {
+  artifact_version: "geomacro-invino-review-v5",
+  action_proposed: true,
+  action:
+    "Admit the attached Geomacro gro-1.1 Risk Object as read-only external risk context to the downstream decision gate. Do not execute a trade, transaction, deployment, or other irreversible action.",
+  execution_authorized: false,
+  freshness_policy: {
+    observed_at: riskObject.observed_at,
+    expires_at: riskObject.expires_at,
+    fail_closed_at_or_after: riskObject.expires_at,
+    decision_time_revalidation_required: true,
+    rule: "Require trusted_current_time < expires_at at admission and at execution; otherwise fail closed.",
+  },
+  external_evidence: [{
+    source: externalEvidence[0].source,
+    record_sha256: externalEvidence[0].record_sha256,
+    evidence_type: externalEvidence[0].evidence_type,
+    record: externalEvidence[0].record,
+    observed_at: externalEvidence[0].observed_at,
+    validity_until: externalEvidence[0].validity_until,
+  }],
+};
+
+const reviewArtifactText = JSON.stringify(reviewArtifact);
+const reviewArtifactBytes = Buffer.byteLength(reviewArtifactText, "utf8");
+
 if (reviewArtifactBytes > 20_000) {
   throw new Error(
     `Invinoveritas review artifact exceeds the partner limit: ${reviewArtifactBytes} bytes > 20000`,
   );
 }
 
-const reviewContext =
-  "Pre-action external risk context from Geomacro. The review artifact is a compact projection of the signed gro-1.1 Risk Object. The exact canonical signed object is supplied in external_evidence[0].record and bound by external_evidence[0].record_sha256. Resolve trust from the embedded Ed25519 public key, signing_key_id, trust_registry_url and canonicalization_url. Validate the risk context, evidence/provenance, integrity, decision readiness and freshness as inputs to the caller's own decision gate. Require current trusted time to remain strictly before expires_at and fail closed at or after expiry. Do not treat this review as execution authorization. The full signed Risk Object must be considered unavailable unless external_evidence[0].record is present and its SHA-256 matches exactly. Commercial delivery is derived-only and does not redistribute raw third-party source material.";
-
-const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
-if (reviewContextBytes > 4_000) {
-  throw new Error(
-    `Invinoveritas review context exceeds the partner contract: ${reviewContextBytes} bytes > 4000`,
-  );
-}
-
 const reviewRequest = {
   artifact: reviewArtifactText,
   artifact_type: "general",
+  const reviewContext =
+    "Pre-action external risk context from Geomacro. The review artifact itself contains the exact canonical signed gro-1.1 Risk Object inside external_evidence[0].record and its record_sha256. Verify that exact record, its Ed25519 signature, embedded public key, signing_key_id, trust_registry_url and canonicalization_url. Validate evidence/provenance, integrity, decision readiness and freshness. Require trusted current time to be strictly before expires_at at admission and execution, and fail closed at or after expiry. This review never authorizes execution. Commercial delivery is derived-only and does not redistribute raw third-party source material.";
+  const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
+  if (reviewContextBytes > 4_000) {
+    throw new Error(
+      `Invinoveritas review context exceeds the partner contract: ${reviewContextBytes} bytes > 4000`,
+    );
+  }
+
   context: reviewContext,
   sign: true,
   confidentiality_tier: "partial_disclosure",

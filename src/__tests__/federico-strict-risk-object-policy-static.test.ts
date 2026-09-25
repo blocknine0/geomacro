@@ -453,13 +453,22 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      'artifact_version: "geomacro-invino-review-v4"',
+      'artifact_version: "geomacro-invino-review-v5"',
     );
     expect(preflight).toContain(
-      "risk_object_reference:",
+      "external_evidence: [{",
     );
     expect(preflight).toContain(
-      'as_of_source: "risk_object.observed_at"',
+      "record: externalEvidence[0].record",
+    );
+    expect(preflight).toContain(
+      "reviewContextBytes > 4_000",
+    );
+    expect(preflight).toContain(
+      "reviewArtifactBytes > 20_000",
+    );
+    expect(preflight).toContain(
+      "decision_time_revalidation_required: true",
     );
     expect(canonicalSpec).toContain(
       "Number::toString",

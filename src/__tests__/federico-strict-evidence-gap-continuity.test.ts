@@ -52,3 +52,66 @@ describe("Federico strict evidence-gap continuity", () => {
     expect(result.attribution[0]?.weight).toBe(0);
   });
 });
+
+
+  it("bounds strict evidence deterministically and keeps the signed review payload under the provider artifact ceiling", async () => {
+    const events = Array.from({ length: 12 }, (_, index) => {
+      const family = index % 2 === 0 ? "gdelt_structured" : "scmp_china_rss";
+      return {
+        id: `strict-event-${index.toString().padStart(2, "0")}`,
+        domain: "geopolitics" as const,
+        event_type: "trade_policy",
+        title: `Governed China trade-policy evidence ${index}`,
+        primary_country: "CHN",
+        countries: ["CHN"],
+        severity: 45 + index,
+        confidence: 92,
+        direction: "escalating" as const,
+        first_seen_at: "2026-09-25T08:00:00.000Z",
+        last_seen_at: "2026-09-25T08:10:00.000Z",
+        evidence_count: 1,
+        independent_source_count: 2,
+        evidence_refs: [`evidence-ref-${index}`],
+        structure_version: "live-structured-v1",
+        structured_payload: {
+          scoring_version: "scoring-v1",
+          relevance_version: "relevance-v1",
+          country_version: "country-v1",
+          story_version: "story-v1",
+        },
+        source_ids: [family],
+        source_record_ids: [`source-record-${index}`],
+        source_urls: [`https://example.com/source/${index}`],
+        source_families: [family],
+        content_hashes: [`hash-${index}`],
+        relevance_reason: "Deterministic country linkage test evidence",
+        transmission_channel: "governed_test_feed",
+        relevance_weight: 1,
+        subject_is_primary: true,
+        subject_attribution_confidence: 95,
+        subject_attribution_method: "test_registry_v1",
+        material_evidence_at: "2026-09-25T08:10:00.000Z",
+        corroboration_status: "CONFIRMED" as const,
+      };
+    });
+
+    const result = await buildCountryRiskObject({
+      country_iso3: "CHN",
+      events,
+      as_of: "2026-09-25T08:20:00.000Z",
+      calculation_namespace: "federico_strict_evidence_v1",
+    });
+
+    expect(result.decision_readiness.status).toBe("READY");
+    expect(result.evidence).toHaveLength(8);
+    expect(
+      result.provenance.reproducibility.selection_policy
+        .max_included_evidence_items,
+    ).toBe(8);
+    expect(
+      result.provenance.reproducibility.calculation_input.events,
+    ).toHaveLength(8);
+    expect(
+      Buffer.byteLength(JSON.stringify(result), "utf8"),
+    ).toBeLessThan(20_000);
+  });

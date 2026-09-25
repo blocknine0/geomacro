@@ -288,6 +288,7 @@ export type GeomacroRiskObject = {
       calculation_namespace: string | null;
       selection_policy: {
         max_evidence_age_hours: number;
+        max_included_evidence_items: number;
         high_impact_max_evidence_age_hours: number;
         high_impact_severity_threshold: number;
         minimum_high_impact_independent_sources: number;
