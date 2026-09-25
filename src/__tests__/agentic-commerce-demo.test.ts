@@ -111,6 +111,9 @@ describe("Agentic Commerce public demo contract", () => {
     expect(store).toContain('profile === "PUBLIC_DEMO"');
     expect(refresh).toContain('delivery_profile: "PUBLIC_DEMO"');
     expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain('cron: "0 * * * *"');
+    expect(workflow).toContain("group: geomacro-public-demo-refresh");
+    expect(workflow).not.toContain("group: geomacro-intelligence-orchestrator");
     expect(workflow).not.toContain('cron: "17 * * * *"');
     const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     expect(orchestrator).toContain('key: "public_demo_refresh"');
