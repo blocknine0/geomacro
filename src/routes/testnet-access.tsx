@@ -522,7 +522,69 @@ function TestnetAccessPage() {
         </div>
       </section>
 
-      <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+      <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Capabilities</p>
+          <p className="mt-2 text-2xl font-semibold">8</p>
+          <p className="mt-1 text-xs text-muted-foreground">Query, GRI, structural risk, signed Risk Objects and Risk Gate.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Metering</p>
+          <p className="mt-2 text-2xl font-semibold">0.5 USDC</p>
+          <p className="mt-1 text-xs text-muted-foreground">Testnet USDC per credit. Pay only when a metered call is used.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Usage cap</p>
+          <p className="mt-2 text-2xl font-semibold">500 credits</p>
+          <p className="mt-1 text-xs text-muted-foreground">30-day Testnet usage cap, not a prepaid balance.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Payment chains</p>
+          <p className="mt-2 text-2xl font-semibold">3</p>
+          <p className="mt-1 text-xs text-muted-foreground">Arc Testnet, Base Sepolia and Polygon Amoy.</p>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">WHAT YOU CAN BUILD</p>
+        <h2 className="mt-2 text-2xl font-semibold">One intelligence layer for people, products, agents and machines.</h2>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">PEOPLE</p>
+            <h3 className="mt-2 text-lg font-semibold">Research and decision support</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask natural-language geopolitical or macro questions, understand what changed, why it matters, and see the relevant GRI context and confidence information.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              Example: <span className="text-foreground">“What changed in global geopolitical risk?”</span> → summary → change drivers → why it matters → GRI context → bounded provenance.
+            </div>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">PRODUCTS</p>
+            <h3 className="mt-2 text-lg font-semibold">Embed structured risk in your workflow</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Use country and corridor structural intelligence, signed Risk Objects, or GRI outputs inside treasury, supply-chain, research and internal risk systems.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              Example: <span className="text-foreground">IND → SGP</span> → corridor profile → severity + observations + coverage + provenance-safe metadata.
+            </div>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">AI AGENTS</p>
+            <h3 className="mt-2 text-lg font-semibold">Give an agent governed risk context</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Use <code>risk_gate_bundle</code> when an agent needs one response containing Risk Gate decision/reasons, resolved policy, signed Risk Object verification, structural context and GRI change attribution.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              Testnet remains context-only: <code>execution_authorized=false</code>.
+            </div>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">MACHINES</p>
+            <h3 className="mt-2 text-lg font-semibold">Discover the contract first</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Start from the public manifest so your integration can discover the current API version, capabilities, prices, payment chains, examples and delivery boundaries from one machine-readable source.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              <code>GET /api/testnet/manifest</code> → contract → authenticate → call → 402 → pay → retry → response.
+            </div>
+          </article>
+        </div>
+      </section>
+
+            <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Wallet account</p>
