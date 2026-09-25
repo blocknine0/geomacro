@@ -103,6 +103,46 @@
         "auth": "api_key",
         "priority": 2,
         "coverage": "global"
+      },
+      {
+        "id": "uk_sanctions_list",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "global_sanctions"
+      },
+      {
+        "id": "eu_sanctions_consolidated",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "global_sanctions"
+      },
+      {
+        "id": "opcw_news",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "chemical_weapons_security"
+      },
+      {
+        "id": "icj_cases",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "international_legal_proceedings"
+      },
+      {
+        "id": "icc_news",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "international_justice"
       }
     ],
     "MACRO": [
@@ -241,6 +281,22 @@
         "auth": "api_key",
         "priority": 1,
         "coverage": "global_trade"
+      },
+      {
+        "id": "unctadstat_global",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "global_trade_investment"
+      },
+      {
+        "id": "world_bank_commodity_prices",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "global_commodity_prices"
       }
     ],
     "CRITICAL_MINERALS": [
@@ -315,6 +371,30 @@
         "auth": "api_key",
         "priority": 1,
         "coverage": "energy"
+      },
+      {
+        "id": "china_mofcom_trade_controls",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "china_trade_controls"
+      },
+      {
+        "id": "australia_critical_minerals",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 1,
+        "coverage": "australia_critical_minerals"
+      },
+      {
+        "id": "cochilco_minerals",
+        "class": "AUTHORITATIVE",
+        "access": "free",
+        "auth": "none",
+        "priority": 2,
+        "coverage": "chile_copper_minerals"
       }
     ]
   },
