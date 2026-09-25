@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { TESTNET_INTELLIGENCE_CAPABILITIES, TESTNET_INTELLIGENCE_CAPABILITY_CATALOG, TESTNET_INTELLIGENCE_PRICE_TABLE } from "@/lib/testnet-intelligence-contract";
+import { TESTNET_API_CREDIT_PRICE_USDC, TESTNET_API_FIXED_CREDITS } from "@/lib/testnet-api-pricing";
 import { TESTNET_PUBLIC_API_KEYS } from "@/lib/testnet-public-access-contract";
+import { TESTNET_USDC_ACCESS_CHAINS } from "@/lib/testnet-usdc-access-contract";
 
 type AccountState = {
   profile_name?: string;
@@ -27,6 +30,7 @@ type DeveloperCredential = {
   last_used_at?: string | null;
   created_at?: string | null;
   revoked_at?: string | null;
+  scopes?: string[];
 };
 
 type EthereumProvider = {
@@ -38,7 +42,11 @@ type EthereumProvider = {
 type FollowState = "idle" | "opened" | "confirmed";
 
 const AUTH_FLOW = "client-wallet-first-v4-public-developer";
-const MAX_ACTIVE_DEVELOPER_KEYS = 3;
+const MAX_ACTIVE_DEVELOPER_KEYS = 1;
+const DEMO_CAPABILITY = "structural_country_digest" as const;
+const DEMO_PRICE = TESTNET_INTELLIGENCE_PRICE_TABLE[DEMO_CAPABILITY];
+const TESTNET_INTELLIGENCE_CAPABILITY_COUNT = TESTNET_INTELLIGENCE_CAPABILITIES.length;
+const TESTNET_USDC_CHAIN_COUNT = Object.values(TESTNET_USDC_ACCESS_CHAINS).length;
 const X_HANDLE = "GeomacroLive";
 const X_FOLLOW_URL = `https://x.com/intent/follow?screen_name=${X_HANDLE}`;
 const X_SHARE_TEXT =
@@ -53,7 +61,7 @@ export const Route = createFileRoute("/testnet-access")({
       {
         name: "description",
         content:
-          "Sign in with one EVM wallet to test Geomacro on Testnet. Browser testers use public Testnet keys; private API credentials are optional for developers.",
+          "Build with Geomacro Testnet: machine-readable geopolitical and macro intelligence, pay-per-call access, API integrations for products and AI agents, and an explicit x402 flow.",
       },
       { name: "geomacro-testnet-auth-flow", content: AUTH_FLOW },
     ],
@@ -156,7 +164,7 @@ function friendlyError(error: unknown) {
     TESTNET_WALLET_SIGNATURE_INVALID: "The wallet signature could not be verified.",
     TESTNET_PROFILE_NOT_ACTIVE: "This Testnet account is not active.",
     TESTNET_DEVELOPER_KEY_LIMIT_REACHED:
-      "You already have the maximum 3 active developer API keys. Revoke one before creating another.",
+      "One active developer credential is supported per wallet. Revoke it before creating a replacement.",
     TESTNET_DEVELOPER_KEY_NOT_FOUND: "That developer API key could not be found.",
     INVALID_WALLET_ADDRESS: "The connected wallet address is invalid.",
   };
@@ -180,6 +188,9 @@ function TestnetAccessPage() {
   const [feedbackStatus, setFeedbackStatus] = useState("");
   const [followState, setFollowState] = useState<FollowState>("idle");
   const [shareOpened, setShareOpened] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);
+  const [liveManifest, setLiveManifest] = useState<unknown>(null);
+  const [manifestBusy, setManifestBusy] = useState(false);
 
   const active = account?.access_status === "active" && account?.wallet_verified === true;
   const walletConnected = Boolean(connectedWallet) || active;
@@ -411,10 +422,38 @@ function TestnetAccessPage() {
         method: "POST",
         body: JSON.stringify({ credential_id: credentialId }),
       });
-      setStatus("Developer API key revoked.");
+      setIssued(null);
+      setSecretCopied(false);
+      setStatus("Developer API key revoked. You can create a new credential now.");
       await loadDeveloperKeys();
     } catch (error) {
       setStatus(friendlyError(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rotateCredential(credentialId: string) {
+    if (busy) return;
+    setBusy(true);
+    setIssued(null);
+    setSecretCopied(false);
+    try {
+      const result = await api<{ ok: true; data: IssuedCredential; warning?: string }>(
+        "/api/testnet-tester/developer-key-rotate",
+        {
+          method: "POST",
+          body: JSON.stringify({ credential_id: credentialId }),
+        },
+      );
+      setIssued(result.data);
+      setStatus(
+        "Developer credentials rotated. The previous credential is revoked. Copy the new API Secret now; it will not be shown again.",
+      );
+      await loadDeveloperKeys();
+    } catch (error) {
+      setStatus(friendlyError(error));
+      await loadDeveloperKeys();
     } finally {
       setBusy(false);
     }
@@ -455,21 +494,72 @@ function TestnetAccessPage() {
     }
   }
 
+  async function writeClipboard(value: string) {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        return;
+      } catch {
+        // Fall through to the browser-compatible textarea fallback.
+      }
+    }
+
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textArea);
+    }
+
+    if (!copied) throw new Error("CLIPBOARD_UNAVAILABLE");
+  }
+
   async function copyText(value: string, message: string) {
-    await navigator.clipboard.writeText(value);
-    setStatus(message);
+    try {
+      await writeClipboard(value);
+      setStatus(message);
+    } catch {
+      setStatus("Copy is unavailable in this browser. Select the value manually and copy it.");
+    }
   }
 
   async function copyIssuedCredentials() {
     if (!issued) return;
-    await navigator.clipboard.writeText(`API Key: ${issued.api_key}\nAPI Secret: ${issued.api_secret}`);
-    setSecretCopied(true);
-    setStatus("API Key + API Secret copied. Store the secret securely; it cannot be recovered later.");
+    try {
+      await writeClipboard(`API Key: ${issued.api_key}\nAPI Secret: ${issued.api_secret}`);
+      setSecretCopied(true);
+      setStatus("API Key + API Secret copied. Store the secret securely; it cannot be recovered later.");
+    } catch {
+      setStatus("Copy is unavailable in this browser. Select the credentials manually and store the API Secret securely.");
+    }
   }
 
   function openFollowIntent() {
     window.open(X_FOLLOW_URL, "_blank", "noopener,noreferrer");
     setFollowState("opened");
+  }
+
+  async function loadLiveManifest() {
+    if (manifestBusy) return;
+    setManifestBusy(true);
+    try {
+      const result = await api<Record<string, unknown>>("/api/testnet/manifest");
+      setLiveManifest(result);
+      setStatus("Live Testnet manifest loaded from the production endpoint.");
+    } catch (error) {
+      setStatus(friendlyError(error));
+    } finally {
+      setManifestBusy(false);
+    }
   }
 
   function confirmFollow() {
@@ -484,21 +574,421 @@ function TestnetAccessPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14" data-testnet-auth-flow={AUTH_FLOW}>
       <section className="rounded-2xl border border-border/70 bg-card/30 p-6 sm:p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Geomacro Testnet Access</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Geomacro Testnet Access · PUBLIC TESTER + DEVELOPER API</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">WALLET-FIRST</span>
-          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">PUBLIC TESTER + DEVELOPER API</span>
+          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">MACHINE-READABLE</span>
+          <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">PAY-PER-CALL</span>
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">TESTNET · NON-REVENUE</span>
         </div>
-        <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl">
-          Test Geomacro as a user or integrate it as a developer.
+        <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-tight sm:text-5xl">
+          Turn geopolitical risk intelligence into something your product or AI agent can actually use.
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
-          Sign one wallet message. Normal testers use the three public Testnet keys on the left. Developers can create private API credentials on the right.
+          Start with a real Testnet integration. Query geopolitical and macro intelligence, read the Global Risk Index, retrieve signed Risk Objects, or request a full Risk Gate bundle. See the payment contract, test the x402 loop, and take the result into your own system.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a href="#wallet-account" className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Start testing</a>
+          <a href="#x402-demo" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">See x402 in action</a>
+          <a href="#integration" className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium">Build with the API</a>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-primary">TRY IT</p>
+          <p className="mt-2 text-sm font-semibold">One wallet sign-in. Then call the API.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">No upfront Testnet USDC activation payment. Metered calls quote their own charge.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">SEE THE OUTPUT</p>
+          <p className="mt-2 text-sm font-semibold">From raw risk question to machine response.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use structured intelligence, signed risk state, or a full governed Risk Gate bundle.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">LOOK AHEAD</p>
+          <p className="mt-2 text-sm font-semibold">Testnet now. Mainnet is a separate production milestone.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Mainnet transaction features stay disabled until full production completion and acceptance.</p>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Capabilities</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_INTELLIGENCE_CAPABILITY_COUNT}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Query, GRI, structural risk, signed Risk Objects and Risk Gate.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Metering</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_API_CREDIT_PRICE_USDC} USDC</p>
+          <p className="mt-1 text-xs text-muted-foreground">Testnet USDC per credit. Pay only when a metered call is used.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Usage cap</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_API_FIXED_CREDITS} credits</p>
+          <p className="mt-1 text-xs text-muted-foreground">30-day Testnet usage cap, not a prepaid balance.</p>
+        </div>
+        <div className="rounded-xl border border-border/70 bg-card/20 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Payment chains</p>
+          <p className="mt-2 text-2xl font-semibold">{TESTNET_USDC_CHAIN_COUNT}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Arc Testnet, Base Sepolia and Polygon Amoy.</p>
+        </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">WHAT YOU CAN BUILD</p>
+        <h2 className="mt-2 text-2xl font-semibold">One intelligence layer for people, products, agents and machines.</h2>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">PEOPLE</p>
+            <h3 className="mt-2 text-lg font-semibold">Research and decision support</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Ask natural-language geopolitical or macro questions, understand what changed, why it matters, and see the relevant GRI context and confidence information.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              Example: <span className="text-foreground">“What changed in global geopolitical risk?”</span> → summary → change drivers → why it matters → GRI context → bounded provenance.
+            </div>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">PRODUCTS</p>
+            <h3 className="mt-2 text-lg font-semibold">Embed structured risk in your workflow</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Use country and corridor structural intelligence, signed Risk Objects, or GRI outputs inside treasury, supply-chain, research and internal risk systems.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              Example: <span className="text-foreground">IND → SGP</span> → corridor profile → severity + observations + coverage + provenance-safe metadata.
+            </div>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">AI AGENTS</p>
+            <h3 className="mt-2 text-lg font-semibold">Give an agent governed risk context</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Use <code>risk_gate_bundle</code> when an agent needs one response containing Risk Gate decision/reasons, resolved policy, signed Risk Object verification, structural context and GRI change attribution.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              Testnet remains context-only: <code>execution_authorized=false</code>.
+            </div>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">MACHINES</p>
+            <h3 className="mt-2 text-lg font-semibold">Discover the contract first</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Start from the public manifest so your integration can discover the current API version, capabilities, prices, payment chains, examples and delivery boundaries from one machine-readable source.</p>
+            <div className="mt-4 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              <code>GET /api/testnet/manifest</code> → contract → authenticate → call → 402 → pay → retry → response.
+            </div>
+          </article>
+        </div>
+      </section>
+
+            <section id="integration" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">INTEGRATION</p>
+            <h2 className="mt-2 text-2xl font-semibold">Use the Testnet API inside your own product or AI agent.</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Discover the live contract first, authenticate with your Testnet API Key + API Secret, make a metered intelligence request, handle HTTP 402, pay the quoted Testnet USDC, and retry the same request with payment proof.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadLiveManifest()}
+            disabled={manifestBusy}
+            className="rounded-lg border border-border px-3 py-2 text-xs font-medium disabled:opacity-50"
+          >
+            {manifestBusy ? "Loading manifest..." : "Load live manifest"}
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">1 · Discover</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Do not hardcode a copied API contract. Read the current machine manifest.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`curl https://geomacro.live/api/testnet/manifest`}</pre>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">2 · Authenticate</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Create the wallet-bound developer credential on this page. Store the API Secret server-side; never ship it in frontend code.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`Authorization: GeomacroTest <API_KEY>.<API_SECRET>`}</pre>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">2b · Check account</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">After credentials are created, inspect entitlement, credit usage, exact prices and supported payment configuration without consuming credits.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`curl https://geomacro.live/api/testnet/account \\\
+  -H "Authorization: GeomacroTest <API_KEY>.<API_SECRET>"`}</pre>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">3 · Request</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Start small with a country digest, then move to GRI, Risk Objects or Risk Gate as your integration grows.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`curl -X POST https://geomacro.live/api/testnet/intelligence \\\
+  -H "Authorization: GeomacroTest <API_KEY>.<API_SECRET>" \\\
+  -H "Content-Type: application/json" \\\
+  -d '{
+    "request_id":"country-demo-0001",
+    "capability":"structural_country_digest",
+    "subject":{"type":"country","country_iso3":"IND"}
+  }'`}</pre>
+          </article>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">AI agent integration pattern</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`const request = {
+  request_id: "agent-risk-0001",
+  capability: "risk_gate_bundle",
+  subject: {
+    type: "corridor",
+    origin_country_iso3: "IND",
+    destination_country_iso3: "SGP"
+  },
+  policy_preset: "balanced",
+  action_type: "agent_payment",
+  amount_usdc: 1000
+};
+
+let response = await geomacro.post("/api/testnet/intelligence", request);
+
+if (response.status === 402) {
+  const quote = response.body;
+  const tx = await wallet.payTestnetUsdc(
+    quote.payment.amount_due_usdc,
+    quote.payment.chain_key
+  );
+
+  response = await geomacro.post(
+    "/api/testnet/intelligence",
+    {
+      ...request,
+      payment: {
+        chain_key: quote.payment.chain_key,
+        tx_hash: tx.hash,
+        payer_address: tx.from
+      }
+    }
+  );
+}
+
+return response.body;`}</pre>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Illustrative integration pseudocode. The payment/wallet implementation belongs to your system. Geomacro verifies the submitted chain, Testnet USDC transfer, payer, receiver, confirmation and exact amount before delivery.
+            </p>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">What your system receives</p>
+            <div className="mt-3 space-y-2 text-sm">
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>intelligence_query</code><span className="ml-2 text-muted-foreground">summary, changes, why it matters, confidence context</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>gri_read</code><span className="ml-2 text-muted-foreground">score lineage, change attribution and proof hashes</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>structural_*_profile</code><span className="ml-2 text-muted-foreground">severity, observations, coverage and provenance-safe metadata</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>signed_risk_object</code><span className="ml-2 text-muted-foreground">signed machine-readable risk state + verification</span></div>
+              <div className="rounded-lg border border-border/70 bg-background p-3"><code>risk_gate_bundle</code><span className="ml-2 text-muted-foreground">decision, reasons, policy, Risk Object verification and GRI context</span></div>
+            </div>
+          </article>
+        </div>
+
+        {liveManifest ? (
+          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold">Live machine manifest</p>
+              <span className="font-mono text-[10px] text-muted-foreground">GET /api/testnet/manifest</span>
+            </div>
+            <pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{JSON.stringify(liveManifest, null, 2)}</pre>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">API SURFACE</p>
+        <h2 className="mt-2 text-2xl font-semibold">Eight capabilities. One governed Testnet intelligence service.</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Capability descriptions and prices below are read from the current application contract, so this page does not maintain a second hard-coded pricing source.
+        </p>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="border-b border-border/70 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-3 font-medium">Capability</th>
+                <th className="px-3 py-3 font-medium">What it gives you</th>
+                <th className="px-3 py-3 font-medium">Credits</th>
+                <th className="px-3 py-3 font-medium">Testnet USDC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(TESTNET_INTELLIGENCE_PRICE_TABLE).map((capability) => {
+                const price = TESTNET_INTELLIGENCE_PRICE_TABLE[capability as keyof typeof TESTNET_INTELLIGENCE_PRICE_TABLE];
+                const catalog = TESTNET_INTELLIGENCE_CAPABILITY_CATALOG[capability as keyof typeof TESTNET_INTELLIGENCE_CAPABILITY_CATALOG];
+                return (
+                  <tr key={capability} className="border-b border-border/50 align-top last:border-0">
+                    <td className="px-3 py-3"><code>{capability}</code></td>
+                    <td className="px-3 py-3 leading-6 text-muted-foreground">{catalog.description}</td>
+                    <td className="px-3 py-3">{price.credits}</td>
+                    <td className="px-3 py-3">{price.testnet_usdc.toFixed(2)} USDC</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => (
+            <span key={chain.key} className="rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground">
+              {chain.name} · chain {chain.chain_id}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section id="x402-demo" className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">SHORT DEMO · x402</p>
+            <h2 className="mt-2 text-2xl font-semibold">API call → 402 response → pay → retry → response</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Walk through the actual Testnet payment contract without sending a transaction from this demo. The final button opens the live console for the real wallet flow.
+            </p>
+          </div>
+          <button type="button" onClick={() => setDemoStep(0)} className="rounded-lg border border-border px-3 py-2 text-xs font-medium">Restart demo</button>
+        </div>
+
+        <div className="mt-5 grid gap-2 md:grid-cols-5">
+          {[
+            ["01", "API call"],
+            ["02", "402 response"],
+            ["03", "Pay"],
+            ["04", "Retry"],
+            ["05", "Response"],
+          ].map(([number, label], index) => (
+            <button
+              key={number}
+              type="button"
+              onClick={() => setDemoStep(index)}
+              className={`rounded-xl border p-3 text-left ${demoStep === index ? "border-primary/50 bg-background" : "border-border/70 bg-background/40"}`}
+            >
+              <span className="font-mono text-[10px] text-primary">{number}</span>
+              <span className="mt-1 block text-sm font-semibold">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.08fr_.92fr]">
+          <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {["REQUEST", "HTTP 402 QUOTE", "TESTNET PAYMENT", "RETRY WITH PROOF", "MACHINE RESPONSE"][demoStep]}
+            </p>
+            {demoStep === 0 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`POST /api/testnet/intelligence
+Authorization: GeomacroTest <API_KEY>.<API_SECRET>
+
+{
+  "request_id": "demo-country-0001",
+  "capability": "structural_country_digest",
+  "subject": { "type": "country", "country_iso3": "IND" }
+}`}</pre>
+            ) : null}
+            {demoStep === 1 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`HTTP/1.1 402 Payment Required
+
+{
+  "error": { "code": "TESTNET_PAYMENT_REQUIRED" },
+  "payment": {
+    "credits": ${DEMO_PRICE.credits},
+    "amount_due_usdc": ${DEMO_PRICE.testnet_usdc.toFixed(2)},
+    "receiver_address": "<RECEIVER_FROM_QUOTE>",
+    "supported_chains": ["Arc Testnet", "Base Sepolia", "Polygon Amoy"],
+    "message": "Pay only this API call, then retry the same request_id."
+  }
+}`}</pre>
+            ) : null}
+            {demoStep === 2 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`Wallet payment
+Asset: Testnet USDC
+Amount: ${DEMO_PRICE.testnet_usdc.toFixed(2)} USDC
+From: <VERIFIED_TESTER_WALLET>
+Network: <SELECTED_SUPPORTED_CHAIN>
+Supported: ${Object.values(TESTNET_USDC_ACCESS_CHAINS).map((chain) => chain.name).join(" / ")}
+Result: <CONFIRMED_TX_HASH>`}</pre>
+            ) : null}
+            {demoStep === 3 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`POST /api/testnet/intelligence
+
+{
+  "request_id": "demo-country-0001",
+  "capability": "structural_country_digest",
+  "subject": { "type": "country", "country_iso3": "IND" },
+  "payment": {
+    "chain_key": "<SELECTED_SUPPORTED_CHAIN_KEY>",
+    "tx_hash": "<CONFIRMED_TX_HASH>",
+    "payer_address": "<VERIFIED_TESTER_WALLET>"
+  }
+}`}</pre>
+            ) : null}
+            {demoStep === 4 ? (
+              <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-4 text-[11px] leading-5 text-muted-foreground">{`{
+  "request_id": "demo-country-0001",
+  "capability": "structural_country_digest",
+  "subject": { "type": "country", "country_iso3": "IND" },
+  "data": {
+    "severity": "<CURRENT_TESTNET_SEVERITY>",
+    "observations": ["..."],
+    "coverage": { "...": "..." },
+    "quality": { "...": "..." }
+  }
+}`}</pre>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-background/50 p-4">
+            <p className="font-medium">What happens here</p>
+            <div className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
+              {demoStep === 0 ? <p>Your first request contains the exact capability and subject, but no payment proof.</p> : null}
+              {demoStep === 1 ? <p>Geomacro returns an exact quote before delivery. For this ${DEMO_PRICE.credits}-credit example, the current contract prices the call at ${DEMO_PRICE.testnet_usdc.toFixed(2)} Testnet USDC.</p> : null}
+              {demoStep === 2 ? <p>Your system sends exactly the quoted Testnet USDC from the verified tester wallet on a supported Testnet payment chain.</p> : null}
+              {demoStep === 3 ? <p>Keep the original <code>request_id</code>, capability and subject unchanged. Add the verified payment proof fields and retry.</p> : null}
+              {demoStep === 4 ? <p>Geomacro verifies the settlement, consumes the credits once and returns the machine-readable intelligence. Exact replay is idempotent and does not double-charge.</p> : null}
+            </div>
+            <div className="mt-5 rounded-lg border border-border/70 bg-background p-3 text-xs leading-5 text-muted-foreground">
+              This is a contract walkthrough. The response body shown is representative, not a fabricated live transaction result.
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setDemoStep((step) => Math.max(0, step - 1))} disabled={demoStep === 0} className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40">Previous</button>
+          <button type="button" onClick={() => setDemoStep((step) => Math.min(4, step + 1))} disabled={demoStep === 4} className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next step</button>
+          <a href="/testnet-console" className="rounded-lg border border-border px-3 py-2 text-sm font-medium">Run the real Testnet flow</a>
+        </div>
+      </section>
+
+      <section id="mainnet-direction" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">TESTNET → MAINNET DIRECTION</p>
+            <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">What you can test now is the foundation for the production path ahead.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Testnet is where builders can validate the intelligence contract, machine-readable delivery and pay-per-call workflow. Mainnet is not enabled on this page. Geomacro keeps mainnet transaction features disabled until full production completion and acceptance.
+            </p>
+          </div>
+          <a href="/roadmap" className="inline-flex shrink-0 items-center justify-center rounded-lg border border-border px-4 py-2.5 text-sm font-medium">View the roadmap</a>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">01 · TODAY</p>
+            <h3 className="mt-2 text-lg font-semibold">Test the intelligence layer</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Run real Testnet calls against Geomacro's machine-readable contract and inspect what your system receives.</p>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">02 · BUILD</p>
+            <h3 className="mt-2 text-lg font-semibold">Prove your integration</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Connect your application or AI agent to the manifest, intelligence endpoint, payment proof and retry loop before production access is enabled.</p>
+          </article>
+          <article className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary">03 · NEXT</p>
+            <h3 className="mt-2 text-lg font-semibold">Mainnet, when production-ready</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Arc mainnet remains coming soon. The current Testnet surface is the place to understand and validate the product before that production milestone.</p>
+          </article>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full border border-border/70 px-3 py-1.5 font-mono text-[10px] text-muted-foreground">TESTNET ACTIVE</span>
+          <span className="rounded-full border border-border/70 px-3 py-1.5 font-mono text-[10px] text-muted-foreground">MAINNET COMING SOON</span>
+          <span className="rounded-full border border-border/70 px-3 py-1.5 font-mono text-[10px] text-muted-foreground">NO MAINNET TRANSACTIONS</span>
+        </div>
+      </section>
+
+      <section id="wallet-account" className="mt-6 rounded-2xl border border-border/70 bg-card/30 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">Wallet account</p>
@@ -552,7 +1042,7 @@ function TestnetAccessPage() {
         )}
 
         {status && (
-          <div className="mt-4 rounded-lg border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
+          <div role="status" aria-live="polite" className="mt-4 rounded-lg border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
             {status}
           </div>
         )}
@@ -635,12 +1125,17 @@ function TestnetAccessPage() {
                     <option value="product_api">Product API</option>
                     <option value="ai_agent">AI agent</option>
                     <option value="automation">Automation</option>
-                    <option value="demo">Demo</option>
+                    <option value="demo">Demo (no Risk Gate)</option>
                   </select>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {selectedIntegrationKeys.length > 0
-                      ? `${selectedIntegrationKeys.length} active ${integrationLabel(integrationType)} key${selectedIntegrationKeys.length === 1 ? "" : "s"} already saved below.`
-                      : `No active ${integrationLabel(integrationType)} key yet.`}
+                      ? `${selectedIntegrationKeys.length} active ${integrationLabel(integrationType)} credential${selectedIntegrationKeys.length === 1 ? "" : "s"} already saved below.`
+                      : activeDeveloperKeys.length > 0
+                        ? `An active ${integrationLabel(activeDeveloperKeys[0].integration_type)} credential already exists for this wallet. Revoke it before creating a new ${integrationLabel(integrationType)} credential.`
+                        : `No active ${integrationLabel(integrationType)} credential yet.`}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Scopes follow the selected integration type. Demo credentials do not include Risk Gate access.
                   </p>
                 </div>
                 <div className="sm:col-span-2">
@@ -652,7 +1147,7 @@ function TestnetAccessPage() {
                   </button>
                   {developerKeyLimitReached ? (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Maximum 3 active developer keys reached. Revoke one below before creating another.
+                      One active developer credential is supported per wallet. Revoke the existing credential below before creating a replacement.
                     </p>
                   ) : null}
                 </div>
@@ -687,7 +1182,7 @@ function TestnetAccessPage() {
                   <div>
                     <p className="font-medium">Your developer API keys</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      API Keys stay visible. API Secrets are never returned again after creation.
+                      API Keys stay visible. API Secrets are never returned again after creation. Rotate to replace a credential and receive a new one-time secret.
                     </p>
                   </div>
                   <span className="text-xs text-muted-foreground">
@@ -718,6 +1213,9 @@ function TestnetAccessPage() {
                               API Key: {key.key_id || "Unavailable"}
                             </code>
                             <p className="mt-1 text-xs text-muted-foreground">Secret: hidden permanently after creation</p>
+                            {key.scopes?.length ? (
+                              <p className="mt-1 break-words text-xs text-muted-foreground">Scopes: {key.scopes.join(", ")}</p>
+                            ) : null}
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {key.key_id ? (
@@ -730,14 +1228,24 @@ function TestnetAccessPage() {
                               </button>
                             ) : null}
                             {key.enabled && !key.revoked_at ? (
-                              <button
-                                type="button"
-                                onClick={() => void revokeCredential(key.credential_id)}
-                                disabled={busy}
-                                className="rounded-lg border border-border px-3 py-2 text-xs text-destructive disabled:opacity-50"
-                              >
-                                Revoke
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void rotateCredential(key.credential_id)}
+                                  disabled={busy}
+                                  className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-50"
+                                >
+                                  Rotate
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void revokeCredential(key.credential_id)}
+                                  disabled={busy}
+                                  className="rounded-lg border border-border px-3 py-2 text-xs text-destructive disabled:opacity-50"
+                                >
+                                  Revoke
+                                </button>
+                              </>
                             ) : null}
                           </div>
                         </div>
