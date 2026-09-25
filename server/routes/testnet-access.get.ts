@@ -17,7 +17,10 @@ export default defineEventHandler((event) => {
 <title>Geomacro Testnet Developer Access</title>
 <meta name="description" content="Verify one wallet, create Testnet API credentials, and pay only for each Geomacro API call in Testnet USDC." />
 <style>
-:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#080d16;color:#f4f2ea;--line:rgba(255,255,255,.09);--card:rgba(255,255,255,.035);--amber:#ff9d19;--muted:#99a1ad}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1100px 520px at 12% -10%,rgba(255,157,25,.10),rgba(8,13,22,0) 60%),#080d16}main{max-width:1120px;margin:auto;padding:34px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:54px;gap:14px}.nav-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.brand img{height:38px;width:auto;display:block}.badge{font:12px ui-monospace,monospace;padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}.nav-link{font:12px ui-monospace,monospace;color:var(--muted);text-decoration:none;padding:7px 10px;border:1px solid var(--line);border-radius:999px}.nav-link:hover{color:#f4f2ea}.hero{max-width:900px}.eyebrow{font:12px ui-monospace,monospace;letter-spacing:.12em;color:var(--amber)}h1{font-size:50px;line-height:1.04;letter-spacing:-.025em;margin:14px 0 18px}h2{margin:8px 0 10px}.hero p,.muted{color:var(--muted);line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:34px}.card,.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}.card strong{display:block;font-size:18px;margin-bottom:8px}.card p{color:var(--muted);font-size:14px;line-height:1.55}.panel{margin-top:20px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.step{border:1px solid var(--line);border-radius:12px;padding:14px;background:rgba(255,255,255,.02)}.n{font:11px ui-monospace,monospace;color:var(--amber)}.step b{display:block;margin:8px 0 5px}.api-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.api-card{border:1px solid var(--line);border-radius:12px;padding:14px;background:rgba(255,255,255,.02)}.api-card b{display:block;margin-bottom:8px}.method{display:inline-block;font:11px ui-monospace,monospace;color:var(--amber);margin-right:8px}.api-line{margin-top:8px;padding:10px;border-radius:9px;background:#080d14;border:1px solid var(--line);font:12px ui-monospace,monospace;word-break:break-all}.capabilities{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.capabilities span{font:11px ui-monospace,monospace;padding:7px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:var(--muted)}input,select,textarea,button{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.025);color:#f4f2ea;border-radius:10px;padding:11px 12px;font:14px inherit}textarea{resize:vertical;min-height:90px}button{cursor:pointer;font-weight:700;background:var(--amber);color:#0d1117;border-color:transparent}button.secondary{background:rgba(255,255,255,.04);color:#f4f2ea;border:1px solid var(--line)}.status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.status,.notice{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}.status span{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.actions button,.actions a{width:auto}.actions a{display:inline-flex;align-items:center;text-decoration:none;border-radius:10px;padding:11px 14px;font-weight:700;background:rgba(255,255,255,.04);color:#f4f2ea;border:1px solid var(--line)}.actions a.primary{background:var(--amber);color:#0d1117;border-color:transparent}.okline{min-height:22px;margin-top:10px;color:var(--muted);font-size:13px}.mono{font:12px ui-monospace,monospace;word-break:break-all;white-space:pre-wrap}.key-row{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid var(--line);padding:12px 0}.key-row span{display:block;font-size:12px;color:var(--muted);margin-top:4px}.profile-tools{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.avatar{width:82px;height:82px;border-radius:16px;object-fit:cover;border:1px solid var(--line);background:#0a0f18}.chain-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chain-list span{font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}@media(max-width:820px){.grid,.steps,.api-grid,.form-grid,.status-grid{grid-template-columns:1fr}.field.full{grid-column:auto}h1{font-size:39px}}@media(max-width:520px){.profile-tools{grid-template-columns:1fr}.nav{align-items:flex-start}.nav-actions{max-width:220px}}
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#080d16;color:#f4f2ea;--line:rgba(255,255,255,.09);--card:rgba(255,255,255,.035);--amber:#ff9d19;--muted:#99a1ad}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 500px at 10% -10%,rgba(255,157,25,.10),transparent 60%),#080d16}
+main{max-width:1080px;margin:auto;padding:30px 22px 80px}.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px;gap:18px}.nav-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.brand img{height:38px}.badge,.nav-link{font:12px ui-monospace,monospace;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);text-decoration:none}.hero{max-width:790px}.eyebrow{font:11px ui-monospace,monospace;letter-spacing:.13em;color:var(--amber)}h1{font-size:54px;line-height:1.03;letter-spacing:-.035em;margin:14px 0 20px}h2{margin:7px 0 10px;font-size:26px}.hero p,.muted{color:var(--muted);line-height:1.65}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.actions button,.actions a{width:auto}.actions a{display:inline-flex;align-items:center;text-decoration:none;border-radius:10px;padding:11px 14px;font-weight:700;background:rgba(255,255,255,.04);color:#f4f2ea;border:1px solid var(--line)}.actions a.primary,button{background:var(--amber);color:#0d1117;border-color:transparent}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:44px}.card,.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}.card strong{display:block;font-size:17px;margin-bottom:7px}.card p{color:var(--muted);font-size:14px;line-height:1.55;margin:0}.panel{margin-top:18px}.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.step{border:1px solid var(--line);border-radius:12px;padding:14px;background:rgba(255,255,255,.02)}.n{font:11px ui-monospace,monospace;color:var(--amber)}.step b{display:block;margin:8px 0 5px}.api-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.api-line{padding:12px;border-radius:9px;background:#080d14;border:1px solid var(--line);font:12px ui-monospace,monospace;word-break:break-all}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;color:var(--muted)}input,select,textarea,button{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.025);color:#f4f2ea;border-radius:10px;padding:11px 12px;font:14px inherit}textarea{resize:vertical;min-height:90px}button{cursor:pointer;font-weight:700}.status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}.status,.notice{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}.status span{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}.okline{min-height:22px;margin-top:10px;color:var(--muted);font-size:13px}.mono{font:12px ui-monospace,monospace;word-break:break-all;white-space:pre-wrap}.profile-tools{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}.avatar{width:82px;height:82px;border-radius:16px;object-fit:cover;border:1px solid var(--line);background:#0a0f18}.footer-note{margin-top:22px;color:var(--muted);font-size:12px;line-height:1.6}
+@media(max-width:820px){.grid,.steps,.form-grid,.status-grid,.api-strip{grid-template-columns:1fr}h1{font-size:42px}.field.full{grid-column:auto}}@media(max-width:520px){.profile-tools{grid-template-columns:1fr}.nav{align-items:flex-start}}
 </style>
 <script src="/testnet-wallet-first-v2.js" defer></script>
 <script src="/testnet-access.js" defer></script>
@@ -30,40 +33,39 @@ export default defineEventHandler((event) => {
   </div>
 
   <section class="hero">
-    <div class="eyebrow">PUBLIC TESTNET DEVELOPER API</div>
-    <h1>Test Geomacro intelligence and create your own API credentials.</h1>
-    <p>Create a tester profile, verify one EVM wallet with a non-transaction signature, then create an API Key + API Secret. There is no upfront Testnet USDC activation payment. Each API request quotes its own Testnet USDC amount at 0.5 Testnet USDC per credit.</p>
-    <div class="actions"><a class="primary" href="#registrationPanel">Create developer access</a><a href="#developer-api">View API surface</a><a href="/testnet-console">Open Testnet Console</a></div>
+    <div class="eyebrow">TESTNET API ACCESS</div>
+    <h1>Put Geomacro intelligence into your product.</h1>
+    <p>Build and test with machine-readable geopolitical and macro intelligence through a simple pay-per-call API. Create access once, then pay only when you make a request.</p>
+    <div class="actions"><a class="primary" href="#registrationPanel">Get Testnet access</a><a href="/testnet-console">Try the live console</a><a href="/docs">Read docs</a></div>
     <div id="globalStatus" class="okline"></div>
   </section>
 
   <section class="grid">
-    <div class="card"><strong>Profile + wallet</strong><p>Create a tester profile and verify one EVM wallet to activate Testnet developer access.</p></div>
-    <div class="card"><strong>500-credit usage cap</strong><p>500 credits is the 30-day Testnet usage limit, not a prepaid balance. One credit costs 0.5 Testnet USDC when consumed.</p></div>
-    <div class="card"><strong>Create API credentials</strong><p>After wallet verification, create an API Key + API Secret for a product, AI agent, automation or demo. The secret is shown once and only its hash is stored.</p></div>
-  </section>
-
-  <section id="developer-api" class="panel">
-    <div class="eyebrow">DEVELOPER API</div>
-    <h2>The Testnet API surface is visible before you create credentials.</h2>
-    <p class="muted">Use the manifest for machine discovery, inspect your metered account with paired credentials, then send intelligence requests to the canonical Geomacro Testnet endpoint.</p>
-    <div class="api-grid">
-      <div class="api-card"><b><span class="method">GET</span>Manifest</b><div class="api-line">https://geomacro.live/api/testnet/manifest</div><p class="muted">Capabilities, pricing and machine-readable discovery.</p></div>
-      <div class="api-card"><b><span class="method">GET</span>Account</b><div class="api-line">https://geomacro.live/api/testnet/account</div><p class="muted">Active entitlement, credit cap and account status.</p></div>
-      <div class="api-card"><b><span class="method">POST</span>Intelligence</b><div class="api-line">https://geomacro.live/api/testnet/intelligence</div><p class="muted">Metered geopolitical and macro intelligence requests.</p></div>
-    </div>
-    <div class="notice" style="margin-top:14px"><b>Developer authentication</b><div class="api-line">Authorization: GeomacroTest &lt;API_KEY&gt;.&lt;API_SECRET&gt;</div><p class="muted">Create the key pair below after verifying your wallet. Never put the API Secret in public source code or screenshots.</p></div>
-    <div class="capabilities"><span>intelligence_query</span><span>gri_read</span><span>structural_country_digest</span><span>structural_corridor_digest</span><span>structural_country_profile</span><span>structural_corridor_profile</span><span>signed_risk_object</span><span>risk_gate_bundle</span></div>
+    <div class="card"><strong>Pay per request</strong><p>Each request returns its own Testnet USDC quote. No prepaid balance and no upfront activation payment.</p></div>
+    <div class="card"><strong>Machine-ready</strong><p>Use structured intelligence designed for products, automations and AI agents.</p></div>
+    <div class="card"><strong>Testnet only</strong><p>Use Arc Testnet, Base Sepolia or Polygon Amoy while you validate the integration.</p></div>
   </section>
 
   <section class="panel">
-    <div class="eyebrow">HOW A TESTNET API CALL WORKS</div>
+    <div class="eyebrow">THE FLOW</div>
+    <h2>From API call to intelligence in a few steps.</h2>
     <div class="steps">
-      <div class="step"><span class="n">01</span><b>Call the API</b><div class="muted">Authenticate with your API Key + API Secret.</div></div>
-      <div class="step"><span class="n">02</span><b>Receive HTTP 402</b><div class="muted">Geomacro returns the exact call price from its credit cost.</div></div>
-      <div class="step"><span class="n">03</span><b>Pay and retry</b><div class="muted">Pay only that Testnet USDC amount and retry the same request_id with proof.</div></div>
+      <div class="step"><span class="n">01</span><b>Create access</b><div class="muted">Verify one wallet and create your developer credentials.</div></div>
+      <div class="step"><span class="n">02</span><b>Make a request</b><div class="muted">Call the Testnet API with your credentials.</div></div>
+      <div class="step"><span class="n">03</span><b>Approve payment</b><div class="muted">Receive an HTTP 402 quote and pay that request only.</div></div>
+      <div class="step"><span class="n">04</span><b>Get the result</b><div class="muted">Retry the same request and receive the intelligence response.</div></div>
     </div>
-    <div class="chain-list"><span>Arc Testnet</span><span>Base Sepolia</span><span>Polygon Amoy</span><span>Testnet only · non-revenue</span></div>
+  </section>
+
+  <section id="developer-api" class="panel">
+    <div class="eyebrow">FOR BUILDERS</div>
+    <h2>One endpoint to start. More intelligence behind it.</h2>
+    <p class="muted">Discover the available capabilities and pricing from the machine-readable manifest, then use the intelligence endpoint for your integration.</p>
+    <div class="api-strip">
+      <div><div class="muted" style="margin-bottom:7px">Discovery</div><div class="api-line">GET /api/testnet/manifest</div></div>
+      <div><div class="muted" style="margin-bottom:7px">Intelligence</div><div class="api-line">POST /api/testnet/intelligence</div></div>
+    </div>
+    <div class="footer-note">Available Testnet intelligence includes GRI reads, intelligence queries, structural country/corridor analysis, signed Risk Objects and Risk Gate bundles. See the manifest for the current machine-readable surface.</div>
   </section>
 
   <section id="registrationPanel" class="panel">
@@ -112,10 +114,9 @@ export default defineEventHandler((event) => {
   </section>
 
   <section id="feedbackPanel" class="panel" hidden>
-    <div class="eyebrow">TEST → X → FEEDBACK</div>
-    <h2>Run a real intelligence test, share one result, and tell us what blocked you.</h2>
-    <p class="muted">Use the Testnet Console and run an eligible request. After a successful result, create the Geomacro result card and open one X post with the public result link. Then send structured feedback. Feedback storage excludes your IP address and wallet address.</p>
-    <div class="actions"><a href="/testnet-console">Open Testnet Console</a></div>
+    <div class="eyebrow">HELP SHAPE THE TESTNET</div>
+    <h2>Tell us what worked and what blocked you.</h2>
+    <p class="muted">After testing, share the most useful part of the experience and any friction you found.</p>
     <form id="testerFeedbackForm" class="form-grid">
       <div class="field"><label for="feedbackTesterType">Testing as</label><select id="feedbackTesterType"><option value="builder">Builder</option><option value="agent_project">AI agent project</option><option value="institution">Institution</option><option value="researcher">Researcher</option><option value="other">Other</option></select></div>
       <div class="field"><label for="feedbackRating">Rating</label><select id="feedbackRating"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></div>
