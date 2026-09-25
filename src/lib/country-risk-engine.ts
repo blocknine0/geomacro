@@ -1161,7 +1161,7 @@ export async function buildCountryRiskObject(
   );
 
   if (
-    weighted.length === 0
+    selectedWeighted.length === 0
   ) {
     verificationReasons.add(
       "insufficient_country_evidence",
