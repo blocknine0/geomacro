@@ -51,7 +51,7 @@ jobs:
         run: npm run import:countries
       - name: Validate canonical country registry
         run: npm run validate:countries
-      - name: Generate N×3 global coverage matrix
+      - name: Generate NÃ—3 global coverage matrix
         run: npm run generate:coverage
       - name: Run structural coverage gates
         run: npm run gate:coverage
