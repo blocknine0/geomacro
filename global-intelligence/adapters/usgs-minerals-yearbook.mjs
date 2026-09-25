@@ -19,8 +19,8 @@ function splitCsvLine(line){
   const out=[]; let current=""; let quoted=false;
   for(let i=0;i<line.length;i++){
     const ch=line[i];
-    if(ch===""" && line[i+1]===""" && quoted){ current+="""; i++; continue; }
-    if(ch==="""){ quoted=!quoted; continue; }
+    if(ch === '"' && line[i + 1] === '"' && quoted){ current += '"'; i++; continue; }
+    if(ch === '"'){ quoted = !quoted; continue; }
     if(ch==="," && !quoted){ out.push(current); current=""; continue; }
     current+=ch;
   }
