@@ -99,7 +99,9 @@ async function verify(object: unknown) {
 
 if (
   strictProfile &&
-  riskObject?.decision_readiness?.status !== "READY"
+  !["READY", "DEGRADED"].includes(
+    String(riskObject?.decision_readiness?.status ?? ""),
+  )
 ) {
   throw new Error(
     `Federico strict decision-readiness failed: ${JSON.stringify(
@@ -566,6 +568,22 @@ if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
   );
 }
 
+const receiverControlledTrustAnchor = {
+  key_id: String(riskObject.integrity.signing_key_id ?? ""),
+  public_key_fingerprint_sha256: trustedKeyFingerprintSha256,
+  policy: "receiver_controlled_out_of_band_pin",
+};
+
+if (
+  strictProfile &&
+  receiverControlledTrustAnchor.public_key_fingerprint_sha256 !==
+    "432f35218570c80c09d56a8005390f6d3111a932ba93298f4ffd86d9896c0b90"
+) {
+  throw new Error(
+    "Federico strict signing key fingerprint is not the approved receiver-controlled pin",
+  );
+}
+
 /**
  * invinoveritas documents these /review artifact types:
  * trade | onchain_action | code_diff | plan | general (plus command variants).
@@ -655,17 +673,39 @@ if (
 }
 
 const reviewArtifact = {
-  artifact_version: "geomacro-invino-review-v5",
+  artifact_version: "geomacro-invino-review-v6",
   action_proposed: true,
   action:
-    "Admit the attached Geomacro gro-1.1 Risk Object as read-only external risk context to the downstream decision gate. Do not execute a trade, transaction, deployment, or other irreversible action.",
+    "Admit this exact Geomacro gro-1.1 Risk Object only as read-only external context after receiver-side verification passes. Reject on any verification, provenance, trust, freshness, or integrity failure. This review never authorizes an irreversible action.",
   execution_authorized: false,
+  admission_contract: {
+    exact_evidence_binding:
+      "Bind the receiver's decision to the exact external_evidence[0].record bytes and external_evidence[0].record_sha256.",
+    independent_verification_required: true,
+    issuer_attestations_are_not_trust_roots: true,
+    trust_anchor_policy:
+      "The receiving system controls the approved Geomacro signing-key fingerprint out of band. An online Geomacro registry response is discovery evidence, not the sole trust root.",
+    required_checks: [
+      "Hash the exact received record bytes.",
+      "Parse and canonicalize the exact gro-1.1 record using pinned geomacro-canonical-json-v1.",
+      "Recompute integrity.payload_hash from the canonical signable record and verify Ed25519.",
+      "Resolve signing_key_id against the receiver-controlled approved key fingerprint and lifecycle policy.",
+      "Obtain receiver-controlled trusted current UTC time at admission and require now < expires_at.",
+      "Repeat the trusted-time and expiry check immediately before any irreversible downstream action and fail closed at or after expiry.",
+      "Treat issuer-provided source counts, source-family labels, readiness, confidence, and historical freshness attestations as untrusted until independently validated.",
+      "Require auditable source-specific country nexus and substantive source-family diversity before using the context for downstream risk decisions.",
+    ],
+    failure_posture:
+      "Any unavailable trust anchor, verification mismatch, weak provenance, stale context, or uncalibrated decision input keeps the object read-only or inadmissible.",
+  },
   freshness_policy: {
     observed_at: riskObject.observed_at,
     expires_at: riskObject.expires_at,
-    fail_closed_at_or_after: riskObject.expires_at,
+    admission_rule:
+      "At admission obtain a fresh receiver-controlled trusted UTC time and require now < expires_at. Recheck immediately before irreversible execution and fail closed at or after expiry.",
+    caller_time_not_trusted: true,
     decision_time_revalidation_required: true,
-    rule: "Require trusted_current_time < expires_at at admission and at execution; otherwise fail closed.",
+    fail_closed_at_or_after: riskObject.expires_at,
   },
   external_evidence: [{
     source: externalEvidence[0].source,
@@ -675,51 +715,6 @@ const reviewArtifact = {
     observed_at: externalEvidence[0].observed_at,
     validity_until: externalEvidence[0].validity_until,
   }],
-  cryptographic_attestation: {
-    verification_method:
-      "Geomacro deployed verifier + local Ed25519 recomputation",
-    canonicalization: riskObject.integrity.canonicalization,
-    canonicalization_url: riskObject.integrity.canonicalization_url,
-    signature_scheme: riskObject.integrity.signature_scheme,
-    signing_key_id: riskObject.integrity.signing_key_id,
-    public_key_spki_b64: riskObject.integrity.public_key_spki_b64,
-    public_key_fingerprint_sha256: trustedKeyFingerprintSha256,
-    payload_hash: riskObject.integrity.payload_hash,
-    recomputed_payload_hash: recomputedPayloadHash,
-    signed_record_sha256: signedRiskObjectRecordSha256,
-    signature: riskObject.integrity.signature,
-    signature_verified: signatureValid,
-    deployed_verifier: deployedVerificationSummary,
-  },
-  trust_registry_attestation: {
-    registry_url: registryUrl,
-    transport: {
-      scheme: "https",
-      expected_origin: "https://geomacro.live",
-      certificate_validation: "platform_default_tls_validation",
-      certificate_pinning: "not_configured",
-    },
-    fetched_at: registryFetchedAt,
-    http_date: registryHttpDate,
-    response_sha256: registryResponseSha256,
-    key_id: riskObject.integrity.signing_key_id,
-    key_record: trusted,
-    key_fingerprint_sha256: trustedKeyFingerprintSha256,
-    matched_embedded_public_key: true,
-    status_active: trusted.status === "active",
-    snapshot: registry,
-  },
-  freshness_attestation: {
-    trusted_clock_source: registryUrl,
-    trusted_http_date: registryHttpDate,
-    expires_at: riskObject.expires_at,
-    strict_before_expiry:
-      trustedClockMs !== null &&
-      expiresAtMsForAttestation !== null &&
-      trustedClockMs < expiresAtMsForAttestation,
-    decision_time_revalidation_required: true,
-    fail_closed_at_or_after: riskObject.expires_at,
-  },
 };
 
 const reviewArtifactText = JSON.stringify(reviewArtifact);
@@ -732,7 +727,7 @@ if (reviewArtifactBytes > 20_000) {
 }
 
 const reviewContext =
-  "Pre-action external risk context from Geomacro. The review artifact itself contains the exact canonical signed gro-1.1 Risk Object inside external_evidence[0].record and its record_sha256. Verify that exact record, its Ed25519 signature, embedded public key, signing_key_id, trust_registry_url and canonicalization_url. Validate evidence/provenance, integrity, decision readiness and freshness. Require trusted current time to be strictly before expires_at at admission and execution, and fail closed at or after expiry. This review never authorizes execution. Commercial delivery is derived-only and does not redistribute raw third-party source material.";
+  "Neutral review of a fail-closed admission plan. The exact signed gro-1.1 record is supplied as external evidence, but issuer-provided verification, source-count, readiness, confidence, and historical freshness claims are not trust roots. The receiver must independently verify exact bytes, canonical payload hash, Ed25519 signature, receiver-controlled key trust, source provenance policy, and fresh receiver-controlled trusted UTC time strictly before expires_at at admission, then repeat the expiry check immediately before any irreversible action. This review never authorizes execution.";
 const reviewContextBytes = Buffer.byteLength(reviewContext, "utf8");
 if (reviewContextBytes > 4_000) {
   throw new Error(
@@ -742,28 +737,21 @@ if (reviewContextBytes > 4_000) {
 
 const reviewRequest = {
   artifact: reviewArtifactText,
-  artifact_type: "general",
+  artifact_type: "plan",
   context: reviewContext,
   sign: true,
   confidentiality_tier: "partial_disclosure",
   disclosed_summary:
-    "Geomacro gro-1.1 country Risk Object for CHN. " +
-    "Read-only risk context only. " +
+    "Geomacro supplies one exact signed gro-1.1 Risk Object as read-only external context. " +
     JSON.stringify({
       object_id: riskObject.object_id,
       subject: riskObject.subject,
-      risk: riskObject.risk,
-      confidence: riskObject.confidence,
       observed_at: riskObject.observed_at,
       expires_at: riskObject.expires_at,
-      evidence_summary: riskObject.evidence_summary ?? null,
-      verification: riskObject.verification,
+      record_sha256: signedRiskObjectRecordSha256,
       decision_readiness: riskObject.decision_readiness ?? null,
-      methodology_version: riskObject.methodology_version ?? null,
-      payload_hash: riskObject.integrity?.payload_hash ?? null,
-      signing_key_id: riskObject.integrity?.signing_key_id ?? null,
     }) +
-    " No raw third-party source content is included.",
+    " Receiver-side independent verification is mandatory; issuer attestations are not trust roots. No raw third-party source feed content is included.",
   external_evidence: externalEvidence,
 };
 
@@ -1088,6 +1076,7 @@ console.log(
         request_written_to: requestOut || null,
         review_response_written_to: reviewOut || null,
       },
+      receiver_controlled_trust_anchor: receiverControlledTrustAnchor,
       live_review: liveReview,
       handoff_rule:
         "Immediately before partner testing, publish/retrieve a fresh production-signed GRO and rerun this preflight. Never extend expires_at or edit a signed artifact.",

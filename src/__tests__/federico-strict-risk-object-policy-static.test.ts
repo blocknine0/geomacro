@@ -412,6 +412,13 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "FEDERICO_STRICT",
     );
     const countryRiskEngine = read("src/lib/country-risk-engine.ts");
+    const publicRiskProfile = read("src/lib/public-demo-risk-profile.ts");
+    expect(publicRiskProfile).toContain(
+      "FEDERICO_STRICT_AUDITABLE_SOURCE_IDS",
+    );
+    expect(countryRiskEngine).toContain(
+      "uncalibrated_uncertainty_interval",
+    );
     const countryRiskPublisher = read("src/lib/country-risk-publisher.server.ts");
     expect(countryRiskEngine).toContain("risk-object");
     expect(countryRiskPublisher).toContain("publish");
@@ -465,7 +472,7 @@ describe("Federico strict Risk Object acceptance policy", () => {
       "as_of: observedAt",
     );
     expect(preflight).toContain(
-      'artifact_version: "geomacro-invino-review-v5"',
+      'artifact_version: "geomacro-invino-review-v6"',
     );
     expect(preflight).toContain(
       "external_evidence: [{",
@@ -481,6 +488,24 @@ describe("Federico strict Risk Object acceptance policy", () => {
     );
     expect(preflight).toContain(
       "decision_time_revalidation_required: true",
+    );
+    expect(preflight).toContain(
+      "receiver-controlled trusted UTC time",
+    );
+    expect(preflight).toContain(
+      "receiver-controlled approved key fingerprint",
+    );
+    expect(preflight).toContain(
+      "issuer_attestations_are_not_trust_roots",
+    );
+    expect(preflight).not.toContain(
+      "cryptographic_attestation:",
+    );
+    expect(preflight).not.toContain(
+      "trust_registry_attestation:",
+    );
+    expect(preflight).not.toContain(
+      "freshness_attestation:",
     );
     expect(canonicalSpec).toContain(
       "Number::toString",

@@ -40,6 +40,8 @@ import {
   FEDERICO_STRICT_MAX_EVIDENCE_AGE_HOURS,
   FEDERICO_STRICT_MIN_INDEPENDENT_SOURCE_FAMILIES,
   FEDERICO_STRICT_MAJOR_SOURCE_IDS,
+  FEDERICO_STRICT_AUDITABLE_SOURCE_IDS,
+  FEDERICO_STRICT_CHINA_NEXUS_TERMS,
   federicoStrictSourceFamilyForId,
   FEDERICO_STRICT_RELEVANCE_METHOD,
   FEDERICO_STRICT_SOURCE_INDEPENDENCE_METHOD,
@@ -849,17 +851,37 @@ async function loadFedericoStrictEvents(
     if (!members.length) continue;
 
     const latest = members[0];
-    const sourceFamilies = [
+    // Federico strict evidence uses only governed sources with an explicit
+    // CHN nexus in the source headline. This prevents GDELT/syndicated
+    // domain fan-out from masquerading as substantive independence.
+    const auditableMembers = members.filter((member) => {
+      const sourceId = String(member.source_id ?? "").trim().toLowerCase();
+      const title = String(member.headline ?? "").trim().toLowerCase();
+      const isAllowedSource = (
+        FEDERICO_STRICT_AUDITABLE_SOURCE_IDS as readonly string[]
+      ).includes(sourceId);
+      const hasChinaNexus = (
+        FEDERICO_STRICT_CHINA_NEXUS_TERMS as readonly string[]
+      ).some((term) => title.includes(term));
+      return isAllowedSource && hasChinaNexus;
+    });
+
+    if (!auditableMembers.length) {
+      continue;
+    }
+
+    const sourceIds = [
       ...new Set(
-        members.map((member) =>
-          flashSourceFamily(
-            String(member.source_id ?? ""),
-            member.source_channel == null
-              ? null
-              : String(member.source_channel),
-          ),
-        ),
+        auditableMembers
+          .map((member) => String(member.source_id ?? "").trim().toLowerCase())
+          .filter(Boolean),
       ),
+    ];
+
+    const sourceFamilies = [
+      ...new Set(sourceIds.map((sourceId) =>
+        flashSourceFamily(sourceId, null),
+      )),
     ];
 
     const independentSourceCount =
@@ -867,7 +889,7 @@ async function loadFedericoStrictEvents(
 
     const sourceRecordIds = [
       ...new Set(
-        members
+        auditableMembers
           .map((member) => String(member.source_record_id ?? "").trim())
           .filter(Boolean),
       ),
@@ -875,34 +897,29 @@ async function loadFedericoStrictEvents(
 
     const contentHashes = [
       ...new Set(
-        members
+        auditableMembers
           .map((member) => String(member.content_hash ?? "").trim())
           .filter((value) => /^[a-f0-9]{64}$/.test(value)),
       ),
     ];
 
-    const sourceIds = [
-      ...new Set(
-        members
-          .map((member) => String(member.source_id ?? "").trim())
-          .filter(Boolean),
-      ),
-    ];
-
     const sourceUrls = [
       ...new Set(
-        members
+        auditableMembers
           .map((member) => String(member.source_url ?? "").trim())
           .filter((value) => /^https?:\/\//i.test(value)),
       ),
     ];
 
-    if (!sourceUrls.length) {
-      // A strict Federico evidence item must remain externally attributable.
-      // Hash-only fallback is retained for non-Federico historical paths, but
-      // is not sufficient for this acceptance profile.
+    if (!sourceUrls.length || !sourceRecordIds.length || !contentHashes.length) {
       continue;
     }
+
+    const latestAuditableMember = [...auditableMembers].sort(
+      (a, b) =>
+        Date.parse(String(b.published_at ?? b.last_seen_at ?? "")) -
+        Date.parse(String(a.published_at ?? a.last_seen_at ?? "")),
+    )[0];
 
     const targetAttributions =
       members
@@ -1042,7 +1059,7 @@ async function loadFedericoStrictEvents(
       id: `flash_family_${familyId}`,
       domain: flashDomain(family.signal_category),
       event_type: eventType,
-      title: String(family.canonical_headline ?? latest.headline ?? ""),
+      title: String(latestAuditableMember?.headline ?? family.canonical_headline ?? latest.headline ?? ""),
       primary_country: iso3,
       countries: Array.isArray(family.country_isos)
         ? family.country_isos.map(String)
@@ -1062,7 +1079,7 @@ async function loadFedericoStrictEvents(
       ),
       material_evidence_at:
         lastSeen.toISOString(),
-      evidence_count: members.length,
+      evidence_count: auditableMembers.length,
       independent_source_count: independentSourceCount,
       evidence_refs: sourceUrls.length ? sourceUrls : members.map(
         (member) => String(member.content_hash ?? ""),
@@ -1091,6 +1108,12 @@ async function loadFedericoStrictEvents(
           isHighImpact
             ? "two_independent_sources_or_named_major_source"
             : "not_required",
+        audited_source_headlines: auditableMembers
+          .map((member) => ({
+            source_id: String(member.source_id ?? "").trim().toLowerCase(),
+            headline: String(member.headline ?? "").trim(),
+          }))
+          .sort((a, b) => a.source_id.localeCompare(b.source_id)),
       },
       event_family_id: familyId,
       source_ids: sourceIds,
