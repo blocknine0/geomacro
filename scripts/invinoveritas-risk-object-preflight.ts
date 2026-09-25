@@ -167,6 +167,7 @@ if (strictProfile) {
     !manifest?.calculation_input ||
     !manifest?.hash_inputs?.data_projection ||
     !manifest?.score_components ||
+    !manifest?.selection_policy?.max_included_evidence_items ||
     !manifest?.selection_policy?.source_family_map_version ||
     !manifest?.selection_policy?.source_family_map
   ) {
@@ -305,6 +306,21 @@ if (strictProfile) {
     Array.isArray(riskObject.evidence)
       ? riskObject.evidence
       : [];
+
+  if (
+    strictProfile &&
+    (
+      Number(
+        manifest.selection_policy.max_included_evidence_items,
+      ) !== FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS ||
+      evidence.length >
+        FEDERICO_STRICT_MAX_INCLUDED_EVIDENCE_ITEMS
+    )
+  ) {
+    throw new Error(
+      "Federico strict evidence selection exceeds the signed bounded review profile",
+    );
+  }
 
   if (
     evidence.some(
