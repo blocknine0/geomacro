@@ -503,7 +503,7 @@ function TestnetAccessPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14" data-testnet-auth-flow={AUTH_FLOW}>
       <section className="rounded-2xl border border-border/70 bg-card/30 p-6 sm:p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Geomacro Testnet API</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Geomacro Testnet Access · PUBLIC TESTER + DEVELOPER API</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">MACHINE-READABLE</span>
           <span className="rounded-full border border-border/70 px-3 py-1 font-mono text-[10px] text-muted-foreground">PAY-PER-CALL</span>
@@ -613,6 +613,12 @@ function TestnetAccessPage() {
             <p className="font-semibold">2 · Authenticate</p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">Create the wallet-bound developer credential on this page. Store the API Secret server-side; never ship it in frontend code.</p>
             <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`Authorization: GeomacroTest <API_KEY>.<API_SECRET>`}</pre>
+          </article>
+          <article className="rounded-xl border border-border/70 bg-background/40 p-4">
+            <p className="font-semibold">2b · Check account</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">After credentials are created, inspect entitlement, credit usage, exact prices and supported payment configuration without consuming credits.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-background p-3 text-[11px] leading-5 text-muted-foreground">{`curl https://geomacro.live/api/testnet/account \\\
+  -H "Authorization: GeomacroTest <API_KEY>.<API_SECRET>"`}</pre>
           </article>
           <article className="rounded-xl border border-border/70 bg-background/40 p-4">
             <p className="font-semibold">3 · Request</p>
