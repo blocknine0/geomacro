@@ -127,7 +127,16 @@ jobs:
                 denominator,
                 required_country_modules,
                 governed_source_state,
-                summary,
+                summary: {
+                  accepted_country_count: .summary.accepted_country_count,
+                  fail_closed_country_count: .summary.fail_closed_country_count,
+                  accepted_pct: .summary.accepted_pct,
+                  module_ready_country_counts: .summary.module_ready_country_counts,
+                  module_error_country_counts: .summary.module_error_country_counts,
+                  missing_country_iso3_by_module: .summary.missing_country_iso3_by_module,
+                  unverified_country_iso3_by_module: .summary.unverified_country_iso3_by_module,
+                  module_error_reason_counts: .summary.module_error_reason_counts
+                },
                 claim_boundary
               }' /tmp/global-risk-gate-country-census.json
             else
@@ -143,6 +152,7 @@ jobs:
                 release_manifest,
                 release_window,
                 summary,
+                fail_closed_countries: [.countries[] | select(.module_available == false) | {iso3, blocker}],
                 interpretation_boundary
               }' /tmp/geopolitical-production-diagnostics.json
             else
