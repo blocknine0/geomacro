@@ -9,6 +9,9 @@ on:
       - "scripts/ingest-usgs-mcs-live.mjs"
       - "scripts/sync-gdelt-gal-production.mjs"
       - "scripts/run-gdelt-gal-cycle.mjs"
+      - "scripts/sync-open-live-source-mesh.mjs"
+      - "scripts/drain-live-structure.mjs"
+      - "scripts/reconcile-structured-event-commercial-rights.mjs"
       - "scripts/refresh-global-canonical-risk-objects.ts"
       - "scripts/refresh-canonical-strategic-corridors.ts"
       - "scripts/audit-global-production-coverage.mjs"
@@ -111,11 +114,51 @@ jobs:
           set -e
           if [ "$probe_status" -eq 2 ]; then
             echo "GDELT GAL is outside the repair buffer; running the canonical fresh cycle before sovereign CANONICAL Risk Objects are generated."
-            node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-coverage-repair.log
-            grep -q 'PASS: GDELT GAL FRESH CYCLE COMPLETE; CURSOR, FRAGMENT, STRUCTURE, RIGHTS AND HOT-TOPIC HEALTH VERIFIED' gdelt-gal-coverage-repair.log
+            node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee artifacts/global-production-coverage/gdelt-gal-coverage-repair.log
+            grep -q 'PASS: GDELT GAL FRESH CYCLE COMPLETE; CURSOR, FRAGMENT, STRUCTURE, RIGHTS AND HOT-TOPIC HEALTH VERIFIED' artifacts/global-production-coverage/gdelt-gal-coverage-repair.log
           elif [ "$probe_status" -ne 0 ]; then
             exit "$probe_status"
           fi
+
+      - name: Refresh reviewed open realtime evidence before sovereign CANONICAL refresh
+        shell: bash
+        env:
+          OPEN_LIVE_SOURCE_SYNC_OUTPUT: artifacts/global-production-coverage/open-live-source-sync.json
+          RECONCILE_SOURCE_KEYS: usgs_earthquakes,gdacs_global_disasters
+          RECONCILE_LOOKBACK_MINUTES: "120"
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+          const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+          const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+          const { data, error } = await db.from("live_source_registry")
+            .select("source_key,enabled,derivative_intelligence_allowed,commercial_usage_status,commercial_reviewed_at")
+            .in("source_key", ["usgs_earthquakes", "gdacs_global_disasters"]);
+          if (error) throw error;
+          const byKey = new Map((data ?? []).map((row) => [row.source_key, row]));
+          const required = [
+            ["usgs_earthquakes", "COMMERCIAL_OK"],
+            ["gdacs_global_disasters", "DERIVED_ONLY"],
+          ];
+          for (const [sourceKey, expectedStatus] of required) {
+            const row = byKey.get(sourceKey);
+            if (!row || row.enabled !== true || row.derivative_intelligence_allowed !== true || row.commercial_usage_status !== expectedStatus || !row.commercial_reviewed_at) {
+              throw new Error(`OPEN_REALTIME_SOURCE_POLICY_NOT_READY:${sourceKey}`);
+            }
+          }
+          console.log(JSON.stringify({ok:true,sources:required.map(([source_key,commercial_usage_status])=>({source_key,commercial_usage_status}))},null,2));
+          NODE
+
+          bun scripts/sync-open-live-source-mesh.mjs 2>&1 | tee artifacts/global-production-coverage/open-live-source-refresh.log
+          jq -e '.ok == true' "$OPEN_LIVE_SOURCE_SYNC_OUTPUT" >/dev/null
+          jq -e '[.sources[] | select(.source_key == "nasa_firms_fire" or .source_key == "reliefweb_reports") | .status] | all(. == "skipped")' "$OPEN_LIVE_SOURCE_SYNC_OUTPUT" >/dev/null
+
+          node scripts/drain-live-structure.mjs --fragment-ids-file "$OPEN_LIVE_SOURCE_SYNC_OUTPUT" 2>&1 | tee artifacts/global-production-coverage/open-live-structure-drain.log
+          node scripts/reconcile-structured-event-commercial-rights.mjs 2>&1 | tee artifacts/global-production-coverage/open-live-rights-reconcile.log
 
       - name: Refresh every enabled sovereign CANONICAL Risk Object
         shell: bash
