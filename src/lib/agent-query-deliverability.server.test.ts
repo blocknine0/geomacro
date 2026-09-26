@@ -54,6 +54,35 @@ describe("adaptive query pre-payment deliverability", () => {
     expect(result.code).toBe("AVAILABLE");
   });
 
+  it("recognizes governed currency_capital_mobility evidence as external_fx", async () => {
+    const base = context();
+    mocks.loadStructuralContext.mockResolvedValue({
+      ...base,
+      observations: [
+        base.observations[0],
+        {
+          ...base.observations[1],
+          observation_id: "o-fx",
+          dimension: "currency_capital_mobility",
+          metric: "reserve_adequacy",
+          normalized_hash: "fx",
+        },
+      ],
+    });
+    const plan = buildAgentQueryPlan({
+      subjects: [{ type: "country", country_iso3: "USA" }],
+      topics: ["fx_external_risk"],
+      max_age_seconds: 172800,
+    });
+    const result = await checkAgentQueryDeliverability(plan, {
+      now: new Date("2026-09-16T00:00:00.000Z"),
+      sourceEligibilityChecker: commercialOk,
+    });
+    expect(result.deliverable).toBe(true);
+    expect(result.missing_modules).not.toContain("external_fx");
+    expect(result.subjects[0].available_modules).toContain("external_fx");
+  });
+
   it("fails closed before payment when a required module is absent", async () => {
     const base = context();
     mocks.loadStructuralContext.mockResolvedValue({ ...base, observations: [base.observations[0]] });
