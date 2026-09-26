@@ -1,0 +1,143 @@
+name: Canonical Readiness Reason Diagnostics
+
+on:
+  push:
+    branches:
+      - diag/canonical-readiness-reasons
+    paths:
+      - ".github/workflows/canonical-readiness-reason-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+
+    steps:
+      - name: Checkout diagnostic head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Validate authoritative read-only target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+
+      - name: Aggregate latest canonical country policy reasons
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/canonical-readiness-reason-diagnostics
+          node --input-type=module <<'NODE' | tee artifacts/canonical-readiness-reason-diagnostics/report.json
+          const base = String(process.env.APP_SUPABASE_URL ?? "").replace(/\/$/, "");
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "");
+          const endpoint = new URL(`${base}/rest/v1/geomacro_risk_objects`);
+          endpoint.searchParams.set("select", "subject_id,generated_at,commercial_eligibility_status,commercial_eligibility_reason_codes,verification_status,verification_reason_codes,commercial_policy_version");
+          endpoint.searchParams.set("subject_type", "eq.country");
+          endpoint.searchParams.set("order", "generated_at.desc");
+          endpoint.searchParams.set("limit", "1000");
+
+          const response = await fetch(endpoint, {
+            headers: {
+              apikey: key,
+              authorization: `Bearer ${key}`,
+              accept: "application/json",
+            },
+          });
+          if (!response.ok) throw new Error(`RISK_OBJECT_READ_FAILED_${response.status}`);
+          const rows = await response.json();
+          if (!Array.isArray(rows)) throw new Error("RISK_OBJECT_READ_INVALID_RESPONSE");
+
+          const latestByCountry = new Map();
+          for (const row of rows) {
+            const iso3 = String(row.subject_id ?? "").trim().toUpperCase();
+            if (!/^[A-Z]{3}$/.test(iso3) || latestByCountry.has(iso3)) continue;
+            latestByCountry.set(iso3, row);
+          }
+
+          const commercialReasonCounts = new Map();
+          const verificationReasonCounts = new Map();
+          const statusCombos = new Map();
+          const countriesByCommercialReason = new Map();
+          const countriesByVerificationReason = new Map();
+
+          function add(map, keyValue, iso3) {
+            const key = String(keyValue ?? "").trim() || "<none>";
+            map.set(key, (map.get(key) ?? 0) + 1);
+            if (iso3) {
+              const countryMap = map === commercialReasonCounts ? countriesByCommercialReason : countriesByVerificationReason;
+              const list = countryMap.get(key) ?? [];
+              list.push(iso3);
+              countryMap.set(key, list);
+            }
+          }
+
+          for (const [iso3, row] of latestByCountry) {
+            const combo = `${row.commercial_eligibility_status ?? "NULL"}/${row.verification_status ?? "NULL"}`;
+            statusCombos.set(combo, (statusCombos.get(combo) ?? 0) + 1);
+            const commercialReasons = Array.isArray(row.commercial_eligibility_reason_codes) ? row.commercial_eligibility_reason_codes : [];
+            const verificationReasons = Array.isArray(row.verification_reason_codes) ? row.verification_reason_codes : [];
+            if (!commercialReasons.length) add(commercialReasonCounts, "<none>", iso3);
+            else for (const reason of commercialReasons) add(commercialReasonCounts, reason, iso3);
+            if (!verificationReasons.length) add(verificationReasonCounts, "<none>", iso3);
+            else for (const reason of verificationReasons) add(verificationReasonCounts, reason, iso3);
+          }
+
+          const failClosedCountries = [...latestByCountry.entries()]
+            .filter(([, row]) => row.commercial_eligibility_status !== "VERIFIED" || row.verification_status !== "VERIFIED")
+            .map(([iso3, row]) => ({
+              iso3,
+              generated_at: row.generated_at,
+              commercial_eligibility_status: row.commercial_eligibility_status,
+              commercial_eligibility_reason_codes: row.commercial_eligibility_reason_codes ?? [],
+              verification_status: row.verification_status,
+              verification_reason_codes: row.verification_reason_codes ?? [],
+            }))
+            .sort((a, b) => a.iso3.localeCompare(b.iso3));
+
+          const sortCounts = (map) => Object.fromEntries([...map.entries()].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0])));
+          const sortCountryMap = (map) => Object.fromEntries([...map.entries()].sort((a,b) => a[0].localeCompare(b[0])).map(([k,v]) => [k, [...new Set(v)].sort()]));
+
+          const report = {
+            schema_version: "geomacro-canonical-readiness-reason-diagnostics-v1",
+            generated_at: new Date().toISOString(),
+            boundaries: {
+              read_only: true,
+              payment_performed: false,
+              execution_authorized: false,
+              raw_source_material_emitted: false,
+              secret_values_emitted: false,
+            },
+            latest_country_count: latestByCountry.size,
+            status_combinations: sortCounts(statusCombos),
+            commercial_reason_counts: sortCounts(commercialReasonCounts),
+            verification_reason_counts: sortCounts(verificationReasonCounts),
+            countries_by_commercial_reason: sortCountryMap(countriesByCommercialReason),
+            countries_by_verification_reason: sortCountryMap(countriesByVerificationReason),
+            fail_closed_countries: failClosedCountries,
+          };
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+
+          jq -e '.boundaries.read_only == true and .boundaries.payment_performed == false and .boundaries.execution_authorized == false and .boundaries.raw_source_material_emitted == false and .boundaries.secret_values_emitted == false' artifacts/canonical-readiness-reason-diagnostics/report.json >/dev/null
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: canonical-readiness-reason-diagnostics-${{ github.run_id }}
+          path: artifacts/canonical-readiness-reason-diagnostics/report.json
+          if-no-files-found: error
+          retention-days: 7
