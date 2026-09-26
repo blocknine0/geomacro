@@ -22,6 +22,8 @@ const REQUIRED_MODULES = [
   "macro_monetary",
 ] as const satisfies readonly RiskGateV2Module[];
 
+const WORLD_BANK_SOURCE_ID = "world_bank_indicators";
+
 const CONCURRENCY = Math.max(
   1,
   Math.min(8, Number(process.env.GLOBAL_RISK_GATE_CENSUS_CONCURRENCY ?? 3)),
@@ -52,6 +54,10 @@ const EVIDENCE_ACTION_PROFILE: RiskGateV2ActionProfile = {
   },
 };
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function loadCountries() {
   const db = requireRiskSupabase();
   const result = await db
@@ -71,12 +77,58 @@ async function loadCountries() {
     .filter((row) => classifyGlobalEntity(row.iso3) === "SOVEREIGN");
 }
 
+async function loadWorldBankOperationalState() {
+  const db = requireRiskSupabase();
+  const result = await db
+    .from("live_external_sources")
+    .select(
+      "source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required",
+    )
+    .eq("source_id", WORLD_BANK_SOURCE_ID)
+    .maybeSingle();
+
+  if (result.error) {
+    return {
+      source_id: WORLD_BANK_SOURCE_ID,
+      present: false,
+      query_error: errorMessage(result.error),
+    };
+  }
+
+  if (!result.data) {
+    return {
+      source_id: WORLD_BANK_SOURCE_ID,
+      present: false,
+      query_error: null,
+    };
+  }
+
+  return {
+    source_id: WORLD_BANK_SOURCE_ID,
+    present: true,
+    commercial_usage_status: result.data.commercial_usage_status ?? null,
+    enabled_for_ingestion: result.data.enabled_for_ingestion === true,
+    enabled_for_commercial_signals:
+      result.data.enabled_for_commercial_signals === true,
+    raw_redistribution_allowed: result.data.raw_redistribution_allowed === true,
+    attribution_required: result.data.attribution_required === true,
+    operational_for_commercial_macro:
+      result.data.commercial_usage_status === "COMMERCIAL_OK" &&
+      result.data.enabled_for_ingestion === true &&
+      result.data.enabled_for_commercial_signals === true,
+    query_error: null,
+  };
+}
+
 async function evaluateCountry(
   country: Awaited<ReturnType<typeof loadCountries>>[number],
   generatedAt: string,
 ) {
-  try {
-    const [geopolitical, political, macroStates] = await Promise.all([
+  const moduleErrors: Partial<Record<RiskGateV2Module, string>> = {};
+  const states: Array<any> = [];
+
+  const [geopoliticalResult, politicalResult, macroResult] =
+    await Promise.allSettled([
       generateRiskGateV2GeopoliticalSecurityModuleState({
         country_iso3: country.iso3,
         as_of: generatedAt,
@@ -94,33 +146,53 @@ async function evaluateCountry(
       }),
     ]);
 
-    const states = [
-      ...(geopolitical ? [geopolitical] : []),
-      ...(political ? [political] : []),
-      ...macroStates,
-    ];
-    const byModule = new Map(states.map((state) => [state.module, state]));
-    const missingModules = REQUIRED_MODULES.filter((module) => !byModule.has(module));
-    const unverifiedModules = REQUIRED_MODULES.filter(
-      (module) => byModule.get(module)?.commercial_eligibility_status !== "VERIFIED",
-    );
+  if (geopoliticalResult.status === "fulfilled") {
+    if (geopoliticalResult.value) states.push(geopoliticalResult.value);
+  } else {
+    moduleErrors.geopolitical_security = errorMessage(geopoliticalResult.reason);
+  }
 
-    let response: Awaited<ReturnType<typeof evaluateRiskGateV2>> | null = null;
-    if (missingModules.length === 0 && unverifiedModules.length === 0) {
-      const request: RiskGateV2Request = {
-        schema_version: RISK_GATE_V2_REQUEST_SCHEMA_VERSION,
-        request_id: `country-census:${country.iso3}`,
-        primary_subject: { type: "country", id: country.iso3 },
-        exposures: [],
-        action_context: {
-          action_type: "investment_allocation_review",
-          time_horizon: "days",
-        },
-        policy: {
-          policy_id: EVIDENCE_POLICY.policy_id,
-          policy_version: EVIDENCE_POLICY.policy_version,
-        },
-      };
+  if (politicalResult.status === "fulfilled") {
+    if (politicalResult.value) states.push(politicalResult.value);
+  } else {
+    moduleErrors.political_governance = errorMessage(politicalResult.reason);
+  }
+
+  if (macroResult.status === "fulfilled") {
+    states.push(...macroResult.value);
+  } else {
+    const message = errorMessage(macroResult.reason);
+    moduleErrors.sovereign_fiscal = message;
+    moduleErrors.macro_monetary = message;
+  }
+
+  const byModule = new Map(states.map((state) => [state.module, state]));
+  const missingModules = REQUIRED_MODULES.filter((module) => !byModule.has(module));
+  const unverifiedModules = REQUIRED_MODULES.filter(
+    (module) =>
+      byModule.has(module) &&
+      byModule.get(module)?.commercial_eligibility_status !== "VERIFIED",
+  );
+
+  let response: Awaited<ReturnType<typeof evaluateRiskGateV2>> | null = null;
+  let gateError: string | null = null;
+  if (missingModules.length === 0 && unverifiedModules.length === 0) {
+    const request: RiskGateV2Request = {
+      schema_version: RISK_GATE_V2_REQUEST_SCHEMA_VERSION,
+      request_id: `country-census:${country.iso3}`,
+      primary_subject: { type: "country", id: country.iso3 },
+      exposures: [],
+      action_context: {
+        action_type: "investment_allocation_review",
+        time_horizon: "days",
+      },
+      policy: {
+        policy_id: EVIDENCE_POLICY.policy_id,
+        policy_version: EVIDENCE_POLICY.policy_version,
+      },
+    };
+
+    try {
       response = await evaluateRiskGateV2(
         {
           request,
@@ -130,65 +202,60 @@ async function evaluateCountry(
         },
         new Date(generatedAt),
       );
+    } catch (error) {
+      gateError = errorMessage(error);
     }
-
-    const accepted =
-      response !== null &&
-      response.execution_authorized === false &&
-      response.missing_modules.length === 0;
-
-    return {
-      iso3: country.iso3,
-      country_name: country.country_name,
-      region: country.region,
-      subregion: country.subregion,
-      status: accepted ? "ACCEPTED" : "FAIL_CLOSED",
-      missing_modules: missingModules,
-      unverified_modules: unverifiedModules,
-      module_states: states.map((state) => ({
-        module: state.module,
-        score: state.score,
-        confidence: state.confidence,
-        coverage: state.coverage,
-        commercial_eligibility_status: state.commercial_eligibility_status,
-        methodology_version: state.methodology_version,
-        generated_at: state.generated_at,
-        expires_at: state.expires_at,
-      })),
-      risk_gate: response
-        ? {
-            decision: response.decision,
-            display_label: response.display_label,
-            score: response.action_risk.score,
-            confidence: response.action_risk.confidence,
-            coverage: response.action_risk.coverage,
-            reason_codes: response.reason_codes,
-            calculation_hash: response.integrity.calculation_hash,
-            execution_authorized: response.execution_authorized,
-          }
-        : null,
-      error: null,
-    };
-  } catch (error) {
-    return {
-      iso3: country.iso3,
-      country_name: country.country_name,
-      region: country.region,
-      subregion: country.subregion,
-      status: "FAIL_CLOSED",
-      missing_modules: [...REQUIRED_MODULES],
-      unverified_modules: [],
-      module_states: [],
-      risk_gate: null,
-      error: error instanceof Error ? error.message : String(error),
-    };
   }
+
+  const accepted =
+    response !== null &&
+    response.execution_authorized === false &&
+    response.missing_modules.length === 0;
+
+  return {
+    iso3: country.iso3,
+    country_name: country.country_name,
+    region: country.region,
+    subregion: country.subregion,
+    status: accepted ? "ACCEPTED" : "FAIL_CLOSED",
+    missing_modules: missingModules,
+    unverified_modules: unverifiedModules,
+    module_errors: moduleErrors,
+    module_states: states.map((state) => ({
+      module: state.module,
+      score: state.score,
+      confidence: state.confidence,
+      coverage: state.coverage,
+      commercial_eligibility_status: state.commercial_eligibility_status,
+      methodology_version: state.methodology_version,
+      generated_at: state.generated_at,
+      expires_at: state.expires_at,
+    })),
+    risk_gate: response
+      ? {
+          decision: response.decision,
+          display_label: response.display_label,
+          score: response.action_risk.score,
+          confidence: response.action_risk.confidence,
+          coverage: response.action_risk.coverage,
+          reason_codes: response.reason_codes,
+          calculation_hash: response.integrity.calculation_hash,
+          execution_authorized: response.execution_authorized,
+        }
+      : null,
+    error: gateError,
+  };
 }
 
 async function main() {
   const generatedAt = new Date().toISOString();
-  const countries = await loadCountries();
-  const results = new Array<Awaited<ReturnType<typeof evaluateCountry>>>(countries.length);
+  const [countries, worldBankSource] = await Promise.all([
+    loadCountries(),
+    loadWorldBankOperationalState(),
+  ]);
+  const results = new Array<Awaited<ReturnType<typeof evaluateCountry>>>(
+    countries.length,
+  );
   let cursor = 0;
 
   async function worker() {
@@ -202,8 +269,27 @@ async function main() {
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
   const accepted = results.filter((row) => row.status === "ACCEPTED");
+  const moduleReadyCountryCounts = Object.fromEntries(
+    REQUIRED_MODULES.map((module) => [
+      module,
+      results.filter((row) =>
+        row.module_states.some(
+          (state) =>
+            state.module === module &&
+            state.commercial_eligibility_status === "VERIFIED",
+        ),
+      ).length,
+    ]),
+  );
+  const moduleErrorCountryCounts = Object.fromEntries(
+    REQUIRED_MODULES.map((module) => [
+      module,
+      results.filter((row) => row.module_errors[module]).length,
+    ]),
+  );
+
   const report = {
-    schema_version: "geomacro-global-risk-gate-country-census-2.0",
+    schema_version: "geomacro-global-risk-gate-country-census-2.1",
     generated_at: generatedAt,
     denominator: {
       type: "enabled_sovereign_countries",
@@ -213,6 +299,9 @@ async function main() {
     support_registry: Object.fromEntries(
       REQUIRED_MODULES.map((module) => [module, RISK_GATE_V2_SUPPORT_READINESS[module]]),
     ),
+    governed_source_state: {
+      world_bank_indicators: worldBankSource,
+    },
     evidence_profile: {
       action_type: EVIDENCE_ACTION_PROFILE.action_type,
       action_profile_version: EVIDENCE_ACTION_PROFILE.profile_version,
@@ -225,11 +314,14 @@ async function main() {
       accepted_pct: results.length
         ? Number(((accepted.length / results.length) * 100).toFixed(2))
         : 0,
+      module_ready_country_counts: moduleReadyCountryCounts,
+      module_error_country_counts: moduleErrorCountryCounts,
     },
     claim_boundary: {
       country_review_readiness_only: true,
       all_action_classes_not_implied: true,
       missing_or_unverified_input_fails_closed: true,
+      source_state_diagnostics_exclude_credentials_and_raw_payloads: true,
       execution_authorized_is_false: true,
     },
     countries: results,
@@ -246,6 +338,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(errorMessage(error));
   process.exit(1);
 });
