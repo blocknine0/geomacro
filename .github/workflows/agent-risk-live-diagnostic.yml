@@ -1,0 +1,53 @@
+name: Agent Risk Live Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/agent-risk-live-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe live unpaid agent risk endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          body='{"subject":{"type":"corridor","origin_country_iso3":"USA","destination_country_iso3":"CHN"},"policy_preset":"cautious","action_type":"agent_payment","amount_usdc":10000,"client_request_id":"diagnostic-'"${GITHUB_RUN_ID}"'"}'
+          response_file="$(mktemp)"
+          headers_file="$(mktemp)"
+          status="$(curl --silent --show-error --location \
+            --request POST 'https://geomacro.live/api/agent/risk' \
+            --header 'content-type: application/json' \
+            --header 'user-agent: geomacro-agent-risk-live-diagnostic' \
+            --data "$body" \
+            --dump-header "$headers_file" \
+            --output "$response_file" \
+            --write-out '%{http_code}')"
+
+          echo "HTTP_STATUS=$status"
+          echo "SANITIZED_RESPONSE_BODY_BEGIN"
+          cat "$response_file"
+          echo
+          echo "SANITIZED_RESPONSE_BODY_END"
+
+          payment_required_present="false"
+          if grep -qi '^PAYMENT-REQUIRED:' "$headers_file"; then
+            payment_required_present="true"
+          fi
+          echo "PAYMENT_REQUIRED_HEADER_PRESENT=$payment_required_present"
+
+          {
+            echo "## Live Agent Risk Diagnostic"
+            echo
+            echo "- HTTP status: \`$status\`"
+            echo "- PAYMENT-REQUIRED present: \`$payment_required_present\`"
+            echo "- Target: \`https://geomacro.live/api/agent/risk\`"
+            echo
+            echo "This workflow never sends a payment signature or private key."
+          } >> "$GITHUB_STEP_SUMMARY"
