@@ -75,7 +75,7 @@ jobs:
           GLOBAL_RISK_GATE_CENSUS_OUTPUT=/tmp/global-risk-gate-country-census.json \
             bun scripts/global-risk-gate-country-census.ts >/tmp/global-risk-gate-country-census.stdout.json
           jq -e '
-            .schema_version == "geomacro-global-risk-gate-country-census-2.1" and
+            .schema_version == "geomacro-global-risk-gate-country-census-2.2" and
             .claim_boundary.country_review_readiness_only == true and
             .claim_boundary.all_action_classes_not_implied == true and
             .claim_boundary.missing_or_unverified_input_fails_closed == true and
