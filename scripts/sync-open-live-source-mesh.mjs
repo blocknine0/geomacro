@@ -8,6 +8,8 @@ const BUCKET = "geomacro-live-intelligence";
 const SCHEMA_VERSION = "live-evidence-v1.0.0";
 const OUTPUT = process.env.OPEN_LIVE_SOURCE_SYNC_OUTPUT ?? null;
 const FINGERPRINT_TTL_DAYS = 30;
+const FETCH_JSON_MAX_ATTEMPTS = Math.max(1, Math.min(5, Number(process.env.OPEN_LIVE_SOURCE_FETCH_ATTEMPTS ?? 3)));
+const FETCH_JSON_RETRY_DELAY_MS = Math.max(250, Math.min(10_000, Number(process.env.OPEN_LIVE_SOURCE_FETCH_RETRY_DELAY_MS ?? 2_000)));
 
 function projectRef(url) {
   try { return new URL(url).hostname.split(".")[0] ?? ""; } catch { return ""; }
@@ -60,16 +62,33 @@ function record(fingerprintInput, sourceUrl, sourceDomain, outletName, title, de
 }
 
 async function fetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      accept: "application/json",
-      "user-agent": "Geomacro-RealTime-Source-Mesh/1.0",
-      ...(options.headers ?? {}),
-    },
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
-  return response.json();
+  let lastError = null;
+  for (let attempt = 1; attempt <= FETCH_JSON_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          accept: "application/json",
+          "user-agent": "Geomacro-RealTime-Source-Mesh/1.0",
+          ...(options.headers ?? {}),
+        },
+      });
+      if (!response.ok) throw new Error(`HTTP_${response.status}`);
+      const text = await response.text();
+      if (!text.trim()) throw new Error("EMPTY_JSON_RESPONSE");
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("INVALID_JSON_RESPONSE");
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt < FETCH_JSON_MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, FETCH_JSON_RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
+  throw lastError ?? new Error("JSON_SOURCE_UNAVAILABLE");
 }
 
 async function sourceRecordsUsGs(now) {
@@ -477,6 +496,32 @@ async function sealSource(supabase, source, now) {
   return { accepted: accepted.length, fragment_id: manifest.id };
 }
 
+function unavailableSource(spec, now) {
+  return {
+    source_key: spec.source_key,
+    stream_key: spec.stream_key,
+    records: [],
+    unavailable: true,
+    unavailable_reason: "UPSTREAM_UNAVAILABLE",
+    period_start: new Date(now.getTime() - spec.lookback_ms).toISOString(),
+    period_end: now,
+  };
+}
+
+async function loadSourceSafely(spec, now) {
+  try {
+    return await spec.load(now);
+  } catch {
+    console.warn(JSON.stringify({
+      source_key: spec.source_key,
+      stream_key: spec.stream_key,
+      status: "unavailable",
+      reason: "UPSTREAM_UNAVAILABLE",
+    }));
+    return unavailableSource(spec, now);
+  }
+}
+
 async function main() {
   const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
   const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
@@ -489,14 +534,26 @@ async function main() {
   const now = new Date();
 
   const results = [];
-  const sources = [
-    await sourceRecordsUsGs(now),
-    await sourceRecordsGdacs(now),
-    await sourceRecordsNasaFirms(now),
-    await sourceRecordsReliefWeb(now),
+  const sourceSpecs = [
+    { source_key: "usgs_earthquakes", stream_key: "earthquakes-hourly", lookback_ms: 60 * 60 * 1000, load: sourceRecordsUsGs },
+    { source_key: "gdacs_global_disasters", stream_key: "global-disasters", lookback_ms: 12 * 60 * 60 * 1000, load: sourceRecordsGdacs },
+    { source_key: "nasa_firms_fire", stream_key: "active-fire", lookback_ms: 60 * 60 * 1000, load: sourceRecordsNasaFirms },
+    { source_key: "reliefweb_reports", stream_key: "latest-reports", lookback_ms: 60 * 60 * 1000, load: sourceRecordsReliefWeb },
   ];
+  const sources = [];
+  for (const spec of sourceSpecs) sources.push(await loadSourceSafely(spec, now));
 
   for (const source of sources) {
+    if (source.unavailable) {
+      results.push({
+        source_key: source.source_key,
+        stream_key: source.stream_key,
+        status: "unavailable",
+        reason: source.unavailable_reason,
+        records: 0,
+      });
+      continue;
+    }
     if (source.skipped) {
       results.push({
         source_key: source.source_key,
@@ -510,18 +567,25 @@ async function main() {
     results.push({
       source_key: source.source_key,
       stream_key: source.stream_key,
+      status: "succeeded",
       ...(await sealSource(supabase, source, now)),
       records: source.records.length,
     });
   }
 
+  const unavailableSources = results.filter((row) => row.status === "unavailable").map((row) => row.source_key);
+  const successfulSources = results.filter((row) => row.status === "succeeded").map((row) => row.source_key);
   const output = {
-    ok: true,
+    ok: successfulSources.length > 0,
+    degraded: unavailableSources.length > 0,
     generated_at: now.toISOString(),
+    successful_sources: successfulSources,
+    unavailable_sources: unavailableSources,
     sources: results,
   };
   if (OUTPUT) await writeFile(OUTPUT, JSON.stringify(output, null, 2) + "\n", "utf8");
   console.log(JSON.stringify(output, null, 2));
+  if (!output.ok) process.exitCode = 1;
 }
 
 main().catch((error) => {
