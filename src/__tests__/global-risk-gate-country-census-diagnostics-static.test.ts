@@ -41,4 +41,14 @@ describe("global Risk Gate country census diagnostics", () => {
     expect(workflow).toContain("geomacro-global-risk-gate-country-census-2.2");
     expect(workflow).toContain("source_state_diagnostics_exclude_credentials_and_raw_payloads");
   });
+
+  it("continuously captures sanitized geopolitical blockers with the country readiness audit", () => {
+    expect(workflow).toContain("audit-geopolitical-production-diagnostics.ts");
+    expect(workflow).toContain("geomacro-geopolitical-production-diagnostics-1.0");
+    expect(workflow).toContain("raw_event_material_included == false");
+    expect(workflow).toContain("event_text_or_publisher_material_redistributed == false");
+    expect(workflow).toContain("source_rights_changed == false");
+    expect(workflow).toContain("scoring_changed == false");
+    expect(workflow).toContain("/tmp/geopolitical-production-diagnostics.json");
+  });
 });
