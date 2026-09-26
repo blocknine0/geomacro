@@ -14,6 +14,7 @@ on:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
       - "supabase/functions/live-flash-archive/**"
       - "supabase/isolated-signal/config.toml"
+      - "supabase/isolated-signal/migrations/954_telegram_authorized_publisher_only.sql"
       - "supabase/isolated-signal/migrations/953_event_family_version_ledger.sql"
       - "supabase/isolated-signal/migrations/952_realtime_flash_event_lifecycle.sql"
       - "supabase/isolated-signal/migrations/951_telegram_signal_compact_storage.sql"
@@ -43,6 +44,7 @@ jobs:
           grep -q 'qogpagklwbfdmrgnrhzi' "$file"
           grep -q 'SIGNAL_DB_MODE' "$file"
           grep -q -- '--no-verify-jwt' "$file"
+          grep -q '954_telegram_authorized_publisher_only.sql' "$file"
           ! grep -q 'ldpwajisioljyjtojvfx' "$file"
           echo "PASS: Telegram signal deployment remains isolated from authoritative production Supabase."
 
