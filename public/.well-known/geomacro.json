@@ -1,0 +1,30 @@
+{
+  "name": "Geomacro",
+  "version": "testnet-v1",
+  "status": "testnet",
+  "description": "Structured, derived geopolitical, macroeconomic and critical-minerals intelligence for humans, applications and AI agents.",
+  "raw_data_delivery": false,
+  "domains": [
+    "geopolitics",
+    "macroeconomics",
+    "critical_minerals"
+  ],
+  "payment": {
+    "protocol": "x402",
+    "version": 2,
+    "asset": "USDC",
+    "environment": "testnet",
+    "production_pricing": false
+  },
+  "endpoints": {
+    "paid_intelligence": "/api/x402/intelligence",
+    "availability": "/api/x402/risk/availability",
+    "openapi": "/openapi-testnet-v1.json"
+  },
+  "delivery_contract": {
+    "format": "structured-derived-intelligence-only",
+    "payment_only_after_deliverability_check": true,
+    "execution_authorized": false,
+    "fail_closed": true
+  }
+}
