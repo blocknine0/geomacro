@@ -4,77 +4,60 @@
     "name": "GeoMacro Global Risk Intelligence Agent",
     "version": "geomacro-agent-v2",
     "description": "24/7 grounded geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
-    "mode": "read_recommend_and_deliver",
+    "mode": "read_and_recommend",
     "execution_authorized": false
   },
-  "categories": [
-    "GEOPOLITICS",
-    "MACRO",
-    "CRITICAL_MINERALS"
-  ],
+  "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
   "geographic_scope": "global_data_driven_fail_closed",
   "discovery": {
+    "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
+    "agent_commerce_docs": "https://geomacro.live/agent-commerce.md",
+    "llms": "https://geomacro.live/llms.txt",
     "a2a_card": "https://geomacro.live/.well-known/agent-card.json",
     "a2a_interface": "https://geomacro.live/api/a2a",
-    "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "x402": "https://geomacro.live/.well-known/x402.json",
-    "openapi": "https://geomacro.live/openapi-x402.json",
-    "agent_commerce_docs": "https://geomacro.live/agent-commerce.md",
-    "llms": "https://geomacro.live/llms.txt"
+    "openapi": "https://geomacro.live/openapi-x402.json"
   },
   "a2a": {
     "protocol": "A2A",
     "protocol_version": "1.0",
-    "binding": "JSONRPC",
+    "protocol_binding": "HTTP+JSON",
+    "discovery": "https://geomacro.live/.well-known/agent-card.json",
     "interface": "https://geomacro.live/api/a2a",
+    "task_callbacks": true,
     "streaming": false,
-    "push_notifications": false,
-    "extended_agent_card": false,
     "arbitrary_outbound_targets": false,
     "execution_authorized": false
   },
   "capabilities": [
     {
-      "id": "geopolitics",
-      "access": "availability_first_x402",
-      "topics": ["conflict_geopolitics", "sanctions_restrictions", "political_governance", "trade_corridor", "hot_topics", "risk_gate", "risk_object"],
-      "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
-      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
-      "execution_authorized": false
-    },
-    {
-      "id": "macro",
-      "access": "availability_first_x402",
-      "topics": ["macro_risk", "fx_external_risk", "sovereign_risk", "banking_financial_system", "energy_commodities", "food_agriculture", "natural_hazards"],
-      "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
-      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
-      "execution_authorized": false
-    },
-    {
-      "id": "critical_minerals",
-      "access": "availability_first_x402",
-      "topics": ["critical_minerals", "trade_corridor", "energy_commodities", "hot_topics"],
-      "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
-      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
-      "execution_authorized": false
-    },
-    {
-      "id": "deliverability_preflight",
-      "access": "no_charge",
+      "id": "risk_preflight",
+      "access": "paid_private_pilot_or_nonproduction_agent_commerce",
       "method": "POST",
-      "endpoint": "https://geomacro.live/api/x402/risk/availability",
       "content_type": "application/json",
-      "payment_performed": false,
+      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+      "execution_authorized": false
+    },
+    {
+      "id": "adaptive_risk_intelligence",
+      "access": "prelaunch_x402_or_provider_sandbox",
+      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+      "topics": ["sovereign_risk", "macro_risk", "fx_external_risk", "sanctions_restrictions", "conflict_geopolitics", "trade_corridor", "energy_commodities", "critical_minerals", "political_governance", "banking_financial_system", "food_agriculture", "natural_hazards", "hot_topics", "risk_gate", "risk_object", "gri_context"],
+      "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
+      "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
+      "content_type": "application/json",
       "execution_authorized": false
     }
   ],
   "grounding": {
     "stored_geomacro_intelligence": true,
     "current_public_risk_indices": true,
+    "canonical_public_gri": true,
     "signed_risk_objects": true,
     "commercial_source_eligibility_required_for_paid_delivery": true,
     "freshness_policy_required_for_paid_delivery": true,
-    "external_web_search_for_paid_delivery": false,
+    "external_web_search": false,
     "synthetic_fallback_score": false
   },
   "delivery": {
@@ -84,10 +67,11 @@
     "payment_after_deliverability_only": true,
     "replay_protection": true,
     "stale_or_incomplete_is_not_payable": true,
-    "testnet_first": true,
     "production_funds_authorized": false
   },
   "boundaries": {
+    "free_api_access": false,
+    "free_structured_download": false,
     "financial_advice": false,
     "legal_advice": false,
     "autonomous_execution": false,
@@ -95,7 +79,9 @@
     "transaction_signing": false,
     "sanctions_screening_replacement": false,
     "counterparty_due_diligence_replacement": false,
+    "raw_data_delivery": false,
     "raw_private_warehouse_delivery": false,
+    "full_physical_route_or_vessel_model": false,
     "execution_authorized": false
   },
   "promotion": {
@@ -108,10 +94,23 @@
     "preferred_free_surfaces": ["a2a_agent_card", "x402_bazaar_metadata", "github", "llms_txt", "openapi", "free_agent_directories"]
   },
   "commercial": {
-    "launch_state": "testnet_prelaunch",
+    "launch_state": "prelaunch",
     "production_funds_authorized": false,
+    "structured_data_registry_version": "structured-entitlements-v1.0.0",
+    "credit_contract_version": "credits-v1.1.0",
+    "free_web": "public_website_dashboard_only",
+    "public_api": "not_available",
+    "public_structured_data_download": "not_available",
+    "commercial_structured_api": "/api/commercial/structural",
+    "risk_api": "paid_private_pilot",
+    "institutional_sla": "not_generally_available",
+    "price_source": "authoritative_payment_challenge_or_provider_plan",
+    "launch_cohort": ["coinbase_x402", "circle_gateway_x402", "nevermined"],
+    "deferred_providers": {
+      "goat_x402_mainnet": "manual_merchant_application_and_approval_required"
+    },
     "mainnet_activation_requires_explicit_owner_authorization": true,
-    "price_source": "authoritative_runtime_payment_challenge",
-    "testnet_or_sandbox_is_revenue": false
+    "testnet_or_sandbox_is_revenue": false,
+    "automatic_public_marketing": false
   }
 }
