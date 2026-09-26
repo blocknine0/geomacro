@@ -318,7 +318,7 @@ async function main() {
   });
 
   const report = {
-    schema_version: "geomacro-global-country-remediation-v2",
+    schema_version: "geomacro-global-country-remediation-v1",
     generated_at: generatedAt,
     denominator: countries.length,
     paid_ready_country_count: countryStates.length - failClosed.length,
