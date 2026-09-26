@@ -729,6 +729,7 @@ Deno.serve(async request => {
   let corroborating = 0
   let unverified = 0
   let edgesWritten = 0
+  const candidateDiagnostics: Record<string, unknown>[] = []
 
   for (const flash of candidateFlashes) {
     const primaryCountries = countryByFlash.get(flash.flash_id) ?? new Set<string>()
@@ -742,28 +743,40 @@ Deno.serve(async request => {
     const corroboratingFamilies = new Set<string>()
     let maxSimilarity = 0
     let countryAgreement = false
+    let independentPeers = 0
+    let peerTimeRejections = 0
+    let peerCountryMismatches = 0
+    let bestPeerSimilarityInTime = 0
+    let structuredTimeRejections = 0
+    let bestStructuredSimilarityInTime = 0
 
     for (const other of flashes) {
       if (other.flash_id === flash.flash_id) continue
 
       const otherFamily = flashFamily(other)
       if (otherFamily === primaryFamily) continue
+      independentPeers += 1
 
       const delta = secondsBetween(
         primaryTime,
         other.published_at ?? other.ingested_at,
       )
 
-      if (delta === null || delta > 3600) continue
+      if (delta === null || delta > 3600) {
+        peerTimeRejections += 1
+        continue
+      }
 
       const otherCountries = countryByFlash.get(other.flash_id) ?? new Set<string>()
       const countryOverlap = overlaps(primaryCountries, otherCountries)
+      if (!countryOverlap) peerCountryMismatches += 1
       const score = similarity(
         primaryText,
         SIGNAL_DB_MODE
           ? `${other.headline ?? ""}`
           : `${other.headline ?? ""} ${other.body ?? ""}`,
       )
+      bestPeerSimilarityInTime = Math.max(bestPeerSimilarityInTime, score)
 
       if (!((countryOverlap && score >= 0.34) || score >= 0.58)) continue
 
@@ -799,7 +812,10 @@ Deno.serve(async request => {
         event.last_seen_at ?? event.first_seen_at,
       )
 
-      if (delta === null || delta > 5400) continue
+      if (delta === null || delta > 5400) {
+        structuredTimeRejections += 1
+        continue
+      }
 
       const countryOverlap = overlaps(
         primaryCountries,
@@ -810,6 +826,7 @@ Deno.serve(async request => {
         primaryText,
         `${event.title ?? ""} ${event.summary ?? ""}`,
       )
+      bestStructuredSimilarityInTime = Math.max(bestStructuredSimilarityInTime, score)
 
       if (!((countryOverlap && score >= 0.30) || score >= 0.55)) continue
 
@@ -923,6 +940,27 @@ Deno.serve(async request => {
     ) {
       nextStatus = "CORROBORATING"
       reason = "Independent matching evidence found; verification threshold not yet met"
+    }
+
+    // Bounded country-only operational evidence. No article bodies, credentials,
+    // or raw provider payloads are returned. These counters never affect admission.
+    if (requestedCountryIso3) {
+      candidateDiagnostics.push({
+        flash_id: flash.flash_id,
+        source_id: flash.source_id,
+        source_time: primaryTime,
+        source_time_basis: flash.published_at ? "published_at" : "ingested_at",
+        country_count: primaryCountries.size,
+        independent_peers: independentPeers,
+        peer_time_rejections: peerTimeRejections,
+        peer_country_mismatches_in_time: peerCountryMismatches,
+        best_peer_similarity_in_time: Number(bestPeerSimilarityInTime.toFixed(5)),
+        structured_time_rejections: structuredTimeRejections,
+        best_structured_similarity_in_time: Number(bestStructuredSimilarityInTime.toFixed(5)),
+        corroborating_source_families: [...corroboratingFamilies].sort(),
+        verification_score: Number(verificationScore.toFixed(3)),
+        result: nextStatus,
+      })
     }
 
     const updateResult = await db
@@ -1200,5 +1238,9 @@ Deno.serve(async request => {
     structured_scope: requestedCountryIso3
       ? "country"
       : "global",
+    ...(requestedCountryIso3 ? {
+      diagnostics_version: "corroboration-diagnostics-v1",
+      candidate_diagnostics: candidateDiagnostics,
+    } : {}),
   })
 })
