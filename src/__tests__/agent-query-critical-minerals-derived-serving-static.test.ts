@@ -9,6 +9,7 @@ describe("critical-minerals adaptive derived serving", () => {
   it("keeps the USGS customer boundary derived-only", () => {
     expect(loader).toContain('delivery_boundary: "DERIVED_ONLY"');
     expect(loader).toContain("raw_payload_allowed: false");
+    expect(loader).toContain("raw_redistribution_allowed");
     expect(loader).not.toContain("value_numeric");
     expect(response).toContain("raw_numeric_source_rows_redistributed: false");
     expect(response).toContain("risk_score_produced: false");
