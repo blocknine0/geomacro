@@ -54,8 +54,8 @@ jobs:
           response.write_text(text)
       - name: Run focused agent tests
         run: |
-          bun test src/lib/agent-query-deliverability.server.test.ts
-          bun test src/lib/agent-query-response.server.test.ts || true
+          bunx vitest run src/lib/agent-query-deliverability.server.test.ts
+          bunx vitest run src/lib/agent-query-response.server.test.ts || true
           bun run build
       - name: Commit generated patch
         shell: bash
