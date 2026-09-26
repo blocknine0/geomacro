@@ -75,10 +75,11 @@ jobs:
           GLOBAL_RISK_GATE_CENSUS_OUTPUT=/tmp/global-risk-gate-country-census.json \
             bun scripts/global-risk-gate-country-census.ts >/tmp/global-risk-gate-country-census.stdout.json
           jq -e '
-            .schema_version == "geomacro-global-risk-gate-country-census-2.0" and
+            .schema_version == "geomacro-global-risk-gate-country-census-2.1" and
             .claim_boundary.country_review_readiness_only == true and
             .claim_boundary.all_action_classes_not_implied == true and
             .claim_boundary.missing_or_unverified_input_fails_closed == true and
+            .claim_boundary.source_state_diagnostics_exclude_credentials_and_raw_payloads == true and
             .claim_boundary.execution_authorized_is_false == true
           ' /tmp/global-risk-gate-country-census.json >/dev/null
 
@@ -108,6 +109,7 @@ jobs:
                 generated_at,
                 denominator,
                 required_country_modules,
+                governed_source_state,
                 summary,
                 claim_boundary
               }' /tmp/global-risk-gate-country-census.json
