@@ -1,0 +1,128 @@
+name: Global Country Readiness Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "25 * * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/global-country-readiness-audit.yml"
+      - "scripts/audit-global-country-remediation.ts"
+      - "scripts/global-risk-gate-country-census.ts"
+      - "src/lib/risk-gate-v2-**"
+      - "src/lib/country-risk-**"
+      - "src/lib/risk-object-**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-global-country-readiness-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate audit runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY; do
+            test -n "${!name:-}" || { echo "::error::$name is missing"; exit 1; }
+          done
+
+      - name: Run CANONICAL remediation audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          GLOBAL_REMEDIATION_AUDIT_OUTPUT=/tmp/global-country-remediation.json \
+            bun scripts/audit-global-country-remediation.ts >/tmp/global-country-remediation.stdout.json
+          jq -e '
+            .schema_version == "geomacro-global-country-remediation-v1" and
+            .boundaries.raw_source_urls_emitted == false and
+            .boundaries.raw_source_material_emitted == false and
+            .boundaries.payment_performed == false and
+            .boundaries.execution_authorized == false
+          ' /tmp/global-country-remediation.json >/dev/null
+
+      - name: Run four-module Risk Gate country census
+        shell: bash
+        run: |
+          set -euo pipefail
+          GLOBAL_RISK_GATE_CENSUS_OUTPUT=/tmp/global-risk-gate-country-census.json \
+            bun scripts/global-risk-gate-country-census.ts >/tmp/global-risk-gate-country-census.stdout.json
+          jq -e '
+            .schema_version == "geomacro-global-risk-gate-country-census-2.0" and
+            .claim_boundary.country_review_readiness_only == true and
+            .claim_boundary.all_action_classes_not_implied == true and
+            .claim_boundary.missing_or_unverified_input_fails_closed == true and
+            .claim_boundary.execution_authorized_is_false == true
+          ' /tmp/global-risk-gate-country-census.json >/dev/null
+
+      - name: Publish sanitized readiness summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Global country readiness"
+            echo
+            if [ -s /tmp/global-country-remediation.json ]; then
+              jq '{
+                generated_at,
+                denominator,
+                paid_ready_country_count,
+                fail_closed_country_count,
+                summary
+              }' /tmp/global-country-remediation.json
+            else
+              echo "CANONICAL remediation audit did not produce a report."
+            fi
+            echo
+            echo "## Four-module Risk Gate census"
+            echo
+            if [ -s /tmp/global-risk-gate-country-census.json ]; then
+              jq '{
+                generated_at,
+                denominator,
+                required_country_modules,
+                summary,
+                claim_boundary
+              }' /tmp/global-risk-gate-country-census.json
+            else
+              echo "Risk Gate country census did not produce a report."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized country readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-country-readiness-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            /tmp/global-country-remediation.json
+            /tmp/global-risk-gate-country-census.json
