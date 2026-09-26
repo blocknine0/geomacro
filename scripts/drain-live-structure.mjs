@@ -18,6 +18,17 @@ if (!APP_SUPABASE_URL || !LIVE_STRUCTURE_TOKEN) {
 
 const endpoint = APP_SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/live-structure-intelligence";
 
+function fragmentIdsFromFilePayload(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.fragment_ids)) return raw.fragment_ids;
+  if (Array.isArray(raw?.sources)) {
+    return raw.sources
+      .map((source) => source?.fragment_id)
+      .filter(Boolean);
+  }
+  return [];
+}
+
 async function post(body) {
   let lastError = null;
   for (let attempt = 1; attempt <= RETRIES; attempt += 1) {
@@ -49,11 +60,7 @@ async function main() {
 
   if (IDS_FILE) {
     const raw = JSON.parse(await readFile(IDS_FILE, "utf8"));
-    const ids = Array.isArray(raw)
-      ? raw
-      : Array.isArray(raw?.fragment_ids)
-        ? raw.fragment_ids
-        : [];
+    const ids = fragmentIdsFromFilePayload(raw);
     const uniqueIds = [...new Set(ids.map(String).filter(Boolean))];
     for (let offset = 0; offset < uniqueIds.length; offset += CONCURRENCY) {
       const batch = uniqueIds.slice(offset, offset + CONCURRENCY);
