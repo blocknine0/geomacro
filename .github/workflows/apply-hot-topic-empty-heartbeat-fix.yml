@@ -1,0 +1,51 @@
+name: Apply Hot Topic Empty Cycle Heartbeat Fix
+
+on:
+  push:
+    branches:
+      - fix/hot-topic-empty-cycle-heartbeat
+    paths:
+      - ".github/workflows/apply-hot-topic-empty-heartbeat-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/hot-topic-empty-cycle-heartbeat
+          fetch-depth: 0
+
+      - name: Patch successful empty-cycle cursor heartbeat
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/sync-open-live-source-mesh.mjs")
+          text = path.read_text()
+          old = '''    await supabase.from("live_ingestion_runs").insert({\n      source_key: source.source_key,\n      stream_key: source.stream_key,\n      started_at: now,\n      finished_at: new Date().toISOString(),\n      status: "empty",\n      window_start: source.period_start,\n      window_end: source.period_end,\n      items_seen: candidates.length,\n      items_accepted: 0,\n      items_duplicate: candidates.length,\n      items_rejected: 0,\n      metrics: { reason: "all_duplicates" },\n    });\n    return { accepted: 0, fragment_id: null };\n'''
+          new = '''    const { error: emptyRunError } = await supabase.from("live_ingestion_runs").insert({\n      source_key: source.source_key,\n      stream_key: source.stream_key,\n      started_at: now,\n      finished_at: new Date().toISOString(),\n      status: "empty",\n      window_start: source.period_start,\n      window_end: source.period_end,\n      items_seen: candidates.length,\n      items_accepted: 0,\n      items_duplicate: candidates.length,\n      items_rejected: 0,\n      metrics: { reason: "all_duplicates" },\n    });\n    if (emptyRunError) throw emptyRunError;\n\n    // A successful poll with no new unique records is still a healthy source\n    // cycle. Refresh the cursor heartbeat so hot-topic availability measures\n    // transport health rather than whether the source happened to emit a new\n    // event during this poll. Preserve last_item_at by omitting it here.\n    const { error: emptyCursorError } = await supabase\n      .from("live_ingestion_cursors")\n      .upsert({\n        source_key: source.source_key,\n        stream_key: source.stream_key,\n        cursor: { last_period_end: source.period_end },\n        status: "healthy",\n        last_attempt_at: now,\n        last_success_at: now,\n        consecutive_failures: 0,\n        updated_at: now,\n      }, { onConflict: "source_key,stream_key" });\n    if (emptyCursorError) throw emptyCursorError;\n\n    return { accepted: 0, fragment_id: null };\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one empty-cycle marker, found {text.count(old)}")
+          path.write_text(text.replace(old, new, 1))
+
+          test = Path("src/__tests__/hot-topic-empty-cycle-heartbeat-static.test.ts")
+          test.write_text('''import fs from "node:fs";\nimport { describe, expect, it } from "vitest";\n\nconst mesh = fs.readFileSync("scripts/sync-open-live-source-mesh.mjs", "utf8");\n\ndescribe("open live source mesh empty-cycle heartbeat", () => {\n  it("marks a successful duplicate-only poll healthy before returning", () => {\n    const emptyBranch = mesh.slice(\n      mesh.indexOf('if (!accepted.length)'),\n      mesh.indexOf('const payload = Buffer.from'),\n    );\n    expect(emptyBranch).toContain('status: "healthy"');\n    expect(emptyBranch).toContain('last_success_at: now');\n    expect(emptyBranch).toContain('consecutive_failures: 0');\n    expect(emptyBranch).toContain('onConflict: "source_key,stream_key"');\n  });\n\n  it("does not fabricate a new last item timestamp on an empty cycle", () => {\n    const emptyBranch = mesh.slice(\n      mesh.indexOf('if (!accepted.length)'),\n      mesh.indexOf('const payload = Buffer.from'),\n    );\n    expect(emptyBranch).not.toContain('last_item_at:');\n  });\n});\n''')
+          PY
+
+      - name: Remove one-time patch workflow
+        run: git rm .github/workflows/apply-hot-topic-empty-heartbeat-fix.yml
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/sync-open-live-source-mesh.mjs src/__tests__/hot-topic-empty-cycle-heartbeat-static.test.ts
+          git commit -m "Keep hot-topic source heartbeat fresh on empty cycles"
+          git push origin HEAD:fix/hot-topic-empty-cycle-heartbeat
