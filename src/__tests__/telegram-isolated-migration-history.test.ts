@@ -13,9 +13,11 @@ describe("Telegram isolated migration history", () => {
     expect(helper).toContain("production migrations 952+ are never copied")
   })
 
-  it("does not repair or rewrite remote migration history", () => {
+  it("uses canonical Supabase project layout without repairing remote history", () => {
     expect(helper).not.toContain("migration repair")
     expect(helper).not.toContain("reverted")
-    expect(helper).not.toContain("supabase/migrations")
+    expect(helper).toContain('const TARGET_SUPABASE = path.join(TARGET_DIR, "supabase")')
+    expect(helper).toContain('const TARGET_MIGRATIONS = path.join(TARGET_SUPABASE, "migrations")')
+    expect(helper).toContain('path.join(TARGET_SUPABASE, "config.toml")')
   })
 })
