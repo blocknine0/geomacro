@@ -61,6 +61,12 @@ if (generated.some((name) => /^95[2-9]_/.test(name))) {
   throw new Error("Authoritative production migration >=952 leaked into prepared isolated workdir")
 }
 
+// Supabase --workdir expects a standard project root containing supabase/config.toml
+// and supabase/migrations. Keep root-level compatibility links only for existing
+// CI assertions; the CLI consumes the nested canonical layout above.
+fs.symlinkSync(path.join("supabase", "migrations"), path.join(TARGET_DIR, "migrations"), "dir")
+fs.copyFileSync(path.join(TARGET_SUPABASE, "config.toml"), path.join(TARGET_DIR, "config.toml"))
+
 console.log(JSON.stringify({
   target_dir: TARGET_DIR,
   supabase_dir: TARGET_SUPABASE,
