@@ -11,6 +11,7 @@ on:
       - ".github/workflows/global-country-readiness-audit.yml"
       - "scripts/audit-global-country-remediation.ts"
       - "scripts/global-risk-gate-country-census.ts"
+      - "scripts/audit-geopolitical-production-diagnostics.ts"
       - "src/lib/risk-gate-v2-**"
       - "src/lib/country-risk-**"
       - "src/lib/risk-object-**"
@@ -83,6 +84,22 @@ jobs:
             .claim_boundary.execution_authorized_is_false == true
           ' /tmp/global-risk-gate-country-census.json >/dev/null
 
+      - name: Run geopolitical production diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          GEOPOLITICAL_PRODUCTION_DIAGNOSTICS_OUTPUT=/tmp/geopolitical-production-diagnostics.json \
+            bun scripts/audit-geopolitical-production-diagnostics.ts >/tmp/geopolitical-production-diagnostics.stdout.json
+          jq -e '
+            .schema_version == "geomacro-geopolitical-production-diagnostics-1.0" and
+            .writes_performed == false and
+            .raw_event_material_included == false and
+            .interpretation_boundary.diagnostic_only == true and
+            .interpretation_boundary.event_text_or_publisher_material_redistributed == false and
+            .interpretation_boundary.source_rights_changed == false and
+            .interpretation_boundary.scoring_changed == false
+          ' /tmp/geopolitical-production-diagnostics.json >/dev/null
+
       - name: Publish sanitized readiness summary
         if: always()
         shell: bash
@@ -116,6 +133,21 @@ jobs:
             else
               echo "Risk Gate country census did not produce a report."
             fi
+            echo
+            echo "## Geopolitical module diagnostics"
+            echo
+            if [ -s /tmp/geopolitical-production-diagnostics.json ]; then
+              jq '{
+                generated_at,
+                sovereign_denominator,
+                release_manifest,
+                release_window,
+                summary,
+                interpretation_boundary
+              }' /tmp/geopolitical-production-diagnostics.json
+            else
+              echo "Geopolitical diagnostics did not produce a report."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload sanitized country readiness evidence
@@ -128,3 +160,4 @@ jobs:
           path: |
             /tmp/global-country-remediation.json
             /tmp/global-risk-gate-country-census.json
+            /tmp/geopolitical-production-diagnostics.json
