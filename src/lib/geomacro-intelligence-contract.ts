@@ -78,6 +78,115 @@ export type PublicStructuralDevelopment = {
   delivery_boundary: "STRUCTURED_DERIVED_INTELLIGENCE_ONLY";
 };
 
+
+function isSha256(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Runtime delivery contract for the paid adaptive intelligence product.
+ *
+ * This validator intentionally checks the commercial boundary and structural
+ * machine contract, not every optional research field. It runs before any
+ * provider settlement so a malformed product can never become a successful
+ * paid delivery.
+ */
+export function assertGeomacroIntelligenceResponseContract(payload: unknown): asserts payload is Record<string, unknown> {
+  if (!isRecord(payload)) throw new Error("INTELLIGENCE_RESPONSE_NOT_OBJECT");
+  if (payload.schema_version !== GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA) {
+    throw new Error("INTELLIGENCE_RESPONSE_SCHEMA_VERSION_MISMATCH");
+  }
+  if (payload.product !== GEOMACRO_INTELLIGENCE_PRODUCT_ID) {
+    throw new Error("INTELLIGENCE_RESPONSE_PRODUCT_MISMATCH");
+  }
+  if (typeof payload.request_id !== "string" || payload.request_id.length < 8) {
+    throw new Error("INTELLIGENCE_RESPONSE_REQUEST_ID_MISSING");
+  }
+  if (!isSha256(payload.query_plan_hash)) {
+    throw new Error("INTELLIGENCE_RESPONSE_QUERY_PLAN_HASH_INVALID");
+  }
+  if (!Array.isArray(payload.subjects) || payload.subjects.length < 1 || payload.subjects.length > 25) {
+    throw new Error("INTELLIGENCE_RESPONSE_SUBJECTS_INVALID");
+  }
+
+  for (const field of [
+    "question_interpretation",
+    "analysis",
+    "structural",
+    "hot_topics",
+    "risk_gate",
+    "signed_risk_objects",
+    "gri_context",
+    "current_state",
+    "answer",
+    "methodology",
+    "limitations",
+  ]) {
+    if (field === "gri_context" && payload[field] === null) continue;
+    if (!isRecord(payload[field]) && !Array.isArray(payload[field])) {
+      throw new Error(`INTELLIGENCE_RESPONSE_FIELD_INVALID:${field}`);
+    }
+  }
+
+  if (payload.execution_authorized !== false) {
+    throw new Error("INTELLIGENCE_RESPONSE_EXECUTION_BOUNDARY_VIOLATION");
+  }
+  if (!isSha256(payload.delivered_product_hash)) {
+    throw new Error("INTELLIGENCE_RESPONSE_PRODUCT_HASH_INVALID");
+  }
+  const { delivered_product_hash: deliveredProductHash, ...responseWithoutProductHash } = payload;
+  if (computeGeomacroIntelligenceProductHash(responseWithoutProductHash) !== deliveredProductHash) {
+    throw new Error("INTELLIGENCE_RESPONSE_PRODUCT_HASH_MISMATCH");
+  }
+
+  if (!Array.isArray(payload.risk_gate)) throw new Error("INTELLIGENCE_RESPONSE_RISK_GATE_INVALID");
+  for (const row of payload.risk_gate) {
+    if (!isRecord(row)) throw new Error("INTELLIGENCE_RESPONSE_RISK_GATE_ROW_INVALID");
+    const result = row.result;
+    if (!isRecord(result)) throw new Error("INTELLIGENCE_RESPONSE_RISK_GATE_RESULT_MISSING");
+    const context = result.context;
+    const response = result.response;
+    if (isRecord(context) && context.execution_authorized !== false) {
+      throw new Error("INTELLIGENCE_RESPONSE_RISK_GATE_CONTEXT_EXECUTION_VIOLATION");
+    }
+    if (isRecord(response) && response.execution_authorized !== false) {
+      throw new Error("INTELLIGENCE_RESPONSE_RISK_GATE_RESPONSE_EXECUTION_VIOLATION");
+    }
+  }
+
+  if (!Array.isArray(payload.signed_risk_objects)) {
+    throw new Error("INTELLIGENCE_RESPONSE_SIGNED_OBJECTS_INVALID");
+  }
+  for (const row of payload.signed_risk_objects) {
+    if (!isRecord(row)) throw new Error("INTELLIGENCE_RESPONSE_SIGNED_OBJECT_ROW_INVALID");
+    if (!isRecord(row.object)) throw new Error("INTELLIGENCE_RESPONSE_SIGNED_OBJECT_ATTESTATION_MISSING");
+    const object = row.object;
+    if (typeof object.risk_object_id !== "string" || object.risk_object_id.length < 1) {
+      throw new Error("INTELLIGENCE_RESPONSE_RISK_OBJECT_ID_MISSING");
+    }
+    if (!isRecord(object.verification) || object.verification.status !== "VERIFIED") {
+      throw new Error("INTELLIGENCE_RESPONSE_RISK_OBJECT_VERIFICATION_INVALID");
+    }
+    if (object.delivery_boundary !== "SIGNED_RISK_OBJECT_ATTESTATION_ONLY") {
+      throw new Error("INTELLIGENCE_RESPONSE_RISK_OBJECT_DELIVERY_BOUNDARY_INVALID");
+    }
+    if (!isRecord(object.integrity) || !isSha256(object.integrity.payload_hash)) {
+      throw new Error("INTELLIGENCE_RESPONSE_RISK_OBJECT_PAYLOAD_HASH_INVALID");
+    }
+  }
+
+  if (!isRecord(payload.limitations) || payload.limitations.execution_authorized !== false) {
+    throw new Error("INTELLIGENCE_RESPONSE_LIMITATIONS_EXECUTION_BOUNDARY_INVALID");
+  }
+  if (!isRecord(payload.methodology) || payload.methodology.response_schema_version !== GEOMACRO_INTELLIGENCE_RESPONSE_SCHEMA) {
+    throw new Error("INTELLIGENCE_RESPONSE_METHODOLOGY_CONTRACT_INVALID");
+  }
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === "object") {
@@ -94,6 +203,12 @@ function sha256(value: unknown) {
   return createHash("sha256")
     .update(JSON.stringify(canonicalize(value)), "utf8")
     .digest("hex");
+}
+
+export function computeGeomacroIntelligenceProductHash(
+  payloadWithoutProductHash: unknown,
+) {
+  return sha256(payloadWithoutProductHash);
 }
 
 function ageSeconds(value: string | null, asOf: string) {
