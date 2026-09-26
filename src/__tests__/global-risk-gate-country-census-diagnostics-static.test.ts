@@ -13,6 +13,9 @@ describe("global Risk Gate country census diagnostics", () => {
     expect(census).toContain("module_errors");
     expect(census).toContain("module_ready_country_counts");
     expect(census).toContain("module_error_country_counts");
+    expect(census).toContain("missing_country_iso3_by_module");
+    expect(census).toContain("unverified_country_iso3_by_module");
+    expect(census).toContain("module_error_reason_counts");
     expect(census).toContain("moduleErrors.geopolitical_security");
     expect(census).toContain("moduleErrors.political_governance");
     expect(census).toContain("moduleErrors.sovereign_fiscal");
@@ -32,10 +35,10 @@ describe("global Risk Gate country census diagnostics", () => {
   });
 
   it("keeps the audit fail-closed and updates the versioned report contract", () => {
-    expect(census).toContain('schema_version: "geomacro-global-risk-gate-country-census-2.1"');
+    expect(census).toContain('schema_version: "geomacro-global-risk-gate-country-census-2.2"');
     expect(census).toContain("missing_or_unverified_input_fails_closed: true");
     expect(census).toContain("execution_authorized_is_false: true");
-    expect(workflow).toContain("geomacro-global-risk-gate-country-census-2.1");
+    expect(workflow).toContain("geomacro-global-risk-gate-country-census-2.2");
     expect(workflow).toContain("source_state_diagnostics_exclude_credentials_and_raw_payloads");
   });
 });
