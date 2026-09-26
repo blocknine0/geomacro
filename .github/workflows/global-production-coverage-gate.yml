@@ -4,9 +4,11 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/refresh-global-canonical-risk-objects.ts"
       - "scripts/audit-global-production-coverage.mjs"
       - "scripts/audit-source-certification-census.mjs"
       - "scripts/audit-hot-topic-family-readiness.ts"
+      - "scripts/agentic/verify-live-x402-prelaunch-availability.mjs"
       - "src/lib/hot-topic-taxonomy.ts"
       - "supabase/migrations/**"
       - ".github/workflows/global-production-coverage-gate.yml"
@@ -17,10 +19,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: geomacro-global-commercial-readiness
+  cancel-in-progress: false
+
 jobs:
   production-coverage:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -28,9 +34,15 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+      GLOBAL_CANONICAL_REFRESH_OUTPUT: artifacts/global-production-coverage/canonical-risk-objects.json
+      GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR: "190"
+      GLOBAL_CANONICAL_MIN_READY: "100"
       GLOBAL_COVERAGE_AUDIT_OUTPUT: artifacts/global-production-coverage/coverage.json
       HOT_TOPIC_FAMILY_READINESS_OUTPUT: artifacts/global-production-coverage/hot-topic-family-readiness.json
+
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -50,7 +62,34 @@ jobs:
           set -euo pipefail
           test -n "${APP_SUPABASE_URL:-}"
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${RISK_OBJECT_SIGNING_KEY_ID:-}"
+          test -n "${RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:-}"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+
+      - name: Refresh every enabled sovereign CANONICAL Risk Object
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/global-production-coverage
+          set +e
+          bun scripts/refresh-global-canonical-risk-objects.ts
+          refresh_status=$?
+          set -e
+          jq -e '
+            .schema_version == "geomacro-global-canonical-refresh-v1"
+            and .boundaries.all_enabled_sovereigns_evaluated == true
+            and .boundaries.payment_not_performed_by_refresh == true
+            and .boundaries.raw_source_material_emitted == false
+            and .boundaries.raw_exception_messages_emitted == false
+            and .boundaries.execution_authorized == false
+            and .denominator.count >= 190
+          ' "$GLOBAL_CANONICAL_REFRESH_OUTPUT" >/dev/null
+          if [ "$refresh_status" -ne 0 ]; then
+            echo "Global CANONICAL refresh completed fail-closed with status ${refresh_status}."
+            jq '{denominator,summary,failure_summary,boundaries}' "$GLOBAL_CANONICAL_REFRESH_OUTPUT"
+            exit "$refresh_status"
+          fi
+          jq -e '.summary.ready_floor_met == true' "$GLOBAL_CANONICAL_REFRESH_OUTPUT" >/dev/null
 
       - name: Self-heal GDELT GAL freshness before coverage gate
         shell: bash
@@ -93,6 +132,9 @@ jobs:
 
       - name: Enforce structural global coverage readiness
         run: bun run coverage:global:strict
+
+      - name: Verify live x402 no-charge safety across representative surfaces
+        run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
       - name: Upload permanent coverage evidence
         if: always()
