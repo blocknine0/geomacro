@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  "supabase/isolated-signal/migrations/954_telegram_authorized_publisher_only.sql",
+  "supabase/isolated-signal/migrations/984_telegram_authorized_publisher_only.sql",
   "utf8",
 );
 

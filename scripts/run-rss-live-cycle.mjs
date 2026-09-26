@@ -17,7 +17,13 @@ function runWorker() {
   return new Promise((resolve) => {
     const child = spawn("python", ["worker.py"], {
       cwd: "workers/telegram-flash",
-      env: process.env,
+      env: {
+        ...process.env,
+        // Public Telegram MTProto is forbidden in the production RSS cycle.
+        // Publisher-authorized Telegram submissions use the isolated push path.
+        TELEGRAM_ENABLED: "false",
+        TELEGRAM_CHANNELS: "",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";

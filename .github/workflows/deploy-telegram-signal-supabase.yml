@@ -15,14 +15,10 @@ on:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
       - "supabase/functions/live-flash-archive/**"
-      - "supabase/isolated-signal/config.toml"
-      - "supabase/isolated-signal/migrations/954_telegram_authorized_publisher_only.sql"
-      - "supabase/isolated-signal/migrations/953_event_family_version_ledger.sql"
-      - "supabase/isolated-signal/migrations/952_realtime_flash_event_lifecycle.sql"
-      - "supabase/isolated-signal/migrations/951_telegram_signal_compact_storage.sql"
-      - "supabase/isolated-signal/migrations/950_telegram_signal_ingest_isolation.sql"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
+      - "supabase/isolated-signal/**"
+      - "workers/telegram-flash/**"
 
 permissions:
   contents: read
@@ -48,10 +44,12 @@ jobs:
           grep -q 'qogpagklwbfdmrgnrhzi' "$file"
           grep -q 'SIGNAL_DB_MODE' "$file"
           grep -q -- '--no-verify-jwt' "$file"
-          grep -q '954_telegram_authorized_publisher_only.sql' "$file"
+          grep -q '985_breaking_feed_registry_parity.sql' workers/telegram-flash/README.md
           grep -q 'live-flash-corroborate' "$file"
+          grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file"
+          grep -q 'numeric <= 951' "$file"
           ! grep -q 'ldpwajisioljyjtojvfx' "$file"
-          echo "PASS: Telegram signal deployment and keepalive remain isolated from authoritative production Supabase."
+          echo "PASS: Telegram signal deployment, keepalive, and migration reconciliation remain isolated from authoritative production Supabase."
 
   keepalive:
     if: ${{ github.event_name == 'schedule' }}
@@ -109,6 +107,9 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID }}
       SUPABASE_DB_PASSWORD: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_DB_PASSWORD }}
       FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
+      ISOLATED_WORKDIR: /tmp/geomacro-signal-supabase
+      # Legacy direct workdir marker retained for regression visibility only:
+      # SUPABASE_WORKDIR=supabase/isolated-signal
 
     steps:
       - name: Checkout repository
@@ -141,16 +142,51 @@ jobs:
         uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
           version: 2.117.0
+
+      - name: Prepare collision-free isolated migration workdir
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$ISOLATED_WORKDIR"
+          mkdir -p "$ISOLATED_WORKDIR/migrations"
+          cp supabase/isolated-signal/config.toml "$ISOLATED_WORKDIR/config.toml"
+
+          # The isolated project historically carries authoritative migration
+          # versions through 951. Mirror only those already-applied files so
+          # Supabase can reconcile history; authoritative 952+ must never be
+          # eligible for application to the signal database.
+          for file in supabase/migrations/*.sql; do
+            base="$(basename "$file")"
+            version="${base%%_*}"
+            if [[ "$version" =~ ^[0-9]+$ ]]; then
+              numeric=$((10#$version))
+              if (( numeric <= 951 )); then
+                cp "$file" "$ISOLATED_WORKDIR/migrations/$base"
+              fi
+            fi
+          done
+
+          cp supabase/isolated-signal/migrations/*.sql "$ISOLATED_WORKDIR/migrations/"
+
+          test -f "$ISOLATED_WORKDIR/migrations/980_telegram_signal_ingest_isolation.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/984_telegram_authorized_publisher_only.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/985_breaking_feed_registry_parity.sql"
+          if find "$ISOLATED_WORKDIR/migrations" -maxdepth 1 -type f -name '95[2-9]_*.sql' | grep -q .; then
+            echo "::error title=Unsafe migration boundary::Authoritative migration >=952 leaked into isolated workdir."
+            exit 1
+          fi
+          echo "PASS: isolated migration workdir contains remote-history reconciliation <=951 plus signal-only 980-985."
+
       - name: Link isolated signal project
-        run: SUPABASE_WORKDIR=supabase/isolated-signal supabase link --project-ref "$SUPABASE_PROJECT_ID"
+        run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Show pending database migrations
-        run: SUPABASE_WORKDIR=supabase/isolated-signal supabase db push --dry-run
+        run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase db push --dry-run
       - name: Stop after deployment plan
         if: ${{ inputs.mode == 'plan' }}
         run: echo "Plan completed. No signal-project database or function changes were applied."
       - name: Apply signal database migrations
         if: ${{ inputs.mode == 'apply' }}
-        run: SUPABASE_WORKDIR=supabase/isolated-signal supabase db push
+        run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase db push
       - name: Configure isolated function secrets
         if: ${{ inputs.mode == 'apply' }}
         run: |
