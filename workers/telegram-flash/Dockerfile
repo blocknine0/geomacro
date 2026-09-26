@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY worker.py ./
 COPY production_entrypoint.py ./
+COPY nws_alerts_loop.py ./
 COPY corroboration_loop.py ./
 COPY supervisor.py ./
 COPY archive_loop.py ./
