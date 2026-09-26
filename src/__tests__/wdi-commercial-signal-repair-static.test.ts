@@ -6,6 +6,11 @@ const migration = readFileSync(
   "utf8",
 );
 
+const updateSetClause =
+  migration.match(
+    /update public\.live_external_sources\s+set([\s\S]*?)where source_id = 'world_bank_indicators'/i,
+  )?.[1] ?? "";
+
 describe("World Bank WDI commercial-signal repair", () => {
   it("is scoped to the reviewed WDI source and its existing operational prerequisites", () => {
     expect(migration).toContain("source_id = 'world_bank_indicators'");
@@ -16,9 +21,11 @@ describe("World Bank WDI commercial-signal repair", () => {
   });
 
   it("does not manufacture rights or broaden raw-data permissions", () => {
-    expect(migration).not.toMatch(/set[\s\S]*commercial_usage_status\s*=/i);
-    expect(migration).not.toMatch(/set[\s\S]*raw_redistribution_allowed\s*=/i);
-    expect(migration).not.toMatch(/set[\s\S]*enabled_for_ingestion\s*=/i);
+    expect(updateSetClause).toContain("enabled_for_commercial_signals = true");
+    expect(updateSetClause).toContain("updated_at = now()");
+    expect(updateSetClause).not.toContain("commercial_usage_status");
+    expect(updateSetClause).not.toContain("raw_redistribution_allowed");
+    expect(updateSetClause).not.toContain("enabled_for_ingestion");
     expect(migration).not.toContain("insert into public.live_external_sources");
     expect(migration).not.toContain("delete from public.live_external_sources");
   });
