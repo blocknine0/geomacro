@@ -1,0 +1,36 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "Geomacro x402 Testnet Intelligence API", "version": "1.0.0-testnet", "description": "Structured, derived intelligence only. Raw source data is never delivered through this API."},
+  "servers": [{"url": "https://geomacro.live"}],
+  "paths": {
+    "/api/x402/intelligence": {
+      "post": {
+        "summary": "Buy structured Geomacro intelligence per call",
+        "description": "A deliverable unpaid request returns HTTP 402 with PAYMENT-REQUIRED. After valid x402 testnet payment, the same bound query returns structured derived intelligence.",
+        "responses": {
+          "200": {"description": "Paid structured intelligence response. execution_authorized is always false."},
+          "402": {"description": "Payment required after no-charge deliverability validation.", "headers": {"PAYMENT-REQUIRED": {"required": true, "schema": {"type": "string"}}}},
+          "422": {"description": "Not currently fully deliverable; no payment is accepted."},
+          "429": {"description": "Intentional rate limit"}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StructuredIntelligenceResponse": {
+        "type": "object",
+        "properties": {"execution_authorized": {"type": "boolean", "const": false}}
+      }
+    }
+  },
+  "x-geomacro": {
+    "environment": "testnet",
+    "domains": ["geopolitics", "macroeconomics", "critical_minerals"],
+    "raw_data_delivery": false,
+    "delivery_format": "structured-derived-intelligence-only",
+    "x402_version": 2,
+    "asset": "USDC",
+    "execution_authorized": false
+  }
+}
