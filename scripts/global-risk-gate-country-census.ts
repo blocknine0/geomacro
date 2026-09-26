@@ -247,6 +247,16 @@ async function evaluateCountry(
   };
 }
 
+function countReasons(values: Array<string | undefined>) {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const reason = String(value ?? "").trim();
+    if (!reason) continue;
+    counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+  return Object.fromEntries([...counts.entries()].sort((a, b) => b[1] - a[1]));
+}
+
 async function main() {
   const generatedAt = new Date().toISOString();
   const [countries, worldBankSource] = await Promise.all([
@@ -287,9 +297,27 @@ async function main() {
       results.filter((row) => row.module_errors[module]).length,
     ]),
   );
+  const missingCountryIso3ByModule = Object.fromEntries(
+    REQUIRED_MODULES.map((module) => [
+      module,
+      results.filter((row) => row.missing_modules.includes(module)).map((row) => row.iso3),
+    ]),
+  );
+  const unverifiedCountryIso3ByModule = Object.fromEntries(
+    REQUIRED_MODULES.map((module) => [
+      module,
+      results.filter((row) => row.unverified_modules.includes(module)).map((row) => row.iso3),
+    ]),
+  );
+  const moduleErrorReasonCounts = Object.fromEntries(
+    REQUIRED_MODULES.map((module) => [
+      module,
+      countReasons(results.map((row) => row.module_errors[module])),
+    ]),
+  );
 
   const report = {
-    schema_version: "geomacro-global-risk-gate-country-census-2.1",
+    schema_version: "geomacro-global-risk-gate-country-census-2.2",
     generated_at: generatedAt,
     denominator: {
       type: "enabled_sovereign_countries",
@@ -316,6 +344,9 @@ async function main() {
         : 0,
       module_ready_country_counts: moduleReadyCountryCounts,
       module_error_country_counts: moduleErrorCountryCounts,
+      missing_country_iso3_by_module: missingCountryIso3ByModule,
+      unverified_country_iso3_by_module: unverifiedCountryIso3ByModule,
+      module_error_reason_counts: moduleErrorReasonCounts,
     },
     claim_boundary: {
       country_review_readiness_only: true,
