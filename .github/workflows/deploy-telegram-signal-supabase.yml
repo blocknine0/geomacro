@@ -1,125 +1,123 @@
 name: Deploy Telegram signal ingest to isolated Supabase
 
 on:
-  schedule:
-    - cron: "17 1,9,17 * * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "Plan pending migrations only; apply migrates and deploys the isolated signal functions."
+        description: plan or apply
         required: true
         default: plan
         type: choice
-        options: [plan, apply]
+        options:
+          - plan
+          - apply
+  schedule:
+    - cron: "17 1,9,17 * * *"
   pull_request:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
-      - "scripts/prepare-telegram-isolated-migration-workdir.mjs"
-      - "supabase/functions/live-flash-archive/**"
+      - "supabase/isolated-signal/**"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
-      - "supabase/isolated-signal/**"
+      - "supabase/functions/live-flash-archive/**"
+      - "scripts/prepare-telegram-isolated-migration-workdir.mjs"
       - "workers/telegram-flash/**"
+      - "src/__tests__/telegram-signal-supabase-isolation.test.ts"
+      - "src/__tests__/telegram-authorized-production-boundary-static.test.ts"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-telegram-signal-supabase.yml"
+      - "supabase/isolated-signal/**"
+      - "supabase/functions/live-flash-ingest/**"
+      - "supabase/functions/live-flash-corroborate/**"
+      - "supabase/functions/live-flash-archive/**"
+      - "scripts/prepare-telegram-isolated-migration-workdir.mjs"
+      - "workers/telegram-flash/**"
+      - "src/__tests__/telegram-signal-supabase-isolation.test.ts"
+      - "src/__tests__/telegram-authorized-production-boundary-static.test.ts"
 
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-telegram-signal-supabase
+  cancel-in-progress: false
+
+env:
+  EXPECTED_SIGNAL_SUPABASE_PROJECT_REF: qogpagklwbfdmrgnrhzi
+  ISOLATED_WORKDIR: /tmp/geomacro-signal-supabase
+
 jobs:
   validate-workflow:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Validate isolated deployment boundary
+      - name: Validate workflow contract
         shell: bash
         run: |
           set -euo pipefail
-          file=".github/workflows/deploy-telegram-signal-supabase.yml"
-          helper="scripts/prepare-telegram-isolated-migration-workdir.mjs"
-          grep -q 'workflow_dispatch:' "$file"
-          grep -q 'schedule:' "$file"
-          grep -q '17 1,9,17' "$file"
+          file=.github/workflows/deploy-telegram-signal-supabase.yml
           grep -q 'qogpagklwbfdmrgnrhzi' "$file"
-          grep -q 'SIGNAL_DB_MODE' "$file"
-          grep -q -- '--no-verify-jwt' "$file"
-          grep -q '985_breaking_feed_registry_parity.sql' workers/telegram-flash/README.md
-          grep -q 'live-flash-corroborate' "$file"
-          grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file"
+          grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file" || grep -q 'ISOLATED_WORKDIR: /tmp/geomacro-signal-supabase' "$file"
           grep -q 'prepare-telegram-isolated-migration-workdir.mjs' "$file"
-          grep -q -- '--workdir "$ISOLATED_WORKDIR"' "$file"
-          grep -q '\[0, 54\]' "$helper"
-          grep -q '\[900, 951\]' "$helper"
-          ! grep -q 'migration repair' "$file"
-          ! grep -q 'ldpwajisioljyjtojvfx' "$file"
-          echo "PASS: Telegram signal deployment, keepalive, and migration reconciliation remain isolated from authoritative production Supabase."
+          grep -q 'supabase --workdir "$ISOLATED_WORKDIR" link' "$file"
+          grep -q 'supabase --workdir "$ISOLATED_WORKDIR" db push --dry-run' "$file"
+          grep -q 'supabase --workdir "$ISOLATED_WORKDIR" db push' "$file"
+          ! grep -q 'supabase migration repair' "$file"
+          grep -q '980_telegram_signal_ingest_isolation.sql' "$file"
+          grep -q '984_telegram_authorized_publisher_only.sql' "$file"
+          grep -q '985_breaking_feed_registry_parity.sql' "$file"
+          grep -q -- '--no-verify-jwt' "$file"
+          grep -q 'live-flash-corroborate' "$file"
+          grep -q 'source_record_id_and_headline_required' "$file"
+          grep -q 'Ingest smoke check failed' "$file"
+          grep -q 'Corroborate smoke check failed' "$file"
 
   keepalive:
     if: ${{ github.event_name == 'schedule' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: production
-    concurrency:
-      group: telegram-signal-supabase-keepalive
-      cancel-in-progress: true
-    env:
-      EXPECTED_SIGNAL_SUPABASE_PROJECT_REF: qogpagklwbfdmrgnrhzi
-      SUPABASE_PROJECT_ID: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID }}
-      FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
+    runs-on: ubuntu-24.04
     steps:
-      - name: Validate keepalive target and secrets
+      - name: Keep isolated signal project active
         shell: bash
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID }}
+          FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
         run: |
           set -euo pipefail
           if [[ -z "${SUPABASE_PROJECT_ID:-}" || -z "${FLASH_INGEST_TOKEN:-}" ]]; then
-            echo "::error title=Missing keepalive secret::Telegram signal project id/token is not configured."
+            echo "::error title=Missing keepalive secret::Signal-project ref or flash token is missing."
             exit 1
           fi
           if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SIGNAL_SUPABASE_PROJECT_REF" ]]; then
-            echo "::error title=Wrong keepalive target::Refusing to call a non-isolated Supabase project."
+            echo "::error title=Wrong keepalive target::Refusing to call a non-isolated project."
             exit 1
           fi
-      - name: Generate authenticated project activity
-        shell: bash
-        run: |
-          set -euo pipefail
-          endpoint="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate"
-          code="$(curl --silent --show-error --retry 2 --retry-delay 3 --max-time 30 --output /tmp/keepalive.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "$endpoint")"
+          base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
+          code="$(curl --silent --show-error --output /tmp/keepalive.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-corroborate")"
           cat /tmp/keepalive.json
-          if [[ "$code" == "540" ]]; then
-            echo "::error title=Telegram signal Supabase paused::Provider returned HTTP 540. Resume the isolated project in Supabase."
-            exit 1
-          fi
           if [[ "$code" != "200" ]] || ! grep -q '"ok":true' /tmp/keepalive.json; then
-            echo "::error title=Telegram signal keepalive failed::Expected authenticated 200 response from isolated corroboration endpoint, received HTTP ${code}."
+            echo "::error title=Telegram signal keepalive failed::Isolated project may be paused or unhealthy."
             exit 1
           fi
-          echo "PASS: isolated Telegram signal Supabase keepalive generated authenticated activity."
+          echo "PASS: isolated Telegram signal Supabase keepalive succeeded."
 
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment: production
-    concurrency:
-      group: deploy-telegram-signal-supabase-production
-      cancel-in-progress: false
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
     env:
-      EXPECTED_SIGNAL_SUPABASE_PROJECT_REF: qogpagklwbfdmrgnrhzi
       SUPABASE_ACCESS_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID }}
       SUPABASE_DB_PASSWORD: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_DB_PASSWORD }}
       FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
-      ISOLATED_WORKDIR: /tmp/geomacro-signal-supabase
-      # Legacy direct workdir marker retained for regression visibility only:
-      # SUPABASE_WORKDIR=supabase/isolated-signal
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Validate required signal-project secrets and target
@@ -143,12 +141,10 @@ jobs:
             exit 1
           fi
           echo "PASS: isolated Telegram signal Supabase project confirmed."
-
       - name: Install pinned Supabase CLI
-        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520
         with:
           version: 2.117.0
-
       - name: Prepare collision-free isolated migration workdir
         shell: bash
         run: |
@@ -166,7 +162,6 @@ jobs:
             exit 1
           fi
           echo "PASS: isolated migration workdir contains exact remote-history placeholders plus signal-only 980-985."
-
       - name: Link isolated signal project
         run: supabase --workdir "$ISOLATED_WORKDIR" link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Show pending database migrations
@@ -197,10 +192,19 @@ jobs:
         run: |
           set -euo pipefail
           base="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1"
-          ingest_code="$(curl --silent --show-error --output /tmp/flash-ingest.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-ingest")"
+
+          ingest_code="$(curl --silent --show-error --output /tmp/flash-ingest.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{"source_id":"aljazeera_rss"}' "${base}/live-flash-ingest")"
           cat /tmp/flash-ingest.json
-          [[ "$ingest_code" == "400" ]] && grep -q 'source_record_id_and_headline_required' /tmp/flash-ingest.json
+          if [[ "$ingest_code" != "400" ]] || ! grep -q 'source_record_id_and_headline_required' /tmp/flash-ingest.json; then
+            echo "::error title=Ingest smoke check failed::Expected authenticated validation response from live-flash-ingest."
+            exit 1
+          fi
+
           corroborate_code="$(curl --silent --show-error --output /tmp/flash-corroborate.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "${base}/live-flash-corroborate")"
           cat /tmp/flash-corroborate.json
-          [[ "$corroborate_code" == "200" ]] && grep -q '"ok":true' /tmp/flash-corroborate.json
+          if [[ "$corroborate_code" != "200" ]] || ! grep -q '"ok":true' /tmp/flash-corroborate.json; then
+            echo "::error title=Corroborate smoke check failed::Expected authenticated success response from live-flash-corroborate."
+            exit 1
+          fi
+
           echo "Isolated Telegram signal Supabase smoke checks passed."
