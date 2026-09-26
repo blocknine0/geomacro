@@ -14,6 +14,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
+      - "scripts/prepare-telegram-isolated-migration-workdir.mjs"
       - "supabase/functions/live-flash-archive/**"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
@@ -38,6 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           file=".github/workflows/deploy-telegram-signal-supabase.yml"
+          helper="scripts/prepare-telegram-isolated-migration-workdir.mjs"
           grep -q 'workflow_dispatch:' "$file"
           grep -q 'schedule:' "$file"
           grep -q '17 1,9,17' "$file"
@@ -47,7 +49,10 @@ jobs:
           grep -q '985_breaking_feed_registry_parity.sql' workers/telegram-flash/README.md
           grep -q 'live-flash-corroborate' "$file"
           grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file"
-          grep -q 'numeric <= 951' "$file"
+          grep -q 'prepare-telegram-isolated-migration-workdir.mjs' "$file"
+          grep -q '\[0, 54\]' "$helper"
+          grep -q '\[900, 951\]' "$helper"
+          ! grep -q 'migration repair' "$file"
           ! grep -q 'ldpwajisioljyjtojvfx' "$file"
           echo "PASS: Telegram signal deployment, keepalive, and migration reconciliation remain isolated from authoritative production Supabase."
 
@@ -147,27 +152,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf "$ISOLATED_WORKDIR"
-          mkdir -p "$ISOLATED_WORKDIR/migrations"
-          cp supabase/isolated-signal/config.toml "$ISOLATED_WORKDIR/config.toml"
-
-          # The isolated project historically carries authoritative migration
-          # versions through 951. Mirror only those already-applied files so
-          # Supabase can reconcile history; authoritative 952+ must never be
-          # eligible for application to the signal database.
-          for file in supabase/migrations/*.sql; do
-            base="$(basename "$file")"
-            version="${base%%_*}"
-            if [[ "$version" =~ ^[0-9]+$ ]]; then
-              numeric=$((10#$version))
-              if (( numeric <= 951 )); then
-                cp "$file" "$ISOLATED_WORKDIR/migrations/$base"
-              fi
-            fi
-          done
-
-          cp supabase/isolated-signal/migrations/*.sql "$ISOLATED_WORKDIR/migrations/"
-
+          node scripts/prepare-telegram-isolated-migration-workdir.mjs
+          test -f "$ISOLATED_WORKDIR/migrations/000_remote_history_placeholder.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/054_remote_history_placeholder.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/900_remote_history_placeholder.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/951_remote_history_placeholder.sql"
           test -f "$ISOLATED_WORKDIR/migrations/980_telegram_signal_ingest_isolation.sql"
           test -f "$ISOLATED_WORKDIR/migrations/984_telegram_authorized_publisher_only.sql"
           test -f "$ISOLATED_WORKDIR/migrations/985_breaking_feed_registry_parity.sql"
@@ -175,7 +164,7 @@ jobs:
             echo "::error title=Unsafe migration boundary::Authoritative migration >=952 leaked into isolated workdir."
             exit 1
           fi
-          echo "PASS: isolated migration workdir contains remote-history reconciliation <=951 plus signal-only 980-985."
+          echo "PASS: isolated migration workdir contains exact remote-history placeholders plus signal-only 980-985."
 
       - name: Link isolated signal project
         run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase link --project-ref "$SUPABASE_PROJECT_ID"
