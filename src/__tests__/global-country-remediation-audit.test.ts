@@ -13,12 +13,21 @@ describe("global country remediation audit", () => {
   it("traces authoritative rights and provenance without raw source material", () => {
     expect(audit).toContain('live_structured_event_commercial_rights_evaluation');
     expect(audit).toContain('event_id,evaluated_status,reason_codes,source_keys');
-    expect(audit).toContain('event_id,source_domain,fragment_id');
+    expect(audit).toContain('event_id,source_domain,fragment_id,country_iso3,country_confidence');
     expect(audit).not.toContain('select("event_id,source_url');
     expect(audit).not.toContain('article_body');
     expect(audit).not.toContain('provider_payload');
     expect(audit).toContain('raw_source_urls_emitted: false');
     expect(audit).toContain('raw_source_material_emitted: false');
+    expect(audit).toContain('event_titles_emitted: false');
+  });
+
+  it("detects possible event-country attribution overreach before changing rights gates", () => {
+    expect(audit).toContain('id,primary_country,countries,event_type,severity,confidence');
+    expect(audit).toContain('country_attribution_supported: countryAttributionSupported');
+    expect(audit).toContain('possible_attribution_overreach: !countryAttributionSupported');
+    expect(audit).toContain('REVIEW_EVENT_COUNTRY_ATTRIBUTION');
+    expect(audit).toContain('possible_attribution_overreach_country_count');
   });
 
   it("classifies remediation actions instead of weakening paid-delivery gates", () => {
