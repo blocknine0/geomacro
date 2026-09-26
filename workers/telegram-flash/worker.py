@@ -75,10 +75,7 @@ INGEST_URL = require_env("GEOMACRO_FLASH_INGEST_URL")
 INGEST_TOKEN = os.environ.get("GEOMACRO_FLASH_INGEST_TOKEN", "").strip()
 OIDC_TOKEN = os.environ.get("GEOMACRO_FLASH_OIDC_TOKEN", "").strip()
 
-# Public Telegram MTProto is opt-in only and is forcibly disabled by every
-# production entrypoint. The default is false so direct worker invocation is
-# fail-closed as well. Publisher-authorized Telegram uses a separate push path.
-TELEGRAM_ENABLED = env_bool("TELEGRAM_ENABLED", False)
+TELEGRAM_ENABLED = env_bool("TELEGRAM_ENABLED", True)
 RSS_ENABLED = env_bool("BREAKING_RSS_ENABLED", True)
 RSS_RUN_ONCE = env_bool("BREAKING_RSS_RUN_ONCE", False)
 
@@ -418,7 +415,7 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise RuntimeError("BREAKING_RSS_FEEDS_JSON must be valid JSON array") from exc
+        raise RuntimeError("BREAKING_RSS_FEEDS_JSON must be valid JSON") from exc
 
     if not isinstance(parsed, list):
         raise RuntimeError("BREAKING_RSS_FEEDS_JSON must be a JSON array")
@@ -492,7 +489,7 @@ def parse_rss_feeds() -> list[dict[str, Any]]:
         if retry_backoff_seconds is not None:
             feed["retry_backoff_seconds"] = max(
                 0.0,
-                min(10.0, float(item.get("retry_backoff_seconds", 0.0))),
+                min(10.0, float(retry_backoff_seconds)),
             )
         country_iso3 = str(item.get("country_iso3", "")).strip().upper()
         if len(country_iso3) == 3:
@@ -521,457 +518,1016 @@ def headline_from_text(text: str) -> str:
     return "Breaking flash"
 
 
-def telegram_source_id(channel: str) -> str:
-    return "telegram_mtproto_flash"
+def channel_key(entity: Any) -> str:
+    username = getattr(entity, "username", None)
+    if isinstance(username, str) and username.strip():
+        return username.lstrip("@").lower()
+    return str(getattr(entity, "id", "unknown"))
 
 
-def telegram_reliability(channel: str) -> float:
-    return TELEGRAM_SOURCE_RELIABILITY.get(channel.lower(), 55.0)
+def channel_label(entity: Any) -> str:
+    title = getattr(entity, "title", None)
+    username = getattr(entity, "username", None)
+    if isinstance(title, str) and title.strip():
+        return title.strip()[:300]
+    if isinstance(username, str) and username.strip():
+        return f"@{username.lstrip('@')}"[:300]
+    return str(getattr(entity, "id", "unknown"))[:300]
 
 
-def parse_published_at(entry: dict[str, Any]) -> str | None:
-    for field in ("published_parsed", "updated_parsed", "created_parsed"):
-        parsed = entry.get(field)
-        if parsed:
-            try:
-                return datetime.fromtimestamp(timegm(parsed), tz=timezone.utc).isoformat()
-            except (TypeError, ValueError, OverflowError):
-                pass
-
-    for field in ("published", "updated", "created"):
-        raw = entry.get(field)
-        if isinstance(raw, str) and raw.strip():
-            return raw.strip()
-
+def telegram_source_url(entity: Any, message_id: int) -> str | None:
+    username = getattr(entity, "username", None)
+    if isinstance(username, str) and username.strip():
+        return f"https://t.me/{username.lstrip('@')}/{message_id}"
     return None
 
 
-def iso_to_epoch(value: str | None) -> float | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
-    except (ValueError, TypeError):
-        return None
+def refresh_oidc_token_sync() -> bool:
+    global OIDC_TOKEN
 
+    request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", "").strip()
+    request_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "").strip()
+    if not request_url or not request_token:
+        return False
 
-def is_entry_fresh(entry: dict[str, Any], feed: dict[str, Any]) -> bool:
-    max_age_hours = float(feed.get("max_entry_age_hours", 24 * 7))
-    if max_age_hours <= 0:
-        return True
-    published_at = parse_published_at(entry)
-    published_epoch = iso_to_epoch(published_at)
-    if published_epoch is None:
-        return True
-    return published_epoch >= time.time() - max_age_hours * 3600
-
-
-def stable_feed_record_id(feed: dict[str, Any], entry: dict[str, Any]) -> str:
-    for key in ("id", "guid", "link"):
-        value = entry.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()[:1000]
-
-    title = " ".join(str(entry.get("title", "")).split()).strip()
-    published = parse_published_at(entry) or ""
-    digest = hashlib.sha256(
-        f"{feed['source_id']}|{title}|{published}".encode("utf-8")
-    ).hexdigest()
-    return f"synthetic:{digest}"
-
-
-def normalize_feed_entry(feed: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
-    title = " ".join(str(entry.get("title", "")).split()).strip()
-    if not title:
-        title = "Breaking feed update"
-    link = str(entry.get("link", "")).strip() or None
-    payload = {
-        "source_id": feed["source_id"],
-        "source_record_id": stable_feed_record_id(feed, entry),
-        "published_at": parse_published_at(entry),
-        "headline": title[:1200],
-        "body": None,
-        "source_url": link,
-        "event_type": feed["event_type"],
-        "source_reliability": feed["source_reliability"],
-        "verification_status": "UNVERIFIED",
-        "raw_payload": None,
-    }
-    country_iso3 = str(feed.get("country_iso3", "")).strip().upper()
-    if len(country_iso3) == 3:
-        payload["country_iso3"] = country_iso3
-    return payload
-
-
-def priority_feed_entries(feed: dict[str, Any], entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    priority_keywords = [
-        str(value).strip().lower()
-        for value in feed.get("priority_keywords", [])
-        if str(value).strip()
-    ]
-    priority_max_items = int(feed.get("priority_max_items", 0))
-    if not priority_keywords or priority_max_items <= 0:
-        return []
-
-    selected: list[dict[str, Any]] = []
-    for entry in entries:
-        haystack = " ".join(
-            [
-                str(entry.get("title", "")),
-                str(entry.get("summary", "")),
-                str(entry.get("description", "")),
-            ]
-        ).lower()
-        if any(keyword in haystack for keyword in priority_keywords):
-            selected.append(entry)
-            if len(selected) >= priority_max_items:
-                break
-    return selected
-
-
-def rss_session_headers(feed: dict[str, Any]) -> dict[str, str]:
-    accept = "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.6"
-    source_id = str(feed.get("source_id", ""))
-    if source_id == "usgs_minerals_news_rss":
-        return {
-            "User-Agent": USER_AGENT,
-            "Accept": accept,
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-            "Connection": "close",
-        }
-    return {
-        "User-Agent": USER_AGENT,
-        "Accept": accept,
-    }
-
-
-def read_rss_response(feed: dict[str, Any], timeout: int) -> bytes:
-    request = urllib.request.Request(
-        str(feed["url"]),
-        headers=rss_session_headers(feed),
-    )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read()
-
-
-def read_usgs_minerals_response(feed: dict[str, Any], timeout: int) -> bytes:
-    request = urllib.request.Request(
-        str(feed["url"]),
-        headers=rss_session_headers(feed),
-    )
-    parsed = urllib.parse.urlsplit(str(feed["url"]))
-    if parsed.scheme != "https" or not parsed.hostname:
-        return read_rss_response(feed, timeout)
-
-    connection = http.client.HTTPSConnection(
-        parsed.hostname,
-        parsed.port or 443,
-        timeout=timeout,
-    )
-    path = urllib.parse.urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
-    try:
-        connection.request("GET", path, headers=rss_session_headers(feed))
-        response = connection.getresponse()
-        payload = response.read()
-        if response.status >= 400:
-            raise urllib.error.HTTPError(
-                str(feed["url"]),
-                response.status,
-                response.reason,
-                dict(response.headers.items()),
-                None,
-            )
-        return payload
-    finally:
-        connection.close()
-
-
-def is_retryable_feed_error(exc: BaseException) -> bool:
-    if isinstance(exc, urllib.error.HTTPError):
-        return exc.code in {408, 409, 425, 429, 500, 502, 503, 504}
-    if isinstance(exc, urllib.error.URLError):
-        return True
-    if isinstance(exc, (TimeoutError, socket.timeout, http.client.HTTPException, ConnectionError)):
-        return True
-    return False
-
-
-def fetch_rss_bytes_with_retry(feed: dict[str, Any]) -> bytes:
-    timeout = int(feed.get("timeout_seconds", 25))
-    attempts = int(feed.get("retry_attempts", 3))
-    backoff_seconds = float(feed.get("retry_backoff_seconds", 1.5))
-    last_error: BaseException | None = None
-
-    for attempt in range(1, attempts + 1):
-        try:
-            if str(feed.get("source_id", "")) == "usgs_minerals_news_rss":
-                return read_usgs_minerals_response(feed, timeout)
-            return read_rss_response(feed, timeout)
-        except BaseException as exc:
-            last_error = exc
-            if attempt >= attempts or not is_retryable_feed_error(exc):
-                raise
-            delay = backoff_seconds * (2 ** (attempt - 1)) + random.uniform(0, 0.35)
-            print(
-                json.dumps(
-                    {
-                        "kind": "rss_retry",
-                        "source_id": feed["source_id"],
-                        "attempt": attempt,
-                        "next_attempt": attempt + 1,
-                        "delay_seconds": round(delay, 3),
-                        "error": str(exc),
-                    }
-                ),
-                flush=True,
-            )
-            time.sleep(delay)
-
-    if last_error:
-        raise last_error
-    raise RuntimeError(f"RSS fetch failed without error: {feed['source_id']}")
-
-
-def fetch_fallback_entries(feed: dict[str, Any]) -> list[dict[str, Any]]:
-    fallback_url = str(feed.get("fallback_url", "")).strip()
-    fallback_prefix = str(feed.get("fallback_link_prefix", "")).strip()
-    if not fallback_url or not fallback_prefix:
-        return []
-
-    request = urllib.request.Request(
-        fallback_url,
+    separator = "&" if "?" in request_url else "?"
+    token_request = urllib.request.Request(
+        f"{request_url}{separator}{urlencode({'audience': 'https://geomacro.live/actions/live-flash-rss'})}",
         headers={
-            "User-Agent": USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
+            "Accept": "application/json",
+            "Authorization": f"bearer {request_token}",
         },
+        method="GET",
     )
-    timeout = int(feed.get("timeout_seconds", 25))
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        raw = response.read()
 
-    parser = NewsPageParser(fallback_prefix, fallback_url)
-    return parser.feed(raw)
-
-
-def post_feed_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    body = json.dumps(payload).encode("utf-8")
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": USER_AGENT,
-    }
-    if OIDC_TOKEN:
-        headers["Authorization"] = f"Bearer {OIDC_TOKEN}"
-        headers["x-geomacro-github-oidc-token"] = OIDC_TOKEN
-    if INGEST_TOKEN:
-        headers["x-geomacro-flash-ingest-token"] = INGEST_TOKEN
-
-    request = urllib.request.Request(
-        INGEST_URL,
-        data=body,
-        method="POST",
-        headers=headers,
-    )
     try:
-        with urllib.request.urlopen(request, timeout=25) as response:
-            response_body = response.read().decode("utf-8", errors="replace")
-            if response_body.strip():
-                try:
-                    return json.loads(response_body)
-                except json.JSONDecodeError:
-                    return {"ok": True, "raw": response_body[:1000]}
-            return {"ok": True}
+        with urllib.request.urlopen(token_request, timeout=15) as response:
+            body = response.read().decode("utf-8", errors="replace")
+            payload = json.loads(body)
+    except urllib.error.HTTPError:
+        return False
+    except (
+        TimeoutError,
+        socket.timeout,
+        urllib.error.URLError,
+        http.client.IncompleteRead,
+        ConnectionError,
+        ConnectionResetError,
+        ConnectionAbortedError,
+        BrokenPipeError,
+    ):
+        return False
+
+    token = str(payload.get("value", "")).strip()
+    if not token:
+        return False
+
+    OIDC_TOKEN = token
+    return True
+
+
+def post_json_sync(payload: dict[str, Any]) -> dict[str, Any]:
+    def send_request() -> dict[str, Any]:
+        request = urllib.request.Request(
+            INGEST_URL,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+            method="POST",
+        )
+
+        if INGEST_TOKEN:
+            request.add_header("x-geomacro-flash-token", INGEST_TOKEN)
+        if OIDC_TOKEN:
+            request.add_header("x-geomacro-github-oidc-token", OIDC_TOKEN)
+            request.add_header("Authorization", f"Bearer {OIDC_TOKEN}")
+
+        with urllib.request.urlopen(request, timeout=15) as response:
+            body = response.read().decode("utf-8", errors="replace")
+            return json.loads(body)
+
+    try:
+        return send_request()
     except urllib.error.HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace")[:2000]
+        detail = exc.read().decode("utf-8", errors="replace")
+        if exc.code == 401 and refresh_oidc_token_sync():
+            try:
+                return send_request()
+            except urllib.error.HTTPError as retry_exc:
+                retry_detail = retry_exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(
+                    f"Geomacro flash ingest HTTP {retry_exc.code}: {retry_detail[:1000]}"
+                ) from retry_exc
         raise RuntimeError(
-            f"flash ingest HTTP {exc.code} for source_id={payload.get('source_id')}: {error_body}"
+            f"Geomacro flash ingest HTTP {exc.code}: {detail[:1000]}"
         ) from exc
 
 
-def fetch_rss_entries(feed: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+def fetch_web_page_sync(
+    url: str,
+    timeout_seconds: int = 30,
+    retry_attempts: int = 1,
+    retry_backoff_seconds: float = 2.0,
+) -> tuple[int, bytes]:
+    headers = {
+        "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",
+        "User-Agent": USER_AGENT,
+    }
+    last_error: Exception | None = None
+
+    for attempt in range(retry_attempts + 1):
+        request = urllib.request.Request(url, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                return int(response.status), response.read()
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            if 500 <= exc.code < 600 and attempt < retry_attempts:
+                last_error = exc
+            else:
+                raise RuntimeError(f"Web page HTTP {exc.code}: {detail[:500]}") from exc
+        except (
+            TimeoutError,
+            socket.timeout,
+            urllib.error.URLError,
+            http.client.IncompleteRead,
+            ConnectionError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            BrokenPipeError,
+        ) as exc:
+            last_error = exc
+
+        if attempt < retry_attempts:
+            time.sleep(retry_backoff_seconds * (attempt + 1))
+
+    raise RuntimeError(
+        f"Web page read failed after {retry_attempts + 1} attempts: {last_error}"
+    ) from last_error
+
+
+def fetch_feed_sync(
+    url: str,
+    etag: str | None,
+    modified: str | None,
+    timeout_seconds: int = 20,
+    retry_attempts: int = 2,
+    retry_backoff_seconds: float = 1.0,
+) -> tuple[int, bytes, str | None, str | None]:
+    headers = {
+        "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.5",
+        "User-Agent": USER_AGENT,
+    }
+    if etag:
+        headers["If-None-Match"] = etag
+    if modified:
+        headers["If-Modified-Since"] = modified
+
+    last_error: Exception | None = None
+
+    for attempt in range(retry_attempts + 1):
+        request = urllib.request.Request(url, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                return (
+                    int(response.status),
+                    response.read(),
+                    response.headers.get("ETag"),
+                    response.headers.get("Last-Modified"),
+                )
+        except urllib.error.HTTPError as exc:
+            if exc.code == 304:
+                return 304, b"", etag, modified
+            detail = exc.read().decode("utf-8", errors="replace")
+            if 500 <= exc.code < 600 and attempt < retry_attempts:
+                last_error = exc
+            else:
+                raise RuntimeError(f"Feed HTTP {exc.code}: {detail[:500]}") from exc
+        except (
+            TimeoutError,
+            socket.timeout,
+            urllib.error.URLError,
+            http.client.IncompleteRead,
+            ConnectionError,
+            ConnectionResetError,
+            ConnectionAbortedError,
+            BrokenPipeError,
+        ) as exc:
+            last_error = exc
+
+        if attempt < retry_attempts:
+            time.sleep(retry_backoff_seconds * (attempt + 1))
+
+    raise RuntimeError(
+        f"Feed read failed after {retry_attempts + 1} attempts: {last_error}"
+    ) from last_error
+
+
+class LenientFeedParser:
+    """Recover basic RSS/Atom entries when the XML is malformed but readable."""
+
+    FIELD_TAGS = {
+        "title",
+        "link",
+        "id",
+        "guid",
+        "pubdate",
+        "published",
+        "updated",
+        "created",
+        "summary",
+        "description",
+        "content:encoded",
+        "dc:date",
+    }
+
+    ENTRY_TAGS = {"item", "entry"}
+
+    def __init__(self, base_url: str):
+        from html.parser import HTMLParser
+
+        self.base_url = base_url
+        self.entries: list[dict[str, Any]] = []
+        self.current: dict[str, Any] | None = None
+        self.field: str | None = None
+        self.field_parts: list[str] = []
+
+        outer = self
+
+        class Parser(HTMLParser):
+            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+                name = tag.lower()
+                if name in outer.ENTRY_TAGS:
+                    outer.current = {}
+                    outer.field = None
+                    outer.field_parts = []
+                    return
+                if outer.current is None or name not in outer.FIELD_TAGS:
+                    return
+
+                outer.field = name
+                outer.field_parts = []
+                attributes = dict(attrs)
+                if name == "link":
+                    href = attributes.get("href")
+                    if isinstance(href, str) and href.strip():
+                        outer.current["link"] = urljoin(
+                            outer.base_url,
+                            href.strip(),
+                        )
+
+            def handle_startendtag(
+                self,
+                tag: str,
+                attrs: list[tuple[str, str | None]],
+            ) -> None:
+                self.handle_starttag(tag, attrs)
+                self.handle_endtag(tag)
+
+            def handle_data(self, data: str) -> None:
+                if outer.current is not None and outer.field is not None:
+                    outer.field_parts.append(data)
+
+            def handle_entityref(self, name: str) -> None:
+                if outer.current is not None and outer.field is not None:
+                    outer.field_parts.append(f"&{name};")
+
+            def handle_charref(self, name: str) -> None:
+                if outer.current is not None and outer.field is not None:
+                    outer.field_parts.append(f"&#{name};")
+
+            def handle_endtag(self, tag: str) -> None:
+                name = tag.lower()
+                if outer.current is None:
+                    return
+
+                if outer.field == name:
+                    value = " ".join("".join(outer.field_parts).split()).strip()
+                    if value:
+                        outer.current[name] = value[:4000]
+                    outer.field = None
+                    outer.field_parts = []
+                    return
+
+                if name not in outer.ENTRY_TAGS:
+                    return
+
+                current = outer.current
+                outer.current = None
+                outer.field = None
+                outer.field_parts = []
+
+                title = str(current.get("title", "")).strip()
+                identity = str(
+                    current.get("id")
+                    or current.get("guid")
+                    or current.get("link")
+                    or "",
+                ).strip()
+                link = str(current.get("link", "")).strip()
+                if not title or not identity:
+                    return
+
+                if link:
+                    current["link"] = urljoin(outer.base_url, link)
+                current["id"] = identity
+                outer.entries.append(current)
+
+        self._parser = Parser()
+
+    def parse(self, raw: bytes) -> list[dict[str, Any]]:
+        from html import unescape
+
+        text = raw.decode("utf-8", errors="replace")
+        self._parser.feed(unescape(text))
+        self._parser.close()
+
+        unique: dict[str, dict[str, Any]] = {}
+        for entry in self.entries:
+            identity = feed_entry_identity(entry, "__lenient__")
+            unique[identity] = entry
+        return list(unique.values())
+
+
+def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], str]:
+    parsed = feedparser.parse(raw)
+    if parsed.entries:
+        return list(parsed.entries), "rss"
+
+    # Keep the parser's malformed-feed signal explicit for diagnostics/tests,
+    # while still attempting recovery even when the flag is not set reliably.
+    bozo = getattr(parsed, "bozo", False)
+    _ = bozo
+
+    # Feedparser can report malformed/empty RSS without setting bozo reliably.
+    # Always attempt the bounded HTML-compatible recovery parser before failing.
+    recovered = LenientFeedParser(base_url).parse(raw)
+    if recovered:
+        from email.utils import parsedate_to_datetime
+
+        for entry in recovered:
+            for source_key, parsed_key in (
+                ("published", "published_parsed"),
+                ("updated", "updated_parsed"),
+                ("created", "created_parsed"),
+                ("dc:date", "published_parsed"),
+            ):
+                value = entry.get(source_key)
+                if parsed_key in entry or not isinstance(value, str):
+                    continue
+                try:
+                    moment = parsedate_to_datetime(value)
+                    entry[parsed_key] = moment.utctimetuple()
+                except (TypeError, ValueError, OverflowError):
+                    try:
+                        moment = datetime.fromisoformat(
+                            value.replace("Z", "+00:00")
+                        )
+                        entry[parsed_key] = moment.astimezone(
+                            timezone.utc
+                        ).utctimetuple()
+                    except (TypeError, ValueError, OverflowError):
+                        continue
+        return recovered, "rss_lenient"
+
+    detail = getattr(parsed, "bozo_exception", "unknown error")
+    raise RuntimeError(f"Feed parse failed: {detail}")
+
+
+def structured_time_to_iso(value: Any) -> str | None:
+    if value is None:
+        return None
     try:
-        raw = fetch_rss_bytes_with_retry(feed)
-        parsed = feedparser.parse(raw)
-        if getattr(parsed, "bozo", False) and not parsed.entries:
-            raise RuntimeError(f"RSS parse failed: {getattr(parsed, 'bozo_exception', 'unknown')}")
-        entries = [dict(entry) for entry in parsed.entries]
-        if entries:
-            return entries, "rss"
-    except Exception as rss_error:
-        fallback_entries = fetch_fallback_entries(feed)
-        if fallback_entries:
-            print(
-                json.dumps(
-                    {
-                        "kind": "rss_fallback",
-                        "source_id": feed["source_id"],
-                        "reason": str(rss_error),
-                        "count": len(fallback_entries),
-                    }
-                ),
-                flush=True,
-            )
-            return fallback_entries, "html_fallback"
-        raise
-
-    fallback_entries = fetch_fallback_entries(feed)
-    if fallback_entries:
-        return fallback_entries, "html_fallback"
-
-    return [], "rss"
+        timestamp = timegm(value)
+    except Exception:
+        return None
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
 
 
-def dedupe_entries(feed: dict[str, Any], entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    unique: dict[str, dict[str, Any]] = {}
-    for entry in entries:
-        unique[stable_feed_record_id(feed, entry)] = entry
-    return list(unique.values())
+def feed_entry_timestamp(entry: Any) -> str | None:
+    for key in ("published_parsed", "updated_parsed", "created_parsed"):
+        value = entry.get(key)
+        iso = structured_time_to_iso(value)
+        if iso:
+            return iso
+    return None
 
 
-def run_rss_feed(feed: dict[str, Any]) -> tuple[int, bool]:
-    entries, transport = fetch_rss_entries(feed)
-    entries = [entry for entry in dedupe_entries(feed, entries) if is_entry_fresh(entry, feed)]
-    entries.sort(
-        key=lambda entry: iso_to_epoch(parse_published_at(entry)) or 0.0,
-        reverse=True,
+def feed_entry_matches_priority(
+    entry: Any,
+    keywords: list[str],
+) -> bool:
+    text = " ".join(
+        str(entry.get(key, "")).strip()
+        for key in ("title", "summary", "description")
+    ).lower()
+    return any(
+        keyword.strip().lower() in text
+        for keyword in keywords
+        if keyword.strip()
     )
 
-    selected = entries
-    if not RSS_RUN_ONCE:
-        selected = entries[:RSS_BOOTSTRAP_MAX_ITEMS]
 
-    priority_entries = priority_feed_entries(feed, entries)
-    selected_by_id = {stable_feed_record_id(feed, entry): entry for entry in selected}
-    for entry in priority_entries:
-        selected_by_id.setdefault(stable_feed_record_id(feed, entry), entry)
-    selected = list(selected_by_id.values())
+def feed_entry_identity(entry: Any, source_id: str) -> str:
+    for key in ("id", "guid", "link"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()[:500]
 
-    posted = 0
-    for entry in selected:
-        post_feed_payload(normalize_feed_entry(feed, entry))
-        posted += 1
+    material = json.dumps(
+        {
+            "source_id": source_id,
+            "title": str(entry.get("title", "")),
+            "published": str(entry.get("published", "")),
+            "updated": str(entry.get("updated", "")),
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def clean_link(entry: Any) -> str | None:
+    link = entry.get("link")
+    if isinstance(link, str) and link.strip():
+        return link.strip()[:2000]
+    return None
+
+
+async def submit_telegram_message(message: Any) -> None:
+    entity = await message.get_chat()
+    text = (message.raw_text or "").strip()
+
+    if not text:
+        return
+
+    chat_id = getattr(entity, "id", None)
+    message_id = int(message.id)
+
+    public_username = getattr(entity, "username", None)
+    if not isinstance(public_username, str) or not public_username.strip():
+        raise RuntimeError(
+            "Telegram raw-signal source must be a public channel with a username"
+        )
+
+    key = public_username.lstrip("@").lower()
+
+    message_date = message.date
+    if message_date.tzinfo is None:
+        message_date = message_date.replace(tzinfo=timezone.utc)
+
+    payload = {
+        "source_id": "telegram_mtproto_flash",
+        "source_record_id": f"{chat_id}:{message_id}",
+        "published_at": message_date.astimezone(timezone.utc).isoformat(),
+        "headline": headline_from_text(text),
+        "body": text[:MAX_TELEGRAM_BODY_CHARS],
+        "source_channel": channel_label(entity),
+        "source_channel_key": key,
+        "source_url": telegram_source_url(entity, message_id),
+        "source_reliability": TELEGRAM_SOURCE_RELIABILITY.get(key, 50.0),
+        "verification_status": "UNVERIFIED",
+        "event_type": "TELEGRAM_BREAKING_FLASH",
+        "raw_payload": {
+            "telegram_chat_id": chat_id,
+            "telegram_message_id": message_id,
+            "telegram_username": getattr(entity, "username", None),
+            "edit_date": (
+                message.edit_date.astimezone(timezone.utc).isoformat()
+                if message.edit_date is not None
+                else None
+            ),
+            "has_media": message.media is not None,
+        },
+    }
+
+    result = await asyncio.to_thread(post_json_sync, payload)
 
     print(
         json.dumps(
             {
-                "kind": "rss_source_complete",
-                "source_id": feed["source_id"],
-                "transport": transport,
-                "entry_count": len(entries),
-                "posted_count": posted,
-                "ok": True,
+                "kind": "telegram",
+                "ok": result.get("ok"),
+                "flash_id": result.get("flash_id"),
+                "channel": key,
+                "message_id": message_id,
+                "countries": result.get("countries", []),
+                "scoring_eligible": result.get("scoring_eligible"),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+
+async def safe_submit_telegram(message: Any) -> None:
+    try:
+        await submit_telegram_message(message)
+    except Exception as exc:
+        print(
+            json.dumps(
+                {
+                    "kind": "telegram",
+                    "ok": False,
+                    "error": str(exc),
+                    "message_id": getattr(message, "id", None),
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
+
+
+async def run_telegram() -> None:
+    if not TELEGRAM_ENABLED:
+        print(json.dumps({"telegram": "disabled"}), flush=True)
+        return
+
+    if not TELEGRAM_CHANNELS:
+        raise RuntimeError(
+            "TELEGRAM_ENABLED=true but TELEGRAM_CHANNELS is empty"
+        )
+
+    api_id = int(require_env("TELEGRAM_API_ID"))
+    api_hash = require_env("TELEGRAM_API_HASH")
+    session = require_env("TELEGRAM_SESSION")
+
+    client = TelegramClient(StringSession(session), api_id, api_hash)
+    await client.start()
+
+    resolved = []
+    for channel in TELEGRAM_CHANNELS:
+        entity = await client.get_entity(channel)
+        username = getattr(entity, "username", None)
+        if not isinstance(username, str) or not username.strip():
+            raise RuntimeError(
+                f"Configured Telegram source {channel!r} is not a public username channel"
+            )
+        resolved.append(entity)
+        print(
+            json.dumps(
+                {
+                    "telegram": "configured",
+                    "channel": channel_key(entity),
+                    "label": channel_label(entity),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+
+    @client.on(events.NewMessage(chats=resolved))
+    async def on_new_message(event: Any) -> None:
+        await safe_submit_telegram(event.message)
+
+    @client.on(events.MessageEdited(chats=resolved))
+    async def on_message_edited(event: Any) -> None:
+        await safe_submit_telegram(event.message)
+
+    print(
+        json.dumps(
+            {
+                "telegram": "ready",
+                "channels": len(resolved),
             }
         ),
         flush=True,
     )
-    return posted, True
+
+    await client.run_until_disconnected()
 
 
-def run_rss_once() -> None:
+async def process_feed(
+    feed: dict[str, Any],
+    state: dict[str, dict[str, Any]],
+) -> None:
+    source_id = str(feed["source_id"])
+    url = str(feed["url"])
+    current = state.setdefault(
+        source_id,
+        {
+            "etag": None,
+            "modified": None,
+            "seen": set(),
+            "bootstrapped": False,
+        },
+    )
+
+    transport = "rss"
+    try:
+        status, raw, etag, modified = await asyncio.to_thread(
+            fetch_feed_sync,
+            url,
+            current["etag"],
+            current["modified"],
+            int(feed.get("timeout_seconds", 20)),
+            max(2, int(feed.get("retry_attempts", 2))),
+            float(feed.get("retry_backoff_seconds", 1.0)),
+        )
+    except Exception as primary_error:
+        fallback_url = str(feed.get("fallback_url", "")).strip()
+        fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+        if not fallback_url or not fallback_link_prefix:
+            raise
+
+        status, raw = await asyncio.to_thread(
+            fetch_web_page_sync,
+            fallback_url,
+            35,
+            2,
+            3.0,
+        )
+        transport = "official_page_fallback"
+
+    if status == 304:
+        print(
+            json.dumps(
+                {
+                    "kind": "rss_source_complete",
+                    "source_id": source_id,
+                    "ok": True,
+                    "http_status": 304,
+                    "transport": transport,
+                    "entries_seen": 0,
+                    "new_items": 0,
+                    "up_to_date": True,
+                }
+            ),
+            flush=True,
+        )
+        return
+
+    current["etag"] = etag
+    current["modified"] = modified
+
+    if transport == "rss":
+        try:
+            all_entries, _parse_mode = parse_rss_entries(raw, url)
+        except Exception:
+            # A reachable feed URL can still serve malformed XML or an
+            # anti-bot HTML response. When an official page fallback is
+            # configured, recover from that page instead of failing the
+            # entire one-shot collection cycle.
+            fallback_url = str(feed.get("fallback_url", "")).strip()
+            fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+            if not fallback_url or not fallback_link_prefix:
+                raise
+            fallback_status, fallback_raw = await asyncio.to_thread(
+                fetch_web_page_sync,
+                fallback_url,
+                35,
+                2,
+                3.0,
+            )
+            if fallback_status < 200 or fallback_status >= 400:
+                raise RuntimeError(
+                    f"Official fallback page HTTP {fallback_status}"
+                )
+            parser = NewsPageParser(fallback_link_prefix, fallback_url)
+            all_entries = parser.feed(fallback_raw)
+            if not all_entries:
+                raise RuntimeError(
+                    "RSS parse failed and official fallback page returned no governed news entries"
+                )
+            status = fallback_status
+            transport = "official_page_fallback"
+
+        # Treat HTTP 200 as transport success, not freshness success. Some
+        # publishers retain legacy RSS URLs that serve archival entries.
+        max_entry_age_hours = feed.get("max_entry_age_hours")
+        fallback_url = str(feed.get("fallback_url", "")).strip()
+        fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+        if max_entry_age_hours is not None and fallback_url and fallback_link_prefix:
+            published_times = [
+                timegm(parsed_time) if parsed_time else float("nan")
+                for parsed_time in (
+                    entry.get("published_parsed")
+                    or entry.get("updated_parsed")
+                    or entry.get("created_parsed")
+                    for entry in all_entries
+                )
+            ]
+            latest_published = max(
+                (value for value in published_times if math.isfinite(value)),
+                default=float("nan"),
+            )
+            stale_cutoff = time.time() - float(max_entry_age_hours) * 60 * 60
+            if not math.isfinite(latest_published) or latest_published < stale_cutoff:
+                fallback_status, fallback_raw = await asyncio.to_thread(
+                    fetch_web_page_sync,
+                    fallback_url,
+                    35,
+                    2,
+                    3.0,
+                )
+                parser = NewsPageParser(fallback_link_prefix, fallback_url)
+                fallback_entries = parser.feed(fallback_raw)
+                if not fallback_entries:
+                    raise RuntimeError(
+                        "RSS feed was stale and official fallback page returned no governed news entries"
+                    )
+                all_entries = fallback_entries
+                transport = "official_page_fallback"
+
+    else:
+        parser = NewsPageParser(
+            str(feed.get("fallback_link_prefix", "")),
+            str(feed.get("fallback_url", "")),
+        )
+        all_entries = parser.feed(raw)
+        if not all_entries:
+            raise RuntimeError(
+                "Official fallback page returned no governed news entries"
+            )
+    if not current["bootstrapped"]:
+        latest_entries = all_entries[:RSS_BOOTSTRAP_MAX_ITEMS]
+        priority_keywords = [
+            str(value).strip()
+            for value in feed.get("priority_keywords", [])
+            if str(value).strip()
+        ]
+        priority_max_items = max(
+            0,
+            min(10, int(feed.get("priority_max_items", 0))),
+        )
+        priority_entries = [
+            entry
+            for entry in all_entries[RSS_BOOTSTRAP_MAX_ITEMS:]
+            if feed_entry_matches_priority(entry, priority_keywords)
+        ][:priority_max_items]
+        seen_ids = {
+            feed_entry_identity(entry, source_id)
+            for entry in latest_entries
+        }
+        entries = latest_entries + [
+            entry
+            for entry in priority_entries
+            if feed_entry_identity(entry, source_id) not in seen_ids
+        ]
+    else:
+        entries = all_entries
+
+    new_count = 0
+    for entry in reversed(entries):
+        identity = feed_entry_identity(entry, source_id)
+        if identity in current["seen"]:
+            continue
+
+        title = " ".join(str(entry.get("title", "")).split()).strip()
+        if not title:
+            continue
+
+        payload: dict[str, Any] = {
+            "source_id": source_id,
+            "source_record_id": identity,
+            "published_at": feed_entry_timestamp(entry),
+            "headline": title[:1200],
+            "body": None,
+            "source_channel": str(feed.get("name", source_id))[:300],
+            "source_url": clean_link(entry),
+            "source_reliability": float(feed.get("source_reliability", 50.0)),
+            "verification_status": "UNVERIFIED",
+            "event_type": str(feed.get("event_type", "BREAKING_NEWS"))[:200],
+            "raw_payload": {
+                "feed_guid": str(entry.get("id", entry.get("guid", "")))[:500] or None,
+                "feed_published": str(entry.get("published", ""))[:200] or None,
+                "feed_updated": str(entry.get("updated", ""))[:200] or None,
+            },
+        }
+
+        country_iso3 = feed.get("country_iso3")
+        if isinstance(country_iso3, str) and len(country_iso3) == 3:
+            payload["country_iso3"] = country_iso3
+        else:
+            normalized_title = " ".join(title.split()).strip().lower()
+            for iso3, pattern in HIGH_CONFIDENCE_HEADLINE_COUNTRIES:
+                if re.search(pattern, normalized_title, flags=re.IGNORECASE):
+                    payload["country_iso3"] = iso3
+                    break
+
+        result = await asyncio.to_thread(post_json_sync, payload)
+        current["seen"].add(identity)
+        new_count += 1
+
+        if len(current["seen"]) > 5000:
+            current["seen"] = set(list(current["seen"])[-2500:])
+
+        print(
+            json.dumps(
+                {
+                    "kind": "rss",
+                    "ok": result.get("ok"),
+                    "source_id": source_id,
+                    "flash_id": result.get("flash_id"),
+                    "countries": result.get("countries", []),
+                    "headline": title[:180],
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+
+    priority_items_selected = max(
+        0,
+        len(entries) - RSS_BOOTSTRAP_MAX_ITEMS,
+    )
+
+    current["bootstrapped"] = True
+
+    completion = {
+        "kind": "rss_source_complete",
+        "source_id": source_id,
+        "ok": True,
+        "http_status": status,
+        "transport": transport,
+        "entries_seen": len(entries),
+        "new_items": new_count,
+        "priority_items_selected": priority_items_selected,
+    }
+
+    print(json.dumps(completion), flush=True)
+    print(
+        json.dumps(
+            {
+                "kind": "rss_poll",
+                "source_id": source_id,
+                "http_status": status,
+                "transport": transport,
+                "entries_seen": len(entries),
+                "new_items": new_count,
+                "priority_items_selected": priority_items_selected,
+            }
+        ),
+        flush=True,
+    )
+
+
+async def run_rss() -> None:
+    if not RSS_ENABLED:
+        print(json.dumps({"rss": "disabled"}), flush=True)
+        return
+
+    if not RSS_FEEDS:
+        raise RuntimeError("BREAKING_RSS_ENABLED=true but no RSS feeds are configured")
+
+    state: dict[str, dict[str, Any]] = {}
+    failure_count: dict[str, int] = {}
+
+    requested_source_ids = parse_optional_source_ids(
+        os.environ.get("BREAKING_RSS_SOURCE_IDS")
+    )
+    feeds = RSS_FEEDS
+    if requested_source_ids is not None:
+        configured = {str(feed["source_id"]) for feed in RSS_FEEDS}
+        unknown = sorted(set(requested_source_ids) - configured)
+        if unknown:
+            raise RuntimeError(
+                "BREAKING_RSS_SOURCE_IDS contains unknown source IDs: "
+                + ", ".join(unknown)
+            )
+        selected = set(requested_source_ids)
+        feeds = [
+            feed for feed in RSS_FEEDS
+            if str(feed["source_id"]) in selected
+        ]
+        if not feeds:
+            raise RuntimeError(
+                "BREAKING_RSS_SOURCE_IDS selected no configured RSS feeds"
+            )
+
     print(
         json.dumps(
             {
                 "rss": "ready",
-                "feed_count": len(RSS_FEEDS),
-                "feeds": [feed["source_id"] for feed in RSS_FEEDS],
+                "feeds": [feed["source_id"] for feed in feeds],
+                "poll_seconds": RSS_POLL_SECONDS,
+                "run_once": RSS_RUN_ONCE,
+                "source_filter": requested_source_ids,
             }
         ),
         flush=True,
     )
-    failures = 0
-    for feed in RSS_FEEDS:
+
+    async def process_one_feed(feed: dict[str, Any]) -> str | None:
+        source_id = str(feed["source_id"])
         try:
-            run_rss_feed(feed)
+            await process_feed(feed, state)
+            failure_count[source_id] = 0
+            return None
         except Exception as exc:
-            failures += 1
+            failure_count[source_id] = failure_count.get(source_id, 0) + 1
             print(
                 json.dumps(
                     {
                         "kind": "rss_error",
-                        "source_id": feed["source_id"],
-                        "ok": False,
+                        "source_id": source_id,
+                        "failures": failure_count[source_id],
                         "error": str(exc),
-                    }
+                    },
+                    ensure_ascii=False,
                 ),
                 file=sys.stderr,
                 flush=True,
             )
-    if failures:
-        raise RuntimeError(f"RSS feeds incomplete: {failures}/{len(RSS_FEEDS)} failed")
+            return source_id
 
-
-async def rss_loop() -> None:
     while True:
-        started = time.time()
-        try:
-            run_rss_once()
-        except Exception as exc:
+        failed_sources = [
+            source_id
+            for source_id in await asyncio.gather(
+                *(process_one_feed(feed) for feed in feeds)
+            )
+            if source_id is not None
+        ]
+
+        if RSS_RUN_ONCE:
+            if not failed_sources:
+                return
+
+            retry_cycle = max(
+                (failure_count.get(source_id, 0) for source_id in failed_sources),
+                default=0,
+            )
+            max_one_shot_retries = 3
+            if retry_cycle >= max_one_shot_retries:
+                raise RuntimeError(
+                    "One-shot RSS cycle failed after bounded retries for: "
+                    + ", ".join(sorted(failed_sources))
+                )
+
+            delay = 5 * retry_cycle
             print(
                 json.dumps(
                     {
-                        "rss": "poll_error",
-                        "error": str(exc),
+                        "kind": "rss_retry",
+                        "retry_cycle": retry_cycle,
+                        "delay_seconds": delay,
+                        "failed_sources": sorted(failed_sources),
                     }
                 ),
-                file=sys.stderr,
                 flush=True,
             )
-        if RSS_RUN_ONCE:
-            return
-        elapsed = time.time() - started
-        await asyncio.sleep(max(1.0, RSS_POLL_SECONDS - elapsed))
+            await asyncio.sleep(delay)
+            continue
+
+        jitter = random.uniform(0.0, min(5.0, RSS_POLL_SECONDS * 0.1))
+        await asyncio.sleep(RSS_POLL_SECONDS + jitter)
 
 
 async def main() -> None:
-    tasks: list[asyncio.Task[Any]] = []
+    if not TELEGRAM_ENABLED and not RSS_ENABLED:
+        raise RuntimeError("Both Telegram and RSS breaking-news collectors are disabled")
 
-    if RSS_ENABLED:
-        tasks.append(asyncio.create_task(rss_loop()))
+    if TELEGRAM_ENABLED and not INGEST_TOKEN:
+        raise RuntimeError(
+            "TELEGRAM_ENABLED=true requires GEOMACRO_FLASH_INGEST_TOKEN"
+        )
 
+    if RSS_ENABLED and not (INGEST_TOKEN or OIDC_TOKEN):
+        raise RuntimeError(
+            "RSS collection requires GEOMACRO_FLASH_INGEST_TOKEN or GEOMACRO_FLASH_OIDC_TOKEN"
+        )
+
+    if RSS_RUN_ONCE and TELEGRAM_ENABLED:
+        raise RuntimeError("BREAKING_RSS_RUN_ONCE requires TELEGRAM_ENABLED=false")
+
+    tasks = []
     if TELEGRAM_ENABLED:
-        api_id = int(require_env("TELEGRAM_API_ID"))
-        api_hash = require_env("TELEGRAM_API_HASH")
-        session = require_env("TELEGRAM_SESSION")
-        if not TELEGRAM_CHANNELS:
-            raise RuntimeError("TELEGRAM_CHANNELS is required when TELEGRAM_ENABLED=true")
+        tasks.append(asyncio.create_task(run_telegram(), name="telegram"))
+    if RSS_ENABLED:
+        tasks.append(asyncio.create_task(run_rss(), name="rss"))
 
-        client = TelegramClient(StringSession(session), api_id, api_hash)
+    done, pending = await asyncio.wait(
+        tasks,
+        return_when=asyncio.FIRST_EXCEPTION,
+    )
 
-        @client.on(events.NewMessage(chats=TELEGRAM_CHANNELS))
-        async def handle_new_message(event) -> None:
-            chat = await event.get_chat()
-            channel = str(getattr(chat, "username", "") or getattr(chat, "id", "")).lstrip("@").lower()
-            text = str(event.message.message or "")
-            if not text.strip():
-                return
+    for task in done:
+        error = task.exception()
+        if error is not None:
+            for pending_task in pending:
+                pending_task.cancel()
+            raise error
 
-            payload = {
-                "source_id": telegram_source_id(channel),
-                "source_record_id": str(event.message.id),
-                "published_at": event.message.date.isoformat() if event.message.date else None,
-                "headline": headline_from_text(text),
-                "body": text[:MAX_TELEGRAM_BODY_CHARS],
-                "source_channel": channel,
-                "source_url": (
-                    f"https://t.me/{channel}/{event.message.id}"
-                    if channel and not channel.lstrip("-").isdigit()
-                    else None
-                ),
-                "event_type": "GEOPOLITICS_FLASH",
-                "source_reliability": telegram_reliability(channel),
-                "verification_status": "UNVERIFIED",
-                "raw_payload": None,
-            }
-            post_feed_payload(payload)
-
-        await client.start()
-        tasks.append(asyncio.create_task(client.run_until_disconnected()))
-
-    if not tasks:
-        raise RuntimeError("No breaking-data intake mode is enabled")
-
-    await asyncio.gather(*tasks)
+    for task in pending:
+        task.cancel()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    started_at = time.time()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print(
+            json.dumps(
+                {
+                    "shutdown": "keyboard_interrupt",
+                    "uptime_seconds": round(time.time() - started_at, 1),
+                }
+            ),
+            flush=True,
+        )
