@@ -3,6 +3,7 @@ import type { AgentQueryPlan } from "./agent-query-plan";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
+import { loadAgentPoliticalGovernanceModule } from "./agent-query-political-governance.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
@@ -62,35 +63,95 @@ function perModuleLimit(detail: AgentQueryPlan["detail"]) {
   return detail === "compact" ? 2 : detail === "full" ? 12 : 5;
 }
 
+function latestModuleTimestamp(
+  observations: ReturnType<typeof publicStructuralObservation>[],
+  coverage: ReturnType<typeof publicStructuralCoverage>[],
+) {
+  const values = [
+    ...observations.map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at),
+    ...coverage.map((row) => row.latest_observed_at),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => Date.parse(value))
+    .filter(Number.isFinite);
+  return values.length ? Math.max(...values) : null;
+}
+
 async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["subjects"][number]) {
   const context = await loadStructuralContext(subject);
   const structuralModules = plan.required_modules.filter((module) => !EXTERNAL_MODULES.has(module));
-  if (structuralModules.length > 0 && context.status !== "AVAILABLE") {
-    throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
-  }
   const intelligence: Record<string, unknown> = {};
   const limit = perModuleLimit(plan.detail);
+  const asOf = plan.as_of ?? new Date().toISOString();
+  const asOfMs = Date.parse(asOf);
+  const governedFallbackHashes: string[] = [];
+  const governedFallbackDimensions = new Set<string>();
+  const governedFallbackTimes: string[] = [];
 
   for (const module of structuralModules) {
     const observations = context.observations
       .filter((row) => moduleMatches(module, row.dimension))
       .slice(0, limit)
-      .map((row) => publicStructuralObservation(row, plan.as_of ?? new Date().toISOString()));
+      .map((row) => publicStructuralObservation(row, asOf));
     const coverage = context.metadata.coverage
       .filter((row) => moduleMatches(module, row.dimension))
       .slice(0, limit)
       .map((row) => publicStructuralCoverage(row));
+    const latest = latestModuleTimestamp(observations, coverage);
+    const maxAgeSeconds = plan.module_max_age_seconds[module];
+    const structuralFresh =
+      context.status === "AVAILABLE" &&
+      latest !== null &&
+      Number.isFinite(asOfMs) &&
+      Number.isFinite(maxAgeSeconds) &&
+      maxAgeSeconds > 0 &&
+      asOfMs - latest <= maxAgeSeconds * 1_000;
+
+    if (module === "political_governance" && !structuralFresh) {
+      const fallback = await loadAgentPoliticalGovernanceModule({
+        subject,
+        as_of: asOf,
+        max_age_seconds: maxAgeSeconds,
+      });
+      if (!fallback.deliverable || !fallback.state) {
+        throw new Error(`POLITICAL_GOVERNANCE_NOT_DELIVERABLE:${fallback.code}`);
+      }
+      if (fallback.source_normalized_hash) {
+        governedFallbackHashes.push(fallback.source_normalized_hash);
+      }
+      governedFallbackDimensions.add("political_governance");
+      if (fallback.source_observed_at) governedFallbackTimes.push(fallback.source_observed_at);
+      intelligence[module] = {
+        delivery: "GOVERNED_WGI_MODULE_STATE",
+        source_id: fallback.source_id,
+        source_observed_at: fallback.source_observed_at,
+        source_contract: fallback.source_contract,
+        state: fallback.state,
+        limitations: {
+          coverage: "LIMITED",
+          scope: "World Bank WGI political stability; not the full governance ontology",
+          raw_upstream_perception_source_material_redistributed: false,
+        },
+      };
+      continue;
+    }
+
+    if (context.status !== "AVAILABLE") {
+      throw new Error("STRUCTURAL_CONTEXT_NOT_DELIVERABLE");
+    }
     intelligence[module] = { observations, coverage };
   }
 
   const allObservations = context.observations
     .slice(0, Math.max(limit, 12))
-    .map((row) => publicStructuralObservation(row, plan.as_of ?? new Date().toISOString()));
+    .map((row) => publicStructuralObservation(row, asOf));
   const stateVersionInputHash = hash({
-    observation_hashes: context.observations
-      .map((row) => row.normalized_hash)
-      .filter((value): value is string => typeof value === "string")
-      .sort(),
+    observation_hashes: [
+      ...context.observations
+        .map((row) => row.normalized_hash)
+        .filter((value): value is string => typeof value === "string"),
+      ...governedFallbackHashes,
+    ].sort(),
     coverage: context.metadata.coverage
       .map((row) => ({
         dimension: row.dimension,
@@ -101,6 +162,18 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
       }))
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   });
+  const latestObservedAt = [
+    ...allObservations
+      .map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at)
+      .filter((value): value is string => Boolean(value)),
+    ...governedFallbackTimes,
+  ].sort().at(-1) ?? null;
+  const availableDimensions = [
+    ...new Set([
+      ...allObservations.map((row) => row.dimension),
+      ...governedFallbackDimensions,
+    ]),
+  ].sort();
 
   return {
     subject,
@@ -108,13 +181,9 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
     intelligence,
     evidence_summary: {
       observation_count: allObservations.length,
-      available_dimensions: [...new Set(allObservations.map((row) => row.dimension))].sort(),
-      latest_observed_at:
-        allObservations
-          .map((row) => row.observed_at ?? row.published_at ?? row.retrieved_at)
-          .filter((value): value is string => Boolean(value))
-          .sort()
-          .at(-1) ?? null,
+      governed_module_count: governedFallbackDimensions.size,
+      available_dimensions: availableDimensions,
+      latest_observed_at: latestObservedAt,
     },
     serving: {
       layer: context.metadata.serving_layer,
@@ -122,6 +191,7 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
       composition_method: context.metadata.composition_method,
       route_modeling_status: context.metadata.route_modeling_status,
       direct_evidence_status: context.metadata.direct_evidence_status,
+      governed_module_fallbacks: [...governedFallbackDimensions].sort(),
     },
   };
 }
@@ -233,7 +303,6 @@ function publicRiskObjectAttestation(
   } as const;
 }
 
-
 function publicRiskState(object: LoadedRiskObject["object"]) {
   return {
     risk: object.risk,
@@ -307,7 +376,7 @@ async function buildCurrentState(
                 as_of: reference.generated_at,
                 score: reference.risk.score,
                 label: reference.risk.label,
-                delta_from_current: Number((risk.object.risk.score - reference.risk.score).toFixed(4)),
+                delta_from_current: Number((risk.risk.score - reference.risk.score).toFixed(4)),
                 object_id: reference.object_id,
                 methodology_version: reference.methodology_version,
               };
@@ -336,7 +405,7 @@ async function buildCurrentState(
       classification_version: event.classification_version,
     }));
 
-      const stateVersion = intelligenceStateVersion({
+    const stateVersion = intelligenceStateVersion({
       subject,
       as_of: asOf,
       risk_calculation_hash: risk?.integrity.calculation_hash ?? null,
@@ -380,6 +449,21 @@ function buildDirectAnswer(
 ) {
   const supported = states.filter((state) => state.risk !== null);
   if (!supported.length) {
+    const moduleSupported = states.filter(
+      (state) => (state.structural?.available_dimensions?.length ?? 0) > 0,
+    );
+    if (moduleSupported.length > 0) {
+      return {
+        status: "SUPPORTED_MODULES",
+        headline: `${moduleSupported.length} subject(s) have commercially verified governed module state for the requested topics.`,
+        what_changed: moduleSupported.map((state) => ({
+          subject: state.subject,
+          available_dimensions: state.structural?.available_dimensions ?? [],
+          latest_observed_at: state.structural?.latest_observed_at ?? null,
+        })),
+        why_it_matters: "Module-level intelligence is delivered without inventing an aggregate signed country Risk Object when the current GRO methodology is not available.",
+      } as const;
+    }
     return {
       status: "INSUFFICIENT_STATE",
       headline: "Geomacro could not establish a current verified risk state for this request.",
@@ -599,6 +683,7 @@ export async function assembleAgentQueryResponse(input: {
         status: event.status,
         first_seen_at: event.first_seen_at,
         last_seen_at: event.last_seen_at,
+        last_observed_at: event.last_observed_at,
         evidence_count: event.evidence_count,
         independent_source_count: event.independent_source_count,
         structure_version: event.structure_version,
@@ -647,6 +732,7 @@ export async function assembleAgentQueryResponse(input: {
           ? GEOMACRO_INTELLIGENCE_PRICE_USDC
           : input.priceUsdc,
       current_event_delivery: includeHotTopics ? "structured-derived-intelligence-only" : null,
+      governed_module_fallbacks: structural.flatMap((item) => item.serving.governed_module_fallbacks),
       intent_method: "deterministic-governed-v1",
       ranking_metric: plan.ranking?.metric ?? null,
       change_baseline: plan.change?.baseline ?? null,
@@ -656,6 +742,7 @@ export async function assembleAgentQueryResponse(input: {
       missing_is_never_zero_risk: true,
       only_prechecked_required_modules_delivered: true,
       current_event_raw_source_material_redistributed: false,
+      wgi_upstream_perception_source_material_redistributed: false,
       corridor_route_modeling_may_be_unavailable: structural.some((item) => item.serving.route_modeling_status === "NOT_MODELED"),
     },
     execution_authorized: false,
