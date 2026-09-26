@@ -37,7 +37,8 @@ describe("adaptive WGI political-governance fallback", () => {
   it("delivers a derived governed module state instead of fabricating a GRO", () => {
     expect(response).toContain('delivery: "GOVERNED_WGI_MODULE_STATE"');
     expect(response).toContain("source_observed_at: fallback.source_observed_at");
-    expect(response).toContain("methodology_version: state.methodology_version");
+    expect(response).toContain("state: fallback.state");
+    expect(helper).toContain("methodology_version: state.methodology_version");
     expect(response).toContain("SUPPORTED_MODULES");
     expect(response).toContain("without inventing an aggregate signed country Risk Object");
   });
