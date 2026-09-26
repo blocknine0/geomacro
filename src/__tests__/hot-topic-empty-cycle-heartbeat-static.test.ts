@@ -15,6 +15,15 @@ describe("open live source mesh empty-cycle heartbeat", () => {
     expect(emptyBranch).toContain('onConflict: "source_key,stream_key"');
   });
 
+  it("keeps persistence failures fail-closed on an empty cycle", () => {
+    const emptyBranch = mesh.slice(
+      mesh.indexOf('if (!accepted.length)'),
+      mesh.indexOf('const payload = Buffer.from'),
+    );
+    expect(emptyBranch).toContain("if (emptyRunError) throw emptyRunError");
+    expect(emptyBranch).toContain("if (emptyCursorError) throw emptyCursorError");
+  });
+
   it("does not fabricate a new last item timestamp on an empty cycle", () => {
     const emptyBranch = mesh.slice(
       mesh.indexOf('if (!accepted.length)'),
