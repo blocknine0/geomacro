@@ -8,11 +8,20 @@ It proves that a software agent can discover Geomacro, enforce a fixed spend pol
 
 This gate is **Testnet only**. It does not authorize mainnet, commercial revenue, wallet custody, transaction execution, or autonomous downstream action.
 
+## Canonical acceptance subject
+
+The paid acceptance uses the `CHN` **country** Risk Object with the server-controlled `CANONICAL` delivery profile.
+
+This is intentional. The current corridor methodology is an endpoint-composition pilot and explicitly caps corridor verification at `INCOMPLETE` and commercial eligibility at `UNVERIFIED` until independent corridor-methodology validation exists. A pilot corridor must therefore continue to fail closed on paid delivery. The acceptance harness must not weaken that commercial-safety boundary merely to obtain a successful x402 test.
+
+Before the paid gate is run, a fresh commercially deliverable `CHN` CANONICAL country Risk Object must exist. The governed `Canonical Risk Object Production Refresh` workflow is the supported publication path.
+
 ## Canonical surface
 
 - resource: `POST /api/agent/risk`
 - discovery: `GET /api/agent/risk` and `/.well-known/geomacro-agent.json`
 - trust registry: `GET /api/risk-object-keys`
+- acceptance subject: country `CHN`, delivery profile `CANONICAL`
 - payment protocol: x402 v2
 - network: Arc Testnet, `eip155:5042002`
 - asset: Arc Testnet USDC, `0x3600000000000000000000000000000000000000`
@@ -73,6 +82,23 @@ bun run build
 
 The static gate moves no funds.
 
+## Canonical data prerequisite
+
+Before running the paid gate, dispatch:
+
+```text
+Canonical Risk Object Production Refresh
+```
+
+with:
+
+```text
+iso3: CHN
+authorization: I_AUTHORIZE_CANONICAL_RISK_OBJECT_REFRESH
+```
+
+The workflow must publish and read back a fresh signed `CANONICAL` country Risk Object with both embedded verification and commercial eligibility equal to `VERIFIED`. This is a data-publication action; it does not move payment funds.
+
 ## Canonical paid gate
 
 GitHub Actions workflow:
@@ -101,7 +127,7 @@ The paid workflow stores its sanitized result under:
 artifacts/agentic-testnet-acceptance-v1/*.json
 ```
 
-and uploads it as a 90-day GitHub Actions artifact.
+and uploads it as a 90-day GitHub Actions artifact. When the initial unpaid probe fails before HTTP 402, the artifact stores only the sanitized HTTP status plus public error code/message for diagnosis; it never stores a private key or raw `PAYMENT-SIGNATURE`.
 
 ## PASS definition
 
@@ -109,6 +135,7 @@ The final gate is PASS only when the paid workflow artifact has:
 
 - `status: "PASS"`;
 - every P0-1 through P0-15 entry marked `PASS`;
+- acceptance subject country `CHN`;
 - exactly one paid Gateway call;
 - `duplicate_charge_count: 0`;
 - a non-empty settlement reference;
