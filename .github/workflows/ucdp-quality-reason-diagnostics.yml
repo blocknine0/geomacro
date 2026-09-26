@@ -1,0 +1,111 @@
+name: UCDP Quality Reason Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - "scripts/audit-ucdp-quality-reasons.ts"
+      - ".github/workflows/ucdp-quality-reason-diagnostics.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/audit-ucdp-quality-reasons.ts"
+      - ".github/workflows/ucdp-quality-reason-diagnostics.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "47 4 22 * *"
+
+permissions:
+  contents: read
+
+jobs:
+  static-validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Validate sanitized diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="scripts/audit-ucdp-quality-reasons.ts"
+          grep -q 'candidate_quality_reasons' "$file"
+          grep -q 'CODE_STATUS_NOT_CLEAR' "$file"
+          grep -q 'FATALITY_INTERVAL_NOT_ORDERED' "$file"
+          grep -q 'BEST_COMPONENT_SUM_MISMATCH' "$file"
+          grep -q 'raw_event_material_included: false' "$file"
+          grep -q 'commercial_eligibility_relaxed: false' "$file"
+          grep -q 'payment_performed: false' "$file"
+          grep -q 'execution_authorized: false' "$file"
+          if grep -Eq 'raw_payload|article_body|article_text|scraped_html|provider_payload' "$file"; then
+            echo "::error::UCDP quality diagnostics must not select or emit raw source material."
+            exit 1
+          fi
+          echo 'PASS: UCDP quality diagnostic is read-only and sanitized.'
+
+  diagnostics:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      UCDP_QUALITY_REASON_DIAGNOSTICS_OUTPUT: ucdp-quality-reason-diagnostics.json
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Bun 1.4.2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Validate production read configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}" || { echo '::error::APP_SUPABASE_URL missing'; exit 1; }
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}" || { echo '::error::SUPABASE_SERVICE_ROLE_KEY missing'; exit 1; }
+      - name: Run sanitized UCDP quality diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/audit-ucdp-quality-reasons.ts | tee ucdp-quality-reason-diagnostics.log
+          test -s "$UCDP_QUALITY_REASON_DIAGNOSTICS_OUTPUT"
+          jq -e '
+            .schema_version == "geomacro-ucdp-quality-reason-diagnostics-1.0" and
+            .boundaries.read_only == true and
+            .boundaries.raw_event_material_included == false and
+            .boundaries.source_urls_included == false and
+            .boundaries.source_rights_changed == false and
+            .boundaries.scoring_changed == false and
+            .boundaries.commercial_eligibility_relaxed == false and
+            .boundaries.payment_performed == false and
+            .boundaries.execution_authorized == false
+          ' "$UCDP_QUALITY_REASON_DIAGNOSTICS_OUTPUT" >/dev/null
+      - name: Publish sanitized summary
+        shell: bash
+        run: |
+          jq '{generated_at,release,summary,boundaries}' "$UCDP_QUALITY_REASON_DIAGNOSTICS_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload sanitized evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ucdp-quality-reason-diagnostics-${{ github.run_id }}
+          path: |
+            ucdp-quality-reason-diagnostics.json
+            ucdp-quality-reason-diagnostics.log
+          if-no-files-found: error
+          retention-days: 30
