@@ -147,6 +147,10 @@ const evidence = {
   target: base,
   network: ARC_NETWORK,
   asset: ARC_USDC,
+  acceptance_subject: {
+    type: "country",
+    country_iso3: "CHN",
+  },
   commercial_revenue: false,
   raw_payment_signature_persisted: false,
   buyer_private_key_persisted: false,
@@ -183,9 +187,8 @@ async function main() {
   const clientRequestId = `agentic-v1-${Date.now()}`;
   const body = {
     subject: {
-      type: "corridor",
-      origin_country_iso3: "USA",
-      destination_country_iso3: "CHN",
+      type: "country",
+      country_iso3: "CHN",
     },
     policy_preset: "cautious",
     action_type: "agent_payment",
@@ -199,6 +202,14 @@ async function main() {
     headers: { "content-type": "application/json", "user-agent": "geomacro-agentic-acceptance-v1" },
     body: JSON.stringify(body),
   });
+  if (unpaid.status !== 402) {
+    const failureBody = await unpaid.clone().json().catch(() => null);
+    evidence.audit.unpaid_probe_failure = {
+      http_status: unpaid.status,
+      error_code: failureBody?.error?.code ?? null,
+      message: failureBody?.error?.message ?? null,
+    };
+  }
   assert(unpaid.status === 402, `P0-4 expected HTTP 402, received ${unpaid.status}.`);
   const paymentRequiredHeader = unpaid.headers.get("payment-required");
   assert(paymentRequiredHeader, "P0-4 PAYMENT-REQUIRED header missing.");
