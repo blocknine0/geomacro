@@ -1,0 +1,236 @@
+name: Canonical Readiness Source Diagnostics
+
+on:
+  push:
+    branches:
+      - diag/canonical-readiness-reasons
+    paths:
+      - ".github/workflows/canonical-readiness-source-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
+
+    steps:
+      - name: Checkout diagnostic head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Validate authoritative read-only target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+
+      - name: Aggregate source policy for blocked countries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/canonical-readiness-source-diagnostics
+          node --input-type=module <<'NODE' | tee artifacts/canonical-readiness-source-diagnostics/report.json
+          const base = String(process.env.APP_SUPABASE_URL ?? "").replace(/\/$/, "");
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "");
+          const blocked = new Set(["ERI","GIN","IND","IRN","ISL","LUX","MDV","RUS","SGP","SYC","SYR","TJK","UKR"]);
+          const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+
+          const headers = {
+            apikey: key,
+            authorization: `Bearer ${key}`,
+            accept: "application/json",
+          };
+
+          async function fetchAll(path, params = {}) {
+            const out = [];
+            const pageSize = 1000;
+            for (let offset = 0; offset < 10000; offset += pageSize) {
+              const url = new URL(`${base}/rest/v1/${path}`);
+              for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
+              const response = await fetch(url, {
+                headers: { ...headers, Range: `${offset}-${offset + pageSize - 1}` },
+              });
+              if (!response.ok) throw new Error(`${path.toUpperCase()}_READ_FAILED_${response.status}`);
+              const rows = await response.json();
+              if (!Array.isArray(rows)) throw new Error(`${path.toUpperCase()}_READ_INVALID_RESPONSE`);
+              out.push(...rows);
+              if (rows.length < pageSize) break;
+            }
+            return out;
+          }
+
+          async function fetchIn(path, select, column, values) {
+            const unique = [...new Set(values.map(String).filter(Boolean))];
+            const out = [];
+            for (let i = 0; i < unique.length; i += 50) {
+              const chunk = unique.slice(i, i + 50);
+              const url = new URL(`${base}/rest/v1/${path}`);
+              url.searchParams.set("select", select);
+              url.searchParams.set(column, `in.(${chunk.map((v) => `"${v.replaceAll('"','')}"`).join(",")})`);
+              const response = await fetch(url, { headers });
+              if (!response.ok) throw new Error(`${path.toUpperCase()}_READ_FAILED_${response.status}`);
+              const rows = await response.json();
+              if (!Array.isArray(rows)) throw new Error(`${path.toUpperCase()}_READ_INVALID_RESPONSE`);
+              out.push(...rows);
+            }
+            return out;
+          }
+
+          const events = await fetchAll("live_structured_events", {
+            select: "id,primary_country,countries,last_observed_at,commercial_eligibility_status,commercial_eligibility_reason_codes",
+            last_observed_at: `gte.${cutoff}`,
+            order: "last_observed_at.desc",
+          });
+
+          const relevantEvents = events.filter((row) => {
+            const primary = String(row.primary_country ?? "").trim().toUpperCase();
+            const countries = Array.isArray(row.countries) ? row.countries.map((v) => String(v).trim().toUpperCase()) : [];
+            return blocked.has(primary) || countries.some((iso3) => blocked.has(iso3));
+          });
+          const eventIds = relevantEvents.map((row) => String(row.id ?? "")).filter(Boolean);
+
+          const rights = await fetchIn(
+            "live_structured_event_commercial_rights_evaluation",
+            "event_id,evaluated_status,reason_codes,source_keys",
+            "event_id",
+            eventIds,
+          );
+          const rightsByEvent = new Map(rights.map((row) => [String(row.event_id), row]));
+
+          const evidence = await fetchIn(
+            "live_structured_event_evidence",
+            "event_id,source_domain,fragment_id",
+            "event_id",
+            eventIds,
+          );
+          const fragmentIds = evidence.map((row) => String(row.fragment_id ?? "")).filter(Boolean);
+          const manifests = await fetchIn(
+            "live_fragment_manifest",
+            "id,source_key",
+            "id",
+            fragmentIds,
+          );
+          const sourceKeyByFragment = new Map(manifests.map((row) => [String(row.id), String(row.source_key ?? "")]));
+
+          const sourceKeys = [...new Set([
+            ...rights.flatMap((row) => Array.isArray(row.source_keys) ? row.source_keys.map(String) : []),
+            ...manifests.map((row) => String(row.source_key ?? "")),
+          ].filter(Boolean))];
+          const registry = sourceKeys.length
+            ? await fetchIn(
+                "live_source_registry",
+                "source_key,enabled,commercial_usage_status,derivative_intelligence_allowed,commercial_reviewed_at",
+                "source_key",
+                sourceKeys,
+              )
+            : [];
+          const registryByKey = new Map(registry.map((row) => [String(row.source_key), row]));
+
+          const evidenceByEvent = new Map();
+          for (const row of evidence) {
+            const id = String(row.event_id ?? "");
+            const list = evidenceByEvent.get(id) ?? [];
+            list.push(row);
+            evidenceByEvent.set(id, list);
+          }
+
+          const perCountry = {};
+          for (const iso3 of [...blocked].sort()) {
+            const countryEvents = relevantEvents.filter((row) => {
+              const primary = String(row.primary_country ?? "").trim().toUpperCase();
+              const countries = Array.isArray(row.countries) ? row.countries.map((v) => String(v).trim().toUpperCase()) : [];
+              return primary === iso3 || countries.includes(iso3);
+            });
+            const blockingEvents = countryEvents.filter((row) => {
+              const rightsRow = rightsByEvent.get(String(row.id ?? ""));
+              const status = String(rightsRow?.evaluated_status ?? row.commercial_eligibility_status ?? "UNVERIFIED");
+              return status !== "VERIFIED" && status !== "DERIVED_ONLY";
+            });
+
+            const sourceCounts = new Map();
+            const domainCounts = new Map();
+            const statusCounts = new Map();
+            const reasonCounts = new Map();
+
+            for (const row of blockingEvents) {
+              const eventId = String(row.id ?? "");
+              const rightsRow = rightsByEvent.get(eventId);
+              const status = String(rightsRow?.evaluated_status ?? row.commercial_eligibility_status ?? "UNVERIFIED");
+              statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+              const reasons = Array.isArray(rightsRow?.reason_codes)
+                ? rightsRow.reason_codes.map(String)
+                : Array.isArray(row.commercial_eligibility_reason_codes)
+                  ? row.commercial_eligibility_reason_codes.map(String)
+                  : [];
+              for (const reason of reasons) reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+
+              const eventEvidence = evidenceByEvent.get(eventId) ?? [];
+              for (const ev of eventEvidence) {
+                const domain = String(ev.source_domain ?? "").trim().toLowerCase() || "<missing>";
+                domainCounts.set(domain, (domainCounts.get(domain) ?? 0) + 1);
+                const sourceKey = sourceKeyByFragment.get(String(ev.fragment_id ?? "")) || "<missing>";
+                sourceCounts.set(sourceKey, (sourceCounts.get(sourceKey) ?? 0) + 1);
+              }
+            }
+
+            const sortMap = (map) => Object.fromEntries([...map.entries()].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0])));
+            perCountry[iso3] = {
+              recent_event_count: countryEvents.length,
+              blocking_event_count: blockingEvents.length,
+              blocking_source_counts: sortMap(sourceCounts),
+              blocking_source_domain_counts: sortMap(domainCounts),
+              blocking_rights_status_counts: sortMap(statusCounts),
+              blocking_reason_counts: sortMap(reasonCounts),
+            };
+          }
+
+          const registrySummary = Object.fromEntries(sourceKeys.sort().map((sourceKey) => {
+            const row = registryByKey.get(sourceKey);
+            return [sourceKey, row ? {
+              enabled: row.enabled === true,
+              commercial_usage_status: row.commercial_usage_status ?? null,
+              derivative_intelligence_allowed: row.derivative_intelligence_allowed === true,
+              commercial_reviewed: Boolean(row.commercial_reviewed_at),
+            } : { registry_missing: true }];
+          }));
+
+          const report = {
+            schema_version: "geomacro-canonical-readiness-source-diagnostics-v1",
+            generated_at: new Date().toISOString(),
+            lookback_hours: 72,
+            blocked_country_count: blocked.size,
+            boundaries: {
+              read_only: true,
+              payment_performed: false,
+              execution_authorized: false,
+              raw_source_material_emitted: false,
+              source_urls_emitted: false,
+              secret_values_emitted: false,
+            },
+            registry: registrySummary,
+            countries: perCountry,
+          };
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+
+          jq -e '.boundaries.read_only == true and .boundaries.payment_performed == false and .boundaries.execution_authorized == false and .boundaries.raw_source_material_emitted == false and .boundaries.source_urls_emitted == false and .boundaries.secret_values_emitted == false' artifacts/canonical-readiness-source-diagnostics/report.json >/dev/null
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: canonical-readiness-source-diagnostics-${{ github.run_id }}
+          path: artifacts/canonical-readiness-source-diagnostics/report.json
+          if-no-files-found: error
+          retention-days: 7
