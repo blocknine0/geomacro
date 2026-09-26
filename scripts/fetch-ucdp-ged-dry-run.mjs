@@ -1,8 +1,17 @@
 const API_BASE =
   "https://ucdpapi.pcr.uu.se";
 
+function defaultCandidateVersion(now = new Date()) {
+  const previousMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+  );
+  const year = String(previousMonth.getUTCFullYear()).slice(-2);
+  const month = previousMonth.getUTCMonth() + 1;
+  return `${year}.0.${month}`;
+}
+
 const DATASET_VERSION =
-  (process.env.UCDP_CANDIDATE_VERSION ?? "26.0.7").trim();
+  (process.env.UCDP_CANDIDATE_VERSION ?? defaultCandidateVersion()).trim();
 
 const TOKEN =
   process.env.UCDP_API_TOKEN?.trim() ??
@@ -12,7 +21,7 @@ const PAGE_SIZE = 1;
 
 if (!/^\d{2}\.0\.\d{1,2}$/.test(DATASET_VERSION)) {
   throw new Error(
-    "UCDP_CANDIDATE_VERSION must look like 26.0.7",
+    "UCDP_CANDIDATE_VERSION must look like 26.0.8",
   );
 }
 
