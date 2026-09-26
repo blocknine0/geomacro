@@ -1,15 +1,18 @@
 {
-  "schema_version": "geomacro.agent-commerce.v1",
+  "schema_version": "geomacro.agent-commerce.v2",
   "service": {
-    "id": "geomacro-risk-intelligence",
-    "name": "Geomacro Risk Intelligence",
-    "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for human and software-agent decisions.",
-    "status": "prelaunch",
+    "id": "geomacro-global-risk-intelligence",
+    "name": "GeoMacro Global Risk Intelligence",
+    "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI-agent decisions.",
+    "status": "testnet_prelaunch",
     "canonical_origin": "https://geomacro.live",
+    "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
     "execution_authorized": false
   },
   "discovery": {
-    "agent_card": "https://geomacro.live/.well-known/geomacro-agent.json",
+    "a2a_agent_card": "https://geomacro.live/.well-known/agent-card.json",
+    "a2a_interface": "https://geomacro.live/api/a2a",
+    "agent_manifest": "https://geomacro.live/.well-known/geomacro-agent.json",
     "x402": "https://geomacro.live/.well-known/x402.json",
     "x402_extensionless_alias": "https://geomacro.live/.well-known/x402",
     "human_machine_docs": "https://geomacro.live/agent-commerce.md",
@@ -19,9 +22,9 @@
     "availability": "https://geomacro.live/api/x402/risk/availability"
   },
   "commercial_contract": {
-    "launch_state": "prelaunch",
+    "launch_state": "testnet_prelaunch",
     "production_funds_authorized": false,
-    "pricing_authority": "payment_challenge_or_provider_plan",
+    "pricing_authority": "runtime_payment_challenge_or_provider_plan",
     "static_catalog_price_authoritative": false,
     "prepayment_deliverability_required": true,
     "commercial_source_eligibility_required": true,
@@ -34,37 +37,36 @@
   "offers": [
     {
       "id": "adaptive-risk-intelligence-v1",
-      "name": "Adaptive Risk Intelligence",
-      "description": "A bounded adaptive country or directional-corridor assessment assembled from the currently deliverable Geomacro modules requested by topic and intent.",
+      "name": "Adaptive Global Risk Intelligence",
+      "description": "A bounded country or directional-corridor assessment assembled only from currently deliverable governed GeoMacro modules requested by topic and intent.",
+      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
       "providers": {
         "coinbase_x402": {
           "endpoint": "https://geomacro.live/api/x402/intelligence",
-          "environment": "Base Sepolia acceptance complete; Base mainnet code-gated",
+          "environment": "Base Sepolia testnet path; no-charge availability gate validated; adaptive paid E2E acceptance still required",
           "launch_cohort": true,
-          "production_enabled": false
+          "production_enabled": false,
+          "paid_testnet_acceptance_complete": false
         },
         "circle_gateway": {
           "endpoint": "https://geomacro.live/api/x402/circle/intelligence",
-          "environment": "Circle Gateway production adapter prepared; current Arc route remains Testnet technical proof",
+          "environment": "Circle Gateway adapter prepared; current non-mainnet paths remain technical proof until separately accepted",
           "launch_cohort": true,
           "production_enabled": false,
-          "production_status": "adapter_ready_locked_until_coordinated_launch",
           "approved_initial_mainnet_network": "eip155:8453",
           "arc_mainnet_enabled": false
         },
         "nevermined": {
           "endpoint": "https://geomacro.live/api/x402/nevermined/intelligence",
-          "environment": "Nevermined sandbox prelaunch acceptance",
+          "environment": "Nevermined sandbox/prelaunch integration",
           "launch_cohort": true,
-          "production_enabled": false,
-          "production_status": "code_ready_pending_live_plan_credentials_and_launch_authorization"
+          "production_enabled": false
         },
         "goat_x402": {
-          "environment": "GOAT Testnet3 technical proof; Mainnet merchant onboarding package prepared",
+          "environment": "GOAT Testnet3 technical proof; mainnet requires separate merchant onboarding",
           "launch_cohort": false,
-          "production_enabled": false,
-          "production_status": "deferred_manual_mainnet_merchant_onboarding"
+          "production_enabled": false
         }
       },
       "subjects": [
@@ -98,33 +100,41 @@
         "audit",
         "risk_gate"
       ],
-      "risk_gate_context": {
-        "policy_presets": ["balanced", "cautious", "strict"],
-        "action_types": [
-          "treasury_payment",
-          "vendor_payment",
-          "agent_payment",
-          "exposure_review"
-        ],
+      "delivery_rules": {
+        "availability_first": true,
+        "unavailable_is_not_payable": true,
+        "stale_is_not_payable": true,
+        "commercially_ineligible_is_not_payable": true,
+        "duplicate_charge_blocked": true,
         "execution_authorized": false
       }
     }
   ],
   "discovery_terms": [
+    "AI agent risk intelligence",
+    "x402 risk intelligence",
     "country risk",
     "geopolitical risk",
     "macroeconomic risk",
     "critical minerals risk",
     "sovereign risk",
-    "treasury pre-flight risk context",
+    "FX risk",
     "cross-border corridor risk",
+    "supply chain risk",
     "supplier-country exposure context",
     "geopolitical escalation context",
-    "portfolio geopolitical exposure context",
     "signed risk object",
     "machine-readable risk evidence",
     "risk gate"
   ],
+  "promotion_policy": {
+    "free_distribution_only_during_testnet": true,
+    "paid_ads": false,
+    "paid_boosts": false,
+    "spam_automation": false,
+    "unsolicited_direct_messages": false,
+    "claims_must_be_machine_verifiable": true
+  },
   "boundaries": {
     "autonomous_execution": false,
     "wallet_custody": false,
