@@ -1,6 +1,8 @@
 name: Deploy Telegram signal ingest to isolated Supabase
 
 on:
+  schedule:
+    - cron: "17 1,9,17 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -41,12 +43,57 @@ jobs:
           set -euo pipefail
           file=".github/workflows/deploy-telegram-signal-supabase.yml"
           grep -q 'workflow_dispatch:' "$file"
+          grep -q 'schedule:' "$file"
+          grep -q '17 1,9,17' "$file"
           grep -q 'qogpagklwbfdmrgnrhzi' "$file"
           grep -q 'SIGNAL_DB_MODE' "$file"
           grep -q -- '--no-verify-jwt' "$file"
           grep -q '954_telegram_authorized_publisher_only.sql' "$file"
+          grep -q 'live-flash-corroborate' "$file"
           ! grep -q 'ldpwajisioljyjtojvfx' "$file"
-          echo "PASS: Telegram signal deployment remains isolated from authoritative production Supabase."
+          echo "PASS: Telegram signal deployment and keepalive remain isolated from authoritative production Supabase."
+
+  keepalive:
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: telegram-signal-supabase-keepalive
+      cancel-in-progress: true
+    env:
+      EXPECTED_SIGNAL_SUPABASE_PROJECT_REF: qogpagklwbfdmrgnrhzi
+      SUPABASE_PROJECT_ID: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID }}
+      FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
+    steps:
+      - name: Validate keepalive target and secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SUPABASE_PROJECT_ID:-}" || -z "${FLASH_INGEST_TOKEN:-}" ]]; then
+            echo "::error title=Missing keepalive secret::Telegram signal project id/token is not configured."
+            exit 1
+          fi
+          if [[ "$SUPABASE_PROJECT_ID" != "$EXPECTED_SIGNAL_SUPABASE_PROJECT_REF" ]]; then
+            echo "::error title=Wrong keepalive target::Refusing to call a non-isolated Supabase project."
+            exit 1
+          fi
+      - name: Generate authenticated project activity
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/live-flash-corroborate"
+          code="$(curl --silent --show-error --retry 2 --retry-delay 3 --max-time 30 --output /tmp/keepalive.json --write-out '%{http_code}' --request POST --header "x-geomacro-flash-token: ${FLASH_INGEST_TOKEN}" --header 'Content-Type: application/json' --data '{}' "$endpoint")"
+          cat /tmp/keepalive.json
+          if [[ "$code" == "540" ]]; then
+            echo "::error title=Telegram signal Supabase paused::Provider returned HTTP 540. Resume the isolated project in Supabase."
+            exit 1
+          fi
+          if [[ "$code" != "200" ]] || ! grep -q '"ok":true' /tmp/keepalive.json; then
+            echo "::error title=Telegram signal keepalive failed::Expected authenticated 200 response from isolated corroboration endpoint, received HTTP ${code}."
+            exit 1
+          fi
+          echo "PASS: isolated Telegram signal Supabase keepalive generated authenticated activity."
 
   deploy:
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
