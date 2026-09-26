@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "dd20f870dd669be7f3f80936657236f70724aad5",
-  "published_baseline": "Founder-approved commercial Testnet Access surface with global language selector and core x402 proof",
+  "baseline_sha": "28f419ea058f96f276268ab0de67b005e7d23128",
+  "published_baseline": "Founder-approved commercial Testnet Access surface plus Tameion Agent Mode demo route for Arc Testnet business-payment decisions",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-09-25T14:10:00Z",
+  "locked_at_utc": "2026-09-26T09:03:17Z",
   "published_source_sha": "dd20f870dd669be7f3f80936657236f70724aad5",
-  "lock_revision": "founder-approved-commercial-multilingual-testnet-final"
+  "lock_revision": "founder-approved-tameion-agent-mode"
 }
