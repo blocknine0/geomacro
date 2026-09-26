@@ -17,22 +17,24 @@ import {
 // same dataset family.
 
 const SOURCE_ID = "ucdp_candidate"
-const VERSION = (process.env.UCDP_CANDIDATE_VERSION ?? "26.0.7").trim()
+
+function defaultCandidateVersion(now = new Date()) {
+  // UCDP Candidate is a monthly release with no more than one month of lag.
+  // After the monthly publication window, use the previous calendar month as
+  // the deterministic current-release target. Manual workflow dispatch can
+  // still override this through UCDP_CANDIDATE_VERSION for replays/backfills.
+  const previousMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const year = String(previousMonth.getUTCFullYear()).slice(-2)
+  const month = previousMonth.getUTCMonth() + 1
+  return `${year}.0.${month}`
+}
+
+const VERSION = (process.env.UCDP_CANDIDATE_VERSION ?? defaultCandidateVersion()).trim()
 const MAX_UNMAPPED_ROWS = Number(process.env.UCDP_MAX_UNMAPPED_ROWS ?? "0")
 const WRITE = process.argv.includes("--write")
 
-// UCDP uses Gleditsch-Ward country identifiers. Keep source-specific aliases
-// explicit and narrow instead of weakening the shared country-name resolver.
-// These mappings are used only when the resulting ISO3 exists in the enabled
-// live country registry.
-const UCDP_GW_COUNTRY_ID_TO_ISO3 = Object.freeze({
-  "490": "COD", // DR Congo (Zaire)
-  "640": "TUR", // Turkey
-  "775": "MMR", // Myanmar (Burma)
-})
-
 if (!/^\d{2}\.0\.\d{1,2}$/.test(VERSION)) {
-  throw new Error("UCDP_CANDIDATE_VERSION must look like 26.0.7")
+  throw new Error("UCDP_CANDIDATE_VERSION must look like 26.0.8")
 }
 if (!Number.isInteger(MAX_UNMAPPED_ROWS) || MAX_UNMAPPED_ROWS < 0) {
   throw new Error("UCDP_MAX_UNMAPPED_ROWS must be non-negative")
@@ -80,10 +82,6 @@ function ucdpOfficialCountryIso3(value) {
   const exact = countryIso3FromName(official, registry)
   if (exact) return exact
 
-  // UCDP retains historical/legacy labels in trailing parentheses, for example
-  // "Myanmar (Burma)" and "Yemen (North Yemen)". Mirror the governed historical
-  // importer: retry only the same official location label with that trailing
-  // qualifier removed. Actor names are never used for country inference.
   const withoutTrailingParenthetical = official.replace(/\s*\([^)]*\)\s*$/, "").trim()
   if (!withoutTrailingParenthetical || withoutTrailingParenthetical === official) {
     return null
@@ -91,6 +89,12 @@ function ucdpOfficialCountryIso3(value) {
 
   return countryIso3FromName(withoutTrailingParenthetical, registry)
 }
+
+const UCDP_GW_COUNTRY_ID_TO_ISO3 = Object.freeze({
+  "490": "COD",
+  "640": "TUR",
+  "775": "MMR",
+})
 
 function eventIso3(row) {
   for (const value of [row?.country_iso3, row?.isocc, row?.iso3]) {
@@ -197,12 +201,6 @@ for (const row of rows) {
     continue
   }
 
-  // Candidate is intentionally provisional. UCDP documents low, best and high
-  // as separate source-derived estimates and flags uncertain death coding via
-  // code_status. Do not rewrite or discard an official best estimate merely
-  // because the current monthly low/best/high ordering is temporarily
-  // inconsistent. Preserve the raw bounds, downgrade the row to PARTIAL, and
-  // keep it outside VERIFIED-only risk consumers until UCDP revises it.
   const fatalityIntervalConsistent =
     (low === null || low <= best) &&
     (high === null || best <= high) &&
@@ -318,30 +316,26 @@ if (otherRejected > 0) {
 }
 
 if (intervalAnomalyRows.length) {
-  console.warn("UCDP PROVISIONAL FATALITY INTERVAL SAMPLE", intervalAnomalyRows.slice(0, 25))
+  console.warn("UCDP Candidate interval anomalies retained as PARTIAL", intervalAnomalyRows.slice(0, 25))
 }
 if (componentSumAnomalyRows.length) {
-  console.warn("UCDP PROVISIONAL COMPONENT SUM SAMPLE", componentSumAnomalyRows.slice(0, 25))
+  console.warn("UCDP Candidate component-sum anomalies retained as PARTIAL", componentSumAnomalyRows.slice(0, 25))
 }
 
-const attempted = WRITE ? await upsertObservations(db, observations) : 0
-
 console.log({
-  source_id: SOURCE_ID,
-  dataset_version: VERSION,
-  download_rows: rows.length,
-  normalized_observations: observations.length,
-  verified_quality_rows: observations.filter((row) => row.quality_status === "VERIFIED").length,
-  partial_quality_rows: observations.filter((row) => row.quality_status === "PARTIAL").length,
+  release_rows: rows.length,
+  accepted_observations: observations.length,
+  verified_observations: observations.filter((row) => row.quality_status === "VERIFIED").length,
+  partial_observations: observations.filter((row) => row.quality_status === "PARTIAL").length,
+  rejected_rows: rejected.length,
   interval_anomaly_rows: intervalAnomalyRows.length,
   component_sum_anomaly_rows: componentSumAnomalyRows.length,
-  rejected_rows: rejected.length,
-  observations_attempted: attempted,
-  write_enabled: WRITE,
 })
 
-console.log(
-  WRITE
-    ? "PASS: UCDP CANDIDATE CURRENT EVIDENCE INGESTION CLEAN"
-    : "PASS: UCDP CANDIDATE DRY RUN CLEAN; DATABASE UNCHANGED",
-)
+if (!WRITE) {
+  console.log("PASS: UCDP Candidate release validated without database writes")
+  process.exit(0)
+}
+
+await upsertObservations(db, observations)
+console.log(`PASS: wrote ${observations.length} governed UCDP Candidate observations`)

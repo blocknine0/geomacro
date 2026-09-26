@@ -6,6 +6,11 @@ const ingest = readFileSync(
   "utf8",
 );
 
+const apiProbe = readFileSync(
+  new URL("../../scripts/fetch-ucdp-ged-dry-run.mjs", import.meta.url),
+  "utf8",
+);
+
 const migration = readFileSync(
   new URL(
     "../../supabase/migrations/053_ucdp_candidate_live_ingest.sql",
@@ -50,6 +55,18 @@ describe("UCDP Candidate live evidence boundary", () => {
     expect(ingest).toContain("https://ucdp.uu.se/downloads/candidateged/");
     expect(ingest).not.toContain("UCDP_API_TOKEN");
     expect(transportAlignment).toContain("authenticated API daily request allowance");
+  });
+
+  it("automatically targets the current monthly release after the publication window", () => {
+    expect(ingest).toContain("function defaultCandidateVersion");
+    expect(apiProbe).toContain("function defaultCandidateVersion");
+    expect(ingest).toContain("now.getUTCMonth() - 1");
+    expect(apiProbe).toContain("now.getUTCMonth() - 1");
+    expect(workflow).toContain('cron: "17 3 22 * *"');
+    expect(workflow).toContain("Resolve current monthly Candidate release");
+    expect(workflow).toContain('default: ""');
+    expect(workflow).not.toContain("vars.UCDP_CANDIDATE_VERSION");
+    expect(workflow).not.toContain('default: "26.0.7"');
   });
 
   it("fails closed on country mapping and registers commercial source policy", () => {

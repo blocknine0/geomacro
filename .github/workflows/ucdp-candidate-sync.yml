@@ -13,11 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       candidate_version:
-        description: "Monthly UCDP Candidate version, for example 26.0.7"
+        description: "Optional monthly UCDP Candidate version override, for example 26.0.8"
         required: false
-        default: "26.0.7"
+        default: ""
   schedule:
-    - cron: "17 3 16 * *"
+    - cron: "17 3 22 * *"
 
 permissions:
   contents: read
@@ -34,7 +34,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       UCDP_API_TOKEN: ${{ secrets.UCDP_API_TOKEN }}
-      UCDP_CANDIDATE_VERSION: ${{ inputs.candidate_version || vars.UCDP_CANDIDATE_VERSION || '26.0.7' }}
+      UCDP_CANDIDATE_VERSION: ${{ inputs.candidate_version || '' }}
       UCDP_MAX_UNMAPPED_ROWS: "0"
 
     steps:
@@ -55,6 +55,17 @@ jobs:
         if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
         run: echo "Dependabot pull requests do not receive repository secrets; authenticated UCDP live validation is intentionally skipped for this dependency-only run." >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Resolve current monthly Candidate release
+        if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${UCDP_CANDIDATE_VERSION:-}" ]]; then
+            UCDP_CANDIDATE_VERSION="$(node -e 'const n=new Date(); const p=new Date(Date.UTC(n.getUTCFullYear(),n.getUTCMonth()-1,1)); process.stdout.write(`${String(p.getUTCFullYear()).slice(-2)}.0.${p.getUTCMonth()+1}`)')"
+            echo "UCDP_CANDIDATE_VERSION=${UCDP_CANDIDATE_VERSION}" >> "$GITHUB_ENV"
+          fi
+          echo "UCDP Candidate target version: ${UCDP_CANDIDATE_VERSION}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Validate required UCDP configuration
         if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
         shell: bash
@@ -63,6 +74,7 @@ jobs:
           test -n "$SUPABASE_URL" || { echo "::error::APP_SUPABASE_URL is required for UCDP validation"; exit 1; }
           test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is required for UCDP validation"; exit 1; }
           test -n "$UCDP_API_TOKEN" || { echo "::error::UCDP_API_TOKEN is required for UCDP validation"; exit 1; }
+          [[ "$UCDP_CANDIDATE_VERSION" =~ ^[0-9]{2}\.0\.[0-9]{1,2}$ ]] || { echo "::error::Invalid UCDP Candidate version"; exit 1; }
 
       - name: Validate authenticated UCDP Candidate API access
         if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
