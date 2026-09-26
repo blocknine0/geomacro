@@ -41,6 +41,64 @@ function assertSignature(object: { integrity: { signature?: string | null }; exp
   }
 }
 
+async function runGlobalCountryRemediationAudit() {
+  const processHandle = Bun.spawn(
+    ["bun", "scripts/audit-global-country-remediation.ts"],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        GLOBAL_REMEDIATION_AUDIT_OUTPUT: "",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(processHandle.stdout).text(),
+    new Response(processHandle.stderr).text(),
+    processHandle.exited,
+  ]);
+
+  if (stderr.trim()) console.error(stderr.trim());
+  if (exitCode !== 0) throw new Error(`GLOBAL_COUNTRY_REMEDIATION_AUDIT_FAILED:${exitCode}`);
+
+  let report: any;
+  try {
+    report = JSON.parse(stdout);
+  } catch {
+    throw new Error("GLOBAL_COUNTRY_REMEDIATION_AUDIT_INVALID_JSON");
+  }
+
+  if (
+    report?.schema_version !== "geomacro-global-country-remediation-v1" ||
+    report?.boundaries?.raw_source_urls_emitted !== false ||
+    report?.boundaries?.raw_source_material_emitted !== false ||
+    report?.boundaries?.payment_performed !== false ||
+    report?.boundaries?.execution_authorized !== false
+  ) {
+    throw new Error("GLOBAL_COUNTRY_REMEDIATION_AUDIT_BOUNDARY_INVALID");
+  }
+
+  const summary = {
+    schema_version: report.schema_version,
+    denominator: report.denominator ?? null,
+    paid_ready_country_count: report.paid_ready_country_count ?? null,
+    fail_closed_country_count: report.fail_closed_country_count ?? null,
+    remediation_action_country_counts:
+      report.summary?.remediation_action_country_counts ?? {},
+    blocking_source_key_event_counts:
+      report.summary?.blocking_source_key_event_counts ?? {},
+    fail_closed_region_counts: report.summary?.fail_closed_region_counts ?? {},
+    generated_at: report.generated_at ?? null,
+  };
+
+  console.error("GLOBAL_COUNTRY_REMEDIATION_STATUS " + JSON.stringify(summary));
+  console.error("GLOBAL_COUNTRY_REMEDIATION_REPORT " + JSON.stringify(report));
+  return summary;
+}
+
 async function runGlobalCanonicalRefreshWhenOrchestrated() {
   const workflow = String(process.env.GITHUB_WORKFLOW ?? "").trim();
   if (!GLOBAL_REFRESH_WORKFLOWS.has(workflow)) {
@@ -88,7 +146,7 @@ async function runGlobalCanonicalRefreshWhenOrchestrated() {
     throw new Error("GLOBAL_CANONICAL_REFRESH_BOUNDARY_INVALID");
   }
 
-  const summary = {
+  const summary: any = {
     schema_version: report.schema_version,
     denominator: report.denominator?.count ?? null,
     paid_ready_country_count: report.summary?.paid_ready_country_count ?? null,
@@ -103,6 +161,10 @@ async function runGlobalCanonicalRefreshWhenOrchestrated() {
   };
 
   console.error("GLOBAL_CANONICAL_REFRESH_STATUS " + JSON.stringify(summary));
+
+  if (Number(summary.fail_closed_country_count ?? 0) > 0) {
+    summary.remediation = await runGlobalCountryRemediationAudit();
+  }
 
   if (exitCode !== 0) {
     if (workflow === "Public Demo Risk Refresh" && exitCode === 2) {
