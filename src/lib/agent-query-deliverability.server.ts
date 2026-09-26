@@ -1,5 +1,9 @@
 import type { AgentQueryPlan } from "./agent-query-plan";
 import {
+  AGENT_CRITICAL_MINERALS_SOURCE_ID,
+  loadAgentCriticalMineralsModule,
+} from "./agent-query-critical-minerals.server";
+import {
   assertCommercialSourcesEligible,
   type CommercialSourceEligibility,
 } from "./commercial-source-eligibility.server";
@@ -265,6 +269,41 @@ export async function checkAgentQueryDeliverability(
         }
         if (fallback?.code === "SOURCE_NOT_ELIGIBLE") {
           ineligibleSources.add(AGENT_WORLD_BANK_SOURCE_ID);
+          continue;
+        }
+        if (fallback?.code === "OBSERVATION_STALE") {
+          stale.add(module);
+          continue;
+        }
+      }
+
+      if (module === "critical_minerals") {
+        let fallback: Awaited<ReturnType<typeof loadAgentCriticalMineralsModule>> | null = null;
+        try {
+          fallback = await loadAgentCriticalMineralsModule({
+            subject,
+            as_of: asOf,
+            max_age_seconds: plan.module_max_age_seconds[module],
+          });
+        } catch {
+          fallback = null;
+        }
+        if (fallback?.deliverable) {
+          available.add(module);
+          governedFallbackModules.add(module);
+          governedFallbackSourceIds.add(AGENT_CRITICAL_MINERALS_SOURCE_ID);
+          const fallbackTime = fallback.source_observed_at
+            ? Date.parse(fallback.source_observed_at)
+            : Number.NaN;
+          if (Number.isFinite(fallbackTime)) {
+            latestEvidence = latestEvidence === null
+              ? fallbackTime
+              : Math.max(latestEvidence, fallbackTime);
+          }
+          continue;
+        }
+        if (fallback?.code === "SOURCE_NOT_ELIGIBLE") {
+          ineligibleSources.add(AGENT_CRITICAL_MINERALS_SOURCE_ID);
           continue;
         }
         if (fallback?.code === "OBSERVATION_STALE") {
