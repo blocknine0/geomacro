@@ -104,6 +104,21 @@ describe("Agentic Testnet Acceptance v1", () => {
     expect(migration).toContain("PREPARED_LEASE_EXPIRED_RECONCILIATION_REQUIRED");
   });
 
+  it("locks paid acceptance to a commercially deliverable canonical country subject", () => {
+    const script = read("scripts/agentic/agentic-testnet-acceptance-v1.mjs");
+    const docs = read("docs/AGENTIC_TESTNET_ACCEPTANCE_V1.md");
+
+    expect(script).toContain('type: "country"');
+    expect(script).toContain('country_iso3: "CHN"');
+    expect(script).toContain("acceptance_subject");
+    expect(script).toContain("unpaid_probe_failure");
+    expect(script).not.toContain('type: "corridor"');
+
+    expect(docs).toContain("current corridor methodology is an endpoint-composition pilot");
+    expect(docs).toContain("pilot corridor must therefore continue to fail closed on paid delivery");
+    expect(docs).toContain("I_AUTHORIZE_CANONICAL_RISK_OBJECT_REFRESH");
+  });
+
   it("locks the autonomous buyer harness to Arc Testnet, one bounded charge and sanitized evidence", () => {
     const script = read("scripts/agentic/agentic-testnet-acceptance-v1.mjs");
     for (const required of [
