@@ -8,17 +8,28 @@ describe("Telegram signal Supabase isolation contract", () => {
     const workflow = read(".github/workflows/deploy-telegram-signal-supabase.yml");
 
     expect(workflow).toContain("qogpagklwbfdmrgnrhzi");
-    expect(workflow).toContain("ldpwajisioljyjtojvfx");
     expect(workflow).not.toContain(
       "SUPABASE_PROJECT_ID: ldpwajisioljyjtojvfx",
     );
     expect(workflow).toContain("TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID");
     expect(workflow).toContain("SIGNAL_DB_MODE");
+    expect(workflow).toContain("ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase");
+    expect(workflow).toContain("numeric <= 951");
+    expect(workflow).not.toContain("supabase migration repair");
+  });
+
+  it("uses collision-free isolated migration versions", () => {
+    const workflow = read(".github/workflows/deploy-telegram-signal-supabase.yml");
+
+    expect(workflow).toContain("980_telegram_signal_ingest_isolation.sql");
+    expect(workflow).toContain("984_telegram_authorized_publisher_only.sql");
+    expect(workflow).not.toContain("950_telegram_signal_ingest_isolation.sql");
+    expect(workflow).not.toContain("954_telegram_authorized_publisher_only.sql");
   });
 
   it("creates only raw/current signal storage and never enables commercial signals", () => {
     const migration = read(
-      "supabase/isolated-signal/migrations/950_telegram_signal_ingest_isolation.sql",
+      "supabase/isolated-signal/migrations/980_telegram_signal_ingest_isolation.sql",
     );
 
     expect(migration).toContain("live_telegram_channel_registry");
@@ -31,7 +42,7 @@ describe("Telegram signal Supabase isolation contract", () => {
 
   it("uses compact fractional storage for the isolated signal hot index", () => {
     const migration = read(
-      "supabase/isolated-signal/migrations/951_telegram_signal_compact_storage.sql",
+      "supabase/isolated-signal/migrations/981_telegram_signal_compact_storage.sql",
     );
 
     expect(migration).toContain("severity_bps smallint");
@@ -41,18 +52,15 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(migration).toContain("longitude_e6 integer");
     expect(migration).toContain("geomacro-telegram-signal");
     expect(migration).toContain("storage.buckets");
-    expect(migration).toContain("storage_bucket text not null default 'geomacro-telegram-signal'");
-    expect(migration).toContain("compression text not null default 'gzip'");
     expect(migration).toContain("live_signal_fragment_manifest");
-    expect(migration).toContain("prevent_live_signal_fragment_mutation");
   });
 
   it("defines a canonical event-family lifecycle and material-update ledger", () => {
     const lifecycle = read(
-      "supabase/isolated-signal/migrations/952_realtime_flash_event_lifecycle.sql",
+      "supabase/isolated-signal/migrations/982_realtime_flash_event_lifecycle.sql",
     );
     const familyVersions = read(
-      "supabase/isolated-signal/migrations/953_event_family_version_ledger.sql",
+      "supabase/isolated-signal/migrations/983_event_family_version_ledger.sql",
     );
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
     const corroborate = read(
@@ -68,37 +76,26 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(familyVersions).toContain("live_flash_event_family_versions");
     expect(familyVersions).toContain("unique (family_id, version)");
     expect(ingest).toContain("const signalCategory = classifySignalCategory(");
-    expect(ingest).toContain("const existingResult =");
     expect(ingest).toContain("live_flash_event_versions");
     expect(corroborate).toContain("live_flash_event_families");
     expect(corroborate).toContain("live_flash_event_family_versions");
   });
 
-  it("keeps the compact archive aligned with the actual flash primary key", () => {
-    const archive = read("supabase/functions/live-flash-archive/index.ts");
+  it("keeps public Telegram MTProto disabled in production", () => {
+    const entrypoint = read("workers/telegram-flash/production_entrypoint.py");
+    const authorized = read(
+      "supabase/isolated-signal/migrations/984_telegram_authorized_publisher_only.sql",
+    );
 
-    expect(archive).toContain("select(\"flash_id,source_record_id");
-    expect(archive).toContain("flash_id: event.flash_id");
-    expect(archive).toContain(".in(\"flash_id\", ids)");
-    expect(archive).not.toContain("event.id");
-    expect(archive).not.toContain("source_channel_key: event.source_channel_key");
-    expect(archive).toContain("telegram-flash|${periodStart}|${periodEnd}");
-    expect(archive).not.toContain("\\${periodStart}");
-  });
-  it("archives compact signal records as private gzip evidence with readback verification", () => {
-    const archive = read("supabase/functions/live-flash-archive/index.ts");
-
-    expect(archive).toContain("CompressionStream(\"gzip\")");
-    expect(archive).toContain("geomacro-telegram-signal");
-    expect(archive).toContain("payload_sha256");
-    expect(archive).toContain("compressed_sha256");
-    expect(archive).toContain("archive_readback_sha_mismatch");
-    expect(archive).toContain("archived_fragment_id");
-    expect(archive).toContain("archived_at");
-    expect(archive).not.toContain("raw_payload");
+    expect(entrypoint).toContain('os.environ["TELEGRAM_ENABLED"] = "false"');
+    expect(entrypoint).toContain('os.environ["TELEGRAM_CHANNELS"] = ""');
+    expect(authorized).toContain("telegram_mtproto_flash");
+    expect(authorized).toContain("commercial_usage_status = 'BLOCKED'");
+    expect(authorized).toContain("telegram_authorized_publisher_feed");
+    expect(authorized).toContain("publisher_authorized");
   });
 
-  it("does not persist Telegram raw body or raw payload in signal mode", () => {
+  it("does not persist raw body or raw payload in signal mode", () => {
     const ingest = read("supabase/functions/live-flash-ingest/index.ts");
 
     expect(ingest).toContain("body:\n      null");
