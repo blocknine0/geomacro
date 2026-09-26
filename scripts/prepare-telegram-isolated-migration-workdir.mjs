@@ -4,7 +4,10 @@ import path from "node:path"
 const ROOT = process.cwd()
 const SOURCE_DIR = path.join(ROOT, "supabase", "isolated-signal")
 const SOURCE_MIGRATIONS = path.join(SOURCE_DIR, "migrations")
-const TARGET_DIR = path.join(ROOT, ".tmp", "telegram-isolated-supabase")
+const configuredTarget = String(process.env.ISOLATED_WORKDIR ?? "").trim()
+const TARGET_DIR = configuredTarget
+  ? path.resolve(ROOT, configuredTarget)
+  : path.join(ROOT, ".tmp", "telegram-isolated-supabase")
 const TARGET_MIGRATIONS = path.join(TARGET_DIR, "migrations")
 
 const REMOTE_HISTORY_RANGES = [
@@ -58,7 +61,7 @@ if (generated.some((name) => /^95[2-9]_/.test(name))) {
 }
 
 console.log(JSON.stringify({
-  target_dir: path.relative(ROOT, TARGET_DIR),
+  target_dir: TARGET_DIR,
   historical_placeholder_count: generated.length - ISOLATED_MIGRATIONS.length,
   isolated_migrations: ISOLATED_MIGRATIONS,
   invariant: "production migrations 952+ are never copied into the isolated Telegram workdir",
