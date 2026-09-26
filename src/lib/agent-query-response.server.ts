@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { AgentQueryPlan } from "./agent-query-plan";
+import { loadAgentCriticalMineralsModule } from "./agent-query-critical-minerals.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
@@ -168,6 +169,32 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
           derived_module_state_only: true,
           raw_source_material_redistributed: false,
           methodology_scope: fallback.state.methodology_version,
+        },
+      };
+      continue;
+    }
+
+    if (module === "critical_minerals" && !structuralFresh) {
+      const fallback = await loadAgentCriticalMineralsModule({
+        subject,
+        as_of: asOf,
+        max_age_seconds: maxAgeSeconds,
+      });
+      if (!fallback.deliverable || !fallback.state) {
+        throw new Error(`CRITICAL_MINERALS_NOT_DELIVERABLE:${fallback.code}`);
+      }
+      governedFallbackHashes.push(...fallback.source_normalized_hashes);
+      governedFallbackDimensions.add(module);
+      if (fallback.source_observed_at) governedFallbackTimes.push(fallback.source_observed_at);
+      intelligence[module] = {
+        delivery: "GOVERNED_USGS_DERIVED_STATE",
+        source_id: fallback.source_id,
+        source_observed_at: fallback.source_observed_at,
+        source_contract: fallback.source_contract,
+        state: fallback.state,
+        limitations: {
+          derived_intelligence_only: true,
+          raw_source_material_redistributed: false,
         },
       };
       continue;
