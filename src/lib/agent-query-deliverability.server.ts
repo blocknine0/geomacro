@@ -17,6 +17,10 @@ import {
   loadAgentWorldBankModule,
   type AgentWorldBankModuleName,
 } from "./agent-query-world-bank-modules.server";
+import {
+  AGENT_CRITICAL_MINERALS_SOURCE_ID,
+  loadAgentCriticalMineralsModule,
+} from "./agent-query-critical-minerals.server";
 
 export type AgentQueryAvailabilityCode =
   | "AVAILABLE"
@@ -174,6 +178,7 @@ export async function checkAgentQueryDeliverability(
     const structuralModulesUsed = new Set<string>();
     const governedFallbackModules = new Set<string>();
     const governedFallbackSourceIds = new Set<string>();
+    const governedDerivedFallbackSourceIds = new Set<string>();
     let latestEvidence: number | null = null;
 
     for (const module of requiredStructural) {
@@ -273,6 +278,52 @@ export async function checkAgentQueryDeliverability(
         }
       }
 
+
+      if (module === "critical_minerals") {
+        let fallback: Awaited<ReturnType<typeof loadAgentCriticalMineralsModule>> | null = null;
+        try {
+          fallback = await loadAgentCriticalMineralsModule({
+            subject,
+            as_of: asOf,
+            max_age_seconds: plan.module_max_age_seconds[module],
+          });
+        } catch {
+          // Derived critical-minerals evidence never broadens delivery when the
+          // governed source store is unavailable.
+          fallback = null;
+        }
+        if (fallback?.deliverable && fallback.state && fallback.source_contract) {
+          available.add(module);
+          governedFallbackModules.add(module);
+          governedDerivedFallbackSourceIds.add(AGENT_CRITICAL_MINERALS_SOURCE_ID);
+          sourceContracts.set(AGENT_CRITICAL_MINERALS_SOURCE_ID, {
+            source_id: AGENT_CRITICAL_MINERALS_SOURCE_ID,
+            commercial_usage_status: fallback.source_contract.commercial_usage_status,
+            raw_redistribution_allowed: fallback.source_contract.raw_redistribution_allowed,
+            attribution_required: fallback.source_contract.attribution_required,
+            licence_name: fallback.source_contract.licence_name,
+          });
+          const fallbackTime = fallback.source_observed_at
+            ? Date.parse(fallback.source_observed_at)
+            : Number.NaN;
+          if (Number.isFinite(fallbackTime)) {
+            latestEvidence =
+              latestEvidence === null
+                ? fallbackTime
+                : Math.max(latestEvidence, fallbackTime);
+          }
+          continue;
+        }
+        if (fallback?.code === "SOURCE_NOT_ELIGIBLE") {
+          ineligibleSources.add(AGENT_CRITICAL_MINERALS_SOURCE_ID);
+          continue;
+        }
+        if (fallback?.code === "OBSERVATION_STALE") {
+          stale.add(module);
+          continue;
+        }
+      }
+
       if (context.status !== "AVAILABLE" || !available.has(module)) {
         missing.add(module);
       } else {
@@ -280,15 +331,18 @@ export async function checkAgentQueryDeliverability(
       }
     }
 
-    const sourceIds = [
+    const rawSourceIds = [
       ...new Set([
         ...requiredSourceIds(context, [...structuralModulesUsed]),
         ...governedFallbackSourceIds,
       ]),
     ].sort();
+    const sourceIds = [
+      ...new Set([...rawSourceIds, ...governedDerivedFallbackSourceIds]),
+    ].sort();
 
-    if (sourceIds.length > 0) {
-      const sourceEligibility = await sourceChecker(sourceIds);
+    if (rawSourceIds.length > 0) {
+      const sourceEligibility = await sourceChecker(rawSourceIds);
       if (!sourceEligibility.eligible) {
         sourceEligibility.ineligible_source_ids.forEach((sourceId) => ineligibleSources.add(sourceId));
       }
@@ -303,6 +357,7 @@ export async function checkAgentQueryDeliverability(
       }
     } else if (
       requiredStructural.length > 0 &&
+      governedFallbackModules.size === 0 &&
       !requiredStructural.every((module) => missing.has(module) || stale.has(module))
     ) {
       requiredStructural.forEach((module) => missing.add(module));

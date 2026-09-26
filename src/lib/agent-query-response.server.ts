@@ -4,6 +4,7 @@ import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
 import { loadAgentPoliticalGovernanceModule } from "./agent-query-political-governance.server";
+import { loadAgentCriticalMineralsModule } from "./agent-query-critical-minerals.server";
 import {
   loadAgentWorldBankModule,
   type AgentWorldBankModuleName,
@@ -167,6 +168,35 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
         limitations: {
           derived_module_state_only: true,
           raw_source_material_redistributed: false,
+          methodology_scope: fallback.state.methodology_version,
+        },
+      };
+      continue;
+    }
+
+
+    if (module === "critical_minerals" && !structuralFresh) {
+      const fallback = await loadAgentCriticalMineralsModule({
+        subject,
+        as_of: asOf,
+        max_age_seconds: maxAgeSeconds,
+      });
+      if (!fallback.deliverable || !fallback.state || !fallback.source_contract) {
+        throw new Error(`CRITICAL_MINERALS_NOT_DELIVERABLE:${fallback.code}`);
+      }
+      governedFallbackHashes.push(...fallback.source_normalized_hashes);
+      governedFallbackDimensions.add(module);
+      if (fallback.source_observed_at) governedFallbackTimes.push(fallback.source_observed_at);
+      intelligence[module] = {
+        delivery: "GOVERNED_USGS_CRITICAL_MINERALS_EVIDENCE",
+        source_id: fallback.source_id,
+        source_observed_at: fallback.source_observed_at,
+        source_contract: fallback.source_contract,
+        state: fallback.state,
+        limitations: {
+          derived_evidence_only: true,
+          raw_numeric_source_rows_redistributed: false,
+          risk_score_produced: false,
           methodology_scope: fallback.state.methodology_version,
         },
       };
