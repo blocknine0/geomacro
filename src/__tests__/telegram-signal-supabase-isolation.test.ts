@@ -23,6 +23,7 @@ describe("Telegram signal Supabase isolation contract", () => {
 
     expect(workflow).toContain("980_telegram_signal_ingest_isolation.sql");
     expect(workflow).toContain("984_telegram_authorized_publisher_only.sql");
+    expect(workflow).toContain("985_breaking_feed_registry_parity.sql");
     expect(workflow).not.toContain("950_telegram_signal_ingest_isolation.sql");
     expect(workflow).not.toContain("954_telegram_authorized_publisher_only.sql");
   });
@@ -81,18 +82,48 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(corroborate).toContain("live_flash_event_family_versions");
   });
 
-  it("keeps public Telegram MTProto disabled in production", () => {
+  it("keeps public Telegram MTProto disabled in every production runtime path", () => {
     const entrypoint = read("workers/telegram-flash/production_entrypoint.py");
+    const rssCycle = read("scripts/run-rss-live-cycle.mjs");
+    const discovery = read("workers/telegram-flash/global_discovery.py");
+    const orchestrator = read("scripts/intelligence-orchestrator.mjs");
     const authorized = read(
       "supabase/isolated-signal/migrations/984_telegram_authorized_publisher_only.sql",
     );
 
     expect(entrypoint).toContain('os.environ["TELEGRAM_ENABLED"] = "false"');
     expect(entrypoint).toContain('os.environ["TELEGRAM_CHANNELS"] = ""');
+    expect(rssCycle).toContain('TELEGRAM_ENABLED: "false"');
+    expect(rssCycle).toContain('TELEGRAM_CHANNELS: ""');
+    expect(discovery).toContain('"status": "DISABLED_BY_POLICY"');
+    expect(discovery).not.toContain("TelegramClient");
+    expect(orchestrator).toContain('key: "telegram_discovery"');
+    expect(orchestrator).toContain('requiredEnv: []');
     expect(authorized).toContain("telegram_mtproto_flash");
     expect(authorized).toContain("commercial_usage_status = 'BLOCKED'");
     expect(authorized).toContain("telegram_authorized_publisher_feed");
     expect(authorized).toContain("publisher_authorized");
+  });
+
+  it("runs NWS active alerts as a 60-second normalized lead feed", () => {
+    const nws = read("workers/telegram-flash/nws_alerts_loop.py");
+    const supervisor = read("workers/telegram-flash/supervisor.py");
+    const dockerfile = read("workers/telegram-flash/Dockerfile");
+    const registry = read(
+      "supabase/isolated-signal/migrations/985_breaking_feed_registry_parity.sql",
+    );
+
+    expect(nws).toContain("https://api.weather.gov/alerts/active.atom");
+    expect(nws).toContain('"NWS_ALERTS_POLL_SECONDS", "60"');
+    expect(nws).toContain('"source_id": "nws_active_alerts_atom"');
+    expect(nws).toContain('"body": None');
+    expect(nws).toContain('"raw_payload": None');
+    expect(nws).toContain('"verification_status": "UNVERIFIED"');
+    expect(supervisor).toContain('("nws-alerts", sys.executable, "nws_alerts_loop.py")');
+    expect(dockerfile).toContain("COPY nws_alerts_loop.py ./");
+    expect(registry).toContain("'nws_active_alerts_atom'");
+    expect(registry).toContain("'https://api.weather.gov/alerts/active.atom'");
+    expect(registry).toContain("enabled_for_commercial_signals = false");
   });
 
   it("does not persist raw body or raw payload in signal mode", () => {
@@ -131,5 +162,6 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(env).toContain(
       "https://qogpagklwbfdmrgnrhzi.supabase.co/functions/v1/live-flash-corroborate",
     );
+    expect(env).toContain("NWS_ALERTS_POLL_SECONDS=60");
   });
 });
