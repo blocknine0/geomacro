@@ -30,6 +30,7 @@ import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as RiskGateRouteImport } from './routes/risk-gate'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as TameionRouteImport } from './routes/tameion'
 import { Route as TestnetAccessRouteImport } from './routes/testnet-access'
 import { Route as TestnetConsoleRouteImport } from './routes/testnet-console'
 import { Route as ApiEarlyWarningRouteImport } from './routes/api.early-warning'
@@ -46,6 +47,9 @@ import { Route as ApiDemoFeedbackRouteImport } from './routes/api.demo.feedback'
 import { Route as ApiDemoPreflightRouteImport } from './routes/api.demo.preflight'
 import { Route as ApiIntelligenceCapabilitiesRouteImport } from './routes/api.intelligence.capabilities'
 import { Route as ApiIntelligenceStateRouteImport } from './routes/api.intelligence.state'
+import { Route as ApiTameionApproveRouteImport } from './routes/api.tameion.approve'
+import { Route as ApiTameionConfirmRouteImport } from './routes/api.tameion.confirm'
+import { Route as ApiTameionDecisionRouteImport } from './routes/api.tameion.decision'
 import { Route as ApiTestnetTesterSplatRouteImport } from './routes/api/testnet-tester/$'
 import { Route as ApiX402IntelligenceRouteImport } from './routes/api.x402.intelligence'
 import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
@@ -161,6 +165,11 @@ const RoadmapRoute = RoadmapRouteImport.update({
   path: '/roadmap',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TameionRoute = TameionRouteImport.update({
+  id: '/tameion',
+  path: '/tameion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TestnetAccessRoute = TestnetAccessRouteImport.update({
   id: '/testnet-access',
   path: '/testnet-access',
@@ -242,6 +251,21 @@ const ApiIntelligenceStateRoute = ApiIntelligenceStateRouteImport.update({
   path: '/api/intelligence/state',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTameionApproveRoute = ApiTameionApproveRouteImport.update({
+  id: '/api/tameion/approve',
+  path: '/api/tameion/approve',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTameionConfirmRoute = ApiTameionConfirmRouteImport.update({
+  id: '/api/tameion/confirm',
+  path: '/api/tameion/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTameionDecisionRoute = ApiTameionDecisionRouteImport.update({
+  id: '/api/tameion/decision',
+  path: '/api/tameion/decision',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTestnetTesterSplatRoute = ApiTestnetTesterSplatRouteImport.update({
   id: '/api/testnet-tester/$',
   path: '/api/testnet-tester/$',
@@ -312,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/research': typeof ResearchRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/tameion': typeof TameionRoute
   '/testnet-access': typeof TestnetAccessRoute
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
@@ -328,6 +353,9 @@ export interface FileRoutesByFullPath {
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
   '/api/intelligence/state': typeof ApiIntelligenceStateRoute
+  '/api/tameion/approve': typeof ApiTameionApproveRoute
+  '/api/tameion/confirm': typeof ApiTameionConfirmRoute
+  '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -360,6 +388,7 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/tameion': typeof TameionRoute
   '/testnet-access': typeof TestnetAccessRoute
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
@@ -376,6 +405,9 @@ export interface FileRoutesByTo {
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
   '/api/intelligence/state': typeof ApiIntelligenceStateRoute
+  '/api/tameion/approve': typeof ApiTameionApproveRoute
+  '/api/tameion/confirm': typeof ApiTameionConfirmRoute
+  '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -409,6 +441,7 @@ export interface FileRoutesById {
   '/research': typeof ResearchRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
+  '/tameion': typeof TameionRoute
   '/testnet-access': typeof TestnetAccessRoute
   '/testnet-console': typeof TestnetConsoleRoute
   '/api/early-warning': typeof ApiEarlyWarningRoute
@@ -425,6 +458,9 @@ export interface FileRoutesById {
   '/api/demo/preflight': typeof ApiDemoPreflightRoute
   '/api/intelligence/capabilities': typeof ApiIntelligenceCapabilitiesRoute
   '/api/intelligence/state': typeof ApiIntelligenceStateRoute
+  '/api/tameion/approve': typeof ApiTameionApproveRoute
+  '/api/tameion/confirm': typeof ApiTameionConfirmRoute
+  '/api/tameion/decision': typeof ApiTameionDecisionRoute
   '/api/testnet-tester/$': typeof ApiTestnetTesterSplatRoute
   '/api/x402/intelligence': typeof ApiX402IntelligenceRoute
   '/api/x402/risk': typeof ApiX402RiskRoute
@@ -459,6 +495,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/risk-gate'
     | '/roadmap'
+    | '/tameion'
     | '/testnet-access'
     | '/testnet-console'
     | '/api/early-warning'
@@ -475,6 +512,9 @@ export interface FileRouteTypes {
     | '/api/demo/preflight'
     | '/api/intelligence/capabilities'
     | '/api/intelligence/state'
+    | '/api/tameion/approve'
+    | '/api/tameion/confirm'
+    | '/api/tameion/decision'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -507,6 +547,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/risk-gate'
     | '/roadmap'
+    | '/tameion'
     | '/testnet-access'
     | '/testnet-console'
     | '/api/early-warning'
@@ -523,6 +564,9 @@ export interface FileRouteTypes {
     | '/api/demo/preflight'
     | '/api/intelligence/capabilities'
     | '/api/intelligence/state'
+    | '/api/tameion/approve'
+    | '/api/tameion/confirm'
+    | '/api/tameion/decision'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -555,6 +599,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/risk-gate'
     | '/roadmap'
+    | '/tameion'
     | '/testnet-access'
     | '/testnet-console'
     | '/api/early-warning'
@@ -571,6 +616,9 @@ export interface FileRouteTypes {
     | '/api/demo/preflight'
     | '/api/intelligence/capabilities'
     | '/api/intelligence/state'
+    | '/api/tameion/approve'
+    | '/api/tameion/confirm'
+    | '/api/tameion/decision'
     | '/api/testnet-tester/$'
     | '/api/x402/intelligence'
     | '/api/x402/risk'
@@ -604,6 +652,7 @@ export interface RootRouteChildren {
   ResearchRoute: typeof ResearchRoute
   RiskGateRoute: typeof RiskGateRoute
   RoadmapRoute: typeof RoadmapRoute
+  TameionRoute: typeof TameionRoute
   TestnetAccessRoute: typeof TestnetAccessRoute
   TestnetConsoleRoute: typeof TestnetConsoleRoute
   ApiEarlyWarningRoute: typeof ApiEarlyWarningRoute
@@ -620,6 +669,9 @@ export interface RootRouteChildren {
   ApiDemoPreflightRoute: typeof ApiDemoPreflightRoute
   ApiIntelligenceCapabilitiesRoute: typeof ApiIntelligenceCapabilitiesRoute
   ApiIntelligenceStateRoute: typeof ApiIntelligenceStateRoute
+  ApiTameionApproveRoute: typeof ApiTameionApproveRoute
+  ApiTameionConfirmRoute: typeof ApiTameionConfirmRoute
+  ApiTameionDecisionRoute: typeof ApiTameionDecisionRoute
   ApiTestnetTesterSplatRoute: typeof ApiTestnetTesterSplatRoute
   ApiX402IntelligenceRoute: typeof ApiX402IntelligenceRoute
   ApiX402RiskRoute: typeof ApiX402RiskRoute
@@ -780,6 +832,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoadmapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tameion': {
+      id: '/tameion'
+      path: '/tameion'
+      fullPath: '/tameion'
+      preLoaderRoute: typeof TameionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/testnet-access': {
       id: '/testnet-access'
       path: '/testnet-access'
@@ -892,6 +951,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntelligenceStateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tameion/approve': {
+      id: '/api/tameion/approve'
+      path: '/api/tameion/approve'
+      fullPath: '/api/tameion/approve'
+      preLoaderRoute: typeof ApiTameionApproveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tameion/confirm': {
+      id: '/api/tameion/confirm'
+      path: '/api/tameion/confirm'
+      fullPath: '/api/tameion/confirm'
+      preLoaderRoute: typeof ApiTameionConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tameion/decision': {
+      id: '/api/tameion/decision'
+      path: '/api/tameion/decision'
+      fullPath: '/api/tameion/decision'
+      preLoaderRoute: typeof ApiTameionDecisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/testnet-tester/$': {
       id: '/api/testnet-tester/$'
       path: '/api/testnet-tester/$'
@@ -980,6 +1060,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResearchRoute: ResearchRoute,
   RiskGateRoute: RiskGateRoute,
   RoadmapRoute: RoadmapRoute,
+  TameionRoute: TameionRoute,
   TestnetAccessRoute: TestnetAccessRoute,
   TestnetConsoleRoute: TestnetConsoleRoute,
   ApiEarlyWarningRoute: ApiEarlyWarningRoute,
@@ -996,6 +1077,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDemoPreflightRoute: ApiDemoPreflightRoute,
   ApiIntelligenceCapabilitiesRoute: ApiIntelligenceCapabilitiesRoute,
   ApiIntelligenceStateRoute: ApiIntelligenceStateRoute,
+  ApiTameionApproveRoute: ApiTameionApproveRoute,
+  ApiTameionConfirmRoute: ApiTameionConfirmRoute,
+  ApiTameionDecisionRoute: ApiTameionDecisionRoute,
   ApiTestnetTesterSplatRoute: ApiTestnetTesterSplatRoute,
   ApiX402IntelligenceRoute: ApiX402IntelligenceRoute,
   ApiX402RiskRoute: ApiX402RiskRoute,
