@@ -12,6 +12,11 @@ import {
   AGENT_POLITICAL_GOVERNANCE_SOURCE_ID,
   loadAgentPoliticalGovernanceModule,
 } from "./agent-query-political-governance.server";
+import {
+  AGENT_WORLD_BANK_SOURCE_ID,
+  loadAgentWorldBankModule,
+  type AgentWorldBankModuleName,
+} from "./agent-query-world-bank-modules.server";
 
 export type AgentQueryAvailabilityCode =
   | "AVAILABLE"
@@ -220,6 +225,49 @@ export async function checkAgentQueryDeliverability(
           continue;
         }
         if (fallback.code === "OBSERVATION_STALE") {
+          stale.add(module);
+          continue;
+        }
+      }
+
+      if (
+        module === "macro_monetary" ||
+        module === "sovereign_fiscal" ||
+        module === "external_fx"
+      ) {
+        let fallback: Awaited<ReturnType<typeof loadAgentWorldBankModule>> | null = null;
+        try {
+          fallback = await loadAgentWorldBankModule({
+            module: module as AgentWorldBankModuleName,
+            subject,
+            as_of: asOf,
+            max_age_seconds: plan.module_max_age_seconds[module],
+          });
+        } catch {
+          // A governed fallback store outage never broadens delivery. Preserve
+          // the original structural missing/stale result and keep payment closed.
+          fallback = null;
+        }
+        if (fallback?.deliverable) {
+          available.add(module);
+          governedFallbackModules.add(module);
+          governedFallbackSourceIds.add(AGENT_WORLD_BANK_SOURCE_ID);
+          const fallbackTime = fallback.source_observed_at
+            ? Date.parse(fallback.source_observed_at)
+            : Number.NaN;
+          if (Number.isFinite(fallbackTime)) {
+            latestEvidence =
+              latestEvidence === null
+                ? fallbackTime
+                : Math.max(latestEvidence, fallbackTime);
+          }
+          continue;
+        }
+        if (fallback?.code === "SOURCE_NOT_ELIGIBLE") {
+          ineligibleSources.add(AGENT_WORLD_BANK_SOURCE_ID);
+          continue;
+        }
+        if (fallback?.code === "OBSERVATION_STALE") {
           stale.add(module);
           continue;
         }

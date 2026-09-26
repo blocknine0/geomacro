@@ -4,6 +4,10 @@ import { demoPolicyFromPreset } from "./agentic-demo-contract";
 import { loadCommercialRiskObjectForAgentQuery } from "./agent-query-external-modules.server";
 import { loadAgentHotTopics } from "./agent-query-hot-topics.server";
 import { loadAgentPoliticalGovernanceModule } from "./agent-query-political-governance.server";
+import {
+  loadAgentWorldBankModule,
+  type AgentWorldBankModuleName,
+} from "./agent-query-world-bank-modules.server";
 import { evaluateCountryRiskGate } from "./risk-gate-service.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
@@ -131,6 +135,39 @@ async function structuralSubject(plan: AgentQueryPlan, subject: AgentQueryPlan["
           coverage: "LIMITED",
           scope: "World Bank WGI political stability; not the full governance ontology",
           raw_upstream_perception_source_material_redistributed: false,
+        },
+      };
+      continue;
+    }
+
+    if (
+      (module === "macro_monetary" ||
+        module === "sovereign_fiscal" ||
+        module === "external_fx") &&
+      !structuralFresh
+    ) {
+      const fallback = await loadAgentWorldBankModule({
+        module: module as AgentWorldBankModuleName,
+        subject,
+        as_of: asOf,
+        max_age_seconds: maxAgeSeconds,
+      });
+      if (!fallback.deliverable || !fallback.state) {
+        throw new Error(`WORLD_BANK_MODULE_NOT_DELIVERABLE:${module}:${fallback.code}`);
+      }
+      governedFallbackHashes.push(...fallback.source_normalized_hashes);
+      governedFallbackDimensions.add(module);
+      if (fallback.source_observed_at) governedFallbackTimes.push(fallback.source_observed_at);
+      intelligence[module] = {
+        delivery: "GOVERNED_WORLD_BANK_MODULE_STATE",
+        source_id: fallback.source_id,
+        source_observed_at: fallback.source_observed_at,
+        source_contract: fallback.source_contract,
+        state: fallback.state,
+        limitations: {
+          derived_module_state_only: true,
+          raw_source_material_redistributed: false,
+          methodology_scope: fallback.state.methodology_version,
         },
       };
       continue;
