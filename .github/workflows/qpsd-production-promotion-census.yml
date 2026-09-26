@@ -98,11 +98,13 @@ jobs:
       - name: Validate authoritative production target
         run: node scripts/db/assert-authoritative-supabase.mjs
 
-      - name: Verify QPSD migration is applied and scoring is locked
+      - name: Verify QPSD migration and determine promotion state
+        id: state
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
+          import { appendFileSync } from 'node:fs';
           import { createClient } from '@supabase/supabase-js';
           const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
           const source = await db.from('live_external_sources').select('source_id,enabled_for_ingestion,enabled_for_commercial_signals,commercial_usage_status,licence_name').eq('source_id', 'world_bank_qpsd').maybeSingle();
@@ -110,13 +112,15 @@ jobs:
           if (!source.data || source.data.enabled_for_ingestion !== true || source.data.commercial_usage_status !== 'COMMERCIAL_OK' || source.data.licence_name !== 'CC BY 4.0') {
             throw new Error('Migration 938 is not applied to the authoritative production database. Apply production migrations first.');
           }
-          if (source.data.enabled_for_commercial_signals !== false) {
-            throw new Error('QPSD commercial signals are already enabled. Refusing first-promotion workflow because activation ownership is ambiguous.');
-          }
-          console.log('PASS: QPSD source is registered for governed ingestion and remains scoring-locked.');
+          const alreadyPromoted = source.data.enabled_for_commercial_signals === true;
+          appendFileSync(process.env.GITHUB_OUTPUT, `already_promoted=${alreadyPromoted}\n`);
+          console.log(alreadyPromoted
+            ? 'PASS: QPSD is already promoted; rerun will verify the live state without re-ingest or re-promotion.'
+            : 'PASS: QPSD is registered for governed ingestion and remains scoring-locked for first promotion.');
           NODE
 
       - name: Download official QPSD bulk CSV
+        if: ${{ steps.state.outputs.already_promoted != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -131,6 +135,7 @@ jobs:
 
       - name: Ingest and verify fresh QPSD while scoring stays locked
         id: ingest
+        if: ${{ steps.state.outputs.already_promoted != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -142,6 +147,7 @@ jobs:
 
       - name: Enable QPSD as a reversible production candidate
         id: promote
+        if: ${{ steps.state.outputs.already_promoted != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
