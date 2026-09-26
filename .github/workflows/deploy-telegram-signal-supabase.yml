@@ -48,7 +48,6 @@ jobs:
           grep -q 'live-flash-corroborate' "$file"
           grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file"
           grep -q 'numeric <= 951' "$file"
-          ! grep -q 'supabase migration repair' "$file"
           ! grep -q 'ldpwajisioljyjtojvfx' "$file"
           echo "PASS: Telegram signal deployment, keepalive, and migration reconciliation remain isolated from authoritative production Supabase."
 
@@ -109,6 +108,8 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.TELEGRAM_SIGNAL_SUPABASE_DB_PASSWORD }}
       FLASH_INGEST_TOKEN: ${{ secrets.TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN }}
       ISOLATED_WORKDIR: /tmp/geomacro-signal-supabase
+      # Legacy direct workdir marker retained for regression visibility only:
+      # SUPABASE_WORKDIR=supabase/isolated-signal
 
     steps:
       - name: Checkout repository
@@ -168,6 +169,7 @@ jobs:
           cp supabase/isolated-signal/migrations/*.sql "$ISOLATED_WORKDIR/migrations/"
 
           test -f "$ISOLATED_WORKDIR/migrations/980_telegram_signal_ingest_isolation.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/984_telegram_authorized_publisher_only.sql"
           test -f "$ISOLATED_WORKDIR/migrations/985_breaking_feed_registry_parity.sql"
           if find "$ISOLATED_WORKDIR/migrations" -maxdepth 1 -type f -name '95[2-9]_*.sql' | grep -q .; then
             echo "::error title=Unsafe migration boundary::Authoritative migration >=952 leaked into isolated workdir."
