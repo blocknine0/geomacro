@@ -87,6 +87,36 @@ jobs:
           node scripts/ingest-usgs-mcs-live.mjs 2>&1 | tee artifacts/global-production-coverage/usgs-mcs-live-refresh.log
           grep -q 'PASS: USGS CURRENT CRITICAL-MINERAL INGESTION CLEAN' artifacts/global-production-coverage/usgs-mcs-live-refresh.log
 
+      - name: Self-heal GDELT GAL freshness before sovereign CANONICAL refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+          const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+          const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+          const { data, error } = await db.from("live_ingestion_cursors").select("status,last_success_at,consecutive_failures").eq("source_key","gdelt_gal").eq("stream_key","global-relevant").maybeSingle();
+          if (error) throw error;
+          const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
+          const ageSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, (Date.now() - lastSuccessMs) / 1000) : Number.POSITIVE_INFINITY;
+          const fresh = Number.isFinite(lastSuccessMs) && ageSeconds <= 1200 && String(data?.status ?? "") === "healthy" && Number(data?.consecutive_failures ?? 0) === 0;
+          console.log(JSON.stringify({source_key:"gdelt_gal",stream_key:"global-relevant",status:data?.status ?? null,last_success_at:data?.last_success_at ?? null,age_seconds:Number.isFinite(ageSeconds)?Math.round(ageSeconds):null,repair_required:!fresh,repair_threshold_seconds:1200},null,2));
+          process.exit(fresh ? 0 : 2);
+          NODE
+          probe_status=$?
+          set -e
+          if [ "$probe_status" -eq 2 ]; then
+            echo "GDELT GAL is outside the repair buffer; running the canonical fresh cycle before sovereign CANONICAL Risk Objects are generated."
+            node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-coverage-repair.log
+            grep -q 'PASS: GDELT GAL FRESH CYCLE COMPLETE; CURSOR, FRAGMENT, STRUCTURE, RIGHTS AND HOT-TOPIC HEALTH VERIFIED' gdelt-gal-coverage-repair.log
+          elif [ "$probe_status" -ne 0 ]; then
+            exit "$probe_status"
+          fi
+
       - name: Refresh every enabled sovereign CANONICAL Risk Object
         shell: bash
         run: |
@@ -120,36 +150,6 @@ jobs:
           grep -q '"schema_version": "geomacro-canonical-strategic-corridor-refresh-v1"' artifacts/global-production-coverage/canonical-strategic-corridors.json
           grep -q '"payment_performed": false' artifacts/global-production-coverage/canonical-strategic-corridors.json
           grep -q '"mainnet_activation_changed": false' artifacts/global-production-coverage/canonical-strategic-corridors.json
-
-      - name: Self-heal GDELT GAL freshness before coverage gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          set +e
-          node --input-type=module <<'NODE'
-          import { createClient } from "@supabase/supabase-js";
-          const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
-          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
-          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
-          const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-          const { data, error } = await db.from("live_ingestion_cursors").select("status,last_success_at,consecutive_failures").eq("source_key","gdelt_gal").eq("stream_key","global-relevant").maybeSingle();
-          if (error) throw error;
-          const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
-          const ageSeconds = Number.isFinite(lastSuccessMs) ? Math.max(0, (Date.now() - lastSuccessMs) / 1000) : Number.POSITIVE_INFINITY;
-          const fresh = Number.isFinite(lastSuccessMs) && ageSeconds <= 1200 && String(data?.status ?? "") === "healthy" && Number(data?.consecutive_failures ?? 0) === 0;
-          console.log(JSON.stringify({source_key:"gdelt_gal",stream_key:"global-relevant",status:data?.status ?? null,last_success_at:data?.last_success_at ?? null,age_seconds:Number.isFinite(ageSeconds)?Math.round(ageSeconds):null,repair_required:!fresh,repair_threshold_seconds:1200},null,2));
-          process.exit(fresh ? 0 : 2);
-          NODE
-          probe_status=$?
-          set -e
-          if [ "$probe_status" -eq 2 ]; then
-            echo "GDELT GAL is outside the repair buffer; running the canonical fresh cycle before the production coverage audit."
-            node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-coverage-repair.log
-            grep -q 'PASS: GDELT GAL FRESH CYCLE COMPLETE; CURSOR, FRAGMENT, STRUCTURE, RIGHTS AND HOT-TOPIC HEALTH VERIFIED' gdelt-gal-coverage-repair.log
-          elif [ "$probe_status" -ne 0 ]; then
-            exit "$probe_status"
-          fi
 
       - name: Audit hot-topic taxonomy and realtime freshness
         run: bunx tsx scripts/audit-hot-topic-family-readiness.ts --require-taxonomy-complete --require-pipeline-healthy
