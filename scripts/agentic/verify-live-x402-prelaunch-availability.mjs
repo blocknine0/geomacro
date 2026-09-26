@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const BASE = "https://geomacro.live";
 const URL = `${BASE}/api/x402/risk/availability`;
+const BASE_SEPOLIA_NETWORK = "eip155:84532";
 
 const cases = [
   {
@@ -76,6 +77,8 @@ async function main() {
 
   const results = [];
   let allFailClosed = true;
+  let allSafePrelaunch = true;
+  let allAvailableCasesTestnetOnly = true;
 
   for (const testCase of cases) {
     const response = await fetch(URL, {
@@ -111,34 +114,56 @@ async function main() {
     };
     results.push(result);
 
-    const failClosed = (
-      response.status === 422 &&
-      result.deliverable === false &&
-      ["NOT_AVAILABLE", "INSUFFICIENT_COVERAGE"].includes(result.code) &&
+    const invariantSafe = (
       body.payment_required_now === false &&
       body.execution_authorized === false &&
       typeof body.query_plan_hash === "string" &&
       /^[0-9a-f]{64}$/.test(body.query_plan_hash)
     );
 
+    const failClosed = (
+      invariantSafe &&
+      response.status === 422 &&
+      result.deliverable === false &&
+      ["NOT_AVAILABLE", "INSUFFICIENT_COVERAGE"].includes(result.code)
+    );
+
+    const safelyAvailableOnTestnet = (
+      invariantSafe &&
+      response.status === 200 &&
+      result.deliverable === true &&
+      result.code === "AVAILABLE" &&
+      result.network === BASE_SEPOLIA_NETWORK
+    );
+
     if (!failClosed) {
       allFailClosed = false;
+    }
+    if (!(failClosed || safelyAvailableOnTestnet)) {
+      allSafePrelaunch = false;
+    }
+    if (result.deliverable === true && !safelyAvailableOnTestnet) {
+      allAvailableCasesTestnetOnly = false;
     }
   }
 
   console.log(JSON.stringify({
-    schema_version: "geomacro.live-x402-prelaunch-availability.v2",
+    schema_version: "geomacro.live-x402-prelaunch-availability.v3",
     checked_at: new Date().toISOString(),
     host: BASE,
     payment_performed: false,
     real_funds_touched: false,
     discovery_prelaunch: true,
     production_funds_authorized: false,
+    payable_production_resources_advertised: 0,
     all_representative_cases_fail_closed: allFailClosed,
+    all_representative_cases_safe_prelaunch: allSafePrelaunch,
+    all_available_cases_testnet_only: allAvailableCasesTestnetOnly,
+    allowed_available_network: BASE_SEPOLIA_NETWORK,
     results,
   }, null, 2));
 
-  if (!allFailClosed) process.exit(2);
+  if (!allSafePrelaunch || !allAvailableCasesTestnetOnly) process.exit(2);
 }
 main().catch((error) => {
   console.error(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
