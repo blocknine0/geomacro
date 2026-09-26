@@ -50,6 +50,7 @@ jobs:
           grep -q 'live-flash-corroborate' "$file"
           grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file"
           grep -q 'prepare-telegram-isolated-migration-workdir.mjs' "$file"
+          grep -q -- '--workdir "$ISOLATED_WORKDIR"' "$file"
           grep -q '\[0, 54\]' "$helper"
           grep -q '\[900, 951\]' "$helper"
           ! grep -q 'migration repair' "$file"
@@ -167,15 +168,15 @@ jobs:
           echo "PASS: isolated migration workdir contains exact remote-history placeholders plus signal-only 980-985."
 
       - name: Link isolated signal project
-        run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase link --project-ref "$SUPABASE_PROJECT_ID"
+        run: supabase --workdir "$ISOLATED_WORKDIR" link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Show pending database migrations
-        run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase db push --dry-run
+        run: supabase --workdir "$ISOLATED_WORKDIR" db push --dry-run
       - name: Stop after deployment plan
         if: ${{ inputs.mode == 'plan' }}
         run: echo "Plan completed. No signal-project database or function changes were applied."
       - name: Apply signal database migrations
         if: ${{ inputs.mode == 'apply' }}
-        run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase db push
+        run: supabase --workdir "$ISOLATED_WORKDIR" db push
       - name: Configure isolated function secrets
         if: ${{ inputs.mode == 'apply' }}
         run: |
