@@ -25,15 +25,18 @@ describe("GDELT GAL canonical fresh-cycle contract", () => {
     expect(verifier).toContain("lag_within_1800_seconds");
   });
 
-  it("retries upstream delay with bounded exponential backoff and classifies pipeline failures separately", () => {
+  it("retries upstream delay and transport timeouts with bounded backoff while classifying pipeline failures separately", () => {
     const cycle = read("scripts/run-gdelt-gal-cycle.mjs");
     const sync = read("scripts/sync-gdelt-gal-production.mjs");
     expect(cycle).toContain("UPSTREAM_TEMPORARY_OUTAGE");
     expect(cycle).toContain("UPSTREAM_SOURCE_DELAYED");
     expect(cycle).toContain("BACKOFF_SECONDS * attempt * 1000");
-    expect(cycle).toContain("function syncFailureIsRetryable(payload)");
-    expect(cycle).not.toContain("processResult?.stderr");
+    expect(cycle).toContain("function syncFailureIsRetryable(payload, result = null)");
+    expect(cycle).toContain("result?.stderr");
+    expect(cycle).toContain("aborted due to timeout");
     expect(cycle).toContain("failure_class");
+    expect(sync).toContain("GDELT_GAL_FETCH_TIMEOUT_SECONDS");
+    expect(sync).toContain("rejectedProbes.length === probeResults.length");
     expect(sync).toContain("function classifyFailure(error)");
     expect(sync).toContain('return "UPSTREAM_TEMPORARY_OUTAGE"');
     expect(sync).toContain('return "PIPELINE_FAILURE"');
