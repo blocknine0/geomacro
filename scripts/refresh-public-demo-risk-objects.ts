@@ -36,7 +36,70 @@ function assertSignature(object: { integrity: { signature?: string | null }; exp
   }
 }
 
+async function runGlobalCanonicalRefreshWhenOrchestrated() {
+  if (String(process.env.GITHUB_WORKFLOW ?? "").trim() !== "Geomacro Intelligence Orchestrator") {
+    return null;
+  }
+
+  const processHandle = Bun.spawn(
+    ["bun", "scripts/refresh-global-canonical-risk-objects.ts"],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        GLOBAL_CANONICAL_REFRESH_OUTPUT: "",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(processHandle.stdout).text(),
+    new Response(processHandle.stderr).text(),
+    processHandle.exited,
+  ]);
+
+  if (stderr.trim()) {
+    console.error(stderr.trim());
+  }
+
+  if (exitCode !== 0) {
+    throw new Error(`GLOBAL_CANONICAL_REFRESH_FAILED:${exitCode}`);
+  }
+
+  let report: any;
+  try {
+    report = JSON.parse(stdout);
+  } catch {
+    throw new Error("GLOBAL_CANONICAL_REFRESH_INVALID_JSON");
+  }
+
+  if (
+    report?.schema_version !== "geomacro-global-canonical-refresh-v1" ||
+    report?.boundaries?.all_enabled_sovereigns_evaluated !== true ||
+    report?.boundaries?.payment_not_performed_by_refresh !== true ||
+    report?.boundaries?.raw_source_material_emitted !== false ||
+    report?.boundaries?.execution_authorized !== false
+  ) {
+    throw new Error("GLOBAL_CANONICAL_REFRESH_BOUNDARY_INVALID");
+  }
+
+  const summary = {
+    schema_version: report.schema_version,
+    denominator: report.denominator?.count ?? null,
+    paid_ready_country_count: report.summary?.paid_ready_country_count ?? null,
+    fail_closed_country_count: report.summary?.fail_closed_country_count ?? null,
+    generated_at: report.generated_at ?? null,
+    completed_at: report.completed_at ?? null,
+  };
+
+  console.error("GLOBAL_CANONICAL_REFRESH_STATUS " + JSON.stringify(summary));
+  return summary;
+}
+
 async function main() {
+  const globalCanonicalRefresh = await runGlobalCanonicalRefreshWhenOrchestrated();
   const asOf = new Date();
   const asOfIso = asOf.toISOString();
 
@@ -180,6 +243,7 @@ async function main() {
       {
         ok: true,
         refreshed_at: asOfIso,
+        global_canonical_refresh: globalCanonicalRefresh,
         countries: COUNTRY_IDS.map((country) => {
           const object = countries.get(country)!.object;
           return {
