@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/ingest-world-bank-live.mjs"
       - "scripts/refresh-global-canonical-risk-objects.ts"
       - "scripts/audit-global-production-coverage.mjs"
       - "scripts/audit-source-certification-census.mjs"
@@ -66,6 +67,14 @@ jobs:
           test -n "${RISK_OBJECT_SIGNING_KEY_ID:-}"
           test -n "${RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:-}"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "${EXPECTED_SUPABASE_PROJECT_REF}"
+
+      - name: Refresh governed global World Bank macro, fiscal and external observations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/global-production-coverage
+          node scripts/ingest-world-bank-live.mjs 2>&1 | tee artifacts/global-production-coverage/world-bank-live-refresh.log
+          grep -q 'PASS: WORLD BANK LIVE MACRO INGESTION COMPLETE' artifacts/global-production-coverage/world-bank-live-refresh.log
 
       - name: Refresh every enabled sovereign CANONICAL Risk Object
         shell: bash
