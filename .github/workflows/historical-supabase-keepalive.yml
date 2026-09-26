@@ -1,0 +1,44 @@
+name: Historical Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "17 */8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify historical Supabase activity
+        shell: bash
+        env:
+          HISTORICAL_SUPABASE_URL: https://nqvpcbnnvjsrlvyxxevk.supabase.co
+          HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${HISTORICAL_SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
+            echo "HISTORICAL_SUPABASE_SERVICE_ROLE_KEY is not configured in GitHub Actions secrets."
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+          http_code="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+            --get "${HISTORICAL_SUPABASE_URL}/rest/v1/commercial_structural_country_profiles" \
+            --data-urlencode 'select=country_iso3' \
+            --data-urlencode 'limit=1' \
+            --header "apikey: ${HISTORICAL_SUPABASE_SERVICE_ROLE_KEY}" \
+            --header "Authorization: Bearer ${HISTORICAL_SUPABASE_SERVICE_ROLE_KEY}" \
+            --header 'Accept: application/json')"
+
+          if [[ "$http_code" != "200" ]]; then
+            echo "Historical Supabase keepalive failed with HTTP ${http_code}."
+            cat "$response_file"
+            exit 1
+          fi
+
+          echo "Historical Supabase keepalive succeeded at $(date -u +'%Y-%m-%dT%H:%M:%SZ')."
