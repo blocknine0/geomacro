@@ -104,7 +104,7 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(orchestrator).toContain('key: "telegram_discovery"');
     expect(orchestrator).toContain('requiredEnv: []');
     expect(authorized).toContain("telegram_mtproto_flash");
-    expect(authorized).toContain("commercial_usage_status = 'BLOCKED'");
+    expect(authorized).toContain("commercial_usage_status = 'PERMISSION_REQUIRED'");
     expect(authorized).toContain("telegram_authorized_publisher_feed");
     expect(authorized).toContain("publisher_authorized");
   });
