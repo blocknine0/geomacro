@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 
 import type { AgentQueryPlan } from "./agent-query-plan";
-import { checkEarlyWarningDerivedSourceEligibility } from "./early-warning-source-eligibility.server";
+import {
+  evaluateEarlyWarningDerivedEligibility,
+  type EarlyWarningSourcePolicyRow,
+} from "./early-warning-source-eligibility.server";
 import { requireRiskSupabase } from "./risk-supabase.server";
 
 export const AGENT_CRITICAL_MINERALS_SOURCE_ID = "usgs_mcs" as const;
@@ -22,6 +25,10 @@ export type AgentCriticalMineralsModuleResult = {
   source_observed_at: string | null;
   source_normalized_hashes: string[];
   source_contract: {
+    commercial_usage_status: string | null;
+    enabled_for_ingestion: boolean;
+    enabled_for_commercial_signals: boolean;
+    raw_redistribution_allowed: boolean;
     delivery_boundary: "DERIVED_ONLY";
     raw_payload_allowed: false;
     attribution_required: boolean;
@@ -72,10 +79,23 @@ export async function loadAgentCriticalMineralsModule(input: {
     return unavailable(input.subject, "NOT_COUNTRY_SUBJECT");
   }
 
-  const eligibility = await checkEarlyWarningDerivedSourceEligibility({
-    source_id: AGENT_CRITICAL_MINERALS_SOURCE_ID,
-  });
+  const db = requireRiskSupabase();
+  const sourceResult = await db
+    .from("live_external_sources")
+    .select(
+      "source_id,commercial_usage_status,enabled_for_ingestion,enabled_for_commercial_signals,raw_redistribution_allowed,attribution_required,licence_name",
+    )
+    .eq("source_id", AGENT_CRITICAL_MINERALS_SOURCE_ID)
+    .maybeSingle();
+  if (sourceResult.error) throw sourceResult.error;
+
+  const source = (sourceResult.data as EarlyWarningSourcePolicyRow | null) ?? null;
+  const eligibility = evaluateEarlyWarningDerivedEligibility({ source });
   const sourceContract = {
+    commercial_usage_status: source?.commercial_usage_status ?? null,
+    enabled_for_ingestion: source?.enabled_for_ingestion === true,
+    enabled_for_commercial_signals: source?.enabled_for_commercial_signals === true,
+    raw_redistribution_allowed: source?.raw_redistribution_allowed === true,
     delivery_boundary: eligibility.delivery_boundary,
     raw_payload_allowed: false as const,
     attribution_required: eligibility.attribution_required,
@@ -85,7 +105,6 @@ export async function loadAgentCriticalMineralsModule(input: {
     return unavailable(input.subject, "SOURCE_NOT_ELIGIBLE", sourceContract);
   }
 
-  const db = requireRiskSupabase();
   const result = await db
     .from("live_external_observations")
     .select(
