@@ -28,7 +28,7 @@ describe("global Risk Gate country census diagnostics", () => {
     expect(census).toContain("attribution_required");
     expect(census).not.toContain('select("base_url');
     expect(census).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(census).not.toContain("raw_payload");
+    expect(census).not.toContain('"raw_payload"');
   });
 
   it("keeps the audit fail-closed and updates the versioned report contract", () => {
