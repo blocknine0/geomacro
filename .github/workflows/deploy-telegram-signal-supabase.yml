@@ -15,15 +15,10 @@ on:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
       - "supabase/functions/live-flash-archive/**"
-      - "supabase/isolated-signal/config.toml"
-      - "supabase/isolated-signal/migrations/984_telegram_authorized_publisher_only.sql"
-      - "supabase/isolated-signal/migrations/983_event_family_version_ledger.sql"
-      - "supabase/isolated-signal/migrations/982_realtime_flash_event_lifecycle.sql"
-      - "supabase/isolated-signal/migrations/981_telegram_signal_compact_storage.sql"
-      - "supabase/isolated-signal/migrations/980_telegram_signal_ingest_isolation.sql"
       - "supabase/functions/live-flash-ingest/**"
       - "supabase/functions/live-flash-corroborate/**"
-      - "workers/telegram-flash/production_entrypoint.py"
+      - "supabase/isolated-signal/**"
+      - "workers/telegram-flash/**"
 
 permissions:
   contents: read
@@ -49,7 +44,7 @@ jobs:
           grep -q 'qogpagklwbfdmrgnrhzi' "$file"
           grep -q 'SIGNAL_DB_MODE' "$file"
           grep -q -- '--no-verify-jwt' "$file"
-          grep -q '984_telegram_authorized_publisher_only.sql' "$file"
+          grep -q '985_breaking_feed_registry_parity.sql' workers/telegram-flash/README.md
           grep -q 'live-flash-corroborate' "$file"
           grep -q 'ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase' "$file"
           grep -q 'numeric <= 951' "$file"
@@ -173,12 +168,12 @@ jobs:
           cp supabase/isolated-signal/migrations/*.sql "$ISOLATED_WORKDIR/migrations/"
 
           test -f "$ISOLATED_WORKDIR/migrations/980_telegram_signal_ingest_isolation.sql"
-          test -f "$ISOLATED_WORKDIR/migrations/984_telegram_authorized_publisher_only.sql"
+          test -f "$ISOLATED_WORKDIR/migrations/985_breaking_feed_registry_parity.sql"
           if find "$ISOLATED_WORKDIR/migrations" -maxdepth 1 -type f -name '95[2-9]_*.sql' | grep -q .; then
             echo "::error title=Unsafe migration boundary::Authoritative migration >=952 leaked into isolated workdir."
             exit 1
           fi
-          echo "PASS: isolated migration workdir contains remote-history reconciliation <=951 plus signal-only 980-984."
+          echo "PASS: isolated migration workdir contains remote-history reconciliation <=951 plus signal-only 980-985."
 
       - name: Link isolated signal project
         run: SUPABASE_WORKDIR="$ISOLATED_WORKDIR" supabase link --project-ref "$SUPABASE_PROJECT_ID"
