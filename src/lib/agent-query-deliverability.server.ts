@@ -8,6 +8,10 @@ import {
   type StructuralContext,
   type StructuralObservation,
 } from "./structural-context.server";
+import {
+  AGENT_POLITICAL_GOVERNANCE_SOURCE_ID,
+  loadAgentPoliticalGovernanceModule,
+} from "./agent-query-political-governance.server";
 
 export type AgentQueryAvailabilityCode =
   | "AVAILABLE"
@@ -37,6 +41,7 @@ export type AgentQueryDeliverability = {
     available_modules: string[];
     latest_evidence_at: string | null;
     required_source_ids: string[];
+    governed_fallback_modules: string[];
   }>;
 };
 
@@ -55,9 +60,6 @@ const STRUCTURAL_MODULE_ALIASES: Record<string, readonly string[]> = {
   natural_hazards: ["natural_hazards", "hazards", "disaster"],
 };
 
-// Governed modules that are not served from the commercial structural warehouse.
-// They each have a dedicated checker and fail closed when that runtime cannot
-// prove deliverability.
 const EXTERNAL_MODULES = new Set(["signed_risk_object", "risk_gate", "gri_context", "hot_topics"]);
 
 function observationTime(row: StructuralObservation): number | null {
@@ -152,54 +154,103 @@ export async function checkAgentQueryDeliverability(
   const sourceContracts = new Map<string, AgentQueryDeliverability["source_contracts"][number]>();
   const subjects: AgentQueryDeliverability["subjects"] = [];
   const sourceChecker = options?.sourceEligibilityChecker ?? assertCommercialSourcesEligible;
+  const asOf = plan.as_of ?? now.toISOString();
 
   for (const subject of plan.subjects) {
     const context = await loadStructuralContext(subject);
     const available = structuralModulesFor(context);
+    const structuralModulesUsed = new Set<string>();
+    const governedFallbackModules = new Set<string>();
+    const governedFallbackSourceIds = new Set<string>();
     let latestEvidence: number | null = null;
 
-    if (context.status !== "AVAILABLE") {
-      requiredStructural.forEach((module) => missing.add(module));
-    } else {
-      for (const module of requiredStructural) {
-        if (!available.has(module)) {
-          missing.add(module);
+    for (const module of requiredStructural) {
+      let structuralUsable = false;
+      let structuralLatest: number | null = null;
+
+      if (context.status === "AVAILABLE" && available.has(module)) {
+        structuralLatest = latestModuleTime(context, module);
+        const maxAgeSeconds = plan.module_max_age_seconds[module];
+        structuralUsable =
+          structuralLatest !== null &&
+          Number.isFinite(maxAgeSeconds) &&
+          maxAgeSeconds > 0 &&
+          now.getTime() - structuralLatest <= maxAgeSeconds * 1_000;
+      }
+
+      if (structuralUsable) {
+        structuralModulesUsed.add(module);
+        latestEvidence =
+          latestEvidence === null
+            ? structuralLatest
+            : Math.max(latestEvidence, structuralLatest!);
+        continue;
+      }
+
+      if (module === "political_governance") {
+        const fallback = await loadAgentPoliticalGovernanceModule({
+          subject,
+          as_of: asOf,
+          max_age_seconds: plan.module_max_age_seconds[module],
+        });
+        if (fallback.deliverable) {
+          available.add(module);
+          governedFallbackModules.add(module);
+          governedFallbackSourceIds.add(AGENT_POLITICAL_GOVERNANCE_SOURCE_ID);
+          const fallbackTime = fallback.source_observed_at
+            ? Date.parse(fallback.source_observed_at)
+            : Number.NaN;
+          if (Number.isFinite(fallbackTime)) {
+            latestEvidence =
+              latestEvidence === null
+                ? fallbackTime
+                : Math.max(latestEvidence, fallbackTime);
+          }
           continue;
         }
-        const latest = latestModuleTime(context, module);
-        if (latest !== null) {
-          latestEvidence = latestEvidence === null ? latest : Math.max(latestEvidence, latest);
-          const maxAgeSeconds = plan.module_max_age_seconds[module];
-          if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds <= 0) {
-            stale.add(module);
-          } else if (now.getTime() - latest > maxAgeSeconds * 1_000) {
-            stale.add(module);
-          }
-        } else {
-          stale.add(module);
+        if (fallback.code === "SOURCE_NOT_ELIGIBLE") {
+          ineligibleSources.add(AGENT_POLITICAL_GOVERNANCE_SOURCE_ID);
+          continue;
         }
+        if (fallback.code === "OBSERVATION_STALE") {
+          stale.add(module);
+          continue;
+        }
+      }
+
+      if (context.status !== "AVAILABLE" || !available.has(module)) {
+        missing.add(module);
+      } else {
+        stale.add(module);
       }
     }
 
-    const sourceIds = requiredSourceIds(context, requiredStructural);
-    if (requiredStructural.length > 0 && context.status === "AVAILABLE") {
-      if (sourceIds.length === 0) {
-        requiredStructural.forEach((module) => missing.add(module));
-      } else {
-        const sourceEligibility = await sourceChecker(sourceIds);
-        if (!sourceEligibility.eligible) {
-          sourceEligibility.ineligible_source_ids.forEach((sourceId) => ineligibleSources.add(sourceId));
-        }
-        for (const result of sourceEligibility.results ?? []) {
-          sourceContracts.set(result.source_id, {
-            source_id: result.source_id,
-            commercial_usage_status: result.commercial_usage_status,
-            raw_redistribution_allowed: result.raw_redistribution_allowed,
-            attribution_required: result.attribution_required,
-            licence_name: result.licence_name,
-          });
-        }
+    const sourceIds = [
+      ...new Set([
+        ...requiredSourceIds(context, [...structuralModulesUsed]),
+        ...governedFallbackSourceIds,
+      ]),
+    ].sort();
+
+    if (sourceIds.length > 0) {
+      const sourceEligibility = await sourceChecker(sourceIds);
+      if (!sourceEligibility.eligible) {
+        sourceEligibility.ineligible_source_ids.forEach((sourceId) => ineligibleSources.add(sourceId));
       }
+      for (const result of sourceEligibility.results ?? []) {
+        sourceContracts.set(result.source_id, {
+          source_id: result.source_id,
+          commercial_usage_status: result.commercial_usage_status,
+          raw_redistribution_allowed: result.raw_redistribution_allowed,
+          attribution_required: result.attribution_required,
+          licence_name: result.licence_name,
+        });
+      }
+    } else if (
+      requiredStructural.length > 0 &&
+      !requiredStructural.every((module) => missing.has(module) || stale.has(module))
+    ) {
+      requiredStructural.forEach((module) => missing.add(module));
     }
 
     for (const module of plan.required_modules.filter((item) => EXTERNAL_MODULES.has(item))) {
@@ -215,6 +266,7 @@ export async function checkAgentQueryDeliverability(
       available_modules: [...available].sort(),
       latest_evidence_at: latestEvidence === null ? null : new Date(latestEvidence).toISOString(),
       required_source_ids: sourceIds,
+      governed_fallback_modules: [...governedFallbackModules].sort(),
     });
   }
 
@@ -247,7 +299,6 @@ export async function checkAgentQueryDeliverability(
   };
 }
 
-
 export function publicAgentQueryAvailability(
   result: AgentQueryDeliverability,
 ): Omit<AgentQueryDeliverability, "source_contracts" | "subjects"> & {
@@ -256,6 +307,7 @@ export function publicAgentQueryAvailability(
     status: StructuralContext["status"];
     available_modules: string[];
     latest_evidence_at: string | null;
+    governed_fallback_modules: string[];
   }>;
   ineligible_source_count: number;
 } {
@@ -272,6 +324,7 @@ export function publicAgentQueryAvailability(
       status: subject.status,
       available_modules: subject.available_modules,
       latest_evidence_at: subject.latest_evidence_at,
+      governed_fallback_modules: subject.governed_fallback_modules,
     })),
   };
 }
