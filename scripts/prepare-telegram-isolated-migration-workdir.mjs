@@ -8,7 +8,8 @@ const configuredTarget = String(process.env.ISOLATED_WORKDIR ?? "").trim()
 const TARGET_DIR = configuredTarget
   ? path.resolve(ROOT, configuredTarget)
   : path.join(ROOT, ".tmp", "telegram-isolated-supabase")
-const TARGET_MIGRATIONS = path.join(TARGET_DIR, "migrations")
+const TARGET_SUPABASE = path.join(TARGET_DIR, "supabase")
+const TARGET_MIGRATIONS = path.join(TARGET_SUPABASE, "migrations")
 
 const REMOTE_HISTORY_RANGES = [
   [0, 54],
@@ -30,7 +31,7 @@ function migrationVersionName(version) {
 
 fs.rmSync(TARGET_DIR, { recursive: true, force: true })
 fs.mkdirSync(TARGET_MIGRATIONS, { recursive: true })
-fs.copyFileSync(path.join(SOURCE_DIR, "config.toml"), path.join(TARGET_DIR, "config.toml"))
+fs.copyFileSync(path.join(SOURCE_DIR, "config.toml"), path.join(TARGET_SUPABASE, "config.toml"))
 
 for (const [start, end] of REMOTE_HISTORY_RANGES) {
   for (let version = start; version <= end; version += 1) {
@@ -62,6 +63,7 @@ if (generated.some((name) => /^95[2-9]_/.test(name))) {
 
 console.log(JSON.stringify({
   target_dir: TARGET_DIR,
+  supabase_dir: TARGET_SUPABASE,
   historical_placeholder_count: generated.length - ISOLATED_MIGRATIONS.length,
   isolated_migrations: ISOLATED_MIGRATIONS,
   invariant: "production migrations 952+ are never copied into the isolated Telegram workdir",
