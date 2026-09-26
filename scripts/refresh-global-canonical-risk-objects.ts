@@ -41,6 +41,36 @@ async function loadEnabledSovereigns() {
     );
 }
 
+function normalizeFailureReasons(row: {
+  status: "PAID_READY" | "FAIL_CLOSED";
+  reason_codes: readonly string[];
+  verification_status: string | null;
+  commercial_eligibility_status: string | null;
+  decision_readiness: string | null;
+  signature_valid: boolean;
+}) {
+  if (row.status !== "FAIL_CLOSED") return [];
+
+  const reasons = new Set<string>(row.reason_codes);
+  if (!row.signature_valid) reasons.add("invalid_or_missing_signature");
+  if (row.verification_status && row.verification_status !== "VERIFIED") {
+    reasons.add(`verification_${row.verification_status.toLowerCase()}`);
+  }
+  if (
+    row.commercial_eligibility_status &&
+    row.commercial_eligibility_status !== "VERIFIED"
+  ) {
+    reasons.add(
+      `commercial_${row.commercial_eligibility_status.toLowerCase()}`,
+    );
+  }
+  if (row.decision_readiness && row.decision_readiness !== "READY") {
+    reasons.add(`decision_readiness_${row.decision_readiness.toLowerCase()}`);
+  }
+  if (reasons.size === 0) reasons.add("canonical_refresh_failed_closed");
+  return [...reasons].sort();
+}
+
 async function refreshCountry(
   country: Awaited<ReturnType<typeof loadEnabledSovereigns>>[number],
   asOf: string,
@@ -83,9 +113,14 @@ async function refreshCountry(
       calculation_hash: object.integrity.calculation_hash,
       commercial_policy_version: commercial.policy_version,
       reason_codes: commercial.reason_codes,
-      error: null,
+      error_code: null,
     } as const;
   } catch (error) {
+    console.error(
+      `GLOBAL_CANONICAL_COUNTRY_FAIL ${country.iso3} ${
+        error instanceof Error ? error.name : "UnknownError"
+      }`,
+    );
     return {
       iso3: country.iso3,
       country_name: country.country_name,
@@ -105,7 +140,7 @@ async function refreshCountry(
       calculation_hash: null,
       commercial_policy_version: null,
       reason_codes: ["canonical_refresh_failed_closed"],
-      error: error instanceof Error ? error.message : String(error),
+      error_code: "canonical_refresh_failed_closed",
     };
   }
 }
@@ -138,9 +173,39 @@ async function main() {
 
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
-  const paidReady = results.filter((row) => row.status === "PAID_READY");
-  const failClosed = results.filter((row) => row.status === "FAIL_CLOSED");
+  const normalizedResults = results.map((row) => ({
+    ...row,
+    reason_codes: normalizeFailureReasons(row),
+  }));
+  const paidReady = normalizedResults.filter((row) => row.status === "PAID_READY");
+  const failClosed = normalizedResults.filter((row) => row.status === "FAIL_CLOSED");
   const completedAt = new Date().toISOString();
+
+  const reasonCounts = new Map<string, number>();
+  const regionCounts = new Map<
+    string,
+    { total: number; paid_ready: number; fail_closed: number }
+  >();
+
+  for (const row of normalizedResults) {
+    const region = row.region || "UNSPECIFIED";
+    const regionState = regionCounts.get(region) ?? {
+      total: 0,
+      paid_ready: 0,
+      fail_closed: 0,
+    };
+    regionState.total += 1;
+    if (row.status === "PAID_READY") regionState.paid_ready += 1;
+    else regionState.fail_closed += 1;
+    regionCounts.set(region, regionState);
+
+    if (row.status === "FAIL_CLOSED") {
+      for (const reason of row.reason_codes) {
+        reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+      }
+    }
+  }
+
   const report = {
     schema_version: "geomacro-global-canonical-refresh-v1",
     delivery_profile: "CANONICAL",
@@ -155,15 +220,25 @@ async function main() {
       fail_closed_country_count: failClosed.length,
       paid_ready_pct: Number(((paidReady.length / countries.length) * 100).toFixed(2)),
       minimum_ready_gate: MIN_READY,
+      ready_floor_met: paidReady.length >= MIN_READY,
+    },
+    failure_summary: {
+      reason_counts: Object.fromEntries(
+        [...reasonCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
+      ),
+      region_counts: Object.fromEntries(
+        [...regionCounts.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+      ),
     },
     boundaries: {
-      all_enabled_sovereigns_evaluated: results.length === countries.length,
+      all_enabled_sovereigns_evaluated: normalizedResults.length === countries.length,
       unsupported_or_ineligible_fail_closed: true,
       payment_not_performed_by_refresh: true,
       raw_source_material_emitted: false,
       execution_authorized: false,
+      raw_exception_messages_emitted: false,
     },
-    countries: results,
+    countries: normalizedResults,
   };
 
   const json = `${JSON.stringify(report, null, 2)}\n`;
