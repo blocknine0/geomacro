@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
 import { AGENT_QUERY_TOPICS, agentAdaptiveQuerySchema, buildAgentQueryPlan } from "../lib/agent-query-plan";
+import { assertGeomacroIntelligenceResponseContract } from "../lib/geomacro-intelligence-contract";
 import { checkAgentQueryDeliverability, publicAgentQueryAvailability } from "../lib/agent-query-deliverability.server";
 import { checkAgentQueryExternalModule } from "../lib/agent-query-external-modules.server";
 import { assembleAgentQueryResponse } from "../lib/agent-query-response.server";
@@ -350,7 +351,7 @@ export const Route = createFileRoute("/api/x402/intelligence")({
         let preparedResponseSha256: string;
         try {
           const intelligence = await assembleAgentQueryResponse({ plan, requestId, clientRequestId: parsed.client_request_id ?? null, priceUsdc: config.priceUsdc });
-          if (intelligence.execution_authorized !== false) throw new Error("EXECUTION_BOUNDARY_VIOLATION");
+          assertGeomacroIntelligenceResponseContract(intelligence);
           prepared = {
             ...intelligence,
             availability: finalAvailability,
