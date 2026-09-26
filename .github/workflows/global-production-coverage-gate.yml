@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "scripts/ingest-world-bank-live.mjs"
+      - "scripts/ingest-usgs-mcs-live.mjs"
       - "scripts/refresh-global-canonical-risk-objects.ts"
       - "scripts/audit-global-production-coverage.mjs"
       - "scripts/audit-source-certification-census.mjs"
@@ -75,6 +76,13 @@ jobs:
           mkdir -p artifacts/global-production-coverage
           node scripts/ingest-world-bank-live.mjs 2>&1 | tee artifacts/global-production-coverage/world-bank-live-refresh.log
           grep -q 'PASS: WORLD BANK LIVE MACRO INGESTION COMPLETE' artifacts/global-production-coverage/world-bank-live-refresh.log
+
+      - name: Refresh governed global USGS critical-mineral observations
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ingest-usgs-mcs-live.mjs 2>&1 | tee artifacts/global-production-coverage/usgs-mcs-live-refresh.log
+          grep -q 'PASS: USGS CURRENT CRITICAL-MINERAL INGESTION CLEAN' artifacts/global-production-coverage/usgs-mcs-live-refresh.log
 
       - name: Refresh every enabled sovereign CANONICAL Risk Object
         shell: bash
