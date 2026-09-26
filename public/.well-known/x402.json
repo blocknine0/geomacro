@@ -2,7 +2,7 @@
   "x402Version": 2,
   "name": "GeoMacro Global Risk Intelligence",
   "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
-  "status": "testnet_prelaunch",
+  "status": "prelaunch",
   "productionFundsAuthorized": false,
   "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
   "resources": [],
@@ -11,13 +11,7 @@
       "resource": "https://geomacro.live/api/x402/risk/availability",
       "method": "POST",
       "price": "free",
-      "description": "No-charge deliverability check for country/corridor intelligence. It proves the requested bundle is currently deliverable before any payment is requested."
-    },
-    {
-      "resource": "https://geomacro.live/api/a2a",
-      "method": "POST",
-      "price": "free",
-      "description": "A2A v1.0 JSON-RPC coordination and discovery surface. It routes agents to availability-first x402 delivery and never performs a payment."
+      "description": "No-charge deliverability check. It determines whether the requested intelligence can be safely produced before any payment is requested."
     }
   ],
   "plannedResources": [
@@ -53,6 +47,7 @@
   "discovery": {
     "a2a_agent_card": "https://geomacro.live/.well-known/agent-card.json",
     "a2a_interface": "https://geomacro.live/api/a2a",
+    "a2a_protocol_binding": "HTTP+JSON",
     "openapi": "https://geomacro.live/openapi-x402.json",
     "commerce": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "agent": "https://geomacro.live/.well-known/geomacro-agent.json",
@@ -68,6 +63,7 @@
   },
   "hosting_fallback": {
     "mode": "static_prelaunch",
-    "production_launch_rule": "Static discovery must never advertise production-paid availability until live provider configuration, paid E2E acceptance and explicit owner mainnet authorization are all verified."
+    "reason": "The current public host serves static well-known resources reliably while runtime server-route support is deployment-dependent.",
+    "production_launch_rule": "This fallback must not advertise paid production resources until live provider configuration, paid E2E acceptance and explicit owner authorization are verified."
   }
 }
