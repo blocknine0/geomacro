@@ -30,6 +30,17 @@ type EvidenceRow = {
   event_id: string;
   source_domain: string | null;
   fragment_id: string | null;
+  country_iso3: string | null;
+  country_confidence: number | null;
+};
+
+type EventRow = {
+  id: string;
+  primary_country: string | null;
+  countries: string[] | null;
+  event_type: string | null;
+  severity: number | null;
+  confidence: number | null;
 };
 
 type ManifestRow = {
@@ -147,23 +158,30 @@ async function loadEventDiagnostics(eventIds: string[]) {
   const db = requireRiskSupabase();
   const rightsRows: RightsRow[] = [];
   const evidenceRows: EvidenceRow[] = [];
+  const eventRows: EventRow[] = [];
 
   for (const batch of chunks(eventIds, BATCH_SIZE)) {
-    const [rights, evidence] = await Promise.all([
+    const [rights, evidence, events] = await Promise.all([
       db
         .from("live_structured_event_commercial_rights_evaluation")
         .select("event_id,evaluated_status,reason_codes,source_keys")
         .in("event_id", batch),
       db
         .from("live_structured_event_evidence")
-        .select("event_id,source_domain,fragment_id")
+        .select("event_id,source_domain,fragment_id,country_iso3,country_confidence")
         .in("event_id", batch),
+      db
+        .from("live_structured_events")
+        .select("id,primary_country,countries,event_type,severity,confidence")
+        .in("id", batch),
     ]);
 
     if (rights.error) throw rights.error;
     if (evidence.error) throw evidence.error;
+    if (events.error) throw events.error;
     rightsRows.push(...((rights.data ?? []) as RightsRow[]));
     evidenceRows.push(...((evidence.data ?? []) as EvidenceRow[]));
+    eventRows.push(...((events.data ?? []) as EventRow[]));
   }
 
   const fragmentIds = uniq(evidenceRows.map((row) => row.fragment_id));
@@ -182,6 +200,7 @@ async function loadEventDiagnostics(eventIds: string[]) {
     manifestRows.map((row) => [String(row.id), String(row.source_key ?? "").trim()]),
   );
   const rightsByEvent = new Map(rightsRows.map((row) => [row.event_id, row]));
+  const eventById = new Map(eventRows.map((row) => [row.id, row]));
   const evidenceByEvent = new Map<string, EvidenceRow[]>();
   for (const row of evidenceRows) {
     const values = evidenceByEvent.get(row.event_id) ?? [];
@@ -192,6 +211,7 @@ async function loadEventDiagnostics(eventIds: string[]) {
   return new Map(
     eventIds.map((eventId) => {
       const rights = rightsByEvent.get(eventId);
+      const event = eventById.get(eventId);
       const evidence = evidenceByEvent.get(eventId) ?? [];
       const status = String(rights?.evaluated_status ?? "UNVERIFIED");
       const reasonCodes = uniq(rights?.reason_codes ?? ["missing_commercial_rights_evaluation"]);
@@ -200,11 +220,22 @@ async function loadEventDiagnostics(eventIds: string[]) {
         ...evidence.map((row) => sourceKeyByFragment.get(String(row.fragment_id ?? ""))),
       ]);
       const sourceDomains = uniq(evidence.map((row) => row.source_domain?.toLowerCase() ?? null));
+      const evidenceCountries = uniq(evidence.map((row) => row.country_iso3?.toUpperCase() ?? null));
+      const eventCountries = uniq([
+        event?.primary_country?.toUpperCase() ?? null,
+        ...((event?.countries ?? []).map((country) => country?.toUpperCase() ?? null)),
+      ]);
 
       return [
         eventId,
         {
           event_id: eventId,
+          event_type: event?.event_type ?? null,
+          severity: event?.severity ?? null,
+          confidence: event?.confidence ?? null,
+          primary_country: event?.primary_country?.toUpperCase() ?? null,
+          event_countries: eventCountries,
+          evidence_countries: evidenceCountries,
           evaluated_status: status,
           reason_codes: reasonCodes,
           source_keys: sourceKeys,
@@ -230,16 +261,32 @@ async function main() {
   const sourceKeyCounts = new Map<string, number>();
   const sourceDomainCounts = new Map<string, number>();
   const regionCounts = new Map<string, number>();
+  let possibleAttributionOverreachCountryCount = 0;
 
   const remediationCountries = failClosed.map((country) => {
     const events = country.event_ids
       .map((eventId: string) => eventDiagnostics.get(eventId))
       .filter(Boolean)
-      .filter((event: any) => !["VERIFIED", "DERIVED_ONLY"].includes(event.evaluated_status));
+      .filter((event: any) => !["VERIFIED", "DERIVED_ONLY"].includes(event.evaluated_status))
+      .map((event: any) => {
+        const countryAttributionSupported =
+          event.primary_country === country.iso3 ||
+          event.event_countries.includes(country.iso3) ||
+          event.evidence_countries.includes(country.iso3);
+        return {
+          ...event,
+          country_attribution_supported: countryAttributionSupported,
+          possible_attribution_overreach: !countryAttributionSupported,
+        };
+      });
 
     const actions = uniq(events.map((event: any) => event.remediation_action));
     if (events.length === 0 && country.country_reason_codes.includes("insufficient_country_evidence")) {
       actions.push("ADD_FRESH_ELIGIBLE_COUNTRY_EVIDENCE");
+    }
+    if (events.some((event: any) => event.possible_attribution_overreach)) {
+      actions.push("REVIEW_EVENT_COUNTRY_ATTRIBUTION");
+      possibleAttributionOverreachCountryCount += 1;
     }
     if (actions.length === 0) actions.push("REVIEW_COUNTRY_EVIDENCE_CHAIN");
 
@@ -271,7 +318,7 @@ async function main() {
   });
 
   const report = {
-    schema_version: "geomacro-global-country-remediation-v1",
+    schema_version: "geomacro-global-country-remediation-v2",
     generated_at: generatedAt,
     denominator: countries.length,
     paid_ready_country_count: countryStates.length - failClosed.length,
@@ -280,6 +327,7 @@ async function main() {
       remediation_action_country_counts: Object.fromEntries(
         [...actionCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
       ),
+      possible_attribution_overreach_country_count: possibleAttributionOverreachCountryCount,
       blocking_source_key_event_counts: Object.fromEntries(
         [...sourceKeyCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])),
       ),
@@ -294,6 +342,7 @@ async function main() {
       raw_source_urls_emitted: false,
       raw_source_material_emitted: false,
       source_domains_only_for_rights_remediation: true,
+      event_titles_emitted: false,
       payment_performed: false,
       execution_authorized: false,
     },
