@@ -25,7 +25,7 @@ describe("reviewed open realtime evidence canonical readiness path", () => {
     expect(openRealtime).toBeGreaterThan(-1);
     expect(canonical).toBeGreaterThan(-1);
     expect(openRealtime).toBeLessThan(canonical);
-    expect(workflow).toContain("bun scripts/sync-open-live-source-mesh.mjs");
+    expect(workflow).toContain("node scripts/run-open-live-source-mesh-with-retry.mjs");
     expect(workflow).toContain("node scripts/drain-live-structure.mjs --fragment-ids-file");
     expect(workflow).toContain("node scripts/reconcile-structured-event-commercial-rights.mjs");
   });
