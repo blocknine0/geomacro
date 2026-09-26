@@ -322,7 +322,7 @@ async function sealSource(supabase, source, now) {
 
   const accepted = candidates.filter((row) => !existing.has(row.i));
   if (!accepted.length) {
-    await supabase.from("live_ingestion_runs").insert({
+    const { error: emptyRunError } = await supabase.from("live_ingestion_runs").insert({
       source_key: source.source_key,
       stream_key: source.stream_key,
       started_at: now,
@@ -336,6 +336,26 @@ async function sealSource(supabase, source, now) {
       items_rejected: 0,
       metrics: { reason: "all_duplicates" },
     });
+    if (emptyRunError) throw emptyRunError;
+
+    // A successful poll with no new unique records is still a healthy source
+    // cycle. Refresh the cursor heartbeat so hot-topic availability measures
+    // transport health rather than whether the source happened to emit a new
+    // event during this poll. Preserve last_item_at by omitting it here.
+    const { error: emptyCursorError } = await supabase
+      .from("live_ingestion_cursors")
+      .upsert({
+        source_key: source.source_key,
+        stream_key: source.stream_key,
+        cursor: { last_period_end: source.period_end },
+        status: "healthy",
+        last_attempt_at: now,
+        last_success_at: now,
+        consecutive_failures: 0,
+        updated_at: now,
+      }, { onConflict: "source_key,stream_key" });
+    if (emptyCursorError) throw emptyCursorError;
+
     return { accepted: 0, fragment_id: null };
   }
 
