@@ -6,7 +6,7 @@ update public.live_external_sources
 set
   enabled_for_ingestion = false,
   enabled_for_commercial_signals = false,
-  commercial_usage_status = 'BLOCKED',
+  commercial_usage_status = 'PERMISSION_REQUIRED',
   notes = 'Disabled: public Telegram channel scraping/aggregation is not an approved production intelligence source. Use telegram_authorized_publisher_feed only with explicit publisher authorization.',
   updated_at = now()
 where source_id = 'telegram_mtproto_flash';
@@ -22,7 +22,7 @@ insert into public.live_external_sources (
   'Telegram Authorized Publisher Feed',
   'Individually authorized Telegram publishers',
   'GEOPOLITICS',
-  'PUBLISHER_PUSH',
+  'API',
   'SIGNED_WEBHOOK_OR_BOT_SUBMISSION',
   null,
   'REVIEW_REQUIRED',

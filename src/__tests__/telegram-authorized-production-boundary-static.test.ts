@@ -11,12 +11,12 @@ describe("Telegram production source boundary", () => {
     expect(migration).toContain("where source_id = 'telegram_mtproto_flash'");
     expect(migration).toContain("enabled_for_ingestion = false");
     expect(migration).toContain("enabled_for_commercial_signals = false");
-    expect(migration).toContain("commercial_usage_status = 'BLOCKED'");
+    expect(migration).toContain("commercial_usage_status = 'PERMISSION_REQUIRED'");
   });
 
   it("creates only a default-off publisher-authorized candidate", () => {
     expect(migration).toContain("'telegram_authorized_publisher_feed'");
-    expect(migration).toContain("'PUBLISHER_PUSH'");
+    expect(migration).toContain("'API'");
     expect(migration).toContain("'SIGNED_WEBHOOK_OR_BOT_SUBMISSION'");
     expect(migration).toContain("'REVIEW_REQUIRED'");
     expect(migration).toContain("publisher_authorized boolean not null default false");
