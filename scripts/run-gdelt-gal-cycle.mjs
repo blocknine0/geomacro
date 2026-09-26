@@ -64,12 +64,14 @@ async function writeJson(path, value) {
   await writeFile(path, JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
-function syncFailureIsRetryable(payload) {
+function syncFailureIsRetryable(payload, result = null) {
   const failureClass = String(payload?.failure_class ?? "");
   const status = String(payload?.status ?? "");
+  const transportText = `${result?.stdout ?? ""}\n${result?.stderr ?? ""}`;
   return failureClass === "UPSTREAM_TEMPORARY_OUTAGE"
     || failureClass === "UPSTREAM_SOURCE_DELAYED"
-    || status === "no_new_gdelt_file";
+    || status === "no_new_gdelt_file"
+    || /GDELT_(?:UPSTREAM_FETCH|REQUEST_FAILED)|aborted due to timeout|AbortError|TimeoutError/i.test(transportText);
 }
 
 async function runSyncAttempt(attempt) {
@@ -107,7 +109,7 @@ async function main() {
 
     if (sync.result.ok && sync.payload?.status === "sealed") break;
 
-    if (attempt < MAX_ATTEMPTS && syncFailureIsRetryable(sync.payload)) {
+    if (attempt < MAX_ATTEMPTS && syncFailureIsRetryable(sync.payload, sync.result)) {
       const backoffMs = BACKOFF_SECONDS * attempt * 1000;
       console.error(
         `GDELT GAL upstream not ready; retrying attempt ${attempt + 1}/${MAX_ATTEMPTS} after ${backoffMs / 1000}s backoff.`,
@@ -165,7 +167,7 @@ async function main() {
     }
 
     const failureClass = syncPayload?.failure_class
-      ?? (syncFailureIsRetryable(syncPayload) ? "UPSTREAM_TEMPORARY_OUTAGE" : "PIPELINE_FAILURE");
+      ?? (syncFailureIsRetryable(syncPayload, sync?.result) ? "UPSTREAM_TEMPORARY_OUTAGE" : "PIPELINE_FAILURE");
     const summary = {
       ok: false,
       stage: "gdelt_gal_sync",

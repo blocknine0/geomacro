@@ -14,7 +14,7 @@ const FINGERPRINT_TTL_DAYS = 30;
 const FRESH_SUCCESS_WINDOW_SECONDS = 30 * 60;
 const UPSTREAM_WAIT_SECONDS = 15 * 60;
 const UPSTREAM_RETRY_SECONDS = 30;
-const UPSTREAM_FETCH_TIMEOUT_SECONDS = 8;
+const UPSTREAM_FETCH_TIMEOUT_SECONDS = Math.max(8, Math.min(60, Number(process.env.GDELT_GAL_FETCH_TIMEOUT_SECONDS ?? 20)));
 const MAX_GDELT_PROBE_MINUTES = 12;
 const OUTPUT = process.env.GDELT_GAL_SYNC_OUTPUT ?? null;
 
@@ -204,6 +204,14 @@ async function main() {
       const probeResults = await Promise.allSettled(
         probeStamps.map((stamp) => fetchGalFile(stamp)),
       );
+
+      const rejectedProbes = probeResults.filter((result) => result.status === "rejected");
+      if (probeStamps.length > 0 && rejectedProbes.length === probeResults.length) {
+        const reasons = rejectedProbes
+          .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason))
+          .slice(0, 3);
+        throw new Error(`GDELT_UPSTREAM_FETCH: all ${probeResults.length} probes failed: ${reasons.join(" | ")}`);
+      }
 
       for (const result of probeResults) {
         if (
