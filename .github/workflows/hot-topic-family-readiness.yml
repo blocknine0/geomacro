@@ -7,6 +7,7 @@ on:
       - "src/lib/hot-topic-taxonomy.test.ts"
       - "src/lib/agent-query-hot-topics.server.ts"
       - "src/__tests__/agent-query-hot-topics-static.test.ts"
+      - "src/__tests__/hot-topic-readiness-self-heal-static.test.ts"
       - "scripts/audit-hot-topic-family-readiness.ts"
       - ".github/workflows/hot-topic-family-readiness.yml"
   push:
@@ -15,6 +16,7 @@ on:
     paths:
       - "src/lib/hot-topic-taxonomy.ts"
       - "src/lib/agent-query-hot-topics.server.ts"
+      - "src/__tests__/hot-topic-readiness-self-heal-static.test.ts"
       - "scripts/audit-hot-topic-family-readiness.ts"
       - ".github/workflows/hot-topic-family-readiness.yml"
   workflow_dispatch:
@@ -52,7 +54,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Run taxonomy and delivery boundary tests
-        run: bunx vitest run src/lib/hot-topic-taxonomy.test.ts src/__tests__/agent-query-hot-topics-static.test.ts
+        run: bunx vitest run src/lib/hot-topic-taxonomy.test.ts src/__tests__/agent-query-hot-topics-static.test.ts src/__tests__/hot-topic-readiness-self-heal-static.test.ts
 
       - name: Guard family count and no raw-source delivery
         shell: bash
@@ -67,18 +69,24 @@ jobs:
           echo 'PASS: governed hot-topic family delivery boundary is static-safe'
 
   production-readiness:
-    # Live readiness requires fresh upstream GDELT state.
-    # Source/config changes still run static validation on push; live readiness
-    # runs after a successful upstream sync, on schedule, or by explicit dispatch.
+    # Live readiness requires fresh upstream GDELT state. Serialize with the
+    # canonical orchestrator so readiness never races an in-flight fresh cycle.
     if: >-
       ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    concurrency:
+      group: geomacro-intelligence-orchestrator
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
       HOT_TOPIC_FAMILY_READINESS_OUTPUT: hot-topic-family-readiness.json
+      GDELT_GAL_CYCLE_OUTPUT_DIR: gdelt-gal-readiness-repair
+      GDELT_GAL_CYCLE_MAX_ATTEMPTS: "3"
+      GDELT_GAL_CYCLE_BACKOFF_SECONDS: "30"
     steps:
       - name: Checkout canonical ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -95,6 +103,57 @@ jobs:
 
       - name: Validate production database target
         run: node scripts/db/assert-authoritative-supabase.mjs
+
+      - name: Self-heal GDELT GAL freshness before readiness proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node --input-type=module <<'NODE'
+          import { createClient } from "@supabase/supabase-js";
+          const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
+          const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
+          if (!url || !key) throw new Error("AUTHORITATIVE_SUPABASE_CREDENTIALS_REQUIRED");
+          if (new URL(url).hostname.split(".")[0] !== "ldpwajisioljyjtojvfx") throw new Error("NON_AUTHORITATIVE_SUPABASE_PROJECT");
+          const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+          const { data, error } = await db
+            .from("live_ingestion_cursors")
+            .select("status,last_success_at,consecutive_failures")
+            .eq("source_key", "gdelt_gal")
+            .eq("stream_key", "global-relevant")
+            .maybeSingle();
+          if (error) throw error;
+          const lastSuccessMs = Date.parse(String(data?.last_success_at ?? ""));
+          const ageSeconds = Number.isFinite(lastSuccessMs)
+            ? Math.max(0, (Date.now() - lastSuccessMs) / 1000)
+            : Number.POSITIVE_INFINITY;
+          const healthy =
+            Number.isFinite(lastSuccessMs) &&
+            ageSeconds <= 1200 &&
+            String(data?.status ?? "") === "healthy" &&
+            Number(data?.consecutive_failures ?? 0) === 0;
+          console.log(JSON.stringify({
+            source_key: "gdelt_gal",
+            stream_key: "global-relevant",
+            status: data?.status ?? null,
+            last_success_at: data?.last_success_at ?? null,
+            age_seconds: Number.isFinite(ageSeconds) ? Math.round(ageSeconds) : null,
+            repair_required: !healthy,
+            repair_threshold_seconds: 1200,
+          }, null, 2));
+          process.exit(healthy ? 0 : 2);
+          NODE
+          probe_status=$?
+          set -e
+
+          if [ "$probe_status" -eq 2 ]; then
+            test -n "${LIVE_STRUCTURE_TOKEN:-}" || { echo "::error::LIVE_STRUCTURE_TOKEN missing for governed GDELT freshness repair"; exit 1; }
+            echo "GDELT GAL is outside the freshness repair buffer; running the canonical fresh cycle."
+            node scripts/run-gdelt-gal-cycle.mjs 2>&1 | tee gdelt-gal-readiness-repair.log
+            grep -q 'PASS: GDELT GAL FRESH CYCLE COMPLETE; CURSOR, FRAGMENT, STRUCTURE, RIGHTS AND HOT-TOPIC HEALTH VERIFIED' gdelt-gal-readiness-repair.log
+          elif [ "$probe_status" -ne 0 ]; then
+            exit "$probe_status"
+          fi
 
       - name: Generate family-level hot-topic readiness proof
         run: bun scripts/audit-hot-topic-family-readiness.ts --require-pipeline-healthy --require-taxonomy-complete
@@ -118,6 +177,10 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: hot-topic-family-readiness
-          path: hot-topic-family-readiness.json
+          path: |
+            hot-topic-family-readiness.json
+            gdelt-gal-readiness-repair.log
+            gdelt-gal-readiness-repair/*.json
+            gdelt-gal-readiness-repair/*.log
           if-no-files-found: warn
           retention-days: 30
