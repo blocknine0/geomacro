@@ -13,6 +13,9 @@ on:
       - "scripts/agentic/coinbase-x402-adaptive-base-sepolia-e2e.mjs"
       - "scripts/verify-launch-readiness.mjs"
       - "scripts/agentic/verify-live-x402-prelaunch-availability.mjs"
+      - "scripts/ops/probe-structural-serving-production.mjs"
+      - "scripts/ops/probe-structural-base-tables-production.mjs"
+      - "scripts/ops/probe-risk-object-production.mjs"
       - "supabase/migrations/927_coinbase_x402_delivery_ledger.sql"
       - "supabase/migrations/947_agent_commerce_production_reconciliation.sql"
       - ".github/workflows/pre-mainnet-x402-zero-fund-acceptance.yml"
@@ -72,7 +75,31 @@ jobs:
         continue-on-error: true
         run: node scripts/agentic/verify-live-x402-prelaunch-availability.mjs
 
+      - name: Classify production data probe configuration
+        id: data_config
+        shell: bash
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HISTORICAL_SUPABASE_URL: ${{ secrets.HISTORICAL_SUPABASE_URL }}
+          HISTORICAL_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          configured=true
+          for name in APP_SUPABASE_URL APP_SUPABASE_SERVICE_ROLE_KEY HISTORICAL_SUPABASE_URL HISTORICAL_SUPABASE_SERVICE_ROLE_KEY; do
+            if [[ -z "${!name:-}" ]]; then
+              configured=false
+            fi
+          done
+          echo "configured=$configured" >> "$GITHUB_OUTPUT"
+          if [[ "$configured" == "true" ]]; then
+            echo "Production structural data probe configuration is present."
+          else
+            echo "::notice::Production structural data probe configuration is incomplete. PR validation remains zero-fund; explicit manual pre-mainnet acceptance stays blocked until configuration is complete."
+          fi
+
       - name: Verify production structural serving dependencies
+        if: ${{ steps.data_config.outputs.configured == 'true' }}
         id: data_probes
         continue-on-error: true
         env:
@@ -93,7 +120,9 @@ jobs:
       - name: Final zero-fund acceptance gate
         id: final_gate
         env:
+          EVENT_NAME: ${{ github.event_name }}
           LIVE_OUTCOME: ${{ steps.live_preflight.outcome }}
+          DATA_CONFIGURED: ${{ steps.data_config.outputs.configured }}
           DATA_OUTCOME: ${{ steps.data_probes.outcome }}
         run: |
           set -euo pipefail
@@ -101,11 +130,30 @@ jobs:
             echo "::error::Live public x402 preflight did not pass."
             exit 1
           fi
-          if [[ "$DATA_OUTCOME" != "success" ]]; then
-            echo "::error::Production data-serving dependency probes did not pass."
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$DATA_CONFIGURED" != "true" ]]; then
+              echo "::error::Explicit pre-mainnet acceptance requires the authoritative app and historical production data credentials."
+              exit 1
+            fi
+            if [[ "$DATA_OUTCOME" != "success" ]]; then
+              echo "::error::Production data-serving dependency probes did not pass."
+              exit 1
+            fi
+            echo "PASS: explicit zero-fund pre-mainnet acceptance verified live safety and production data-serving dependencies."
+            exit 0
+          fi
+
+          if [[ "$DATA_CONFIGURED" == "true" && "$DATA_OUTCOME" != "success" ]]; then
+            echo "::error::Configured production data-serving dependency probes failed on this PR."
             exit 1
           fi
-          echo "PASS: live no-charge deliverability and production data-serving dependencies are verified."
+
+          if [[ "$DATA_CONFIGURED" != "true" ]]; then
+            echo "PASS: PR zero-fund code/safety validation passed; production data configuration remains an explicit manual launch blocker."
+          else
+            echo "PASS: PR zero-fund validation and configured production data probes passed."
+          fi
 
       - name: Record zero-fund boundary
         if: always()
@@ -120,5 +168,7 @@ jobs:
             echo "- Structured response validated before settlement: **true**"
             echo "- Replay/no-double-charge contract validated: **true**"
             echo "- Live no-charge preflight: **${{ steps.live_preflight.outcome }}**"
+            echo "- Production data credentials configured: **${{ steps.data_config.outputs.configured }}**"
             echo "- Production data dependency probes: **${{ steps.data_probes.outcome }}**"
+            echo "- Explicit manual acceptance requires production data probes: **true**"
           } >> "$GITHUB_STEP_SUMMARY"

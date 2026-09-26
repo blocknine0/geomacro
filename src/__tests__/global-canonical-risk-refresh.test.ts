@@ -21,6 +21,10 @@ describe("global canonical Risk Object refresh", () => {
     expect(script).toContain("verifyCommercialRiskObjectArtifact");
     expect(script).toContain('status: paidReady ? "PAID_READY" : "FAIL_CLOSED"');
     expect(script).toContain('"canonical_refresh_failed_closed"');
+    expect(script).toContain("ready_floor_met: paidReady.length >= MIN_READY");
+    expect(script).toContain("failure_summary");
+    expect(script).toContain("reason_counts");
+    expect(script).toContain("region_counts");
   });
 
   it("emits only sanitized derived refresh evidence and never performs payment", () => {
@@ -28,12 +32,16 @@ describe("global canonical Risk Object refresh", () => {
     for (const required of [
       "payment_not_performed_by_refresh: true",
       "raw_source_material_emitted: false",
+      "raw_exception_messages_emitted: false",
       "execution_authorized: false",
       "minimum_ready_gate: MIN_READY",
       "GLOBAL_CANONICAL_MIN_SOVEREIGN_DENOMINATOR",
+      'error_code: "canonical_refresh_failed_closed"',
     ]) {
       expect(script).toContain(required);
     }
+
+    expect(script).not.toContain("error: error instanceof Error ? error.message");
 
     for (const forbidden of [
       "raw_payload",

@@ -21,15 +21,20 @@ describe("global CANONICAL refresh governed wiring", () => {
     expect(refresh).toContain('"scripts/refresh-global-canonical-risk-objects.ts"');
   });
 
-  it("keeps ungoverned invocation unchanged and global failures fail closed", () => {
+  it("keeps ungoverned invocation unchanged and preserves fail-closed visibility", () => {
     const refresh = read("scripts/refresh-public-demo-risk-objects.ts");
 
     expect(refresh).toContain("GLOBAL_REFRESH_WORKFLOWS.has(workflow)");
-    expect(refresh).toContain("if (exitCode !== 0)");
     expect(refresh).toContain("GLOBAL_CANONICAL_REFRESH_FAILED");
     expect(refresh).toContain("GLOBAL_CANONICAL_REFRESH_BOUNDARY_INVALID");
+    expect(refresh).toContain("GLOBAL_CANONICAL_REFRESH_DEGRADED");
+    expect(refresh).toContain('workflow === "Public Demo Risk Refresh" && exitCode === 2');
+    expect(refresh).toContain("ready_floor_met");
+    expect(refresh).toContain("failure_reason_counts");
+    expect(refresh).toContain("region_counts");
     expect(refresh).toContain("payment_not_performed_by_refresh");
     expect(refresh).toContain("raw_source_material_emitted");
+    expect(refresh).toContain("raw_exception_messages_emitted");
     expect(refresh).toContain("execution_authorized");
     expect(refresh).toContain('stdout: "pipe"');
     expect(refresh).toContain('console.error("GLOBAL_CANONICAL_REFRESH_STATUS "');

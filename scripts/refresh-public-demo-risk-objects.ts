@@ -70,10 +70,6 @@ async function runGlobalCanonicalRefreshWhenOrchestrated() {
     console.error(stderr.trim());
   }
 
-  if (exitCode !== 0) {
-    throw new Error(`GLOBAL_CANONICAL_REFRESH_FAILED:${exitCode}`);
-  }
-
   let report: any;
   try {
     report = JSON.parse(stdout);
@@ -86,6 +82,7 @@ async function runGlobalCanonicalRefreshWhenOrchestrated() {
     report?.boundaries?.all_enabled_sovereigns_evaluated !== true ||
     report?.boundaries?.payment_not_performed_by_refresh !== true ||
     report?.boundaries?.raw_source_material_emitted !== false ||
+    report?.boundaries?.raw_exception_messages_emitted !== false ||
     report?.boundaries?.execution_authorized !== false
   ) {
     throw new Error("GLOBAL_CANONICAL_REFRESH_BOUNDARY_INVALID");
@@ -96,11 +93,27 @@ async function runGlobalCanonicalRefreshWhenOrchestrated() {
     denominator: report.denominator?.count ?? null,
     paid_ready_country_count: report.summary?.paid_ready_country_count ?? null,
     fail_closed_country_count: report.summary?.fail_closed_country_count ?? null,
+    minimum_ready_gate: report.summary?.minimum_ready_gate ?? null,
+    ready_floor_met: report.summary?.ready_floor_met === true,
+    failure_reason_counts: report.failure_summary?.reason_counts ?? {},
+    region_counts: report.failure_summary?.region_counts ?? {},
     generated_at: report.generated_at ?? null,
     completed_at: report.completed_at ?? null,
+    runner_exit_code: exitCode,
   };
 
   console.error("GLOBAL_CANONICAL_REFRESH_STATUS " + JSON.stringify(summary));
+
+  if (exitCode !== 0) {
+    if (workflow === "Public Demo Risk Refresh" && exitCode === 2) {
+      console.error(
+        "GLOBAL_CANONICAL_REFRESH_DEGRADED " + JSON.stringify(summary),
+      );
+      return summary;
+    }
+    throw new Error(`GLOBAL_CANONICAL_REFRESH_FAILED:${exitCode}`);
+  }
+
   return summary;
 }
 
