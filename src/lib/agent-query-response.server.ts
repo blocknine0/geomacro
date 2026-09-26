@@ -23,7 +23,7 @@ const MODULE_ALIASES: Record<string, readonly string[]> = {
   sovereign_fiscal: ["sovereign_fiscal", "fiscal", "sovereign", "debt"],
   political_governance: ["political_governance", "governance", "political"],
   macro_monetary: ["macro_monetary", "macro", "monetary"],
-  external_fx: ["external_fx", "fx", "external", "currency"],
+  external_fx: ["external_fx", "currency_capital_mobility", "fx", "external", "currency", "capital_mobility"],
   sanctions_restrictions: ["sanctions_restrictions", "sanctions", "restrictions"],
   geopolitical_security: ["geopolitical_security", "conflict", "security", "geopolitical"],
   trade_corridor: ["trade_corridor", "trade", "corridor"],
