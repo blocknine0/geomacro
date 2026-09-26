@@ -109,6 +109,16 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(authorized).toContain("publisher_authorized");
   });
 
+  it("maps Atom-format breaking feeds to the schema-valid XML access type", () => {
+    const registry = read(
+      "supabase/isolated-signal/migrations/985_breaking_feed_registry_parity.sql",
+    );
+
+    expect(registry).toContain("'nrcan_news_atom','Natural Resources Canada News Releases Atom','Natural Resources Canada','CRITICAL_MINERALS','XML'");
+    expect(registry).toContain("'nws_active_alerts_atom','NWS Active Alerts ATOM','U.S. National Weather Service / NOAA','MULTI_DOMAIN','XML'");
+    expect(registry).not.toContain("'ATOM','NONE'");
+  });
+
   it("runs NWS active alerts as a 60-second normalized lead feed", () => {
     const nws = read("workers/telegram-flash/nws_alerts_loop.py");
     const supervisor = read("workers/telegram-flash/supervisor.py");
