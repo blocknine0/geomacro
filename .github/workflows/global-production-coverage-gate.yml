@@ -10,6 +10,7 @@ on:
       - "scripts/sync-gdelt-gal-production.mjs"
       - "scripts/run-gdelt-gal-cycle.mjs"
       - "scripts/sync-open-live-source-mesh.mjs"
+      - "scripts/run-open-live-source-mesh-with-retry.mjs"
       - "scripts/drain-live-structure.mjs"
       - "scripts/reconcile-structured-event-commercial-rights.mjs"
       - "scripts/refresh-global-canonical-risk-objects.ts"
@@ -153,7 +154,7 @@ jobs:
           console.log(JSON.stringify({ok:true,sources:required.map(([source_key,commercial_usage_status])=>({source_key,commercial_usage_status}))},null,2));
           NODE
 
-          bun scripts/sync-open-live-source-mesh.mjs 2>&1 | tee artifacts/global-production-coverage/open-live-source-refresh.log
+          node scripts/run-open-live-source-mesh-with-retry.mjs 2>&1 | tee artifacts/global-production-coverage/open-live-source-refresh.log
           jq -e '.ok == true' "$OPEN_LIVE_SOURCE_SYNC_OUTPUT" >/dev/null
           jq -e '[.sources[] | select(.source_key == "nasa_firms_fire" or .source_key == "reliefweb_reports") | .status] | all(. == "skipped")' "$OPEN_LIVE_SOURCE_SYNC_OUTPUT" >/dev/null
 
