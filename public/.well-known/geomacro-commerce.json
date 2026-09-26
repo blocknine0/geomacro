@@ -4,7 +4,7 @@
     "id": "geomacro-global-risk-intelligence",
     "name": "GeoMacro Global Risk Intelligence",
     "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI-agent decisions.",
-    "status": "testnet_prelaunch",
+    "status": "prelaunch",
     "canonical_origin": "https://geomacro.live",
     "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
     "execution_authorized": false
@@ -12,6 +12,7 @@
   "discovery": {
     "a2a_agent_card": "https://geomacro.live/.well-known/agent-card.json",
     "a2a_interface": "https://geomacro.live/api/a2a",
+    "agent_card": "https://geomacro.live/.well-known/geomacro-agent.json",
     "agent_manifest": "https://geomacro.live/.well-known/geomacro-agent.json",
     "x402": "https://geomacro.live/.well-known/x402.json",
     "x402_extensionless_alias": "https://geomacro.live/.well-known/x402",
@@ -22,9 +23,9 @@
     "availability": "https://geomacro.live/api/x402/risk/availability"
   },
   "commercial_contract": {
-    "launch_state": "testnet_prelaunch",
+    "launch_state": "prelaunch",
     "production_funds_authorized": false,
-    "pricing_authority": "runtime_payment_challenge_or_provider_plan",
+    "pricing_authority": "payment_challenge_or_provider_plan",
     "static_catalog_price_authoritative": false,
     "prepayment_deliverability_required": true,
     "commercial_source_eligibility_required": true,
@@ -54,6 +55,7 @@
           "environment": "Circle Gateway adapter prepared; current non-mainnet paths remain technical proof until separately accepted",
           "launch_cohort": true,
           "production_enabled": false,
+          "production_status": "adapter_ready_locked_until_coordinated_launch",
           "approved_initial_mainnet_network": "eip155:8453",
           "arc_mainnet_enabled": false
         },
@@ -61,45 +63,19 @@
           "endpoint": "https://geomacro.live/api/x402/nevermined/intelligence",
           "environment": "Nevermined sandbox/prelaunch integration",
           "launch_cohort": true,
-          "production_enabled": false
+          "production_enabled": false,
+          "production_status": "code_ready_pending_live_plan_credentials_and_launch_authorization"
         },
         "goat_x402": {
           "environment": "GOAT Testnet3 technical proof; mainnet requires separate merchant onboarding",
           "launch_cohort": false,
-          "production_enabled": false
+          "production_enabled": false,
+          "production_status": "deferred_manual_mainnet_merchant_onboarding"
         }
       },
-      "subjects": [
-        "country_iso3",
-        "directional_corridor_origin_iso3_to_destination_iso3"
-      ],
-      "topics": [
-        "sovereign_risk",
-        "macro_risk",
-        "fx_external_risk",
-        "sanctions_restrictions",
-        "conflict_geopolitics",
-        "trade_corridor",
-        "energy_commodities",
-        "critical_minerals",
-        "political_governance",
-        "banking_financial_system",
-        "food_agriculture",
-        "natural_hazards",
-        "hot_topics",
-        "risk_gate",
-        "risk_object",
-        "gri_context"
-      ],
-      "intents": [
-        "single_subject",
-        "comparison",
-        "ranking_filter",
-        "corridor",
-        "change_since",
-        "audit",
-        "risk_gate"
-      ],
+      "subjects": ["country_iso3", "directional_corridor_origin_iso3_to_destination_iso3"],
+      "topics": ["sovereign_risk", "macro_risk", "fx_external_risk", "sanctions_restrictions", "conflict_geopolitics", "trade_corridor", "energy_commodities", "critical_minerals", "political_governance", "banking_financial_system", "food_agriculture", "natural_hazards", "hot_topics", "risk_gate", "risk_object", "gri_context"],
+      "intents": ["single_subject", "comparison", "ranking_filter", "corridor", "change_since", "audit", "risk_gate"],
       "delivery_rules": {
         "availability_first": true,
         "unavailable_is_not_payable": true,
@@ -110,23 +86,7 @@
       }
     }
   ],
-  "discovery_terms": [
-    "AI agent risk intelligence",
-    "x402 risk intelligence",
-    "country risk",
-    "geopolitical risk",
-    "macroeconomic risk",
-    "critical minerals risk",
-    "sovereign risk",
-    "FX risk",
-    "cross-border corridor risk",
-    "supply chain risk",
-    "supplier-country exposure context",
-    "geopolitical escalation context",
-    "signed risk object",
-    "machine-readable risk evidence",
-    "risk gate"
-  ],
+  "discovery_terms": ["AI agent risk intelligence", "x402 risk intelligence", "country risk", "geopolitical risk", "macroeconomic risk", "critical minerals risk", "sovereign risk", "FX risk", "cross-border corridor risk", "supply chain risk", "supplier-country exposure context", "geopolitical escalation context", "signed risk object", "machine-readable risk evidence", "risk gate"],
   "promotion_policy": {
     "free_distribution_only_during_testnet": true,
     "paid_ads": false,
