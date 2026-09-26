@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
 import { corridorSubjectId } from "./corridor-risk-engine";
+import { publishCorridorRiskObject } from "./corridor-risk-publisher.server";
 import { evaluateCorridorRiskGate } from "./corridor-risk-gate-service.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { demoPolicyFromPreset } from "./agentic-demo-contract";
@@ -12,18 +13,64 @@ import {
 } from "./risk-object-store.server";
 import type { AgentQueryPlan } from "./agent-query-plan";
 
+function commerciallyDeliverable(object: Awaited<ReturnType<typeof getLatestCompatibleCountryRiskObjectAtOrBefore>>, asOf: string) {
+  if (!object) return null;
+  return verifyCommercialRiskObjectArtifact(object, { now: new Date(asOf) }).deliverable
+    ? object
+    : null;
+}
+
+/**
+ * Resolve the signed CANONICAL Risk Object used by adaptive agent queries.
+ *
+ * Country objects are continuously refreshed by the global canonical refresh.
+ * Corridor objects are endpoint-composed and the theoretical country-pair
+ * universe is too large to pre-materialize safely. For a corridor request we
+ * therefore read the cache first and, only when no commercially deliverable
+ * object exists, materialize a CANONICAL signed corridor object from the
+ * already-governed endpoint country objects.
+ *
+ * Publication remains fail-closed: missing signing configuration, missing or
+ * ineligible endpoint objects, invalid signatures, or persistence failures all
+ * return null to the availability caller. No payment or execution is performed
+ * here.
+ */
 export async function loadCommercialRiskObjectForAgentQuery(
   subject: AgentQueryPlan["subjects"][number],
   asOf: string,
 ) {
-  const object = subject.type === "country"
-    ? await getLatestCompatibleCountryRiskObjectAtOrBefore(subject.country_iso3, asOf)
-    : await getLatestCompatibleCorridorRiskObjectAtOrBefore(
-        corridorSubjectId(subject.origin_country_iso3, subject.destination_country_iso3),
-        asOf,
-      );
-  if (!object) return null;
-  return verifyCommercialRiskObjectArtifact(object, { now: new Date(asOf) }).deliverable ? object : null;
+  if (subject.type === "country") {
+    return commerciallyDeliverable(
+      await getLatestCompatibleCountryRiskObjectAtOrBefore(subject.country_iso3, asOf),
+      asOf,
+    );
+  }
+
+  const corridorId = corridorSubjectId(
+    subject.origin_country_iso3,
+    subject.destination_country_iso3,
+  );
+  const cached = commerciallyDeliverable(
+    await getLatestCompatibleCorridorRiskObjectAtOrBefore(corridorId, asOf),
+    asOf,
+  );
+  if (cached) return cached;
+
+  try {
+    const published = await publishCorridorRiskObject({
+      origin_country_iso3: subject.origin_country_iso3,
+      destination_country_iso3: subject.destination_country_iso3,
+      as_of: asOf,
+      delivery_profile: "CANONICAL",
+    });
+    return verifyCommercialRiskObjectArtifact(published.object, {
+      now: new Date(asOf),
+    }).deliverable
+      ? published.object
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function hasPreviousPublicationChange(object: NonNullable<Awaited<ReturnType<typeof loadCommercialRiskObjectForAgentQuery>>>) {
