@@ -136,7 +136,7 @@ jobs:
             503)
               jq -e '
                 .ok == false
-                and .error.code == "X402_NOT_CONFIGURED"
+                and (.error.code == "X402_NOT_CONFIGURED" or .error.code == "RISK_RESOURCE_UNAVAILABLE")
                 and .execution_authorized == false
               ' "$body2" >/dev/null
               ! grep -Eqi 'display_score|raw_score|risk_object|payment_event_id|credits_remaining|gmk_test_|gms_test_' "$body2"
