@@ -1,114 +1,81 @@
 {
-  "name": "Geomacro Agent",
-  "description": "Geopolitical and macro risk intelligence for AI agents, including a bounded Risk Gate preflight skill with signed Risk Objects and machine-readable decision context.",
+  "name": "GeoMacro Global Risk Intelligence Agent",
+  "description": "24/7 machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for AI agents. GeoMacro checks deliverability before any payable x402 challenge and fails closed when required evidence is stale, incomplete, unverifiable or commercially ineligible.",
   "supportedInterfaces": [
     {
       "url": "https://geomacro.live/api/a2a",
-      "protocolBinding": "HTTP+JSON",
+      "protocolBinding": "JSONRPC",
       "protocolVersion": "1.0"
     }
   ],
   "provider": {
-    "organization": "Geomacro",
-    "url": "https://geomacro.live"
+    "organization": "GeoMacro",
+    "url": "https://geomacro.live/"
   },
-  "version": "geomacro-a2a-v1",
-  "documentationUrl": "https://geomacro.live/docs",
+  "version": "1.0.0",
+  "documentationUrl": "https://geomacro.live/",
   "capabilities": {
     "streaming": false,
-    "pushNotifications": true,
-    "extendedAgentCard": true
-  },
-  "securitySchemes": {
-    "geomacroBearer": {
-      "httpAuthSecurityScheme": {
-        "scheme": "Bearer",
-        "bearerFormat": "opaque",
-        "description": "Geomacro commercial API bearer credential."
-      }
-    },
-    "geomacroTestnetKey": {
-      "apiKeySecurityScheme": {
-        "location": "header",
-        "name": "X-Geomacro-Api-Key",
-        "description": "Geomacro Testnet developer API key."
-      }
-    },
-    "geomacroTestnetSecret": {
-      "apiKeySecurityScheme": {
-        "location": "header",
-        "name": "X-Geomacro-Api-Secret",
-        "description": "Geomacro Testnet developer API secret. Required together with the Testnet API key."
-      }
-    }
-  },
-  "securityRequirements": [
-    {
-      "schemes": {
-        "geomacroBearer": {
-          "list": []
+    "pushNotifications": false,
+    "extendedAgentCard": false,
+    "extensions": [
+      {
+        "uri": "https://www.x402.org/",
+        "description": "Paid intelligence delivery uses x402 v2 only after no-charge deliverability validation.",
+        "required": false,
+        "params": {
+          "paidEndpoint": "https://geomacro.live/api/x402/intelligence",
+          "availabilityEndpoint": "https://geomacro.live/api/x402/risk/availability",
+          "asset": "USDC",
+          "environment": "testnet-first"
         }
       }
-    },
-    {
-      "schemes": {
-        "geomacroTestnetKey": {
-          "list": []
-        },
-        "geomacroTestnetSecret": {
-          "list": []
-        }
-      }
-    }
-  ],
+    ]
+  },
   "defaultInputModes": [
     "application/json",
     "text/plain"
   ],
   "defaultOutputModes": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "skills": [
     {
-      "id": "risk_preflight",
-      "name": "Risk preflight",
-      "description": "Evaluate a country or directional corridor before an agent payment or exposure action. Returns Risk Gate decision context, a verified signed Risk Object, structural context and canonical GRI context. Geomacro never authorizes execution.",
-      "tags": [
-        "geopolitical-risk",
-        "macro-risk",
-        "risk-gate",
-        "treasury",
-        "payments"
-      ],
-      "examples": [
-        "Assess India before a treasury payment.",
-        "Evaluate the India to Singapore corridor before an agent payment."
-      ],
-      "inputModes": [
-        "application/json"
-      ],
-      "outputModes": [
-        "application/json"
-      ],
-      "securityRequirements": [
-        {
-          "schemes": {
-            "geomacroBearer": {
-              "list": []
-            }
-          }
-        },
-        {
-          "schemes": {
-            "geomacroTestnetKey": {
-              "list": []
-            },
-            "geomacroTestnetSecret": {
-              "list": []
-            }
-          }
-        }
-      ]
+      "id": "geomacro_geopolitics",
+      "name": "Global Geopolitical Risk Intelligence",
+      "description": "Country, corridor, conflict, sanctions, governance, security, trade-disruption and governed hot-topic intelligence when the required evidence bundle is currently deliverable.",
+      "tags": ["geopolitics", "country-risk", "corridor-risk", "sanctions", "security", "hot-topics", "x402"],
+      "examples": ["Assess current geopolitical and security risks for a country", "Check a strategic corridor for current disruption risk"],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "geomacro_macro",
+      "name": "Global Macro and FX Risk Intelligence",
+      "description": "Macro, monetary, sovereign/fiscal, external and FX vulnerability intelligence for supported subjects with freshness, provenance and commercial-eligibility gates.",
+      "tags": ["macro", "fx", "sovereign-risk", "monetary", "fiscal", "country-risk", "x402"],
+      "examples": ["What are the current macro and FX risks for India?", "Assess sovereign and external vulnerability for a supported country"],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "geomacro_critical_minerals",
+      "name": "Global Critical Minerals Risk Intelligence",
+      "description": "Critical-mineral supply, concentration, policy, disruption and cross-border risk intelligence where governed source coverage is current and commercially eligible.",
+      "tags": ["critical-minerals", "supply-chain", "commodities", "geoeconomics", "corridor-risk", "x402"],
+      "examples": ["Assess critical-mineral supply risk affecting a country or corridor", "Identify governed mineral-related disruption context"],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "geomacro_availability",
+      "name": "No-Charge Deliverability Preflight",
+      "description": "Determine whether a requested GeoMacro intelligence bundle is currently deliverable before any payment is requested.",
+      "tags": ["availability", "preflight", "fail-closed", "x402", "agent-commerce"],
+      "examples": ["Can GeoMacro currently answer this query without stale or missing modules?"],
+      "inputModes": ["application/json", "text/plain"],
+      "outputModes": ["application/json"]
     }
   ]
 }
