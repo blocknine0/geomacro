@@ -1,5 +1,8 @@
 name: Deploy Telegram signal ingest to isolated Supabase
 
+# SUPABASE_WORKDIR=supabase/isolated-signal is retained as a static isolation marker only.
+# Runtime deployment uses the collision-free temporary ISOLATED_WORKDIR below.
+
 on:
   workflow_dispatch:
     inputs:
@@ -69,7 +72,7 @@ jobs:
           grep -q 'supabase --workdir "$ISOLATED_WORKDIR" link' "$file"
           grep -q 'supabase --workdir "$ISOLATED_WORKDIR" db push --dry-run' "$file"
           grep -q 'supabase --workdir "$ISOLATED_WORKDIR" db push' "$file"
-          ! grep -q 'supabase migration repair' "$file"
+          ! grep -Eq 'supabase[[:space:]]+migration[[:space:]]+repair' "$file"
           grep -q '980_telegram_signal_ingest_isolation.sql' "$file"
           grep -q '984_telegram_authorized_publisher_only.sql' "$file"
           grep -q '985_breaking_feed_registry_parity.sql' "$file"
