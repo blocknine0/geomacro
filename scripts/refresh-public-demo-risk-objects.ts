@@ -22,6 +22,11 @@ const CORRIDORS = [
   ["CHN", "USA"],
 ] as const;
 
+const GLOBAL_REFRESH_WORKFLOWS = new Set([
+  "Geomacro Intelligence Orchestrator",
+  "Public Demo Risk Refresh",
+]);
+
 function assertFresh(expiresAt: string, now: Date) {
   const expiry = new Date(expiresAt);
   if (Number.isNaN(expiry.getTime()) || expiry.getTime() <= now.getTime()) {
@@ -37,7 +42,8 @@ function assertSignature(object: { integrity: { signature?: string | null }; exp
 }
 
 async function runGlobalCanonicalRefreshWhenOrchestrated() {
-  if (String(process.env.GITHUB_WORKFLOW ?? "").trim() !== "Geomacro Intelligence Orchestrator") {
+  const workflow = String(process.env.GITHUB_WORKFLOW ?? "").trim();
+  if (!GLOBAL_REFRESH_WORKFLOWS.has(workflow)) {
     return null;
   }
 
