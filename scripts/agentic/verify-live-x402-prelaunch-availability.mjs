@@ -32,6 +32,17 @@ const cases = [
     },
   },
   {
+    id: "china-critical-minerals",
+    body: {
+      schema_version: "geomacro.agent-query.v1",
+      question: "What verified critical-minerals intelligence is currently available for China?",
+      subjects: [{ type: "country", country_iso3: "CHN" }],
+      topics: ["critical_minerals"],
+      evidence: "required",
+      detail: "standard",
+    },
+  },
+  {
     id: "usa-china-corridor",
     body: {
       schema_version: "geomacro.agent-query.v1",
