@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 const planner = fs.readFileSync("src/lib/agent-query-plan.ts", "utf8");
 const responseAssembler = fs.readFileSync("src/lib/agent-query-response.server.ts", "utf8");
 const paidRoute = fs.readFileSync("src/routes/api.x402.intelligence.ts", "utf8");
-const manifest = JSON.parse(fs.readFileSync("public/.well-known/geomacro.json", "utf8"));
-const openapi = JSON.parse(fs.readFileSync("public/openapi-testnet-v1.json", "utf8"));
+const manifest = JSON.parse(fs.readFileSync("docs/testnet/geomacro-agent-manifest.json", "utf8"));
+const openapi = JSON.parse(fs.readFileSync("docs/testnet/openapi-testnet-v1.json", "utf8"));
 
 describe("Geomacro x402 Testnet Intelligence v1", () => {
   it("advertises exactly the three initial structured-intelligence domains", () => {
@@ -68,7 +68,7 @@ describe("Geomacro x402 Testnet Intelligence v1", () => {
     }
   });
 
-  it("publishes a machine-readable x402 testnet contract", () => {
+  it("stages a machine-readable x402 testnet contract without changing the locked website", () => {
     expect(openapi.openapi).toBe("3.1.0");
     expect(openapi["x-geomacro"].environment).toBe("testnet");
     expect(openapi["x-geomacro"].raw_data_delivery).toBe(false);
