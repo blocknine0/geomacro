@@ -53,6 +53,7 @@ async def stream_process(
 async def main() -> None:
     commands = [
         ("intake", sys.executable, "production_entrypoint.py"),
+        ("nws-alerts", sys.executable, "nws_alerts_loop.py"),
         ("corroboration", sys.executable, "corroboration_loop.py"),
         ("archive", sys.executable, "archive_loop.py"),
     ]
