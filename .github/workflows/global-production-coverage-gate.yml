@@ -7,6 +7,8 @@ on:
     paths:
       - "scripts/ingest-world-bank-live.mjs"
       - "scripts/ingest-usgs-mcs-live.mjs"
+      - "scripts/sync-gdelt-gal-production.mjs"
+      - "scripts/run-gdelt-gal-cycle.mjs"
       - "scripts/refresh-global-canonical-risk-objects.ts"
       - "scripts/refresh-canonical-strategic-corridors.ts"
       - "scripts/audit-global-production-coverage.mjs"
