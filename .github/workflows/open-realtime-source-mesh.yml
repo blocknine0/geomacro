@@ -47,12 +47,13 @@ jobs:
           done
           node scripts/db/assert-authoritative-supabase.mjs
           bun --check scripts/sync-open-live-source-mesh.mjs
+          node --check scripts/run-open-live-source-mesh-with-retry.mjs
 
       - name: Sync open realtime sources
         shell: bash
         run: |
           set -euo pipefail
-          bun scripts/sync-open-live-source-mesh.mjs
+          node scripts/run-open-live-source-mesh-with-retry.mjs
 
       - name: Structure source fragments
         shell: bash
