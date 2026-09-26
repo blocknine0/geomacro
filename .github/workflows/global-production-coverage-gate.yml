@@ -8,6 +8,7 @@ on:
       - "scripts/ingest-world-bank-live.mjs"
       - "scripts/ingest-usgs-mcs-live.mjs"
       - "scripts/refresh-global-canonical-risk-objects.ts"
+      - "scripts/refresh-canonical-strategic-corridors.ts"
       - "scripts/audit-global-production-coverage.mjs"
       - "scripts/audit-source-certification-census.mjs"
       - "scripts/audit-hot-topic-family-readiness.ts"
@@ -108,6 +109,15 @@ jobs:
             exit "$refresh_status"
           fi
           jq -e '.summary.ready_floor_met == true' "$GLOBAL_CANONICAL_REFRESH_OUTPUT" >/dev/null
+
+      - name: Refresh canonical strategic corridor Risk Objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun scripts/refresh-canonical-strategic-corridors.ts 2>&1 | tee artifacts/global-production-coverage/canonical-strategic-corridors.json
+          grep -q '"schema_version": "geomacro-canonical-strategic-corridor-refresh-v1"' artifacts/global-production-coverage/canonical-strategic-corridors.json
+          grep -q '"payment_performed": false' artifacts/global-production-coverage/canonical-strategic-corridors.json
+          grep -q '"mainnet_activation_changed": false' artifacts/global-production-coverage/canonical-strategic-corridors.json
 
       - name: Self-heal GDELT GAL freshness before coverage gate
         shell: bash
