@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 describe("Telegram signal Supabase isolation contract", () => {
   it("keeps the dedicated signal project separate from production", () => {
     const workflow = read(".github/workflows/deploy-telegram-signal-supabase.yml");
+    const helper = read("scripts/prepare-telegram-isolated-migration-workdir.mjs");
 
     expect(workflow).toContain("qogpagklwbfdmrgnrhzi");
     expect(workflow).not.toContain(
@@ -14,7 +15,10 @@ describe("Telegram signal Supabase isolation contract", () => {
     expect(workflow).toContain("TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID");
     expect(workflow).toContain("SIGNAL_DB_MODE");
     expect(workflow).toContain("ISOLATED_WORKDIR=/tmp/geomacro-signal-supabase");
-    expect(workflow).toContain("numeric <= 951");
+    expect(workflow).toContain("prepare-telegram-isolated-migration-workdir.mjs");
+    expect(helper).toContain("[0, 54]");
+    expect(helper).toContain("[900, 951]");
+    expect(helper).toContain("production migrations 952+ are never copied");
     expect(workflow).not.toContain("supabase migration repair");
   });
 
