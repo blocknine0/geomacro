@@ -1,0 +1,99 @@
+name: GeoMacro Agent Global Discovery Health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11,41 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-agent-global-discovery-health
+  cancel-in-progress: true
+
+jobs:
+  verify-agent-surface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify A2A agent card
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/.well-known/agent-card.json \
+            -o /tmp/agent-card.json
+          jq -e '
+            .name == "GeoMacro Global Risk Intelligence Agent" and
+            .supportedInterfaces[0].url == "https://geomacro.live/api/a2a" and
+            .supportedInterfaces[0].protocolBinding == "JSONRPC" and
+            .supportedInterfaces[0].protocolVersion == "1.0" and
+            (.skills | map(.id) | index("geomacro_geopolitics") != null) and
+            (.skills | map(.id) | index("geomacro_macro") != null) and
+            (.skills | map(.id) | index("geomacro_critical_minerals") != null) and
+            .capabilities.streaming == false and
+            .capabilities.pushNotifications == false
+          ' /tmp/agent-card.json >/dev/null
+
+      - name: Verify A2A service metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/api/a2a \
+            -o /tmp/a2a-get.json
+          jq -e '
+            .ok == true and
+            .protocol_version == "1.0" and
+            .binding == "JSONRPC" and
+            (.categories | index("GEOPOLITICS") != null) and
+            (.categories | index("MACRO") != null) and
+            (.categories | index("CRITICAL_MINERALS") != null) and
+            .execution_authorized == false
+          ' /tmp/a2a-get.json >/dev/null
+
+      - name: Verify A2A SendMessage routing contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            -H 'Content-Type: application/json' \
+            -H 'A2A-Version: 1.0' \
+            --data '{"jsonrpc":"2.0","id":"health-1","method":"SendMessage","params":{"message":{"messageId":"health-message","role":"ROLE_USER","parts":[{"text":"Assess global critical mineral supply risk"}]}}}' \
+            https://geomacro.live/api/a2a \
+            -o /tmp/a2a-send.json
+          jq -e '
+            .jsonrpc == "2.0" and
+            .id == "health-1" and
+            .result.message.role == "ROLE_AGENT" and
+            .result.message.parts[1].data.delivery_contract.payment_after_deliverability_only == true and
+            .result.message.parts[1].data.delivery_contract.execution_authorized == false and
+            .result.message.parts[1].data.endpoints.paid_intelligence == "https://geomacro.live/api/x402/intelligence"
+          ' /tmp/a2a-send.json >/dev/null
+
+      - name: Verify x402 service metadata without payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/api/x402/intelligence \
+            -o /tmp/x402-service.json
+          jq -e '
+            .ok == true and
+            .x402_version == 2 and
+            (.topics | index("critical_minerals") != null) and
+            .execution_authorized == false
+          ' /tmp/x402-service.json >/dev/null
+
+      - name: Publish health summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## GeoMacro Agent Global Discovery Health"
+            echo
+            echo "Checks are no-charge and never submit a payment proof."
+            echo
+            echo "Surfaces: A2A v1 discovery, A2A JSON-RPC coordination, x402 v2 service metadata."
+          } >> "$GITHUB_STEP_SUMMARY"
