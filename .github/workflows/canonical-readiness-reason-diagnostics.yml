@@ -44,7 +44,7 @@ jobs:
           const base = String(process.env.APP_SUPABASE_URL ?? "").replace(/\/$/, "");
           const key = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "");
           const endpoint = new URL(`${base}/rest/v1/geomacro_risk_objects`);
-          endpoint.searchParams.set("select", "subject_id,generated_at,commercial_eligibility_status,commercial_eligibility_reason_codes,verification_status,verification_reason_codes,commercial_policy_version");
+          endpoint.searchParams.set("select", "subject_id,generated_at,commercial_eligibility_status,commercial_eligibility_reason_codes,verification_status,verification_reason_codes");
           endpoint.searchParams.set("subject_type", "eq.country");
           endpoint.searchParams.set("order", "generated_at.desc");
           endpoint.searchParams.set("limit", "1000");
