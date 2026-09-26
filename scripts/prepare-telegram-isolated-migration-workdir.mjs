@@ -12,12 +12,13 @@ const REMOTE_HISTORY_RANGES = [
   [900, 951],
 ]
 
-const ISOLATED_REBASE = [
-  ["950_telegram_signal_ingest_isolation.sql", "980_telegram_signal_ingest_isolation.sql"],
-  ["951_telegram_signal_compact_storage.sql", "981_telegram_signal_compact_storage.sql"],
-  ["952_realtime_flash_event_lifecycle.sql", "982_realtime_flash_event_lifecycle.sql"],
-  ["953_event_family_version_ledger.sql", "983_event_family_version_ledger.sql"],
-  ["954_telegram_authorized_publisher_only.sql", "984_telegram_authorized_publisher_only.sql"],
+const ISOLATED_MIGRATIONS = [
+  "980_telegram_signal_ingest_isolation.sql",
+  "981_telegram_signal_compact_storage.sql",
+  "982_realtime_flash_event_lifecycle.sql",
+  "983_event_family_version_ledger.sql",
+  "984_telegram_authorized_publisher_only.sql",
+  "985_breaking_feed_registry_parity.sql",
 ]
 
 function migrationVersionName(version) {
@@ -39,27 +40,26 @@ for (const [start, end] of REMOTE_HISTORY_RANGES) {
   }
 }
 
-for (const [sourceName, targetName] of ISOLATED_REBASE) {
-  const sourcePath = path.join(SOURCE_MIGRATIONS, sourceName)
+for (const filename of ISOLATED_MIGRATIONS) {
+  const sourcePath = path.join(SOURCE_MIGRATIONS, filename)
   if (!fs.existsSync(sourcePath)) {
-    throw new Error(`Missing isolated migration: ${sourceName}`)
+    throw new Error(`Missing isolated migration: ${filename}`)
   }
-  fs.copyFileSync(sourcePath, path.join(TARGET_MIGRATIONS, targetName))
+  fs.copyFileSync(sourcePath, path.join(TARGET_MIGRATIONS, filename))
 }
 
 const generated = fs.readdirSync(TARGET_MIGRATIONS).sort()
-const rebasedTargets = ISOLATED_REBASE.map(([, target]) => target)
-for (const target of rebasedTargets) {
-  if (!generated.includes(target)) throw new Error(`Rebased migration missing: ${target}`)
+for (const filename of ISOLATED_MIGRATIONS) {
+  if (!generated.includes(filename)) throw new Error(`Isolated migration missing: ${filename}`)
 }
 
-if (generated.some((name) => /^95[0-4]_telegram_/.test(name) || /^95[2-4]_/.test(name))) {
-  throw new Error("Original isolated migration versions leaked into prepared workdir")
+if (generated.some((name) => /^95[2-9]_/.test(name))) {
+  throw new Error("Authoritative production migration >=952 leaked into prepared isolated workdir")
 }
 
 console.log(JSON.stringify({
   target_dir: path.relative(ROOT, TARGET_DIR),
-  historical_placeholder_count: generated.length - rebasedTargets.length,
-  isolated_migrations: rebasedTargets,
+  historical_placeholder_count: generated.length - ISOLATED_MIGRATIONS.length,
+  isolated_migrations: ISOLATED_MIGRATIONS,
   invariant: "production migrations 952+ are never copied into the isolated Telegram workdir",
 }, null, 2))
