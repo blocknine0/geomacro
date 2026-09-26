@@ -1,213 +1,287 @@
 # Country Flash Intelligence Production Runbook
 
-This runbook activates the low-latency country-level breaking-news layer introduced by PR #125 without changing the core Geomacro rule that raw fast-wire leads do not directly mutate GRI or Risk Gate outputs.
+This runbook operates Geomacro's low-latency country-level breaking-intelligence layer without changing the core rule that fast source leads do not directly mutate GRI or Risk Gate outputs.
 
 ## Production boundary
 
-- Fast Telegram/RSS items are leads, not truth.
-- Every new item starts `UNVERIFIED`.
+- Fast machine-feed items are leads, not truth.
+- Every new item starts `UNVERIFIED` unless a separately governed source contract proves otherwise.
 - Independent evidence can move an item to `CORROBORATING` and then `VERIFIED`.
 - A single source cannot self-verify.
-- Source reliability changes verification weight, not ingestion permission.
-- Restricted publisher/relay content must not be exposed as a raw commercial customer feed.
+- Raw publisher/source bodies are not a customer-facing product.
+- Public Telegram channel scraping, harvesting, indexing and aggregation are disabled in production.
+- Telegram-origin intelligence may enter only through an explicitly publisher-authorized push/bot/webhook submission path with active, scoped, revocable authorization.
 
-## 1. Required GitHub production secrets
+## 1. Required deployment secrets
 
-Configure these as GitHub Actions secrets before running the Supabase deployment workflow:
+Authoritative country-flash deployment uses the production Supabase secrets documented by `.github/workflows/deploy-country-flash-supabase.yml`.
 
-- `SUPABASE_ACCESS_TOKEN`
-- `SUPABASE_PROJECT_ID`
-- `SUPABASE_DB_PASSWORD`
-- `FLASH_INGEST_TOKEN`
+The dedicated isolated signal project uses these GitHub production secrets:
 
-`FLASH_INGEST_TOKEN` should be a long random secret generated specifically for the country-flash worker/function boundary. Do not reuse a user password, Telegram credential, Supabase service-role key, or wallet secret.
+- `TELEGRAM_SIGNAL_SUPABASE_ACCESS_TOKEN`
+- `TELEGRAM_SIGNAL_SUPABASE_PROJECT_ID`
+- `TELEGRAM_SIGNAL_SUPABASE_DB_PASSWORD`
+- `TELEGRAM_SIGNAL_FLASH_INGEST_TOKEN`
 
-The governed Testnet RSS runner does not require that static secret. It authenticates with a short-lived GitHub Actions OIDC token whose issuer, audience, repository, main-branch ref, and workflow reference are validated by `live-flash-ingest`. Static token authentication remains available for Telegram and other protected worker paths.
+The expected isolated project ref is:
 
-The workflow intentionally does not print secret values.
+```text
+qogpagklwbfdmrgnrhzi
+```
 
-## 2. Supabase deployment workflow
+Never expose service-role keys, DB passwords or flash-ingest tokens in browser/frontend code, issues, PRs, logs or screenshots.
+
+## 2. Isolated signal Supabase deployment
 
 Workflow:
 
-`.github/workflows/deploy-country-flash-supabase.yml`
+```text
+.github/workflows/deploy-telegram-signal-supabase.yml
+```
 
-It supports a protected automatic production release from `main` for committed migration changes, plus an explicit manual plan/apply path for controlled operational work.
+Always run `mode=plan` before `mode=apply` after migration changes.
+
+The isolated project historically contains authoritative migration-history versions through `951`. Geomacro therefore uses a collision-free isolated migration track:
+
+```text
+980_telegram_signal_ingest_isolation.sql
+981_telegram_signal_compact_storage.sql
+982_realtime_flash_event_lifecycle.sql
+983_event_family_version_ledger.sql
+984_telegram_authorized_publisher_only.sql
+985_breaking_feed_registry_parity.sql
+```
+
+The workflow creates a temporary migration workdir containing only:
+
+- authoritative migration files `<=951` for history reconciliation; and
+- isolated signal migrations `980+`.
+
+Authoritative migrations `952+` must never be eligible for application to the isolated signal database. Do not use destructive migration-history repair shortcuts to bypass this boundary.
 
 ### Plan
 
-Run `mode=plan` first.
+Run:
 
-The workflow:
+```text
+mode=plan
+```
 
-1. validates required deployment secrets;
-2. links the production project;
-3. runs `supabase db push --dry-run`;
-4. makes no production database/function changes.
+Expected behavior:
 
-Review the migration plan before applying anything.
+1. validate isolated project target/secrets;
+2. prepare the temporary migration workdir;
+3. link the isolated project;
+4. run `supabase db push --dry-run`;
+5. show only isolated pending migrations;
+6. make no database/function changes.
 
 ### Apply
 
-For manual operational changes, run `mode=apply`.
-
-For normal merged migration changes on `main`, the workflow applies automatically from the protected production environment.
-
-The workflow:
-
-1. repeats the migration dry run;
-2. applies pending migrations with `supabase db push`;
-3. deploys `live-flash-ingest`, which supports both the dedicated static token boundary and the narrowly-scoped GitHub Actions OIDC boundary used by the governed RSS runner;
-4. syncs `FLASH_INGEST_TOKEN` only when the dedicated static token is provisioned, preserving the Telegram/corroboration path;
-5. deploys `live-flash-corroborate` only when the dedicated static token is provisioned;
-6. runs non-synthetic endpoint smoke checks.
-
-Both Edge Functions are deployed with `--no-verify-jwt` because they use the dedicated `x-geomacro-flash-token` application-level authentication boundary. The functions still reject requests that do not carry the exact flash token.
-
-Expected production endpoints:
+Only after the plan is clean, run:
 
 ```text
-https://<SUPABASE_PROJECT_ID>.supabase.co/functions/v1/live-flash-ingest
-https://<SUPABASE_PROJECT_ID>.supabase.co/functions/v1/live-flash-corroborate
+mode=apply
 ```
 
-The ingest smoke check deliberately submits an empty authenticated payload and expects the function's validation error, so it proves routing/auth/configuration without inserting a fake news event.
+The workflow applies isolated migrations, configures `FLASH_INGEST_TOKEN` and `SIGNAL_DB_MODE=true`, deploys:
 
-The corroboration smoke check runs one normal corroboration cycle against current stored data.
+- `live-flash-ingest`
+- `live-flash-corroborate`
+- `live-flash-archive`
 
-## 3. Worker container image
+and runs non-synthetic smoke checks.
 
-Workflow:
+## 3. Anti-pause keepalive
 
-`.github/workflows/country-flash-worker-image.yml`
+The isolated workflow runs an authenticated keepalive three times per day:
 
-Pull requests build the container but do not publish it.
+```text
+17 1,9,17 * * *
+```
 
-On `main`, the workflow publishes:
+It calls the isolated corroboration endpoint and fails loudly on a paused/unhealthy response. This generates legitimate authenticated activity and reduces inactivity-pause risk.
+
+Provider-level no-pause guarantees depend on the Supabase organization/plan; code cannot override a provider-enforced Free-plan pause policy.
+
+## 4. Breaking-data worker
+
+Container build workflow:
+
+```text
+.github/workflows/country-flash-worker-image.yml
+```
+
+On `main`, the image is published as:
 
 ```text
 ghcr.io/blocknine0/geomacro-country-flash:<git-sha>
 ghcr.io/blocknine0/geomacro-country-flash:latest
 ```
 
-Use the immutable Git SHA tag for production deployments when possible. `latest` is a convenience pointer, not a rollback record.
+Prefer the immutable Git SHA tag for production deployments.
 
-## 4. Long-lived worker runtime secrets
+The supervisor runs:
 
-The container host needs these values through its secret manager/runtime environment. Never bake them into the image.
+- governed RSS/ATOM intake;
+- NWS active-alert poller;
+- corroboration loop;
+- archive loop.
+
+## 5. Public Telegram is off
+
+Production configuration must keep:
 
 ```text
-GEOMACRO_FLASH_INGEST_URL=https://<project>.supabase.co/functions/v1/live-flash-ingest
-GEOMACRO_FLASH_CORROBORATE_URL=https://<project>.supabase.co/functions/v1/live-flash-corroborate
-GEOMACRO_FLASH_INGEST_TOKEN=<same value as FLASH_INGEST_TOKEN>
+TELEGRAM_ENABLED=false
+TELEGRAM_CHANNELS=
+```
+
+Do not configure `TELEGRAM_API_ID`, `TELEGRAM_API_HASH` or `TELEGRAM_SESSION` for production collection. The production entrypoint forces public MTProto off even if inherited environment variables are present, the scheduled RSS cycle forces it off again, and global Telegram discovery is a policy no-op.
+
+The legacy `telegram_mtproto_flash` source is blocked in the isolated source registry.
+
+## 6. Publisher-authorized Telegram path
+
+Telegram may be added only when the channel/publisher explicitly authorizes Geomacro use for a defined scope.
+
+The server-side registry must record at minimum:
+
+- `publisher_authorized=true`
+- non-empty `authorization_scope`
+- non-empty internal `authorization_reference`
+- `authorization_granted_at`
+- optional expiration/revocation controls
+
+`COMMERCIAL_OK` is not permitted unless those authorization conditions hold.
+
+Raw Telegram content is never redistributed to customers. Authorized submissions remain evidence/lead material and must pass corroboration, provenance, source-rights and product-boundary checks before contributing to derived intelligence.
+
+## 7. Real-time breaking source lanes
+
+### Geopolitics
+- GDELT V2 / GAL
+- UN documents, Security Council and UN Geneva feeds
+- Council of the EU releases
+- governed sanctions/security/maritime source mesh
+- media feeds only as internal discovery/corroboration where rights remain restricted
+
+### Macro
+- Federal Reserve releases
+- ECB releases / market-information feeds
+- BIS releases / central-banker speeches
+- World Bank, IMF, Eurostat, EIA and other governed structured sources
+
+### Critical minerals
+- USGS Minerals / MCS
+- Natural Resources Canada
+- additional governed national and international critical-mineral sources
+
+### Physical hazards and disruption
+- USGS Earthquake Hazards
+- NASA FIRMS
+- ReliefWeb / GDACS under their rights boundaries
+- NWS active alerts
+
+## 8. NWS active-alert path
+
+`workers/telegram-flash/nws_alerts_loop.py` polls:
+
+```text
+https://api.weather.gov/alerts/active.atom
+```
+
+Default cadence:
+
+```text
+60 seconds
+```
+
+It posts only normalized lead metadata:
+
+- stable source record id
+- headline
+- timestamp
+- source URL
+- reliability metadata
+
+It explicitly sends:
+
+```text
+body = null
+raw_payload = null
+verification_status = UNVERIFIED
+```
+
+NWS leads then use the same independent corroboration path as other flash events.
+
+## 9. Worker runtime configuration
+
+Core values:
+
+```text
+GEOMACRO_FLASH_INGEST_URL=https://qogpagklwbfdmrgnrhzi.supabase.co/functions/v1/live-flash-ingest
+GEOMACRO_FLASH_CORROBORATE_URL=https://qogpagklwbfdmrgnrhzi.supabase.co/functions/v1/live-flash-corroborate
+GEOMACRO_FLASH_INGEST_TOKEN=<secret>
 FLASH_CORROBORATION_INTERVAL_SECONDS=15
 
 TELEGRAM_ENABLED=false
-TELEGRAM_API_ID=<telegram api id>
-TELEGRAM_API_HASH=<telegram api hash>
-TELEGRAM_SESSION=<telethon string session>
 TELEGRAM_CHANNELS=
-TELEGRAM_SOURCE_RELIABILITY_JSON={}
-TELEGRAM_MAX_BODY_CHARS=6000
 
 BREAKING_RSS_ENABLED=true
 BREAKING_RSS_POLL_SECONDS=45
 BREAKING_RSS_BOOTSTRAP_MAX_ITEMS=25
+NWS_ACTIVE_ALERTS_ATOM_URL=https://api.weather.gov/alerts/active.atom
+NWS_ALERTS_POLL_SECONDS=60
 BREAKING_FEED_USER_AGENT=Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)
 ```
 
-The worker does not need the Supabase service-role key. Keep that key inside the Supabase Edge Function environment only.
+The worker does not need an authoritative Supabase service-role key.
 
-Telegram is intentionally disabled in the example configuration. A worker environment variable is not an authorization mechanism: the ingest edge function separately requires the public channel to be manually approved and enabled in the server-side registry.
+## 10. Production activation sequence
 
-## 5. Telegram session creation
+1. Merge only after all CI/security/source-certification checks are green.
+2. Run isolated Supabase deployment in `plan` mode.
+3. Verify only isolated `980+` migrations are pending; authoritative `952+` must not appear.
+4. Run `apply` only after a clean plan.
+5. Confirm all three isolated functions deploy and smoke checks pass.
+6. Confirm the worker image is published from the same main commit.
+7. Deploy the immutable worker image to the long-lived runtime.
+8. Confirm RSS/ATOM/NWS records enter as `UNVERIFIED` leads.
+9. Confirm corroboration transitions require independent evidence.
+10. Confirm no public Telegram MTProto traffic is present.
+11. Confirm customer-facing outputs contain derived structured intelligence only.
 
-Generate the Telethon StringSession locally from a trusted machine:
+## 11. Host requirements
 
-```bash
-cd workers/telegram-flash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python generate_session.py
-```
+Use a long-lived service with:
 
-On Windows PowerShell use the normal Windows virtual-environment activation command instead of `source`.
-
-Store the generated StringSession only in the production host's secret manager. Never commit it, paste it into GitHub issues/PRs, or expose it in logs/screenshots.
-
-If the StringSession is ever exposed, revoke/replace the Telegram session before continuing production use.
-
-## 6. Recommended first activation sequence
-
-1. Merge the production-activation PR only after CI is green.
-2. Add the four GitHub production secrets.
-3. Run the Supabase deployment workflow in `plan` mode.
-4. Review the pending migration list.
-5. Run the same workflow in `apply` mode.
-6. Confirm both endpoint smoke checks pass.
-7. Confirm the worker image is published from `main`.
-8. Start the container in RSS-only mode first with `TELEGRAM_ENABLED=false`.
-9. Verify new RSS records enter `live_flash_events` and remain `UNVERIFIED` until corroborated.
-10. Manually review each public Telegram channel and record the decision in `live_telegram_channel_registry`.
-11. Enable only rows with `manual_review_status=APPROVED` and `enabled=true`; keep all others disabled.
-12. Add only those approved public usernames to the worker `TELEGRAM_CHANNELS` deployment configuration, then set `TELEGRAM_ENABLED=true`.
-13. Verify Telegram records use stable source/message identity and edits update rather than duplicate the same message.
-14. Confirm every Telegram item enters as `UNVERIFIED`, corroboration edges are written, and no single-source item becomes `VERIFIED` by itself.
-15. Only after this runtime verification should Telegram raw-signal intake be treated as production-active.
-
-## 7. Host requirements
-
-Use a service that can run a long-lived Docker container continuously.
-
-Minimum operational requirements:
-
-- restart policy on failure/reboot;
+- restart-on-failure/reboot;
 - encrypted secret injection;
-- outbound HTTPS access to Supabase/RSS sources;
-- Telegram MTProto outbound connectivity;
-- persistent service logs with secret redaction;
-- health/restart monitoring;
-- no public inbound port is required by the worker itself.
+- outbound HTTPS access;
+- persistent secret-redacted logs;
+- health/restart monitoring.
 
-The worker is not suitable for a short-lived request/serverless runtime because the Telegram listener is event-driven and long-lived.
+Public Telegram MTProto connectivity is not a production requirement.
 
-## 8. Production checks
+## 12. Healthy runtime indicators
 
-Healthy behavior should show:
+- RSS/ATOM items generally appear within configured polling intervals;
+- NWS alerts are checked roughly every 60 seconds;
+- corroboration runs around every 15 seconds plus runtime jitter;
+- events remain `UNVERIFIED` until evidence satisfies the verifier;
+- no fast lead directly authorizes GRI/Risk Gate execution;
+- no raw article/Telegram payload is customer-facing.
 
-- Telegram messages reaching `live_flash_events` within the source/network/runtime latency;
-- RSS entries generally appearing within the configured poll interval;
-- the corroboration loop running around every 15 seconds plus jitter;
-- country relations in `live_flash_event_countries`;
-- corroboration evidence in `live_flash_corroborations`;
-- `UNVERIFIED -> CORROBORATING -> VERIFIED` transitions only when independent evidence satisfies the verifier;
-- no direct raw-flash mutation of GRI/Risk Gate merely because a headline arrived.
+External source publication latency cannot be guaranteed; Geomacro only controls platform-side detection and processing latency after publication.
 
-Do not describe these timing targets as guaranteed source-publication latency.
-
-## 9. Rollback
+## 13. Rollback
 
 If production behavior is wrong:
 
-1. stop the long-lived worker first to stop new ingestion;
-2. preserve logs and the affected flash IDs for diagnosis;
-3. redeploy the previous known-good function revision if the fault is in an Edge Function;
-4. deploy a previous immutable worker image SHA if the fault is in the worker;
-5. do not blindly reverse applied database migrations after data has been written; use a reviewed forward-fix migration unless a rollback is proven safe;
-6. keep raw verification evidence for post-incident analysis unless retention/legal policy requires otherwise.
-
-## 10. Security rules
-
-Never expose or commit:
-
-- `SUPABASE_ACCESS_TOKEN`
-- `SUPABASE_DB_PASSWORD`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `FLASH_INGEST_TOKEN`
-- `TELEGRAM_API_HASH`
-- `TELEGRAM_SESSION`
-
-The public website/browser must never receive the service-role key, Telegram session, or flash ingest token.
-
-The production worker should receive only the secrets it actually needs.
+1. stop the worker to stop new ingestion;
+2. preserve redacted logs and affected event IDs;
+3. redeploy the previous known-good function revision if needed;
+4. deploy the previous immutable worker image SHA if needed;
+5. prefer reviewed forward-fix migrations over blind database rollback after writes;
+6. keep fail-closed verification and commercial-rights gates enabled throughout recovery.
