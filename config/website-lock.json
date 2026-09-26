@@ -1,7 +1,7 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "28f419ea058f96f276268ab0de67b005e7d23128",
+  "baseline_sha": "1d70b9561bf80f9c44659e258a99ae579d356c1e",
   "published_baseline": "Founder-approved commercial Testnet Access surface plus Tameion Agent Mode demo route for Arc Testnet business-payment decisions",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
