@@ -1,3 +1,4 @@
+# Testnet-first global readiness control plane. Mainnet activation remains owner-gated.
 name: Global Coverage Readiness Gate
 
 on:
