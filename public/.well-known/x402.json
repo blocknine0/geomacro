@@ -1,9 +1,10 @@
 {
   "x402Version": 2,
-  "name": "Geomacro Risk Intelligence",
-  "description": "Machine-readable geopolitical and macro risk intelligence for software and AI-agent pre-flight decisions.",
+  "name": "GeoMacro Global Risk Intelligence",
+  "description": "Machine-readable geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
   "status": "prelaunch",
   "productionFundsAuthorized": false,
+  "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
   "resources": [],
   "freeResources": [
     {
@@ -19,7 +20,9 @@
       "method": "POST",
       "product": "geomacro_adaptive_risk_intelligence_v1",
       "provider": "coinbase_x402",
+      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
       "pricing": "runtime_402_challenge_only",
+      "availability_first": true,
       "production_enabled": false
     },
     {
@@ -42,12 +45,17 @@
     }
   ],
   "discovery": {
+    "a2a_agent_card": "https://geomacro.live/.well-known/agent-card.json",
+    "a2a_interface": "https://geomacro.live/api/a2a",
+    "a2a_protocol_binding": "HTTP+JSON",
     "openapi": "https://geomacro.live/openapi-x402.json",
     "commerce": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "agent": "https://geomacro.live/.well-known/geomacro-agent.json",
     "llms": "https://geomacro.live/llms.txt"
   },
   "boundaries": {
+    "deliverability_before_payment": true,
+    "stale_or_incomplete_is_not_payable": true,
     "execution_authorized": false,
     "wallet_custody": false,
     "transaction_signing": false,
@@ -56,6 +64,6 @@
   "hosting_fallback": {
     "mode": "static_prelaunch",
     "reason": "The current public host serves static well-known resources reliably while runtime server-route support is deployment-dependent.",
-    "production_launch_rule": "This fallback must not advertise paid production resources until a coordinated owner-authorized launch updates the discovery document from verified live provider configuration."
+    "production_launch_rule": "This fallback must not advertise paid production resources until live provider configuration, paid E2E acceptance and explicit owner authorization are verified."
   }
 }

@@ -143,10 +143,20 @@ const emptyScopes = { list: [] as string[] };
 
 export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
   const normalized = origin.replace(/\/$/, "");
+  const securityRequirements = [
+    { schemes: { geomacroBearer: emptyScopes } },
+    {
+      schemes: {
+        geomacroTestnetKey: emptyScopes,
+        geomacroTestnetSecret: emptyScopes,
+      },
+    },
+  ] as const;
+
   return {
     name: "Geomacro Agent",
     description:
-      "Geopolitical and macro risk intelligence for AI agents, including a bounded Risk Gate preflight skill with signed Risk Objects and machine-readable decision context.",
+      "24/7 geopolitical, macroeconomic and critical-mineral risk intelligence for AI agents. GeoMacro provides authenticated A2A task coordination plus availability-first x402 delivery, and never authorizes execution.",
     supportedInterfaces: [
       {
         url: `${normalized}/api/a2a`,
@@ -189,15 +199,7 @@ export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
         },
       },
     },
-    securityRequirements: [
-      { schemes: { geomacroBearer: emptyScopes } },
-      {
-        schemes: {
-          geomacroTestnetKey: emptyScopes,
-          geomacroTestnetSecret: emptyScopes,
-        },
-      },
-    ],
+    securityRequirements,
     defaultInputModes: ["application/json", "text/plain"],
     defaultOutputModes: ["application/json"],
     skills: [
@@ -206,22 +208,47 @@ export function geomacroA2AAgentCard(origin = "https://geomacro.live") {
         name: "Risk preflight",
         description:
           "Evaluate a country or directional corridor before an agent payment or exposure action. Returns Risk Gate decision context, a verified signed Risk Object, structural context and canonical GRI context. Geomacro never authorizes execution.",
-        tags: ["geopolitical-risk", "macro-risk", "risk-gate", "treasury", "payments"],
+        tags: ["geopolitical-risk", "macro-risk", "critical-minerals", "risk-gate", "treasury", "payments"],
         examples: [
           "Assess India before a treasury payment.",
           "Evaluate the India to Singapore corridor before an agent payment.",
         ],
         inputModes: ["application/json"],
         outputModes: ["application/json"],
-        securityRequirements: [
-          { schemes: { geomacroBearer: emptyScopes } },
-          {
-            schemes: {
-              geomacroTestnetKey: emptyScopes,
-              geomacroTestnetSecret: emptyScopes,
-            },
-          },
-        ],
+        securityRequirements,
+      },
+      {
+        id: "geopolitics",
+        name: "Global geopolitical risk intelligence",
+        description:
+          "Authenticated country and corridor geopolitical/security context, including governed conflict, sanctions/restrictions, governance, trade disruption and hot-topic evidence when current coverage is deliverable.",
+        tags: ["GEOPOLITICS", "country-risk", "corridor-risk", "security", "sanctions", "hot-topics"],
+        examples: ["Assess current geopolitical risk for a supported country."],
+        inputModes: ["application/json", "text/plain"],
+        outputModes: ["application/json"],
+        securityRequirements,
+      },
+      {
+        id: "macro",
+        name: "Global macro and FX risk intelligence",
+        description:
+          "Authenticated macro, monetary, sovereign/fiscal, banking and FX/external-vulnerability context with freshness, provenance and commercial-eligibility gates.",
+        tags: ["MACRO", "fx", "sovereign-risk", "monetary", "fiscal", "banking"],
+        examples: ["Assess macro and FX vulnerability for a supported country."],
+        inputModes: ["application/json", "text/plain"],
+        outputModes: ["application/json"],
+        securityRequirements,
+      },
+      {
+        id: "critical_minerals",
+        name: "Global critical-minerals risk intelligence",
+        description:
+          "Authenticated critical-mineral supply, concentration, policy, disruption and cross-border risk context where governed source coverage is current and commercially eligible.",
+        tags: ["CRITICAL_MINERALS", "supply-chain", "commodities", "geoeconomics", "corridor-risk"],
+        examples: ["Assess critical-mineral supply risk affecting a supported country or corridor."],
+        inputModes: ["application/json", "text/plain"],
+        outputModes: ["application/json"],
+        securityRequirements,
       },
     ],
   } as const;

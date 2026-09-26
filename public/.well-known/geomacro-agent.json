@@ -1,26 +1,31 @@
 {
   "agent": {
     "id": "geomacro",
-    "name": "Geomacro Agent",
-    "version": "geomacro-agent-v1",
-    "description": "Grounded geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
+    "name": "GeoMacro Global Risk Intelligence Agent",
+    "version": "geomacro-agent-v2",
+    "description": "24/7 grounded geopolitical, macroeconomic and critical-mineral risk intelligence for software and AI agents.",
     "mode": "read_and_recommend",
     "execution_authorized": false
   },
+  "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+  "geographic_scope": "global_data_driven_fail_closed",
   "discovery": {
     "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
     "agent_commerce_docs": "https://geomacro.live/agent-commerce.md",
     "llms": "https://geomacro.live/llms.txt",
-    "a2a_card": "https://geomacro.live/.well-known/agent-card.json"
+    "a2a_card": "https://geomacro.live/.well-known/agent-card.json",
+    "a2a_interface": "https://geomacro.live/api/a2a",
+    "x402": "https://geomacro.live/.well-known/x402.json",
+    "openapi": "https://geomacro.live/openapi-x402.json"
   },
-  "endpoint": "https://geomacro.live/api/agent/risk",
   "a2a": {
     "protocol": "A2A",
     "protocol_version": "1.0",
+    "protocol_binding": "HTTP+JSON",
     "discovery": "https://geomacro.live/.well-known/agent-card.json",
     "interface": "https://geomacro.live/api/a2a",
-    "outbound_interface": "https://geomacro.live/api/a2a/outbound",
     "task_callbacks": true,
+    "streaming": false,
     "arbitrary_outbound_targets": false,
     "execution_authorized": false
   },
@@ -30,12 +35,16 @@
       "access": "paid_private_pilot_or_nonproduction_agent_commerce",
       "method": "POST",
       "content_type": "application/json",
+      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
       "execution_authorized": false
     },
     {
       "id": "adaptive_risk_intelligence",
       "access": "prelaunch_x402_or_provider_sandbox",
+      "categories": ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"],
+      "topics": ["sovereign_risk", "macro_risk", "fx_external_risk", "sanctions_restrictions", "conflict_geopolitics", "trade_corridor", "energy_commodities", "critical_minerals", "political_governance", "banking_financial_system", "food_agriculture", "natural_hazards", "hot_topics", "risk_gate", "risk_object", "gri_context"],
       "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+      "paid_endpoint": "https://geomacro.live/api/x402/intelligence",
       "commerce_catalog": "https://geomacro.live/.well-known/geomacro-commerce.json",
       "content_type": "application/json",
       "execution_authorized": false
@@ -45,11 +54,20 @@
     "stored_geomacro_intelligence": true,
     "current_public_risk_indices": true,
     "canonical_public_gri": true,
-    "canonical_public_gri_role": "parent_gri_v1_2_compatibility_context",
+    "signed_risk_objects": true,
     "commercial_source_eligibility_required_for_paid_delivery": true,
     "freshness_policy_required_for_paid_delivery": true,
     "external_web_search": false,
     "synthetic_fallback_score": false
+  },
+  "delivery": {
+    "protocol": "x402-v2",
+    "canonical_paid_endpoint": "https://geomacro.live/api/x402/intelligence",
+    "availability_endpoint": "https://geomacro.live/api/x402/risk/availability",
+    "payment_after_deliverability_only": true,
+    "replay_protection": true,
+    "stale_or_incomplete_is_not_payable": true,
+    "production_funds_authorized": false
   },
   "boundaries": {
     "free_api_access": false,
@@ -62,8 +80,18 @@
     "sanctions_screening_replacement": false,
     "counterparty_due_diligence_replacement": false,
     "raw_data_delivery": false,
+    "raw_private_warehouse_delivery": false,
     "full_physical_route_or_vessel_model": false,
-    "corridor_model": "directional endpoint-composed pilot"
+    "execution_authorized": false
+  },
+  "promotion": {
+    "strategy": "free_evidence_based_discovery_only",
+    "paid_ads": false,
+    "paid_boosts": false,
+    "unsolicited_direct_messages": false,
+    "spam_automation": false,
+    "claims_must_be_machine_verifiable": true,
+    "preferred_free_surfaces": ["a2a_agent_card", "x402_bazaar_metadata", "github", "llms_txt", "openapi", "free_agent_directories"]
   },
   "commercial": {
     "launch_state": "prelaunch",
@@ -81,6 +109,7 @@
     "deferred_providers": {
       "goat_x402_mainnet": "manual_merchant_application_and_approval_required"
     },
+    "mainnet_activation_requires_explicit_owner_authorization": true,
     "testnet_or_sandbox_is_revenue": false,
     "automatic_public_marketing": false
   }

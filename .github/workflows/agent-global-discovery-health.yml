@@ -1,0 +1,103 @@
+name: GeoMacro Agent Global Discovery Health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11,41 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-agent-global-discovery-health
+  cancel-in-progress: true
+
+jobs:
+  verify-agent-surface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify A2A agent card
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/.well-known/agent-card.json \
+            -o /tmp/agent-card.json
+          jq -e '
+            .name == "Geomacro Agent" and
+            .supportedInterfaces[0].url == "https://geomacro.live/api/a2a" and
+            .supportedInterfaces[0].protocolBinding == "HTTP+JSON" and
+            .supportedInterfaces[0].protocolVersion == "1.0" and
+            (.skills | map(.id) | index("risk_preflight") != null) and
+            (.skills | map(.id) | index("geopolitics") != null) and
+            (.skills | map(.id) | index("macro") != null) and
+            (.skills | map(.id) | index("critical_minerals") != null) and
+            .capabilities.streaming == false and
+            .capabilities.pushNotifications == true and
+            .securitySchemes.geomacroBearer != null and
+            .securitySchemes.geomacroTestnetKey != null
+          ' /tmp/agent-card.json >/dev/null
+
+      - name: Verify three-category agent manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/.well-known/geomacro-agent.json \
+            -o /tmp/agent.json
+          jq -e '
+            (.categories | index("GEOPOLITICS") != null) and
+            (.categories | index("MACRO") != null) and
+            (.categories | index("CRITICAL_MINERALS") != null) and
+            .a2a.protocol_binding == "HTTP+JSON" and
+            .commercial.public_api == "not_available" and
+            .commercial.production_funds_authorized == false and
+            .boundaries.execution_authorized == false
+          ' /tmp/agent.json >/dev/null
+
+      - name: Verify x402 discovery remains prelaunch and no-charge first
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/.well-known/x402.json \
+            -o /tmp/x402.json
+          jq -e '
+            .x402Version == 2 and
+            .status == "prelaunch" and
+            .productionFundsAuthorized == false and
+            .resources == [] and
+            (.categories | index("GEOPOLITICS") != null) and
+            (.categories | index("MACRO") != null) and
+            (.categories | index("CRITICAL_MINERALS") != null) and
+            .freeResources[0].resource == "https://geomacro.live/api/x402/risk/availability" and
+            .plannedResources[0].production_enabled == false and
+            .boundaries.execution_authorized == false
+          ' /tmp/x402.json >/dev/null
+
+      - name: Verify live x402 service metadata without payment
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            https://geomacro.live/api/x402/intelligence \
+            -o /tmp/x402-service.json
+          jq -e '
+            .ok == true and
+            .x402_version == 2 and
+            (.topics | index("critical_minerals") != null) and
+            .execution_authorized == false
+          ' /tmp/x402-service.json >/dev/null
+
+      - name: Publish health summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## GeoMacro Agent Global Discovery Health"
+            echo
+            echo "Checks are no-charge and never submit a payment proof or bypass A2A authentication."
+            echo
+            echo "Surfaces: A2A v1 HTTP+JSON discovery, three-category agent manifest, x402 v2 prelaunch discovery and live no-payment service metadata."
+          } >> "$GITHUB_STEP_SUMMARY"
