@@ -140,9 +140,7 @@ const TECHNICAL_NAV = [
   { to: "/testnet-access", label: "Testnet API", description: "Wallet-first developer API and pay-per-call Testnet USDC access" },
   { to: "/demo", label: "Agentic Commerce Demo", description: "Test Risk Gate, machine output and x402 proof" },
   { to: "/pipeline", label: "Data Pipeline", description: "Technical data-processing surface" },
-  { to: "/arena", label: "Prediction Markets", description: "Permanently Testnet-only application and feedback layer" },
   { to: "/onchain", label: "Arc / Onchain", description: "Programmable-finance technical proof" },
-  { to: "/bridge-swap", label: "Bridge & Swap", description: "Circle / Arc Testnet implementation" },
 ] as const;
 
 const REFERENCE_NAV = [
@@ -412,9 +410,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/testnet-access" className="hover:text-foreground">Testnet API</Link>
                   <Link to="/demo" className="hover:text-foreground">Agentic Commerce Demo</Link>
                   <Link to="/pipeline" className="hover:text-foreground">Data Pipeline</Link>
-                  <Link to="/arena" className="hover:text-foreground">Prediction Markets</Link>
                   <Link to="/onchain" className="hover:text-foreground">Arc / Onchain</Link>
-                  <Link to="/bridge-swap" className="hover:text-foreground">Bridge & Swap</Link>
                   <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
                     <Github className="h-3.5 w-3.5" /> GitHub
                   </a>
