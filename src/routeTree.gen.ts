@@ -28,6 +28,7 @@ import { Route as OnchainRouteImport } from './routes/onchain'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ResearchRouteImport } from './routes/research'
+import { Route as ReviewRouteImport } from './routes/review'
 import { Route as RiskGateRouteImport } from './routes/risk-gate'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as TameionRouteImport } from './routes/tameion'
@@ -153,6 +154,11 @@ const PortfolioRoute = PortfolioRouteImport.update({
 const ResearchRoute = ResearchRouteImport.update({
   id: '/research',
   path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewRoute = ReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RiskGateRoute = RiskGateRouteImport.update({
@@ -334,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/research': typeof ResearchRoute
+  '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
   '/tameion': typeof TameionRoute
@@ -386,6 +393,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/research': typeof ResearchRoute
+  '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
   '/tameion': typeof TameionRoute
@@ -439,6 +447,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
   '/research': typeof ResearchRoute
+  '/review': typeof ReviewRoute
   '/risk-gate': typeof RiskGateRoute
   '/roadmap': typeof RoadmapRoute
   '/tameion': typeof TameionRoute
@@ -493,6 +502,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/research'
+    | '/review'
     | '/risk-gate'
     | '/roadmap'
     | '/tameion'
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/research'
+    | '/review'
     | '/risk-gate'
     | '/roadmap'
     | '/tameion'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/portfolio'
     | '/research'
+    | '/review'
     | '/risk-gate'
     | '/roadmap'
     | '/tameion'
@@ -650,6 +662,7 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
   ResearchRoute: typeof ResearchRoute
+  ReviewRoute: typeof ReviewRoute
   RiskGateRoute: typeof RiskGateRoute
   RoadmapRoute: typeof RoadmapRoute
   TameionRoute: typeof TameionRoute
@@ -816,6 +829,13 @@ declare module '@tanstack/react-router' {
       path: '/research'
       fullPath: '/research'
       preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/review': {
+      id: '/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof ReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/risk-gate': {
@@ -1058,6 +1078,7 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
   ResearchRoute: ResearchRoute,
+  ReviewRoute: ReviewRoute,
   RiskGateRoute: RiskGateRoute,
   RoadmapRoute: RoadmapRoute,
   TameionRoute: TameionRoute,
