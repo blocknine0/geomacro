@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const TITLE = "Independent Review | Geomacro";
 const DESCRIPTION =
-  "Test Geomacro's evidence-driven geopolitical and macro risk intelligence, risk controls and governed data pipeline. Honest technical feedback is welcome.";
+  "Test Geomacro's intelligence workspace, evidence-driven geopolitical, macroeconomic and critical-minerals risk products, risk controls and governed data pipeline. Honest technical feedback is welcome.";
 const URL = "https://geomacro.live/review";
 
 export const Route = createFileRoute("/review")({
@@ -26,32 +26,42 @@ export const Route = createFileRoute("/review")({
 
 const testFlows = [
   {
-    title: "1. Ask Geomacro",
-    href: "/ask-geomacro",
-    copy: "Ask a real geopolitical, macroeconomic, trade, sanctions, supply-chain or market-risk question. Check the direct answer, risk drivers, confidence, verification status and supporting evidence.",
+    title: "1. Intelligence",
+    href: "/intelligence",
+    copy: "Start with Geomacro's core intelligence workspace. Review how current world events are turned into structured, explainable risk context and whether the evidence trail makes the output useful for real decisions.",
   },
   {
-    title: "2. Risk Indices",
+    title: "2. Critical Minerals & Rare Earth Risk",
+    href: "/global-risk",
+    copy: "Pay particular attention to the Critical Minerals risk product, including rare-earth supply, geopolitical concentration and sourcing exposure. Judge whether it stands on its own as a useful commercial risk view rather than feeling like a secondary feature.",
+  },
+  {
+    title: "3. Ask Geomacro",
+    href: "/ask-geomacro",
+    copy: "Ask a real geopolitical, macroeconomic, trade, sanctions, supply-chain, rare-earth or market-risk question. Check the direct answer, risk drivers, confidence, verification status and supporting evidence.",
+  },
+  {
+    title: "4. Risk Indices",
     href: "/global-risk",
     copy: "Review the separate geopolitical, macroeconomic and critical-minerals risk views. Check whether the signals, evidence and methodology boundaries are understandable and decision-useful.",
   },
   {
-    title: "3. Risk Gate",
+    title: "5. Risk Gate",
     href: "/risk-gate",
     copy: "Inspect how Geomacro turns governed risk intelligence into controlled decision context. Judge whether the reasoning, evidence and current Private Pilot boundary are clear.",
   },
   {
-    title: "4. Data & API",
+    title: "6. Data & API",
     href: "/data-api",
     copy: "Review the machine-readable delivery surface, public data and API status. Tell us whether the data model, access boundary and intended use are clear to a technical buyer or integrator.",
   },
   {
-    title: "5. Research & Evidence",
+    title: "7. Research & Evidence",
     href: "/research",
     copy: "Review methodology, coverage evidence, limitations and proof lineage. We especially want feedback on whether claims are supported clearly enough for serious risk work.",
   },
   {
-    title: "6. Data Pipeline",
+    title: "8. Data Pipeline",
     href: "/pipeline",
     copy: "Review how Geomacro represents ingestion, normalization, deduplication, classification and scoring. This is supporting technical proof, not the commercial product itself.",
   },
@@ -65,7 +75,7 @@ function ReviewPage() {
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Independent testing</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Help test Geomacro before commercial launch</h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-            Geomacro is an evidence-driven geopolitical and macro risk intelligence product for human and machine decision systems. We are inviting a small group of builders, analysts and technical testers to independently test the core intelligence product.
+            Geomacro is an evidence-driven geopolitical, macroeconomic and critical-minerals risk intelligence product for human and machine decision systems. We are inviting a small group of builders, analysts and technical testers to independently test the core intelligence product.
           </p>
           <div className="mt-5 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-6">
             This is not a request for a positive review. We want honest feedback, including anything that breaks, feels unclear or should be improved.
@@ -73,6 +83,14 @@ function ReviewPage() {
           <div className="mt-4 rounded-lg border border-border/60 bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
             Product boundary: Prediction Markets, Bridge and Swap are separate testnet technical proofs. They are not part of Geomacro's commercial mainnet product and are intentionally excluded from this reviewer flow.
           </div>
+        </div>
+
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 sm:p-8">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Commercial focus</p>
+          <h2 className="mt-2 text-2xl font-semibold">Critical Minerals and Rare Earth risk is a first-class Geomacro product.</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Reviewers should explicitly test whether Geomacro helps surface rare-earth and critical-mineral supply concentration, geopolitical exposure, sourcing pressure and related macro risk in a way that is explainable and useful to institutions, operators and automated systems.
+          </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -105,6 +123,8 @@ function ReviewPage() {
             Geomacro's commercial identity is risk intelligence. Supporting testnet and technical-proof surfaces are deliberately separated from the main product experience so users can distinguish production-facing intelligence from experimental onchain demonstrations.
           </p>
           <div className="mt-5 flex flex-wrap gap-3 text-sm">
+            <a className="underline underline-offset-4" href="/intelligence">Intelligence</a>
+            <a className="underline underline-offset-4" href="/global-risk">Risk Indices</a>
             <a className="underline underline-offset-4" href="https://github.com/blocknine0/geomacro" target="_blank" rel="noreferrer">GitHub</a>
             <a className="underline underline-offset-4" href="/roadmap">Roadmap</a>
             <a className="underline underline-offset-4" href="/docs/01-what-is-geomacro">Documentation</a>
