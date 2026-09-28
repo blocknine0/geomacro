@@ -1,0 +1,83 @@
+name: Temporary proto hardening apply
+
+on:
+  push:
+    branches:
+      - fix/risk-object-proto-canonicalization
+    paths:
+      - ".github/workflows/tmp-proto-hardening-apply.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[proto-fix-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/risk-object-proto-canonicalization
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Apply targeted hardening
+        shell: python
+        run: |
+          from pathlib import Path
+
+          signing = Path('src/lib/risk-object-signing.server.ts')
+          s = signing.read_text()
+          old = '    const output:\n      Record<string, unknown> = {};'
+          new = '    const output:\n      Record<string, unknown> = Object.create(null);'
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          marker = 'export function canonicalRiskObjectJson(\n  value: unknown,\n): string {'
+          helper = '''function containsForbiddenRiskObjectJsonKey(\n  value: unknown,\n): boolean {\n  if (Array.isArray(value)) {\n    return value.some(containsForbiddenRiskObjectJsonKey);\n  }\n\n  if (\n    value !== null &&\n    typeof value === "object"\n  ) {\n    const input =\n      value as Record<string, unknown>;\n\n    for (const key of Object.keys(input)) {\n      if (key === "__proto__") return true;\n      if (containsForbiddenRiskObjectJsonKey(input[key])) return true;\n    }\n  }\n\n  return false;\n}\n\nexport function assertRiskObjectJsonKeysSafe(\n  value: unknown,\n): void {\n  if (containsForbiddenRiskObjectJsonKey(value)) {\n    throw new Error("Risk Object JSON contains forbidden __proto__ key");\n  }\n}\n\n'''
+          assert marker in s
+          s = s.replace(marker, helper + marker, 1)
+
+          sign_marker = '): GeomacroRiskObject {\n  if (\n    object.schema_version !=='
+          sign_replacement = '): GeomacroRiskObject {\n  assertRiskObjectJsonKeysSafe(object);\n\n  if (\n    object.schema_version !=='
+          assert sign_marker in s
+          s = s.replace(sign_marker, sign_replacement, 1)
+
+          verify_marker = '} {\n  if (\n    object.schema_version !==\n    GRO_SCHEMA_VERSION\n  ) {'
+          verify_replacement = '''} {\n  if (containsForbiddenRiskObjectJsonKey(object)) {\n    return {\n      valid: false,\n      reason: "forbidden_json_key",\n    };\n  }\n\n  if (\n    object.schema_version !==\n    GRO_SCHEMA_VERSION\n  ) {'''
+          idx = s.find('export function\nverifyRiskObjectSignature(')
+          assert idx >= 0
+          head, tail = s[:idx], s[idx:]
+          assert verify_marker in tail
+          tail = tail.replace(verify_marker, verify_replacement, 1)
+          s = head + tail
+          signing.write_text(s)
+
+          route = Path('src/routes/api.risk-object-keys.ts')
+          r = route.read_text()
+          old_import = 'import {\n  publicRiskObjectVerificationKeySet,\n} from "../lib/risk-object-signing.server";'
+          new_import = 'import {\n  assertRiskObjectJsonKeysSafe,\n  publicRiskObjectVerificationKeySet,\n} from "../lib/risk-object-signing.server";'
+          assert old_import in r
+          r = r.replace(old_import, new_import, 1)
+
+          route_marker = '  try {\n    ensureRiskObjectRuntimePublicKey();\n  } catch {'
+          route_guard = '''  try {\n    assertRiskObjectJsonKeysSafe(\n      (\n        body as {\n          risk_object: unknown;\n        }\n      ).risk_object,\n    );\n  } catch {\n    return jsonResponse(\n      {\n        ok: false,\n        error: "forbidden_risk_object_json_key",\n      },\n      400,\n      {\n        "cache-control": "no-store",\n      },\n    );\n  }\n\n'''
+          assert route_marker in r
+          r = r.replace(route_marker, route_guard + route_marker, 1)
+          route.write_text(r)
+
+          workflow = Path('.github/workflows/tmp-proto-hardening-apply.yml')
+          workflow.unlink()
+
+      - name: Commit hardening
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "geomacro-security-bot"
+          git config user.email "geomacro-security-bot@users.noreply.github.com"
+          git add src/lib/risk-object-signing.server.ts src/routes/api.risk-object-keys.ts .github/workflows/tmp-proto-hardening-apply.yml
+          git commit -m "Harden Risk Object canonicalization against __proto__ [proto-fix-applied]"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:fix/risk-object-proto-canonicalization
