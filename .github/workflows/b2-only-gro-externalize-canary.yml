@@ -1,14 +1,9 @@
 name: Signed GRO B2-only externalization automation
 
+# Scheduled execution is intentionally held while the B2 download/Class-B budget is
+# exhausted. Keep the verified path manually runnable; never bypass readback.
 on:
-  schedule:
-    - cron: "25 * * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/b2-only-gro-externalize-canary.yml
-      - scripts/ops/b2-only-gro-externalize-canary.ts
 
 permissions:
   contents: read
