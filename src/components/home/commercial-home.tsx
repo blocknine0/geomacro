@@ -47,6 +47,7 @@ const BUYER_USE_CASES = [
 
 const PRODUCT_STATUS = [
   ["LIVE", "Risk Intelligence", "Current geopolitical, macroeconomic and critical-mineral intelligence with evidence and confidence context."],
+  ["LIVE", "Critical Minerals & Rare Earth Risk", "A dedicated risk view for rare-earth and critical-mineral supply concentration, geopolitical exposure and sourcing pressure."],
   ["LIVE", "Separate Risk Indices", "Geopolitical, Macroeconomic and Critical Minerals risk are presented independently."],
   ["LIVE", "Ask Geomacro", "Grounded Q&A over Geomacro's recorded evidence and current risk context."],
   ["PRIVATE PILOT", "Risk Gate + signed Risk Objects", "Controlled country and directional-corridor decision context; not general production availability."],
@@ -78,15 +79,33 @@ export function CommercialHome() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" className="gap-2">
-              <Link to="/institutional">See how teams use Geomacro <ArrowRight className="h-4 w-4" /></Link>
+              <Link to="/intelligence">Open Intelligence <ArrowRight className="h-4 w-4" /></Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/global-risk">Explore the product</Link>
+              <Link to="/global-risk">Explore Risk Indices</Link>
             </Button>
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-5">
             <AgentCommerceStatus compact />
             <span className="text-xs text-muted-foreground">Risk Gate · controlled Private Pilot</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-primary/20 bg-primary/5">
+        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+          <div>
+            <SectionLabel>Critical Minerals & Rare Earth Risk</SectionLabel>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">A dedicated product for strategic mineral and rare-earth exposure.</h2>
+          </div>
+          <div>
+            <p className="text-base leading-relaxed text-muted-foreground">
+              Geomacro tracks critical-mineral and rare-earth risk as its own intelligence domain, helping users evaluate supply concentration, geopolitical dependency, sourcing pressure and related macro exposure with evidence and explicit confidence boundaries.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild><Link to="/global-risk">Open Critical Minerals Risk</Link></Button>
+              <Button asChild variant="outline"><Link to="/intelligence">See supporting intelligence</Link></Button>
+            </div>
           </div>
         </div>
       </section>
