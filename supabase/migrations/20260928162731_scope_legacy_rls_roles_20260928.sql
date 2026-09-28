@@ -1,5 +1,3 @@
--- Preserve access semantics while narrowing policy role scope.
-alter policy "service role full access positions" on public.positions to service_role;
-alter policy "wallet reads own positions" on public.positions to authenticated;
-alter policy "service role full access balance history" on public.wallet_balance_history to service_role;
-alter policy "wallet reads own balance history" on public.wallet_balance_history to authenticated;
+-- Production-history marker only.
+-- The original legacy RLS role scoping was applied directly to production at this timestamp.
+-- Clean replay defers the same behavior-preserving policy scope change until migration 9984.
