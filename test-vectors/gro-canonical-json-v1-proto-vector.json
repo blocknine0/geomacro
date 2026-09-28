@@ -1,0 +1,6 @@
+{
+ "purpose": "geomacro-canonical-json-v1 __proto__ vector: an own \"__proto__\" member is an ordinary key and MUST be inside the canonical bytes (a JS canonicalizer that copies by assignment silently drops it -- fixed in 25173c9 via #1120). A literal \"proto\" key is ordinary too. canonical_json == output of the repo's fixed canonicalRiskObjectJson and canonical-json.ts.",
+ "input_json_text": "{\"id\":\"proto-vector\",\"evidence\":{\"__proto__\":{\"injected\":\"must be hashed\"},\"proto\":{\"literal\":\"plain key\"},\"source\":\"rss\"},\"score\":0.000001}",
+ "canonical_json": "{\"evidence\":{\"__proto__\":{\"injected\":\"must be hashed\"},\"proto\":{\"literal\":\"plain key\"},\"source\":\"rss\"},\"id\":\"proto-vector\",\"score\":0.000001}",
+ "canonical_sha256": "894554b72eba47305e588ca80e5300243fc34267d537555f2b3f0e2fd2e6adfc"
+}

@@ -10,7 +10,7 @@ on:
       - "src/lib/risk-object-signing.server.ts"
       - "src/lib/canonical-json.ts"
       - "docs/GRO_CANONICAL_JSON_V1.md"
-      - "test-vectors/gro-canonical-json-v1-edge-vectors.json"
+      - "test-vectors/gro-canonical-json-v1-*.json"
       - "verifiers/python/verify_gro.py"
       - "scripts/check-gro-canonical-vectors.ts"
       - ".github/workflows/gro-canonical-edge-vectors.yml"
@@ -20,7 +20,7 @@ on:
       - "src/lib/risk-object-signing.server.ts"
       - "src/lib/canonical-json.ts"
       - "docs/GRO_CANONICAL_JSON_V1.md"
-      - "test-vectors/gro-canonical-json-v1-edge-vectors.json"
+      - "test-vectors/gro-canonical-json-v1-*.json"
       - "verifiers/python/verify_gro.py"
       - "scripts/check-gro-canonical-vectors.ts"
       - ".github/workflows/gro-canonical-edge-vectors.yml"
@@ -50,4 +50,8 @@ jobs:
         run: bun scripts/check-gro-canonical-vectors.ts
 
       - name: Independent Python implementation reproduces the edge vector
-        run: python3 verifiers/python/verify_gro.py --vectors test-vectors/gro-canonical-json-v1-edge-vectors.json
+        run: |
+          set -e
+          for f in test-vectors/gro-canonical-json-v1-*.json; do
+            python3 verifiers/python/verify_gro.py --vectors "$f"
+          done
