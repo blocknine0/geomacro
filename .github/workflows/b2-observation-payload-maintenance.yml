@@ -1,14 +1,9 @@
 name: B2 observation raw payload maintenance
 
+# Scheduled execution is intentionally held while the B2 download/Class-B budget is
+# exhausted. Keep the verified path manually runnable; never bypass readback.
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-observation-payload-maintenance.yml"
-      - "scripts/ops/b2-archive-observation-payload-batch.mjs"
-  schedule:
-    - cron: "5 * * * *"
 
 permissions:
   contents: read
