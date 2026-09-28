@@ -1,14 +1,9 @@
 name: B2 raw Storage maintenance
 
+# Scheduled execution is intentionally held while the B2 download/Class-B budget is
+# exhausted. Keep the verified path manually runnable; never bypass readback.
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-raw-storage-maintenance.yml"
-      - "scripts/ops/b2-raw-storage-maintenance.mjs"
-  schedule:
-    - cron: "45 * * * *"
 
 permissions:
   contents: read
