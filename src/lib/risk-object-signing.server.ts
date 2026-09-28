@@ -104,7 +104,7 @@ function canonicalizeJson(
       value as Record<string, unknown>;
 
     const output:
-      Record<string, unknown> = {};
+      Record<string, unknown> = Object.create(null);
 
     for (
       const key of Object.keys(input).sort()
@@ -117,6 +117,37 @@ function canonicalizeJson(
   }
 
   return value;
+}
+
+function containsForbiddenRiskObjectJsonKey(
+  value: unknown,
+): boolean {
+  if (Array.isArray(value)) {
+    return value.some(containsForbiddenRiskObjectJsonKey);
+  }
+
+  if (
+    value !== null &&
+    typeof value === "object"
+  ) {
+    const input =
+      value as Record<string, unknown>;
+
+    for (const key of Object.keys(input)) {
+      if (key === "__proto__") return true;
+      if (containsForbiddenRiskObjectJsonKey(input[key])) return true;
+    }
+  }
+
+  return false;
+}
+
+export function assertRiskObjectJsonKeysSafe(
+  value: unknown,
+): void {
+  if (containsForbiddenRiskObjectJsonKey(value)) {
+    throw new Error("Risk Object JSON contains forbidden __proto__ key");
+  }
 }
 
 export function canonicalRiskObjectJson(
@@ -738,6 +769,8 @@ export function signRiskObject(
     RiskObjectSigningMaterial =
       signingMaterialFromEnv(),
 ): GeomacroRiskObject {
+  assertRiskObjectJsonKeysSafe(object);
+
   if (
     object.schema_version !==
     GRO_SCHEMA_VERSION
@@ -944,6 +977,13 @@ verifyRiskObjectSignature(
   valid: boolean;
   reason: string | null;
 } {
+  if (containsForbiddenRiskObjectJsonKey(object)) {
+    return {
+      valid: false,
+      reason: "forbidden_json_key",
+    };
+  }
+
   if (
     object.schema_version !==
     GRO_SCHEMA_VERSION

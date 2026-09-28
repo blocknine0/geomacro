@@ -7,6 +7,7 @@ import {
 } from "../lib/risk-object-runtime-public-key.server";
 
 import {
+  assertRiskObjectJsonKeysSafe,
   publicRiskObjectVerificationKeySet,
 } from "../lib/risk-object-signing.server";
 
@@ -130,6 +131,27 @@ async function verifyRequest(
         ok: false,
         error:
           "risk_object_is_required",
+      },
+      400,
+      {
+        "cache-control": "no-store",
+      },
+    );
+  }
+
+  try {
+    assertRiskObjectJsonKeysSafe(
+      (
+        body as {
+          risk_object: unknown;
+        }
+      ).risk_object,
+    );
+  } catch {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "forbidden_risk_object_json_key",
       },
       400,
       {
