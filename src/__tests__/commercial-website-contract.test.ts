@@ -88,6 +88,7 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Data & API"');
     expect(shell).toContain("Product, evidence and roadmap");
     expect(shell).toContain("Technical Proof");
+    // Prediction Markets and Bridge & Swap remain separate technical-proof surfaces, not primary commercial navigation.
     expect(shell).not.toContain('label: "Prediction Markets"');
     expect(shell).not.toContain('label: "Bridge & Swap"');
     expect(shell).toContain("real-money agent access fail-closed until production activation");
