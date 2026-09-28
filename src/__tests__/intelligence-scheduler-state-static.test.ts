@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  "supabase/migrations/984_intelligence_scheduler_state.sql",
+  "supabase/migrations/20260927174309_intelligence_scheduler_state.sql",
   "utf8",
 );
 const orchestrator = readFileSync("scripts/intelligence-orchestrator.mjs", "utf8");
