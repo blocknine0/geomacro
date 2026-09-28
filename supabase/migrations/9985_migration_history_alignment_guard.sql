@@ -1,0 +1,1 @@
+-- Guard marker: replay-safe migration history alignment completed after production ledger reconciliation.
