@@ -140,7 +140,7 @@ describe("canonical product architecture alignment", () => {
     expect(home).toContain("Global risk intelligence infrastructure");
     expect(home).not.toContain("Prediction Markets");
     expect(shell).toContain("Technical Proof");
-    expect(shell).toContain('label: "Prediction Markets"');
+    expect(shell).not.toContain('label: "Prediction Markets"');
     expect(about).toContain("Risk intelligence is the product");
     expect(about).toContain("separate technical proof");
     expect(predictionDocs).toContain("TECHNICAL PROOF · ARC TESTNET");
