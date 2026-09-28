@@ -41,8 +41,16 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(worker).toContain("supabase_source_absent: true");
   });
 
-  it("shards and throttles raw maintenance within the B2 transaction budget", () => {
-    expect(workflow).toContain('cron: "45 * * * *"');
+  it("holds automatic B2 reads while the provider download budget is exhausted", () => {
+    for (const source of [workflow, observationWorkflow, groWorkflow]) {
+      expect(source).toContain("workflow_dispatch");
+      expect(source).not.toContain("schedule:");
+      expect(source).not.toContain("branches: [main]");
+      expect(source).toContain("never bypass readback");
+    }
+  });
+
+  it("retains bounded sharded raw maintenance for manual verified recovery", () => {
     expect(workflow).toContain('B2_RAW_MAINTENANCE_LIMIT: "2"');
     expect(workflow).toContain("B2_RAW_MAINTENANCE_SUFFIX");
     expect(workflow).toContain("max-parallel: 2");
@@ -52,8 +60,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(workflow).toContain("environment: production");
   });
 
-  it("continuously externalizes old observation payloads with one B2 GET per cleanup", () => {
-    expect(observationWorkflow).toContain('cron: "5 * * * *"');
+  it("retains verified observation externalization with one B2 GET per cleanup", () => {
     expect(observationWorkflow).toContain('OBS_ARCHIVE_LIMIT: "2"');
     expect(observationWorkflow).toContain("max-parallel: 2");
     expect(observationWorker).toContain(".update({ raw_payload: null })");
@@ -62,8 +69,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(observationWorker).toContain("source_row_retained: true");
   });
 
-  it("throttles GRO externalization and verifies restore before payload cleanup", () => {
-    expect(groWorkflow).toContain('cron: "25 * * * *"');
+  it("retains GRO restore verification before payload cleanup", () => {
     expect(groWorkflow).toContain("max-parallel: 2");
     expect(groWorker).toContain("B2_ONLY_GRO_READBACK_INVALID");
     expect(groWorker).toContain("b2_gets_per_object: 1");
