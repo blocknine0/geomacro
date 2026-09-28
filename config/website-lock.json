@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "31d7f22c501675f0496fd925072dfd9e9a0bd5ef",
-  "published_baseline": "Founder-approved Geomacro website plus machine-readable partner verification discovery for external verifier and commercial integration readiness",
+  "baseline_sha": "a990aa00ad80bf6f08a2fafe6cabc80ae250a4ae",
+  "published_baseline": "Founder-approved Geomacro commercial website with Intelligence and critical-minerals emphasis, independent reviewer kit, and prediction-market / bridge-swap surfaces kept separate as technical proof",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-09-28T15:16:00Z",
-  "published_source_sha": "31d7f22c501675f0496fd925072dfd9e9a0bd5ef",
-  "lock_revision": "founder-approved-partner-verification-discovery-20260928"
+  "locked_at_utc": "2026-09-28T18:40:35Z",
+  "published_source_sha": "a990aa00ad80bf6f08a2fafe6cabc80ae250a4ae",
+  "lock_revision": "founder-approved-review-critical-minerals-site-20260929"
 }
