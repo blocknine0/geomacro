@@ -1,0 +1,2 @@
+-- Historical migration-history marker. No SQL was recorded remotely for this version.
+-- The production World Bank latest index is defined by 20260927072953_optimize_world_bank_latest_lookup.sql.

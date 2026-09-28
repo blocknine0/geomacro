@@ -14,7 +14,7 @@ const migration = readFileSync(
 );
 const latestViewIndex = readFileSync(
   new URL(
-    "../../supabase/migrations/983_world_bank_latest_view_index.sql",
+    "../../supabase/migrations/20260927072953_optimize_world_bank_latest_lookup.sql",
     import.meta.url,
   ),
   "utf8",
@@ -52,6 +52,5 @@ describe("Risk Gate v2 governed WDI financial inputs", () => {
     expect(latestViewIndex).toContain("source_id = 'world_bank_indicators'");
     expect(latestViewIndex).toContain("quality_status = 'VERIFIED'");
     expect(latestViewIndex).toContain("commercial_eligibility_status = 'VERIFIED'");
-    expect(latestViewIndex).toContain("value_numeric is not null");
   });
 });

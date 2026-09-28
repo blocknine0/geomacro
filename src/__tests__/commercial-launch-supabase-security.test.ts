@@ -1,10 +1,22 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync(
-  new URL("../../supabase/migrations/982_commercial_launch_security_hardening.sql", import.meta.url),
-  "utf8",
-);
+const migration = [
+  readFileSync(
+    new URL(
+      "../../supabase/migrations/20260928153319_commercial_launch_security_hardening.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+  readFileSync(
+    new URL(
+      "../../supabase/migrations/20260928153549_harden_public_function_search_paths.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+].join("\n");
 
 describe("commercial launch Supabase security", () => {
   it("keeps internal raw and realtime tables behind RLS", () => {

@@ -1,0 +1,2 @@
+-- Historical duplicate migration record. No SQL was recorded remotely.
+-- Keep this timestamp so local and production migration history remain aligned.

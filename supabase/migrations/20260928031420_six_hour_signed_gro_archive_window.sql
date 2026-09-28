@@ -29,4 +29,3 @@ begin
   raise exception 'Geomacro Risk Objects are immutable';
 end;
 $$;
-

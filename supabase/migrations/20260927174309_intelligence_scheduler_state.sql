@@ -1,6 +1,3 @@
--- Persist due-task state for the single production intelligence orchestrator.
--- This table is service-role only. No browser/public access is permitted.
-
 create table if not exists public.live_intelligence_scheduler_state (
   source_id text primary key,
   source_kind text not null,
