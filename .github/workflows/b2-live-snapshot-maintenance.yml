@@ -11,7 +11,7 @@ on:
       - "src/lib/public-intelligence.functions.ts"
       - "src/lib/public-risk.functions.ts"
   schedule:
-    - cron: "37 */2 * * *"
+    - cron: "47 */6 * * *"
 
 permissions:
   contents: read
