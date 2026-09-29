@@ -6,6 +6,7 @@ const observationWorker = read("scripts/ops/b2-archive-observation-bundle.mjs");
 const observationWorkflow = read(".github/workflows/b2-observation-payload-maintenance.yml");
 const groWorker = read("scripts/ops/b2-only-gro-externalize-canary.ts");
 const groWorkflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
+const groBundleWorkflow = read(".github/workflows/b2-gro-bundle-first-batch.yml");
 const candidateRpcs = read("scripts/ops/sql/b2-recovery-candidate-rpcs.sql");
 
 const suffixMatrix = 'suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]';
@@ -35,7 +36,7 @@ describe("sharded B2 quota recovery", () => {
     expect(observationWorkflow).toContain("needs.b2_canary.result == 'success'");
   });
 
-  it("partitions GRO candidates by the same non-overlapping suffix rule with bounded B2 pressure", () => {
+  it("partitions GRO candidates by the same non-overlapping suffix rule with serialized free-tier pressure", () => {
     expect(groWorker).toContain("GRO_ARCHIVE_SUFFIX");
     expect(groWorker).toContain("/^[0-9a-f]$/");
     expect(groWorker).toContain("geomacro_next_gro_archive_candidates");
@@ -50,6 +51,10 @@ describe("sharded B2 quota recovery", () => {
     expect(groWorkflow).toContain(suffixMatrix);
     expect(groWorkflow).toContain("max-parallel: 2");
     expect(groWorkflow).toContain("fail-fast: false");
+    expect(groBundleWorkflow).toContain(suffixMatrix);
+    expect(groBundleWorkflow).toContain("max-parallel: 1");
+    expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "25"');
+    expect(groBundleWorkflow).toContain("Persistent free-tier statement timeout after verified progress");
   });
 
   it("preserves fail-closed verification before any observation cleanup", () => {
