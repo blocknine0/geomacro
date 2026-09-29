@@ -14,8 +14,9 @@ describe("public intelligence routing contract", () => {
     expect(publicRead).toContain('from("live_flash_events")');
     expect(publicRead).toContain('eq("verification_status", "VERIFIED")');
     expect(publicRead).toContain('from("events")');
-    expect(publicRead).toContain("structuredCategories");
-    expect(publicRead).toContain("fallbackCategories");
+    expect(publicRead).toContain("missingCategories(rows)");
+    expect(publicRead).toContain("if (rows.length > 0 && missing.length === 0) return sortAndDedupe(rows);");
+    expect(publicRead).toContain("PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS");
   });
 
 
