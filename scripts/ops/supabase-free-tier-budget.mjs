@@ -28,9 +28,11 @@ const result = {
 };
 console.log(JSON.stringify(result));
 
+const reportOnly = process.argv.includes("--report-only");
 const requireBulkWrite =
-  process.argv.includes("--require-bulk-write") ||
-  process.env.GITHUB_WORKFLOW === "Auto Ingest News";
+  !reportOnly &&
+  (process.argv.includes("--require-bulk-write") ||
+    process.env.GITHUB_WORKFLOW === "Auto Ingest News");
 
 if (requireBulkWrite && data.bulk_write_allowed !== true) {
   console.error(
@@ -46,7 +48,7 @@ if (requireBulkWrite && data.bulk_write_allowed !== true) {
 
 // Recurring writers need more headroom than one-off maintenance. The warning
 // band starts at 400 MiB; scheduled growth is allowed only below that line.
-const requireNormal = process.argv.includes("--require-normal");
+const requireNormal = !reportOnly && process.argv.includes("--require-normal");
 if (requireNormal && data.mode !== "normal") {
   console.error(
     JSON.stringify({
