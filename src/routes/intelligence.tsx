@@ -86,16 +86,23 @@ function IntelligencePage() {
     () => applyIntelFilters(pool, { category, query, sort: activeSort }),
     [pool, category, query, activeSort],
   );
+  const latestVerifiedFallback = Boolean(intel.data?.usedFallbackWindow);
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
       <header className="max-w-4xl">
         <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em]">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">
-            <Radio className="h-3 w-3" aria-hidden /> LIVE INTELLIGENCE
+            <Radio className="h-3 w-3" aria-hidden /> {latestVerifiedFallback ? "LATEST VERIFIED" : "LIVE INTELLIGENCE"}
           </span>
           <span className="text-muted-foreground">
-            {intel.status === "updating" ? "Updating" : intel.updatedAt ? `Updated ${formatTime(intel.updatedAt)}` : "Current feed"}
+            {intel.status === "updating"
+              ? "Updating"
+              : latestVerifiedFallback
+                ? "Live refresh pending · showing latest verified records"
+                : intel.updatedAt
+                  ? `Updated ${formatTime(intel.updatedAt)}`
+                  : "Current feed"}
           </span>
         </div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">Risk Intelligence</h1>
@@ -161,9 +168,15 @@ function IntelligencePage() {
           <div className="min-w-0">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Current event set</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  {latestVerifiedFallback ? "Latest verified event set" : "Current event set"}
+                </p>
                 <h2 className="mt-1 text-2xl font-semibold">
-                  {query.trim() || category !== "all" ? "Matching intelligence" : "Highest-priority intelligence"}
+                  {query.trim() || category !== "all"
+                    ? "Matching intelligence"
+                    : latestVerifiedFallback
+                      ? "Latest verified intelligence"
+                      : "Highest-priority intelligence"}
                 </h2>
               </div>
               <p className="text-sm text-muted-foreground">{filtered.length} matching event{filtered.length === 1 ? "" : "s"}</p>
