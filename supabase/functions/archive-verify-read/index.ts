@@ -1,5 +1,5 @@
 // Service-role-only B2 archive verification bridge for maintenance workers.
-// Supports one full GET for observation/raw bundles to minimize Class-B transactions.
+// Supports one full GET for observation/raw/GRO bundles to minimize Class-B transactions.
 const encoder = new TextEncoder();
 const hex = (bytes: Uint8Array) => Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
 const sha256 = async (value: Uint8Array | string) => hex(new Uint8Array(await crypto.subtle.digest("SHA-256", typeof value === "string" ? encoder.encode(value) : value)));
@@ -58,6 +58,7 @@ Deno.serve(async (request: Request) => {
     let key = "";
     const bundleId = /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]-[0-9a-f-]{36}$/;
     if (kind === "gro" && /^gro_[A-Za-z0-9_]+$/.test(id)) key = part === "archive" ? `geomacro-evidence/v1/gro/${id}.json.gz` : part === "proof" ? `geomacro-evidence/v1/index/gro/${id}.json` : "";
+    else if (kind === "gro-bundle" && bundleId.test(id)) key = part === "archive" ? `geomacro-evidence/v1/gro-bundles/${id}.json.gz` : part === "proof" ? `geomacro-evidence/v1/index/gro-bundles/${id}.json` : "";
     else if (kind === "observation" && id.length >= 1 && id.length <= 512) { const h = await sha256(id); key = part === "archive" ? `geomacro-evidence/v1/observations/${h}.json.gz` : part === "proof" ? `geomacro-evidence/v1/index/observations/${h}.json` : ""; }
     else if (kind === "observation-bundle" && bundleId.test(id)) key = part === "archive" ? `geomacro-evidence/v1/observation-bundles/${id}.json.gz` : part === "proof" ? `geomacro-evidence/v1/index/observation-bundles/${id}.json` : "";
     else if (kind === "raw-bundle" && bundleId.test(id)) key = part === "archive" ? `geomacro-evidence/v1/raw-bundles/${id}.json.gz` : part === "proof" ? `geomacro-evidence/v1/index/raw-bundles/${id}.json` : part === "deletion-proof" ? `geomacro-evidence/v1/index/raw-bundles-deleted/${id}.json` : "";
