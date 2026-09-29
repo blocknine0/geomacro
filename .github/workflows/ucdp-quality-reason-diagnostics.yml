@@ -12,8 +12,6 @@ on:
       - "scripts/audit-ucdp-quality-reasons.ts"
       - ".github/workflows/ucdp-quality-reason-diagnostics.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "47 4 22 * *"
 
 permissions:
   contents: read
