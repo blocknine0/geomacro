@@ -1,8 +1,6 @@
 name: Early Warning Distribution Shadow
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
   pull_request:
     paths:

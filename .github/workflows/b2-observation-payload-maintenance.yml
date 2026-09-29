@@ -2,8 +2,6 @@ name: B2 observation raw payload maintenance
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "17 * * * *"
   push:
     branches: [main]
     paths:

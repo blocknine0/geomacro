@@ -7,8 +7,6 @@ on:
       - "scripts/audit-world-bank-ppg-debt-stock-ratio.mjs"
       - ".github/workflows/wdi-source2-fiscal-expansion.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "17 3 * * 1"
 
 permissions:
   contents: read

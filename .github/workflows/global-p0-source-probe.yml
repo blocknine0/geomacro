@@ -17,8 +17,6 @@ on:
       - "global-intelligence/sources/source-gap-matrix.v1.md"
       - "supabase/migrations/974_global_source_p0_expansion.sql"
       - ".github/workflows/global-p0-source-probe.yml"
-  schedule:
-    - cron: "17 3 * * 1"
 
 permissions:
   contents: read
