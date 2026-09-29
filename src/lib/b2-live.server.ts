@@ -1,6 +1,3 @@
-import process from "node:process";
-import { createHash, createHmac } from "node:crypto";
-import { gunzipSync } from "node:zlib";
 import type { PublicIntelligenceRow } from "./public-intelligence.functions";
 import type { GlobalRisk } from "./global-risk.types";
 
@@ -11,24 +8,48 @@ const FAILURE_THRESHOLD = 3;
 const CIRCUIT_OPEN_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 3_500;
 const MAX_COMPRESSED_BYTES = 12_000_000;
+const MAX_DECOMPRESSED_BYTES = 40_000_000;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 export const B2_PUBLIC_INTELLIGENCE_KEY =
   "geomacro-evidence/v1/live/public-intelligence/latest.json.gz";
 export const B2_PUBLIC_RISK_KEY =
   "geomacro-evidence/v1/live/risk-indices/latest.json.gz";
 
-const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
-const hmac = (key: Buffer | string, value: string) =>
-  createHmac("sha256", key).update(value).digest();
-
 type B2Config = { accessKey: string; secretKey: string };
-type CacheEntry = { expiresAt: number; bytes: Buffer };
+type CacheEntry = { expiresAt: number; bytes: Uint8Array };
 
 const cache = new Map<string, CacheEntry>();
 let failureCount = 0;
 let circuitOpenedAt = 0;
 
+const hex = (bytes: Uint8Array) =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+
+async function sha256(value: Uint8Array | string): Promise<string> {
+  const bytes = typeof value === "string" ? encoder.encode(value) : value;
+  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+}
+
+async function hmac(key: Uint8Array | string, value: string): Promise<Uint8Array> {
+  const imported = await crypto.subtle.importKey(
+    "raw",
+    typeof key === "string" ? encoder.encode(key) : key,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return new Uint8Array(
+    await crypto.subtle.sign("HMAC", imported, encoder.encode(value)),
+  );
+}
+
 function config(): B2Config | null {
+  // This module is referenced only from server-function handlers, but the
+  // TanStack client compiler still traverses imports. Fail closed in a browser
+  // build/runtime without importing any Node builtin or exposing secret values.
+  if (typeof window !== "undefined" || typeof process === "undefined") return null;
   const endpoint = String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim();
   const accessKey = String(process.env.B2_KEY_ID ?? "").trim();
   const secretKey = String(process.env.B2_APPLICATION_KEY ?? "").trim();
@@ -60,7 +81,7 @@ function noteFailure() {
   if (failureCount >= FAILURE_THRESHOLD && !circuitOpenedAt) circuitOpenedAt = Date.now();
 }
 
-async function signedGet(key: string): Promise<Buffer | null> {
+async function signedGet(key: string): Promise<Uint8Array | null> {
   const cfg = config();
   if (!cfg || !allowedKey(key) || circuitOpen()) return null;
 
@@ -69,23 +90,29 @@ async function signedGet(key: string): Promise<Buffer | null> {
 
   const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
-  const emptyHash = sha256(Buffer.alloc(0));
 
   try {
     const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
     const day = timestamp.slice(0, 8);
-    const headers = { host, "x-amz-content-sha256": emptyHash, "x-amz-date": timestamp };
-    const names = Object.keys(headers).sort() as Array<keyof typeof headers>;
-    const canonicalHeaders = names.map((name) => `${name}:${headers[name]}\n`).join("");
-    const signedHeaders = names.join(";");
+    const emptyHash = await sha256("");
+    const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+    const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${emptyHash}\nx-amz-date:${timestamp}\n`;
     const canonical = ["GET", path, "", canonicalHeaders, signedHeaders, emptyHash].join("\n");
     const scope = `${day}/us-east-005/s3/aws4_request`;
-    const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, sha256(Buffer.from(canonical))].join("\n");
-    const signingKey = hmac(
-      hmac(hmac(hmac(`AWS4${cfg.secretKey}`, day), "us-east-005"), "s3"),
+    const stringToSign = [
+      "AWS4-HMAC-SHA256",
+      timestamp,
+      scope,
+      await sha256(canonical),
+    ].join("\n");
+    const signingKey = await hmac(
+      await hmac(
+        await hmac(await hmac(`AWS4${cfg.secretKey}`, day), "us-east-005"),
+        "s3",
+      ),
       "aws4_request",
     );
-    const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
+    const signature = hex(await hmac(signingKey, stringToSign));
 
     const response = await fetch(`${B2_ENDPOINT}${path}`, {
       method: "GET",
@@ -100,7 +127,7 @@ async function signedGet(key: string): Promise<Buffer | null> {
       noteFailure();
       return null;
     }
-    const bytes = Buffer.from(await response.arrayBuffer());
+    const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) {
       noteFailure();
       return null;
@@ -114,13 +141,21 @@ async function signedGet(key: string): Promise<Buffer | null> {
   }
 }
 
+async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const raw = new Uint8Array(await new Response(stream).arrayBuffer());
+  if (!raw.length || raw.length > MAX_DECOMPRESSED_BYTES) {
+    throw new Error("B2_LIVE_DECOMPRESSED_SIZE_INVALID");
+  }
+  return raw;
+}
+
 async function readJsonGzip<T>(key: string): Promise<T | null> {
   const compressed = await signedGet(key);
   if (!compressed) return null;
   try {
-    const raw = gunzipSync(compressed);
-    if (!raw.length || raw.length > 40_000_000) return null;
-    return JSON.parse(raw.toString("utf8")) as T;
+    const raw = await gunzip(compressed);
+    return JSON.parse(decoder.decode(raw)) as T;
   } catch {
     return null;
   }
