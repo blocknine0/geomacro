@@ -1,60 +1,16 @@
-name: Security Monitor
+name: Security Monitor (Prediction Markets Paused)
+
+# Prediction-market runtime is intentionally paused by founder instruction.
+# No schedule and no runnable jobs are permitted until explicitly re-enabled.
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
-concurrency:
-  # This workflow can submit a guardian pause transaction. Never cancel a run
-  # that may already be signing or broadcasting, and never overlap guardian
-  # wallet activity.
-  group: arc-guardian-wallet-state-change
-  cancel-in-progress: false
-
 jobs:
-  monitor:
-    if: github.ref == 'refs/heads/main'
+  paused:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 6
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "22"
-      - name: Set up Bun 1.4.2
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.4.2"
-      - name: Install locked runtime dependencies without lifecycle scripts
-        run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify Arc Testnet and contract before exposing guardian credentials
-        env:
-          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
-        run: node scripts/ops/verify-arc-testnet-target.mjs
-      - name: Verify authoritative Supabase target before privileged writes
-        env:
-          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-        run: node scripts/db/assert-authoritative-supabase.mjs
-      - name: Run anomaly monitor
-        run: node scripts/anomaly-monitor.js
-        env:
-          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
-          ARC_RPC_URL_2: ${{ secrets.ARC_RPC_URL_2 }}
-          ARC_RPC_URL_3: ${{ secrets.ARC_RPC_URL_3 }}
-          ARC_RPC_URL_4: ${{ secrets.ARC_RPC_URL_4 }}
-          ARC_RPC_URL_5: ${{ secrets.ARC_RPC_URL_5 }}
-          CONTRACT_ADDRESS: ${{ secrets.CONTRACT_ADDRESS }}
-          OLD_CONTRACT_ADDRESS: ${{ secrets.OLD_CONTRACT_ADDRESS }}
-          GUARDIAN_PRIVATE_KEY: ${{ secrets.GUARDIAN_PRIVATE_KEY }}
-          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - run: echo "Prediction-market security monitoring is paused."
