@@ -14,7 +14,7 @@ const projectRef = (url) => { try { return new URL(url).hostname.split(".")[0] ?
 
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-const lookbackHours = Math.max(1, Math.min(24, Number(process.env.B2_INGEST_LOOKBACK_HOURS ?? 6)));
+const lookbackHours = Math.max(1, Math.min(72, Number(process.env.B2_INGEST_LOOKBACK_HOURS ?? 72)));
 const rawBundleLimit = Math.max(1, Math.min(100, Number(process.env.B2_INGEST_RAW_BUNDLE_LIMIT ?? 25)));
 const rawRounds = Math.max(1, Math.min(80, Number(process.env.B2_INGEST_RAW_ROUNDS ?? 40)));
 const fragmentLimit = Math.max(1, Math.min(500, Number(process.env.B2_INGEST_FRAGMENT_LIMIT ?? 200)));
