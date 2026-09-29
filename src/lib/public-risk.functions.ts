@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { assertSameOrigin } from "./origin-guard";
+import { readB2PublicRisk } from "./b2-live.server";
 import { readPublicGlobalRisk } from "./global-risk-read.server";
 import { readPublicGlobalRiskFromEdge } from "./public-risk-edge.server";
 import type { GlobalRisk } from "./global-risk.types";
@@ -19,15 +20,16 @@ export type PublicGlobalRiskResponse =
 export const getPublicGlobalRisk = createServerFn({ method: "POST" })
   .validator((input: unknown) => EmptyInput.parse(input))
   .handler(async (): Promise<PublicGlobalRiskResponse> => {
-    // Keep the security boundary outside availability handling. A cross-origin
-    // request is a policy violation and must still fail hard.
     assertSameOrigin();
+
+    const b2 = await readB2PublicRisk();
+    if (b2) return { ok: true, data: b2 };
 
     try {
       return { ok: true, data: await readPublicGlobalRisk() };
     } catch (directError) {
       const detail = directError instanceof Error ? directError.message : "unknown error";
-      console.warn("[public-gri] hosted canonical read unavailable; trying authoritative edge", detail);
+      console.warn("[public-gri] B2 and hosted canonical reads unavailable; trying authoritative edge", detail);
     }
 
     try {
