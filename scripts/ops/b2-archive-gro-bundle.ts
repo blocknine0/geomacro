@@ -95,6 +95,13 @@ for (const entry of selected) {
 await b2.put(archiveKey, compressed);
 
 async function archiveRead(): Promise<Buffer> {
+  // The canary probes the deployed Edge restore bridge. Bulk verification
+  // reads B2 directly, then checks every signed member before DB cleanup.
+  if (limit > 1) {
+    const bytes = await b2.get(archiveKey);
+    if (bytes.length > 20_000_000) throw new Error("GRO_BUNDLE_VERIFY_READ_TOO_LARGE");
+    return bytes;
+  }
   for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
     try {
       const response = await fetch(`${url}/functions/v1/archive-verify-read`, {
@@ -153,6 +160,21 @@ const { data: cleared, error: clearError } = await db.rpc("geomacro_clear_verifi
 if (clearError || !Array.isArray(cleared) || cleared.length !== selected.length) throw clearError ?? new Error("GRO_BUNDLE_CLEAR_UNCONFIRMED");
 const clearedIds = new Set(cleared.map((row: any) => row.object_id));
 if (selected.some((entry) => !clearedIds.has(entry.object_id))) throw new Error("GRO_BUNDLE_CLEAR_SET_MISMATCH");
+
+// After the one-object canary switches to its archive pointer, exercise the
+// actual production restore endpoint and the signed object verifier.
+if (limit === 1) {
+  const source = selected[0];
+  const { data: restoredBlob, error: restoreError } = await db.functions.invoke("gro-archive-read", {
+    body: { object_id: source.object_id },
+  });
+  if (restoreError || !(restoredBlob instanceof Blob)) throw new Error("GRO_BUNDLE_CANARY_RESTORE_FAILED");
+  const restoredBytes = Buffer.from(await restoredBlob.arrayBuffer());
+  if (sha(restoredBytes) !== source.archive_sha256) throw new Error("GRO_BUNDLE_CANARY_RESTORE_HASH_INVALID");
+  const restoredObject = JSON.parse(gunzipSync(restoredBytes).toString("utf8"));
+  if (canonicalRiskObjectJson(restoredObject) !== canonicalRiskObjectJson(source.payload) ||
+      !verifyRiskObjectSignature(restoredObject, keys).valid) throw new Error("GRO_BUNDLE_CANARY_RESTORE_SIGNATURE_INVALID");
+}
 
 console.log(JSON.stringify({ ok: true, status: "progress", bundle_id: bundleId, archived: selected.length,
   shard_suffix: suffix, signing_key_id: signingKeyId, bundle_compressed_bytes: compressed.length,

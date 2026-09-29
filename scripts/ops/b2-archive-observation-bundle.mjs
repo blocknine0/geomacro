@@ -33,6 +33,13 @@ const archiveKey = `geomacro-evidence/v1/observation-bundles/${bundleId}.json.gz
 const proofKey = `geomacro-evidence/v1/index/observation-bundles/${bundleId}.json`;
 
 async function archiveRead() {
+  // The one-object canary probes the deployed Edge reader. Bulk bundles use
+  // the same full-object readback directly from B2, avoiding Supabase egress.
+  if (limit > 1) {
+    const bytes = await b2.get(archiveKey);
+    if (bytes.length > 20_000_000) throw new Error("OBS_BUNDLE_VERIFY_READ_TOO_LARGE");
+    return bytes;
+  }
   for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
     try {
       const response = await fetch(`${url}/functions/v1/archive-verify-read`, {
