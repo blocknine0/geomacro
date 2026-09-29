@@ -1,9 +1,7 @@
 name: GeoMacro Agent Global Discovery Health
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "11,41 * * * *"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
