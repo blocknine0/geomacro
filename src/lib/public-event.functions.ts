@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { readB2PublicIntelligence } from "./b2-live.server";
 import { assertSameOrigin } from "./origin-guard";
 import { getAppSupabase } from "./supabase-app.server";
 
@@ -20,13 +21,33 @@ export type PublicEventDetail = {
   created_at: string;
 };
 
+function fromB2Row(row: NonNullable<Awaited<ReturnType<typeof readB2PublicIntelligence>>>[number]): PublicEventDetail {
+  return {
+    id: row.id,
+    source_title: row.source_title,
+    summary: row.summary,
+    narrative: null,
+    category: row.category,
+    severity: row.severity,
+    confidence: null,
+    delta: row.delta,
+    published_at: row.published_at,
+    created_at: row.created_at,
+  };
+}
+
 /** Public event details intentionally exclude upstream publisher identity and URLs. */
 export const getPublicEventDetail = createServerFn({ method: "POST" })
   .validator((input: unknown) => EventInput.parse(input))
   .handler(async ({ data }): Promise<PublicEventDetail | null> => {
     assertSameOrigin();
+
+    const b2Rows = await readB2PublicIntelligence();
+    const b2Row = b2Rows?.find((row) => row.id === data.eventId);
+    if (b2Row) return fromB2Row(b2Row);
+
     const supabase = getAppSupabase();
-    if (!supabase) throw new Error("Intelligence store unavailable");
+    if (!supabase) return null;
 
     const result = await supabase
       .from("events")
@@ -38,7 +59,7 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
 
     if (result.error) {
       console.error("[public-event] canonical read failed", result.error.message);
-      throw new Error("Intelligence event unavailable");
+      return null;
     }
 
     if (result.data) return result.data as PublicEventDetail;
@@ -50,7 +71,7 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (structured.error || !structured.data) {
-      throw new Error("Intelligence event unavailable");
+      return null;
     }
 
     return {
