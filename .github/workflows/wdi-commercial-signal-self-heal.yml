@@ -2,8 +2,6 @@ name: WDI Commercial Signal Self-Heal
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "12 * * * *"
   push:
     branches:
       - main
