@@ -77,6 +77,10 @@ export class SupabaseCircuitBreaker {
     }
   }
 
+  recordNeutral(): void {
+    this.probeInFlight = false;
+  }
+
   recordReachableNonTransientResponse(): void {
     this.recordSuccess();
   }
