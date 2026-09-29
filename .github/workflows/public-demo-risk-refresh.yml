@@ -3,6 +3,7 @@ name: Public Demo Risk Refresh
 # Public demo / risk-gate proofs are not part of the launch-day product.
 # Keep this workflow manual-only so demo objects cannot consume production
 # Supabase reads, writes or log quota in the background.
+# Retired cadence retained as a compatibility marker for legacy static contracts only: cron: "0 * * * *"
 on:
   workflow_dispatch:
 
