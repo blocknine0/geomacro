@@ -1,0 +1,47 @@
+name: Verify bounded GRO B2 recovery batch
+
+# One bounded rollout after the live restore canary. No recurring trigger.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-gro-bundle-first-batch.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-b2-gro-first-batch
+  cancel-in-progress: false
+
+jobs:
+  archive_one_shard:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
+    name: archive_one_shard_${{ matrix.suffix }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
+      GRO_BUNDLE_LIMIT: "10"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify ten signed GROs before pointer cleanup
+        run: bun scripts/ops/b2-archive-gro-bundle.ts
