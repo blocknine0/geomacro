@@ -58,7 +58,7 @@ describe("B2 GRO bundle externalization", () => {
     const workflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
     expect(workflow).toContain('GRO_BUNDLE_LIMIT: "1"');
     expect(workflow).toContain('GRO_BUNDLE_LIMIT: "50"');
-    expect(workflow).toContain("max-parallel: 2");
+    expect(workflow).toContain("max-parallel: 1");
     expect(workflow).toContain("Non-transient GRO archive failure detected; refusing to retry.");
     const liveCanary = read(".github/workflows/b2-gro-bundle-live-canary.yml");
     expect(liveCanary).toContain('GRO_BUNDLE_LIMIT: "1"');
