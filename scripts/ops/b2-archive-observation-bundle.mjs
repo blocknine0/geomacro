@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Bundle many old observation payloads into one B2 object, perform exactly one
 // full archive readback for the bundle, verify every member, then atomically
-// clear only the verified Supabase payloads. This preserves fail-closed cleanup
-// while reducing Class-B GETs from one per observation to one per bundle.
+// clear only the verified Supabase payloads while recording the bundle pointer.
 import { createHash, randomUUID } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
@@ -19,21 +18,15 @@ const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
 const limit = Number(process.env.OBS_BUNDLE_LIMIT ?? 100);
 const suffix = String(process.env.OBS_ARCHIVE_SUFFIX ?? "").trim().toLowerCase();
 
-if (
-  url !== "https://ldpwajisioljyjtojvfx.supabase.co" ||
-  !role ||
-  !Number.isInteger(limit) || limit < 1 || limit > 100 ||
-  !/^[0-9a-f]$/.test(suffix)
-) throw new Error("OBS_BUNDLE_CONFIG_INVALID");
+if (url !== "https://ldpwajisioljyjtojvfx.supabase.co" || !role ||
+    !Number.isInteger(limit) || limit < 1 || limit > 100 || !/^[0-9a-f]$/.test(suffix)) {
+  throw new Error("OBS_BUNDLE_CONFIG_INVALID");
+}
 
 const db = createClient(url, role, { auth: { persistSession: false, autoRefreshToken: false } });
-const b2 = createB2Client({
-  endpointUrl: process.env.B2_S3_ENDPOINT,
-  accessKey: process.env.B2_KEY_ID,
-  secretKey: process.env.B2_APPLICATION_KEY,
-  bucket: "geomacro-private-archive",
-});
-
+const b2 = createB2Client({ endpointUrl: process.env.B2_S3_ENDPOINT,
+  accessKey: process.env.B2_KEY_ID, secretKey: process.env.B2_APPLICATION_KEY,
+  bucket: "geomacro-private-archive" });
 const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 const bundleId = `${stamp}-${suffix}-${randomUUID()}`;
 const archiveKey = `geomacro-evidence/v1/observation-bundles/${bundleId}.json.gz`;
@@ -53,9 +46,7 @@ async function archiveRead() {
         if (bytes.length > 20_000_000) throw new Error("OBS_BUNDLE_VERIFY_READ_TOO_LARGE");
         return bytes;
       }
-      if (!TRANSIENT_READ_STATUSES.has(response.status) || attempt === READ_ATTEMPTS) {
-        throw new Error(`OBS_BUNDLE_VERIFY_READ_FAILED_${response.status}`);
-      }
+      if (!TRANSIENT_READ_STATUSES.has(response.status) || attempt === READ_ATTEMPTS) throw new Error(`OBS_BUNDLE_VERIFY_READ_FAILED_${response.status}`);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       if (message === "OBS_BUNDLE_VERIFY_READ_TOO_LARGE" || /^OBS_BUNDLE_VERIFY_READ_FAILED_\d+$/.test(message) || attempt === READ_ATTEMPTS) throw cause;
@@ -65,10 +56,7 @@ async function archiveRead() {
   throw new Error("OBS_BUNDLE_VERIFY_READ_RETRY_EXHAUSTED");
 }
 
-const { data: candidates, error } = await db.rpc("geomacro_next_observation_archive_candidates", {
-  p_suffix: suffix,
-  p_limit: limit,
-});
+const { data: candidates, error } = await db.rpc("geomacro_next_observation_archive_candidates", { p_suffix: suffix, p_limit: limit });
 if (error) throw error;
 if (!candidates?.length) {
   console.log(JSON.stringify({ ok: true, status: "complete", processed: 0, shard_suffix: suffix }));
@@ -80,19 +68,12 @@ let rawBytes = 0;
 for (const row of candidates) {
   if (!row.observation_id || !String(row.observation_id).toLowerCase().endsWith(suffix) ||
       !/^[a-f0-9]{64}$/.test(String(row.raw_hash ?? "")) || !row.raw_payload ||
-      Date.now() - Date.parse(row.ingested_at) < 72 * 3_600_000) {
-    throw new Error("OBS_BUNDLE_SOURCE_INVALID");
-  }
+      Date.now() - Date.parse(row.ingested_at) < 72 * 3_600_000) throw new Error("OBS_BUNDLE_SOURCE_INVALID");
   const payloadBytes = Buffer.from(JSON.stringify(row.raw_payload));
   if (payloadBytes.length > 2_000_000) throw new Error("OBS_BUNDLE_MEMBER_TOO_LARGE");
   if (selected.length > 0 && rawBytes + payloadBytes.length > MAX_RAW_BUNDLE_BYTES) break;
-  selected.push({
-    observation_id: row.observation_id,
-    raw_hash: row.raw_hash,
-    ingested_at: row.ingested_at,
-    raw_payload: row.raw_payload,
-    payload_sha256: sha(payloadBytes),
-  });
+  selected.push({ observation_id: row.observation_id, raw_hash: row.raw_hash, ingested_at: row.ingested_at,
+    raw_payload: row.raw_payload, payload_sha256: sha(payloadBytes) });
   rawBytes += payloadBytes.length;
 }
 if (!selected.length) throw new Error("OBS_BUNDLE_EMPTY");
@@ -100,13 +81,8 @@ if (!selected.length) throw new Error("OBS_BUNDLE_EMPTY");
 let bundle;
 let compressed;
 while (selected.length) {
-  bundle = {
-    schema: "geomacro.observation-raw-bundle.v1",
-    bundle_id: bundleId,
-    shard_suffix: suffix,
-    created_at: new Date().toISOString(),
-    entries: selected,
-  };
+  bundle = { schema: "geomacro.observation-raw-bundle.v1", bundle_id: bundleId, shard_suffix: suffix,
+    created_at: new Date().toISOString(), entries: selected };
   compressed = gzipSync(Buffer.from(JSON.stringify(bundle)), { level: 9 });
   if (compressed.length <= MAX_COMPRESSED_BYTES) break;
   selected.pop();
@@ -115,78 +91,47 @@ if (!selected.length || !bundle || !compressed) throw new Error("OBS_BUNDLE_CANN
 
 await b2.put(archiveKey, compressed);
 const readback = await archiveRead();
-if (sha(readback) !== sha(compressed)) throw new Error("OBS_BUNDLE_COMPRESSED_HASH_MISMATCH");
+const bundleSha = sha(compressed);
+if (sha(readback) !== bundleSha) throw new Error("OBS_BUNDLE_COMPRESSED_HASH_MISMATCH");
 const restored = JSON.parse(gunzipSync(readback).toString("utf8"));
 if (restored?.schema !== "geomacro.observation-raw-bundle.v1" || restored?.bundle_id !== bundleId ||
-    restored?.shard_suffix !== suffix || !Array.isArray(restored?.entries) ||
-    restored.entries.length !== selected.length) throw new Error("OBS_BUNDLE_RESTORE_INVALID");
-
+    restored?.shard_suffix !== suffix || !Array.isArray(restored?.entries) || restored.entries.length !== selected.length) {
+  throw new Error("OBS_BUNDLE_RESTORE_INVALID");
+}
 const restoredById = new Map(restored.entries.map((entry) => [entry.observation_id, entry]));
 for (const source of selected) {
   const entry = restoredById.get(source.observation_id);
   if (!entry || entry.raw_hash !== source.raw_hash || entry.ingested_at !== source.ingested_at ||
-      entry.payload_sha256 !== source.payload_sha256 ||
-      sha(Buffer.from(JSON.stringify(entry.raw_payload))) !== source.payload_sha256 ||
+      entry.payload_sha256 !== source.payload_sha256 || sha(Buffer.from(JSON.stringify(entry.raw_payload))) !== source.payload_sha256 ||
       JSON.stringify(entry.raw_payload) !== JSON.stringify(source.raw_payload)) {
     throw new Error(`OBS_BUNDLE_MEMBER_RESTORE_INVALID_${source.observation_id}`);
   }
 }
 
 const bundleProof = {
-  schema: "geomacro.observation-raw-bundle-proof.v1",
-  bundle_id: bundleId,
-  archive_key: archiveKey,
-  shard_suffix: suffix,
-  member_count: selected.length,
-  compressed_sha256: sha(compressed),
-  compressed_bytes: compressed.length,
-  verified_at: new Date().toISOString(),
-  members: selected.map((entry) => ({
-    observation_id: entry.observation_id,
-    raw_hash: entry.raw_hash,
-    payload_sha256: entry.payload_sha256,
-    source_ingested_at: entry.ingested_at,
-  })),
+  schema: "geomacro.observation-raw-bundle-proof.v1", bundle_id: bundleId, archive_key: archiveKey,
+  shard_suffix: suffix, member_count: selected.length, compressed_sha256: bundleSha,
+  compressed_bytes: compressed.length, verified_at: new Date().toISOString(),
+  members: selected.map((entry) => ({ observation_id: entry.observation_id, raw_hash: entry.raw_hash,
+    payload_sha256: entry.payload_sha256, source_ingested_at: entry.ingested_at })),
 };
 await b2.put(proofKey, Buffer.from(JSON.stringify(bundleProof)));
 
-for (const entry of selected) {
-  const idHash = sha(Buffer.from(entry.observation_id));
-  await b2.put(`geomacro-evidence/v1/index/observations/${idHash}.json`, Buffer.from(JSON.stringify({
-    schema: "geomacro.observation-raw-archive.v2",
-    observation_id: entry.observation_id,
-    source_table: "public.live_external_observations",
-    source_raw_hash: entry.raw_hash,
-    bundle_id: bundleId,
-    bundle_archive_key: archiveKey,
-    bundle_proof_key: proofKey,
-    payload_sha256: entry.payload_sha256,
-    source_ingested_at: entry.ingested_at,
-    verified_at: bundleProof.verified_at,
-  })));
-}
-
-// The RPC performs a single transaction: every source row must still match the
-// exact JSONB payload and raw hash, otherwise no row in the bundle is cleared.
-const { data: cleared, error: clearError } = await db.rpc("geomacro_clear_verified_observation_bundle", {
-  p_items: selected.map(({ observation_id, raw_hash, raw_payload }) => ({ observation_id, raw_hash, raw_payload })),
+// One DB transaction records the exact verified bundle/member hashes and clears
+// raw_payload only if every source row still matches the pre-readback payload.
+const { data: cleared, error: clearError } = await db.rpc("geomacro_clear_verified_observation_bundle_v2", {
+  p_bundle_key: archiveKey,
+  p_bundle_sha256: bundleSha,
+  p_items: selected.map(({ observation_id, raw_hash, raw_payload, payload_sha256 }) => ({
+    observation_id, raw_hash, raw_payload, payload_sha256,
+  })),
 });
-if (clearError || !Array.isArray(cleared) || cleared.length !== selected.length) {
-  throw clearError ?? new Error("OBS_BUNDLE_CLEAR_UNCONFIRMED");
-}
+if (clearError || !Array.isArray(cleared) || cleared.length !== selected.length) throw clearError ?? new Error("OBS_BUNDLE_CLEAR_UNCONFIRMED");
 const clearedIds = new Set(cleared.map((row) => row.observation_id));
 if (selected.some((entry) => !clearedIds.has(entry.observation_id))) throw new Error("OBS_BUNDLE_CLEAR_SET_MISMATCH");
 
-console.log(JSON.stringify({
-  ok: true,
-  status: "progress",
-  bundle_id: bundleId,
-  archived: selected.length,
-  shard_suffix: suffix,
-  bundle_compressed_bytes: compressed.length,
-  b2_full_gets: 1,
-  observations_per_b2_get: selected.length,
-  source_rows_retained: true,
-  normalized_hashes_retained: true,
-  verification_mode: "one-full-bundle-readback-before-atomic-cleanup",
-}));
+console.log(JSON.stringify({ ok: true, status: "progress", bundle_id: bundleId, archived: selected.length,
+  shard_suffix: suffix, bundle_compressed_bytes: compressed.length, b2_full_gets: 1,
+  b2_puts_per_bundle: 2, observations_per_b2_get: selected.length, source_rows_retained: true,
+  bundle_pointer_recorded: true, normalized_hashes_retained: true,
+  verification_mode: "one-full-bundle-readback-before-atomic-cleanup" }));
