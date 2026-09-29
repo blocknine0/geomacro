@@ -25,6 +25,11 @@ describe("B2 GRO bundle externalization", () => {
     expect(migration).toContain("archive_bundle_sha256=p_bundle_sha256");
     expect(migration).toContain("g.payload=v_payload");
     expect(migration).toContain("g.expires_at < now() - interval '6 hours'");
+    const transition = read("supabase/migrations/20260929043000_repair_gro_bundle_transition.sql");
+    expect(transition).toContain("old.payload is not null and new.payload is null");
+    expect(transition).toContain("old.expires_at < now() - interval '6 hours'");
+    expect(transition).toContain("new.archive_bundle_key ~");
+    expect(transition).toContain("raise exception 'Geomacro Risk Objects are immutable'");
     expect(worker).toContain("archive_gzip_b64: memberGzip.toString");
     expect(reader).toContain("member.archive_gzip_b64");
     expect(reader).toContain("member.archive_sha256 !== row.archive_sha256");
