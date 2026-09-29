@@ -14,8 +14,6 @@ on:
         options:
           - plan
           - apply
-  schedule:
-    - cron: "17 1,9,17 * * *"
   pull_request:
     paths:
       - ".github/workflows/deploy-telegram-signal-supabase.yml"
