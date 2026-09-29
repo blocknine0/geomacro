@@ -37,7 +37,7 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("hosted canonical read unavailable; trying authoritative edge");
   });
 
-  it("publishes only after B2 write/readback verification and never deletes database history", () => {
+  it("publishes only after B2 write/readback verification and reduces Supabase snapshot reads", () => {
     const publisher = read("scripts/ops/publish-b2-live-snapshots.ts");
     const workflow = read(".github/workflows/b2-live-snapshot-maintenance.yml");
     expect(publisher).toContain("await b2.put(item.key, packed)");
@@ -45,7 +45,7 @@ describe("non-destructive B2 live read boundary", () => {
     expect(publisher).toContain("B2_LIVE_READBACK_HASH_INVALID");
     expect(publisher).not.toContain(".delete(");
     expect(publisher).not.toContain("delete from");
-    expect(workflow).toContain('cron: "37 */2 * * *"');
+    expect(workflow).toContain('cron: "47 */6 * * *"');
     expect(workflow).toContain("cancel-in-progress: true");
   });
 });
