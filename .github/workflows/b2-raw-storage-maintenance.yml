@@ -82,4 +82,42 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Archive verified raw Storage bundle and prune via Storage API
-        run: node scripts/ops/b2-raw-storage-bundle-maintenance.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          max_attempts=4
+          attempt=1
+
+          while [ "$attempt" -le "$max_attempts" ]; do
+            log_file="$(mktemp)"
+            echo "Raw Storage bundle attempt ${attempt}/${max_attempts} for shard ${B2_RAW_MAINTENANCE_SUFFIX}"
+
+            set +e
+            node scripts/ops/b2-raw-storage-bundle-maintenance.mjs 2>&1 | tee "$log_file"
+            status=${PIPESTATUS[0]}
+            set -e
+
+            if [ "$status" -eq 0 ]; then
+              rm -f "$log_file"
+              exit 0
+            fi
+
+            if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
+              echo "Non-transient archive failure detected; refusing to retry."
+              rm -f "$log_file"
+              exit "$status"
+            fi
+
+            rm -f "$log_file"
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "Supabase statement timeout persisted after ${max_attempts} attempts."
+              exit "$status"
+            fi
+
+            sleep_seconds=$((attempt * 8))
+            echo "Transient Supabase statement timeout; retrying in ${sleep_seconds}s."
+            sleep "$sleep_seconds"
+            attempt=$((attempt + 1))
+          done
