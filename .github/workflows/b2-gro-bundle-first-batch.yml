@@ -13,6 +13,7 @@ on:
     paths:
       - ".github/workflows/b2-gro-bundle-first-batch.yml"
       - "scripts/ops/b2-archive-gro-bundle.ts"
+      - "scripts/ops/b2-archive-gro-retired-keys.ts"
       - "supabase/functions/gro-archive-read/index.ts"
 
 permissions:
@@ -44,6 +45,7 @@ jobs:
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
       GRO_BUNDLE_LIMIT: "25"
       GRO_BUNDLE_ROUNDS: "20"
+      GRO_RETIRED_KEY_ROUNDS: "4"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -89,7 +91,9 @@ jobs:
             fi
             test "$success" -eq 1
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then
-              echo "Shard ${GRO_ARCHIVE_SUFFIX} is fully drained."
+              echo "Shard ${GRO_ARCHIVE_SUFFIX} is fully drained for the active key."
               break
             fi
           done
+      - name: Archive verified GRO payloads signed by retired keys
+        run: bun scripts/ops/b2-archive-gro-retired-keys.ts
