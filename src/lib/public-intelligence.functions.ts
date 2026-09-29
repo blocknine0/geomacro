@@ -53,9 +53,23 @@ function normalizeCategory(value: unknown): PublicIntelligenceCategory | null {
     : null;
 }
 
-function missingCategories(rows: PublicIntelligenceRow[]): PublicIntelligenceCategory[] {
+function rowTime(row: PublicIntelligenceRow): number {
+  const published = Date.parse(String(row.published_at ?? ""));
+  if (Number.isFinite(published)) return published;
+  const created = Date.parse(String(row.created_at ?? ""));
+  return Number.isFinite(created) ? created : -Infinity;
+}
+
+function missingCurrentCategories(
+  rows: PublicIntelligenceRow[],
+  now: number,
+): PublicIntelligenceCategory[] {
   const present = new Set(
     rows
+      .filter((row) => {
+        const at = rowTime(row);
+        return at >= now - DAY_MS && at <= now;
+      })
       .map((row) => normalizeCategory(row.category))
       .filter((category): category is PublicIntelligenceCategory => Boolean(category)),
   );
@@ -75,11 +89,7 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
   }
 
   return [...dedupe.values()]
-    .sort((a, b) => {
-      const left = Date.parse(String(a.published_at ?? a.created_at));
-      const right = Date.parse(String(b.published_at ?? b.created_at));
-      return (Number.isFinite(right) ? right : -Infinity) - (Number.isFinite(left) ? left : -Infinity);
-    })
+    .sort((a, b) => rowTime(b) - rowTime(a))
     .slice(0, 300);
 }
 
@@ -88,9 +98,11 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
  * snapshot and as a bounded fallback if the B2 snapshot is unavailable.
  *
  * The canonical structured feed is the fast path. Fallback tables are queried
- * only for domains missing from that feed. Every Data API request has its own
- * short abort deadline so /intelligence cannot hang behind a slow Supabase read.
- * A partial verified feed is preferable to a page-level outage.
+ * for domains that do not have a current (<24h) row. Older structured rows are
+ * retained for explicit research but never suppress a fresher fallback path.
+ * Every Data API request has its own short abort deadline so /intelligence
+ * cannot hang behind a slow Supabase read. A partial verified feed is preferable
+ * to a page-level outage.
  */
 export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
@@ -141,7 +153,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
     }
   }
 
-  let missing = missingCategories(rows);
+  let missing = missingCurrentCategories(rows, now);
   if (rows.length > 0 && missing.length === 0) return sortAndDedupe(rows);
 
   if (missing.length > 0) {
@@ -203,7 +215,7 @@ export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIn
     }
   }
 
-  missing = missingCategories(rows);
+  missing = missingCurrentCategories(rows, now);
   if (missing.length > 0) {
     const legacyResult = await supabase
       .from("events")
