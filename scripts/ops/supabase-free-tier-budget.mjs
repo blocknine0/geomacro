@@ -27,6 +27,24 @@ const result = {
 };
 console.log(JSON.stringify(result));
 
-if (process.argv.includes("--require-bulk-write") && data.bulk_write_allowed !== true) {
+// The two-hour Auto Ingest News workflow historically used this script in
+// report-only mode. That allowed the primary recurring growth path to continue
+// even after the database crossed the 450 MiB emergency freeze threshold.
+// Enforce the same fail-closed budget automatically for that named workflow,
+// while keeping ordinary CLI invocations report-only and leaving B2 archive /
+// recovery workflows free to reduce Supabase usage.
+const requireBulkWrite =
+  process.argv.includes("--require-bulk-write") ||
+  process.env.GITHUB_WORKFLOW === "Auto Ingest News";
+
+if (requireBulkWrite && data.bulk_write_allowed !== true) {
+  console.error(
+    JSON.stringify({
+      ok: false,
+      code: "SUPABASE_FREE_TIER_BULK_WRITE_FROZEN",
+      database_bytes: data.database_bytes,
+      freeze_bytes: data.freeze_bytes,
+    }),
+  );
   process.exitCode = 78;
 }
