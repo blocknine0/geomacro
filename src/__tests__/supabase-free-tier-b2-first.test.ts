@@ -53,9 +53,9 @@ describe("Supabase free-tier B2-first storage contract", () => {
 
   it("runs observation and raw bundle recovery hourly while GRO remains manually held", () => {
     expect(observationWorkflow).toContain('cron: "17 * * * *"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "25"');
     expect(workflow).toContain('cron: "37 * * * *"');
-    expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "100"');
+    expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "25"');
     expect(workflow).toContain("never SQL-delete storage.objects");
     expect(groWorkflow).toContain("workflow_dispatch");
     expect(groWorkflow).not.toContain("schedule:");
@@ -63,7 +63,8 @@ describe("Supabase free-tier B2-first storage contract", () => {
 
   it("keeps both bundle fanouts bounded and sharded", () => {
     for (const source of [workflow, observationWorkflow]) {
-      expect(source).toContain("max-parallel: 2");
+      expect(source).toContain("max-parallel: 1");
+      expect(source).not.toContain("  push:");
       expect(source).toContain("fail-fast: false");
       expect(source).toContain("b2_canary:");
       expect(source).toContain("needs: b2_canary");
