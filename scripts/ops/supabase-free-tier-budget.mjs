@@ -23,16 +23,11 @@ const result = {
     supabase_role: "compact_operational_control_plane",
     b2_role: "raw_archive_historical_large_payloads",
     bulk_supabase_writes_allowed: data.bulk_write_allowed === true,
+    recurring_ingest_allowed: data.mode === "normal",
   },
 };
 console.log(JSON.stringify(result));
 
-// The two-hour Auto Ingest News workflow historically used this script in
-// report-only mode. That allowed the primary recurring growth path to continue
-// even after the database crossed the 450 MiB emergency freeze threshold.
-// Enforce the same fail-closed budget automatically for that named workflow,
-// while keeping ordinary CLI invocations report-only and leaving B2 archive /
-// recovery workflows free to reduce Supabase usage.
 const requireBulkWrite =
   process.argv.includes("--require-bulk-write") ||
   process.env.GITHUB_WORKFLOW === "Auto Ingest News";
@@ -44,6 +39,23 @@ if (requireBulkWrite && data.bulk_write_allowed !== true) {
       code: "SUPABASE_FREE_TIER_BULK_WRITE_FROZEN",
       database_bytes: data.database_bytes,
       freeze_bytes: data.freeze_bytes,
+    }),
+  );
+  process.exitCode = 78;
+}
+
+// Recurring writers need more headroom than one-off maintenance. The warning
+// band starts at 400 MiB; scheduled growth is allowed only below that line.
+const requireNormal = process.argv.includes("--require-normal");
+if (requireNormal && data.mode !== "normal") {
+  console.error(
+    JSON.stringify({
+      ok: false,
+      code: "SUPABASE_FREE_TIER_HEADROOM_REQUIRED",
+      mode: data.mode,
+      database_bytes: data.database_bytes,
+      warn_bytes: data.warn_bytes,
+      target_bytes: data.target_bytes,
     }),
   );
   process.exitCode = 78;
