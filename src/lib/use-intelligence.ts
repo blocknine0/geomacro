@@ -116,7 +116,9 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
-  // The current UI metrics below must never use the quiet-day fallback.
+  const domainRows = usedFallbackWindow ? recent : in24h;
+  // Current risk ranking and movement metrics remain current-only. Domain counts
+  // may describe the clearly labeled latest-verified fallback on a quiet day.
 
   // "Current risk topics" must never use the quiet-day fallback. A historical
   // record is useful for research, but it is not a current risk topic.
@@ -146,7 +148,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
         );
 
   const counts = new Map<string, { count: number; sum: number; scored: number }>();
-  for (const r of in24h) {
+  for (const r of domainRows) {
     const key = (r.category ?? "").trim();
     if (!key) continue;
     const c = counts.get(key) ?? { count: 0, sum: 0, scored: 0 };
