@@ -54,6 +54,21 @@ describe("B2 GRO bundle externalization", () => {
     }
   });
 
+  it("drains eligible historical signing keys with verified bounded rounds", () => {
+    const worker = read("scripts/ops/b2-archive-gro-bundle.ts");
+    const workflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
+    expect(worker).toContain('GRO_ARCHIVE_ALL_KEYS === "true"');
+    expect(worker).toContain('.select("signing_key_id")');
+    expect(worker).toContain('.is("archive_key", null)');
+    expect(worker).toContain('.lt("expires_at"');
+    expect(worker).toContain("GRO_BUNDLE_ACTIVE_KEY_NOT_PUBLISHED");
+    expect(worker.indexOf("verifyRiskObjectSignature(row.payload, keys)"))
+      .toBeLessThan(worker.indexOf('db.rpc("geomacro_clear_verified_gro_bundle_v1"'));
+    expect(workflow).toContain('GRO_ARCHIVE_ALL_KEYS: "true"');
+    expect(workflow).toContain('GRO_BUNDLE_ROUNDS: "4"');
+    expect(workflow).toContain('status == "progress" and .archived > 0 and .b2_full_gets == 1');
+  });
+
   it("runs bounded bundles with low parallelism", () => {
     const workflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
     expect(workflow).toContain('GRO_BUNDLE_LIMIT: "1"');
