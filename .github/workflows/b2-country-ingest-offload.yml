@@ -2,19 +2,6 @@ name: B2 Country Ingest Offload
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/b2-country-ingest-offload.yml
-      - scripts/ops/b2-country-ingest-offload.mjs
-  schedule:
-    - cron: "23 * * * *"
-  workflow_run:
-    workflows:
-      - Global Country Raw Source Mesh
-      - Intelligence Orchestrator
-      - Global Realtime Production Repair
-    types: [completed]
 
 permissions:
   contents: read
@@ -25,9 +12,7 @@ concurrency:
 
 jobs:
   verified-offload:
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      (github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main')
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
