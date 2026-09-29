@@ -48,7 +48,7 @@ jobs:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_verified_bundle_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 30
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -56,8 +56,8 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      OBS_BUNDLE_LIMIT: "50"
-      OBS_BUNDLE_ROUNDS: "40"
+      OBS_BUNDLE_LIMIT: "100"
+      OBS_BUNDLE_ROUNDS: "4"
       OBS_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -95,6 +95,8 @@ jobs:
             fi
             test "$success" -eq 1
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
+            # Give free-tier Disk IO a recovery window between verified bundles.
+            sleep 15
           done
 
 # Manual verified observation drain trigger: 2026-09-29
