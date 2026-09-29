@@ -9,6 +9,11 @@ const CIRCUIT_OPEN_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 3_500;
 const MAX_COMPRESSED_BYTES = 12_000_000;
 const MAX_DECOMPRESSED_BYTES = 40_000_000;
+// Intelligence rows carry their own timestamps and the UI distinguishes the
+// current 24h window from a latest-verified fallback. Keep the verified B2
+// snapshot readable for a bounded 30-day recovery window so a paused Supabase
+// project does not turn an otherwise valid public archive into a page outage.
+const PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -174,7 +179,7 @@ export async function readB2PublicIntelligence(): Promise<PublicIntelligenceRow[
   }>(B2_PUBLIC_INTELLIGENCE_KEY);
   if (
     payload?.schema !== "geomacro.public-intelligence-live.v1" ||
-    !recentEnough(payload.generated_at) ||
+    !recentEnough(payload.generated_at, PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS) ||
     !Array.isArray(payload.rows) ||
     payload.rows.length === 0 ||
     payload.rows.length > 300
