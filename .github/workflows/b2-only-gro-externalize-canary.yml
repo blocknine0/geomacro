@@ -3,9 +3,13 @@ name: Signed GRO B2 bundle externalization
 # Expired verified signed GRO payloads are bundled so one full B2 GET verifies
 # up to 50 objects before an atomic DB cleanup. Individual B2 archive objects
 # remain available for the existing restore path. Manual-only while B2 budget
-# remains constrained; never bypass the verified canary.
+# remains constrained. A one-shot main push still requires the verified canary.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-only-gro-externalize-canary.yml"
 
 permissions:
   contents: read
