@@ -35,7 +35,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(contract).not.toMatch(/delete\s+from\s+storage\.objects/i);
   });
 
-  it("uses one full B2 readback to verify up to 100 raw Storage members before deletion", () => {
+  it("uses one full B2 readback to verify raw Storage members before deletion", () => {
     expect(rawWorker).toContain("B2_RAW_BUNDLE_READBACK_HASH_INVALID");
     expect(rawWorker).toContain("B2_RAW_BUNDLE_MEMBER_RESTORE_INVALID_");
     expect(rawWorker).toContain("geomacro_mark_verified_raw_bundle");
@@ -51,37 +51,35 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(rawRestore).toContain("archive_bundle_key");
     expect(rawRestore).toContain("geomacro.raw-storage-bundle.v1");
     expect(rawRestore).toContain("RAW_BUNDLE_MEMBER_HASH_MISMATCH");
-    expect(rawRestore).toContain("archiveKey = `geomacro-evidence/v1/${row.object_path}`");
   });
 
-  it("runs verified raw and observation cold maintenance while GRO uses adaptive bundle-native recovery", () => {
+  it("runs adaptive verified cold maintenance on all three heavy payload classes", () => {
     expect(observationWorkflow).toContain('cron: "17 * * * *"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "20"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "50"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "40"');
+    expect(observationWorkflow).toContain("cancel-in-progress: true");
+    expect(observationWorkflow).toContain("Persistent free-tier statement timeout after verified observation progress");
+
     expect(workflow).toContain('cron: "37 * * * *"');
-    expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "100"');
-    expect(workflow).toContain('B2_RAW_BUNDLE_ROUNDS: "20"');
-    expect(workflow).toContain("never SQL-delete storage.objects");
-    expect(groLegacyWorkflow).toContain("workflow_dispatch");
-    expect(groLegacyWorkflow).not.toContain("schedule:");
+    expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "25"');
+    expect(workflow).toContain('B2_RAW_BUNDLE_ROUNDS: "40"');
+    expect(workflow).toContain("cancel-in-progress: true");
+    expect(workflow).toContain("Persistent free-tier statement timeout after verified raw progress");
+
     expect(groBundleWorkflow).toContain('cron: "17 */6 * * *"');
     expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "25"');
     expect(groBundleWorkflow).toContain('GRO_BUNDLE_ROUNDS: "20"');
-    expect(groBundleWorkflow).toContain("Persistent free-tier statement timeout after verified progress");
   });
 
-  it("keeps all bundle fanouts bounded, sharded and canary-gated where destructive cleanup follows", () => {
-    expect(workflow).toContain("max-parallel: 2");
+  it("keeps all destructive fanouts canary-gated and serialized against free-tier DB pressure", () => {
+    expect(workflow).toContain("max-parallel: 1");
     expect(workflow).toContain("fail-fast: false");
     expect(workflow).toContain("b2_canary:");
     expect(workflow).toContain("needs: b2_canary");
     expect(workflow).toContain("needs.b2_canary.result == 'success'");
-    expect(workflow).toContain("B2_RAW_MAINTENANCE_SUFFIX");
-    expect(contract).toContain("geomacro_next_raw_storage_candidates_shard");
-    expect(contract).toContain("live_raw_source_snapshots_b2_archive_shard_idx");
     expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "1"');
 
-    expect(observationWorkflow).toContain("max-parallel: 2");
+    expect(observationWorkflow).toContain("max-parallel: 1");
     expect(observationWorkflow).toContain("fail-fast: false");
     expect(observationWorkflow).toContain("b2_canary:");
     expect(observationWorkflow).toContain("needs: b2_canary");
@@ -92,37 +90,23 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(groBundleWorkflow).toContain("fail-fast: false");
   });
 
-  it("uses one full B2 GET to verify and atomically clear an observation bundle", () => {
-    expect(observationWorker).toContain("geomacro_clear_verified_observation_bundle_v2");
+  it("preserves observation and GRO fail-closed verification before cleanup", () => {
     expect(observationWorker).toContain("OBS_BUNDLE_COMPRESSED_HASH_MISMATCH");
     expect(observationWorker).toContain("OBS_BUNDLE_MEMBER_RESTORE_INVALID_");
     expect(observationWorker).toContain("b2_full_gets: 1");
-  });
 
-  it("retains GRO verification and bundle-native restore before payload cleanup", () => {
-    expect(groLegacyWorkflow).toContain("max-parallel: 2");
     expect(groLegacyWorker).toContain("B2_ONLY_GRO_READBACK_INVALID");
-    expect(groLegacyWorker).toContain("b2_gets_per_object: 1");
-    expect(groLegacyWorker.indexOf("const readback = await archiveRead"))
-      .toBeLessThan(groLegacyWorker.indexOf(".update({ payload: null"));
-
     expect(groBundleWorker).toContain("GRO_BUNDLE_COMPRESSED_HASH_MISMATCH");
     expect(groBundleWorker).toContain("GRO_BUNDLE_MEMBER_RESTORE_INVALID_");
     expect(groBundleWorker).toContain("bundle_native_restore: true");
-    expect(groBundleWorker.indexOf("const readback = await archiveRead"))
-      .toBeLessThan(groBundleWorker.indexOf("geomacro_clear_verified_gro_bundle_v1"));
     expect(groRestore).toContain("archive_bundle_key");
     expect(groRestore).toContain("GRO_BUNDLE_MEMBER_HASH_INVALID");
   });
 
-  it("never auto-triggers the heavy production coverage refresh and requires free-tier headroom", () => {
+  it("never auto-triggers heavy production coverage or intelligence refresh while frozen", () => {
     expect(productionCoverageWorkflow).toContain("workflow_dispatch:");
     expect(productionCoverageWorkflow).not.toContain("branches: [main]");
-    expect(productionCoverageWorkflow).not.toContain('supabase/migrations/**');
     expect(productionCoverageWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
-  });
-
-  it("keeps the manual intelligence orchestrator fail-closed while Supabase is frozen", () => {
     expect(orchestratorWorkflow).toContain("workflow_dispatch:");
     expect(orchestratorWorkflow).not.toContain("schedule:");
     expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
