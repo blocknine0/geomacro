@@ -1,3 +1,4 @@
+import { readB2PublicIntelligence } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
 import type { AskAnswer } from "./ask-intelligence.server";
 
@@ -137,13 +138,34 @@ function compactStoredAnswer(question: string, rows: StoredEvent[], terms: strin
   };
 }
 
+function b2StoredRows(rows: Awaited<ReturnType<typeof readB2PublicIntelligence>>): StoredEvent[] {
+  return (rows ?? []).map((row) => ({
+    id: row.id,
+    category: row.category,
+    summary: row.summary ?? row.source_title,
+    narrative: null,
+    severity: row.severity,
+    confidence: null,
+    delta: row.delta,
+    published_at: row.published_at,
+    created_at: row.created_at,
+  }));
+}
+
 async function permanentReader(input: { question: string }) {
   if (FRESHNESS_RE.test(input.question)) return { sufficient: false, data: null };
-  const db = getAppSupabase();
-  if (!db) return { sufficient: false, data: null };
 
   const terms = termsOf(input.question);
   if (!terms.length) return { sufficient: false, data: null };
+
+  // Independent read path first. This lets non-fresh Ask queries keep working
+  // when Supabase is degraded or intentionally paused.
+  const b2Rows = b2StoredRows(await readB2PublicIntelligence());
+  const b2Answer = compactStoredAnswer(input.question, b2Rows, terms);
+  if (b2Answer) return { sufficient: true, data: b2Answer };
+
+  const db = getAppSupabase();
+  if (!db) return { sufficient: false, data: null };
 
   const filters = terms.slice(0, 4).flatMap((term) => {
     const safe = safeFilterTerm(term);
