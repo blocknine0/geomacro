@@ -2,7 +2,8 @@ name: B2 GRO cold archive maintenance
 
 # Supabase keeps hot operational state only. Expired signed GRO payloads move to
 # verified B2 bundles. Every batch is read back and signature-verified before
-# payload cleanup. Routine runs are capped and serialized against free-tier DB pressure.
+# payload cleanup. Routine runs serialize DB pressure and pause a shard cleanly
+# after persistent free-tier statement timeout; the next cycle resumes it.
 on:
   workflow_dispatch:
   schedule:
@@ -26,7 +27,7 @@ jobs:
     if: ${{ github.repository == 'blocknine0/geomacro' }}
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_one_shard_${{ matrix.suffix }}
@@ -41,8 +42,8 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
-      GRO_BUNDLE_LIMIT: "50"
-      GRO_BUNDLE_ROUNDS: "10"
+      GRO_BUNDLE_LIMIT: "25"
+      GRO_BUNDLE_ROUNDS: "20"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -59,6 +60,8 @@ jobs:
           for round in $(seq 1 "$rounds"); do
             echo "GRO cold archive round ${round}/${rounds} for shard ${GRO_ARCHIVE_SUFFIX}"
             success=0
+            persistent_timeout=0
+            output=""
             for attempt in 1 2 3; do
               set +e
               output="$(bun scripts/ops/b2-archive-gro-bundle.ts 2>&1)"
@@ -70,12 +73,20 @@ jobs:
                 break
               fi
               if ! printf '%s\n' "$output" | grep -Eq '57014|statement timeout|canceling statement due to statement timeout'; then
-                echo "Non-transient GRO archive failure detected; refusing to retry."
+                echo "Non-transient GRO archive failure detected; refusing to continue."
                 exit "$rc"
               fi
-              if [ "$attempt" -eq 3 ]; then exit "$rc"; fi
+              if [ "$attempt" -eq 3 ]; then
+                persistent_timeout=1
+                break
+              fi
               sleep $((attempt * 8))
             done
+
+            if [ "$persistent_timeout" -eq 1 ]; then
+              echo "Persistent free-tier statement timeout after verified progress; pausing shard ${GRO_ARCHIVE_SUFFIX} for this cycle."
+              break
+            fi
             test "$success" -eq 1
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then
               echo "Shard ${GRO_ARCHIVE_SUFFIX} is fully drained."
