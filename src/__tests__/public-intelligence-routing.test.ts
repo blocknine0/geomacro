@@ -17,7 +17,8 @@ describe("public intelligence routing contract", () => {
     expect(publicRead).toContain("missingCurrentCategories(rows, now)");
     expect(publicRead).toContain("at >= now - DAY_MS && at <= now");
     expect(publicRead).toContain("if (rows.length > 0 && missing.length === 0) return sortAndDedupe(rows);");
-    expect(publicRead).toContain("Older structured rows are retained for explicit research but never suppress a fresher fallback path.");
+    expect(publicRead).toContain("Older structured rows are");
+    expect(publicRead).toContain("retained for explicit research but never suppress a fresher fallback path.");
     expect(publicRead).toContain("PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS");
   });
 
