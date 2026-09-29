@@ -38,8 +38,9 @@ describe("Geomacro zero-cost Growth Agent", () => {
     expect(growth.anti_spam.max_promotional_posts_per_channel_per_day).toBeLessThanOrEqual(2);
   });
 
-  it("runs continuously in bounded six-hour shadow cycles and records evidence", () => {
-    expect(workflow).toContain('cron: "17 */6 * * *"');
+  it("keeps recurring shadow writes quota-held and records evidence when run manually", () => {
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("scripts/marketing/run-growth-agent.mjs");
     expect(workflow).toContain("geomacro-growth-agent-run");
     expect(workflow).toContain("GEOMACRO_GROWTH_AGENT_ACK");
