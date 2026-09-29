@@ -5,182 +5,168 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 
+let cachedRiskClient: SupabaseClient | null = null;
 
-let cachedRiskClient:
-  SupabaseClient | null = null;
-
-
-const AUTHORITATIVE_RISK_PROJECT_REF =
-  "ldpwajisioljyjtojvfx";
-
+const AUTHORITATIVE_RISK_PROJECT_REF = "ldpwajisioljyjtojvfx";
 
 /**
  * Hard upper bound for privileged Risk Object / Risk Gate database calls.
  *
  * A degraded database must fail closed instead of leaving authenticated
- * commercial requests hanging indefinitely. Keep this conservative enough
- * for normal WAN latency while still producing a deterministic failure.
+ * commercial requests hanging indefinitely.
  */
-export const RISK_SUPABASE_REQUEST_TIMEOUT_MS =
-  15_000;
+export const RISK_SUPABASE_REQUEST_TIMEOUT_MS = 15_000;
+export const RISK_SUPABASE_CIRCUIT_FAILURE_THRESHOLD = 3;
+export const RISK_SUPABASE_CIRCUIT_OPEN_MS = 30_000;
 
+let riskFailureCount = 0;
+let riskCircuitOpenedAt = 0;
 
 export function createRiskSupabaseRequestSignal(
   upstreamSignal?: AbortSignal | null,
   timeoutMs = RISK_SUPABASE_REQUEST_TIMEOUT_MS,
 ): AbortSignal {
-  if (
-    !Number.isFinite(timeoutMs) ||
-    timeoutMs < 1 ||
-    timeoutMs > 60_000
-  ) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
     throw new Error(
       "Risk Supabase timeout must be between 1 and 60000 milliseconds",
     );
   }
 
-  const deadlineSignal =
-    AbortSignal.timeout(timeoutMs);
-
+  const deadlineSignal = AbortSignal.timeout(timeoutMs);
   return upstreamSignal
-    ? AbortSignal.any([
-        upstreamSignal,
-        deadlineSignal,
-      ])
+    ? AbortSignal.any([upstreamSignal, deadlineSignal])
     : deadlineSignal;
 }
 
-
-function riskSupabaseFetch(
-  input: Parameters<typeof fetch>[0],
-  init?: Parameters<typeof fetch>[1],
-): ReturnType<typeof fetch> {
-  return globalThis.fetch(
-    input,
-    {
-      ...init,
-      signal:
-        createRiskSupabaseRequestSignal(
-          init?.signal,
-        ),
-    },
+function isTransientRiskStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    (status >= 520 && status <= 524)
   );
 }
 
+function isRiskCircuitOpen(now = Date.now()): boolean {
+  if (riskCircuitOpenedAt === 0) return false;
+  if (now - riskCircuitOpenedAt >= RISK_SUPABASE_CIRCUIT_OPEN_MS) {
+    riskCircuitOpenedAt = 0;
+    riskFailureCount = 0;
+    return false;
+  }
+  return true;
+}
 
-function projectRefOf(
-  url: string,
-): string | null {
+function noteRiskSuccess() {
+  riskFailureCount = 0;
+  riskCircuitOpenedAt = 0;
+}
+
+function noteRiskFailure() {
+  riskFailureCount += 1;
+  if (
+    riskFailureCount >= RISK_SUPABASE_CIRCUIT_FAILURE_THRESHOLD &&
+    riskCircuitOpenedAt === 0
+  ) {
+    riskCircuitOpenedAt = Date.now();
+  }
+}
+
+function riskCircuitOpenResponse(): Response {
+  return new Response(JSON.stringify({ message: "Risk store temporarily unavailable" }), {
+    status: 503,
+    headers: {
+      "content-type": "application/json",
+      "retry-after": String(Math.ceil(RISK_SUPABASE_CIRCUIT_OPEN_MS / 1000)),
+      "x-geomacro-degraded": "risk-supabase-circuit-open",
+    },
+  });
+}
+
+async function riskSupabaseFetch(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+): Promise<Response> {
+  if (isRiskCircuitOpen()) return riskCircuitOpenResponse();
+
   try {
-    const host =
-      new URL(url).hostname;
+    const response = await globalThis.fetch(input, {
+      ...init,
+      signal: createRiskSupabaseRequestSignal(init?.signal),
+    });
+    if (isTransientRiskStatus(response.status)) noteRiskFailure();
+    else noteRiskSuccess();
+    return response;
+  } catch (error) {
+    noteRiskFailure();
+    throw error;
+  }
+}
 
-    const suffix =
-      ".supabase.co";
-
-    if (!host.endsWith(suffix)) {
-      return null;
-    }
-
-    return host.slice(
-      0,
-      -suffix.length,
-    ) || null;
+function projectRefOf(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    const suffix = ".supabase.co";
+    if (!host.endsWith(suffix)) return null;
+    return host.slice(0, -suffix.length) || null;
   } catch {
     return null;
   }
 }
 
-
 /**
- * Dedicated privileged Supabase client for
- * Geomacro Risk Object / Risk Gate infrastructure.
+ * Dedicated privileged Supabase client for Geomacro Risk Object / Risk Gate.
  *
- * IMPORTANT:
- * - server-only
- * - service-role only
- * - never falls back to anon
- * - never expose this client to browser code
- * - only the authoritative Risk project is accepted
- * - every network request has a hard deadline and fails closed on timeout
+ * Security and continuity rules:
+ * - server-only, service-role only, authoritative project only;
+ * - never falls back to anon and never exposes credentials to browser code;
+ * - every network request has a hard deadline;
+ * - automatic PostgREST retries are disabled so privileged POST/RPC writes are
+ *   never implicitly replayed;
+ * - repeated transient failures open a short circuit so a Supabase incident
+ *   cannot exhaust request workers or connection capacity.
  */
-export function
-getRiskSupabase():
-  SupabaseClient | null {
-  if (cachedRiskClient) {
-    return cachedRiskClient;
-  }
+export function getRiskSupabase(): SupabaseClient | null {
+  if (cachedRiskClient) return cachedRiskClient;
 
   const candidates = [
     {
-      url:
-        process.env.APP_SUPABASE_URL,
-
-      key:
-        process.env
-          .APP_SUPABASE_SERVICE_ROLE_KEY,
+      url: process.env.APP_SUPABASE_URL,
+      key: process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
     },
     {
-      url:
-        process.env.SUPABASE_URL,
-
-      key:
-        process.env
-          .SUPABASE_SERVICE_ROLE_KEY,
+      url: process.env.SUPABASE_URL,
+      key: process.env.SUPABASE_SERVICE_ROLE_KEY,
     },
   ];
 
-  const selected =
-    candidates.find(
-      (candidate) =>
-        Boolean(
-          candidate.url &&
-          candidate.key,
-        ) &&
-        projectRefOf(
-          candidate.url as string,
-        ) ===
-          AUTHORITATIVE_RISK_PROJECT_REF,
-    );
+  const selected = candidates.find(
+    (candidate) =>
+      Boolean(candidate.url && candidate.key) &&
+      projectRefOf(candidate.url as string) === AUTHORITATIVE_RISK_PROJECT_REF,
+  );
 
-  if (
-    !selected?.url ||
-    !selected.key
-  ) {
-    return null;
-  }
+  if (!selected?.url || !selected.key) return null;
 
-  cachedRiskClient =
-    createClient(
-      selected.url,
-      selected.key,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-        global: {
-          fetch:
-            riskSupabaseFetch,
-        },
-      },
-    );
+  cachedRiskClient = createClient(selected.url, selected.key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    db: { retry: false },
+    global: { fetch: riskSupabaseFetch },
+  });
 
   return cachedRiskClient;
 }
 
-
-export function
-requireRiskSupabase():
-  SupabaseClient {
-  const db =
-    getRiskSupabase();
-
+export function requireRiskSupabase(): SupabaseClient {
+  const db = getRiskSupabase();
   if (!db) {
     throw new Error(
       "Risk Supabase service-role client is not configured for the authoritative project",
     );
   }
-
   return db;
 }

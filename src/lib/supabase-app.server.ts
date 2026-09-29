@@ -2,6 +2,9 @@ import process from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const AUTHORITATIVE_APP_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
+export const APP_SUPABASE_REQUEST_TIMEOUT_MS = 8_000;
+export const APP_SUPABASE_CIRCUIT_FAILURE_THRESHOLD = 3;
+export const APP_SUPABASE_CIRCUIT_OPEN_MS = 30_000;
 
 type AppSupabaseConfig = {
   url: string;
@@ -41,14 +44,6 @@ function isExplicitLocalDevelopmentUrl(url: string, env: NodeJS.ProcessEnv): boo
   }
 }
 
-/**
- * Resolve the app-owned Supabase runtime without ever trusting hosting/browser
- * VITE_SUPABASE_* injection. APP_* remains the preferred hosted SSR naming.
- * Trusted server/ops aliases are accepted only when the selected URL resolves
- * to the same authoritative Geomacro project. This also tolerates mixed legacy
- * server naming such as APP_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
- * Explicit localhost Supabase is allowed only outside production.
- */
 export function resolveAppSupabaseConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AppSupabaseConfig | null {
@@ -94,20 +89,126 @@ export function resolveAppSupabaseConfig(
   return null;
 }
 
-/**
- * App-owned Supabase client (separate from any Lovable Cloud project).
- *
- * IMPORTANT:
- * - never consumes browser VITE_SUPABASE_* values;
- * - prefers APP_* hosted-runtime configuration;
- * - can recover from APP_* binding gaps by using trusted server-only SUPABASE_*
- *   aliases for the same authoritative Geomacro project;
- * - does not cache a failed/null resolution because some edge runtimes bind
- *   environment variables at request time.
- */
+let failureCount = 0;
+let circuitOpenedAt = 0;
+
+function isTransientStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    (status >= 520 && status <= 524)
+  );
+}
+
+function isCircuitOpen(now = Date.now()): boolean {
+  if (circuitOpenedAt === 0) return false;
+  if (now - circuitOpenedAt >= APP_SUPABASE_CIRCUIT_OPEN_MS) {
+    circuitOpenedAt = 0;
+    failureCount = 0;
+    return false;
+  }
+  return true;
+}
+
+function noteSuccess() {
+  failureCount = 0;
+  circuitOpenedAt = 0;
+}
+
+function noteFailure() {
+  failureCount += 1;
+  if (
+    failureCount >= APP_SUPABASE_CIRCUIT_FAILURE_THRESHOLD &&
+    circuitOpenedAt === 0
+  ) {
+    circuitOpenedAt = Date.now();
+  }
+}
+
+function circuitOpenResponse(): Response {
+  return new Response(JSON.stringify({ message: "Supabase temporarily unavailable" }), {
+    status: 503,
+    headers: {
+      "content-type": "application/json",
+      "retry-after": String(Math.ceil(APP_SUPABASE_CIRCUIT_OPEN_MS / 1000)),
+      "x-geomacro-degraded": "supabase-circuit-open",
+    },
+  });
+}
+
+function methodOf(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+): string {
+  if (init?.method) return init.method.toUpperCase();
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return input.method.toUpperCase();
+  }
+  return "GET";
+}
+
+async function resilientAppSupabaseFetch(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+): Promise<Response> {
+  if (isCircuitOpen()) return circuitOpenResponse();
+
+  const method = methodOf(input, init);
+  const idempotentRead =
+    method === "GET" || method === "HEAD" || method === "OPTIONS";
+  const attempts = idempotentRead ? 2 : 1;
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const timeoutSignal = AbortSignal.timeout(APP_SUPABASE_REQUEST_TIMEOUT_MS);
+    const signal = init?.signal
+      ? AbortSignal.any([init.signal, timeoutSignal])
+      : timeoutSignal;
+
+    try {
+      const response = await globalThis.fetch(input, { ...init, signal });
+      if (isTransientStatus(response.status)) {
+        noteFailure();
+        if (attempt + 1 < attempts && !isCircuitOpen()) {
+          await new Promise((resolve) => setTimeout(resolve, 125 * (attempt + 1)));
+          continue;
+        }
+      } else {
+        noteSuccess();
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+      noteFailure();
+      if (attempt + 1 < attempts && !isCircuitOpen()) {
+        await new Promise((resolve) => setTimeout(resolve, 125 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Supabase request failed");
+}
+
 let cachedClient: SupabaseClient | null = null;
 let cachedIdentity: string | null = null;
 
+/**
+ * App-owned Supabase client (separate from any Lovable Cloud project).
+ *
+ * Continuity rules:
+ * - never consumes browser VITE_SUPABASE_* values;
+ * - hard-bounds every request;
+ * - one bounded retry only for idempotent reads;
+ * - never automatically replays writes/RPCs;
+ * - opens a short circuit after repeated transient failures so a Supabase
+ *   incident cannot make every Geomacro request hang or stampede the free tier.
+ */
 export function getAppSupabase(): SupabaseClient | null {
   const config = resolveAppSupabaseConfig();
   if (!config) return null;
@@ -117,6 +218,8 @@ export function getAppSupabase(): SupabaseClient | null {
 
   cachedClient = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    db: { retry: false },
+    global: { fetch: resilientAppSupabaseFetch },
   });
   cachedIdentity = identity;
   return cachedClient;
