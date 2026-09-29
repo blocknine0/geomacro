@@ -1,0 +1,81 @@
+name: B2 Raw Orphan Self Heal
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/b2-raw-orphan-self-heal.yml
+      - scripts/ops/b2-raw-bundle-orphan-cleanup.mjs
+      - scripts/ops/sql/b2-raw-bundle-source-orphans.sql
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_run:
+    workflows:
+      - B2 raw Storage maintenance
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: b2-raw-orphan-self-heal
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_RAW_ORPHAN_LIMIT: "100"
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate orphan self-heal
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${B2_KEY_ID:-}"
+          test -n "${B2_APPLICATION_KEY:-}"
+          test "${APP_SUPABASE_URL}" = "https://ldpwajisioljyjtojvfx.supabase.co"
+          node --check scripts/ops/b2-raw-bundle-orphan-cleanup.mjs
+
+      - name: Verify B2 bundles and remove duplicate Supabase sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/b2-raw-bundle-orphan-cleanup.mjs | tee b2-raw-orphan-self-heal.json
+          jq -e '.ok == true' b2-raw-orphan-self-heal.json >/dev/null
+          jq -e '.database_rows_deleted == 0' b2-raw-orphan-self-heal.json >/dev/null
+
+      - name: Upload cleanup evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: b2-raw-orphan-self-heal-${{ github.run_id }}
+          path: b2-raw-orphan-self-heal.json
+          if-no-files-found: warn
+          retention-days: 14
