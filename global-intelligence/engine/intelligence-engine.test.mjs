@@ -123,3 +123,22 @@ test("permanent reader wins when it reports sufficient fresh internal data", asy
   assert.equal(result.durable_live_storage_write, false);
   assert.equal(counter.calls, 0);
 });
+
+test("permanent store failure falls through to independent live adapters", async () => {
+  const counter = {calls: 0};
+  const result = await answerQuestion(`shipping security outage test ${Date.now()}`, {
+    countryIso3: "IND",
+    adapters: verifiedAdapters(counter),
+    permanentReader: async () => {
+      throw new Error("simulated Supabase outage");
+    },
+    options: {cacheTtlMs: 0}
+  });
+
+  assert.equal(result.data_mode, "ephemeral_live");
+  assert.equal(result.cache_status, "miss");
+  assert.equal(result.source_identity_exposed, false);
+  assert.equal(result.durable_live_storage_write, false);
+  assert.equal(result.insufficient_evidence, false);
+  assert.equal(counter.calls, 1);
+});
