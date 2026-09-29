@@ -21,26 +21,14 @@ function hex(bytes) {
   return [...new Uint8Array(bytes)].map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 
+function unhex(value) {
+  const out = new Uint8Array(value.length / 2);
+  for (let i = 0; i < out.length; i += 1) out[i] = Number.parseInt(value.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
 async function sha256(value) {
   return hex(await crypto.subtle.digest("SHA-256", textEncoder.encode(value)));
-}
-
-async function hmacHex(secret, value) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    textEncoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  return hex(await crypto.subtle.sign("HMAC", key, textEncoder.encode(value)));
-}
-
-function timingSafeHexEqual(left, right) {
-  if (typeof left !== "string" || typeof right !== "string" || left.length !== right.length) return false;
-  let diff = 0;
-  for (let i = 0; i < left.length; i += 1) diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
-  return diff === 0;
 }
 
 async function authorize(request, env, bodyText) {
@@ -54,11 +42,18 @@ async function authorize(request, env, bodyText) {
   const url = new URL(request.url);
   const bodyHash = await sha256(bodyText);
   const signed = `${stamp}\n${request.method.toUpperCase()}\n${url.pathname}\n${bodyHash}`;
-  const expected = await hmacHex(secret, signed);
-  return timingSafeHexEqual(signature, expected);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+  return crypto.subtle.verify("HMAC", key, unhex(signature), textEncoder.encode(signed));
 }
 
 function validClaim(input) {
+  const amount = String(input?.amount_atomic ?? "");
   return input &&
     HEX64.test(String(input.payment_fingerprint ?? "")) &&
     HEX64.test(String(input.request_fingerprint ?? "")) &&
@@ -66,7 +61,7 @@ function validClaim(input) {
     ENVIRONMENTS.has(String(input.environment ?? "")) &&
     NETWORKS.has(String(input.network ?? "")) &&
     typeof input.asset === "string" && input.asset.length >= 4 && input.asset.length <= 128 &&
-    /^\d+$/.test(String(input.amount_atomic ?? "")) && BigInt(String(input.amount_atomic)) > 0n &&
+    amount.length >= 1 && amount.length <= 78 && /^\d+$/.test(amount) && BigInt(amount) > 0n &&
     (input.client_request_id == null || (typeof input.client_request_id === "string" && input.client_request_id.length >= 4 && input.client_request_id.length <= 128));
 }
 
