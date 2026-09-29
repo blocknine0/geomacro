@@ -54,7 +54,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(rawRestore).toContain("archiveKey = `geomacro-evidence/v1/${row.object_path}`");
   });
 
-  it("runs verified raw and observation cold maintenance while GRO uses bounded bundle-native recovery", () => {
+  it("runs verified raw and observation cold maintenance while GRO uses adaptive bundle-native recovery", () => {
     expect(observationWorkflow).toContain('cron: "17 * * * *"');
     expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
     expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "20"');
@@ -65,8 +65,9 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(groLegacyWorkflow).toContain("workflow_dispatch");
     expect(groLegacyWorkflow).not.toContain("schedule:");
     expect(groBundleWorkflow).toContain('cron: "17 */6 * * *"');
-    expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "50"');
-    expect(groBundleWorkflow).toContain('GRO_BUNDLE_ROUNDS: "10"');
+    expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "25"');
+    expect(groBundleWorkflow).toContain('GRO_BUNDLE_ROUNDS: "20"');
+    expect(groBundleWorkflow).toContain("Persistent free-tier statement timeout after verified progress");
   });
 
   it("keeps all bundle fanouts bounded, sharded and canary-gated where destructive cleanup follows", () => {
@@ -87,7 +88,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(observationWorkflow).toContain("needs.b2_canary.result == 'success'");
     expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "1"');
 
-    expect(groBundleWorkflow).toContain("max-parallel: 2");
+    expect(groBundleWorkflow).toContain("max-parallel: 1");
     expect(groBundleWorkflow).toContain("fail-fast: false");
   });
 
