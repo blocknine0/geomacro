@@ -35,7 +35,7 @@ on:
         required: false
         type: string
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "23 */6 * * *"
     - cron: "23 */6 * * *"
     - cron: "41 2 * * *"
     - cron: "17 */6 * * *"
@@ -51,7 +51,7 @@ jobs:
   live-smoke:
     if: >-
       ${{
-        (github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *') ||
+        (github.event_name == 'schedule' && github.event.schedule == '23 */6 * * *') ||
         (github.event_name == 'workflow_dispatch' && inputs.mode == 'live-smoke') ||
         github.event_name == 'push'
       }}
