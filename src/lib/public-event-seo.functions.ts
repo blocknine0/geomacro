@@ -1,11 +1,27 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { readB2PublicIntelligence } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
 import type { PublicEventDetail } from "./public-event.functions";
 
 const EventInput = z.object({
   eventId: z.string().trim().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
 });
+
+function fromB2Row(row: NonNullable<Awaited<ReturnType<typeof readB2PublicIntelligence>>>[number]): PublicEventDetail {
+  return {
+    id: row.id,
+    source_title: row.source_title,
+    summary: row.summary,
+    narrative: null,
+    category: row.category,
+    severity: row.severity,
+    confidence: null,
+    delta: row.delta,
+    published_at: row.published_at,
+    created_at: row.created_at,
+  };
+}
 
 /**
  * Public, read-only event lookup for route loaders and search/social metadata.
@@ -18,6 +34,10 @@ const EventInput = z.object({
 export const getPublicEventSeoDetail = createServerFn({ method: "GET" })
   .validator((input: unknown) => EventInput.parse(input))
   .handler(async ({ data }): Promise<PublicEventDetail | null> => {
+    const b2Rows = await readB2PublicIntelligence();
+    const b2Row = b2Rows?.find((row) => row.id === data.eventId);
+    if (b2Row) return fromB2Row(b2Row);
+
     const supabase = getAppSupabase();
     if (!supabase) return null;
 
