@@ -35,8 +35,9 @@ describe("WDI commercial signal self-heal", () => {
     expect(script).toContain("execution_authorized: false");
   });
 
-  it("runs before the hourly global readiness window and remains manually runnable", () => {
-    expect(workflow).toContain('cron: "12 * * * *"');
+  it("keeps database repair manually runnable and quota-held", () => {
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("environment: production");
     expect(workflow).toContain("secrets.APP_SUPABASE_URL");
