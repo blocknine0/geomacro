@@ -13,6 +13,13 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("CIRCUIT_OPEN_MS = 30_000");
   });
 
+  it("keeps verified public Intelligence readable from B2 during a bounded Supabase pause", () => {
+    const source = read("src/lib/b2-live.server.ts");
+    expect(source).toContain("PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000");
+    expect(source).toContain("recentEnough(payload.generated_at, PUBLIC_INTELLIGENCE_FALLBACK_MAX_AGE_MS)");
+    expect(source).toContain('["geopolitics", "macro", "rare_earth"]');
+  });
+
   it("tries B2 before the unchanged bounded Supabase Intelligence fallback", () => {
     const source = read("src/lib/public-intelligence.functions.ts");
     expect(source).toContain("readB2PublicIntelligence");
