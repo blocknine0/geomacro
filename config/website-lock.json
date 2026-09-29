@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "6d8f3c60c73c34022f23d6bb3848a48188f302c7",
-  "published_baseline": "Founder-approved commercial launch website limited to launch-day risk intelligence products: Intelligence, separate Risk Indices, Critical Minerals & Rare Earth Risk, Ask Geomacro, and supporting research/evidence. Prediction Markets are explicitly paused until the founder re-enables them; the /arena surface is static, remains permanently Arc Testnet-only, and prediction-market polling, lifecycle automation, market creation, resolution, security monitoring, and briefing generation are disabled. Bridge and Swap remain separate testnet technical proofs. Machine/API/Risk Gate/x402 automation remains roadmap. Site-wide Customer Care escalates to contact@geomacro.live.",
+  "baseline_sha": "68f1714fdb5dfc63b93b9f77e686a0f13457e6eb",
+  "published_baseline": "Founder-approved commercial launch website limited to launch-day risk intelligence products: Intelligence, separate Risk Indices, Critical Minerals & Rare Earth Risk, Ask Geomacro, and supporting research/evidence. Intelligence may show a clearly labeled latest-verified fallback when the current 24h window is quiet or the live database is temporarily unavailable, while Prediction Markets remain paused and Bridge/Swap remain separate testnet technical proofs. Machine/API/Risk Gate/x402 automation remains roadmap. Site-wide Customer Care escalates to contact@geomacro.live.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-09-29T06:42:00Z",
+  "locked_at_utc": "2026-09-29T18:45:00Z",
   "published_source_sha": "6d8f3c60c73c34022f23d6bb3848a48188f302c7",
-  "lock_revision": "founder-approved-prediction-market-pause-20260929"
+  "lock_revision": "founder-approved-intelligence-latest-verified-fallback-20260930"
 }
