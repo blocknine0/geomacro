@@ -10,8 +10,11 @@ describe("Supabase free-tier B2-first storage contract", () => {
   const workflow = read(".github/workflows/b2-raw-storage-maintenance.yml");
   const observationWorkflow = read(".github/workflows/b2-observation-payload-maintenance.yml");
   const observationWorker = read("scripts/ops/b2-archive-observation-bundle.mjs");
-  const groWorkflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
-  const groWorker = read("scripts/ops/b2-only-gro-externalize-canary.ts");
+  const groLegacyWorkflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
+  const groLegacyWorker = read("scripts/ops/b2-only-gro-externalize-canary.ts");
+  const groBundleWorkflow = read(".github/workflows/b2-gro-bundle-first-batch.yml");
+  const groBundleWorker = read("scripts/ops/b2-archive-gro-bundle.ts");
+  const groRestore = read("supabase/functions/gro-archive-read/index.ts");
   const productionCoverageWorkflow = read(".github/workflows/global-production-coverage-gate.yml");
   const orchestratorWorkflow = read(".github/workflows/intelligence-orchestrator.yml");
   const budget = read("scripts/ops/supabase-free-tier-budget.mjs");
@@ -51,30 +54,40 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(rawRestore).toContain("archiveKey = `geomacro-evidence/v1/${row.object_path}`");
   });
 
-  it("runs observation and raw bundle recovery hourly while GRO remains manually held", () => {
+  it("runs verified raw and observation cold maintenance while GRO uses bounded bundle-native recovery", () => {
     expect(observationWorkflow).toContain('cron: "17 * * * *"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "25"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "20"');
     expect(workflow).toContain('cron: "37 * * * *"');
     expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "25"');
     expect(workflow).toContain("never SQL-delete storage.objects");
-    expect(groWorkflow).toContain("workflow_dispatch");
-    expect(groWorkflow).not.toContain("schedule:");
+    expect(groLegacyWorkflow).toContain("workflow_dispatch");
+    expect(groLegacyWorkflow).not.toContain("schedule:");
+    expect(groBundleWorkflow).toContain('cron: "17 */6 * * *"');
+    expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "50"');
+    expect(groBundleWorkflow).toContain('GRO_BUNDLE_ROUNDS: "10"');
   });
 
-  it("keeps both bundle fanouts bounded and sharded", () => {
-    for (const source of [workflow, observationWorkflow]) {
-      expect(source).toContain("max-parallel: 1");
-      expect(source).not.toContain("  push:");
-      expect(source).toContain("fail-fast: false");
-      expect(source).toContain("b2_canary:");
-      expect(source).toContain("needs: b2_canary");
-      expect(source).toContain("needs.b2_canary.result == 'success'");
-    }
+  it("keeps all bundle fanouts bounded, sharded and canary-gated where destructive cleanup follows", () => {
+    expect(workflow).toContain("max-parallel: 1");
+    expect(workflow).toContain("fail-fast: false");
+    expect(workflow).toContain("b2_canary:");
+    expect(workflow).toContain("needs: b2_canary");
+    expect(workflow).toContain("needs.b2_canary.result == 'success'");
     expect(workflow).toContain("B2_RAW_MAINTENANCE_SUFFIX");
     expect(contract).toContain("geomacro_next_raw_storage_candidates_shard");
     expect(contract).toContain("live_raw_source_snapshots_b2_archive_shard_idx");
     expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "1"');
+
+    expect(observationWorkflow).toContain("max-parallel: 2");
+    expect(observationWorkflow).toContain("fail-fast: false");
+    expect(observationWorkflow).toContain("b2_canary:");
+    expect(observationWorkflow).toContain("needs: b2_canary");
+    expect(observationWorkflow).toContain("needs.b2_canary.result == 'success'");
     expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "1"');
+
+    expect(groBundleWorkflow).toContain("max-parallel: 2");
+    expect(groBundleWorkflow).toContain("fail-fast: false");
   });
 
   it("uses one full B2 GET to verify and atomically clear an observation bundle", () => {
@@ -84,12 +97,20 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(observationWorker).toContain("b2_full_gets: 1");
   });
 
-  it("retains GRO restore verification before payload cleanup", () => {
-    expect(groWorkflow).toContain("max-parallel: 2");
-    expect(groWorker).toContain("B2_ONLY_GRO_READBACK_INVALID");
-    expect(groWorker).toContain("b2_gets_per_object: 1");
-    expect(groWorker.indexOf("const readback = await archiveRead"))
-      .toBeLessThan(groWorker.indexOf(".update({ payload: null"));
+  it("retains GRO verification and bundle-native restore before payload cleanup", () => {
+    expect(groLegacyWorkflow).toContain("max-parallel: 2");
+    expect(groLegacyWorker).toContain("B2_ONLY_GRO_READBACK_INVALID");
+    expect(groLegacyWorker).toContain("b2_gets_per_object: 1");
+    expect(groLegacyWorker.indexOf("const readback = await archiveRead"))
+      .toBeLessThan(groLegacyWorker.indexOf(".update({ payload: null"));
+
+    expect(groBundleWorker).toContain("GRO_BUNDLE_COMPRESSED_HASH_MISMATCH");
+    expect(groBundleWorker).toContain("GRO_BUNDLE_MEMBER_RESTORE_INVALID_");
+    expect(groBundleWorker).toContain("bundle_native_restore: true");
+    expect(groBundleWorker.indexOf("const readback = await archiveRead"))
+      .toBeLessThan(groBundleWorker.indexOf("geomacro_clear_verified_gro_bundle_v1"));
+    expect(groRestore).toContain("archive_bundle_key");
+    expect(groRestore).toContain("GRO_ARCHIVE_BUNDLE_MEMBER_HASH_MISMATCH");
   });
 
   it("never auto-triggers the heavy production coverage refresh and requires free-tier headroom", () => {
