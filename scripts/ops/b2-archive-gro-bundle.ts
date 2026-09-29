@@ -28,10 +28,22 @@ const b2 = createB2Client({ endpointUrl: process.env.B2_S3_ENDPOINT,
   accessKey: process.env.B2_KEY_ID, secretKey: process.env.B2_APPLICATION_KEY,
   bucket: "geomacro-private-archive" });
 
-// Choose the oldest eligible signing key within this shard. Each bundle still
-// contains one key, and every signed member is verified against the public
-// trust registry before its payload can be cleared.
+// Trust only keys published by the production registry. Historical keys that
+// are absent or revoked remain untouched; never derive authority from a
+// payload's embedded public key.
+const keyResponse = await fetch("https://geomacro.live/api/risk-object-keys", { signal: AbortSignal.timeout(15_000) });
+if (!keyResponse.ok) throw new Error("GRO_BUNDLE_KEYS_UNAVAILABLE");
+const keyBody = await keyResponse.json() as { keys?: Array<{ key_id: string; public_key_spki_b64: string; status: "active" | "retired" | "revoked"; not_before?: string | null; not_after?: string | null }> };
+const keys: RiskObjectVerificationKeys = Object.fromEntries((keyBody.keys ?? []).map(({ key_id, ...record }) => [key_id, record]));
+
+// In all-keys mode, pick the oldest eligible object whose key is actually
+// published and not revoked. Unpublished historical rows remain intact.
 if (allSigningKeys) {
+  const publishedIds = (keyBody.keys ?? []).filter((key) => key.status !== "revoked").map((key) => key.key_id);
+  if (!publishedIds.length) {
+    console.log(JSON.stringify({ ok: true, status: "complete", processed: 0, shard_suffix: suffix, reason: "no_published_signing_keys" }));
+    process.exit(0);
+  }
   const { data: next, error: nextError } = await db.from("geomacro_risk_objects")
     .select("signing_key_id")
     .is("archive_key", null)
@@ -39,21 +51,17 @@ if (allSigningKeys) {
     .not("signature", "is", null)
     .lt("expires_at", new Date(Date.now() - 6 * 3_600_000).toISOString())
     .like("object_id", `%${suffix}`)
+    .in("signing_key_id", publishedIds)
     .order("generated_at", { ascending: true })
     .limit(1);
   if (nextError) throw nextError;
   if (!next?.length) {
-    console.log(JSON.stringify({ ok: true, status: "complete", processed: 0, shard_suffix: suffix }));
+    console.log(JSON.stringify({ ok: true, status: "complete", processed: 0, shard_suffix: suffix, reason: "no_eligible_published_key" }));
     process.exit(0);
   }
   signingKeyId = String(next[0].signing_key_id ?? "");
   if (!signingKeyId) throw new Error("GRO_BUNDLE_SIGNING_KEY_MISSING");
 }
-
-const keyResponse = await fetch("https://geomacro.live/api/risk-object-keys", { signal: AbortSignal.timeout(15_000) });
-if (!keyResponse.ok) throw new Error("GRO_BUNDLE_KEYS_UNAVAILABLE");
-const keyBody = await keyResponse.json() as { keys?: Array<{ key_id: string; public_key_spki_b64: string; status: "active" | "retired" | "revoked"; not_before?: string | null; not_after?: string | null }> };
-const keys: RiskObjectVerificationKeys = Object.fromEntries((keyBody.keys ?? []).map(({ key_id, ...record }) => [key_id, record]));
 if (!keys[signingKeyId]) throw new Error("GRO_BUNDLE_ACTIVE_KEY_NOT_PUBLISHED");
 
 const { data: candidates, error } = await db.rpc("geomacro_next_gro_archive_candidates", {
