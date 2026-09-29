@@ -1,17 +1,24 @@
-name: Verify bounded GRO B2 recovery batch
+name: B2 GRO cold archive maintenance
 
-# One bounded rollout after the live restore canary. No recurring trigger.
+# Supabase keeps hot operational state only. Expired signed GRO payloads move to
+# verified B2 bundles. Every batch is read back and signature-verified before
+# payload cleanup. A conservative six-hour cadence keeps B2 request volume bounded.
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
   push:
     branches: [main]
     paths:
       - ".github/workflows/b2-gro-bundle-first-batch.yml"
+      - "scripts/ops/b2-archive-gro-bundle.ts"
+      - "supabase/functions/gro-archive-read/index.ts"
 
 permissions:
   contents: read
 
 concurrency:
-  group: geomacro-b2-gro-first-batch
+  group: geomacro-b2-gro-maintenance
   cancel-in-progress: false
 
 jobs:
@@ -19,7 +26,7 @@ jobs:
     if: ${{ github.repository == 'blocknine0/geomacro' }}
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_one_shard_${{ matrix.suffix }}
@@ -34,7 +41,7 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
-      GRO_BUNDLE_LIMIT: "10"
+      GRO_BUNDLE_LIMIT: "25"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -43,5 +50,21 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify ten signed GROs before pointer cleanup
-        run: bun scripts/ops/b2-archive-gro-bundle.ts
+      - name: Archive verified expired signed GRO payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            set +e
+            output="$(bun scripts/ops/b2-archive-gro-bundle.ts 2>&1)"
+            rc=$?
+            set -e
+            printf '%s\n' "$output"
+            if [ "$rc" -eq 0 ]; then exit 0; fi
+            if ! printf '%s\n' "$output" | grep -Eq '57014|statement timeout|canceling statement due to statement timeout'; then
+              echo "Non-transient GRO archive failure detected; refusing to retry."
+              exit "$rc"
+            fi
+            if [ "$attempt" -eq 3 ]; then exit "$rc"; fi
+            sleep $((attempt * 8))
+          done
