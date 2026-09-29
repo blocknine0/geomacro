@@ -30,6 +30,7 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GRO_BUNDLE_LIMIT: "1"
+      GRO_ARCHIVE_ALL_KEYS: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -83,6 +84,8 @@ jobs:
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
       GRO_BUNDLE_LIMIT: "50"
+      GRO_BUNDLE_ROUNDS: "4"
+      GRO_ARCHIVE_ALL_KEYS: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -91,29 +94,41 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Archive verified signed GRO bundle to B2
+      - name: Archive verified signed GRO bundles to B2
         shell: bash
         run: |
           set -euo pipefail
-          max_attempts=4
-          attempt=1
-          while [ "$attempt" -le "$max_attempts" ]; do
-            log_file="$(mktemp)"
-            echo "GRO bundle attempt ${attempt}/${max_attempts} for shard ${GRO_ARCHIVE_SUFFIX}"
-            set +e
-            bun scripts/ops/b2-archive-gro-bundle.ts 2>&1 | tee "$log_file"
-            status=${PIPESTATUS[0]}
-            set -e
-            if [ "$status" -eq 0 ]; then rm -f "$log_file"; exit 0; fi
-            if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
-              echo "Non-transient GRO archive failure detected; refusing to retry."
+          for round in $(seq 1 "${GRO_BUNDLE_ROUNDS:-1}"); do
+            echo "GRO bundle round ${round}/${GRO_BUNDLE_ROUNDS} for shard ${GRO_ARCHIVE_SUFFIX}"
+            attempt=1
+            while [ "$attempt" -le 4 ]; do
+              log_file="$(mktemp)"
+              set +e
+              bun scripts/ops/b2-archive-gro-bundle.ts 2>&1 | tee "$log_file"
+              status=${PIPESTATUS[0]}
+              set -e
+              if [ "$status" -eq 0 ]; then
+                if jq -se '.[-1] | .ok == true and .status == "complete" and .processed == 0' "$log_file" >/dev/null; then
+                  rm -f "$log_file"
+                  exit 0
+                fi
+                if jq -se '.[-1] | .ok == true and .status == "progress" and .archived > 0 and .b2_full_gets == 1 and .signature_verified == true and .bundle_native_restore == true' "$log_file" >/dev/null; then
+                  rm -f "$log_file"
+                  break
+                fi
+                echo "GRO bundle result lacks verified readback proof." >&2
+                rm -f "$log_file"
+                exit 1
+              fi
+              if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
+                echo "Non-transient GRO archive failure detected; refusing to retry."
+                rm -f "$log_file"
+                exit "$status"
+              fi
               rm -f "$log_file"
-              exit "$status"
-            fi
-            rm -f "$log_file"
-            if [ "$attempt" -eq "$max_attempts" ]; then exit "$status"; fi
-            sleep_seconds=$((attempt * 8))
-            echo "Transient Supabase statement timeout; retrying in ${sleep_seconds}s."
-            sleep "$sleep_seconds"
-            attempt=$((attempt + 1))
+              if [ "$attempt" -eq 4 ]; then exit "$status"; fi
+              sleep $((attempt * 8))
+              attempt=$((attempt + 1))
+            done
+            if [ "$round" -lt "$GRO_BUNDLE_ROUNDS" ]; then sleep 15; fi
           done
