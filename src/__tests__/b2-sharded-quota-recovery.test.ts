@@ -27,9 +27,12 @@ describe("sharded B2 quota recovery", () => {
     expect(candidateRpcs).toContain("o.raw_payload = v_payload");
     expect(candidateRpcs).toContain("to service_role");
     expect(observationWorkflow).toContain(suffixMatrix);
-    expect(observationWorkflow).toContain("max-parallel: 1");
-    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "25"');
+    expect(observationWorkflow).toContain("max-parallel: 2");
+    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "20"');
     expect(observationWorkflow).toContain("fail-fast: false");
+    expect(observationWorkflow).toContain("needs: b2_canary");
+    expect(observationWorkflow).toContain("needs.b2_canary.result == 'success'");
   });
 
   it("partitions GRO candidates by the same non-overlapping suffix rule with bounded B2 pressure", () => {
