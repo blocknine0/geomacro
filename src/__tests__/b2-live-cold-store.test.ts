@@ -16,11 +16,12 @@ describe("B2 live and cold-store boundary", () => {
   it("serves Intelligence and verified Risk Indices from B2 before Supabase fallbacks", () => {
     const intelligence = read("src/lib/public-intelligence.functions.ts");
     const risk = read("src/lib/public-risk.functions.ts");
+    const reader = read("src/lib/b2-live.server.ts");
     expect(intelligence).toContain("readB2PublicIntelligence");
     expect(intelligence.indexOf("readB2PublicIntelligence"))
       .toBeLessThan(intelligence.lastIndexOf("readPublicIntelligenceRowsFromSupabase"));
     expect(risk).toContain("readB2PublicRisk");
-    expect(risk).toContain('verificationStatus !== "verified"');
+    expect(reader).toContain('payload.data.verificationStatus !== "verified"');
   });
 
   it("requires full B2 readback before cold source deletion", () => {
