@@ -112,7 +112,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
   }));
   const in24h = markedRows.filter((r) => r.isCurrent);
   const usedFallbackWindow = in24h.length === 0;
-  const recent = [...rows]
+  const recent = [...markedRows]
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
@@ -167,8 +167,9 @@ function build(rows: IntelEvent[], now: number): Intelligence {
 
   return {
     // Keep the complete 30-day read set so explicit search can still inspect
-    // historical records, while applyIntelFilters hides non-current rows from
-    // the default "live" view.
+    // historical records. The default view uses current rows when available and
+    // otherwise falls back to the newest verified records instead of rendering
+    // an empty/broken page during a quiet day or a paused upstream database.
     all: markedRows,
     today: [...in24h]
       .sort((a, b) => timeOf(b) - timeOf(a))
@@ -184,7 +185,7 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     // rows. Counts remain evidence-driven and only include observed categories.
     categories: [...PUBLIC_INTELLIGENCE_CATEGORIES],
     categoryCounts,
-    latest: [...rows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
+    latest: [...markedRows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
   };
 }
 
@@ -220,6 +221,14 @@ export function useIntelligence(
         const mapped = mapPublicRows(rows);
 
         if (mapped.length === 0) {
+          // A transient refresh failure must not erase an already-rendered
+          // verified snapshot. Keep the last good data on screen and surface a
+          // retryable refresh error; only a cold start with no data becomes empty.
+          if (hasData.current) {
+            setStatus("error");
+            setError({ message: "Live refresh is temporarily unavailable. Showing the latest verified intelligence.", retryable: true });
+            return;
+          }
           hasData.current = false;
           setData(null);
           setStatus("error");
@@ -260,7 +269,15 @@ export function applyIntelFilters(
 ): IntelEvent[] {
   const q = query.trim().toLowerCase();
   const explicitResearch = Boolean(q) || category !== "all";
-  let out = explicitResearch ? rows : rows.filter((r) => r.isCurrent);
+  const current = rows.filter((r) => r.isCurrent);
+  let out = explicitResearch
+    ? rows
+    : current.length > 0
+      ? current
+      : [...rows]
+          .filter((r) => Number.isFinite(timeOf(r)))
+          .sort((a, b) => timeOf(b) - timeOf(a))
+          .slice(0, 24);
   if (category !== "all") out = out.filter((r) => (r.category ?? "").trim() === category);
   if (q) {
     out = out.filter(
