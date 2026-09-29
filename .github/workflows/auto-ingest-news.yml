@@ -1,11 +1,18 @@
 name: Auto Ingest News
-# Runs every 2 hours as the first step in the flagship intelligence pipeline.
+# Runs every 2 hours as the low-write GRI freshness path.
 # Fresh admitted evidence is structured and can trigger a verified GRI publish
 # when canonical inputs change. Prediction-market creation is not part of this
-# scheduled pipeline.
+# scheduled pipeline. High-volume intelligence adapters remain operator-only
+# while Supabase is above the free-tier recovery threshold.
 on:
+  schedule:
+    - cron: "0 */2 * * *"
   workflow_dispatch: {}
-
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/auto-ingest-news.yml"
 
 permissions:
   contents: read
@@ -38,7 +45,12 @@ jobs:
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
         run: node scripts/db/assert-authoritative-supabase.mjs
-      - name: Run news ingestion script
+      - name: Report Supabase free-tier budget without enabling bulk writers
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/supabase-free-tier-budget.mjs
+      - name: Run bounded news ingestion script
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -61,7 +73,7 @@ jobs:
           GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
           GROQ_MAX_WAIT_MS: "900000"
           GROQ_BATCH_SIZE: "4"
-          MAX_CANDIDATES_PER_CATEGORY: "12"
+          MAX_CANDIDATES_PER_CATEGORY: "4"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
           NEWS_MAX_RETRIES: ${{ vars.NEWS_MAX_RETRIES }}
           MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}

@@ -85,14 +85,13 @@ describe("permanent intelligence orchestration contract", () => {
     expect(script).toContain("bootstrap_seeds_are_immediately_due: true");
   });
 
-  it("moves the high-frequency intelligence workflows to operator-only recovery mode", () => {
+  it("moves high-frequency intelligence workflows to operator-only recovery mode", () => {
     for (const path of [
       ".github/workflows/global-country-raw-source-mesh.yml",
       ".github/workflows/gdelt-gal-live-sync.yml",
       ".github/workflows/gdelt-v2-event-sync.yml",
       ".github/workflows/realtime-corridor-hot-topic-fanout.yml",
       ".github/workflows/testnet-rss-live-runner.yml",
-      ".github/workflows/auto-ingest-news.yml",
       ".github/workflows/source-evidence-graph-auto-promotion.yml",
       ".github/workflows/federico-seven-day-risk-refresh.yml",
       ".github/workflows/open-realtime-source-mesh.yml",
@@ -105,6 +104,19 @@ describe("permanent intelligence orchestration contract", () => {
       expect(source, path).not.toContain("schedule:");
       expect(source, path).not.toContain("workflow_run:");
     }
+  });
+
+  it("keeps a bounded low-write GRI freshness path active during quota recovery", () => {
+    const workflow = read(".github/workflows/auto-ingest-news.yml");
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain('cron: "0 */2 * * *"');
+    expect(workflow).toContain("group: geomacro-intelligence-orchestrator");
+    expect(workflow).toContain('MAX_CANDIDATES_PER_CATEGORY: "4"');
+    expect(workflow).toContain("supabase-free-tier-budget.mjs");
+    expect(workflow).toContain("check-gri-input-change.mjs");
+    expect(workflow).toContain("compute-gri-v12.js");
+    expect(workflow).toContain("verify-gri-snapshot-v12.js");
+    expect(workflow).not.toContain("workflow_run:");
   });
 
   it("allows the public demo Risk Object refresh to run on a bounded freshness schedule", () => {
