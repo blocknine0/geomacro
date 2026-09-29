@@ -37,7 +37,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_INGEST_LOOKBACK_HOURS: "6"
+      B2_INGEST_LOOKBACK_HOURS: "72"
       B2_INGEST_RAW_BUNDLE_LIMIT: "25"
       B2_INGEST_RAW_ROUNDS: "40"
       B2_INGEST_FRAGMENT_LIMIT: "200"
@@ -65,6 +65,7 @@ jobs:
           test -n "${B2_KEY_ID:-}"
           test -n "${B2_APPLICATION_KEY:-}"
           test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
+          test "${B2_INGEST_LOOKBACK_HOURS}" = "72"
           node --check scripts/ops/b2-country-ingest-offload.mjs
 
       - name: Offload recent country raw data to verified B2
