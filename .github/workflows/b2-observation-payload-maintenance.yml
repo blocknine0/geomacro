@@ -3,7 +3,7 @@ name: B2 observation raw payload maintenance
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "17 * * * *"
+    - cron: "17 */6 * * *"
   push:
     branches: [main]
     paths:
@@ -59,7 +59,7 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       OBS_BUNDLE_LIMIT: "50"
-      OBS_BUNDLE_ROUNDS: "40"
+      OBS_BUNDLE_ROUNDS: "10"
       OBS_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
