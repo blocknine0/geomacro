@@ -57,7 +57,7 @@ jobs:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/ops/select-missing-gri-discovery-domain.mjs
-      - name: Enable one-run GDELT missing-domain override
+      - name: Enable one-run GDELT missing-domain override and relevance cap
         shell: bash
         run: |
           set -euo pipefail
@@ -65,26 +65,53 @@ jobs:
           const fs = require('node:fs');
           const path = 'scripts/ingest-news.js';
           let source = fs.readFileSync(path, 'utf8');
-          const marker = "function gdeltCategoryForCurrentRun(now = new Date()) {\n";
-          const injection =
-            marker +
+
+          const categoryMarker = "function gdeltCategoryForCurrentRun(now = new Date()) {\n";
+          const categoryInjection =
+            categoryMarker +
             "  const forcedCategory = String(process.env.GDELT_FORCE_CATEGORY || '').trim();\n" +
             "  if (GDELT_DISCOVERY_CATEGORY_ORDER.includes(forcedCategory)) {\n" +
             "    return forcedCategory;\n" +
             "  }\n\n";
 
-          if (!source.includes(marker)) {
-            throw new Error('GDELT category selector marker not found; refusing to patch runtime discovery policy.');
+          if (!source.includes(categoryMarker)) {
+            throw new Error('GDELT category selector marker not found; refusing runtime discovery patch.');
           }
-
           if (!source.includes('GDELT_FORCE_CATEGORY')) {
-            source = source.replace(marker, injection);
-            fs.writeFileSync(path, source, 'utf8');
+            source = source.replace(categoryMarker, categoryInjection);
           }
 
+          const sortMarker = `    candidateArticles.sort(\n      (a, b) =>\n        Date.parse(b.publishedAt || 0) -\n        Date.parse(a.publishedAt || 0)\n    );\n\n`;
+          const relevanceInjection = `    if (category.name === 'rare_earth') {\n      const anchoredCandidates = candidateArticles.filter((article) =>\n        RARE_EARTH_ANCHOR.test(\n          \`${'${article.title || \'\'} ${article.description || \'\'}'}\`\n        )\n      );\n\n      if (anchoredCandidates.length > 0) {\n        console.log(\n          \`  Critical-mineral anchor prefilter: ${'${anchoredCandidates.length}'}/${'${candidateArticles.length}'} candidate(s) retained before cap.\`\n        );\n        candidateArticles = anchoredCandidates;\n      }\n    }\n\n` + sortMarker;
+
+          if (!source.includes(sortMarker)) {
+            throw new Error('Candidate sort marker not found; refusing relevance patch.');
+          }
+          if (!source.includes('Critical-mineral anchor prefilter')) {
+            source = source.replace(sortMarker, relevanceInjection);
+          }
+
+          const oldBalance = `      const remainingLimit =\n        safeCandidatesPerCategory() - gdeltLimit;\n\n      const primaryCandidates = [\n        ...guardianCandidates,\n        ...otherCandidates,\n      ]\n        .sort(\n          (a, b) =>\n            Date.parse(b.publishedAt || 0) -\n            Date.parse(a.publishedAt || 0)\n        )\n        .slice(0, remainingLimit);\n\n      candidateArticles = [\n        ...primaryCandidates,\n        ...gdeltCandidates.slice(0, gdeltLimit),\n      ].sort(`;
+
+          const newBalance = `      const remainingLimit =\n        safeCandidatesPerCategory() - gdeltLimit;\n\n      const primaryCandidates = [\n        ...guardianCandidates,\n        ...otherCandidates,\n      ]\n        .sort(\n          (a, b) =>\n            Date.parse(b.publishedAt || 0) -\n            Date.parse(a.publishedAt || 0)\n        )\n        .slice(0, remainingLimit);\n\n      const effectiveGdeltLimit = Math.min(\n        gdeltCandidates.length,\n        safeCandidatesPerCategory() - primaryCandidates.length\n      );\n\n      candidateArticles = [\n        ...primaryCandidates,\n        ...gdeltCandidates.slice(0, effectiveGdeltLimit),\n      ].sort(`;
+
+          if (!source.includes(oldBalance)) {
+            throw new Error('Balanced candidate-cap marker not found; refusing backfill patch.');
+          }
+          if (!source.includes('effectiveGdeltLimit')) {
+            source = source.replace(oldBalance, newBalance);
+            source = source.replace(
+              '`${Math.min(gdeltCandidates.length, gdeltLimit)} GDELT-discovered ` +',
+              '`${effectiveGdeltLimit} GDELT-discovered ` +'
+            );
+          }
+
+          fs.writeFileSync(path, source, 'utf8');
           const verified = fs.readFileSync(path, 'utf8');
-          if (!verified.includes('GDELT_FORCE_CATEGORY')) {
-            throw new Error('GDELT missing-domain override was not activated.');
+          for (const required of ['GDELT_FORCE_CATEGORY', 'Critical-mineral anchor prefilter', 'effectiveGdeltLimit']) {
+            if (!verified.includes(required)) {
+              throw new Error(`Runtime discovery patch missing required marker: ${required}`);
+            }
           }
           NODE
       - name: Run bounded news ingestion script
@@ -125,37 +152,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           max_attempts=3
           attempt=1
-
           while [ "$attempt" -le "$max_attempts" ]; do
             log_file="$(mktemp)"
             echo "Structured intelligence export attempt ${attempt}/${max_attempts}"
-
             set +e
             node scripts/export-admitted-events-for-structure.mjs 2>&1 | tee "$log_file"
             status=${PIPESTATUS[0]}
             set -e
-
-            if [ "$status" -eq 0 ]; then
-              rm -f "$log_file"
-              exit 0
-            fi
-
+            if [ "$status" -eq 0 ]; then rm -f "$log_file"; exit 0; fi
             if ! grep -Eqi 'gateway timeout|bad gateway|service unavailable|connection reset|fetch failed|timed? out|status[^0-9]*(502|503|504)' "$log_file"; then
-              echo "Non-transient export failure detected; not retrying."
-              rm -f "$log_file"
-              exit "$status"
+              echo "Non-transient export failure detected; not retrying."; rm -f "$log_file"; exit "$status"
             fi
-
             rm -f "$log_file"
-
-            if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "Transient export failure persisted after ${max_attempts} attempts."
-              exit "$status"
-            fi
-
+            if [ "$attempt" -eq "$max_attempts" ]; then echo "Transient export failure persisted after ${max_attempts} attempts."; exit "$status"; fi
             sleep_seconds=$((attempt * 10))
             echo "Transient Supabase/network failure detected. Retrying in ${sleep_seconds}s."
             sleep "$sleep_seconds"
@@ -189,14 +200,8 @@ jobs:
           node scripts/check-gri-input-change.mjs
           code=$?
           set -e
-          if [ "$code" -eq 0 ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$code" -eq 10 ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          if [ "$code" -eq 0 ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$code" -eq 10 ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "GRI input-change check failed with exit code $code."
           exit "$code"
 
