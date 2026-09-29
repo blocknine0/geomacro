@@ -57,12 +57,13 @@ describe("UCDP Candidate live evidence boundary", () => {
     expect(transportAlignment).toContain("authenticated API daily request allowance");
   });
 
-  it("automatically targets the current monthly release after the publication window", () => {
+  it("targets the current release on a manually authorized sync", () => {
     expect(ingest).toContain("function defaultCandidateVersion");
     expect(apiProbe).toContain("function defaultCandidateVersion");
     expect(ingest).toContain("now.getUTCMonth() - 1");
     expect(apiProbe).toContain("now.getUTCMonth() - 1");
-    expect(workflow).toContain('cron: "17 3 22 * *"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("Resolve current monthly Candidate release");
     expect(workflow).toContain('default: ""');
     expect(workflow).not.toContain("vars.UCDP_CANDIDATE_VERSION");
