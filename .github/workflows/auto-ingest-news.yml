@@ -13,6 +13,8 @@ on:
       - main
     paths:
       - ".github/workflows/auto-ingest-news.yml"
+      - "scripts/ingest-news.js"
+      - "scripts/ops/select-missing-gri-discovery-domain.mjs"
 
 permissions:
   contents: read
@@ -50,6 +52,41 @@ jobs:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/ops/supabase-free-tier-budget.mjs
+      - name: Prioritize any missing GRI discovery domain
+        env:
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/select-missing-gri-discovery-domain.mjs
+      - name: Enable one-run GDELT missing-domain override
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'scripts/ingest-news.js';
+          let source = fs.readFileSync(path, 'utf8');
+          const marker = "function gdeltCategoryForCurrentRun(now = new Date()) {\n";
+          const injection =
+            marker +
+            "  const forcedCategory = String(process.env.GDELT_FORCE_CATEGORY || '').trim();\n" +
+            "  if (GDELT_DISCOVERY_CATEGORY_ORDER.includes(forcedCategory)) {\n" +
+            "    return forcedCategory;\n" +
+            "  }\n\n";
+
+          if (!source.includes(marker)) {
+            throw new Error('GDELT category selector marker not found; refusing to patch runtime discovery policy.');
+          }
+
+          if (!source.includes('GDELT_FORCE_CATEGORY')) {
+            source = source.replace(marker, injection);
+            fs.writeFileSync(path, source, 'utf8');
+          }
+
+          const verified = fs.readFileSync(path, 'utf8');
+          if (!verified.includes('GDELT_FORCE_CATEGORY')) {
+            throw new Error('GDELT missing-domain override was not activated.');
+          }
+          NODE
       - name: Run bounded news ingestion script
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
