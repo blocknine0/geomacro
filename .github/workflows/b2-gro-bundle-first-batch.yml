@@ -93,3 +93,5 @@ jobs:
               break
             fi
           done
+
+# Manual verified drain trigger: 2026-09-29
