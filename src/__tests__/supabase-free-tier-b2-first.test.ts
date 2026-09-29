@@ -58,22 +58,25 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(rawRestore).toContain("RAW_BUNDLE_MEMBER_HASH_MISMATCH");
   });
 
-  it("runs adaptive verified cold maintenance on all three heavy payload classes", () => {
-    expect(observationWorkflow).toContain('cron: "17 * * * *"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "50"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "40"');
+  it("keeps heavy payload maintenance manual and bounded during quota recovery", () => {
+    expect(observationWorkflow).toContain("workflow_dispatch:");
+    expect(observationWorkflow).not.toContain("schedule:");
+    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "4"');
     expect(observationWorkflow).toContain("cancel-in-progress: true");
     expect(observationWorkflow).toContain("Persistent free-tier statement timeout after verified observation progress");
 
-    expect(workflow).toContain('cron: "37 * * * *"');
-    expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "25"');
-    expect(workflow).toContain('B2_RAW_BUNDLE_ROUNDS: "40"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
+    expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "100"');
+    expect(workflow).toContain('B2_RAW_BUNDLE_ROUNDS: "4"');
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain("Persistent free-tier statement timeout after verified raw progress");
 
-    expect(groBundleWorkflow).toContain('cron: "17 */6 * * *"');
+    expect(groBundleWorkflow).toContain("workflow_dispatch:");
+    expect(groBundleWorkflow).not.toContain("schedule:");
     expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "25"');
-    expect(groBundleWorkflow).toContain('GRO_BUNDLE_ROUNDS: "20"');
+    expect(groBundleWorkflow).toContain('GRO_BUNDLE_ROUNDS: "4"');
   });
 
   it("keeps all destructive fanouts canary-gated and serialized against free-tier DB pressure", () => {
