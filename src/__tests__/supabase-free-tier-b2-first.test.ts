@@ -110,7 +110,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(groBundleWorker.indexOf("const readback = await archiveRead"))
       .toBeLessThan(groBundleWorker.indexOf("geomacro_clear_verified_gro_bundle_v1"));
     expect(groRestore).toContain("archive_bundle_key");
-    expect(groRestore).toContain("GRO_ARCHIVE_BUNDLE_MEMBER_HASH_MISMATCH");
+    expect(groRestore).toContain("GRO_BUNDLE_MEMBER_HASH_INVALID");
   });
 
   it("never auto-triggers the heavy production coverage refresh and requires free-tier headroom", () => {
