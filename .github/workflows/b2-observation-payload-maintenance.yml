@@ -1,11 +1,18 @@
 name: B2 observation raw payload maintenance
 
-# One B2 full GET verifies up to 100 observation payloads in a bundle. Hourly
-# recovery therefore stays far below the former per-object Class-B pressure.
+# Supabase retains normalized operational observation state only. Historical raw
+# payloads move to verified B2 bundles. Every run starts with a one-object Edge
+# restore canary, then bulk bundles are read directly from B2 before atomic cleanup.
 on:
   workflow_dispatch: {}
   schedule:
     - cron: "17 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-observation-payload-maintenance.yml"
+      - "scripts/ops/b2-archive-observation-bundle.mjs"
+      - "scripts/ops/b2-restore-observation-payload.mjs"
 permissions:
   contents: read
 
@@ -46,12 +53,12 @@ jobs:
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.b2_canary.result == 'success' }}
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_verified_bundle_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -59,7 +66,8 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      OBS_BUNDLE_LIMIT: "25"
+      OBS_BUNDLE_LIMIT: "100"
+      OBS_BUNDLE_ROUNDS: "20"
       OBS_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - name: Checkout canonical main
@@ -72,43 +80,52 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Archive verified observation bundle to B2
+      - name: Archive verified observation bundles to B2
         shell: bash
         run: |
           set -euo pipefail
+          rounds="${OBS_BUNDLE_ROUNDS:-1}"
 
-          max_attempts=4
-          attempt=1
+          for round in $(seq 1 "$rounds"); do
+            echo "Observation cold archive round ${round}/${rounds} for shard ${OBS_ARCHIVE_SUFFIX}"
+            max_attempts=4
+            attempt=1
+            success=0
 
-          while [ "$attempt" -le "$max_attempts" ]; do
-            log_file="$(mktemp)"
-            echo "Observation bundle attempt ${attempt}/${max_attempts} for shard ${OBS_ARCHIVE_SUFFIX}"
+            while [ "$attempt" -le "$max_attempts" ]; do
+              log_file="$(mktemp)"
+              set +e
+              node scripts/ops/b2-archive-observation-bundle.mjs 2>&1 | tee "$log_file"
+              status=${PIPESTATUS[0]}
+              set -e
+              output="$(cat "$log_file")"
 
-            set +e
-            node scripts/ops/b2-archive-observation-bundle.mjs 2>&1 | tee "$log_file"
-            status=${PIPESTATUS[0]}
-            set -e
+              if [ "$status" -eq 0 ]; then
+                success=1
+                rm -f "$log_file"
+                break
+              fi
 
-            if [ "$status" -eq 0 ]; then
+              if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
+                echo "Non-transient observation archive failure detected; refusing to retry."
+                rm -f "$log_file"
+                exit "$status"
+              fi
+
               rm -f "$log_file"
-              exit 0
+              if [ "$attempt" -eq "$max_attempts" ]; then
+                echo "Supabase statement timeout persisted after ${max_attempts} attempts."
+                exit "$status"
+              fi
+              sleep_seconds=$((attempt * 8))
+              echo "Transient Supabase statement timeout; retrying in ${sleep_seconds}s."
+              sleep "$sleep_seconds"
+              attempt=$((attempt + 1))
+            done
+
+            test "$success" -eq 1
+            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then
+              echo "Observation shard ${OBS_ARCHIVE_SUFFIX} is fully drained."
+              break
             fi
-
-            if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
-              echo "Non-transient observation archive failure detected; refusing to retry."
-              rm -f "$log_file"
-              exit "$status"
-            fi
-
-            rm -f "$log_file"
-
-            if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "Supabase statement timeout persisted after ${max_attempts} attempts."
-              exit "$status"
-            fi
-
-            sleep_seconds=$((attempt * 8))
-            echo "Transient Supabase statement timeout; retrying in ${sleep_seconds}s."
-            sleep "$sleep_seconds"
-            attempt=$((attempt + 1))
           done
