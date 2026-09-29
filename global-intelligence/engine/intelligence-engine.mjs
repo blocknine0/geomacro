@@ -107,26 +107,34 @@ export async function answerQuestion(
   pruneCache(now, cacheMaxEntries);
 
   if (typeof permanentReader === "function" && options.forceLive !== true) {
-    const permanent = await permanentReader({
-      question: normalizedQuestion,
-      countryIso3,
-      categories
-    });
-
-    if (permanent?.sufficient === true && permanent?.data) {
-      return {
-        schema_version: "intelligence-answer-2.0",
+    try {
+      const permanent = await permanentReader({
         question: normalizedQuestion,
-        country_iso3: countryIso3,
-        categories,
-        data_mode: "permanent",
-        cache_status: "bypassed",
-        message: "Geomacro found these factors from its current internal intelligence based on your question.",
-        source_identity_exposed: false,
-        durable_live_storage_write: false,
-        data: permanent.data,
-        generated_at: new Date().toISOString()
-      };
+        countryIso3,
+        categories
+      });
+
+      if (permanent?.sufficient === true && permanent?.data) {
+        return {
+          schema_version: "intelligence-answer-2.0",
+          question: normalizedQuestion,
+          country_iso3: countryIso3,
+          categories,
+          data_mode: "permanent",
+          cache_status: "bypassed",
+          message: "Geomacro found these factors from its current internal intelligence based on your question.",
+          source_identity_exposed: false,
+          durable_live_storage_write: false,
+          data: permanent.data,
+          generated_at: new Date().toISOString()
+        };
+      }
+    } catch (error) {
+      // The permanent reader is an optimization, not a single point of failure.
+      // A Supabase outage/timeout must not prevent Geomacro from continuing to
+      // the independent live-adapter path. Transactional/durable operations keep
+      // their own fail-closed boundaries elsewhere.
+      console.error("[intelligence-engine] permanent reader unavailable; continuing live", error);
     }
   }
 
