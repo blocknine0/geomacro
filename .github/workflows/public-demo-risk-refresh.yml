@@ -1,31 +1,14 @@
 name: Public Demo Risk Refresh
 
+# Public demo / risk-gate proofs are not part of the launch-day product.
+# Keep this workflow manual-only so demo objects cannot consume production
+# Supabase reads, writes or log quota in the background.
 on:
   workflow_dispatch:
-  # Public Demo Risk Objects expire after 3 hours. Run hourly so scheduled
-  # execution retains a two-hour freshness margin before the fail-closed gate trips.
-  schedule:
-    - cron: "0 * * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/public-demo-risk-refresh.yml"
-      - "src/lib/country-risk-publisher.server.ts"
-      - "src/lib/corridor-risk-publisher.server.ts"
-      - "src/lib/country-risk-engine.ts"
-      - "src/lib/corridor-risk-engine.ts"
-      - "src/lib/risk-object-store.server.ts"
-      - "src/lib/risk-object-signing.server.ts"
-      - "scripts/refresh-public-demo-risk-objects.ts"
-
 
 permissions:
   contents: read
 
-
-# Keep public-demo publication independent from the long-running intelligence
-# orchestrator so freshness-critical publication cannot be queued behind it.
 concurrency:
   group: geomacro-public-demo-refresh
   cancel-in-progress: false
@@ -65,25 +48,14 @@ jobs:
           node <<'NODE'
           const { createPrivateKey, createPublicKey } = require('node:crypto');
           const fs = require('node:fs');
-
           const privateKey = createPrivateKey({
             key: Buffer.from(process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64.trim(), 'base64'),
             format: 'der',
             type: 'pkcs8',
           });
-
-          if (privateKey.asymmetricKeyType !== 'ed25519') {
-            throw new Error('Risk Object signing key must be Ed25519');
-          }
-
-          const publicB64 = Buffer.from(
-            createPublicKey(privateKey).export({ format: 'der', type: 'spki' }),
-          ).toString('base64');
-
-          fs.appendFileSync(
-            process.env.GITHUB_ENV,
-            'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n',
-          );
+          if (privateKey.asymmetricKeyType !== 'ed25519') throw new Error('Risk Object signing key must be Ed25519');
+          const publicB64 = Buffer.from(createPublicKey(privateKey).export({ format: 'der', type: 'spki' })).toString('base64');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64=' + publicB64 + '\n');
           NODE
 
       - name: Verify signer matches deployed public key
@@ -91,21 +63,12 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error https://geomacro.live/api/risk-object-keys > /tmp/keys.json
-
           node <<'NODE'
           const fs = require('node:fs');
           const body = JSON.parse(fs.readFileSync('/tmp/keys.json', 'utf8'));
-          const key = Array.isArray(body?.keys)
-            ? body.keys.find((item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID)
-            : null;
-
-          if (!key || key.status !== 'active') {
-            throw new Error('Configured Risk Object signing key is not the deployed active key');
-          }
-
-          if (key.public_key_spki_b64 !== process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) {
-            throw new Error('Configured private key does not match deployed public verification key');
-          }
+          const key = Array.isArray(body?.keys) ? body.keys.find((item) => item?.key_id === process.env.RISK_OBJECT_SIGNING_KEY_ID) : null;
+          if (!key || key.status !== 'active') throw new Error('Configured Risk Object signing key is not the deployed active key');
+          if (key.public_key_spki_b64 !== process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64) throw new Error('Configured private key does not match deployed public verification key');
           NODE
 
       - name: Refresh all visible public demo subjects
@@ -114,267 +77,3 @@ jobs:
           set -euo pipefail
           bun scripts/refresh-public-demo-risk-objects.ts | tee /tmp/public-demo-refresh.json
           jq -e '.ok == true and (.demo_results | length) == 4' /tmp/public-demo-refresh.json >/dev/null
-
-      - name: Verify live public demo endpoint for all four scenarios
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          node <<'NODE'
-          const scenarios = [
-            {
-              name: "USA>CHN",
-              expectedSubject: "USA>CHN",
-              body: {
-                subject: {
-                  type: "corridor",
-                  origin_country_iso3: "USA",
-                  destination_country_iso3: "CHN",
-                },
-                policy_preset: "cautious",
-                action_type: "agent_payment",
-                amount_usdc: 10000,
-              },
-            },
-            {
-              name: "CHN>USA",
-              expectedSubject: "CHN>USA",
-              body: {
-                subject: {
-                  type: "corridor",
-                  origin_country_iso3: "CHN",
-                  destination_country_iso3: "USA",
-                },
-                policy_preset: "cautious",
-                action_type: "agent_payment",
-                amount_usdc: 10000,
-              },
-            },
-            {
-              name: "USA",
-              expectedSubject: "USA",
-              body: {
-                subject: {
-                  type: "country",
-                  country_iso3: "USA",
-                },
-                policy_preset: "cautious",
-                action_type: "agent_payment",
-                amount_usdc: 10000,
-              },
-            },
-            {
-              name: "CHN",
-              expectedSubject: "CHN",
-              body: {
-                subject: {
-                  type: "country",
-                  country_iso3: "CHN",
-                },
-                policy_preset: "cautious",
-                action_type: "agent_payment",
-                amount_usdc: 10000,
-              },
-            },
-          ];
-
-          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-          async function probe(scenario) {
-            let lastFailure = null;
-
-            for (let attempt = 1; attempt <= 8; attempt += 1) {
-              try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 20000);
-
-                const response = await fetch(
-                  "https://geomacro.live/api/demo/preflight",
-                  {
-                    method: "POST",
-                    headers: {
-                      "content-type": "application/json",
-                      "user-agent": "geomacro-public-demo-health/1.0",
-                    },
-                    body: JSON.stringify(scenario.body),
-                    signal: controller.signal,
-                  },
-                );
-                clearTimeout(timeout);
-
-                let payload = null;
-                try {
-                  payload = await response.json();
-                } catch {
-                  payload = null;
-                }
-
-                const subjectId = payload?.risk_object?.subject?.id ?? null;
-                const executionAuthorized =
-                  payload?.risk_gate?.execution_authorized ??
-                  payload?.boundaries?.execution_authorized ??
-                  null;
-
-                if (
-                  response.status === 200 &&
-                  payload?.ok === true &&
-                  payload?.mode === "PUBLIC_SANDBOX" &&
-                  subjectId === scenario.expectedSubject &&
-                  executionAuthorized === false
-                ) {
-                  return {
-                    scenario: scenario.name,
-                    status: response.status,
-                    object_id: payload.risk_object?.object_id ?? null,
-                    expires_at: payload.risk_object?.expires_at ?? null,
-                    verification_status:
-                      payload.risk_object?.verification?.status ?? null,
-                    commercial_eligibility_status:
-                      payload.risk_object?.commercial_eligibility?.status ?? null,
-                    decision: payload.risk_gate?.decision ?? null,
-                    execution_authorized: executionAuthorized,
-                    attempt,
-                  };
-                }
-
-                lastFailure = {
-                  attempt,
-                  status: response.status,
-                  ok: payload?.ok ?? null,
-                  mode: payload?.mode ?? null,
-                  subject_id: subjectId,
-                  execution_authorized: executionAuthorized,
-                  code: payload?.code ?? payload?.error ?? null,
-                };
-              } catch (error) {
-                lastFailure = {
-                  attempt,
-                  error: error instanceof Error ? error.message : String(error),
-                };
-              }
-
-              if (attempt < 8) {
-                await sleep(15000);
-              }
-            }
-
-            throw new Error(
-              `Live public demo failed for ${scenario.name}: ${JSON.stringify(lastFailure)}`,
-            );
-          }
-
-          (async () => {
-            const results = [];
-            for (const scenario of scenarios) {
-              results.push(await probe(scenario));
-            }
-
-            const output = {
-              ok: true,
-              checked_at: new Date().toISOString(),
-              endpoint: "https://geomacro.live/api/demo/preflight",
-              scenario_count: results.length,
-              results,
-            };
-
-            require("node:fs").writeFileSync(
-              "/tmp/public-demo-live-http.json",
-              JSON.stringify(output, null, 2) + "\n",
-            );
-
-            console.log("PUBLIC_DEMO_LIVE_HTTP_PASS");
-            console.log(JSON.stringify(output, null, 2));
-          })().catch((error) => {
-            console.error("PUBLIC_DEMO_LIVE_HTTP_FAILED");
-            console.error(error);
-            process.exit(1);
-          });
-          NODE
-
-      - name: Diagnose commercial blockers
-        if: failure()
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          node <<'NODE'
-          const { createClient } = require('@supabase/supabase-js');
-
-          (async () => {
-            const db = createClient(
-              process.env.APP_SUPABASE_URL,
-              process.env.APP_SUPABASE_SERVICE_ROLE_KEY,
-              { auth: { persistSession: false, autoRefreshToken: false } },
-            );
-
-            const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-            const { data: events, error: eventsError } = await db
-              .from('live_structured_events')
-              .select('id,primary_country,countries,last_seen_at,commercial_eligibility_status,commercial_eligibility_reason_codes')
-              .gte('last_seen_at', cutoff)
-              .order('last_seen_at', { ascending: false });
-
-            if (eventsError) throw eventsError;
-
-            const usaEvents = (events ?? []).filter((event) =>
-              event.primary_country === 'USA' ||
-              (Array.isArray(event.countries) && event.countries.includes('USA'))
-            );
-
-            const ids = usaEvents.map((event) => event.id).filter(Boolean);
-            const { data: rights, error: rightsError } = ids.length > 0
-              ? await db
-                  .from('live_structured_event_commercial_rights_evaluation')
-                  .select('event_id,evaluated_status,reason_codes,source_keys')
-                  .in('event_id', ids)
-              : { data: [], error: null };
-
-            if (rightsError) throw rightsError;
-
-            const rightsById = new Map((rights ?? []).map((row) => [row.event_id, row]));
-
-            console.log('PUBLIC_DEMO_USA_COMMERCIAL_BLOCKERS');
-            console.log(JSON.stringify(
-              usaEvents.map((event) => {
-                const resolved = rightsById.get(event.id) ?? null;
-                return {
-                  event_id: event.id,
-                  last_seen_at: event.last_seen_at,
-                  stored_status: event.commercial_eligibility_status,
-                  stored_reason_codes: event.commercial_eligibility_reason_codes,
-                  evaluated_status: resolved?.evaluated_status ?? null,
-                  evaluated_reason_codes: resolved?.reason_codes ?? [],
-                  source_keys: resolved?.source_keys ?? [],
-                };
-              }),
-              null,
-              2,
-            ));
-          })().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          NODE
-
-      - name: Publish sanitized health summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -s /tmp/public-demo-refresh.json ]; then
-            {
-              echo "## Public demo refresh"
-              echo
-              jq '{ok, refreshed_at, countries, corridors, demo_results}' /tmp/public-demo-refresh.json
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Public demo refresh did not produce a JSON summary." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [ -s /tmp/public-demo-live-http.json ]; then
-            {
-              echo
-              echo "## Live HTTP gate"
-              echo
-              jq '{ok, checked_at, endpoint, scenario_count, results}' /tmp/public-demo-live-http.json
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
