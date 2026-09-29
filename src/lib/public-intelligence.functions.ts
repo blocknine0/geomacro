@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { assertSameOrigin } from "./origin-guard";
+import { readB2PublicIntelligence } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
 
 const EmptyInput = z.object({}).strict();
@@ -83,14 +84,15 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
 }
 
 /**
- * Canonical public Intelligence read path.
+ * Canonical Supabase Intelligence read used to publish the independent B2 live
+ * snapshot and as a bounded fallback if the B2 snapshot is unavailable.
  *
  * The canonical structured feed is the fast path. Fallback tables are queried
  * only for domains missing from that feed. Every Data API request has its own
  * short abort deadline so /intelligence cannot hang behind a slow Supabase read.
  * A partial verified feed is preferable to a page-level outage.
  */
-export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
+export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
   if (!supabase) return [];
 
@@ -226,6 +228,17 @@ export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRo
     console.error("[public-intelligence] all read paths degraded", failures.join(","));
   }
   return result;
+}
+
+/**
+ * Public read boundary: private B2 snapshot first. Missing B2 credentials,
+ * timeout, stale/corrupt snapshot, or any B2 error fails soft to the existing
+ * bounded Supabase path without changing the public response contract.
+ */
+export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
+  const b2Rows = await readB2PublicIntelligence();
+  if (b2Rows?.length) return sortAndDedupe(b2Rows);
+  return readPublicIntelligenceRowsFromSupabase();
 }
 
 export const getPublicIntelligence = createServerFn({ method: "POST" })
