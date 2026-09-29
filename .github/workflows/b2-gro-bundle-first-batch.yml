@@ -2,7 +2,7 @@ name: B2 GRO cold archive maintenance
 
 # Supabase keeps hot operational state only. Expired signed GRO payloads move to
 # verified B2 bundles. Every batch is read back and signature-verified before
-# payload cleanup. A conservative six-hour cadence keeps B2 request volume bounded.
+# payload cleanup. Routine runs are capped and serialized against free-tier DB pressure.
 on:
   workflow_dispatch:
   schedule:
@@ -31,7 +31,7 @@ jobs:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_one_shard_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -41,7 +41,8 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
-      GRO_BUNDLE_LIMIT: "25"
+      GRO_BUNDLE_LIMIT: "50"
+      GRO_BUNDLE_ROUNDS: "10"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -54,17 +55,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3; do
-            set +e
-            output="$(bun scripts/ops/b2-archive-gro-bundle.ts 2>&1)"
-            rc=$?
-            set -e
-            printf '%s\n' "$output"
-            if [ "$rc" -eq 0 ]; then exit 0; fi
-            if ! printf '%s\n' "$output" | grep -Eq '57014|statement timeout|canceling statement due to statement timeout'; then
-              echo "Non-transient GRO archive failure detected; refusing to retry."
-              exit "$rc"
+          rounds="${GRO_BUNDLE_ROUNDS:-1}"
+          for round in $(seq 1 "$rounds"); do
+            echo "GRO cold archive round ${round}/${rounds} for shard ${GRO_ARCHIVE_SUFFIX}"
+            success=0
+            for attempt in 1 2 3; do
+              set +e
+              output="$(bun scripts/ops/b2-archive-gro-bundle.ts 2>&1)"
+              rc=$?
+              set -e
+              printf '%s\n' "$output"
+              if [ "$rc" -eq 0 ]; then
+                success=1
+                break
+              fi
+              if ! printf '%s\n' "$output" | grep -Eq '57014|statement timeout|canceling statement due to statement timeout'; then
+                echo "Non-transient GRO archive failure detected; refusing to retry."
+                exit "$rc"
+              fi
+              if [ "$attempt" -eq 3 ]; then exit "$rc"; fi
+              sleep $((attempt * 8))
+            done
+            test "$success" -eq 1
+            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then
+              echo "Shard ${GRO_ARCHIVE_SUFFIX} is fully drained."
+              break
             fi
-            if [ "$attempt" -eq 3 ]; then exit "$rc"; fi
-            sleep $((attempt * 8))
           done

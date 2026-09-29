@@ -86,10 +86,12 @@ while (selected.length) {
 }
 if (!selected.length || !compressed) throw new Error("GRO_BUNDLE_CANNOT_FIT");
 
-// Keep the existing individual B2 restore path compatible while using only one
-// full GET to verify the entire batch. Each exact individual gzip is also
-// embedded in the bundle and verified after bundle readback.
-for (const entry of selected) {
+// The production reader is bundle-pointer native. Preserve the legacy
+// individual-object path only for the one-object canary, where it explicitly
+// exercises both restore representations. Bulk batches write only the bundle,
+// reducing B2 Class-A operations from O(members) to O(bundles).
+if (limit === 1) {
+  const entry = selected[0];
   await b2.put(`geomacro-evidence/v1/gro/${entry.object_id}.json.gz`, Buffer.from(entry.archive_gzip_b64, "base64"));
 }
 await b2.put(archiveKey, compressed);
@@ -179,5 +181,5 @@ if (limit === 1) {
 console.log(JSON.stringify({ ok: true, status: "progress", bundle_id: bundleId, archived: selected.length,
   shard_suffix: suffix, signing_key_id: signingKeyId, bundle_compressed_bytes: compressed.length,
   b2_full_gets: 1, objects_per_b2_get: selected.length, source_rows_retained: true,
-  individual_restore_compatibility: true, signature_verified: true,
+  individual_restore_compatibility: limit === 1, bundle_native_restore: true, signature_verified: true,
   verification_mode: "one-full-bundle-readback-before-atomic-cleanup" }));
