@@ -9,8 +9,6 @@ on:
       - ".github/workflows/wgi-political-stability-sync.yml"
       - "supabase/migrations/919_risk_gate_v2_global_source_manifests.sql"
   workflow_dispatch:
-  schedule:
-    - cron: "41 4 15 1,4,7,10 *"
 
 permissions:
   contents: read
