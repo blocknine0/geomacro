@@ -10,6 +10,7 @@ describe("B2 GRO bundle externalization", () => {
     expect(worker).toContain('kind: "gro-bundle"');
     expect(worker).toContain("GRO_BUNDLE_COMPRESSED_HASH_MISMATCH");
     expect(worker).toContain("GRO_BUNDLE_MEMBER_RESTORE_INVALID_");
+    expect(worker).toContain("GRO_BUNDLE_CANARY_RESTORE_SIGNATURE_INVALID");
     expect(worker).toContain('db.rpc("geomacro_clear_verified_gro_bundle_v1"');
     expect(worker).toContain("objects_per_b2_get");
   });
@@ -54,5 +55,8 @@ describe("B2 GRO bundle externalization", () => {
     expect(workflow).toContain('GRO_BUNDLE_LIMIT: "50"');
     expect(workflow).toContain("max-parallel: 2");
     expect(workflow).toContain("Non-transient GRO archive failure detected; refusing to retry.");
+    const liveCanary = read(".github/workflows/b2-gro-bundle-live-canary.yml");
+    expect(liveCanary).toContain('GRO_BUNDLE_LIMIT: "1"');
+    expect(liveCanary).not.toContain("externalize_verified_bundle:");
   });
 });

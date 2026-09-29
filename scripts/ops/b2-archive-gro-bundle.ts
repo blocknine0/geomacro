@@ -161,6 +161,21 @@ if (clearError || !Array.isArray(cleared) || cleared.length !== selected.length)
 const clearedIds = new Set(cleared.map((row: any) => row.object_id));
 if (selected.some((entry) => !clearedIds.has(entry.object_id))) throw new Error("GRO_BUNDLE_CLEAR_SET_MISMATCH");
 
+// After the one-object canary switches to its archive pointer, exercise the
+// actual production restore endpoint and the signed object verifier.
+if (limit === 1) {
+  const source = selected[0];
+  const { data: restoredBlob, error: restoreError } = await db.functions.invoke("gro-archive-read", {
+    body: { object_id: source.object_id },
+  });
+  if (restoreError || !(restoredBlob instanceof Blob)) throw new Error("GRO_BUNDLE_CANARY_RESTORE_FAILED");
+  const restoredBytes = Buffer.from(await restoredBlob.arrayBuffer());
+  if (sha(restoredBytes) !== source.archive_sha256) throw new Error("GRO_BUNDLE_CANARY_RESTORE_HASH_INVALID");
+  const restoredObject = JSON.parse(gunzipSync(restoredBytes).toString("utf8"));
+  if (canonicalRiskObjectJson(restoredObject) !== canonicalRiskObjectJson(source.payload) ||
+      !verifyRiskObjectSignature(restoredObject, keys).valid) throw new Error("GRO_BUNDLE_CANARY_RESTORE_SIGNATURE_INVALID");
+}
+
 console.log(JSON.stringify({ ok: true, status: "progress", bundle_id: bundleId, archived: selected.length,
   shard_suffix: suffix, signing_key_id: signingKeyId, bundle_compressed_bytes: compressed.length,
   b2_full_gets: 1, objects_per_b2_get: selected.length, source_rows_retained: true,
