@@ -51,7 +51,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(observationWorkflow).toContain("schedule:");
     expect(observationWorkflow).toContain('cron: "17 * * * *"');
     expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
-    expect(observationWorkflow).toContain("one B2 full GET");
+    expect(observationWorkflow).toContain("One B2 full GET");
   });
 
   it("retains bounded sharded raw maintenance for manual verified recovery", () => {
