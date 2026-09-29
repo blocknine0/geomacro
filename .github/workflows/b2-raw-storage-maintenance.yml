@@ -3,7 +3,7 @@ name: B2 raw Storage maintenance
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "37 * * * *"
+    - cron: "37 */6 * * *"
   push:
     branches: [main]
     paths:
@@ -59,7 +59,7 @@ jobs:
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_RAW_BUNDLE_LIMIT: "25"
-      B2_RAW_BUNDLE_ROUNDS: "40"
+      B2_RAW_BUNDLE_ROUNDS: "10"
       B2_RAW_MAINTENANCE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
