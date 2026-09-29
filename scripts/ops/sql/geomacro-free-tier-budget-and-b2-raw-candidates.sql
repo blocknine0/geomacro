@@ -63,6 +63,7 @@ begin
    and o.name = s.object_path
   where s.storage_bucket = 'geomacro-live-intelligence'
     and s.object_path like 'raw/v1/%'
+    and s.archive_bundle_key is null
     and s.fetched_at < now() - interval '72 hours'
   order by s.fetched_at asc, s.snapshot_id asc
   limit p_limit;
@@ -117,6 +118,7 @@ begin
    and o.name = s.object_path
   where s.storage_bucket = 'geomacro-live-intelligence'
     and s.object_path like 'raw/v1/%'
+    and s.archive_bundle_key is null
     and s.fetched_at < now() - interval '72 hours'
     and right(s.snapshot_id::text, 1) = p_suffix
   order by s.fetched_at asc, s.snapshot_id asc
