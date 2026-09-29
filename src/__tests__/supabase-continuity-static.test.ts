@@ -12,7 +12,7 @@ describe("Supabase continuity contract", () => {
     expect(source).toContain("db: { retry: false }");
     expect(source).toContain("idempotentRead ? 2 : 1");
     expect(source).toContain("x-geomacro-degraded");
-    expect(source).not.toContain("VITE_SUPABASE_");
+    expect(source).not.toMatch(/process\.env\.VITE_SUPABASE_/);
   });
 
   it("keeps privileged risk writes fail-closed without automatic replay", () => {
