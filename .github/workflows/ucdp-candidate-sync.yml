@@ -16,8 +16,6 @@ on:
         description: "Optional monthly UCDP Candidate version override, for example 26.0.8"
         required: false
         default: ""
-  schedule:
-    - cron: "17 3 22 * *"
 
 permissions:
   contents: read
