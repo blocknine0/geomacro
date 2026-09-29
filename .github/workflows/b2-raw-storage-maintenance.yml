@@ -98,3 +98,5 @@ jobs:
             test "$success" -eq 1
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
           done
+
+# Manual verified raw Storage drain trigger: 2026-09-29
