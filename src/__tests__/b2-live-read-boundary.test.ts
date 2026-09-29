@@ -38,7 +38,8 @@ describe("non-destructive B2 live read boundary", () => {
     expect(publisher).toContain("B2_LIVE_READBACK_HASH_INVALID");
     expect(publisher).not.toContain(".delete(");
     expect(publisher).not.toContain("delete from");
-    expect(workflow).toContain('cron: "37 */2 * * *"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
     expect(workflow).toContain("cancel-in-progress: true");
   });
 });

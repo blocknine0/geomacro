@@ -22,8 +22,8 @@ describe("sharded B2 quota recovery", () => {
     expect(candidateRpcs).toContain("right(lower(o.observation_id), 1) = p_suffix");
     expect(observationWorkflow).toContain(suffixMatrix);
     expect(observationWorkflow).toContain("max-parallel: 1");
-    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "50"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "40"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "100"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "4"');
     expect(observationWorkflow).toContain("cancel-in-progress: true");
     expect(observationWorkflow).toContain("Persistent free-tier statement timeout after verified observation progress");
   });
@@ -31,8 +31,8 @@ describe("sharded B2 quota recovery", () => {
   it("serializes raw Storage pruning and preserves canary-first cleanup", () => {
     expect(rawWorkflow).toContain(suffixMatrix);
     expect(rawWorkflow).toContain("max-parallel: 1");
-    expect(rawWorkflow).toContain('B2_RAW_BUNDLE_LIMIT: "25"');
-    expect(rawWorkflow).toContain('B2_RAW_BUNDLE_ROUNDS: "40"');
+    expect(rawWorkflow).toContain('B2_RAW_BUNDLE_LIMIT: "100"');
+    expect(rawWorkflow).toContain('B2_RAW_BUNDLE_ROUNDS: "4"');
     expect(rawWorkflow).toContain("needs: b2_canary");
     expect(rawWorkflow).toContain("cancel-in-progress: true");
     expect(rawWorkflow).toContain("Persistent free-tier statement timeout after verified raw progress");

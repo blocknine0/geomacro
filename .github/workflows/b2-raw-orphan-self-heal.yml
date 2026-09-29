@@ -2,18 +2,6 @@ name: B2 Raw Orphan Self Heal
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/b2-raw-orphan-self-heal.yml
-      - scripts/ops/b2-raw-bundle-orphan-cleanup.mjs
-      - scripts/ops/sql/b2-raw-bundle-source-orphans.sql
-  schedule:
-    - cron: "41 3 * * *"
-  workflow_run:
-    workflows:
-      - B2 raw Storage maintenance
-    types: [completed]
 
 permissions:
   contents: read
@@ -24,9 +12,7 @@ concurrency:
 
 jobs:
   cleanup:
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      (github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main')
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production

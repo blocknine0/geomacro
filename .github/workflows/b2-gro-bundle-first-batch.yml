@@ -5,15 +5,7 @@ name: B2 GRO cold archive maintenance
 # payload cleanup. Routine runs serialize DB pressure and pause a shard cleanly
 # after persistent free-tier statement timeout; the next cycle resumes it.
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-gro-bundle-first-batch.yml"
-      - "scripts/ops/b2-archive-gro-bundle.ts"
-      - "supabase/functions/gro-archive-read/index.ts"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -43,7 +35,7 @@ jobs:
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
       GRO_BUNDLE_LIMIT: "25"
-      GRO_BUNDLE_ROUNDS: "20"
+      GRO_BUNDLE_ROUNDS: "4"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -88,6 +80,7 @@ jobs:
               break
             fi
             test "$success" -eq 1
+            if [ "$round" -lt "$rounds" ]; then sleep 15; fi
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then
               echo "Shard ${GRO_ARCHIVE_SUFFIX} is fully drained."
               break
