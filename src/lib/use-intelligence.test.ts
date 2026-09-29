@@ -39,6 +39,7 @@ describe("public intelligence recency contract", () => {
     expect(result.categories).toEqual([...PUBLIC_INTELLIGENCE_CATEGORIES]);
     expect(result.categoryCounts.map((item) => item.category)).toEqual(["macro"]);
   });
+
   it("uses publication time instead of ingestion time for the current 24h window", () => {
     const historical = row({
       id: "historical-import",
@@ -74,6 +75,34 @@ describe("public intelligence recency contract", () => {
       sort: "risk",
     });
     expect(explicitResearch.map((event) => event.id)).toEqual(["historical-import"]);
+  });
+
+  it("shows the newest verified records instead of an empty page when the 24h window is quiet", () => {
+    const older = row({
+      id: "older",
+      source_title: "Older verified event",
+      severity: 90,
+      created_at: "2026-09-19T10:00:00.000Z",
+      published_at: "2026-09-19T10:00:00.000Z",
+    });
+    const newer = row({
+      id: "newer",
+      source_title: "Newer verified event",
+      severity: 40,
+      created_at: "2026-09-21T10:00:00.000Z",
+      published_at: "2026-09-21T10:00:00.000Z",
+    });
+
+    const result = buildPublicIntelligence([older, newer], NOW);
+    expect(result.today).toHaveLength(0);
+    expect(result.usedFallbackWindow).toBe(true);
+
+    const defaultView = applyIntelFilters(result.all, {
+      category: "all",
+      query: "",
+      sort: "newest",
+    });
+    expect(defaultView.map((event) => event.id)).toEqual(["newer", "older"]);
   });
 
   it("keeps historical records available for explicit research/search without treating them as current risk topics", () => {
