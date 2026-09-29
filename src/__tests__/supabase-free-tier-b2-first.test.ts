@@ -29,8 +29,10 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(budget).toContain("raw_archive_historical_large_payloads");
     expect(budget).toContain('process.env.GITHUB_WORKFLOW === "Auto Ingest News"');
     expect(budget).toContain("SUPABASE_FREE_TIER_BULK_WRITE_FROZEN");
+    expect(budget).toContain("SUPABASE_FREE_TIER_HEADROOM_REQUIRED");
+    expect(budget).toContain('data.mode === "normal"');
     expect(autoIngestWorkflow).toContain('name: Auto Ingest News');
-    expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs");
+    expect(autoIngestWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write --require-normal");
   });
 
   it("keeps raw cleanup on the Storage API and never SQL-deletes storage.objects", () => {
@@ -108,14 +110,16 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(groRestore).toContain("GRO_BUNDLE_MEMBER_HASH_INVALID");
   });
 
-  it("never auto-triggers heavy production coverage or intelligence refresh while frozen", () => {
+  it("never auto-triggers heavy production coverage and only runs bounded intelligence refresh with normal headroom", () => {
     expect(productionCoverageWorkflow).toContain("workflow_dispatch:");
     expect(productionCoverageWorkflow).not.toContain("branches: [main]");
     expect(productionCoverageWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
     expect(orchestratorWorkflow).toContain("workflow_dispatch:");
     expect(orchestratorWorkflow).not.toContain("schedule:");
     expect(orchestratorWorkflow).toContain("supabase-free-tier-budget.mjs --require-bulk-write");
-    expect(autoIngestWorkflow).toContain('cron: "0 */2 * * *"');
-    expect(budget).toContain('process.env.GITHUB_WORKFLOW === "Auto Ingest News"');
+    expect(autoIngestWorkflow).toContain('cron: "17 */6 * * *"');
+    expect(autoIngestWorkflow).toContain("--require-normal");
+    expect(autoIngestWorkflow).toContain('GROQ_MAX_REQUESTS_PER_RUN: "12"');
+    expect(autoIngestWorkflow).toContain('GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "3"');
   });
 });
