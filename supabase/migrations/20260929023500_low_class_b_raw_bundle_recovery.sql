@@ -1,21 +1,23 @@
-alter table public.live_raw_source_snapshots
-  add column if not exists archive_bundle_key text,
-  add column if not exists archive_bundle_sha256 text,
-  add column if not exists archive_member_sha256 text;
-
 do $$ begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'live_raw_source_snapshots_archive_bundle_shape_check'
-      and conrelid = 'public.live_raw_source_snapshots'::regclass
-  ) then
+  if to_regclass('public.live_raw_source_snapshots') is not null then
     alter table public.live_raw_source_snapshots
-      add constraint live_raw_source_snapshots_archive_bundle_shape_check check (
-        (archive_bundle_key is null and archive_bundle_sha256 is null and archive_member_sha256 is null)
-        or
-        (archive_bundle_key ~ '^geomacro-evidence/v1/raw-bundles/[0-9]{8}T[0-9]{6}Z-[0-9a-f]-[0-9a-f-]{36}\.json\.gz$'
-         and archive_bundle_sha256 ~ '^[a-f0-9]{64}$'
-         and archive_member_sha256 ~ '^[a-f0-9]{64}$')
-      );
+      add column if not exists archive_bundle_key text,
+      add column if not exists archive_bundle_sha256 text,
+      add column if not exists archive_member_sha256 text;
+
+    if not exists (
+      select 1 from pg_constraint where conname = 'live_raw_source_snapshots_archive_bundle_shape_check'
+        and conrelid = to_regclass('public.live_raw_source_snapshots')
+    ) then
+      alter table public.live_raw_source_snapshots
+        add constraint live_raw_source_snapshots_archive_bundle_shape_check check (
+          (archive_bundle_key is null and archive_bundle_sha256 is null and archive_member_sha256 is null)
+          or
+          (archive_bundle_key ~ '^geomacro-evidence/v1/raw-bundles/[0-9]{8}T[0-9]{6}Z-[0-9a-f]-[0-9a-f-]{36}\.json\.gz$'
+           and archive_bundle_sha256 ~ '^[a-f0-9]{64}$'
+           and archive_member_sha256 ~ '^[a-f0-9]{64}$')
+        );
+    end if;
   end if;
 end $$;
 
@@ -45,6 +47,10 @@ begin
     raise exception 'RAW_BUNDLE_MARK_ARGS_INVALID';
   end if;
 
+  if to_regclass('public.live_raw_source_snapshots') is null then
+    raise exception 'RAW_BUNDLE_SOURCE_TABLE_UNAVAILABLE';
+  end if;
+
   for item in select value from jsonb_array_elements(p_items)
   loop
     begin
@@ -61,20 +67,22 @@ begin
       raise exception 'RAW_BUNDLE_MARK_ITEM_INVALID';
     end if;
 
-    update public.live_raw_source_snapshots s
-       set archive_bundle_key = p_bundle_key,
-           archive_bundle_sha256 = p_bundle_sha256,
-           archive_member_sha256 = v_member_hash
-     where s.snapshot_id = v_id
-       and s.storage_bucket = 'geomacro-live-intelligence'
-       and s.object_path = v_path
-       and s.content_sha256 = v_payload_hash
-       and s.archive_bundle_key is null
-       and exists (
-         select 1 from storage.objects o
-          where o.bucket_id = s.storage_bucket and o.name = s.object_path
-       )
-    returning s.snapshot_id into marked;
+    execute $sql$
+      update public.live_raw_source_snapshots s
+         set archive_bundle_key = $1,
+             archive_bundle_sha256 = $2,
+             archive_member_sha256 = $3
+       where s.snapshot_id = $4
+         and s.storage_bucket = 'geomacro-live-intelligence'
+         and s.object_path = $5
+         and s.content_sha256 = $6
+         and s.archive_bundle_key is null
+         and exists (
+           select 1 from storage.objects o
+            where o.bucket_id = s.storage_bucket and o.name = s.object_path
+         )
+      returning s.snapshot_id
+    $sql$ into marked using p_bundle_key, p_bundle_sha256, v_member_hash, v_id, v_path, v_payload_hash;
 
     if marked is null then
       raise exception 'RAW_BUNDLE_SOURCE_CHANGED:%', v_id;
