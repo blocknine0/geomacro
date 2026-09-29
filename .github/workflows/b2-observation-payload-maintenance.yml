@@ -1,8 +1,5 @@
 name: B2 observation raw payload maintenance
 
-# Supabase retains normalized operational observation state only. Historical raw
-# payloads move to verified B2 bundles. Every run starts with a one-object Edge
-# restore canary, then bulk bundles are read directly from B2 before atomic cleanup.
 on:
   workflow_dispatch: {}
   schedule:
@@ -18,7 +15,7 @@ permissions:
 
 concurrency:
   group: geomacro-b2-observation-archive
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   b2_canary:
@@ -35,17 +32,12 @@ jobs:
       OBS_BUNDLE_LIMIT: "1"
       OBS_ARCHIVE_SUFFIX: "0"
     steps:
-      - name: Checkout canonical main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.4.2"
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify one observation bundle before fanout
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify one observation restore canary
         run: node scripts/ops/b2-archive-observation-bundle.mjs
 
   archive_verified_bundle:
@@ -53,7 +45,7 @@ jobs:
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.b2_canary.result == 'success' }}
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_verified_bundle_${{ matrix.suffix }}
@@ -66,66 +58,43 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      OBS_BUNDLE_LIMIT: "100"
-      OBS_BUNDLE_ROUNDS: "20"
+      OBS_BUNDLE_LIMIT: "50"
+      OBS_BUNDLE_ROUNDS: "40"
       OBS_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
     steps:
-      - name: Checkout canonical main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.4.2"
-      - name: Install locked dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - run: bun install --frozen-lockfile --ignore-scripts
       - name: Archive verified observation bundles to B2
         shell: bash
         run: |
           set -euo pipefail
-          rounds="${OBS_BUNDLE_ROUNDS:-1}"
-
-          for round in $(seq 1 "$rounds"); do
-            echo "Observation cold archive round ${round}/${rounds} for shard ${OBS_ARCHIVE_SUFFIX}"
-            max_attempts=4
-            attempt=1
+          for round in $(seq 1 "${OBS_BUNDLE_ROUNDS:-1}"); do
+            echo "Observation cold archive round ${round}/${OBS_BUNDLE_ROUNDS} for shard ${OBS_ARCHIVE_SUFFIX}"
             success=0
-
-            while [ "$attempt" -le "$max_attempts" ]; do
+            persistent_timeout=0
+            output=""
+            for attempt in 1 2 3; do
               log_file="$(mktemp)"
               set +e
               node scripts/ops/b2-archive-observation-bundle.mjs 2>&1 | tee "$log_file"
               status=${PIPESTATUS[0]}
               set -e
               output="$(cat "$log_file")"
-
-              if [ "$status" -eq 0 ]; then
-                success=1
-                rm -f "$log_file"
-                break
-              fi
-
+              if [ "$status" -eq 0 ]; then success=1; rm -f "$log_file"; break; fi
               if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
-                echo "Non-transient observation archive failure detected; refusing to retry."
-                rm -f "$log_file"
-                exit "$status"
+                rm -f "$log_file"; echo "Non-transient observation archive failure; stopping."; exit "$status"
               fi
-
               rm -f "$log_file"
-              if [ "$attempt" -eq "$max_attempts" ]; then
-                echo "Supabase statement timeout persisted after ${max_attempts} attempts."
-                exit "$status"
-              fi
-              sleep_seconds=$((attempt * 8))
-              echo "Transient Supabase statement timeout; retrying in ${sleep_seconds}s."
-              sleep "$sleep_seconds"
-              attempt=$((attempt + 1))
+              if [ "$attempt" -eq 3 ]; then persistent_timeout=1; break; fi
+              sleep $((attempt * 8))
             done
-
-            test "$success" -eq 1
-            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then
-              echo "Observation shard ${OBS_ARCHIVE_SUFFIX} is fully drained."
+            if [ "$persistent_timeout" -eq 1 ]; then
+              echo "Persistent free-tier statement timeout after verified observation progress; pausing shard ${OBS_ARCHIVE_SUFFIX}."
               break
             fi
+            test "$success" -eq 1
+            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
           done
