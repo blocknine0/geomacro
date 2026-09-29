@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { assertSameOrigin } from "./origin-guard";
+import { readB2ArchivedEvent } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
 
 const EventInput = z.object({
@@ -25,8 +26,12 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
   .validator((input: unknown) => EventInput.parse(input))
   .handler(async ({ data }): Promise<PublicEventDetail | null> => {
     assertSameOrigin();
+
+    const archived = await readB2ArchivedEvent(data.eventId);
+    if (archived) return archived;
+
     const supabase = getAppSupabase();
-    if (!supabase) throw new Error("Intelligence store unavailable");
+    if (!supabase) return null;
 
     const result = await supabase
       .from("events")
@@ -38,7 +43,7 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
 
     if (result.error) {
       console.error("[public-event] canonical read failed", result.error.message);
-      throw new Error("Intelligence event unavailable");
+      return null;
     }
 
     if (result.data) return result.data as PublicEventDetail;
@@ -49,9 +54,7 @@ export const getPublicEventDetail = createServerFn({ method: "POST" })
       .eq("id", data.eventId)
       .maybeSingle();
 
-    if (structured.error || !structured.data) {
-      throw new Error("Intelligence event unavailable");
-    }
+    if (structured.error || !structured.data) return null;
 
     return {
       id: String(structured.data.id),
