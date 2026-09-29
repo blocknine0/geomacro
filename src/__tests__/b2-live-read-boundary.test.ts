@@ -19,7 +19,8 @@ describe("non-destructive B2 live read boundary", () => {
     expect(source).toContain("readPublicIntelligenceRowsFromSupabase");
     expect(source.indexOf("const b2Rows = await readB2PublicIntelligence()"))
       .toBeLessThan(source.indexOf("return readPublicIntelligenceRowsFromSupabase();"));
-    expect(source).toContain("A partial verified feed is preferable to a page-level outage.");
+    expect(source).toContain("A partial verified feed is preferable");
+    expect(source).toContain("to a page-level outage.");
   });
 
   it("tries verified B2 risk before preserving both established fallbacks", () => {

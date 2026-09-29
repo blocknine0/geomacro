@@ -14,11 +14,13 @@ describe("public intelligence routing contract", () => {
     expect(publicRead).toContain('from("live_flash_events")');
     expect(publicRead).toContain('eq("verification_status", "VERIFIED")');
     expect(publicRead).toContain('from("events")');
-    expect(publicRead).toContain("missingCategories(rows)");
+    expect(publicRead).toContain("missingCurrentCategories(rows, now)");
+    expect(publicRead).toContain("at >= now - DAY_MS && at <= now");
     expect(publicRead).toContain("if (rows.length > 0 && missing.length === 0) return sortAndDedupe(rows);");
+    expect(publicRead).toContain("Older structured rows are");
+    expect(publicRead).toContain("retained for explicit research but never suppress a fresher fallback path.");
     expect(publicRead).toContain("PUBLIC_INTELLIGENCE_QUERY_TIMEOUT_MS");
   });
-
 
   it("provides a real public event-detail route for Intelligence and Ask Geomacro evidence links", () => {
     expect(existsSync(join(ROOT, "src/routes/event.$eventId.tsx"))).toBe(true);
@@ -29,6 +31,8 @@ describe("public intelligence routing contract", () => {
     const eventWorkspace = read("src/components/intelligence/event-detail-workspace.tsx");
 
     expect(intelligence).toContain('to="/event/$eventId"');
+    expect(intelligence).toContain("LATEST VERIFIED");
+    expect(intelligence).toContain("Live refresh pending · showing latest verified records");
     expect(askWorkspace).toContain('to="/event/$eventId"');
     expect(eventRoute).toContain('createFileRoute("/event/$eventId")');
     expect(eventRoute).toContain("EventDetailWorkspace");
