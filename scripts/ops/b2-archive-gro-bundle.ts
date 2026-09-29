@@ -14,10 +14,11 @@ const MAX_RAW_BUNDLE_BYTES = 40_000_000;
 
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-const signingKeyId = String(process.env.RISK_OBJECT_SIGNING_KEY_ID ?? "").trim();
+let signingKeyId = String(process.env.RISK_OBJECT_SIGNING_KEY_ID ?? "").trim();
+const allSigningKeys = process.env.GRO_ARCHIVE_ALL_KEYS === "true";
 const suffix = String(process.env.GRO_ARCHIVE_SUFFIX ?? "").trim().toLowerCase();
 const limit = Number(process.env.GRO_BUNDLE_LIMIT ?? 50);
-if (url !== "https://ldpwajisioljyjtojvfx.supabase.co" || !role || !signingKeyId ||
+if (url !== "https://ldpwajisioljyjtojvfx.supabase.co" || !role || (!allSigningKeys && !signingKeyId) ||
     !/^[0-9a-f]$/.test(suffix) || !Number.isInteger(limit) || limit < 1 || limit > 50) {
   throw new Error("GRO_BUNDLE_CONFIG_INVALID");
 }
@@ -26,6 +27,28 @@ const db = createClient(url, role, { auth: { persistSession: false, autoRefreshT
 const b2 = createB2Client({ endpointUrl: process.env.B2_S3_ENDPOINT,
   accessKey: process.env.B2_KEY_ID, secretKey: process.env.B2_APPLICATION_KEY,
   bucket: "geomacro-private-archive" });
+
+// Choose the oldest eligible signing key within this shard. Each bundle still
+// contains one key, and every signed member is verified against the public
+// trust registry before its payload can be cleared.
+if (allSigningKeys) {
+  const { data: next, error: nextError } = await db.from("geomacro_risk_objects")
+    .select("signing_key_id")
+    .is("archive_key", null)
+    .not("payload", "is", null)
+    .not("signature", "is", null)
+    .lt("expires_at", new Date(Date.now() - 6 * 3_600_000).toISOString())
+    .like("object_id", `%${suffix}`)
+    .order("generated_at", { ascending: true })
+    .limit(1);
+  if (nextError) throw nextError;
+  if (!next?.length) {
+    console.log(JSON.stringify({ ok: true, status: "complete", processed: 0, shard_suffix: suffix }));
+    process.exit(0);
+  }
+  signingKeyId = String(next[0].signing_key_id ?? "");
+  if (!signingKeyId) throw new Error("GRO_BUNDLE_SIGNING_KEY_MISSING");
+}
 
 const keyResponse = await fetch("https://geomacro.live/api/risk-object-keys", { signal: AbortSignal.timeout(15_000) });
 if (!keyResponse.ok) throw new Error("GRO_BUNDLE_KEYS_UNAVAILABLE");
