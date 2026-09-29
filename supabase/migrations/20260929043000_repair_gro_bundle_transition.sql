@@ -2,6 +2,10 @@
 -- immutable B2 pointers. All other edits and deletes remain forbidden.
 begin;
 
+alter table public.geomacro_risk_objects
+  add column if not exists archive_bundle_key text,
+  add column if not exists archive_bundle_sha256 text;
+
 do $$ begin
   if exists (select 1 from public.geomacro_risk_objects where archive_bundle_key is not null) then
     raise exception 'GRO_BUNDLE_REPAIR_REQUIRES_REVIEW_OF_EXISTING_POINTERS';
@@ -9,7 +13,7 @@ do $$ begin
 end $$;
 
 alter table public.geomacro_risk_objects
-  drop constraint geomacro_risk_objects_archive_bundle_shape_check;
+  drop constraint if exists geomacro_risk_objects_archive_bundle_shape_check;
 alter table public.geomacro_risk_objects
   add constraint geomacro_risk_objects_archive_bundle_shape_check check (
     (archive_bundle_key is null and archive_bundle_sha256 is null)
