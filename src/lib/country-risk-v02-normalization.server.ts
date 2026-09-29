@@ -73,8 +73,26 @@ function freshnessStatus(
 }
 
 
-export async function
-generateGlobalMacroNormalization(
+const batchNormalizations = new Map<string, Promise<Awaited<ReturnType<typeof generateGlobalMacroNormalizationUncached>>>>();
+
+export function generateGlobalMacroNormalization(
+  input: { metric: string; as_of: string },
+) {
+  if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") {
+    return generateGlobalMacroNormalizationUncached(input);
+  }
+  const key = JSON.stringify([input.metric, input.as_of]);
+  const existing = batchNormalizations.get(key);
+  if (existing) return existing;
+  const promise = generateGlobalMacroNormalizationUncached(input);
+  batchNormalizations.set(key, promise);
+  promise.catch(() => {
+    if (batchNormalizations.get(key) === promise) batchNormalizations.delete(key);
+  });
+  return promise;
+}
+
+async function generateGlobalMacroNormalizationUncached(
   input: {
     metric:
       string;

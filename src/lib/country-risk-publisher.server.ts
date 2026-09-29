@@ -329,7 +329,7 @@ function rowToCommercialEligibility(
 let globalRecentEvents: { key: string; promise: Promise<LoadedStructuredEvents> } | null = null;
 
 function loadRecentStructuredEvents(asOf: Date): Promise<LoadedStructuredEvents> {
-  if (!process.env.GLOBAL_CANONICAL_REFRESH_OUTPUT) return loadRecentStructuredEventsUncached(asOf);
+  if (process.env.GEOMACRO_CANONICAL_BATCH !== "1") return loadRecentStructuredEventsUncached(asOf);
   const key = asOf.toISOString();
   if (globalRecentEvents?.key === key) return globalRecentEvents.promise;
   const promise = loadRecentStructuredEventsUncached(asOf);

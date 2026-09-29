@@ -164,6 +164,9 @@ async function refreshCountry(
 }
 
 async function main() {
+  // This process evaluates one frozen as_of for every sovereign. Allow only
+  // this bounded batch to reuse identical reads; web requests remain uncached.
+  process.env.GEOMACRO_CANONICAL_BATCH = "1";
   if (!Number.isFinite(CONCURRENCY) || !Number.isFinite(MIN_READY)) {
     throw new Error("Global canonical refresh numeric configuration is invalid");
   }
