@@ -1,8 +1,6 @@
 name: Geomacro Growth Agent
 
 on:
-  schedule:
-    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       live:
