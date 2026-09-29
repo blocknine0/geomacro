@@ -9,8 +9,6 @@ on:
       - "src/__tests__/risk-gate-v2-world-bank-ppg-sovereign-fiscal.test.ts"
       - ".github/workflows/world-bank-ppg-sovereign-fiscal-shadow.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "23 5 * * 1"
 
 permissions:
   contents: read
