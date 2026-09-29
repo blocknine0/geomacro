@@ -1,15 +1,11 @@
 name: B2 raw Storage maintenance
 
+# Quota-recovery safety: manual-only while Supabase is above free-tier budgets.
+# Each run still requires B2 upload + full readback/restore/hash verification
+# before any source object is removed through the Storage API.
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "37 * * * *"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/b2-raw-storage-maintenance.yml"
-      - "scripts/ops/b2-raw-storage-bundle-maintenance.mjs"
-      - "supabase/functions/raw-snapshot-read/index.ts"
+
 permissions:
   contents: read
 
@@ -50,7 +46,7 @@ jobs:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
     name: archive_and_prune_bundle_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 30
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -58,8 +54,10 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_RAW_BUNDLE_LIMIT: "25"
-      B2_RAW_BUNDLE_ROUNDS: "40"
+      # Larger verified bundles amortize budget/candidate/mark/presence RPCs and B2 GETs.
+      B2_RAW_BUNDLE_LIMIT: "100"
+      # Keep each manually-triggered recovery pass bounded to avoid Disk IO/log spikes.
+      B2_RAW_BUNDLE_ROUNDS: "4"
       B2_RAW_MAINTENANCE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -97,6 +95,6 @@ jobs:
             fi
             test "$success" -eq 1
             if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
+            # Deliberately yield between bundles so free-tier Disk IO can refill.
+            sleep 15
           done
-
-# Manual verified raw Storage drain trigger: 2026-09-29
