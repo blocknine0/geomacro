@@ -1,0 +1,80 @@
+name: B2 Country Ingest Offload
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_run:
+    workflows:
+      - Global Country Raw Source Mesh
+      - Intelligence Orchestrator
+      - Global Realtime Production Repair
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: b2-country-ingest-offload
+  cancel-in-progress: false
+
+jobs:
+  verified-offload:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_INGEST_LOOKBACK_HOURS: "6"
+      B2_INGEST_RAW_BUNDLE_LIMIT: "25"
+      B2_INGEST_RAW_ROUNDS: "40"
+      B2_INGEST_FRAGMENT_LIMIT: "200"
+
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate B2 offload contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${APP_SUPABASE_SERVICE_ROLE_KEY:-}"
+          test -n "${B2_KEY_ID:-}"
+          test -n "${B2_APPLICATION_KEY:-}"
+          test "$(node -e 'console.log(new URL(process.env.APP_SUPABASE_URL).hostname.split(".")[0])')" = "ldpwajisioljyjtojvfx"
+          node --check scripts/ops/b2-country-ingest-offload.mjs
+
+      - name: Offload recent country raw data to verified B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/b2-country-ingest-offload.mjs | tee b2-country-ingest-offload.json
+          jq -e '.ok == true' b2-country-ingest-offload.json >/dev/null
+          jq -e '.verification == "full-b2-readback-before-pointer-update-and-source-delete"' b2-country-ingest-offload.json >/dev/null
+
+      - name: Upload offload evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: b2-country-ingest-offload-${{ github.run_id }}
+          path: b2-country-ingest-offload.json
+          if-no-files-found: warn
+          retention-days: 14
