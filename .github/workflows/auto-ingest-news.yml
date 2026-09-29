@@ -1,12 +1,10 @@
 name: Auto Ingest News
-# Runs every 2 hours as the low-write GRI freshness path.
-# Fresh admitted evidence is structured and can trigger a verified GRI publish
-# when canonical inputs change. Prediction-market creation is not part of this
-# scheduled pipeline. High-volume intelligence adapters remain operator-only
-# while Supabase is above the free-tier recovery threshold.
+# Bounded low-write freshness path. The job checks Supabase headroom first and
+# cleanly skips all writers while the database is at or above the 400 MiB warning
+# line. Prediction-market creation is not part of this scheduled pipeline.
 on:
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch: {}
   push:
     branches:
@@ -15,6 +13,7 @@ on:
       - ".github/workflows/auto-ingest-news.yml"
       - "scripts/ingest-news.js"
       - "scripts/ops/select-missing-gri-discovery-domain.mjs"
+      - "scripts/ops/supabase-free-tier-budget.mjs"
 
 permissions:
   contents: read
@@ -47,17 +46,32 @@ jobs:
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
         run: node scripts/db/assert-authoritative-supabase.mjs
-      - name: Report Supabase free-tier budget without enabling bulk writers
+      - name: Check normal free-tier headroom
+        id: budget
+        shell: bash
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/ops/supabase-free-tier-budget.mjs
+        run: |
+          set -euo pipefail
+          state="$(node scripts/ops/supabase-free-tier-budget.mjs --report-only)"
+          printf '%s\n' "$state"
+          mode="$(printf '%s\n' "$state" | tail -n 1 | jq -r '.mode')"
+          if [ "$mode" = "normal" ]; then
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            echo "Supabase is below the 400 MiB warning line; bounded recurring writes are enabled."
+          else
+            echo "allowed=false" >> "$GITHUB_OUTPUT"
+            echo "Supabase mode is ${mode}; recurring writes are skipped to preserve free-tier headroom."
+          fi
       - name: Prioritize any missing GRI discovery domain
+        if: ${{ steps.budget.outputs.allowed == 'true' }}
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/ops/select-missing-gri-discovery-domain.mjs
       - name: Enable one-run GDELT missing-domain override and relevance cap
+        if: ${{ steps.budget.outputs.allowed == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -115,6 +129,7 @@ jobs:
           }
           NODE
       - name: Run bounded news ingestion script
+        if: ${{ steps.budget.outputs.allowed == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -128,24 +143,25 @@ jobs:
           GEMINI_MODEL_ORDER: ${{ vars.GEMINI_MODEL_ORDER }}
           MISTRAL_MODEL: ${{ vars.MISTRAL_INGEST_MODEL }}
           CLASSIFIER_PROVIDER_ORDER: ${{ vars.CLASSIFIER_PROVIDER_ORDER }}
-          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: ${{ vars.GUARDIAN_QUERY_BUDGET_PER_CATEGORY }}
-          GUARDIAN_QUERY_ROTATION_HOURS: ${{ vars.GUARDIAN_QUERY_ROTATION_HOURS }}
+          GUARDIAN_QUERY_BUDGET_PER_CATEGORY: "3"
+          GUARDIAN_QUERY_ROTATION_HOURS: "6"
           CEREBRAS_MODEL: ${{ vars.CEREBRAS_MODEL }}
           GROQ_BATCH_DELAY_MS: ${{ vars.GROQ_BATCH_DELAY_MS }}
-          GROQ_MAX_REQUESTS_PER_RUN: ${{ vars.GROQ_MAX_REQUESTS_PER_RUN }}
+          GROQ_MAX_REQUESTS_PER_RUN: "12"
           GROQ_MIN_REMAINING_REQUESTS: ${{ vars.GROQ_MIN_REMAINING_REQUESTS }}
           GROQ_MIN_REMAINING_TOKENS: ${{ vars.GROQ_MIN_REMAINING_TOKENS }}
-          GROQ_MAX_WAIT_MS: "900000"
-          GROQ_BATCH_SIZE: "4"
+          GROQ_MAX_WAIT_MS: "180000"
+          GROQ_BATCH_SIZE: "2"
           MAX_CANDIDATES_PER_CATEGORY: "4"
           NEWS_QUERY_DELAY_MS: ${{ vars.NEWS_QUERY_DELAY_MS }}
-          NEWS_MAX_RETRIES: ${{ vars.NEWS_MAX_RETRIES }}
+          NEWS_MAX_RETRIES: "2"
           MAX_ARTICLE_AGE_MS: ${{ vars.MAX_ARTICLE_AGE_MS }}
           MIN_CONFIDENCE: ${{ vars.MIN_CONFIDENCE }}
           MIN_SEVERITY: ${{ vars.MIN_SEVERITY }}
         run: node scripts/ingest-news.js
 
       - name: Export admitted events for structured intelligence
+        if: ${{ steps.budget.outputs.allowed == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -175,6 +191,7 @@ jobs:
 
       - name: Structure fresh Geomacro intelligence
         id: structure
+        if: ${{ steps.budget.outputs.allowed == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
@@ -183,7 +200,7 @@ jobs:
         run: node scripts/invoke-live-structure-with-retry.mjs
 
       - name: Diagnose structured-intelligence failure safely
-        if: ${{ always() && steps.structure.outcome == 'failure' }}
+        if: ${{ always() && steps.budget.outputs.allowed == 'true' && steps.structure.outcome == 'failure' }}
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -191,6 +208,7 @@ jobs:
 
       - name: Check whether canonical GRI inputs changed
         id: gri_change
+        if: ${{ steps.budget.outputs.allowed == 'true' }}
         env:
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -206,7 +224,7 @@ jobs:
           exit "$code"
 
       - name: Correlate changed canonical GRI evidence
-        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        if: ${{ steps.budget.outputs.allowed == 'true' && steps.gri_change.outputs.changed == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -217,14 +235,14 @@ jobs:
         run: node scripts/cluster-gri-stories-v12.js
 
       - name: Publish GRI v1.2 after canonical evidence change
-        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        if: ${{ steps.budget.outputs.allowed == 'true' && steps.gri_change.outputs.changed == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/compute-gri-v12.js
 
       - name: Verify changed GRI proof package
-        if: ${{ steps.gri_change.outputs.changed == 'true' }}
+        if: ${{ steps.budget.outputs.allowed == 'true' && steps.gri_change.outputs.changed == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
