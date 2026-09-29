@@ -50,6 +50,23 @@ describe("sharded B2 quota recovery", () => {
     expect(groBundleWorkflow).toContain("Persistent free-tier statement timeout after verified progress");
   });
 
+  it("runs a real one-object B2 canary before allowing each bulk fanout", () => {
+    for (const workflow of [rawWorkflow, observationWorkflow, groWorkflow]) {
+      expect(workflow).toContain("for suffix in 0 1 2 3 4 5 6 7 8 9 a b c d e f");
+      expect(workflow).toContain("steps.canary.outputs.verified");
+      expect(workflow).toContain("needs.b2_canary.outputs.verified == 'true'");
+      expect(workflow).toContain(".status == \"progress\"");
+      expect(workflow).toContain(".b2_full_gets == 1");
+      expect(workflow).toContain(".status == \"complete\" and .processed == 0");
+      expect(workflow).toContain('echo "verified=false" >> "$GITHUB_OUTPUT"');
+    }
+    expect(rawWorkflow).toContain(".supabase_sources_absent == true");
+    expect(observationWorkflow).toContain(".bundle_pointer_recorded == true");
+    expect(groWorkflow).toContain(".signature_verified == true");
+    expect(groWorkflow).toContain("max-parallel: 1");
+    expect(observationWorkflow).not.toContain("  push:");
+  });
+
   it("preserves fail-closed verification before observation cleanup", () => {
     expect(observationWorker).toContain("OBS_BUNDLE_COMPRESSED_HASH_MISMATCH");
     expect(observationWorker).toContain("OBS_BUNDLE_MEMBER_RESTORE_INVALID_");
