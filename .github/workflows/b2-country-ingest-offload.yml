@@ -2,8 +2,13 @@ name: B2 Country Ingest Offload
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/b2-country-ingest-offload.yml
+      - scripts/ops/b2-country-ingest-offload.mjs
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "23 * * * *"
   workflow_run:
     workflows:
       - Global Country Raw Source Mesh
