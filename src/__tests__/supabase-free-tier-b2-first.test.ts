@@ -8,6 +8,7 @@ describe("Supabase free-tier B2-first storage contract", () => {
   const rawWorker = read("scripts/ops/b2-raw-storage-bundle-maintenance.mjs");
   const rawRestore = read("supabase/functions/raw-snapshot-read/index.ts");
   const workflow = read(".github/workflows/b2-raw-storage-maintenance.yml");
+  const recentOffloadWorkflow = read(".github/workflows/b2-country-ingest-offload.yml");
   const observationWorkflow = read(".github/workflows/b2-observation-payload-maintenance.yml");
   const observationWorker = read("scripts/ops/b2-archive-observation-bundle.mjs");
   const groLegacyWorkflow = read(".github/workflows/b2-only-gro-externalize-canary.yml");
@@ -60,18 +61,22 @@ describe("Supabase free-tier B2-first storage contract", () => {
     expect(rawRestore).toContain("RAW_BUNDLE_MEMBER_HASH_MISMATCH");
   });
 
-  it("runs adaptive verified cold maintenance on all three heavy payload classes", () => {
-    expect(observationWorkflow).toContain('cron: "17 * * * *"');
+  it("runs throttled verified cold maintenance on all three heavy payload classes", () => {
+    expect(observationWorkflow).toContain('cron: "17 */6 * * *"');
     expect(observationWorkflow).toContain('OBS_BUNDLE_LIMIT: "50"');
-    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "40"');
+    expect(observationWorkflow).toContain('OBS_BUNDLE_ROUNDS: "10"');
     expect(observationWorkflow).toContain("cancel-in-progress: true");
     expect(observationWorkflow).toContain("Persistent free-tier statement timeout after verified observation progress");
 
-    expect(workflow).toContain('cron: "37 * * * *"');
+    expect(workflow).toContain('cron: "37 */6 * * *"');
     expect(workflow).toContain('B2_RAW_BUNDLE_LIMIT: "25"');
-    expect(workflow).toContain('B2_RAW_BUNDLE_ROUNDS: "40"');
+    expect(workflow).toContain('B2_RAW_BUNDLE_ROUNDS: "10"');
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain("Persistent free-tier statement timeout after verified raw progress");
+
+    expect(recentOffloadWorkflow).toContain('cron: "23 */6 * * *"');
+    expect(recentOffloadWorkflow).toContain('B2_INGEST_RAW_ROUNDS: "10"');
+    expect(recentOffloadWorkflow).toContain('B2_INGEST_LOOKBACK_HOURS: "72"');
 
     expect(groBundleWorkflow).toContain('cron: "17 */6 * * *"');
     expect(groBundleWorkflow).toContain('GRO_BUNDLE_LIMIT: "25"');
