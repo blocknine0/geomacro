@@ -37,6 +37,13 @@ const proofKey = `geomacro-evidence/v1/index/raw-bundles/${bundleId}.json`;
 const deletionKey = `geomacro-evidence/v1/index/raw-bundles-deleted/${bundleId}.json`;
 
 async function archiveRead() {
+  // Probe the deployed Edge reader with the one-object canary. For bulk
+  // bundles, read the full object from B2 and keep every member check below.
+  if (limit > 1) {
+    const bytes = await b2.get(bundleKey);
+    if (bytes.length > 20_000_000) throw new Error("B2_RAW_BUNDLE_VERIFY_READ_TOO_LARGE");
+    return bytes;
+  }
   for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
     try {
       const response = await fetch(`${url}/functions/v1/archive-verify-read`, {

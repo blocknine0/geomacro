@@ -16,6 +16,7 @@ describe("B2 GRO bundle externalization", () => {
 
   it("retains individual archive compatibility and bundle pointers", () => {
     const worker = read("scripts/ops/b2-archive-gro-bundle.ts");
+    const reader = read("supabase/functions/gro-archive-read/index.ts");
     const migration = read("supabase/migrations/20260929041500_gro_bundle_externalization.sql");
     expect(worker).toContain("geomacro-evidence/v1/gro/${entry.object_id}.json.gz");
     expect(migration).toContain("archive_key='risk-object-archive/v1/' || v_id || '.json.gz'");
@@ -23,6 +24,28 @@ describe("B2 GRO bundle externalization", () => {
     expect(migration).toContain("archive_bundle_sha256=p_bundle_sha256");
     expect(migration).toContain("g.payload=v_payload");
     expect(migration).toContain("g.expires_at < now() - interval '6 hours'");
+    expect(worker).toContain("archive_gzip_b64: memberGzip.toString");
+    expect(reader).toContain("member.archive_gzip_b64");
+    expect(reader).toContain("member.archive_sha256 !== row.archive_sha256");
+    expect(reader).toContain("GRO_BUNDLE_MEMBER_HASH_INVALID");
+  });
+
+  it("reads bulk bundles directly from B2 while the one-object canary tests the Edge bridge", () => {
+    for (const [path, flag] of [
+      ["scripts/ops/b2-archive-gro-bundle.ts", "GRO_BUNDLE_LIMIT"],
+      ["scripts/ops/b2-archive-observation-bundle.mjs", "OBS_BUNDLE_LIMIT"],
+      ["scripts/ops/b2-raw-storage-bundle-maintenance.mjs", "B2_RAW_BUNDLE_LIMIT"],
+    ]) {
+      const worker = read(path);
+      expect(worker).toContain(flag);
+      expect(worker).toContain("if (limit > 1)");
+      expect(worker).toMatch(/const bytes = await b2\.get\(/);
+      expect(worker).toContain("/functions/v1/archive-verify-read");
+      expect(worker.indexOf("const readback = await archiveRead"))
+        .toBeLessThan(worker.indexOf("BUNDLE_COMPRESSED_HASH_MISMATCH") > 0
+          ? worker.indexOf("BUNDLE_COMPRESSED_HASH_MISMATCH")
+          : worker.indexOf("B2_RAW_BUNDLE_READBACK_HASH_INVALID"));
+    }
   });
 
   it("runs bounded bundles with low parallelism", () => {

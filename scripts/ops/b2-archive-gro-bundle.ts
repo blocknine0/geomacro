@@ -95,6 +95,13 @@ for (const entry of selected) {
 await b2.put(archiveKey, compressed);
 
 async function archiveRead(): Promise<Buffer> {
+  // The canary probes the deployed Edge restore bridge. Bulk verification
+  // reads B2 directly, then checks every signed member before DB cleanup.
+  if (limit > 1) {
+    const bytes = await b2.get(archiveKey);
+    if (bytes.length > 20_000_000) throw new Error("GRO_BUNDLE_VERIFY_READ_TOO_LARGE");
+    return bytes;
+  }
   for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
     try {
       const response = await fetch(`${url}/functions/v1/archive-verify-read`, {
