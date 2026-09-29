@@ -1,9 +1,18 @@
 name: B2 observation raw payload maintenance
 
-# Scheduled execution is intentionally held while the B2 download/Class-B budget is
-# exhausted. Keep the verified path manually runnable; never bypass readback.
+# One B2 full GET verifies up to 100 observation payloads in a bundle. Hourly
+# recovery therefore stays far below the former per-object Class-B pressure.
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-observation-payload-maintenance.yml"
+      - "scripts/ops/b2-archive-observation-bundle.mjs"
+      - "supabase/functions/archive-verify-read/index.ts"
+      - "supabase/migrations/*low_class_b_observation_bundle_recovery.sql"
 
 permissions:
   contents: read
@@ -24,7 +33,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      OBS_ARCHIVE_LIMIT: "1"
+      OBS_BUNDLE_LIMIT: "1"
       OBS_ARCHIVE_SUFFIX: "0"
     steps:
       - name: Checkout canonical main
@@ -37,10 +46,10 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify one observation archive path before fanout
-        run: node scripts/ops/b2-archive-observation-payload-batch.mjs
+      - name: Verify one observation bundle before fanout
+        run: node scripts/ops/b2-archive-observation-bundle.mjs
 
-  archive_verified_batch:
+  archive_verified_bundle:
     needs: b2_canary
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.b2_canary.result == 'success' }}
     strategy:
@@ -48,9 +57,9 @@ jobs:
       max-parallel: 2
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
-    name: archive_verified_batch_${{ matrix.suffix }}
+    name: archive_verified_bundle_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -58,7 +67,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      OBS_ARCHIVE_LIMIT: "2"
+      OBS_BUNDLE_LIMIT: "100"
       OBS_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - name: Checkout canonical main
@@ -71,5 +80,5 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Archive verified observation payload shard to B2
-        run: node scripts/ops/b2-archive-observation-payload-batch.mjs
+      - name: Archive verified observation bundle to B2
+        run: node scripts/ops/b2-archive-observation-bundle.mjs
