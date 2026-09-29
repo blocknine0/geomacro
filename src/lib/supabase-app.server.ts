@@ -1,7 +1,18 @@
 import process from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  SupabaseCircuitBreaker,
+  createSupabaseRequestSignal,
+  isTransientSupabaseStatus,
+} from "./supabase-circuit.server";
 
 export const AUTHORITATIVE_APP_SUPABASE_PROJECT_REF = "ldpwajisioljyjtojvfx";
+export const APP_SUPABASE_REQUEST_TIMEOUT_MS = 5_000;
+
+const appSupabaseCircuit = new SupabaseCircuitBreaker({
+  failureThreshold: 3,
+  cooldownMs: 30_000,
+});
 
 type AppSupabaseConfig = {
   url: string;
@@ -94,6 +105,40 @@ export function resolveAppSupabaseConfig(
   return null;
 }
 
+async function appSupabaseFetch(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+): Promise<Response> {
+  if (!appSupabaseCircuit.canRequest()) {
+    throw new Error("APP_SUPABASE_CIRCUIT_OPEN");
+  }
+
+  const upstreamSignal = init?.signal;
+  try {
+    const response = await globalThis.fetch(input, {
+      ...init,
+      signal: createSupabaseRequestSignal(
+        upstreamSignal,
+        APP_SUPABASE_REQUEST_TIMEOUT_MS,
+      ),
+    });
+
+    if (isTransientSupabaseStatus(response.status)) {
+      appSupabaseCircuit.recordFailure();
+    } else {
+      appSupabaseCircuit.recordReachableNonTransientResponse();
+    }
+    return response;
+  } catch (error) {
+    if (upstreamSignal?.aborted) {
+      appSupabaseCircuit.recordNeutral();
+    } else {
+      appSupabaseCircuit.recordFailure();
+    }
+    throw error;
+  }
+}
+
 /**
  * App-owned Supabase client (separate from any Lovable Cloud project).
  *
@@ -102,8 +147,11 @@ export function resolveAppSupabaseConfig(
  * - prefers APP_* hosted-runtime configuration;
  * - can recover from APP_* binding gaps by using trusted server-only SUPABASE_*
  *   aliases for the same authoritative Geomacro project;
- * - does not cache a failed/null resolution because some edge runtimes bind
- *   environment variables at request time.
+ * - every network request has a five-second deadline;
+ * - repeated quota/provider failures open a short circuit instead of creating a
+ *   request/log storm against a degraded free-tier project;
+ * - does not cache a failed/null config resolution because some edge runtimes
+ *   bind environment variables at request time.
  */
 let cachedClient: SupabaseClient | null = null;
 let cachedIdentity: string | null = null;
@@ -117,6 +165,7 @@ export function getAppSupabase(): SupabaseClient | null {
 
   cachedClient = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: appSupabaseFetch },
   });
   cachedIdentity = identity;
   return cachedClient;
