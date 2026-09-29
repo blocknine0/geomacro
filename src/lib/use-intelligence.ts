@@ -102,24 +102,17 @@ function mapPublicRows(rows: PublicIntelligenceRow[]): IntelEvent[] {
 }
 
 function build(rows: IntelEvent[], now: number): Intelligence {
-  // Publication time is the primary "current" clock. Ingestion-created_at is
-  // only the fallback for records that genuinely have no publication timestamp.
-  // This prevents a newly imported historical article from masquerading as a
-  // current development merely because the row was inserted today.
   const markedRows = rows.map((row) => ({
     ...row,
     isCurrent: timeOf(row) >= now - DAY && timeOf(row) <= now,
   }));
   const in24h = markedRows.filter((r) => r.isCurrent);
   const usedFallbackWindow = in24h.length === 0;
-  const recent = [...rows]
+  const recent = [...markedRows]
     .filter((r) => Number.isFinite(timeOf(r)) && timeOf(r) <= now)
     .sort((a, b) => timeOf(b) - timeOf(a))
     .slice(0, 24);
-  // The current UI metrics below must never use the quiet-day fallback.
 
-  // "Current risk topics" must never use the quiet-day fallback. A historical
-  // record is useful for research, but it is not a current risk topic.
   const currentScored = in24h.filter((r) => r.severity !== null);
   const topRisks = [...currentScored]
     .sort((a, b) => (b.severity ?? 0) - (a.severity ?? 0))
@@ -166,9 +159,6 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     .sort((a, b) => b.avgSeverity - a.avgSeverity || b.count - a.count);
 
   return {
-    // Keep the complete 30-day read set so explicit search can still inspect
-    // historical records, while applyIntelFilters hides non-current rows from
-    // the default "live" view.
     all: markedRows,
     today: [...in24h]
       .sort((a, b) => timeOf(b) - timeOf(a))
@@ -180,15 +170,12 @@ function build(rows: IntelEvent[], now: number): Intelligence {
     fading: falling.length > 0 ? falling.slice(0, 5) : null,
     emerging: emergingPool && emergingPool.length > 0 ? emergingPool.slice(0, 5) : null,
     emergingMedian: med === null ? null : Math.round(med),
-    // The public taxonomy is fixed even when a source category has no current
-    // rows. Counts remain evidence-driven and only include observed categories.
     categories: [...PUBLIC_INTELLIGENCE_CATEGORIES],
     categoryCounts,
-    latest: [...rows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
+    latest: [...markedRows].sort((a, b) => timeOf(b) - timeOf(a)).slice(0, 6),
   };
 }
 
-/** Build the exact public intelligence read model from canonical public rows. */
 export function buildPublicIntelligence(rows: PublicIntelligenceRow[], now: number): Intelligence {
   return build(mapPublicRows(rows), now);
 }
@@ -218,8 +205,12 @@ export function useIntelligence(
         if (cancelled) return;
 
         const mapped = mapPublicRows(rows);
-
         if (mapped.length === 0) {
+          if (hasData.current) {
+            setStatus("error");
+            setError({ message: "Live refresh is temporarily unavailable. Showing the latest verified intelligence.", retryable: true });
+            return;
+          }
           hasData.current = false;
           setData(null);
           setStatus("error");
@@ -253,14 +244,21 @@ export function useIntelligence(
   );
 }
 
-/** Client-side filter + search + sort over already-loaded rows. */
 export function applyIntelFilters(
   rows: IntelEvent[],
   { category, query, sort }: { category: string; query: string; sort: IntelSort },
 ): IntelEvent[] {
   const q = query.trim().toLowerCase();
   const explicitResearch = Boolean(q) || category !== "all";
-  let out = explicitResearch ? rows : rows.filter((r) => r.isCurrent);
+  const current = rows.filter((r) => r.isCurrent);
+  let out = explicitResearch
+    ? rows
+    : current.length > 0
+      ? current
+      : [...rows]
+          .filter((r) => Number.isFinite(timeOf(r)))
+          .sort((a, b) => timeOf(b) - timeOf(a))
+          .slice(0, 24);
   if (category !== "all") out = out.filter((r) => (r.category ?? "").trim() === category);
   if (q) {
     out = out.filter(
@@ -277,7 +275,6 @@ export function applyIntelFilters(
   return sorted;
 }
 
-/** Fastest-moving sort is only offered when real severity changes exist. */
 export function availableSorts(rows: IntelEvent[]): IntelSort[] {
   const hasMovement = rows.some((r) => r.isCurrent && r.delta !== null && r.delta !== 0);
   return hasMovement ? ["risk", "newest", "moving"] : ["risk", "newest"];
