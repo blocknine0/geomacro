@@ -43,3 +43,5 @@ jobs:
         env:
           CANARY_FRAGMENT_ID: ${{ inputs.fragment_id || 'adf4cc85-5ed4-45eb-9092-dc1fc132c8f4' }}
         run: node scripts/ops/b2-archive-canary.mjs "$CANARY_FRAGMENT_ID"
+
+# Manual safe canary trigger: 2026-09-29
