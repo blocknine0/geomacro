@@ -1,9 +1,18 @@
 name: Signed GRO B2-only externalization automation
 
-# Scheduled execution is intentionally held while the B2 download/Class-B budget is
-# exhausted. Keep the verified path manually runnable; never bypass readback.
+# One full B2 readback verifies up to 100 signed GRO members before payload cleanup.
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "57 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-only-gro-externalize-canary.yml"
+      - "scripts/ops/b2-gro-bundle-externalize.ts"
+      - "supabase/functions/archive-verify-read/index.ts"
+      - "supabase/functions/gro-archive-read/index.ts"
+      - "supabase/migrations/*low_class_b_gro_bundle_recovery.sql"
 
 permissions:
   contents: read
@@ -22,10 +31,10 @@ jobs:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      GRO_BUNDLE_LIMIT: "1"
       GRO_ARCHIVE_SUFFIX: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -35,10 +44,10 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify one GRO archive path before fanout
-        run: bun scripts/ops/b2-only-gro-externalize-canary.ts
+      - name: Verify one signed GRO bundle before fanout
+        run: bun scripts/ops/b2-gro-bundle-externalize.ts
 
-  externalize_verified_batch:
+  externalize_verified_bundle:
     needs: b2_canary
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.b2_canary.result == 'success' }}
     strategy:
@@ -46,18 +55,18 @@ jobs:
       max-parallel: 2
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
-    name: externalize_verified_batch_${{ matrix.suffix }}
+    name: externalize_verified_bundle_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
       APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      GRO_BUNDLE_LIMIT: "100"
       GRO_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -67,5 +76,5 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Externalize one verified expired signed GRO for this shard
-        run: bun scripts/ops/b2-only-gro-externalize-canary.ts
+      - name: Externalize verified expired signed GRO bundle
+        run: bun scripts/ops/b2-gro-bundle-externalize.ts
