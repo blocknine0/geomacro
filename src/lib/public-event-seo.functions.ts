@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { readB2ArchivedEvent } from "./b2-live.server";
 import { getAppSupabase } from "./supabase-app.server";
 import type { PublicEventDetail } from "./public-event.functions";
 
@@ -9,15 +10,15 @@ const EventInput = z.object({
 
 /**
  * Public, read-only event lookup for route loaders and search/social metadata.
- *
- * This intentionally returns only the same public fields exposed on the event
- * page. It does not expose publisher identity, upstream URLs or private audit
- * data. Strict ID validation keeps the route lookup bounded while allowing
- * first-request SSR/crawlers that do not send an Origin header.
+ * Archived event details are served from private B2 first; current hot state
+ * falls back to bounded Supabase reads.
  */
 export const getPublicEventSeoDetail = createServerFn({ method: "GET" })
   .validator((input: unknown) => EventInput.parse(input))
   .handler(async ({ data }): Promise<PublicEventDetail | null> => {
+    const archived = await readB2ArchivedEvent(data.eventId);
+    if (archived) return archived;
+
     const supabase = getAppSupabase();
     if (!supabase) return null;
 
@@ -42,9 +43,7 @@ export const getPublicEventSeoDetail = createServerFn({ method: "GET" })
       .eq("id", data.eventId)
       .maybeSingle();
 
-    if (structured.error || !structured.data) {
-      return null;
-    }
+    if (structured.error || !structured.data) return null;
 
     return {
       id: String(structured.data.id),
