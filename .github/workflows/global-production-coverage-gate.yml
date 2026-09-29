@@ -4,6 +4,11 @@ name: Global Coverage Readiness Gate
 on:
   # Production refresh is operator-only. Never trigger bulk ingestion from source or migration pushes.
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/global-production-coverage-gate.yml"
 
 permissions:
   contents: read
