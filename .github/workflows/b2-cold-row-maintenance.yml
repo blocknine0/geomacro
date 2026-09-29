@@ -1,0 +1,66 @@
+name: B2 cold row maintenance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11 */6 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-cold-row-maintenance.yml"
+      - "scripts/ops/b2-archive-structured-events.mjs"
+      - "scripts/ops/b2-archive-observation-rows.mjs"
+      - "scripts/ops/sql/b2-cold-row-archive.sql"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-b2-cold-row-maintenance
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_COLD_EVENT_LIMIT: "100"
+      B2_COLD_OBSERVATION_LIMIT: "100"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Archive old structured intelligence to B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          for round in $(seq 1 20); do
+            echo "Structured-event cold archive round ${round}/20"
+            output="$(node scripts/ops/b2-archive-structured-events.mjs)"
+            printf '%s\n' "$output"
+            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
+          done
+      - name: Archive old observation rows to B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          for round in $(seq 1 20); do
+            echo "Observation-history cold archive round ${round}/20"
+            output="$(node scripts/ops/b2-archive-observation-rows.mjs)"
+            printf '%s\n' "$output"
+            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
+          done
