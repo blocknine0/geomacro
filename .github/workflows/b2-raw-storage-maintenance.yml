@@ -1,9 +1,19 @@
 name: B2 raw Storage maintenance
 
-# Scheduled execution is intentionally held while the B2 download/Class-B budget is
-# exhausted. Keep the verified path manually runnable; never bypass readback.
+# One full B2 readback verifies up to 100 Storage objects in a bundle before
+# their Storage-API deletion. Never bypass readback and never SQL-delete storage.objects.
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "37 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/b2-raw-storage-maintenance.yml"
+      - "scripts/ops/b2-raw-storage-bundle-maintenance.mjs"
+      - "supabase/functions/archive-verify-read/index.ts"
+      - "supabase/functions/raw-snapshot-read/index.ts"
+      - "supabase/migrations/*low_class_b_raw_bundle_recovery.sql"
 
 permissions:
   contents: read
@@ -24,7 +34,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_RAW_MAINTENANCE_LIMIT: "1"
+      B2_RAW_BUNDLE_LIMIT: "1"
       B2_RAW_MAINTENANCE_SUFFIX: "0"
     steps:
       - name: Checkout canonical main
@@ -37,10 +47,10 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify one raw Storage archive path before fanout
-        run: node scripts/ops/b2-raw-storage-maintenance.mjs
+      - name: Verify one raw Storage bundle before fanout
+        run: node scripts/ops/b2-raw-storage-bundle-maintenance.mjs
 
-  archive_and_prune:
+  archive_and_prune_bundle:
     needs: b2_canary
     if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.b2_canary.result == 'success' }}
     strategy:
@@ -48,9 +58,9 @@ jobs:
       max-parallel: 2
       matrix:
         suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
-    name: archive_and_prune_${{ matrix.suffix }}
+    name: archive_and_prune_bundle_${{ matrix.suffix }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     environment: production
     env:
       APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
@@ -58,7 +68,7 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      B2_RAW_MAINTENANCE_LIMIT: "2"
+      B2_RAW_BUNDLE_LIMIT: "100"
       B2_RAW_MAINTENANCE_SUFFIX: ${{ matrix.suffix }}
     steps:
       - name: Checkout canonical main
@@ -71,5 +81,5 @@ jobs:
           bun-version: "1.4.2"
       - name: Install locked dependencies
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: Archive and remove verified raw Storage shard
-        run: node scripts/ops/b2-raw-storage-maintenance.mjs
+      - name: Archive verified raw Storage bundle and prune via Storage API
+        run: node scripts/ops/b2-raw-storage-bundle-maintenance.mjs
