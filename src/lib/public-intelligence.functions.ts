@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { assertSameOrigin } from "./origin-guard";
 import { getAppSupabase } from "./supabase-app.server";
+import { readB2PublicIntelligence } from "./b2-live.server";
 
 const EmptyInput = z.object({}).strict();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -83,14 +84,10 @@ function sortAndDedupe(rows: PublicIntelligenceRow[]): PublicIntelligenceRow[] {
 }
 
 /**
- * Canonical public Intelligence read path.
- *
- * The canonical structured feed is the fast path. Fallback tables are queried
- * only for domains missing from that feed. Every Data API request has its own
- * short abort deadline so /intelligence cannot hang behind a slow Supabase read.
- * A partial verified feed is preferable to a page-level outage.
+ * Authoritative Supabase read used only to build/update the B2 live snapshot or
+ * as a bounded fallback when the private B2 snapshot is unavailable.
  */
-export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
+export async function readPublicIntelligenceRowsFromSupabase(): Promise<PublicIntelligenceRow[]> {
   const supabase = getAppSupabase();
   if (!supabase) return [];
 
@@ -122,10 +119,7 @@ export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRo
       const category = normalizeCategory(row.domain);
       if (!category) continue;
       const observedAt =
-        row.last_observed_at ??
-        row.last_seen_at ??
-        row.first_seen_at ??
-        row.created_at;
+        row.last_observed_at ?? row.last_seen_at ?? row.first_seen_at ?? row.created_at;
       rows.push({
         id: String(row.id),
         source_title: row.title ? String(row.title) : null,
@@ -226,6 +220,16 @@ export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRo
     console.error("[public-intelligence] all read paths degraded", failures.join(","));
   }
   return result;
+}
+
+/**
+ * Public read boundary: private B2 live snapshot first, then bounded Supabase.
+ * Supabase is therefore not a single point of failure for the Intelligence page.
+ */
+export async function readPublicIntelligenceRows(): Promise<PublicIntelligenceRow[]> {
+  const b2Rows = await readB2PublicIntelligence();
+  if (b2Rows?.length) return sortAndDedupe(b2Rows);
+  return readPublicIntelligenceRowsFromSupabase();
 }
 
 export const getPublicIntelligence = createServerFn({ method: "POST" })
