@@ -18,8 +18,6 @@ on:
       - "supabase/migrations/921_enable_eurostat_government_finance_ingestion.sql"
       - ".github/workflows/eurostat-government-debt-sync.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "23 5 25 * *"
 
 permissions:
   contents: read
