@@ -150,8 +150,8 @@ describe("commercial website source-of-truth contract", () => {
     expect(route).toContain("RUNTIME STATUS ABOVE");
     expect(route).toContain("PRIVATE PILOT");
     expect(route).toContain("Real-money x402 access stays fail-closed");
-    expect(route).toContain("Free Explorer is website/dashboard access, not a free API");
-    expect(route).toContain("ENDPOINT_COMPOSED_V0_1");
+    expect(route).toContain("Free Explorer is website/dashboard access, not a free structured API");
+    expect(route).toContain("source-protected");
     expect(route).toContain("route_modeling_status = NOT_MODELED");
     expect(route).toContain("execution_authorized=false");
     expect(route).not.toContain("PUBLIC · GEOMACRO AGENT V1");
