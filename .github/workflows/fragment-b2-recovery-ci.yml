@@ -1,0 +1,27 @@
+name: Fragment B2 Recovery CI
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/fragment-b2-*.yml'
+      - 'scripts/ops/b2-fragment-*.mjs'
+      - 'scripts/ops/b2-fragment-*.sh'
+      - 'docs/ops/fragment-b2-recovery.md'
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.1
+      - run: bun install --frozen-lockfile
+      - name: Syntax check recovery scripts
+        run: |
+          node --check scripts/ops/b2-fragment-archive-offload.mjs
+          node --check scripts/ops/b2-fragment-restore.mjs
+          node --check scripts/ops/b2-fragment-select-archived.mjs
+          bash -n scripts/ops/b2-fragment-archive-canary.sh
+      - name: Assert archive canary is non-destructive
+        run: grep -q 'B2_FRAGMENT_DELETE_SOURCE: "0"' .github/workflows/fragment-b2-archive-canary.yml
