@@ -3,6 +3,21 @@ import test from "node:test";
 
 import {answerQuestion} from "./intelligence-engine.mjs";
 
+function assertPublicFindings(answer) {
+  const publicFields = [
+    "category", "country_iso3", "published_at", "observed_at", "title",
+    "summary", "metric", "value_numeric", "value_text", "unit",
+    "event_type", "signal_type", "confidence"
+  ].sort();
+  const findings = answer.findings.flatMap(group => group.findings);
+  assert.ok(findings.length > 0, "privacy checks must inspect actual findings");
+  for (const finding of findings) {
+    // Check the complete public schema, not a domain substring in serialized JSON.
+    // Any source URL, identity, domain or raw-payload field must fail this assertion.
+    assert.deepEqual(Object.keys(finding).sort(), publicFields);
+  }
+}
+
 function verifiedAdapters(counter) {
   return {
     GEOPOLITICS: async () => {
@@ -11,6 +26,8 @@ function verifiedAdapters(counter) {
         {
           source_id: "private_source_a",
           source_url: "https://example.com/a",
+          source_name: "private_source_name_a",
+          source_domain: "example.com",
           raw: {secret: true},
           category: "GEOPOLITICS",
           country_iso3: "IND",
@@ -22,6 +39,8 @@ function verifiedAdapters(counter) {
         {
           source_id: "private_source_b",
           source_url: "https://example.org/b",
+          source_name: "private_source_name_b",
+          source_domain: "example.org",
           raw: {secret: true},
           category: "GEOPOLITICS",
           country_iso3: "IND",
@@ -50,9 +69,10 @@ test("live mode strips sources and never reports a durable live write", async ()
   assert.match(result.message, /Geomacro found these factors in real time/i);
   assert.equal(counter.calls, 1);
 
+  assertPublicFindings(result);
   const serialized = JSON.stringify(result);
   assert.equal(serialized.includes("private_source_a"), false);
-  assert.equal(serialized.includes("example.com"), false);
+  assert.equal(serialized.includes("private_source_name_a"), false);
   assert.equal(serialized.includes("secret"), false);
 });
 
@@ -76,6 +96,8 @@ test("sanitized answer is served from process-memory short cache", async () => {
   assert.equal(second.data_mode, "short_cache");
   assert.equal(second.cache_status, "hit");
   assert.equal(counter.calls, 1);
+  assertPublicFindings(first);
+  assertPublicFindings(second);
 });
 
 test("forceLive skips permanent data but still reuses the short cache", async () => {
