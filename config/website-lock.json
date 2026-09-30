@@ -1,11 +1,11 @@
 {
   "schema_version": "geomacro.website-lock.v1",
   "locked": true,
-  "baseline_sha": "68f1714fdb5dfc63b93b9f77e686a0f13457e6eb",
-  "published_baseline": "Founder-approved commercial launch website limited to launch-day risk intelligence products: Intelligence, separate Risk Indices, Critical Minerals & Rare Earth Risk, Ask Geomacro, and supporting research/evidence. Intelligence may show a clearly labeled latest-verified fallback when the current 24h window is quiet or the live database is temporarily unavailable, while Prediction Markets remain paused and Bridge/Swap remain separate testnet technical proofs. Machine/API/Risk Gate/x402 automation remains roadmap. Site-wide Customer Care escalates to contact@geomacro.live.",
+  "baseline_sha": "c5979dc6b025ef885ef880378ca0f56276dedd63",
+  "published_baseline": "Founder-approved Geomacro Commercial V1 website redesign with a concise signal-to-decision buyer journey across desktop and mobile; live Intelligence, separate Risk Indices, Critical Minerals and Rare Earth Risk, Ask Geomacro, institutional workflows, governed API and agent access, and Risk Gate boundaries remain clearly separated from technical-proof surfaces. Homepage remains pricing-free; Free Explorer and the 0.05 USDC x402 first-20,000 successful paid-delivery offer are presented under API and Agents. Customer Care and contact@geomacro.live remain the human support escalation path.",
   "protect_lock_infrastructure": true,
   "policy": "Public website presentation is frozen. Intentional website changes require explicit founder approval and a dedicated baseline update.",
-  "locked_at_utc": "2026-09-29T18:45:00Z",
-  "published_source_sha": "6d8f3c60c73c34022f23d6bb3848a48188f302c7",
-  "lock_revision": "founder-approved-intelligence-latest-verified-fallback-20260930"
+  "locked_at_utc": "2026-09-30T16:55:00Z",
+  "published_source_sha": "c5979dc6b025ef885ef880378ca0f56276dedd63",
+  "lock_revision": "founder-approved-commercial-v1-redesign-20260930"
 }
