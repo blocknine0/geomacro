@@ -29,7 +29,7 @@ describe("commercial public surface v2", () => {
     }
 
     expect(read("src/routes/about.tsx")).toContain("Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
-    expect(read("src/routes/data-api.tsx")).toContain("Separate geopolitical, macroeconomic and critical-mineral risk indices with methodology context");
+    expect(read("src/routes/data-api.tsx")).toContain("Separate Geopolitical, Macroeconomic and Critical Minerals Risk Indices");
     expect(read("src/routes/research.tsx")).toContain("Separate public indices, preserved versioned lineage.");
   });
 
@@ -39,8 +39,8 @@ describe("commercial public surface v2", () => {
     const docs = read("src/routes/docs.tsx");
     const llms = read("public/llms.txt");
 
-    expect(about).toContain("versioned GRI v1.2 parent methodology and verified proof lineage");
-    expect(about).toContain("not a second live headline index");
+    expect(about).not.toContain("GRI v1.2 - Live");
+    expect(about).not.toContain("combined GRI");
     expect(research).toContain("historical combined GRI remains a versioned proof record");
     expect(docs).toContain("Historical GRI material therefore remains available as a methodology and proof reference");
     expect(llms).toContain("Historical combined-GRI snapshots remain versioned audit records");
@@ -51,12 +51,13 @@ describe("commercial public surface v2", () => {
     const shell = read("src/components/site-shell.tsx");
 
     expect(home).toContain("Global risk intelligence");
-    expect(home).toContain("Turn world events into");
-    expect(home).toContain("Available at launch");
-    expect(home).toContain("What users get");
-    expect(home).toContain("Roadmap, not launch promise");
-    expect(home).toContain("Who it is for");
-    expect(home).toContain("Commercial access");
+    expect(home).toContain("Know what changed.");
+    expect(home).toContain("Know why it matters.");
+    expect(home).toContain("Three risk domains");
+    expect(home).toContain("Not another raw-data feed.");
+    expect(home).toContain("Built for real workflows");
+    expect(home).toContain("Critical minerals & rare earths");
+    expect(home).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
     expect(home).not.toContain("AskGeomacroSection");
     expect(home).not.toContain("RiskIndicesSection");
     expect(home).not.toContain("eventCount");
@@ -71,7 +72,7 @@ describe("commercial public surface v2", () => {
 
     expect(about).toContain('id="privacy"');
     expect(about).toContain('id="product-use"');
-    expect(about).toContain("There is no claim of an independent external security audit");
+    expect(about).toContain("No independent external security certification or production SLA is claimed unless actually completed or contracted.");
     expect(about).toContain("Risk Gate remains non-authorizing");
     expect(shell).toContain('href="/about#privacy"');
     expect(shell).toContain('href="/about#product-use"');
@@ -85,12 +86,12 @@ describe("commercial public surface v2", () => {
 
     expect(ecosystem).toContain("https://partners.circle.com/partner/geomacro");
     expect(ecosystem).toContain("Circle Alliance");
-    expect(ecosystem).toContain("does not mean Circle endorses Geomacro's risk methodology");
+    expect(ecosystem).toContain("It does not mean Circle endorses Geomacro");
     expect(ecosystem).not.toContain("Official Circle Partner");
     expect(home).not.toContain("Official Circle Partner");
   });
 
-  it("keeps runtime agent-commerce status truthful without promoting it as a launch homepage product", () => {
+  it("keeps runtime agent-commerce status truthful without promoting paid x402 as homepage content", () => {
     const status = read("src/components/agent-commerce-status.tsx");
     const home = read("src/components/home/commercial-home.tsx");
     const dataApi = read("src/routes/data-api.tsx");
@@ -100,18 +101,21 @@ describe("commercial public surface v2", () => {
     expect(status).toContain("controlled pre-launch");
     expect(status).toContain("Testnet settlement is not commercial revenue");
     expect(dataApi).toContain("AgentCommerceStatus");
-    expect(home).toContain("Paid agent and x402 production access");
+    expect(dataApi).toContain("x402 pay per call");
+    expect(dataApi).toContain("Real-money x402 access stays fail-closed");
     expect(home).not.toContain("AgentCommerceStatus compact");
+    expect(home).not.toContain("0.05 USDC");
+    expect(home).not.toContain("x402 pay per call");
   });
 
   it("qualifies commercial conversations before sensitive pilot work", () => {
     const contact = read("src/routes/contact.tsx");
 
-    expect(contact).toContain("Send the workflow, not just the industry");
-    expect(contact).toContain("The decision point Geomacro should support");
-    expect(contact).toContain("What a successful commercial evaluation should demonstrate for your team");
-    expect(contact).toContain("Do not email seed phrases, private keys, production secrets");
-    expect(contact).toContain("Agree commercial, support, security and data-handling terms");
+    expect(contact).toContain("Bring the workflow.");
+    expect(contact).toContain("What decision or review should Geomacro support?");
+    expect(contact).toContain("What would make the evaluation useful enough to continue?");
+    expect(contact).toContain("Do not send seed phrases, private keys, production secrets or unnecessary personal/confidential data by email.");
+    expect(contact).toContain("The fastest conversation starts with the decision you are trying to improve");
   });
 
   it("documents fail-soft public Risk Indices without synthetic fallback", () => {
