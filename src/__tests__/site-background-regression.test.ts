@@ -10,7 +10,9 @@ describe("canonical Geomacro site background", () => {
     expect(background).toContain('animate-bg-drift');
     expect(background).toContain('<canvas');
     expect(background).toContain('(prefers-reduced-motion: reduce)');
-    expect(background).toContain('mobile ? Math.max(12, Math.min(28, base))');
+    expect(background).toContain('const mobile = width < 768;');
+    expect(background).toContain('Math.max(12, Math.min(28, base))');
+    expect(background).toContain('Math.max(24, Math.min(62, base))');
     expect(background).toContain('Math.min(window.devicePixelRatio || 1, 1.35)');
     expect(background).toContain('linear-gradient(to_bottom,rgba(8,11,17,0.74),rgba(8,11,17,0.9))');
   });
