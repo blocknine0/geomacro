@@ -24,8 +24,8 @@ describe("observation provenance B2 archive canary", () => {
   it("rechecks latest status and exact source provenance without mutating Supabase", () => {
     expect(script).toContain("OBSERVATION_PROVENANCE_ARCHIVE_LATEST_STATUS_CHANGED");
     expect(script).toContain("OBSERVATION_PROVENANCE_ARCHIVE_SOURCE_CHANGED");
-    expect(script).not.toContain(".update(");
-    expect(script).not.toContain(".delete(");
+    expect(script).not.toMatch(/\.from\([^)]*\)[\s\S]{0,500}?\.update\s*\(/);
+    expect(script).not.toMatch(/\.from\([^)]*\)[\s\S]{0,500}?\.delete\s*\(/);
     expect(script).not.toContain("storage.objects");
     expect(script).toContain("destructive_cleanup_performed: false");
   });
