@@ -1,0 +1,39 @@
+name: Legacy Fragment B2 Delete Canary Run Once
+on:
+  push:
+    branches:
+      - ops/legacy-fragment-b2-e2e-canary-20260930
+permissions:
+  contents: read
+concurrency:
+  group: legacy-fragment-b2-delete-canary-run-once
+  cancel-in-progress: false
+jobs:
+  delete-canary:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_FRAGMENT_TARGET_ID: dcd2a7e1-51fd-4412-89c3-96077fe98108
+      B2_FRAGMENT_MIN_AGE_HOURS: "168"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Re-run exact-target preflight without deletion
+        env:
+          B2_FRAGMENT_TARGET_DELETE: "0"
+        run: node scripts/ops/b2-fragment-targeted-cleanup.mjs
+      - name: Delete exact verified eligible source through Storage API only
+        env:
+          B2_FRAGMENT_TARGET_DELETE: "1"
+        run: node scripts/ops/b2-fragment-targeted-cleanup.mjs
