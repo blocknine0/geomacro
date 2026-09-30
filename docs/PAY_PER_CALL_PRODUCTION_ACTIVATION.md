@@ -30,10 +30,11 @@ The response must keep `execution_authorized=false`.
 - Network: Base mainnet
 - Asset: canonical USDC on Base
 - Price: 0.05 USDC per successful paid intelligence delivery
-- Initial cohort: first 10,000 successful deliveries
-- Later reference price: 0.10 USDC, only after adoption evidence and explicit pricing review
+- Initial adoption cohort: first 20,000 successfully settled and delivered intelligence calls
+- Gross milestone at the launch price: 1,000 USDC before provider/network/hosting costs, refunds or disputes
+- Post-cohort pricing: operator-controlled and published explicitly before any change takes effect; there is no automatic price increase
 
-Testnet payments are not commercial revenue.
+Failed, stale, unavailable, replayed, refunded, internal, testnet and unpaid requests do not count as successful paid deliveries. Testnet payments are not commercial revenue.
 
 ## Production activation inputs
 

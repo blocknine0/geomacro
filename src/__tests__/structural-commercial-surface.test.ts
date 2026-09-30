@@ -31,7 +31,8 @@ describe("structural data commercial surface", () => {
   });
 
   it("preserves the methodology and source-rights boundary", () => {
-    expect(page).toContain("Source rights and customer-serving eligibility verified");
+    expect(page).toContain("Payment never bypasses evidence, freshness, source-rights or product controls.");
+    expect(page).toContain("Upstream source URLs, publisher identities, raw provider payloads, raw article text and internal provenance blobs stay inside the governed evidence system.");
     expect(packageDoc).toContain("EVIDENCE_ONLY_NOT_IN_GRO_V02");
     expect(packageDoc).toContain("Unknown or review-required source rights fail closed");
   });
