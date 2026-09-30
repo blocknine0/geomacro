@@ -8,7 +8,8 @@ const SOURCE_BUCKET = "geomacro-live-intelligence";
 const ARCHIVE_BUCKET = "geomacro-private-archive";
 const MAX_OBJECT_BYTES = 8_000_000;
 const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const projectRef = (url) => { try { return new URL(url).hostname.split(".")[0] ?? ""; } catch { return ""; } };
+const projectRef = (value) => { try { return new URL(value).hostname.split(".")[0] ?? ""; } catch { return ""; } };
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const url = String(process.env.APP_SUPABASE_URL ?? "").trim();
 const role = String(process.env.APP_SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
@@ -67,6 +68,34 @@ async function sourceBytes(sourcePath, expectedBytes, expectedHash) {
   return bytes;
 }
 
+function encodedStoragePath(sourcePath) {
+  return sourcePath.split("/").map((part) => encodeURIComponent(part)).join("/");
+}
+
+async function storageObjectState(sourcePath) {
+  const response = await fetch(`${url}/storage/v1/object/info/${SOURCE_BUCKET}/${encodedStoragePath(sourcePath)}`, {
+    headers: { apikey: role, authorization: `Bearer ${role}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (response.ok) return { exists: true, status: response.status };
+  const body = await response.json().catch(() => null);
+  const structuredStatus = String(body?.statusCode ?? "");
+  const structuredError = String(body?.error ?? body?.message ?? "");
+  const absent = response.status === 404 ||
+    (response.status === 400 && structuredStatus === "404" && /not.?found|no.?such.?key/i.test(structuredError));
+  if (absent) return { exists: false, status: response.status };
+  throw new Error(`B2_FRAGMENT_TARGET_SOURCE_INFO_INDETERMINATE_${fragmentId}_${response.status}_${structuredStatus || "none"}`);
+}
+
+async function waitForStorageAbsence(sourcePath) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const state = await storageObjectState(sourcePath);
+    if (!state.exists) return;
+    if (attempt < 5) await sleep(500 * (attempt + 1));
+  }
+  throw new Error(`B2_FRAGMENT_TARGET_SOURCE_STILL_PRESENT_${fragmentId}`);
+}
+
 async function verifyArchive(manifest, archive) {
   const archiveKey = `geomacro-evidence/v1/${manifest.sourcePath}`;
   if (!archive) {
@@ -111,6 +140,40 @@ async function putVerifiedProof(key, object) {
   return expected;
 }
 
+async function readPreparedProof(key, manifest, archive, handled) {
+  const bytes = await b2.get(key);
+  if (bytes.length > 100_000) throw new Error(`B2_FRAGMENT_TARGET_PREPARED_PROOF_TOO_LARGE_${fragmentId}`);
+  let proof;
+  try { proof = JSON.parse(Buffer.from(bytes).toString("utf8")); }
+  catch { throw new Error(`B2_FRAGMENT_TARGET_PREPARED_PROOF_INVALID_JSON_${fragmentId}`); }
+  if (proof?.schema !== "geomacro.live-fragment-delete-prepared.v1" || proof?.fragment_id !== fragmentId ||
+      proof?.source_bucket !== SOURCE_BUCKET || proof?.source_object_path !== manifest.sourcePath ||
+      proof?.archive_bucket !== ARCHIVE_BUCKET || proof?.archive_object_path !== archive.archive_object_path ||
+      proof?.compressed_sha256 !== manifest.expectedHash || Number(proof?.compressed_bytes) !== manifest.expectedBytes ||
+      Number(proof?.item_count) !== manifest.itemCount || Number(proof?.handled_count) !== handled.total ||
+      Number(proof?.evidence_count) !== handled.evidence || Number(proof?.exclusion_count) !== handled.excluded ||
+      !Number.isFinite(Date.parse(String(proof?.prepared_at ?? ""))))
+    throw new Error(`B2_FRAGMENT_TARGET_PREPARED_PROOF_MISMATCH_${fragmentId}`);
+  return proof;
+}
+
+async function finalizeDeletion(manifest, archive, handled, preparedKey, recoveryMode) {
+  const deletedAt = new Date().toISOString();
+  const deletionProofKey = `geomacro-evidence/v1/index/live-fragments-deleted/${fragmentId}.json`;
+  await putVerifiedProof(deletionProofKey, { schema: "geomacro.live-fragment-source-deletion.v1", fragment_id: fragmentId,
+    source_bucket: SOURCE_BUCKET, source_object_path: manifest.sourcePath, archive_bucket: ARCHIVE_BUCKET,
+    archive_object_path: archive.archive_object_path, compressed_sha256: manifest.expectedHash,
+    compressed_bytes: manifest.expectedBytes, prepared_proof_key: preparedKey, deleted_at: deletedAt,
+    handled: handled.total, item_count: manifest.itemCount, evidence_count: handled.evidence, exclusion_count: handled.excluded,
+    reconciliation: recoveryMode ? "verified_prepared_delete_reconciled" : "normal_verified_delete" });
+
+  const { error: markError } = await db.rpc("geomacro_mark_live_fragment_source_deleted", {
+    p_fragment_id: fragmentId, p_deletion_proof_key: deletionProofKey, p_deleted_at: deletedAt,
+  });
+  if (markError) throw new Error(`B2_FRAGMENT_TARGET_DELETE_MARK_FAILED_${markError.code ?? "unknown"}: ${markError.message ?? "unknown"}`);
+  return { deletedAt, deletionProofKey };
+}
+
 async function main() {
   const manifest = await getManifest();
   let archive = await getArchive();
@@ -122,11 +185,14 @@ async function main() {
     return;
   }
 
-  // The source must still exist and byte-match before any cleanup authorization.
-  await sourceBytes(manifest.sourcePath, manifest.expectedBytes, manifest.expectedHash);
   const handled = await handledCount();
   const eligible = handled.total >= manifest.itemCount;
+  const preparedKey = `geomacro-evidence/v1/index/live-fragments-delete-prepared/${fragmentId}.json`;
+  const sourceState = await storageObjectState(manifest.sourcePath);
+
   if (!deleteSource) {
+    if (!sourceState.exists) throw new Error(`B2_FRAGMENT_TARGET_SOURCE_ABSENT_WITHOUT_RECONCILE_${fragmentId}`);
+    await sourceBytes(manifest.sourcePath, manifest.expectedBytes, manifest.expectedHash);
     console.log(JSON.stringify({ ok: true, mode: "targeted-fragment-cleanup-preflight", fragment_id: fragmentId,
       archive_verified: true, source_verified: true, delete_requested: false, eligible,
       item_count: manifest.itemCount, handled_count: handled.total, evidence_count: handled.evidence,
@@ -135,8 +201,19 @@ async function main() {
   }
   if (!eligible) throw new Error(`B2_FRAGMENT_TARGET_UNPROCESSED_RECORDS_${fragmentId}_${handled.total}_OF_${manifest.itemCount}`);
 
+  if (!sourceState.exists) {
+    await readPreparedProof(preparedKey, manifest, archive, handled);
+    const finalized = await finalizeDeletion(manifest, archive, handled, preparedKey, true);
+    console.log(JSON.stringify({ ok: true, mode: "targeted-fragment-cleanup-reconcile", fragment_id: fragmentId,
+      archive_verified: true, source_absence_verified: true, prepared_proof_verified: true, eligible: true, deleted: true,
+      deletion_proof_key: finalized.deletionProofKey, prepared_proof_key: preparedKey, bytes: manifest.expectedBytes,
+      item_count: manifest.itemCount, handled_count: handled.total }));
+    return;
+  }
+
+  // Normal destructive path: source must byte-match before the prepared deletion proof is sealed.
+  await sourceBytes(manifest.sourcePath, manifest.expectedBytes, manifest.expectedHash);
   const preparedAt = new Date().toISOString();
-  const preparedKey = `geomacro-evidence/v1/index/live-fragments-delete-prepared/${fragmentId}.json`;
   await putVerifiedProof(preparedKey, { schema: "geomacro.live-fragment-delete-prepared.v1", fragment_id: fragmentId,
     source_bucket: SOURCE_BUCKET, source_object_path: manifest.sourcePath, archive_bucket: ARCHIVE_BUCKET,
     archive_object_path: archive.archive_object_path, compressed_sha256: manifest.expectedHash,
@@ -145,28 +222,12 @@ async function main() {
 
   const { data: removed, error: removeError } = await storage.remove([manifest.sourcePath]);
   if (removeError || !Array.isArray(removed) || removed.length !== 1) throw new Error(`B2_FRAGMENT_TARGET_SOURCE_REMOVE_UNCONFIRMED_${fragmentId}`);
-  const { data: stillThere, error: postDeleteError } = await storage.download(manifest.sourcePath);
-  if (stillThere) throw new Error(`B2_FRAGMENT_TARGET_SOURCE_STILL_PRESENT_${fragmentId}`);
-  const postDeleteStatus = String(postDeleteError?.statusCode ?? postDeleteError?.status ?? "");
-  if (!postDeleteError || !["400", "404"].includes(postDeleteStatus))
-    throw new Error(`B2_FRAGMENT_TARGET_SOURCE_DELETE_PROBE_INDETERMINATE_${fragmentId}_${postDeleteStatus || "no_status"}`);
+  await waitForStorageAbsence(manifest.sourcePath);
 
-  const deletedAt = new Date().toISOString();
-  const deletionProofKey = `geomacro-evidence/v1/index/live-fragments-deleted/${fragmentId}.json`;
-  await putVerifiedProof(deletionProofKey, { schema: "geomacro.live-fragment-source-deletion.v1", fragment_id: fragmentId,
-    source_bucket: SOURCE_BUCKET, source_object_path: manifest.sourcePath, archive_bucket: ARCHIVE_BUCKET,
-    archive_object_path: archive.archive_object_path, compressed_sha256: manifest.expectedHash,
-    compressed_bytes: manifest.expectedBytes, prepared_proof_key: preparedKey, deleted_at: deletedAt,
-    handled: handled.total, item_count: manifest.itemCount, evidence_count: handled.evidence, exclusion_count: handled.excluded });
-
-  const { error: markError } = await db.rpc("geomacro_mark_live_fragment_source_deleted", {
-    p_fragment_id: fragmentId, p_deletion_proof_key: deletionProofKey, p_deleted_at: deletedAt,
-  });
-  if (markError) throw new Error(`B2_FRAGMENT_TARGET_DELETE_MARK_FAILED_${markError.code ?? "unknown"}: ${markError.message ?? "unknown"}`);
-
+  const finalized = await finalizeDeletion(manifest, archive, handled, preparedKey, false);
   console.log(JSON.stringify({ ok: true, mode: "targeted-fragment-cleanup", fragment_id: fragmentId,
-    archive_verified: true, source_verified_before_delete: true, eligible: true, deleted: true,
-    deletion_proof_key: deletionProofKey, prepared_proof_key: preparedKey, bytes: manifest.expectedBytes,
+    archive_verified: true, source_verified_before_delete: true, source_absence_verified: true, eligible: true, deleted: true,
+    deletion_proof_key: finalized.deletionProofKey, prepared_proof_key: preparedKey, bytes: manifest.expectedBytes,
     item_count: manifest.itemCount, handled_count: handled.total }));
 }
 
