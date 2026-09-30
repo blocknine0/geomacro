@@ -94,16 +94,19 @@ describe("commercial website source-of-truth contract", () => {
     expect(shell).toContain('label: "Arc / Onchain"');
   });
 
-  it("keeps the homepage commercially understandable without turning it into a live-data dashboard", () => {
+  it("keeps the homepage understandable in under a minute without turning it into a live-data dashboard", () => {
     const home = read("src/components/home/commercial-home.tsx");
-    expect(home).toContain("Global risk intelligence");
-    expect(home).toContain("Turn world events into");
-    expect(home).toContain("decision-ready");
-    expect(home).toContain("Available at launch");
-    expect(home).toContain("What users get");
-    expect(home).toContain("Roadmap, not launch promise");
-    expect(home).toContain("Who it is for");
-    expect(home).toContain("Commercial access");
+    expect(home).toContain("Global risk intelligence for humans + machines");
+    expect(home).toContain("Know what changed.");
+    expect(home).toContain("Why it matters.");
+    expect(home).toContain("Structured answer preview");
+    expect(home).toContain("No raw-data dump. No source hunting.");
+    expect(home).toContain("Private evidence");
+    expect(home).toContain("Raw inputs stay internal");
+    expect(home).toContain("How Geomacro works");
+    expect(home).toContain("Built for repeat decisions");
+    expect(home).toContain("Commercial machine access");
+    expect(home).toContain("Availability first. Payment only for a deliverable request.");
     expect(home).not.toContain("AgentCommerceStatus compact");
     expect(home).not.toContain("AskGeomacroSection");
     expect(home).not.toContain("RiskIndicesSection");
