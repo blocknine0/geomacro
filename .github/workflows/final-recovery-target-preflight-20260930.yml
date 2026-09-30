@@ -1,0 +1,28 @@
+name: Final recovery target preflight 20260930
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/final-recovery-target-preflight-20260930.yml"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-recovery-target-preflight
+  cancel-in-progress: false
+jobs:
+  preflight:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify canonical refresh recovery prerequisite without writes
+        run: node scripts/ops/supabase-free-tier-budget.mjs --require-bulk-write --require-recovery-target
