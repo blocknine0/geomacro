@@ -46,16 +46,17 @@ describe("final commercial website closure", () => {
     const home = read("src/components/home/commercial-home.tsx");
 
     expect(route).toContain("Global Risk Intelligence Infrastructure | Geomacro");
-    expect(home).toContain("Turn world events into");
-    expect(home).toContain("Available at launch");
-    expect(home).toContain("What users get");
-    expect(home).toContain("Roadmap, not launch promise");
-    expect(home).toContain("Who it is for");
-    expect(home).toContain("Commercial access");
+    expect(home).toContain("Know what changed.");
+    expect(home).toContain("Know why it matters.");
+    expect(home).toContain("Three risk domains");
+    expect(home).toContain("Not another raw-data feed.");
+    expect(home).toContain("Built for real workflows");
+    expect(home).toContain("Machine and commercial access lives in dedicated product surfaces with explicit availability and product boundaries.");
     expect(home).not.toContain("useIntelligence(");
     expect(home).not.toContain("useRiskIndices(");
     expect(home).not.toContain("114 / 194");
     expect(home).not.toContain("Live intelligence feed");
+    expect(home).not.toContain("0.05 USDC");
   });
 
   it("keeps every primary commercial route canonical and directly reachable", () => {
@@ -92,8 +93,8 @@ describe("final commercial website closure", () => {
     expect(riskGate).toContain("execution_authorized = false");
     expect(dataApi).toContain("AgentCommerceStatus");
     expect(dataApi).toContain("Real-money x402 access stays fail-closed");
-    expect(about).toContain("There is no claim of an independent external security audit");
-    expect(about).toContain("Testnet USDC and testnet market activity are not represented as real-money production settlement");
+    expect(about).toContain("No independent external security certification or production SLA is claimed unless actually completed or contracted.");
+    expect(about).toContain("Testnet USDC and Testnet market activity are not real-money production settlement.");
   });
 
   it("keeps partnership trust evidence factual without implying endorsement", () => {
@@ -101,7 +102,7 @@ describe("final commercial website closure", () => {
     const home = read("src/components/home/commercial-home.tsx");
 
     expect(ecosystem).toContain("https://partners.circle.com/partner/geomacro");
-    expect(ecosystem).toContain("does not mean Circle endorses Geomacro");
+    expect(ecosystem).toContain("It does not mean Circle endorses Geomacro");
     expect(ecosystem).not.toMatch(/Official Circle Partner/i);
     expect(home).not.toMatch(/Official Circle Partner/i);
   });
