@@ -40,7 +40,7 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
   const requestBudget = parseRequestBudget();
   let requestsStarted = 0;
 
-  async function request(method, key, body = Buffer.alloc(0)) {
+  async function request(method, key, body = Buffer.alloc(0), { allowNotFound = false } = {}) {
     if (!/^geomacro-evidence\/v1\/[A-Za-z0-9_./-]+$/.test(key) || key.includes("..")) {
       throw new Error("B2_ARCHIVE_KEY_INVALID");
     }
@@ -79,9 +79,12 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
         });
 
         if (result.ok) return Buffer.from(await result.arrayBuffer());
+        const responseText = await result.text().catch(() => "");
+        const errorCode = safeB2ErrorCode(responseText);
+        if (allowNotFound && method === "GET" && result.status === 404 && errorCode === "NoSuchKey") {
+          return null;
+        }
         if (!TRANSIENT_STATUSES.has(result.status) || attempt === MAX_ATTEMPTS) {
-          const responseText = await result.text().catch(() => "");
-          const errorCode = safeB2ErrorCode(responseText);
           throw new Error(`B2_${method}_FAILED_${result.status}_${errorCode}`);
         }
       } catch (cause) {
@@ -99,6 +102,7 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
   return {
     put: (key, bytes) => request("PUT", key, bytes),
     get: (key) => request("GET", key),
+    getOptional: (key) => request("GET", key, Buffer.alloc(0), { allowNotFound: true }),
     usage: () => ({ requests_started: requestsStarted, request_budget: requestBudget }),
   };
 }

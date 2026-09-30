@@ -16,6 +16,16 @@ describe("structured event B2 bundle compaction", () => {
     expect(workflow).toContain("persist-credentials: false");
   });
 
+  it("probes B2 read capability before any new bundle write", () => {
+    const preflight = script.indexOf("const preflightReadback = await b2.getOptional(preflightKey)");
+    const put = script.indexOf("await b2.put(bundleKey, compressed)");
+    expect(preflight).toBeGreaterThanOrEqual(0);
+    expect(put).toBeGreaterThan(preflight);
+    expect(script).toContain("STRUCTURED_EVENT_BUNDLE_READ_PREFLIGHT_COLLISION");
+    expect(script).toContain("pre_write_b2_read_preflight_verified: true");
+    expect(script).toContain("b2_read_preflight_verified_before_write: true");
+  });
+
   it("archives one multi-record bundle and verifies full B2 readback before hot-row compaction", () => {
     const put = script.indexOf("await b2.put(bundleKey, compressed)");
     const firstGet = script.indexOf("const firstReadback = await b2.get(bundleKey)");
