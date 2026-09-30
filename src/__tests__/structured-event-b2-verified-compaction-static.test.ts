@@ -53,14 +53,16 @@ describe("structured-event verified B2 compaction", () => {
     expect(script).toContain("STRUCTURED_EVENT_COMPACT_ROLLBACK_FAILED");
   });
 
-  it("is bounded, manual-only, serialized, and never deletes rows or storage objects", () => {
+  it("is bounded, scheduled every 15 minutes, serialized, and never deletes rows or storage objects", () => {
     expect(script).toContain("limit > 10");
     expect(script).toContain("olderDays < 7");
     expect(script).not.toMatch(/\.delete\s*\(/);
     expect(script).not.toContain("storage.objects");
     expect(workflow).toContain("workflow_dispatch");
+    expect(workflow).toContain('cron: "*/15 * * * *"');
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.older_days || '7'");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.limit || '10'");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("environment: production");
-    expect(workflow).not.toContain("schedule:");
   });
 });
