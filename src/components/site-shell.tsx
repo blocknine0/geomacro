@@ -124,7 +124,6 @@ const PRIMARY_NAV = [
   { to: "/global-risk", label: "Risk Indices" },
   { to: "/data-api", label: "API & Agents" },
   { to: "/institutional", label: "Institutions" },
-  { to: "/pricing", label: "Pricing" },
 ] as const;
 
 const EXPLORE_NAV = [
@@ -307,7 +306,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     <SheetTitle><Wordmark height={28} /></SheetTitle>
                   </SheetHeader>
                   <nav className="mt-7 space-y-6 pb-8" aria-label="Mobile navigation">
-                    <MobileGroup title="Core" items={PRIMARY_NAV} />
+                    <div>
+                      <MobileGroup title="Core" items={PRIMARY_NAV} />
+                      <SheetClose asChild>
+                        <a href="/data-api#pricing" className="mt-0.5 block rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground">Pricing</a>
+                      </SheetClose>
+                    </div>
                     <MobileGroup title="Explore" items={exploreMobile} />
                     <MobileGroup title="Reference" items={REFERENCE_NAV} />
                     <MobileGroup title="Technical proof" items={technicalMobile} />
@@ -331,6 +335,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   {item.label}
                 </Link>
               ))}
+              <a href="/data-api#pricing" className="whitespace-nowrap py-2 transition hover:text-foreground">Pricing</a>
               <ExploreMenu />
               <TechnicalProofMenu />
               <Button asChild size="sm" className="ml-1 h-9 px-4 text-xs">
@@ -376,7 +381,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/global-risk" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
-                  <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
+                  <a href="/data-api#pricing" className="hover:text-foreground">Pricing</a>
                 </div>
               </div>
               <div>
