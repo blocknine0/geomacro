@@ -11,8 +11,10 @@ on:
       limit:
         description: "Maximum payloads to compact in this run (1-10)"
         required: false
-        default: "1"
+        default: "10"
         type: string
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
@@ -33,8 +35,8 @@ jobs:
       B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-      STRUCTURED_EVENT_COMPACT_OLDER_DAYS: ${{ inputs.older_days }}
-      STRUCTURED_EVENT_COMPACT_LIMIT: ${{ inputs.limit }}
+      STRUCTURED_EVENT_COMPACT_OLDER_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.older_days || '7' }}
+      STRUCTURED_EVENT_COMPACT_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '10' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
