@@ -1,0 +1,49 @@
+name: B2 Runtime Read Smoke Run Once
+
+on:
+  push:
+    branches:
+      - ops/b2-runtime-read-smoke-20260930
+
+permissions:
+  contents: read
+
+concurrency:
+  group: b2-runtime-read-smoke-once
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      LIVE_STRUCTURE_TOKEN: ${{ secrets.LIVE_STRUCTURE_TOKEN }}
+      FRAGMENT_ID: b27c4ce5-bd5e-4403-b161-7e8afc3b2fce
+    steps:
+      - name: Exercise deployed resolver against an already-deleted fully handled fragment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APP_SUPABASE_URL:-}"
+          test -n "${LIVE_STRUCTURE_TOKEN:-}"
+          code="$(curl --silent --show-error --fail-with-body \
+            --output /tmp/b2-runtime-smoke.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "x-geomacro-structure-token: ${LIVE_STRUCTURE_TOKEN}" \
+            --header 'content-type: application/json' \
+            --data "{\"fragment_id\":\"${FRAGMENT_ID}\"}" \
+            --max-time 90 \
+            "${APP_SUPABASE_URL%/}/functions/v1/live-structure-intelligence")"
+          cat /tmp/b2-runtime-smoke.json
+          echo
+          test "$code" = "200"
+          jq -e '.ok == true' /tmp/b2-runtime-smoke.json >/dev/null
+          jq -e --arg id "$FRAGMENT_ID" '(.fragment_id // $id) == $id' /tmp/b2-runtime-smoke.json >/dev/null
+          if jq -e '.error? != null' /tmp/b2-runtime-smoke.json >/dev/null; then
+            echo "::error title=B2 resolver runtime smoke returned error::Deployed structuring runtime could not read the archived fragment."
+            exit 1
+          fi
+          echo "PASS: deployed live structuring runtime successfully resolved and read the archived fragment from B2."
