@@ -1,0 +1,121 @@
+name: One-shot verified observation recovery 20260930
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/one-shot-observation-recovery-20260930.yml"
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-b2-observation-archive
+  cancel-in-progress: true
+
+jobs:
+  b2_canary:
+    outputs:
+      verified: ${{ steps.canary.outputs.verified }}
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      OBS_BUNDLE_LIMIT: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify one observation restore canary
+        id: canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          for suffix in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
+            log_file="$(mktemp)"
+            OBS_ARCHIVE_SUFFIX="$suffix" node scripts/ops/b2-archive-observation-bundle.mjs 2>&1 | tee "$log_file"
+            if jq -se --arg suffix "$suffix" '.[-1] | .ok == true and .status == "progress" and .archived == 1 and .b2_full_gets == 1 and .bundle_pointer_recorded == true and .source_rows_retained == true and .shard_suffix == $suffix and .verification_mode == "one-full-bundle-readback-before-atomic-cleanup"' "$log_file" >/dev/null; then
+              echo "verified=true" >> "$GITHUB_OUTPUT"
+              rm -f "$log_file"
+              exit 0
+            fi
+            if jq -se --arg suffix "$suffix" '.[-1] | .ok == true and .status == "complete" and .processed == 0 and .shard_suffix == $suffix' "$log_file" >/dev/null; then
+              rm -f "$log_file"
+              continue
+            fi
+            rm -f "$log_file"
+            echo "Canary did not prove B2 readback, restore, and cleanup" >&2
+            exit 1
+          done
+          echo "No eligible B2 canary candidate; verified bulk work is skipped."
+          echo "verified=false" >> "$GITHUB_OUTPUT"
+
+  archive_verified_bundle:
+    needs: b2_canary
+    if: ${{ github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.b2_canary.result == 'success' && needs.b2_canary.outputs.verified == 'true' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        suffix: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
+    name: archive_verified_bundle_${{ matrix.suffix }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+      APP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      B2_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      OBS_BUNDLE_LIMIT: "100"
+      OBS_BUNDLE_ROUNDS: "4"
+      OBS_ARCHIVE_SUFFIX: ${{ matrix.suffix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: { persist-credentials: false }
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: "1.4.2" }
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Archive verified observation bundles to B2
+        shell: bash
+        run: |
+          set -euo pipefail
+          for round in $(seq 1 "${OBS_BUNDLE_ROUNDS:-1}"); do
+            echo "Observation cold archive round ${round}/${OBS_BUNDLE_ROUNDS} for shard ${OBS_ARCHIVE_SUFFIX}"
+            success=0
+            persistent_timeout=0
+            output=""
+            for attempt in 1 2 3; do
+              log_file="$(mktemp)"
+              set +e
+              node scripts/ops/b2-archive-observation-bundle.mjs 2>&1 | tee "$log_file"
+              status=${PIPESTATUS[0]}
+              set -e
+              output="$(cat "$log_file")"
+              if [ "$status" -eq 0 ]; then success=1; rm -f "$log_file"; break; fi
+              if ! grep -Eqi "statement timeout|canceling statement due to statement timeout|code: ['\"]57014['\"]" "$log_file"; then
+                rm -f "$log_file"; echo "Non-transient observation archive failure; stopping."; exit "$status"
+              fi
+              rm -f "$log_file"
+              if [ "$attempt" -eq 3 ]; then persistent_timeout=1; break; fi
+              sleep $((attempt * 8))
+            done
+            if [ "$persistent_timeout" -eq 1 ]; then
+              echo "Persistent free-tier statement timeout after verified observation progress; pausing shard ${OBS_ARCHIVE_SUFFIX}."
+              break
+            fi
+            test "$success" -eq 1
+            if printf '%s\n' "$output" | grep -q '"status":"complete"'; then break; fi
+            # Give free-tier Disk IO a recovery window between verified bundles.
+            sleep 15
+          done
+
+# Manual verified observation drain trigger: 2026-09-29
