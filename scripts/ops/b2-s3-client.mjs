@@ -7,6 +7,22 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
 
+function safeB2ErrorCode(text) {
+  const source = String(text ?? "");
+  const xmlCode = source.match(/<Code>([^<]{1,80})<\/Code>/i)?.[1];
+  if (xmlCode && /^[A-Za-z0-9_.:-]+$/.test(xmlCode)) return xmlCode;
+  const jsonCode = (() => {
+    try {
+      const parsed = JSON.parse(source);
+      return typeof parsed?.code === "string" ? parsed.code : null;
+    } catch {
+      return null;
+    }
+  })();
+  if (jsonCode && /^[A-Za-z0-9_.:-]+$/.test(jsonCode)) return jsonCode;
+  return "unknown";
+}
+
 export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
@@ -47,11 +63,13 @@ export function createB2Client({ endpointUrl, accessKey, secretKey, bucket }) {
 
         if (result.ok) return Buffer.from(await result.arrayBuffer());
         if (!TRANSIENT_STATUSES.has(result.status) || attempt === MAX_ATTEMPTS) {
-          throw new Error(`B2_${method}_FAILED_${result.status}`);
+          const responseText = await result.text().catch(() => "");
+          const errorCode = safeB2ErrorCode(responseText);
+          throw new Error(`B2_${method}_FAILED_${result.status}_${errorCode}`);
         }
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
-        const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+$/.test(message);
+        const explicitHttpFailure = /^B2_(PUT|GET)_FAILED_\d+_[A-Za-z0-9_.:-]+$/.test(message);
         if (explicitHttpFailure || attempt === MAX_ATTEMPTS) throw cause;
       }
 
