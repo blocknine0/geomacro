@@ -1,0 +1,29 @@
+name: Patch free-tier recurring budget once
+on:
+  push:
+    branches:
+      - fix/free-tier-recurring-budget-current
+permissions:
+  contents: write
+concurrency:
+  group: patch-free-tier-recurring-budget-once
+  cancel-in-progress: false
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/free-tier-recurring-budget-current
+          fetch-depth: 1
+      - run: node scripts/ops/patch-free-tier-recurring-budget-once.mjs
+      - shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- scripts/ops/supabase-free-tier-budget.mjs .github/workflows/auto-ingest-news.yml; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/ops/supabase-free-tier-budget.mjs .github/workflows/auto-ingest-news.yml
+          git commit -m "Throttle recurring Supabase ingestion under free-tier budget"
+          git push origin HEAD:fix/free-tier-recurring-budget-current
