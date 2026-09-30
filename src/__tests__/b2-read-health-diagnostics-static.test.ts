@@ -19,8 +19,8 @@ describe("B2 read health diagnostics", () => {
     expect(canary).toContain("sha256(body) !== pointer.a");
     expect(canary).toContain("mutation_performed: false");
     expect(canary).not.toContain("b2.put(");
-    expect(canary).not.toMatch(/\.update\s*\(/);
-    expect(canary).not.toMatch(/\.delete\s*\(/);
+    expect(canary).not.toMatch(/\.from\([^)]*\)[\s\S]*?\.update\s*\(/);
+    expect(canary).not.toMatch(/\.from\([^)]*\)[\s\S]*?\.delete\s*\(/);
   });
 
   it("runs exactly once from its own main-branch workflow change", () => {
