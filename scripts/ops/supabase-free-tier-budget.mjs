@@ -48,3 +48,21 @@ if (requireBulkWrite && data.bulk_write_allowed !== true) {
   );
   process.exitCode = 78;
 }
+
+ 
+// Final canonical refresh follows recovery, so require its lower target even
+// while the emergency bulk-write budget still allows essential writes.
+if (process.argv.includes("--require-recovery-target")) {
+  const bytes = Number(data.database_bytes);
+  const target = Number(data.target_bytes);
+  if (!Number.isSafeInteger(bytes) || !Number.isSafeInteger(target) ||
+      target !== 367001600 || bytes > target) {
+    console.error(JSON.stringify({
+      ok: false,
+      code: "SUPABASE_FREE_TIER_RECOVERY_TARGET_NOT_MET",
+      database_bytes: Number.isFinite(bytes) ? bytes : null,
+      target_bytes: Number.isFinite(target) ? target : null,
+    }));
+    process.exitCode = 78;
+  }
+}
