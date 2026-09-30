@@ -42,7 +42,6 @@ describe("Risk Gate commercial source-network gate", () => {
   });
 });
 
-
 describe("Risk Gate API commercial wiring", () => {
   it("wires the commercial source gate into the external evaluation handler", async () => {
     const fs = await import("node:fs/promises");
@@ -55,9 +54,8 @@ describe("Risk Gate API commercial wiring", () => {
   });
 });
 
-
 describe("B2 source-network continuity snapshot", () => {
-  it("is bounded, hourly, and verified through the existing live snapshot proof path", async () => {
+  it("stays bounded and verified while automatic publishing is quota-held during AccessDenied", async () => {
     const fs = await import("node:fs/promises");
     const b2Source = await fs.readFile("src/lib/b2-live.server.ts", "utf8");
     const publisher = await fs.readFile("scripts/ops/publish-b2-live-snapshots.ts", "utf8");
@@ -69,6 +67,7 @@ describe("B2 source-network continuity snapshot", () => {
     expect(publisher).toContain("live_source_network_launch_status");
     expect(publisher).toContain("B2_LIVE_READBACK_HASH_INVALID");
     expect(publisher).toContain("B2_LIVE_RESTORE_INVALID");
-    expect(workflow).toContain('cron: "13 * * * *"');
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).not.toContain("schedule:");
   });
 });
